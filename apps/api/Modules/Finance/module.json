@@ -1,0 +1,9 @@
+{
+  "name": "Finance",
+  "alias": "finance",
+  "description": "Financeiro operacional da SYSTRAT",
+  "priority": 30,
+  "providers": ["Modules\\Finance\\Providers\\FinanceServiceProvider"],
+  "requires": [],
+  "menu": {"label": "Financeiro", "icon": "CircleDollarSign", "order": 30, "permission": "finance.view"}
+}

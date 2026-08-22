@@ -1,0 +1,9 @@
+{
+  "name": "Admin",
+  "alias": "admin",
+  "description": "Administração central da plataforma SYSGOV",
+  "priority": 1,
+  "providers": ["Modules\\Admin\\Providers\\AdminServiceProvider"],
+  "requires": [],
+  "menu": {"label": "Administração", "icon": "Settings2", "order": 1, "permission": "admin.view"}
+}

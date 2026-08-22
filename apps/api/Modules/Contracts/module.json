@@ -1,0 +1,9 @@
+{
+  "name": "Contracts",
+  "alias": "contracts",
+  "description": "Ciclo de vida de contratos governamentais",
+  "priority": 10,
+  "providers": ["Modules\\Contracts\\Providers\\ContractsServiceProvider"],
+  "requires": [],
+  "menu": {"label": "Contratos", "icon": "FileCheck2", "order": 20, "permission": "contracts.view"}
+}

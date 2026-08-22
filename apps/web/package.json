@@ -1,0 +1,8 @@
+{
+  "name": "@sysgov/web",
+  "private": true,
+  "type": "module",
+  "scripts": {"dev": "vite", "build": "tsc -b && vite build", "typecheck": "tsc -b --pretty false"},
+  "dependencies": {"@sysgov/sdk": "file:../../packages/sdk", "@vitejs/plugin-react": "latest", "lucide-react": "^0.468.0", "react": "^19.0.0", "react-dom": "^19.0.0", "vite": "latest", "typescript": "~5.7.2"},
+  "devDependencies": {"@types/react": "^19.0.0", "@types/react-dom": "^19.0.0"}
+}
