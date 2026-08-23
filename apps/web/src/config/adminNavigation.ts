@@ -15,6 +15,9 @@ import {
   Sparkles,
   BarChart3,
   Landmark,
+  FileText,
+  Ticket,
+  BookOpen,
 } from 'lucide-react';
 import { AdminRole } from '../types/admin';
 
@@ -146,6 +149,39 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         shortLabel: 'Perfil',
         icon: UserCheck,
         description: 'Dados da conta autenticada, senha e sessões ativas',
+      },
+    ],
+  },
+  {
+    id: 'contratos_contabilidade',
+    title: 'CONTRATOS & CONTABILIDADE',
+    items: [
+      {
+        id: 'contratos',
+        label: 'Gestão de Contratos',
+        shortLabel: 'Contratos',
+        icon: FileText,
+        badge: 'Lei 14.133',
+        badgeColor: 'indigo',
+        description: 'Ciclo de vida contratual, aditivos (25%), fiscalização e anexos',
+      },
+      {
+        id: 'helpdesk',
+        label: 'Suporte & Helpdesk',
+        shortLabel: 'Helpdesk',
+        icon: Ticket,
+        badge: 'SLA',
+        badgeColor: 'amber',
+        description: 'Chamados internos com SLA automático por prioridade',
+      },
+      {
+        id: 'contabilidade',
+        label: 'Contabilidade Pública',
+        shortLabel: 'Contabilidade',
+        icon: BookOpen,
+        badge: 'PCASP',
+        badgeColor: 'emerald',
+        description: 'PCASP, empenho-liquidação-pagamento e partidas dobradas',
       },
     ],
   },
