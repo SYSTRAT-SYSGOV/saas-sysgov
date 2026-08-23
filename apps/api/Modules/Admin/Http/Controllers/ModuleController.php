@@ -6,6 +6,7 @@ namespace Modules\Admin\Http\Controllers;
 
 use App\Models\Tenant;
 use App\Support\AuditLogger;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Modules\Admin\Http\Requests\ToggleModuleRequest;
@@ -13,9 +14,12 @@ use Modules\Admin\Models\Module;
 
 final class ModuleController
 {
+    use AuthorizesRequests;
+
     public function index(): JsonResponse { return response()->json(Module::query()->with('tenants:id,name,slug')->orderBy('name')->paginate(50)); }
     public function toggle(ToggleModuleRequest $request, Tenant $tenant, Module $module, AuditLogger $audit): JsonResponse
     {
+        $this->authorize('toggle', $module);
         $payload = $request->validated();
         $before = $module->tenants()->whereKey($tenant->getKey())->first()?->pivot?->toArray();
         DB::transaction(fn () => $module->tenants()->syncWithoutDetaching([$tenant->getKey() => ['enabled' => $payload['enabled'], 'settings' => json_encode($payload['settings'] ?? [])]]));

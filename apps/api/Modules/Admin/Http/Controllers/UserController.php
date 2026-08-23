@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Admin\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use App\Support\AuditLogger;
 use App\Models\Role;
@@ -15,9 +16,12 @@ use Modules\Admin\Http\Requests\AssignRolesRequest;
 
 final class UserController
 {
+    use AuthorizesRequests;
+
     public function index(): JsonResponse { return response()->json(User::query()->with('tenants:id,name,slug')->latest()->paginate(25)); }
     public function store(StoreUserRequest $request, AuditLogger $audit): JsonResponse
     {
+        $this->authorize('create', User::class);
         $data = $request->validated();
         $tenantId = $data['tenant_id'] ?? null;
         $roleId = $data['role_id'] ?? null;
@@ -35,6 +39,7 @@ final class UserController
 
     public function assignRoles(AssignRolesRequest $request, User $user, AuditLogger $audit): JsonResponse
     {
+        $this->authorize('assignRoles', User::class);
         $data = $request->validated();
         $roleIds = Role::query()->where('tenant_id', $data['tenant_id'])->whereIn('id', $data['role_ids'] ?? [])->pluck('id')->all();
         if (count($roleIds) !== count($data['role_ids'] ?? [])) throw ValidationException::withMessages(['role_ids' => 'Todas as roles devem pertencer ao tenant informado.']);

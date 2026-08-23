@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Admin\Http\Controllers;
 
 use App\Models\Tenant;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
@@ -13,9 +14,12 @@ use Modules\Admin\Http\Requests\UpdateTenantRequest;
 
 final class TenantController
 {
+    use AuthorizesRequests;
+
     public function index(): JsonResponse { return response()->json(Tenant::query()->latest()->paginate(25)); }
     public function store(StoreTenantRequest $request, AuditLogger $audit, OutboxPublisher $outbox): JsonResponse
     {
+        $this->authorize('create', Tenant::class);
         $tenant = Tenant::create($request->validated());
         $audit->record('admin', 'created', 'tenant:'.$tenant->getKey(), null, $tenant->toArray());
         $outbox->publish('tenant.created', ['tenant_id' => $tenant->getKey(), 'slug' => $tenant->slug], $tenant->getKey());
@@ -24,6 +28,7 @@ final class TenantController
 
     public function update(UpdateTenantRequest $request, Tenant $tenant, AuditLogger $audit): JsonResponse
     {
+        $this->authorize('update', $tenant);
         $before = $tenant->toArray();
         $tenant->update($request->validated());
         $audit->record('admin', 'updated', 'tenant:'.$tenant->getKey(), $before, $tenant->toArray());

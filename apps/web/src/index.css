@@ -1,0 +1,446 @@
+/* ============================================================
+   SGF Dashboard — "Navy Edition" + Inter Typography + Gov.br DS
+   Estratégia: Tokens Only (sem Web Components)
+   - Paleta: Navy (#0a1128 / #101a3a) + Canvas Azulado Claro (#f6f8fc)
+   - Acento de destaque: Verde Esmeralda (#10b981 / #059669)
+   - Tipografia primária: Inter (self-hosted) + JetBrains Mono (técnico)
+   - Tokens Gov.br: spacing, shadow, radius, animation, z-index
+   ============================================================ */
+
+@import "tailwindcss";
+
+/* 1. Design Tokens do Gov.br DS (somente variáveis CSS) */
+@import "@govbr-ds/core/dist/core-tokens.min.css";
+
+/* 2. Dark mode via classe .dark no <html> */
+@variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   4. FASE 1 & FASE 2: Nova Paleta Navy + Escala Tipográfica Inter
+   ============================================================ */
+:root {
+  /* --- Paleta Navy (sidebar, header, superfícies escuras) --- */
+  --navy-950:  #0a1128;
+  --navy-900:  #101a3a;
+  --navy-850:  #152244;
+  --navy-800:  #1a2a52;
+  --navy-700:  #24376b;
+  --navy-600:  #2f4a8a;
+
+  /* --- Canvas e superfícies claras --- */
+  --canvas:        #ffffff;   /* fundo branco no modo normal */
+  --surface:       #ffffff;   /* cards */
+  --surface-hover: #f8fafc;   /* hover de cards/linhas */
+
+  /* --- Texto --- */
+  --text-primary:   #0f172a;  /* títulos */
+  --text-secondary: #475569;  /* labels */
+
+  /* --- Cores semânticas (indicadores do painel) --- */
+  --sem-success:       #10b981;  /* verde — liquidado / saldo / oficial */
+  --sem-success-dark:  #059669;
+  --sem-warning:       #f59e0b;  /* âmbar — empenhado / atenção / demonstração */
+  --sem-warning-dark:  #d97706;
+  --sem-info:          #155bcb;  /* azul — dados informativos */
+  --sem-info-light:    #3b82f6;
+  --sem-danger:        #e52207;  /* vermelho — déficit / alerta crítico */
+  --sem-danger-soft:   #ef4444;  /* vermelho claro para textos de alerta */
+
+  /* --- Mapeamento para os tokens Gov.br --- */
+  --color-primary-default:    var(--sem-success);
+  --color-primary-lighten-01: #34d399;
+  --color-primary-lighten-02: #6ee7b7;
+  --color-primary-darken-01:  var(--sem-success-dark);
+  --color-primary-darken-02:  #047857;
+  --color-primary-pastel-01:  #d1fae5;
+  --color-primary-pastel-02:  #ecfdf5;
+
+  --interactive-light:        var(--sem-success-dark);
+  --interactive-dark:         #6ee7b7;
+  --interactive-alternative:  var(--sem-success);
+
+  /* Background → canvas azulado + navy nas superfícies escuras */
+  --background-light:         var(--canvas);
+  --background-dark:          var(--navy-950);
+  --background-alternative:   #e8edf7;
+
+  --color-light:              var(--text-primary);
+  --color-dark:               #e2e8f0;
+
+  /* Focus ring → âmbar (contraste sobre navy) */
+  --focus-color-light: #f59e0b;
+  --focus-color-dark:  #fcd34d;
+
+  /* Active / Selected → navy profundo com acento verde */
+  --active:    var(--navy-900);
+  --selected:  var(--sem-success);
+
+  /* --- Tokens SGF custom (Navy Edition) --- */
+  --sgf-color-accent:          var(--sem-success);
+  --sgf-color-accent-hover:    var(--sem-success-dark);
+  --sgf-color-surface:         var(--navy-950);   /* header/sidebar dark */
+  --sgf-color-surface-light:   var(--canvas);
+  --sgf-color-border:          #334155;
+  --sgf-color-border-light:    #e2e8f0;
+
+  /* ---- Tipografia do Sistema: Inter (Universal com alinhamento tabular) ---- */
+  --font-family-base: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-mono: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "JetBrains Mono", monospace;
+
+  /* ---- Escala Tipográfica SGF Navy ---- */
+  --text-xs:   0.75rem;   /* 12px — badges, timestamps, cabeçalho tabela */
+  --text-sm:   0.8125rem; /* 13px — células tabela, subtítulos */
+  --text-base: 0.875rem;  /* 14px — corpo padrão, títulos de bloco */
+  --text-md:   0.9375rem; /* 15px — títulos de seção */
+  --text-lg:   1.125rem;  /* 18px — subtítulo do painel */
+  --text-xl:   1.375rem;  /* 22px — título principal */
+  --text-2xl:  1.75rem;   /* 28px — número KPI (compacto) */
+  --text-3xl:  2.25rem;   /* 36px — número KPI (destaque) */
+  --text-4xl:  3rem;      /* 48px — número KPI hero */
+
+  --font-weight-regular:   400;
+  --font-weight-medium:    500;
+  --font-weight-semibold:  600;
+  --font-weight-bold:      700;
+  --font-weight-extrabold: 800;
+
+  --tracking-label: 0.04em;
+  --tracking-kpi:   -0.02em;
+  --tracking-title: -0.01em;
+
+  /* Alias Gov.br spacing */
+  --sgf-spacing-xs:  var(--spacing-scale-half);   /* 4px  */
+  --sgf-spacing-sm:  var(--spacing-scale-base);   /* 8px  */
+  --sgf-spacing-md:  var(--spacing-scale-3x);     /* 24px */
+  --sgf-spacing-lg:  var(--spacing-scale-5x);     /* 40px */
+  --sgf-spacing-xl:  var(--spacing-scale-8x);     /* 64px */
+
+  /* Alias Gov.br radius */
+  --sgf-radius-sm:   var(--surface-rounder-sm);   /* 4px  */
+  --sgf-radius-md:   var(--surface-rounder-md);   /* 8px  */
+  --sgf-radius-lg:   var(--surface-rounder-lg);   /* 16px */
+  --sgf-radius-pill: var(--surface-rounder-pill);
+
+  /* Alias Gov.br shadow */
+  --sgf-shadow-sm:   var(--surface-shadow-sm);
+  --sgf-shadow-md:   var(--surface-shadow-md);
+  --sgf-shadow-lg:   var(--surface-shadow-lg);
+  --sgf-shadow-xl:   var(--surface-shadow-xl);
+
+  /* Alias Gov.br z-index layers */
+  --sgf-z-base:    var(--z-index-layer-0);  /* 0     */
+  --sgf-z-overlay: var(--z-index-layer-1);  /* 1000  */
+  --sgf-z-header:  var(--z-index-layer-2);  /* 2000  */
+  --sgf-z-modal:   var(--z-index-layer-3);  /* 3000  */
+  --sgf-z-toast:   var(--z-index-layer-4);  /* 4000  */
+
+  /* Alias Gov.br animation */
+  --sgf-duration-fast:     var(--duration-fast);      /* 0.3s */
+  --sgf-duration-moderate: var(--duration-moderate);  /* 0.5s */
+  --sgf-ease:              var(--animation-ease);
+  --sgf-ease-out:          var(--animation-ease-out);
+}
+
+/* ============================================================
+   5. Dark mode overrides — tons navy profundos
+   ============================================================ */
+.dark {
+  --background-light: var(--navy-950);
+  --surface:          #0d1530;   /* cards no dark */
+  --surface-hover:    #152043;
+  --canvas:           #0a1128;
+  --text-primary:     #f1f5f9;
+  --text-secondary:   #94a3b8;
+  --navy-800:         #16224a;
+  --border-color:     #1a2a52;
+
+  --sgf-shadow-sm: 0 1px 6px rgba(0,0,0,0.50);
+  --sgf-shadow-md: 0 3px 6px rgba(0,0,0,0.55);
+  --sgf-shadow-lg: 0 6px 6px rgba(0,0,0,0.60);
+  --sgf-shadow-xl: 0 9px 6px rgba(0,0,0,0.65);
+}
+
+/* ============================================================
+   6. Tailwind v4 @theme — tokens Navy, Canvas, Semânticos & Gov.br
+   ============================================================ */
+@theme {
+  /* Tipografia do Sistema (Inter Universal) */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "JetBrains Mono", monospace;
+
+  /* Paleta Navy */
+  --color-navy-950: #0a1128;
+  --color-navy-900: #101a3a;
+  --color-navy-850: #152244;
+  --color-navy-800: #1a2a52;
+  --color-navy-700: #24376b;
+  --color-navy-600: #2f4a8a;
+
+  /* Canvas & Superfícies */
+  --color-canvas:        #ffffff;
+  --color-surface:       #ffffff;
+  --color-surface-hover: #f8fafc;
+
+  /* Cores Semânticas */
+  --color-sem-success:      #10b981;
+  --color-sem-success-dark: #059669;
+  --color-sem-warning:      #f59e0b;
+  --color-sem-warning-dark: #d97706;
+  --color-sem-info:         #155bcb;
+  --color-sem-info-light:   #3b82f6;
+  --color-sem-danger:       #e52207;
+  --color-sem-danger-soft:  #ef4444;
+
+  /* Espaçamento Gov.br */
+  --spacing-govbr-xs:  4px;
+  --spacing-govbr-sm:  8px;
+  --spacing-govbr-md:  24px;
+  --spacing-govbr-lg:  40px;
+  --spacing-govbr-xl:  64px;
+
+  /* Border-radius Gov.br */
+  --radius-govbr-sm:   4px;
+  --radius-govbr-md:   8px;
+  --radius-govbr-lg:   16px;
+  --radius-govbr-pill: 999em;
+
+  /* Sombras Gov.br */
+  --shadow-govbr-sm:   0 1px 6px rgba(0,0,0,0.16);
+  --shadow-govbr-md:   0 3px 6px rgba(0,0,0,0.16);
+  --shadow-govbr-lg:   0 6px 6px rgba(0,0,0,0.16);
+  --shadow-govbr-xl:   0 9px 6px rgba(0,0,0,0.16);
+
+  /* Animação */
+  --duration-govbr-fast:     300ms;
+  --duration-govbr-moderate: 500ms;
+  --duration-govbr-slow:     800ms;
+
+  --ease-govbr:         cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-govbr-out:     cubic-bezier(0, 0, 0.58, 1);
+  --ease-govbr-in-out:  cubic-bezier(0.42, 0, 0.58, 1);
+
+  /* Z-index Gov.br */
+  --z-govbr-overlay: 1000;
+  --z-govbr-header:  2000;
+  --z-govbr-modal:   3000;
+  --z-govbr-toast:   4000;
+
+  /* Font scale Gov.br */
+  --text-govbr-xs:   11.662px;
+  --text-govbr-sm:   14px;
+  --text-govbr-base: 16.8px;
+  --text-govbr-lg:   20.16px;
+  --text-govbr-xl:   24.192px;
+  --text-govbr-2xl:  29.036px;
+  --text-govbr-3xl:  34.832px;
+}
+
+/* ============================================================
+   7. Base styles & Tipografia Global (Inter + JetBrains Mono)
+   ============================================================ */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  font-size: 15px;
+  font-family: var(--font-family-base);
+}
+
+@media (min-width: 1280px) {
+  html { font-size: 15.5px; }
+}
+
+@media (max-width: 768px) {
+  html { font-size: 14px; }
+}
+
+@layer base {
+  *, ::before, ::after {
+    font-family: var(--font-family-base);
+  }
+
+  body {
+    background-color: var(--background-light);
+    color: var(--text-primary);
+    font-family: var(--font-family-base);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "calt", "liga";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .tabular-nums, .font-mono, table td, table th, .kpi-value {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* ============================================================
+   8. Classes Utilitárias de Hierarquia Tipográfica (Fase 2)
+   ============================================================ */
+.panel-title {
+  font-family: var(--font-family-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-title);
+  color: var(--text-primary);
+}
+
+.kpi-value {
+  font-family: var(--font-family-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: var(--tracking-kpi);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.kpi-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.table-header {
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.table-cell {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-regular);
+  color: var(--text-primary);
+}
+
+.badge-text {
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   9. Component & Dashboard Helper Classes
+   ============================================================ */
+.sgf-card {
+  background-color: var(--surface);
+  border: 1px solid var(--sgf-color-border-light);
+  border-radius: var(--sgf-radius-sm);
+  box-shadow: var(--sgf-shadow-sm);
+  transition: background-color var(--sgf-duration-fast) var(--sgf-ease),
+              box-shadow var(--sgf-duration-fast) var(--sgf-ease);
+}
+
+.dark .sgf-card {
+  background-color: var(--surface);
+  border-color: var(--navy-800);
+  box-shadow: var(--sgf-shadow-sm);
+}
+
+.sgf-block-header {
+  background-color: #0a1128;
+  color: #ffffff;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sgf-kpi-circle {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.sgf-kpi-circle-navy { background-color: #101a3a; }
+.sgf-kpi-circle-amber { background-color: #f59e0b; }
+.sgf-kpi-circle-emerald { background-color: #10b981; }
+.sgf-kpi-circle-indigo { background-color: #6366f1; }
+.sgf-kpi-circle-blue { background-color: #2563eb; }
+.sgf-kpi-circle-cyan { background-color: #06b6d4; }
+.sgf-kpi-circle-rose { background-color: #e11d48; }
+
+.sgf-badge-oficial {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #065f46;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.dark .sgf-badge-oficial {
+  background-color: rgba(16, 185, 129, 0.20);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.40);
+}
+
+.sgf-badge-demo {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.dark .sgf-badge-demo {
+  background-color: rgba(245, 158, 11, 0.20);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.40);
+}
+
+/* ============================================================
+   10. Scrollbars Sofisticadas & Executivas
+   ============================================================ */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.08);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.6);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(167, 139, 250, 0.7);
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

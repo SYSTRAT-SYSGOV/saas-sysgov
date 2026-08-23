@@ -30,7 +30,5 @@ return [
         Illuminate\Auth\AuthServiceProvider::class,
         Laravel\Sanctum\SanctumServiceProvider::class,
         App\Providers\AppServiceProvider::class,
-        Modules\Contracts\Providers\ContractsServiceProvider::class,
-        Modules\Finance\Providers\FinanceServiceProvider::class,
     ],
 ];

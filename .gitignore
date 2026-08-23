@@ -16,3 +16,4 @@ apps/api/storage/framework/phpstan/
 .phpunit.result.cache
 *.log
 node_modules
+apps/web/tsconfig.tsbuildinfo
