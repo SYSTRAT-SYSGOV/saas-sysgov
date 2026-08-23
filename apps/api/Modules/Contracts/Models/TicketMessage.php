@@ -9,35 +9,32 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-final class ContractHistory extends Model
+final class TicketMessage extends Model
 {
     use TenantAware;
 
-    protected $table = 'contract_history';
-    public $timestamps = false;
+    protected $table = 'ticket_messages';
 
     protected $fillable = [
         'tenant_id',
-        'contract_id',
+        'ticket_id',
         'user_id',
-        'action',
-        'before',
-        'after',
-        'created_at',
+        'message',
+        'is_internal_note',
+        'attachments',
     ];
 
     protected $casts = [
         'tenant_id' => 'integer',
-        'contract_id' => 'integer',
+        'ticket_id' => 'integer',
         'user_id' => 'integer',
-        'before' => 'array',
-        'after' => 'array',
-        'created_at' => 'datetime',
+        'is_internal_note' => 'boolean',
+        'attachments' => 'array',
     ];
 
-    public function contract(): BelongsTo
+    public function ticket(): BelongsTo
     {
-        return $this->belongsTo(Contract::class, 'contract_id');
+        return $this->belongsTo(SupportTicket::class, 'ticket_id');
     }
 
     public function user(): BelongsTo
