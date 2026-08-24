@@ -25,6 +25,10 @@ final class EnsurePlatformAdmin
 
     private function resolveUser(Request $request): ?User
     {
+        if ($request->user() !== null) {
+            return $request->user();
+        }
+
         $header = $request->header('Authorization') ?? '';
         if (!str_starts_with($header, 'Bearer ')) {
             return null;

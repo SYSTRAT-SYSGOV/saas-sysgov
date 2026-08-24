@@ -14,6 +14,12 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     component: lazy(() => import('@/modules/dashboard/DashboardModule')),
     requiredPermission: 'dashboard.view',
   },
+  org: {
+    id: 'org',
+    name: 'Organograma Municipal',
+    component: lazy(() => import('@/modules/orgchart/OrgChartModule')),
+    requiredPermission: 'org.view',
+  },
   procurement: {
     id: 'procurement',
     name: 'Licitações & Editais',

@@ -1,0 +1,14 @@
+{
+  "name": "OrgChart",
+  "alias": "org",
+  "description": "Estrutura organizacional, hierarquia, organograma e escopo de dados (ABAC)",
+  "priority": 5,
+  "providers": ["Modules\\OrgChart\\Providers\\OrgChartServiceProvider"],
+  "requires": [],
+  "menu": {
+    "label": "Organograma",
+    "icon": "Network",
+    "order": 15,
+    "permission": "org.view"
+  }
+}

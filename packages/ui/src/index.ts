@@ -25,3 +25,6 @@ export * from './components/KpiCard';
 export * from './components/StatusChip';
 export * from './components/SystratBrand';
 export * from './components/Table';
+export * from './components/OrgTypeBadge';
+export * from './components/OrgTreeNodeCard';
+export * from './components/OrgScopeIndicator';

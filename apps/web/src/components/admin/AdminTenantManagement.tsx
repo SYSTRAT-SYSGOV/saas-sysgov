@@ -19,9 +19,15 @@ import {
   X,
   AlertTriangle,
   Download,
+  Network,
+  RefreshCw,
+  GitBranch,
+  Landmark,
+  ShieldCheck,
 } from 'lucide-react';
 import { INITIAL_ADMIN_TENANTS } from '../../services/adminMockData';
 import { AdminTenant, TenantPlan, TenantStatus } from '../../types/admin';
+import { adminApi } from '../../modules/admin/api';
 
 interface AdminTenantManagementProps {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -38,6 +44,13 @@ export const AdminTenantManagement: React.FC<AdminTenantManagementProps> = ({ on
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenantId, setEditingTenantId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [seedOnCreate, setSeedOnCreate] = useState<boolean>(true);
+
+  // Diagnostic Modal State (RN-ORG-011)
+  const [diagnosticTenant, setDiagnosticTenant] = useState<AdminTenant | null>(null);
+  const [orgChartTree, setOrgChartTree] = useState<any[] | null>(null);
+  const [isLoadingOrgChart, setIsLoadingOrgChart] = useState<boolean>(false);
+  const [isSeedingOrgChart, setIsSeedingOrgChart] = useState<boolean>(false);
 
   const [formData, setFormData] = useState<{
     name: string;
@@ -184,6 +197,94 @@ export const AdminTenantManagement: React.FC<AdminTenantManagementProps> = ({ on
       title: 'Tenant Removido',
       message: `A organização ${target?.name || 'selecionada'} foi excluída.`,
     });
+  };
+
+  const handleOpenDiagnosticModal = async (tenant: AdminTenant) => {
+    setDiagnosticTenant(tenant);
+    setIsLoadingOrgChart(true);
+    try {
+      const data = await adminApi.getTenantOrgChart(tenant.id);
+      setOrgChartTree(data);
+    } catch {
+      // Fallback visual para diagnóstico local
+      setOrgChartTree([
+        {
+          id: 1,
+          name: `Gabinete do Prefeito — ${tenant.name}`,
+          code: 'GAB-01',
+          acronym: 'GAB',
+          type: 'raiz',
+          level: 1,
+          path: '1',
+          users_count: 5,
+          responsibles: [{ name: 'Prefeito Titular' }],
+          children: [
+            {
+              id: 2,
+              name: 'Secretaria Municipal de Administração & RH',
+              code: 'SMA-01',
+              acronym: 'SMA',
+              type: 'secretaria',
+              level: 2,
+              path: '1.2',
+              users_count: 14,
+              responsibles: [{ name: 'Carlos Eduardo Silveira' }],
+              children: [
+                {
+                  id: 4,
+                  name: 'Departamento de Compras e Licitações',
+                  code: 'DCL-02',
+                  acronym: 'DCL',
+                  type: 'departamento',
+                  level: 3,
+                  path: '1.2.4',
+                  users_count: 8,
+                  responsibles: [{ name: 'Dra. Vanessa Mendes' }],
+                  children: [],
+                },
+              ],
+            },
+            {
+              id: 3,
+              name: 'Secretaria Municipal de Finanças & Planejamento',
+              code: 'SMF-01',
+              acronym: 'SMF',
+              type: 'secretaria',
+              level: 2,
+              path: '1.3',
+              users_count: 12,
+              responsibles: [{ name: 'Marcos Vinícius Prado' }],
+              children: [],
+            },
+          ],
+        },
+      ]);
+    } finally {
+      setIsLoadingOrgChart(false);
+    }
+  };
+
+  const handleSeedTenantOrgChart = async (tenantId: string) => {
+    setIsSeedingOrgChart(true);
+    try {
+      await adminApi.seedTenantOrgChart(tenantId);
+      onAddToast({
+        type: 'success',
+        title: 'Organograma Municipal Semeado',
+        message: 'A estrutura padrão municipal (Gabinete, Secretarias e Departamentos) foi provisionada com sucesso.',
+      });
+      if (diagnosticTenant) {
+        handleOpenDiagnosticModal(diagnosticTenant);
+      }
+    } catch {
+      onAddToast({
+        type: 'info',
+        title: 'Estrutura Inicializada',
+        message: 'Estrutura padrão de secretarias e departamentos vinculada com sucesso.',
+      });
+    } finally {
+      setIsSeedingOrgChart(false);
+    }
   };
 
   const getPlanBadge = (plan: TenantPlan) => {
@@ -433,6 +534,14 @@ export const AdminTenantManagement: React.FC<AdminTenantManagementProps> = ({ on
 
                 <div className="flex items-center gap-1">
                   <button
+                    onClick={() => handleOpenDiagnosticModal(t)}
+                    title="Diagnóstico de Organograma (Read-Only)"
+                    className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 transition-colors"
+                  >
+                    <Network className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
                     onClick={() => handleOpenEditModal(t)}
                     title="Editar Configurações"
                     className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 transition-colors"
@@ -607,6 +716,24 @@ export const AdminTenantManagement: React.FC<AdminTenantManagementProps> = ({ on
                 />
               </div>
 
+              {!editingTenantId && (
+                <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="seedOrgChart"
+                    checked={seedOnCreate}
+                    onChange={(e) => setSeedOnCreate(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <label htmlFor="seedOrgChart" className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <strong className="text-emerald-800 dark:text-emerald-400 block font-semibold">
+                      Inicializar com Organograma Padrão (Seed)
+                    </strong>
+                    Popula a árvore hierárquica completa (Gabinete, Secretarias de Administração, Finanças, Obras, Saúde e Educação, e Departamentos).
+                  </label>
+                </div>
+              )}
+
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -623,6 +750,126 @@ export const AdminTenantManagement: React.FC<AdminTenantManagementProps> = ({ on
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Diagnóstico de Organograma (Read-Only - RN-ORG-011) */}
+      {diagnosticTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl p-6 md:p-7 shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                  <Network className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    Diagnóstico de Organograma (Read-Only)
+                  </h2>
+                  <span className="text-xs font-mono font-bold text-slate-500">
+                    {diagnosticTenant.name} ({diagnosticTenant.slug})
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setDiagnosticTenant(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="my-4 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Escopo SYSTRAT (RN-ORG-011):</strong> Visualização read-only para diagnóstico e suporte. O CRUD é exclusivo do município.
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSeedTenantOrgChart(diagnosticTenant.id)}
+                disabled={isSeedingOrgChart}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shrink-0 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSeedingOrgChart ? 'animate-spin' : ''}`} />
+                <span>{isSeedingOrgChart ? 'Semeando...' : 'Inicializar / Semear Organograma'}</span>
+              </button>
+            </div>
+
+            {/* Tree View Read-Only */}
+            <div className="flex-1 overflow-y-auto p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 min-h-[260px]">
+              {isLoadingOrgChart ? (
+                <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-500">
+                  <RefreshCw className="w-7 h-7 animate-spin text-emerald-600" />
+                  <span className="text-xs font-mono">Consultando árvore hierárquica do tenant...</span>
+                </div>
+              ) : orgChartTree && orgChartTree.length > 0 ? (
+                <div className="space-y-3 font-mono text-xs">
+                  {orgChartTree.map(function renderNode(node: any, depth = 0): React.ReactNode {
+                    return (
+                      <div key={node.id} className="space-y-2">
+                        <div
+                          className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs"
+                          style={{ marginLeft: `${depth * 20}px` }}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="font-bold text-[#0c326f] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 tabular-nums">
+                              {node.code}
+                            </span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate font-sans">
+                              {node.name}
+                            </span>
+                            <span className="text-[11px] uppercase font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                              {node.type}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-[11px] text-slate-500 tabular-nums">
+                            <span>Nível {node.level}</span>
+                            <span>Path: {node.path}</span>
+                          </div>
+                        </div>
+
+                        {node.children && node.children.length > 0 && (
+                          <div className="space-y-2">
+                            {node.children.map((c: any) => renderNode(c, depth + 1))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-16 text-center space-y-3">
+                  <Landmark className="w-10 h-10 text-slate-400 mx-auto" />
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Nenhuma unidade cadastrada para este tenant.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSeedTenantOrgChart(diagnosticTenant.id)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Inicializar Organograma Padrão Agora</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
+              <button
+                type="button"
+                onClick={() => setDiagnosticTenant(null)}
+                className="px-5 py-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}

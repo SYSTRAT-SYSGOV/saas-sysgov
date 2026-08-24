@@ -70,4 +70,12 @@ export const adminApi = {
   async deleteUser(id: number): Promise<void> {
     await request<void>(`/users/${id}`, { method: 'DELETE' });
   },
+
+  async getTenantOrgChart(tenantId: string | number): Promise<any[]> {
+    return request<any[]>(`/tenants/${tenantId}/org-units`);
+  },
+
+  async seedTenantOrgChart(tenantId: string | number): Promise<{ message: string; total_units: number }> {
+    return request<{ message: string; total_units: number }>(`/tenants/${tenantId}/org-units/seed`, { method: 'POST' });
+  },
 };

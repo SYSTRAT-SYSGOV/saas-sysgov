@@ -21,6 +21,7 @@ import {
   FileSpreadsheet,
   Briefcase,
   Vote,
+  Network,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -46,6 +47,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   FileSpreadsheet,
   Briefcase,
   Vote,
+  Network,
 };
 
 /**

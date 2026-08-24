@@ -1,4 +1,16 @@
-import type { Paginated, TenantContext } from './index';
+import type {
+  CreateOrgUnitInput,
+  LinkOrgUnitUserInput,
+  MoveOrgUnitInput,
+  OrgExportData,
+  OrgScopeSummary,
+  OrgUnit,
+  OrgUnitTreeNode,
+  OrgUnitUserLink,
+  Paginated,
+  TenantContext,
+  UpdateOrgUnitInput,
+} from './index';
 
 export type ApiUser = { id: number; name: string; email: string; is_platform_admin: boolean };
 export type ApiTenant = TenantContext & { id: number; status: 'active' | 'suspended' | 'trial'; type: string };
@@ -17,37 +29,81 @@ export type CreateContractInput = { number: string; title: string; starts_at: st
 export type UpdateContractInput = Partial<Pick<CreateContractInput, 'title' | 'starts_at' | 'ends_at' | 'amount_cents' | 'status'>>;
 
 export class SysgovApi {
-  private token: string | null = localStorage.getItem('sysgov_token');
-  private tenantSlug: string | null = localStorage.getItem('sysgov_tenant');
+  private token: string | null = typeof window !== 'undefined' ? localStorage.getItem('sysgov_token') : null;
+  private tenantSlug: string | null = typeof window !== 'undefined' ? localStorage.getItem('sysgov_tenant') : null;
+
   constructor(private readonly baseUrl = 'http://localhost:8000/api') {}
+
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const headers = new Headers(init.headers);
     headers.set('Accept', 'application/json');
-    if (init.body) headers.set('Content-Type', 'application/json');
-    if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
-    if (this.tenantSlug) headers.set('X-Tenant-Slug', this.tenantSlug);
-    const response = await fetch(`${this.baseUrl}${path}`, { ...init, headers });
-    if (!response.ok) throw new Error(`SYSGOV API respondeu ${response.status}`);
+    if (init.body && typeof init.body === 'string') headers.set('Content-Type', 'application/json');
+
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('sysgov_auth_token') ||
+          localStorage.getItem('sysgov_token') ||
+          this.token
+        : this.token;
+
+    const tenantId =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('sysgov_active_tenant_id')
+        : null;
+
+    const tenantSlug =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('sysgov_tenant') || this.tenantSlug
+        : this.tenantSlug;
+
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    if (tenantId) headers.set('X-Tenant-ID', tenantId);
+    if (tenantSlug) headers.set('X-Tenant-Slug', tenantSlug);
+
+    const fullUrl = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
+    const response = await fetch(fullUrl, { ...init, headers });
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({ message: `HTTP ${response.status}` }));
+      throw new Error(errorBody.message || `SYSGOV API respondeu ${response.status}`);
+    }
     return response.json() as Promise<T>;
   }
+
   async health(): Promise<{ status: string; service: string }> { return this.request('/health'); }
+
   async login(email: string, password: string, tenantSlug?: string): Promise<{ token: string; user: ApiUser; tenant: ApiTenant | null }> {
     const result = await this.request<{ token: string; user: ApiUser; tenant: ApiTenant | null }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, tenant_slug: tenantSlug }) });
-    this.token = result.token; this.tenantSlug = result.tenant?.slug ?? null;
-    localStorage.setItem('sysgov_token', result.token);
-    localStorage.setItem('sysgov_user', JSON.stringify(result.user));
-    if (this.tenantSlug) localStorage.setItem('sysgov_tenant', this.tenantSlug);
+    this.token = result.token;
+    this.tenantSlug = result.tenant?.slug ?? null;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sysgov_token', result.token);
+      localStorage.setItem('sysgov_user', JSON.stringify(result.user));
+      if (this.tenantSlug) localStorage.setItem('sysgov_tenant', this.tenantSlug);
+    }
     return result;
   }
+
   currentUser(): ApiUser | null {
+    if (typeof window === 'undefined') return null;
     const raw = localStorage.getItem('sysgov_user');
     if (!raw) return null;
     try { return JSON.parse(raw) as ApiUser; } catch { return null; }
   }
+
   async logout(): Promise<void> {
     try { await this.request('/auth/logout', { method: 'POST' }); }
-    finally { this.token = null; this.tenantSlug = null; localStorage.removeItem('sysgov_token'); localStorage.removeItem('sysgov_user'); localStorage.removeItem('sysgov_tenant'); }
+    finally {
+      this.token = null;
+      this.tenantSlug = null;
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('sysgov_token');
+        localStorage.removeItem('sysgov_user');
+        localStorage.removeItem('sysgov_tenant');
+      }
+    }
   }
+
+  // --- Admin Plataforma ---
   async tenants(): Promise<Paginated<ApiTenant>> { return this.request('/admin/tenants'); }
   async createTenant(input: CreateTenantInput): Promise<ApiTenant> { return this.request('/admin/tenants', { method: 'POST', body: JSON.stringify(input) }); }
   async updateTenant(id: number, input: UpdateTenantInput): Promise<ApiTenant> { return this.request(`/admin/tenants/${id}`, { method: 'PUT', body: JSON.stringify(input) }); }
@@ -71,6 +127,122 @@ export class SysgovApi {
   async updateContract(id: number, input: UpdateContractInput): Promise<ApiContract> { return this.request(`/contracts/${id}`, { method: 'PUT', body: JSON.stringify(input) }); }
   async modules(): Promise<Paginated<ApiModule>> { return this.request('/admin/modules'); }
   async toggleModule(tenantId: number, moduleId: number, enabled: boolean): Promise<{ enabled: boolean }> { return this.request(`/admin/tenants/${tenantId}/modules/${moduleId}`, { method: 'PUT', body: JSON.stringify({ enabled }) }); }
+
+  // --- Módulo Organograma (org_units) ---
+  async getOrgTree(options?: { rootId?: number; active?: boolean }): Promise<OrgUnitTreeNode[]> {
+    const params = new URLSearchParams();
+    if (options?.rootId) params.append('root_id', String(options.rootId));
+    if (options?.active !== undefined) params.append('active', String(options.active));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await this.request<{ data: OrgUnitTreeNode[] }>(`/org-units${query}`);
+    return res.data;
+  }
+
+  async getOrgUnitsFlat(options?: { active?: boolean }): Promise<OrgUnit[]> {
+    const params = new URLSearchParams({ flat: 'true' });
+    if (options?.active !== undefined) params.append('active', String(options.active));
+    const res = await this.request<{ data: OrgUnit[] }>(`/org-units?${params.toString()}`);
+    return res.data;
+  }
+
+  async getOrgUnit(id: number): Promise<OrgUnit> {
+    const res = await this.request<{ data: OrgUnit }>(`/org-units/${id}`);
+    return res.data;
+  }
+
+  async getOrgScope(): Promise<OrgScopeSummary> {
+    const res = await this.request<{ data: OrgScopeSummary }>('/org-units/scope');
+    return res.data;
+  }
+
+  async createOrgUnit(input: CreateOrgUnitInput): Promise<OrgUnit> {
+    const res = await this.request<{ message: string; data: OrgUnit }>('/org-units', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return res.data;
+  }
+
+  async updateOrgUnit(id: number, input: UpdateOrgUnitInput): Promise<OrgUnit> {
+    const res = await this.request<{ message: string; data: OrgUnit }>(`/org-units/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    });
+    return res.data;
+  }
+
+  async moveOrgUnit(id: number, input: MoveOrgUnitInput): Promise<OrgUnit> {
+    const res = await this.request<{ message: string; data: OrgUnit }>(`/org-units/${id}/move`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return res.data;
+  }
+
+  async deleteOrgUnit(id: number, reason?: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/org-units/${id}`, {
+      method: 'DELETE',
+      body: reason ? JSON.stringify({ reason }) : undefined,
+    });
+  }
+
+  async linkOrgUnitUser(unitId: number, input: LinkOrgUnitUserInput): Promise<OrgUnitUserLink> {
+    const res = await this.request<{ message: string; data: OrgUnitUserLink }>(`/org-units/${unitId}/users`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return res.data;
+  }
+
+  async unlinkOrgUnitUser(unitId: number, userId: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/org-units/${unitId}/users/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async setPrimaryOrgUnit(unitId: number, userId: number): Promise<OrgUnitUserLink> {
+    const res = await this.request<{ message: string; data: OrgUnitUserLink }>(`/org-units/${unitId}/users/${userId}/primary`, {
+      method: 'POST',
+    });
+    return res.data;
+  }
+
+  async exportOrgChartJson(): Promise<OrgExportData> {
+    const res = await this.request<{ data: OrgExportData }>('/org-units/export', {
+      method: 'POST',
+      body: JSON.stringify({ format: 'json' }),
+    });
+    return res.data;
+  }
+
+  async exportOrgChartCsv(): Promise<string> {
+    const headers = new Headers();
+    if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
+    if (this.tenantSlug) headers.set('X-Tenant-Slug', this.tenantSlug);
+    headers.set('Content-Type', 'application/json');
+
+    const res = await fetch(`${this.baseUrl}/org-units/export`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ format: 'csv' }),
+    });
+
+    if (!res.ok) throw new Error(`SYSGOV API respondeu ${res.status}`);
+    return res.text();
+  }
+
+  // --- Admin Onboarding & Suporte (RN-ORG-011) ---
+  async adminSeedOrgChart(tenantId: number): Promise<OrgUnitTreeNode[]> {
+    const res = await this.request<{ message: string; data: OrgUnitTreeNode[] }>(`http://localhost:8000/admin/tenants/${tenantId}/org-units/seed`, {
+      method: 'POST',
+    });
+    return res.data;
+  }
+
+  async adminGetOrgChart(tenantId: number): Promise<OrgUnitTreeNode[]> {
+    const res = await this.request<{ data: OrgUnitTreeNode[] }>(`http://localhost:8000/admin/tenants/${tenantId}/org-units`);
+    return res.data;
+  }
 }
 
 export const sysgovApi = new SysgovApi();

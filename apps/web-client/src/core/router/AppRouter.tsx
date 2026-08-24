@@ -50,6 +50,7 @@ const ModuleRouteGuard: React.FC<{ moduleId: string; children: React.ReactElemen
 
 export const AppRouter: React.FC = () => {
   const DashboardComp = MODULE_REGISTRY.dashboard.component;
+  const OrgComp = MODULE_REGISTRY.org.component;
   const ProcurementComp = MODULE_REGISTRY.procurement.component;
   const ContractsComp = MODULE_REGISTRY.contracts.component;
   const FinanceComp = MODULE_REGISTRY.finance.component;
@@ -78,6 +79,14 @@ export const AppRouter: React.FC = () => {
           element={
             <ModuleRouteGuard moduleId="dashboard">
               <DashboardComp />
+            </ModuleRouteGuard>
+          }
+        />
+        <Route
+          path="organograma"
+          element={
+            <ModuleRouteGuard moduleId="org">
+              <OrgComp />
             </ModuleRouteGuard>
           }
         />
