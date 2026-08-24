@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import {
   FileText, Plus, Search, AlertTriangle, CheckCircle2, Clock, XCircle,
-  ChevronRight, Paperclip, GitBranch, History, Scale, TrendingUp,
-  Building2, Calendar, DollarSign, Eye, Edit3, X, Check, Ban,
+  Paperclip, GitBranch, Scale, Building2, Calendar, DollarSign, Eye,
+  Edit3, X,
 } from 'lucide-react';
 
-// ─── Mock Data ─────────────────────────────────────────────────────────────
+// ─── Mock Data ───────────────────────────────────────────────────────────────
 
 interface Contrato {
   id: string;
@@ -32,7 +32,7 @@ const CONTRATOS_MOCK: Contrato[] = [
   { id: '5', number: 'CTR-2026/0018', title: 'Convênio FNDE — Equipamentos Escolares', contract_type: 'convenio', supplier_name: 'FNDE / Governo Federal', supplier_cnpj: '00.378.257/0001-81', starts_at: '2026-01-15', ends_at: '2027-01-14', amount_cents: 75000000, total_addenda_amount_cents: 0, max_addenda_percent: 50, status: 'active', manager: 'Fernanda Costa', inspector: 'Marcos Neto' },
 ];
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const fmt = (cents: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
@@ -40,12 +40,12 @@ const fmt = (cents: number) =>
 const pct = (val: number) => `${val.toFixed(2)}%`;
 
 const statusConfig: Record<Contrato['status'], { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  draft: { label: 'Minuta', icon: Edit3, color: 'text-slate-400', bg: 'bg-slate-800/60 border-slate-700' },
-  active: { label: 'Vigente', icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-950/60 border-emerald-700/50' },
-  in_renewal: { label: 'Em Renovação', icon: Clock, color: 'text-amber-400', bg: 'bg-amber-950/60 border-amber-700/50' },
-  suspended: { label: 'Suspenso', icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-950/60 border-amber-700/50' },
-  ended: { label: 'Encerrado', icon: CheckCircle2, color: 'text-slate-400', bg: 'bg-slate-800/60 border-slate-700' },
-  cancelled: { label: 'Cancelado', icon: XCircle, color: 'text-rose-400', bg: 'bg-rose-950/60 border-rose-700/50' },
+  draft:      { label: 'Minuta',       icon: Edit3,        color: 'text-slate-500',  bg: 'bg-slate-100 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700' },
+  active:     { label: 'Vigente',      icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700/50' },
+  in_renewal: { label: 'Em Renovação', icon: Clock,        color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700/50' },
+  suspended:  { label: 'Suspenso',     icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400',  bg: 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700/50' },
+  ended:      { label: 'Encerrado',    icon: CheckCircle2, color: 'text-slate-500',  bg: 'bg-slate-100 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700' },
+  cancelled:  { label: 'Cancelado',    icon: XCircle,      color: 'text-rose-600 dark:text-rose-400',    bg: 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700/50' },
 };
 
 const typeLabel: Record<Contrato['contract_type'], string> = {
@@ -55,34 +55,7 @@ const typeLabel: Record<Contrato['contract_type'], string> = {
   termo_aditivo: 'Termo Aditivo',
 };
 
-// ─── AddendaBar ─────────────────────────────────────────────────────────────
-
-const AddendaBar: React.FC<{ used: number; max: number }> = ({ used, max }) => {
-  const pctUsed = max > 0 ? Math.min((used / (max * 0.01 * (used + 10000000))) * 100, 100) : 0;
-  const addendaPct = used > 0 ? (used / (used + 10000000)) * 100 : 0;
-  const realPct = (used / (used + (25 * 10000000 / 100))) * 100;
-
-  // Calcular % real: usado / (original * maxPercent)
-  const original = used + (used > 0 ? used : 1);
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="text-slate-400 font-mono">Aditivos usados</span>
-        <span className={`font-mono font-semibold ${used > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-          {used > 0 ? `${pct(20)} de ${pct(max)}` : `0% de ${pct(max)}`}
-        </span>
-      </div>
-      <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${used > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-          style={{ width: used > 0 ? '80%' : '0%' }}
-        />
-      </div>
-    </div>
-  );
-};
-
-// ─── ContractCard ─────────────────────────────────────────────────────────
+// ─── Contract Card ────────────────────────────────────────────────────────────
 
 const ContractCard: React.FC<{ c: Contrato; onClick: () => void }> = ({ c, onClick }) => {
   const cfg = statusConfig[c.status];
@@ -90,26 +63,23 @@ const ContractCard: React.FC<{ c: Contrato; onClick: () => void }> = ({ c, onCli
   const addendaPct = c.amount_cents > 0 ? (c.total_addenda_amount_cents / c.amount_cents) * 100 : 0;
   const isNearLimit = addendaPct >= 20;
   const effective = c.amount_cents + c.total_addenda_amount_cents;
-
-  const daysLeft = Math.ceil(
-    (new Date(c.ends_at).getTime() - Date.now()) / 86400000
-  );
+  const daysLeft = Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000);
 
   return (
     <div
       onClick={onClick}
-      className={`group relative bg-[#152244] border border-[#1a2a52] rounded-xl p-5 cursor-pointer hover:border-indigo-500/50 hover:bg-[#1a2a52] transition-all duration-200`}
+      className="mod-card mod-card-hover group relative p-5 cursor-pointer transition-all duration-200"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-xs text-indigo-400">{c.number}</span>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-900/50 border border-indigo-700/40 text-indigo-300">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="mono-data text-xs text-indigo-600 dark:text-indigo-400">{c.number}</span>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-700/40 text-indigo-700 dark:text-indigo-300">
               {typeLabel[c.contract_type]}
             </span>
           </div>
-          <h3 className="text-sm font-semibold text-slate-100 leading-snug line-clamp-2">{c.title}</h3>
+          <h3 className="text-sm font-semibold mod-text-primary leading-snug line-clamp-2">{c.title}</h3>
         </div>
         <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium ${cfg.bg} ${cfg.color} shrink-0`}>
           <Icon size={12} />
@@ -119,43 +89,43 @@ const ContractCard: React.FC<{ c: Contrato; onClick: () => void }> = ({ c, onCli
 
       {/* Supplier */}
       <div className="flex items-center gap-2 mb-4">
-        <Building2 size={13} className="text-slate-500 shrink-0" />
+        <Building2 size={13} className="mod-text-secondary shrink-0" />
         <div className="min-w-0">
-          <p className="text-xs text-slate-300 font-medium truncate">{c.supplier_name}</p>
-          <p className="font-mono text-xs text-slate-500">{c.supplier_cnpj}</p>
+          <p className="text-xs mod-text-primary font-medium truncate">{c.supplier_name}</p>
+          <p className="mono-data text-xs mod-text-secondary">{c.supplier_cnpj}</p>
         </div>
       </div>
 
       {/* Values */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-slate-900/50 rounded-lg p-2.5">
-          <p className="text-xs text-slate-500 mb-0.5">Valor Original</p>
-          <p className="font-mono text-sm font-bold text-slate-200 tabular-nums">{fmt(c.amount_cents)}</p>
+        <div className="mod-inner rounded-lg p-2.5">
+          <p className="text-xs mod-text-secondary mb-0.5">Valor Original</p>
+          <p className="mono-data text-sm font-bold mod-text-primary">{fmt(c.amount_cents)}</p>
         </div>
-        <div className="bg-slate-900/50 rounded-lg p-2.5">
-          <p className="text-xs text-slate-500 mb-0.5">Valor Efetivo</p>
-          <p className={`font-mono text-sm font-bold tabular-nums ${c.total_addenda_amount_cents > 0 ? 'text-amber-300' : 'text-emerald-400'}`}>
+        <div className="mod-inner rounded-lg p-2.5">
+          <p className="text-xs mod-text-secondary mb-0.5">Valor Efetivo</p>
+          <p className={`mono-data text-sm font-bold ${c.total_addenda_amount_cents > 0 ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-400'}`}>
             {fmt(effective)}
           </p>
         </div>
       </div>
 
-      {/* Addenda bar */}
+      {/* Addenda progress */}
       {c.total_addenda_amount_cents > 0 && (
-        <div className={`mb-4 p-2.5 rounded-lg border ${isNearLimit ? 'bg-amber-950/40 border-amber-700/40' : 'bg-slate-900/50 border-slate-700/50'}`}>
+        <div className={`mb-4 p-2.5 rounded-lg border ${isNearLimit ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-700/40' : 'mod-inner border-transparent'}`}>
           <div className="flex items-center gap-1.5 mb-1.5">
-            <GitBranch size={12} className={isNearLimit ? 'text-amber-400' : 'text-slate-400'} />
-            <span className={`text-xs font-medium ${isNearLimit ? 'text-amber-400' : 'text-slate-400'}`}>
+            <GitBranch size={12} className={isNearLimit ? 'text-amber-500' : 'mod-text-secondary'} />
+            <span className={`text-xs font-medium ${isNearLimit ? 'text-amber-600 dark:text-amber-400' : 'mod-text-secondary'}`}>
               Aditivos: {fmt(c.total_addenda_amount_cents)} ({pct(addendaPct)})
             </span>
           </div>
-          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-1.5 mod-track rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${isNearLimit ? 'bg-amber-500' : 'bg-sky-500'}`}
               style={{ width: `${Math.min((addendaPct / c.max_addenda_percent) * 100, 100)}%` }}
             />
           </div>
-          <p className="text-xs text-slate-500 mt-1 font-mono tabular-nums">
+          <p className="mono-data text-xs mod-text-muted mt-1">
             Limite: {pct(c.max_addenda_percent)} — {fmt(Math.round(c.amount_cents * c.max_addenda_percent / 100))}
           </p>
         </div>
@@ -163,12 +133,12 @@ const ContractCard: React.FC<{ c: Contrato; onClick: () => void }> = ({ c, onCli
 
       {/* Footer */}
       <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5 text-slate-500">
+        <div className="flex items-center gap-1.5 mod-text-secondary">
           <Calendar size={12} />
-          <span className="font-mono tabular-nums">{new Date(c.starts_at).toLocaleDateString('pt-BR')} → {new Date(c.ends_at).toLocaleDateString('pt-BR')}</span>
+          <span className="mono-data">{new Date(c.starts_at).toLocaleDateString('pt-BR')} → {new Date(c.ends_at).toLocaleDateString('pt-BR')}</span>
         </div>
         {c.status === 'active' && (
-          <span className={`font-mono font-medium tabular-nums ${daysLeft < 30 ? 'text-rose-400' : daysLeft < 90 ? 'text-amber-400' : 'text-slate-400'}`}>
+          <span className={`mono-data font-medium ${daysLeft < 30 ? 'text-rose-500' : daysLeft < 90 ? 'text-amber-500' : 'mod-text-secondary'}`}>
             {daysLeft > 0 ? `${daysLeft}d` : 'Vencido'}
           </span>
         )}
@@ -177,7 +147,7 @@ const ContractCard: React.FC<{ c: Contrato; onClick: () => void }> = ({ c, onCli
   );
 };
 
-// ─── Detail Panel ────────────────────────────────────────────────────────────
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
 
 const ContractDetail: React.FC<{ c: Contrato; onClose: () => void }> = ({ c, onClose }) => {
   const [activeDetailTab, setActiveDetailTab] = useState<'aditivos' | 'anexos' | 'historico'>('aditivos');
@@ -189,60 +159,60 @@ const ContractDetail: React.FC<{ c: Contrato; onClose: () => void }> = ({ c, onC
   const remaining = maxAllowed - c.total_addenda_amount_cents;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-2xl h-full bg-[#101a3a] border-l border-[#1a2a52] overflow-y-auto flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-2xl h-full mod-panel overflow-y-auto flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-[#101a3a]/95 backdrop-blur border-b border-[#1a2a52] p-5">
+        <div className="sticky top-0 z-10 bg-white/95 dark:bg-[#101a3a]/95 backdrop-blur border-b mod-border p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono text-xs text-indigo-400">{c.number}</span>
+                <span className="mono-data text-xs text-indigo-600 dark:text-indigo-400">{c.number}</span>
                 <div className={`flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
                   <Icon size={10} />{cfg.label}
                 </div>
               </div>
-              <h2 className="text-base font-bold text-slate-100">{c.title}</h2>
-              <p className="text-xs text-slate-500 mt-0.5">{c.supplier_name} • {c.supplier_cnpj}</p>
+              <h2 className="text-base font-bold mod-text-primary">{c.title}</h2>
+              <p className="text-xs mod-text-secondary mt-0.5">{c.supplier_name} • {c.supplier_cnpj}</p>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 shrink-0">
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 mod-text-secondary hover:mod-text-primary shrink-0">
               <X size={18} />
             </button>
           </div>
         </div>
 
         <div className="p-5 space-y-5 flex-1">
-          {/* KPIs */}
+          {/* KPI row */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'Valor Original', value: fmt(c.amount_cents), sub: '' },
+              { label: 'Valor Original', value: fmt(c.amount_cents), highlight: false },
               { label: 'Total Aditivos', value: fmt(c.total_addenda_amount_cents), sub: `${pct(addendaPct)} aditado`, highlight: addendaPct > 0 },
-              { label: 'Valor Efetivo', value: fmt(effective), sub: 'valor atual', highlight: c.total_addenda_amount_cents > 0 },
+              { label: 'Valor Efetivo', value: fmt(effective), highlight: c.total_addenda_amount_cents > 0 },
             ].map((k) => (
-              <div key={k.label} className="bg-[#152244] border border-[#1a2a52] rounded-xl p-3">
-                <p className="text-xs text-slate-500 mb-1">{k.label}</p>
-                <p className={`font-mono text-sm font-bold tabular-nums ${k.highlight ? 'text-amber-300' : 'text-slate-100'}`}>{k.value}</p>
-                {k.sub && <p className="font-mono text-xs text-slate-500 tabular-nums mt-0.5">{k.sub}</p>}
+              <div key={k.label} className="mod-card p-3">
+                <p className="text-xs mod-text-secondary mb-1">{k.label}</p>
+                <p className={`mono-data text-sm font-bold ${k.highlight ? 'text-amber-600 dark:text-amber-300' : 'mod-text-primary'}`}>{k.value}</p>
+                {k.sub && <p className="mono-data text-xs mod-text-muted mt-0.5">{k.sub}</p>}
               </div>
             ))}
           </div>
 
-          {/* Addenda usage */}
-          <div className="bg-[#152244] border border-[#1a2a52] rounded-xl p-4 space-y-3">
+          {/* Addenda meter */}
+          <div className="mod-card p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                <Scale size={15} className="text-indigo-400" /> Limite de Aditamento (Lei 14.133/2021)
+              <h3 className="text-sm font-semibold mod-text-primary flex items-center gap-2">
+                <Scale size={15} className="text-indigo-500" /> Limite de Aditamento (Lei 14.133/2021)
               </h3>
-              <span className={`font-mono text-xs font-bold tabular-nums ${addendaPct / c.max_addenda_percent > 0.8 ? 'text-rose-400' : addendaPct > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+              <span className={`mono-data text-xs font-bold ${addendaPct / c.max_addenda_percent > 0.8 ? 'text-rose-500' : addendaPct > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                 {pct(addendaPct)} / {pct(c.max_addenda_percent)}
               </span>
             </div>
-            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2 mod-track rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${addendaPct / c.max_addenda_percent > 0.8 ? 'bg-rose-500' : addendaPct > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`}
                 style={{ width: `${Math.min((addendaPct / c.max_addenda_percent) * 100, 100)}%` }}
               />
             </div>
-            <div className="flex justify-between text-xs font-mono text-slate-500 tabular-nums">
+            <div className="flex justify-between mono-data text-xs mod-text-secondary">
               <span>Usado: {fmt(c.total_addenda_amount_cents)}</span>
               <span>Disponível: {fmt(Math.max(0, remaining))}</span>
               <span>Máx: {fmt(maxAllowed)}</span>
@@ -252,21 +222,21 @@ const ContractDetail: React.FC<{ c: Contrato; onClose: () => void }> = ({ c, onC
           {/* Gestores */}
           <div className="grid grid-cols-2 gap-3">
             {[{ label: 'Gestor do Contrato', value: c.manager }, { label: 'Fiscal do Contrato', value: c.inspector }].map((g) => (
-              <div key={g.label} className="bg-[#152244] border border-[#1a2a52] rounded-xl p-3">
-                <p className="text-xs text-slate-500 mb-1">{g.label}</p>
-                <p className="text-sm font-semibold text-slate-200">{g.value}</p>
+              <div key={g.label} className="mod-card p-3">
+                <p className="text-xs mod-text-secondary mb-1">{g.label}</p>
+                <p className="text-sm font-semibold mod-text-primary">{g.value}</p>
               </div>
             ))}
           </div>
 
           {/* Tabs */}
           <div>
-            <div className="flex border-b border-[#1a2a52] mb-4">
+            <div className="flex border-b mod-border mb-4">
               {(['aditivos', 'anexos', 'historico'] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setActiveDetailTab(t)}
-                  className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeDetailTab === t ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                  className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeDetailTab === t ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent mod-text-secondary hover:mod-text-primary'}`}
                 >
                   {t === 'aditivos' ? '📋 Aditivos' : t === 'anexos' ? '📎 Anexos' : '🕐 Histórico'}
                 </button>
@@ -276,20 +246,20 @@ const ContractDetail: React.FC<{ c: Contrato; onClose: () => void }> = ({ c, onC
             {activeDetailTab === 'aditivos' && (
               <div className="space-y-3">
                 {c.total_addenda_amount_cents > 0 ? (
-                  <div className="bg-amber-950/30 border border-amber-700/40 rounded-xl p-4">
+                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700/40 rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <GitBranch size={14} className="text-amber-400" />
-                      <span className="text-sm font-semibold text-amber-300">TA-01/2026 — Ampliação de Escopo</span>
+                      <GitBranch size={14} className="text-amber-500" />
+                      <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">TA-01/2026 — Ampliação de Escopo</span>
                     </div>
-                    <div className="flex justify-between text-xs font-mono text-slate-400 tabular-nums">
-                      <span>Valor: <span className="text-amber-300">{fmt(c.total_addenda_amount_cents)}</span></span>
+                    <div className="flex justify-between mono-data text-xs mod-text-secondary">
+                      <span>Valor: <span className="text-amber-600 dark:text-amber-300">{fmt(c.total_addenda_amount_cents)}</span></span>
                       <span>Vigência: 01/06/2026</span>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-500 text-sm">Nenhum aditivo registrado</div>
+                  <div className="mod-empty">Nenhum aditivo registrado</div>
                 )}
-                <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-dashed border-indigo-500/40 text-indigo-400 hover:bg-indigo-900/20 text-sm transition-colors">
+                <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-dashed border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-sm transition-colors">
                   <Plus size={14} /> Novo Termo Aditivo
                 </button>
               </div>
@@ -298,15 +268,15 @@ const ContractDetail: React.FC<{ c: Contrato; onClose: () => void }> = ({ c, onC
             {activeDetailTab === 'anexos' && (
               <div className="space-y-3">
                 {['Minuta Assinada.pdf', 'Edital TCE-PR.pdf', 'Proposta Vencedora.pdf'].map((file) => (
-                  <div key={file} className="flex items-center justify-between p-3 bg-[#152244] border border-[#1a2a52] rounded-xl hover:border-indigo-500/40 transition-colors group cursor-pointer">
+                  <div key={file} className="mod-card mod-card-hover flex items-center justify-between p-3 cursor-pointer group transition-colors">
                     <div className="flex items-center gap-2.5">
-                      <Paperclip size={14} className="text-slate-500" />
-                      <span className="text-sm text-slate-300">{file}</span>
+                      <Paperclip size={14} className="mod-text-secondary" />
+                      <span className="text-sm mod-text-primary">{file}</span>
                     </div>
-                    <Eye size={14} className="text-slate-500 group-hover:text-indigo-400 transition-colors" />
+                    <Eye size={14} className="mod-text-secondary group-hover:text-indigo-500 transition-colors" />
                   </div>
                 ))}
-                <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-dashed border-indigo-500/40 text-indigo-400 hover:bg-indigo-900/20 text-sm transition-colors">
+                <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-dashed border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-sm transition-colors">
                   <Plus size={14} /> Anexar Documento
                 </button>
               </div>
@@ -319,11 +289,11 @@ const ContractDetail: React.FC<{ c: Contrato; onClose: () => void }> = ({ c, onC
                   { action: 'Status: Ativo', user: 'Sistema', date: '02/01/2026', color: 'emerald' },
                   ...(c.total_addenda_amount_cents > 0 ? [{ action: 'Aditivo TA-01/2026 aprovado', user: 'Roberto Alves', date: '15/05/2026', color: 'amber' }] : []),
                 ].map((h, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 bg-[#152244] border border-[#1a2a52] rounded-lg">
+                  <div key={i} className="mod-card flex items-start gap-3 p-3">
                     <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${h.color === 'amber' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-200">{h.action}</p>
-                      <p className="text-xs text-slate-500 font-mono tabular-nums">{h.user} • {h.date}</p>
+                      <p className="text-sm font-medium mod-text-primary">{h.action}</p>
+                      <p className="mono-data text-xs mod-text-secondary">{h.user} • {h.date}</p>
                     </div>
                   </div>
                 ))}
@@ -336,7 +306,7 @@ const ContractDetail: React.FC<{ c: Contrato; onClose: () => void }> = ({ c, onC
   );
 };
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export const ModuleContratos: React.FC = () => {
   const [search, setSearch] = useState('');
@@ -364,41 +334,51 @@ export const ModuleContratos: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header Card */}
+      <div className="mod-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold mod-text-primary flex items-center gap-2">
+            <FileText className="text-indigo-500" size={20} />
+            Gestão de Contratos (Lei 14.133)
+          </h1>
+          <p className="text-sm mod-text-secondary mt-1">Ciclo de vida contratual, aditivos e fiscalização em tempo real.</p>
+        </div>
+        <button className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors whitespace-nowrap">
+          <Plus size={15} /> Novo Contrato
+        </button>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total de Contratos', value: kpis.total, sub: `${kpis.active} vigentes`, icon: FileText, color: 'text-indigo-400' },
-          { label: 'Valor Total Efetivo', value: fmt(kpis.totalAmount), sub: 'com aditivos', icon: DollarSign, color: 'text-emerald-400', mono: true },
-          { label: 'Vencem em 30 dias', value: kpis.expiring30, sub: 'requerem atenção', icon: AlertTriangle, color: 'text-rose-400' },
-          { label: 'Vencem em 90 dias', value: kpis.expiring90, sub: 'monitorar', icon: Clock, color: 'text-amber-400' },
+          { label: 'Total de Contratos', value: kpis.total, sub: `${kpis.active} vigentes`, icon: FileText, color: 'text-indigo-500' },
+          { label: 'Valor Total Efetivo', value: fmt(kpis.totalAmount), sub: 'com aditivos', icon: DollarSign, color: 'text-emerald-500', mono: true },
+          { label: 'Vencem em 30 dias', value: kpis.expiring30, sub: 'requerem atenção', icon: AlertTriangle, color: 'text-rose-500' },
+          { label: 'Vencem em 90 dias', value: kpis.expiring90, sub: 'monitorar', icon: Clock, color: 'text-amber-500' },
         ].map((k) => (
-          <div key={k.label} className="bg-[#152244] border border-[#1a2a52] rounded-xl p-4">
+          <div key={k.label} className="mod-kpi">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">{k.label}</p>
+              <p className="text-xs mod-text-secondary uppercase tracking-wide">{k.label}</p>
               <k.icon size={16} className={k.color} />
             </div>
-            <p className={`text-xl font-bold ${k.color} ${k.mono ? 'font-mono tabular-nums' : ''}`}>{k.value}</p>
-            <p className="text-xs text-slate-500 mt-1">{k.sub}</p>
+            <p className={`text-xl font-bold ${k.color} ${k.mono ? 'mono-data' : ''}`}>{k.value}</p>
+            <p className="text-xs mod-text-secondary mt-1">{k.sub}</p>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="mod-card p-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 mod-text-secondary" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por número, título ou fornecedor..."
-            className="w-full pl-9 pr-4 py-2.5 bg-[#152244] border border-[#1a2a52] rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/60"
+            className="mod-input w-full pl-9"
           />
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2.5 bg-[#152244] border border-[#1a2a52] rounded-xl text-sm text-slate-300 focus:outline-none focus:border-indigo-500/60"
-        >
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="mod-input">
           <option value="all">Todos os Status</option>
           <option value="active">Vigente</option>
           <option value="draft">Minuta</option>
@@ -407,19 +387,12 @@ export const ModuleContratos: React.FC = () => {
           <option value="ended">Encerrado</option>
           <option value="cancelled">Cancelado</option>
         </select>
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="px-3 py-2.5 bg-[#152244] border border-[#1a2a52] rounded-xl text-sm text-slate-300 focus:outline-none focus:border-indigo-500/60"
-        >
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="mod-input">
           <option value="all">Todos os Tipos</option>
           <option value="termo_contrato">Termo de Contrato</option>
           <option value="ata_rp">Ata de RP</option>
           <option value="convenio">Convênio</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors">
-          <Plus size={15} /> Novo Contrato
-        </button>
       </div>
 
       {/* Grid */}
@@ -428,14 +401,13 @@ export const ModuleContratos: React.FC = () => {
           <ContractCard key={c.id} c={c} onClick={() => setSelected(c)} />
         ))}
         {filtered.length === 0 && (
-          <div className="col-span-full text-center py-16 text-slate-500">
-            <FileText className="mx-auto mb-3 opacity-40" size={32} />
+          <div className="col-span-full mod-empty">
+            <FileText className="mx-auto mb-3 opacity-30" size={32} />
             <p>Nenhum contrato encontrado para os filtros selecionados.</p>
           </div>
         )}
       </div>
 
-      {/* Detail Panel */}
       {selected && <ContractDetail c={selected} onClose={() => setSelected(null)} />}
     </div>
   );

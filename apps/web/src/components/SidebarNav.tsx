@@ -35,6 +35,15 @@ import {
 } from 'lucide-react';
 import { ADMIN_NAV_GROUPS, AdminNavGroup, AdminNavItem } from '../config/adminNavigation';
 import { useAdminConfig } from '../contexts/AdminConfigContext';
+import { adminApi } from '../modules/admin/api';
+import { MenuGroup as ApiMenuGroup } from '../modules/admin/types';
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  LayoutDashboard, Users, Building2, Table, CreditCard, Plug, ShieldAlert,
+  Settings, UserCheck, BarChart3, Layers, Landmark, Receipt, Scale, HandCoins,
+  GraduationCap, Trophy, Award, BellRing, MapPin, Database, Sliders, FileText,
+  Ticket, BookOpen,
+};
 
 export interface NavItem {
   id: string;
@@ -86,9 +95,36 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   const { config } = useAdminConfig();
   const [searchFilter, setSearchFilter] = useState('');
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
+  const [dynamicGroups, setDynamicGroups] = useState<ApiMenuGroup[]>([]);
+
+  useEffect(() => {
+    adminApi.getNavigation()
+      .then((g) => {
+        if (Array.isArray(g) && g.length > 0) setDynamicGroups(g);
+      })
+      .catch((err) => {
+        console.warn('[Sidebar] getNavigation falhou, usando menu estático', err);
+        setDynamicGroups([]);
+      });
+  }, []);
 
   // Universal Navigation Groups mapped to standard structure
   const universalGroups: NavGroup[] = useMemo(() => {
+    if (dynamicGroups.length > 0) {
+      return dynamicGroups.map((grp) => ({
+        id: String(grp.id),
+        title: grp.name,
+        items: grp.items.map((item) => ({
+          id: String(item.id),
+          label: item.label,
+          shortLabel: item.label.substring(0, 8),
+          icon: ICON_MAP[item.icon] || LayoutDashboard,
+          badge: item.badge ? String(item.badge.value) : undefined,
+          badgeColor: item.badge?.tone === 'rose' ? 'rose' : 'amber',
+          desc: item.module_alias || '',
+        })),
+      }));
+    }
     return ADMIN_NAV_GROUPS.map((grp) => ({
       id: grp.id,
       title: grp.title,
@@ -102,7 +138,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         desc: item.description,
       })),
     }));
-  }, []);
+  }, [dynamicGroups]);
 
   // Specialized Municipal Preset Groups (Preserved for full compatibility)
   const municipalGroups: NavGroup[] = useMemo(() => {
@@ -351,14 +387,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       {/* Sidebar Container */}
       <aside
         id="sidebar-navigation"
-        className={`fixed top-0 left-0 h-full z-50 bg-[#0a1128] border-r border-[#1a2a52] text-white transition-all duration-300 ease-in-out flex flex-col shadow-2xl overflow-x-hidden ${
+        className={`fixed top-0 left-0 h-full z-50 bg-[#0a1128] dark:bg-[#0a1128] border-r border-[#1a2a52] text-white transition-all duration-300 ease-in-out flex flex-col shadow-2xl overflow-x-hidden ${
           isOpen
             ? 'translate-x-0 w-80 max-w-[85vw]'
             : '-translate-x-full lg:translate-x-0 lg:w-16 w-80'
         }`}
       >
         {/* Sidebar Header / Logo */}
-        <div className="h-14 border-b border-[#1a2a52] flex items-center justify-between px-3 shrink-0 bg-[#0a1128]">
+        <div className="h-14 border-b border-[#1a2a52] flex items-center justify-between px-3 shrink-0 bg-[#0a1128] dark:bg-[#0a1128]">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-slate-950 text-sm shrink-0 shadow-sm"
@@ -405,7 +441,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
 
         {/* Search in Sidebar */}
         {isOpen && (
-          <div className="p-3 border-b border-[#1a2a52]/80 bg-[#0a1128]/80 shrink-0">
+          <div className="p-3 border-b border-[#1a2a52]/80 bg-[#0a1128]/80 dark:bg-[#0a1128]/80 shrink-0">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -535,7 +571,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-2.5 border-t border-[#1a2a52] bg-[#0a1128]/95 shrink-0 text-center">
+        <div className="p-2.5 border-t border-[#1a2a52] bg-[#0a1128]/95 dark:bg-[#0a1128]/95 shrink-0 text-center">
           {!isOpen ? (
             <button
               onClick={onToggleOpen}

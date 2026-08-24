@@ -20,6 +20,7 @@ import { PainelGestaoPage } from '../components/PainelGestao/PainelGestaoPage';
 import { ModuleContratos } from '../components/ModuleContratos';
 import { ModuleHelpdesk } from '../components/ModuleHelpdesk';
 import { ModuleContabilidade } from '../components/ModuleContabilidade';
+import { MenuUsersAdminPage } from '../modules/admin/MenuUsersAdminPage';
 
 // Universal Admin Views
 import { AdminDashboardOverview } from '../components/admin/AdminDashboardOverview';
@@ -208,6 +209,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {activeTab === 'admin_tenants' && (
           <AdminTenantManagement onAddToast={onAddToast} />
+        )}
+
+        {activeTab === 'admin_menus' && (
+          <MenuUsersAdminPage onAddToast={onAddToast} initialTab="menus" />
         )}
 
         {activeTab === 'admin_records' && (

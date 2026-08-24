@@ -155,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-navy-950 border-b border-navy-800 text-white shadow-md">
+    <header className="sticky top-0 z-30 bg-navy-950 dark:bg-navy-950 border-b border-navy-800 text-white shadow-md">
       {/* Container Principal: Desktop e Tablet */}
       <div className="w-full px-2 sm:px-4 flex items-center justify-between h-13 sm:h-14 gap-1.5 sm:gap-3">
         {/* Esquerda: Botão Menu + Brasão e Nome do Município */}

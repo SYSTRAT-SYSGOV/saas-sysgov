@@ -17,11 +17,10 @@ export default defineConfig(() => {
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       proxy: {
         '/api': {
-          // Em desenvolvimento o backend roda no Laragon (alias /backend).
+          // Em desenvolvimento o backend roda em :8000 via artisan serve.
           // Configure VITE_API_URL no .env para apontar a outro host em nuvem.
-          target: process.env.VITE_API_URL || 'http://localhost/backend',
+          target: process.env.VITE_API_URL || 'http://localhost:8000',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '/api'),
         },
       },
     },

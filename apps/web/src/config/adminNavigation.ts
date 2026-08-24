@@ -95,6 +95,15 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         badgeColor: 'slate',
         description: 'Tabela de dados avançada com filtros, ordenação e exportação',
       },
+      {
+        id: 'admin_menus',
+        label: 'Gerenciador de Menus',
+        shortLabel: 'Menus',
+        icon: Layers,
+        badge: 'Novo',
+        badgeColor: 'emerald',
+        description: 'Configuração dinâmica de grupos e itens do menu lateral',
+      },
     ],
   },
   {

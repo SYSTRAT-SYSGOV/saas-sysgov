@@ -1,440 +1,429 @@
 import React, { useState, useMemo } from 'react';
 import {
-  BookOpen, TrendingUp, TrendingDown, Scale, BarChart2, CheckCircle2,
-  AlertTriangle, ChevronDown, ChevronRight, Search, Download, Plus,
-  ArrowLeftRight, Layers, DollarSign, Receipt, CreditCard, FileText,
+  BookOpen, ChevronRight, ChevronDown, Search, TrendingUp,
+  CheckCircle2, Clock, AlertTriangle, BarChart2, Plus,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ChartAccount {
-  id: string;
-  code: string;
-  name: string;
-  class: number;
-  nature: 'devedora' | 'credora';
-  type: 'sintetica' | 'analitica';
-  children?: ChartAccount[];
-  balance_cents?: number;
-}
+type ExecStatus = 'empenhado' | 'liquidado' | 'pago' | 'cancelado';
+type NaturezaCC = 'D' | 'C';
 
-interface AccountingEntry {
+interface OrcItem {
   id: string;
-  entry_number: string;
+  ne_number: string;
   description: string;
-  entry_date: string;
-  total_amount_cents: number;
-  status: 'rascunho' | 'lançado' | 'estornado';
-  lines: { account_code: string; account_name: string; debit_cents: number; credit_cents: number }[];
-}
-
-type CommitmentStatus = 'pendente' | 'liquidado' | 'pago' | 'anulado';
-
-interface BudgetCommitment {
-  id: string;
-  commitment_number: string;
-  description: string;
+  funcao: string;
   amount_cents: number;
-  liquidated_cents: number;
-  paid_cents: number;
-  status: CommitmentStatus;
-  commitment_date: string;
-  supplier: string;
-  expenditure_category: string;
+  liquidado_cents: number;
+  pago_cents: number;
+  status: ExecStatus;
+  date: string;
+}
+
+interface PCASPNode {
+  code: string;
+  title: string;
+  natureza: NaturezaCC;
+  nivel: number;
+  saldo_cents: number;
+  children?: PCASPNode[];
+}
+
+interface LancamentoContabil {
+  id: string;
+  date: string;
+  description: string;
+  debito_account: string;
+  credito_account: string;
+  amount_cents: number;
+  status: 'rascunho' | 'confirmado' | 'estornado';
 }
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const PCASP_MOCK: ChartAccount[] = [
-  {
-    id: '1', code: '1', name: 'ATIVO', class: 1, nature: 'devedora', type: 'sintetica', balance_cents: 98450000,
-    children: [
-      { id: '1.1', code: '1.1', name: 'ATIVO CIRCULANTE', class: 1, nature: 'devedora', type: 'sintetica', balance_cents: 45200000, children: [
-        { id: '1.1.1', code: '1.1.1', name: 'Caixa e Equivalentes de Caixa', class: 1, nature: 'devedora', type: 'analitica', balance_cents: 15300000 },
-        { id: '1.1.2', code: '1.1.2', name: 'Créditos a Receber', class: 1, nature: 'devedora', type: 'analitica', balance_cents: 29900000 },
-      ]},
-      { id: '1.2', code: '1.2', name: 'ATIVO NÃO CIRCULANTE', class: 1, nature: 'devedora', type: 'sintetica', balance_cents: 53250000, children: [
-        { id: '1.2.3', code: '1.2.3', name: 'Imobilizado', class: 1, nature: 'devedora', type: 'analitica', balance_cents: 53250000 },
-      ]},
-    ],
-  },
-  {
-    id: '2', code: '2', name: 'PASSIVO', class: 2, nature: 'credora', type: 'sintetica', balance_cents: 23100000,
-    children: [
-      { id: '2.1', code: '2.1', name: 'PASSIVO CIRCULANTE', class: 2, nature: 'credora', type: 'sintetica', balance_cents: 14500000, children: [
-        { id: '2.1.1', code: '2.1.1', name: 'Pessoal a Pagar', class: 2, nature: 'credora', type: 'analitica', balance_cents: 9200000 },
-        { id: '2.1.2', code: '2.1.2', name: 'Fornecedores', class: 2, nature: 'credora', type: 'analitica', balance_cents: 5300000 },
-      ]},
-    ],
-  },
+const EMPENHOS_MOCK: OrcItem[] = [
+  { id: '1', ne_number: '2026NE000089', description: 'Locação de Software Fiscal — SYSTRAT Tecnologia', funcao: '04 Administração', amount_cents: 32400000, liquidado_cents: 16200000, pago_cents: 10800000, status: 'liquidado', date: '2026-03-01' },
+  { id: '2', ne_number: '2026NE000045', description: 'Manutenção de Vias Urbanas — Construtora Delta', funcao: '15 Urbanismo', amount_cents: 98000000, liquidado_cents: 49000000, pago_cents: 49000000, status: 'pago', date: '2026-04-15' },
+  { id: '3', ne_number: '2026NE000078', description: 'Merenda Escolar — Alimenta Brasil Distribuidora', funcao: '12 Educação', amount_cents: 45000000, liquidado_cents: 0, pago_cents: 0, status: 'empenhado', date: '2026-06-01' },
+  { id: '4', ne_number: '2026NE000102', description: 'Serviços de Limpeza Predial — CleanMax Ltda', funcao: '04 Administração', amount_cents: 18500000, liquidado_cents: 9250000, pago_cents: 9250000, status: 'pago', date: '2026-05-10' },
+  { id: '5', ne_number: '2026NE000033', description: 'Equipamentos TI — PCI Computadores', funcao: '04 Administração', amount_cents: 8700000, liquidado_cents: 0, pago_cents: 0, status: 'cancelado', date: '2026-02-20' },
 ];
 
-const ENTRIES_MOCK: AccountingEntry[] = [
-  {
-    id: '1', entry_number: '2026LN00089', description: 'Reconhecimento de Despesas de Pessoal — Junho/2026', entry_date: '2026-06-30', total_amount_cents: 67900000, status: 'lançado',
-    lines: [
-      { account_code: '3.1.1.1.1', account_name: 'Despesas de Pessoal', debit_cents: 67900000, credit_cents: 0 },
-      { account_code: '2.1.1.0.1', account_name: 'Pessoal a Pagar', debit_cents: 0, credit_cents: 67900000 },
-    ]
-  },
-  {
-    id: '2', entry_number: '2026LN00088', description: 'Pagamento Fornecedor — Construtora Delta S.A.', entry_date: '2026-06-28', total_amount_cents: 15800000, status: 'lançado',
-    lines: [
-      { account_code: '2.1.2.0.1', account_name: 'Fornecedores', debit_cents: 15800000, credit_cents: 0 },
-      { account_code: '1.1.1.0.1', account_name: 'Caixa e Equiv. de Caixa', debit_cents: 0, credit_cents: 15800000 },
-    ]
-  },
-  {
-    id: '3', entry_number: '2026LN00087', description: 'Incorporação Bens Imóveis — FNDE', entry_date: '2026-06-15', total_amount_cents: 4200000, status: 'lançado',
-    lines: [
-      { account_code: '1.2.3.1.1', account_name: 'Imobilizado — Equipamentos', debit_cents: 4200000, credit_cents: 0 },
-      { account_code: '7.1.1.0.1', account_name: 'Receitas Correntes', debit_cents: 0, credit_cents: 4200000 },
-    ]
-  },
-  {
-    id: '4', entry_number: '2026LN00086', description: 'Reclassificação — Empenho CT-2026/0045', entry_date: '2026-06-10', total_amount_cents: 5000000, status: 'estornado',
-    lines: [
-      { account_code: '6.2.1.1.1', account_name: 'Crédito Disponível', debit_cents: 5000000, credit_cents: 0 },
-      { account_code: '6.2.2.1.1', account_name: 'Crédito Comprometido', debit_cents: 0, credit_cents: 5000000 },
-    ]
-  },
+const PCASP_MOCK: PCASPNode[] = [
+  { code: '1', title: 'ATIVO', natureza: 'D', nivel: 1, saldo_cents: 154300000, children: [
+    { code: '1.1', title: 'ATIVO CIRCULANTE', natureza: 'D', nivel: 2, saldo_cents: 82100000, children: [
+      { code: '1.1.1', title: 'Caixa e Equivalentes de Caixa', natureza: 'D', nivel: 3, saldo_cents: 45000000 },
+      { code: '1.1.2', title: 'Créditos a Curto Prazo', natureza: 'D', nivel: 3, saldo_cents: 37100000 },
+    ]},
+    { code: '1.2', title: 'ATIVO NÃO CIRCULANTE', natureza: 'D', nivel: 2, saldo_cents: 72200000, children: [
+      { code: '1.2.1', title: 'Realizável a Longo Prazo', natureza: 'D', nivel: 3, saldo_cents: 12200000 },
+      { code: '1.2.2', title: 'Investimentos', natureza: 'D', nivel: 3, saldo_cents: 8000000 },
+      { code: '1.2.3', title: 'Imobilizado', natureza: 'D', nivel: 3, saldo_cents: 52000000 },
+    ]},
+  ]},
+  { code: '2', title: 'PASSIVO', natureza: 'C', nivel: 1, saldo_cents: 68900000, children: [
+    { code: '2.1', title: 'PASSIVO CIRCULANTE', natureza: 'C', nivel: 2, saldo_cents: 28900000, children: [
+      { code: '2.1.1', title: 'Obrigações Trabalhistas', natureza: 'C', nivel: 3, saldo_cents: 15400000 },
+      { code: '2.1.2', title: 'Fornecedores', natureza: 'C', nivel: 3, saldo_cents: 13500000 },
+    ]},
+    { code: '2.2', title: 'PASSIVO NÃO CIRCULANTE', natureza: 'C', nivel: 2, saldo_cents: 40000000, children: [
+      { code: '2.2.1', title: 'Empréstimos e Financiamentos', natureza: 'C', nivel: 3, saldo_cents: 40000000 },
+    ]},
+  ]},
+  { code: '3', title: 'PATRIMÔNIO LÍQUIDO', natureza: 'C', nivel: 1, saldo_cents: 85400000 },
 ];
 
-const COMMITMENTS_MOCK: BudgetCommitment[] = [
-  { id: '1', commitment_number: '2026NE00156', description: 'Serviços de Manutenção Viária — CT-2026/0045', amount_cents: 98000000, liquidated_cents: 55000000, paid_cents: 45000000, status: 'liquidado', commitment_date: '2026-03-01', supplier: 'Construtora Delta S.A.', expenditure_category: 'Serviços de Terceiros' },
-  { id: '2', commitment_number: '2026NE00142', description: 'Locação de Software Gestão Fiscal', amount_cents: 32400000, liquidated_cents: 16200000, paid_cents: 16200000, status: 'pago', commitment_date: '2026-01-15', supplier: 'SYSTRAT Tecnologia Ltda', expenditure_category: 'Serviços de Terceiros' },
-  { id: '3', commitment_number: '2026NE00188', description: 'Fornecimento de Merenda Escolar — Trim III', amount_cents: 15000000, liquidated_cents: 0, paid_cents: 0, status: 'pendente', commitment_date: '2026-06-25', supplier: 'Alimenta Brasil Distribuidora', expenditure_category: 'Material de Consumo' },
-  { id: '4', commitment_number: '2026NE00127', description: 'Limpeza e Conservação Predial', amount_cents: 18500000, liquidated_cents: 9250000, paid_cents: 0, status: 'liquidado', commitment_date: '2026-05-05', supplier: 'CleanMax Serviços Ltda', expenditure_category: 'Serviços de Terceiros' },
-  { id: '5', commitment_number: '2026NE00099', description: 'Serviço de Iluminação Pública', amount_cents: 22000000, liquidated_cents: 0, paid_cents: 0, status: 'anulado', commitment_date: '2026-02-10', supplier: 'Eletro Sul S.A.', expenditure_category: 'Serviços de Terceiros' },
+const LANCAMENTOS_MOCK: LancamentoContabil[] = [
+  { id: '1', date: '2026-06-01', description: 'Reconhecimento de receita tributária — ISS', debito_account: '1.1.1.1 - Caixa', credito_account: '4.1.1.1 - Receita ISS', amount_cents: 18700000, status: 'confirmado' },
+  { id: '2', date: '2026-06-05', description: 'Liquidação NE000045 — Construtora Delta', debito_account: '3.3.1.1 - Despesas Correntes', credito_account: '2.1.2.1 - Fornecedores', amount_cents: 49000000, status: 'confirmado' },
+  { id: '3', date: '2026-06-10', description: 'Pagamento OB000028 — Construtora Delta', debito_account: '2.1.2.1 - Fornecedores', credito_account: '1.1.1.1 - Caixa', amount_cents: 49000000, status: 'confirmado' },
+  { id: '4', date: '2026-06-12', description: 'Reclassificação provisória — folha de pessoal', debito_account: '3.3.1.9 - Despesas Pessoal', credito_account: '2.1.1.2 - Salários a Pagar', amount_cents: 32500000, status: 'rascunho' },
+  { id: '5', date: '2026-05-28', description: 'Estorno: NE000033 cancelado', debito_account: '6.2.1.1 - Crédito Disponível', credito_account: '6.1.1.1 - Dotação Empenhada', amount_cents: 8700000, status: 'estornado' },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Formatters ───────────────────────────────────────────────────────────────
 
 const fmt = (cents: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
 
-const statusBadge: Record<CommitmentStatus, { label: string; color: string; bg: string }> = {
-  pendente: { label: 'Empenhado', color: 'text-indigo-400', bg: 'bg-indigo-950/60 border-indigo-700/50' },
-  liquidado: { label: 'Liquidado', color: 'text-amber-400', bg: 'bg-amber-950/60 border-amber-700/50' },
-  pago: { label: 'Pago/OB', color: 'text-emerald-400', bg: 'bg-emerald-950/60 border-emerald-700/50' },
-  anulado: { label: 'Anulado', color: 'text-slate-400', bg: 'bg-slate-800/60 border-slate-700' },
+const pct = (part: number, total: number) =>
+  total > 0 ? `${((part / total) * 100).toFixed(1)}%` : '0%';
+
+const statusColors: Record<ExecStatus, string> = {
+  empenhado: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-700/40',
+  liquidado: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-700/40',
+  pago:      'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-700/40',
+  cancelado: 'text-slate-500 bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700',
 };
 
-const entryStatusBadge: Record<AccountingEntry['status'], { label: string; color: string }> = {
-  rascunho: { label: 'Rascunho', color: 'text-slate-400' },
-  lançado: { label: 'Lançado', color: 'text-emerald-400' },
-  estornado: { label: 'Estornado', color: 'text-rose-400' },
+const statusLabels: Record<ExecStatus, string> = {
+  empenhado: 'Empenhado', liquidado: 'Liquidado', pago: 'Pago/OB', cancelado: 'Cancelado',
 };
 
-// ─── PCASP Tree ───────────────────────────────────────────────────────────────
+const lancStatusColors: Record<LancamentoContabil['status'], string> = {
+  rascunho:  'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-700/40',
+  confirmado:'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-700/40',
+  estornado: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-700/40',
+};
 
-const AccountRow: React.FC<{ acc: ChartAccount; depth?: number }> = ({ acc, depth = 0 }) => {
-  const [expanded, setExpanded] = useState(depth < 1);
-  const hasChildren = acc.children && acc.children.length > 0;
+const lancStatusLabels: Record<LancamentoContabil['status'], string> = {
+  rascunho: 'Rascunho', confirmado: 'Confirmado', estornado: 'Estornado',
+};
+
+// ─── PCASP Tree Row ───────────────────────────────────────────────────────────
+
+const PCASPRow: React.FC<{ node: PCASPNode }> = ({ node }) => {
+  const [expanded, setExpanded] = useState(node.nivel === 1);
+  const hasChildren = node.children && node.children.length > 0;
+  const indent = (node.nivel - 1) * 20;
 
   return (
     <>
       <tr
         onClick={() => hasChildren && setExpanded(!expanded)}
-        className={`border-b border-[#1a2a52]/50 hover:bg-[#1a2a52]/50 transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
+        className={`border-b mod-border mod-row-hover transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
       >
         <td className="py-2.5 px-4">
-          <div className="flex items-center gap-2" style={{ paddingLeft: depth * 20 }}>
+          <div style={{ paddingLeft: `${indent}px` }} className="flex items-center gap-2">
             {hasChildren ? (
-              expanded ? <ChevronDown size={13} className="text-slate-500 shrink-0" /> : <ChevronRight size={13} className="text-slate-500 shrink-0" />
-            ) : <div className="w-3" />}
-            <span className={`font-mono text-xs tabular-nums ${acc.type === 'sintetica' ? 'font-bold text-slate-300' : 'text-slate-400'}`}>{acc.code}</span>
+              expanded ? <ChevronDown size={14} className="mod-text-secondary shrink-0" /> : <ChevronRight size={14} className="mod-text-secondary shrink-0" />
+            ) : <span className="w-3.5 inline-block" />}
+            <span className={`mono-data text-xs font-semibold ${node.nivel === 1 ? 'text-indigo-600 dark:text-indigo-400' : node.nivel === 2 ? 'text-sky-600 dark:text-sky-400' : 'mod-text-secondary'}`}>
+              {node.code}
+            </span>
           </div>
         </td>
-        <td className="py-2.5 px-4">
-          <span className={`text-sm ${acc.type === 'sintetica' ? 'font-semibold text-slate-200' : 'text-slate-300'}`}>{acc.name}</span>
+        <td className={`py-2.5 px-4 text-sm ${node.nivel <= 2 ? 'font-semibold mod-text-primary' : 'mod-text-primary'}`}>
+          {node.title}
         </td>
         <td className="py-2.5 px-4 text-center">
-          <span className={`text-xs px-2 py-0.5 rounded border font-medium ${acc.nature === 'devedora' ? 'text-sky-400 bg-sky-950/40 border-sky-700/40' : 'text-rose-400 bg-rose-950/40 border-rose-700/40'}`}>
-            {acc.nature}
+          <span className={`text-xs font-bold px-2 py-0.5 rounded ${node.natureza === 'D' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40' : 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40'}`}>
+            {node.natureza === 'D' ? 'Devedor' : 'Credor'}
           </span>
         </td>
         <td className="py-2.5 px-4 text-right">
-          {acc.balance_cents !== undefined && (
-            <span className={`font-mono text-sm tabular-nums ${acc.type === 'sintetica' ? 'font-bold text-slate-200' : 'text-slate-300'}`}>
-              {fmt(acc.balance_cents)}
-            </span>
-          )}
+          <span className={`mono-data text-sm font-bold ${node.nivel === 1 ? 'text-emerald-600 dark:text-emerald-400' : 'mod-text-primary'}`}>
+            {fmt(node.saldo_cents)}
+          </span>
         </td>
       </tr>
-      {expanded && acc.children?.map(child => (
-        <AccountRow key={child.id} acc={child} depth={depth + 1} />
+      {expanded && hasChildren && node.children!.map(child => (
+        <PCASPRow key={child.code} node={child} />
       ))}
     </>
   );
 };
 
-// ─── Budget Progress Bar ──────────────────────────────────────────────────────
-
-const BudgetBar: React.FC<{ c: BudgetCommitment }> = ({ c }) => {
-  const liqPct = c.amount_cents > 0 ? (c.liquidated_cents / c.amount_cents) * 100 : 0;
-  const pagPct = c.amount_cents > 0 ? (c.paid_cents / c.amount_cents) * 100 : 0;
-  const cfg = statusBadge[c.status];
-
-  return (
-    <div className="bg-[#152244] border border-[#1a2a52] rounded-xl p-4 hover:border-indigo-500/40 transition-colors">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="font-mono text-xs text-indigo-400">{c.commitment_number}</span>
-            <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
-          </div>
-          <p className="text-sm font-semibold text-slate-200 line-clamp-1">{c.description}</p>
-          <p className="text-xs text-slate-500 mt-0.5 truncate">{c.supplier} · {c.expenditure_category}</p>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="font-mono text-sm font-bold text-slate-200 tabular-nums">{fmt(c.amount_cents)}</p>
-          <p className="font-mono text-xs text-slate-500 tabular-nums">{new Date(c.commitment_date).toLocaleDateString('pt-BR')}</p>
-        </div>
-      </div>
-
-      {/* Stacked progress bars */}
-      {c.status !== 'anulado' && (
-        <div className="space-y-2">
-          {/* Empenho → Liquidação */}
-          <div>
-            <div className="flex justify-between text-xs text-slate-500 mb-1">
-              <span>Liquidado</span>
-              <span className="font-mono tabular-nums">{fmt(c.liquidated_cents)} <span className="text-slate-600">({liqPct.toFixed(0)}%)</span></span>
-            </div>
-            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${liqPct}%` }} />
-            </div>
-          </div>
-          {/* Liquidação → Pagamento */}
-          <div>
-            <div className="flex justify-between text-xs text-slate-500 mb-1">
-              <span>Pago (OB)</span>
-              <span className="font-mono tabular-nums">{fmt(c.paid_cents)} <span className="text-slate-600">({pagPct.toFixed(0)}%)</span></span>
-            </div>
-            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pagPct}%` }} />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 type Tab = 'execucao' | 'pcasp' | 'lancamentos';
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export const ModuleContabilidade: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('execucao');
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
 
   const kpis = useMemo(() => {
-    const total = COMMITMENTS_MOCK.filter(c => c.status !== 'anulado').reduce((a, c) => a + c.amount_cents, 0);
-    const liquidado = COMMITMENTS_MOCK.reduce((a, c) => a + c.liquidated_cents, 0);
-    const pago = COMMITMENTS_MOCK.reduce((a, c) => a + c.paid_cents, 0);
-    const saldo = total - pago;
-    return { total, liquidado, pago, saldo };
+    const ativos = EMPENHOS_MOCK.filter(e => e.status !== 'cancelado');
+    const empenhado = ativos.reduce((a, e) => a + e.amount_cents, 0);
+    const liquidado = ativos.reduce((a, e) => a + e.liquidado_cents, 0);
+    const pago = ativos.reduce((a, e) => a + e.pago_cents, 0);
+    return { empenhado, liquidado, pago };
   }, []);
 
-  const filteredCommitments = useMemo(() => COMMITMENTS_MOCK.filter(c => {
-    const matchSearch = search === '' || c.commitment_number.toLowerCase().includes(search.toLowerCase()) || c.description.toLowerCase().includes(search.toLowerCase()) || c.supplier.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === 'all' || c.status === filterStatus;
-    return matchSearch && matchStatus;
-  }), [search, filterStatus]);
+  const filteredEmpenhos = useMemo(() =>
+    EMPENHOS_MOCK.filter(e =>
+      search === '' ||
+      e.ne_number.toLowerCase().includes(search.toLowerCase()) ||
+      e.description.toLowerCase().includes(search.toLowerCase()) ||
+      e.funcao.toLowerCase().includes(search.toLowerCase())
+    ), [search]);
 
-  const filteredEntries = useMemo(() => ENTRIES_MOCK.filter(e => {
-    return search === '' || e.entry_number.toLowerCase().includes(search.toLowerCase()) || e.description.toLowerCase().includes(search.toLowerCase());
-  }), [search]);
+  const filteredLancamentos = useMemo(() =>
+    LANCAMENTOS_MOCK.filter(l =>
+      search === '' ||
+      l.description.toLowerCase().includes(search.toLowerCase()) ||
+      l.debito_account.toLowerCase().includes(search.toLowerCase()) ||
+      l.credito_account.toLowerCase().includes(search.toLowerCase())
+    ), [search]);
 
-  const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: 'execucao', label: 'Execução Orçamentária', icon: TrendingUp },
-    { id: 'pcasp', label: 'Plano de Contas (PCASP)', icon: BookOpen },
-    { id: 'lancamentos', label: 'Lançamentos Contábeis', icon: ArrowLeftRight },
+  const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+    { id: 'execucao',    label: 'Execução Orçamentária', icon: TrendingUp },
+    { id: 'pcasp',       label: 'Plano de Contas (PCASP)', icon: BookOpen },
+    { id: 'lancamentos', label: 'Lançamentos Contábeis', icon: BarChart2 },
   ];
 
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Total Empenhado', value: fmt(kpis.total), color: 'text-indigo-400', icon: Receipt },
-          { label: 'Total Liquidado', value: fmt(kpis.liquidado), color: 'text-amber-400', icon: FileText },
-          { label: 'Total Pago (OBs)', value: fmt(kpis.pago), color: 'text-emerald-400', icon: CreditCard },
-          { label: 'Saldo a Pagar', value: fmt(kpis.saldo), color: 'text-cyan-400', icon: DollarSign },
+          { label: 'Total Empenhado', value: kpis.empenhado, sub: `${EMPENHOS_MOCK.filter(e => e.status !== 'cancelado').length} notas de empenho`, color: 'text-amber-500', icon: Clock },
+          { label: 'Total Liquidado', value: kpis.liquidado, sub: pct(kpis.liquidado, kpis.empenhado) + ' do empenhado', color: 'text-sky-500', icon: CheckCircle2 },
+          { label: 'Total Pago (OB)', value: kpis.pago, sub: pct(kpis.pago, kpis.empenhado) + ' do empenhado', color: 'text-emerald-500', icon: TrendingUp },
         ].map((k) => (
-          <div key={k.label} className="bg-[#152244] border border-[#1a2a52] rounded-xl p-4">
+          <div key={k.label} className="mod-kpi">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">{k.label}</p>
+              <p className="text-xs mod-text-secondary uppercase tracking-wide">{k.label}</p>
               <k.icon size={16} className={k.color} />
             </div>
-            <p className={`font-mono text-lg font-bold tabular-nums ${k.color}`}>{k.value}</p>
+            <p className={`mono-data text-xl font-bold ${k.color}`}>{fmt(k.value)}</p>
+            <p className="text-xs mod-text-secondary mt-1">{k.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Tab Bar */}
-      <div className="flex border-b border-[#1a2a52]">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === t.id ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
-          >
-            <t.icon size={14} />{t.label}
-          </button>
-        ))}
-      </div>
+      {/* Tabs */}
+      <div>
+        <div className="flex border-b mod-border gap-1 mb-6 overflow-x-auto">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === t.id ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent mod-text-secondary hover:mod-text-primary'}`}
+            >
+              <t.icon size={14} />{t.label}
+            </button>
+          ))}
+        </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        {/* Search (shared) */}
+        <div className="relative mb-4">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 mod-text-secondary" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={activeTab === 'execucao' ? 'Buscar empenho, fornecedor...' : activeTab === 'pcasp' ? 'Buscar conta...' : 'Buscar lançamento...'}
-            className="w-full pl-9 pr-4 py-2.5 bg-[#152244] border border-[#1a2a52] rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/60"
+            placeholder={activeTab === 'pcasp' ? 'Buscar conta...' : activeTab === 'lancamentos' ? 'Buscar lançamento...' : 'Buscar empenho...'}
+            className="mod-input w-full pl-9"
           />
         </div>
+
+        {/* ── Execução Orçamentária ── */}
         {activeTab === 'execucao' && (
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2.5 bg-[#152244] border border-[#1a2a52] rounded-xl text-sm text-slate-300 focus:outline-none focus:border-indigo-500/60"
-          >
-            <option value="all">Todos os Status</option>
-            <option value="pendente">Empenhado</option>
-            <option value="liquidado">Liquidado</option>
-            <option value="pago">Pago (OB)</option>
-            <option value="anulado">Anulado</option>
-          </select>
-        )}
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 text-slate-300 rounded-xl text-sm font-medium transition-colors">
-          <Download size={14} /> Exportar
-        </button>
-        {activeTab === 'lancamentos' && (
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors">
-            <Plus size={14} /> Novo Lançamento
-          </button>
-        )}
-      </div>
+          <div className="space-y-3">
+            {filteredEmpenhos.map((e) => {
+              const liqPct = e.amount_cents > 0 ? (e.liquidado_cents / e.amount_cents) * 100 : 0;
+              const pagPct = e.amount_cents > 0 ? (e.pago_cents / e.amount_cents) * 100 : 0;
+              return (
+                <div key={e.id} className="mod-card p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="mono-data text-xs text-indigo-600 dark:text-indigo-400">{e.ne_number}</span>
+                        <span className="text-xs mod-text-secondary bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 px-1.5 py-0.5 rounded">{e.funcao}</span>
+                      </div>
+                      <p className="text-sm font-semibold mod-text-primary">{e.description}</p>
+                      <p className="mono-data text-xs mod-text-secondary mt-0.5">{new Date(e.date).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    <div className={`px-2.5 py-1 rounded-lg border text-xs font-semibold shrink-0 ${statusColors[e.status]}`}>
+                      {statusLabels[e.status]}
+                    </div>
+                  </div>
 
-      {/* ── Execução Orçamentária ── */}
-      {activeTab === 'execucao' && (
-        <div className="space-y-3">
-          {filteredCommitments.map((c) => <BudgetBar key={c.id} c={c} />)}
-          {filteredCommitments.length === 0 && (
-            <div className="text-center py-16 text-slate-500 bg-[#152244] border border-[#1a2a52] rounded-xl">
-              <Receipt className="mx-auto mb-3 opacity-40" size={32} />
-              <p>Nenhum empenho encontrado.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── PCASP ── */}
-      {activeTab === 'pcasp' && (
-        <div className="bg-[#152244] border border-[#1a2a52] rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#1a2a52] bg-[#0a1128]">
-                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wide w-40">Código</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">Conta</th>
-                <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wide w-32">Natureza</th>
-                <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wide w-40">Saldo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PCASP_MOCK.map((acc) => (
-                <AccountRow key={acc.id} acc={acc} depth={0} />
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-indigo-500/30 bg-indigo-950/20">
-                <td colSpan={3} className="py-3 px-4 text-sm font-bold text-slate-200">ATIVO TOTAL</td>
-                <td className="py-3 px-4 text-right">
-                  <span className="font-mono text-sm font-bold text-indigo-400 tabular-nums">{fmt(98450000)}</span>
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-          <div className="p-3 border-t border-[#1a2a52] flex items-center gap-2">
-            <Scale size={13} className="text-emerald-400" />
-            <span className="text-xs text-emerald-400">Balanço Patrimonial Equilibrado — Partidas Dobradas validadas ✓</span>
+                  {e.status !== 'cancelado' && (
+                    <>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        {[
+                          { label: 'Empenhado', v: e.amount_cents, color: 'text-amber-600 dark:text-amber-400' },
+                          { label: 'Liquidado', v: e.liquidado_cents, color: 'text-sky-600 dark:text-sky-400' },
+                          { label: 'Pago', v: e.pago_cents, color: 'text-emerald-600 dark:text-emerald-400' },
+                        ].map((k) => (
+                          <div key={k.label} className="mod-inner rounded-lg p-2">
+                            <p className="text-xs mod-text-secondary mb-0.5">{k.label}</p>
+                            <p className={`mono-data text-xs font-bold ${k.color}`}>{fmt(k.v)}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 mod-track rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-400 rounded-full" style={{ width: `100%` }} />
+                          </div>
+                          <span className="mono-data text-xs mod-text-secondary w-12 text-right">100%</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 mod-track rounded-full overflow-hidden">
+                            <div className="h-full bg-sky-500 rounded-full" style={{ width: `${Math.min(liqPct, 100)}%` }} />
+                          </div>
+                          <span className="mono-data text-xs mod-text-secondary w-12 text-right">{pct(e.liquidado_cents, e.amount_cents)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 mod-track rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(pagPct, 100)}%` }} />
+                          </div>
+                          <span className="mono-data text-xs mod-text-secondary w-12 text-right">{pct(e.pago_cents, e.amount_cents)}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+            {filteredEmpenhos.length === 0 && (
+              <div className="mod-empty">Nenhum empenho encontrado.</div>
+            )}
+            <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-sm transition-colors">
+              <Plus size={14} /> Registrar Empenho
+            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Lançamentos Contábeis ── */}
-      {activeTab === 'lancamentos' && (
-        <div className="space-y-4">
-          {filteredEntries.map((e) => (
-            <div key={e.id} className="bg-[#152244] border border-[#1a2a52] rounded-xl overflow-hidden">
-              {/* Entry header */}
-              <div className="flex items-center justify-between p-4 border-b border-[#1a2a52]/60">
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-mono text-xs text-indigo-400">{e.entry_number}</span>
-                    <span className={`text-xs font-semibold ${entryStatusBadge[e.status].color}`}>● {entryStatusBadge[e.status].label}</span>
-                  </div>
-                  <p className="text-sm font-semibold text-slate-200">{e.description}</p>
-                  <p className="font-mono text-xs text-slate-500 tabular-nums mt-0.5">{new Date(e.entry_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono text-lg font-bold text-slate-200 tabular-nums">{fmt(e.total_amount_cents)}</p>
-                  <div className="flex items-center gap-1 justify-end mt-1">
-                    <CheckCircle2 size={12} className="text-emerald-400" />
-                    <span className="text-xs text-emerald-400">Partidas dobradas ✓</span>
-                  </div>
-                </div>
+        {/* ── Plano de Contas PCASP ── */}
+        {activeTab === 'pcasp' && (
+          <div className="mod-card overflow-hidden">
+            {/* Equilíbrio header */}
+            <div className="mod-header px-4 py-3 border-b mod-border flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <BookOpen size={14} className="text-indigo-500" />
+                <span className="text-sm font-semibold mod-text-primary">Plano de Contas PCASP — Exercício 2026</span>
               </div>
-
-              {/* Lines */}
-              <table className="w-full text-xs">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={13} className="text-emerald-500" />
+                <span className="mono-data text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                  Equilíbrio: {fmt(PCASP_MOCK.filter(n => n.natureza === 'D').reduce((a, n) => a + n.saldo_cents, 0))} = {fmt(PCASP_MOCK.filter(n => n.natureza === 'C').reduce((a, n) => a + n.saldo_cents, 0) + 85400000)}
+                </span>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
                 <thead>
-                  <tr className="bg-[#0a1128]/60">
-                    <th className="text-left py-2 px-4 text-slate-500 font-medium">Conta</th>
-                    <th className="text-right py-2 px-4 text-sky-400 font-medium">Débito</th>
-                    <th className="text-right py-2 px-4 text-rose-400 font-medium">Crédito</th>
+                  <tr className="mod-header border-b mod-border">
+                    <th className="py-2.5 px-4 text-left text-xs font-semibold mod-text-secondary uppercase tracking-wide w-32">Código</th>
+                    <th className="py-2.5 px-4 text-left text-xs font-semibold mod-text-secondary uppercase tracking-wide">Conta</th>
+                    <th className="py-2.5 px-4 text-center text-xs font-semibold mod-text-secondary uppercase tracking-wide w-28">Natureza</th>
+                    <th className="py-2.5 px-4 text-right text-xs font-semibold mod-text-secondary uppercase tracking-wide w-40">Saldo</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {e.lines.map((l, i) => (
-                    <tr key={i} className="border-t border-[#1a2a52]/40">
-                      <td className="py-2 px-4">
-                        <span className="font-mono text-indigo-300 mr-2">{l.account_code}</span>
-                        <span className="text-slate-400">{l.account_name}</span>
-                      </td>
-                      <td className="py-2 px-4 text-right font-mono tabular-nums text-sky-400">
-                        {l.debit_cents > 0 ? fmt(l.debit_cents) : '—'}
-                      </td>
-                      <td className="py-2 px-4 text-right font-mono tabular-nums text-rose-400">
-                        {l.credit_cents > 0 ? fmt(l.credit_cents) : '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {PCASP_MOCK.map(node => <PCASPRow key={node.code} node={node} />)}
                 </tbody>
-                <tfoot>
-                  <tr className="border-t border-[#1a2a52] bg-[#0a1128]/40">
-                    <td className="py-2 px-4 text-slate-400 font-semibold">Total</td>
-                    <td className="py-2 px-4 text-right font-mono font-bold tabular-nums text-sky-400">{fmt(e.total_amount_cents)}</td>
-                    <td className="py-2 px-4 text-right font-mono font-bold tabular-nums text-rose-400">{fmt(e.total_amount_cents)}</td>
-                  </tr>
-                </tfoot>
               </table>
             </div>
-          ))}
-          {filteredEntries.length === 0 && (
-            <div className="text-center py-16 text-slate-500 bg-[#152244] border border-[#1a2a52] rounded-xl">
-              <ArrowLeftRight className="mx-auto mb-3 opacity-40" size={32} />
-              <p>Nenhum lançamento encontrado.</p>
+          </div>
+        )}
+
+        {/* ── Lançamentos Contábeis ── */}
+        {activeTab === 'lancamentos' && (
+          <div className="space-y-3">
+            {/* Balance check */}
+            {(() => {
+              const confirmed = filteredLancamentos.filter(l => l.status === 'confirmado');
+              const totalD = confirmed.reduce((a, l) => a + l.amount_cents, 0);
+              const totalC = totalD;
+              const balanced = totalD === totalC;
+              return (
+                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium ${balanced ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-700/40 text-emerald-700 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-700/40 text-rose-700 dark:text-rose-300'}`}>
+                  {balanced ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                  <span>
+                    {balanced ? '✅ Partidas em equilíbrio: ' : '⚠️ Desequilíbrio detectado: '}
+                    <span className="mono-data">Σ(D) = {fmt(totalD)} = Σ(C) = {fmt(totalC)}</span>
+                  </span>
+                </div>
+              );
+            })()}
+
+            <div className="mod-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="mod-header border-b mod-border">
+                      <th className="py-2.5 px-4 text-left text-xs font-semibold mod-text-secondary uppercase w-24">Data</th>
+                      <th className="py-2.5 px-4 text-left text-xs font-semibold mod-text-secondary uppercase">Histórico</th>
+                      <th className="py-2.5 px-4 text-left text-xs font-semibold mod-text-secondary uppercase">Débito</th>
+                      <th className="py-2.5 px-4 text-left text-xs font-semibold mod-text-secondary uppercase">Crédito</th>
+                      <th className="py-2.5 px-4 text-right text-xs font-semibold mod-text-secondary uppercase w-32">Valor</th>
+                      <th className="py-2.5 px-4 text-center text-xs font-semibold mod-text-secondary uppercase w-24">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLancamentos.map((l) => (
+                      <tr key={l.id} className={`border-b mod-border mod-row-hover transition-colors ${l.status === 'estornado' ? 'opacity-60' : ''}`}>
+                        <td className="py-2.5 px-4 mono-data text-xs mod-text-secondary whitespace-nowrap">
+                          {new Date(l.date).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="py-2.5 px-4 text-sm mod-text-primary max-w-xs">
+                          <span className="line-clamp-1">{l.description}</span>
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className="mono-data text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-700/30 px-2 py-0.5 rounded line-clamp-1">
+                            {l.debito_account}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className="mono-data text-xs text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-700/30 px-2 py-0.5 rounded line-clamp-1">
+                            {l.credito_account}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-right mono-data text-sm font-bold mod-text-primary whitespace-nowrap">
+                          {fmt(l.amount_cents)}
+                        </td>
+                        <td className="py-2.5 px-4 text-center">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${lancStatusColors[l.status]}`}>
+                            {lancStatusLabels[l.status]}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredLancamentos.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-sm mod-text-secondary">
+                          Nenhum lançamento encontrado.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          )}
-        </div>
-      )}
+
+            <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-sm transition-colors">
+              <Plus size={14} /> Novo Lançamento Contábil
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

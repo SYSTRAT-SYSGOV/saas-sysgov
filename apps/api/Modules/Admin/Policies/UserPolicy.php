@@ -9,13 +9,11 @@ use App\Models\User;
 final class UserPolicy
 {
     public function viewAny(User $user): bool { return $user->is_platform_admin; }
+    public function view(User $user, User $target): bool { return $user->is_platform_admin; }
     public function create(User $user): bool { return $user->is_platform_admin; }
+    public function update(User $user, User $target): bool { return $user->is_platform_admin; }
     public function assignRoles(User $user): bool { return $user->is_platform_admin; }
-
-    public function suspend(User $user, User $target): bool
-    {
-        return $user->is_platform_admin && !$this->isSelf($user, $target);
-    }
+    public function suspend(User $user, User $target): bool { return $user->is_platform_admin && !$this->isSelf($user, $target); }
 
     public function delete(User $user, User $target): bool
     {

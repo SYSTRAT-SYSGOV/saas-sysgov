@@ -209,7 +209,7 @@ function MainDashboardApp() {
           />
         </main>
 
-        <footer className="bg-[#0a1128] border-t border-[#1a2a52] text-slate-400 text-xs py-5 mt-auto">
+        <footer className="bg-[#0a1128] dark:bg-[#0a1128] border-t border-[#1a2a52] text-slate-400 text-xs py-5 mt-auto">
           <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />

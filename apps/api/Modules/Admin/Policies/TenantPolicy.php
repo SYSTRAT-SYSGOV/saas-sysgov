@@ -13,4 +13,5 @@ final class TenantPolicy
     public function view(User $user, Tenant $tenant): bool { return $user->is_platform_admin; }
     public function create(User $user): bool { return $user->is_platform_admin; }
     public function update(User $user, Tenant $tenant): bool { return $user->is_platform_admin; }
+    public function delete(User $user, Tenant $tenant): bool { return $user->is_platform_admin; }
 }
