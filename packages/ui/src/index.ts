@@ -15,51 +15,13 @@ export const sysgovTokens = {
 
 export type FiscalSeverity = 'regular' | 'attention' | 'critical' | 'info';
 
-export interface KPICardProps {
-  title: string;
-  value: string | number;
-  secondaryInfo?: string;
-  trend?: {
-    value: string;
-    isPositive?: boolean;
-    isNeutral?: boolean;
-  };
-  badge?: string;
-  className?: string;
-}
-
-export interface AlertCardProps {
-  title: string;
-  description: string;
-  severity: FiscalSeverity;
-  countOrStatus?: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  className?: string;
-}
-
-export interface StatusBadgeProps {
-  label: string;
-  tone?: 'emerald' | 'amber' | 'rose' | 'cyan' | 'indigo' | 'slate';
-  size?: 'sm' | 'md';
-  dot?: boolean;
-  className?: string;
-}
-
-export interface DataCardProps {
-  title: string;
-  subtitle?: string;
-  headerAction?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-}
-
-export interface ActionButtonProps {
-  variant?: 'solid' | 'ghost' | 'outline' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
-  children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  className?: string;
-  icon?: React.ComponentType<{ size?: number; className?: string }>;
-}
+// Export components
+export * from './components/AlertCard';
+export * from './components/Badge';
+export * from './components/Button';
+export * from './components/Card';
+export * from './components/Input';
+export * from './components/KpiCard';
+export * from './components/StatusChip';
+export * from './components/SystratBrand';
+export * from './components/Table';

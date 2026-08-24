@@ -1,16 +1,64 @@
 # SYSGOV
 
-Plataforma SaaS de gestão governamental da SYSTRAT, organizada como monorepo modular.
+Plataforma SaaS de governança e gestão pública da SYSTRAT, organizada como monorepo modular.
 
-## Começar
+---
 
-```bash
-npm install
-npm run dev
+## 🏛️ Estrutura do Monorepo
+
+```text
+sysgov/
+├── apps/
+│   ├── api/          # Backend Laravel Modular (MySQL 8.4, Redis 7) - Porta 8000
+│   ├── web/          # Painel Administrativo SYSTRAT (React 19) - Porta 5173
+│   └── web-client/   # Painel do Cliente / Órgão Público (React 19) - Porta 5174
+├── packages/
+│   ├── ui/           # Design System Gov.br + Paleta SYSGOV (@sysgov/ui)
+│   └── sdk/          # SDK TypeScript e tipos de contrato (@sysgov/sdk)
+├── docs/             # Documentação técnica e guias de módulo
+└── package.json      # Workspaces globais
 ```
 
-O painel web fica em `apps/web`. A API Laravel fica em `apps/api` e requer PHP 8.2+, MySQL 8.4 e Redis 7.
+---
 
-Para executar a stack com Docker, use `docker compose up --build`. O painel web continua sendo iniciado separadamente com `npm run dev`.
+## 🚀 Como Executar
 
-A primeira entrega inclui o App Shell administrativo, dashboard operacional, base de multi-tenancy, contrato do módulo Contracts, migration de núcleo e documentação de contribuição. Dados do dashboard são fixtures de apresentação até a API ser conectada.
+### 1. Instalação de Dependências:
+```bash
+npm install
+```
+
+### 2. Backend Laravel:
+```bash
+cd apps/api
+php artisan serve --port=8000
+```
+
+### 3. Frontends:
+```bash
+# Executar apenas o Painel do Cliente (porta 5174):
+npm run dev:client
+
+# Executar apenas o Painel Admin (porta 5173):
+npm run dev:admin
+
+# Executar ambos simultaneamente:
+npm run dev:all
+```
+
+---
+
+## 🧪 Testes e Validação
+
+```bash
+# Executar todos os testes do monorepo:
+npm test
+
+# Checagem de tipos (TypeScript):
+npm run typecheck
+
+# Build de produção:
+npm run build
+```
+
+Para mais detalhes sobre a arquitetura do cliente, consulte [`docs/web-client.md`](file:///c:/laragon/www/saas-sysgov/docs/web-client.md).

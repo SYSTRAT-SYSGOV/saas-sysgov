@@ -1,0 +1,62 @@
+<svg viewBox="0 0 200 130" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-auto h-full">
+  <defs>
+    <!-- Gradiente Dourado Superior -->
+    <linearGradient id="goldGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD700" />
+      <stop offset="35%" stop-color="#F59E0B" />
+      <stop offset="70%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#92400E" />
+    </linearGradient>
+
+    <!-- Gradiente Dourado Médio -->
+    <linearGradient id="goldGradMid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="40%" stop-color="#F59E0B" />
+      <stop offset="80%" stop-color="#B45309" />
+      <stop offset="100%" stop-color="#78350F" />
+    </linearGradient>
+
+    <!-- Gradiente Dourado Inferior -->
+    <linearGradient id="goldGradBot" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24" />
+      <stop offset="50%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#78350F" />
+    </linearGradient>
+
+    <!-- Gradiente Prateado (Bico / Asa Direita) -->
+    <linearGradient id="silverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F1F5F9" />
+      <stop offset="30%" stop-color="#CBD5E1" />
+      <stop offset="70%" stop-color="#64748B" />
+      <stop offset="100%" stop-color="#334155" />
+    </linearGradient>
+    
+    <!-- Filtro de Relevo / Sombra -->
+    <filter id="reliefShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.8" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <g filter="url(#reliefShadow)">
+    <!-- Asa Dourada Superior -->
+    <path
+      d="M10 5C15 25 35 55 90 62C60 48 35 30 18 8C14 6 11 5 10 5Z"
+      fill="url(#goldGradTop)"
+    />
+    <!-- Asa Dourada Média -->
+    <path
+      d="M14 28C22 45 42 66 94 71C66 61 40 48 24 33C19 30 15 28 14 28Z"
+      fill="url(#goldGradMid)"
+    />
+    <!-- Asa Dourada Inferior -->
+    <path
+      d="M28 53C38 66 58 78 86 80C64 76 46 68 34 56C30 54 28 53 28 53Z"
+      fill="url(#goldGradBot)"
+    />
+    <!-- Asa / Bico Prateado -->
+    <path
+      d="M84 65C96 67 114 64 135 77C118 70 102 72 90 77L112 92C96 82 85 73 84 65Z"
+      fill="url(#silverGrad)"
+    />
+  </g>
+</svg>

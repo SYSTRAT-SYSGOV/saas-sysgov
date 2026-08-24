@@ -1,0 +1,108 @@
+@import './styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--gov-font-family-base, 'rawline', helvetica, arial, sans-serif);
+    font-size: var(--font-size-scale-base, 1rem);
+    line-height: var(--font-line-height-scale-base, 1.5rem);
+    font-weight: var(--font-weight-regular, 400);
+    font-style: normal;
+    background-color: var(--gov-bg-page);
+    color: var(--gov-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ==========================================================================
+     Títulos do Sistema: Cor Oficial #0c326f e BOLD (700) Obrigatório
+     ========================================================================== */
+  h1, h2, h3, h4, h5, h6,
+  .br-h1, .br-h2, .br-h3, .br-h4, .br-h5,
+  .text-page-title,
+  .font-heading,
+  .card-title,
+  .section-title {
+    font-family: var(--gov-font-family-base);
+    color: #0c326f !important;
+    font-weight: 700 !important;
+  }
+
+  h1, .br-h1, .text-page-title {
+    font-size: var(--font-size-scale-up-05, 2.25rem); /* 36px */
+    line-height: var(--font-line-height-scale-up-05, 2.5rem); /* 40px */
+    letter-spacing: -0.02em;
+  }
+
+  h2, .br-h2 {
+    font-size: var(--font-size-scale-up-04, 1.75rem); /* 28px */
+    line-height: var(--font-line-height-scale-up-04, 2.25rem); /* 36px */
+    letter-spacing: -0.015em;
+  }
+
+  h3, .br-h3 {
+    font-size: var(--font-size-scale-up-03, 1.5rem); /* 24px */
+    line-height: var(--font-line-height-scale-up-03, 2rem); /* 32px */
+    letter-spacing: -0.01em;
+  }
+
+  h4, .br-h4 {
+    font-size: var(--font-size-scale-up-02, 1.25rem); /* 20px */
+    line-height: var(--font-line-height-scale-up-02, 1.75rem); /* 28px */
+  }
+
+  h5, .br-h5 {
+    font-size: var(--font-size-scale-up-01, 1.125rem); /* 18px */
+    line-height: var(--font-line-height-scale-up-01, 1.625rem); /* 26px */
+  }
+
+  /* Menus e Navegação: BOLD (700) e #0c326f */
+  nav, .br-menu, .font-menu-title {
+    font-family: var(--gov-font-family-base);
+    font-weight: 700;
+  }
+
+  /* Elementos de Botão */
+  button, .br-button {
+    font-family: var(--gov-font-family-base);
+    font-weight: 700;
+  }
+
+  /* Dados Técnicos OBRIGATÓRIOS em JetBrains Mono */
+  code, kbd, samp, pre, .font-mono, .tabular-nums {
+    font-family: var(--gov-font-family-mono) !important;
+  }
+
+  /* Anel de foco visível em todos os elementos interativos conforme eMAG / WCAG 2.1 AA */
+  *:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--gov-primary), 0 0 0 4px #FFFFFF;
+  }
+}
+
+/* Scrollbars institucionais */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8F9FA;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C4C8CC;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A0A4A8;
+}

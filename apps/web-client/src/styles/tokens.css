@@ -1,0 +1,128 @@
+@layer base {
+  :root {
+    /* ==========================================================================
+       TIPOGRAFIA OFICIAL PADRÃO DIGITAL DE GOVERNO (DS GOV.BR v3)
+       https://www.gov.br/ds/fundamentos-visuais/tipografia?tab=codigos
+       ========================================================================== */
+    --gov-font-family-base: 'rawline', helvetica, arial, sans-serif;
+    --gov-font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Escala de Pesos Oficiais (Font Weights) */
+    --font-weight-light: 300;
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semi-bold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extra-bold: 800;
+
+    /* Escala Tipográfica Oficial Gov.br (Font Size & Line Height) */
+    --font-size-scale-up-07: 3rem;       /* 48px */
+    --font-line-height-scale-up-07: 3.5rem; /* 56px */
+
+    --font-size-scale-up-06: 2.5rem;     /* 40px */
+    --font-line-height-scale-up-06: 3rem;   /* 48px */
+
+    --font-size-scale-up-05: 2.25rem;    /* 36px */
+    --font-line-height-scale-up-05: 2.5rem; /* 40px */
+
+    --font-size-scale-up-04: 1.75rem;    /* 28px */
+    --font-line-height-scale-up-04: 2.25rem;/* 36px */
+
+    --font-size-scale-up-03: 1.5rem;     /* 24px */
+    --font-line-height-scale-up-03: 2rem;   /* 32px */
+
+    --font-size-scale-up-02: 1.25rem;    /* 20px */
+    --font-line-height-scale-up-02: 1.75rem;/* 28px */
+
+    --font-size-scale-up-01: 1.125rem;   /* 18px */
+    --font-line-height-scale-up-01: 1.625rem;/* 26px */
+
+    --font-size-scale-base: 1rem;        /* 16px */
+    --font-line-height-scale-base: 1.5rem;  /* 24px */
+
+    --font-size-scale-down-01: 0.875rem; /* 14px */
+    --font-line-height-scale-down-01: 1.25rem; /* 20px */
+
+    --font-size-scale-down-02: 0.75rem;  /* 12px */
+    --font-line-height-scale-down-02: 1rem;    /* 16px */
+
+    --font-size-scale-down-03: 0.625rem; /* 10px */
+    --font-line-height-scale-down-03: 0.75rem; /* 12px */
+
+    /* Variáveis legadas mantendo compatibilidade */
+    --gov-font-sans: var(--gov-font-family-base);
+    --gov-font-mono: var(--gov-font-family-mono);
+    --font-sans: var(--gov-font-family-base);
+    --font-mono: var(--gov-font-family-mono);
+
+    /* ==========================================================================
+       PALETA OFICIAL UIKIT GOVBR V3 - Blue Warm Vivid Palette
+       ========================================================================== */
+    --gov-blue-warm-vivid-90: #071D41;
+    --gov-blue-warm-vivid-80: #0C326F;
+    --gov-blue-warm-vivid-70: #1351B4; /* Primária Oficial */
+    --gov-blue-warm-vivid-60: #2670E8;
+    --gov-blue-warm-vivid-50: #4B8CF2;
+    --gov-blue-warm-20: #C5D8F6;
+    --gov-blue-warm-10: #E8F0FE;
+    --gov-blue-warm-5: #F0F4FA;
+
+    --gov-primary: var(--gov-blue-warm-vivid-70);
+    --gov-primary-hover: var(--gov-blue-warm-vivid-80);
+    --gov-primary-active: var(--gov-blue-warm-vivid-90);
+    --gov-primary-light: var(--gov-blue-warm-10);
+    --gov-primary-border: var(--gov-blue-warm-20);
+    --gov-primary-text: #FFFFFF;
+
+    /* Acentos Oficiais */
+    --gov-accent-gold: #F6A609;
+    --gov-accent-yellow: #FFCD07;
+    --gov-accent-green: #168821;
+    --gov-accent-red: #E52207;
+
+    /* Superfícies e Neutros (Gray Palette Gov.br) */
+    --gov-gray-90: #1B1B1B;
+    --gov-gray-80: #333333;
+    --gov-gray-70: #555555;
+    --gov-gray-60: #666666;
+    --gov-gray-50: #888888;
+    --gov-gray-40: #AAAAAA;
+    --gov-gray-20: #D8DCE0;
+    --gov-gray-10: #ECEFF1;
+    --gov-gray-5: #F8F9FA;
+    --gov-pure-white: #FFFFFF;
+
+    --gov-bg-page: #F8F9FA;
+    --gov-bg-surface: #FFFFFF;
+    --gov-border: #D8DCE0;
+    --gov-text-primary: #1B1B1B;
+    --gov-text-secondary: #555555;
+    --gov-text-muted: #777777;
+
+    /* Semáforo Fiscal */
+    --status-success-base: #168821;
+    --status-success-bg: #E8F5E9;
+    --status-success-border: #A5D6A7;
+
+    --status-warning-base: #F2A71B;
+    --status-warning-bg: #FFF8E1;
+    --status-warning-border: #FFE082;
+
+    --status-danger-base: #E52207;
+    --status-danger-bg: #FDECEA;
+    --status-danger-border: #F5C6CB;
+
+    --status-info-base: #155BCB;
+    --status-info-bg: #E8F0FE;
+    --status-info-border: #A9C6F0;
+
+    /* Raio e Sombras */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-pill: 9999px;
+
+    --shadow-header: 0 2px 6px rgba(0, 0, 0, 0.06);
+    --shadow-menu: 4px 0 16px rgba(0, 0, 0, 0.08);
+  }
+}
