@@ -86,6 +86,12 @@ final class RbacSeeder extends Seeder
             'modules' => [
                 'dashboard.view' => 'Visualizar Painel Geral',
                 'org.view' => 'Visualizar Organograma',
+                'org.create' => 'Criar Unidades Organizacionais',
+                'org.update' => 'Atualizar Unidades Organizacionais',
+                'org.delete' => 'Excluir Unidades Organizacionais',
+                'org.move' => 'Mover Unidades Organizacionais',
+                'org.user.link' => 'Vincular Usuários a Unidades',
+                'org.user.unlink' => 'Desvincular Usuários de Unidades',
                 'pedagogico.view' => 'Visualizar Módulo Pedagógico',
                 'rh.view' => 'Visualizar Recursos Humanos',
                 'cemiterios.view' => 'Visualizar Gestão de Cemitérios',
