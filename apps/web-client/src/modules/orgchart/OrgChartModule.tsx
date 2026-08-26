@@ -909,7 +909,7 @@ export const OrgChartModule: React.FC = () => {
       {/* 5. Barra de Filtros, Pesquisa e Alternador de Visões */}
       <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Campo de Busca em JetBrains Mono */}
+          {/* Campo de Busca em Inter */}
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-slate-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input

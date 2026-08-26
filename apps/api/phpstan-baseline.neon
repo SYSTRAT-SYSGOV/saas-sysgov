@@ -1,0 +1,2833 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Models\\MenuGroup\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Console/Commands/SeedMenusCommand.php
+
+		-
+			message: '#^Class Modules\\Admin\\Database\\Factories\\SaasContractFactory extends generic class Illuminate\\Database\\Eloquent\\Factories\\Factory but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Database/Factories/SaasContractFactory.php
+
+		-
+			message: '#^Parameter \#1 \$tenants of method Modules\\Admin\\Http\\Controllers\\AnalystController\:\:tenantWalletPayload\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Tenant\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: Modules/Admin/Http/Controllers/AnalystController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Query\\Builder\:\:whereKey\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/Admin/Http/Controllers/HierarchyController.php
+
+		-
+			message: '#^Property Modules\\Admin\\Http\\Controllers\\InvitationAdminController\:\:\$audit is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: Modules/Admin/Http/Controllers/InvitationAdminController.php
+
+		-
+			message: '#^Offset ''otpauth_url'' on array\{secret\: string, otpauth_url\: string, qr_code_url\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Admin/Http/Controllers/MfaController.php
+
+		-
+			message: '#^Parameter \#2 \$code of method App\\Services\\MfaService\:\:confirm\(\) expects string, Illuminate\\Support\\Stringable given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Admin/Http/Controllers/MfaController.php
+
+		-
+			message: '#^Parameter \#2 \$code of method App\\Services\\MfaService\:\:verify\(\) expects string, Illuminate\\Support\\Stringable given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Admin/Http/Controllers/MfaController.php
+
+		-
+			message: '#^Parameter \#2 \$password of method App\\Services\\MfaService\:\:disable\(\) expects string, Illuminate\\Support\\Stringable given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Admin/Http/Controllers/MfaController.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Controllers\\OidcController\:\:configFor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Controllers/OidcController.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Controllers\\OidcController\:\:discover\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Controllers/OidcController.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 2
+			path: Modules/Admin/Http/Controllers/OidcController.php
+
+		-
+			message: '#^Result of \|\| is always false\.$#'
+			identifier: booleanOr.alwaysFalse
+			count: 1
+			path: Modules/Admin/Http/Controllers/OidcController.php
+
+		-
+			message: '#^Property Modules\\Admin\\Http\\Controllers\\RoleAdminController\:\:\$audit is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: Modules/Admin/Http/Controllers/RoleAdminController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Models\\SaasInvoice\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Controllers/SaasBillingController.php
+
+		-
+			message: '#^Relation ''tenant'' is not found in Modules\\Admin\\Models\\SaasInvoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: Modules/Admin/Http/Controllers/SaasBillingController.php
+
+		-
+			message: '#^Property Modules\\Admin\\Http\\Controllers\\UserAdminController\:\:\$audit is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: Modules/Admin/Http/Controllers/UserAdminController.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\AssignRolesRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/AssignRolesRequest.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: Modules/Admin/Http/Requests/CreateTenantAdminRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\CreateTenantAdminRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/CreateTenantAdminRequest.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: Modules/Admin/Http/Requests/DeactivateUserRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\DeactivateUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/DeactivateUserRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\InviteUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/InviteUserRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\InviteUserRequest\:\:withValidator\(\) has parameter \$validator with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Admin/Http/Requests/InviteUserRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\StoreHierarchyNodeRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/StoreHierarchyNodeRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\StoreMenuGroupRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/StoreMenuGroupRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\StoreMenuItemRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/StoreMenuItemRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\StorePermissionRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/StorePermissionRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\StoreRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/StoreRoleRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\StoreRoleRequest\:\:withValidator\(\) has parameter \$validator with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Admin/Http/Requests/StoreRoleRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\StoreSystratUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/StoreSystratUserRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\StoreTenantRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/StoreTenantRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\StoreUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/StoreUserRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\ToggleModuleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/ToggleModuleRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\UpdatePermissionRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/UpdatePermissionRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\UpdateRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/UpdateRoleRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\UpdateSystratUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/UpdateSystratUserRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\UpdateTenantRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/UpdateTenantRequest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Requests\\UpdateUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Requests/UpdateUserRequest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$accepted_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$expires_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$inviter\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 4
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$role_slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$tenant\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\InvitationResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Call to an undefined method Modules\\Admin\\Http\\Resources\\InvitationResource\:\:isExpired\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Resources\\InvitationResource\:\:toArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Resources/InvitationResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\PermissionResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/PermissionResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\PermissionResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/PermissionResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\PermissionResource\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/PermissionResource.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Resources\\PermissionResource\:\:toArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Resources/PermissionResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$is_system\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$permissions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$scope\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\RoleResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Resources\\RoleResource\:\:toArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Resources/RoleResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$avatar_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$email_verified_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$is_platform_admin\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$is_systrat\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$last_login_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$mfa_confirmed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$mfa_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$roles\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$tenants\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Http\\Resources\\UserResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Method Modules\\Admin\\Http\\Resources\\UserResource\:\:toArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Http/Resources/UserResource.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\MenuGroup\:\:forTenant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/MenuGroup.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\MenuGroup\:\:items\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/MenuGroup.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\MenuGroup\:\:tenant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/MenuGroup.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\MenuItem\:\:group\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/MenuItem.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\Module\:\:tenants\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/Module.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Models\\SaasContract\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Models/SaasContract.php
+
+		-
+			message: '#^Class Modules\\Admin\\Models\\SaasContract uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/SaasContract.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\SaasContract\:\:adjustments\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/SaasContract.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\SaasContract\:\:newFactory\(\) return type with generic class Illuminate\\Database\\Eloquent\\Factories\\Factory does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/SaasContract.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\SaasContract\:\:renewals\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/SaasContract.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\SaasContract\:\:tenant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/SaasContract.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\SaasContractAdjustment\:\:contract\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/SaasContractAdjustment.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\SaasContractRenewal\:\:contract\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/SaasContractRenewal.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\SaasInvoice\:\:contract\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Admin/Models/SaasInvoice.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Models\\MenuItem\:\:\$permission\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Policies/MenuItemPolicy.php
+
+		-
+			message: '#^Method Modules\\Admin\\Policies\\UserPolicy\:\:can\(\) has parameter \$permissions with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Policies/UserPolicy.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$icon\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Services/MenuService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$items\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Services/MenuService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Services/MenuService.php
+
+		-
+			message: '#^Method Modules\\Admin\\Services\\MenuService\:\:resolveBadge\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Services/MenuService.php
+
+		-
+			message: '#^Method Modules\\Admin\\Tests\\Feature\\InvitationLifecycleTest\:\:inviteViaService\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Tests/Feature/InvitationLifecycleTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Admin/Tests/Feature/TenantIsolationAndBolaTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Admin\\Models\\SaasContract\:\:\$number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Admin/Tests/Feature/TenantIsolationAndBolaTest.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of method App\\Support\\TenantContext\:\:set\(\) expects App\\Models\\Tenant, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Admin/Tests/Feature/TenantIsolationAndBolaTest.php
+
+		-
+			message: '#^Parameter \#1 \$user of method Illuminate\\Foundation\\Testing\\TestCase\:\:actingAs\(\) expects Illuminate\\Contracts\\Auth\\Authenticatable, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Admin/Tests/Feature/TenantIsolationAndBolaTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Contracts/Http/Controllers/ContractController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$total_addenda_amount_cents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Contracts/Http/Controllers/ContractController.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Http\\Requests\\StoreContractRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Contracts/Http/Requests/StoreContractRequest.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Http\\Requests\\UpdateContractRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Contracts/Http/Requests/UpdateContractRequest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Contracts/Models/Contract.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$max_addenda_percent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Models/Contract.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$total_addenda_amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Models/Contract.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\Contract\:\:addenda\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/Contract.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\Contract\:\:attachments\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/Contract.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\Contract\:\:history\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/Contract.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\Contract\:\:inspector\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/Contract.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\Contract\:\:manager\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/Contract.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\ContractAddendum\:\:contract\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/ContractAddendum.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\ContractAttachment\:\:contract\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/ContractAttachment.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\ContractAttachment\:\:uploader\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/ContractAttachment.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\ContractHistory\:\:contract\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/ContractHistory.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\ContractHistory\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/ContractHistory.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\SupportTicket\:\:assigned\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/SupportTicket.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\SupportTicket\:\:messages\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/SupportTicket.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\SupportTicket\:\:requester\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/SupportTicket.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\TicketMessage\:\:ticket\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/TicketMessage.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\TicketMessage\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/TicketMessage.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Contracts/Policies/ContractPolicy.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$max_addenda_percent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$number\.$#'
+			identifier: property.notFound
+			count: 4
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$total_addenda_amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Services\\ContractLifecycleService\:\:addAddendum\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Services\\ContractLifecycleService\:\:addAddendum\(\) should return Modules\\Contracts\\Models\\ContractAddendum but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Services\\ContractLifecycleService\:\:createContract\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Contracts/Services/ContractLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/SupportTicketService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\SupportTicket\:\:\$priority\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/SupportTicketService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\SupportTicket\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/SupportTicketService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\SupportTicket\:\:\$ticket_number\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Contracts/Services/SupportTicketService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\SupportTicket\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Services/SupportTicketService.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Services\\SupportTicketService\:\:addMessage\(\) has parameter \$attachments with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Contracts/Services/SupportTicketService.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Services\\SupportTicketService\:\:addMessage\(\) should return Modules\\Contracts\\Models\\TicketMessage but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: Modules/Contracts/Services/SupportTicketService.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Services\\SupportTicketService\:\:openTicket\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Contracts/Services/SupportTicketService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$total_addenda_amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Contracts/Tests/Feature/ContractLifecycleTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Schema\\ForeignKeyDefinition\:\:after\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: Modules/Finance/Database/Migrations/2026_08_22_020001_upgrade_finance_tables.php
+
+		-
+			message: '#^Method Modules\\Finance\\Http\\Requests\\StoreExpenseRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Http/Requests/StoreExpenseRequest.php
+
+		-
+			message: '#^Method Modules\\Finance\\Http\\Requests\\StoreRevenueRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Http/Requests/StoreRevenueRequest.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\AccountingEntry\:\:creator\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/AccountingEntry.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\AccountingEntry\:\:lines\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/AccountingEntry.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\AccountingLine\:\:account\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/AccountingLine.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\AccountingLine\:\:entry\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/AccountingLine.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetCommitment\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Models/BudgetCommitment.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetCommitment\:\:\$settled_amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Models/BudgetCommitment.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\BudgetCommitment\:\:settlements\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/BudgetCommitment.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\BudgetPayment\:\:settlement\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/BudgetPayment.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\BudgetSettlement\:\:commitment\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/BudgetSettlement.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\BudgetSettlement\:\:payments\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/BudgetSettlement.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\ChartOfAccount\:\:children\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/ChartOfAccount.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\ChartOfAccount\:\:lines\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/ChartOfAccount.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\ChartOfAccount\:\:parent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/ChartOfAccount.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\AccountingEntry\:\:\$entry_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\AccountingEntry\:\:\$total_amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\ChartOfAccount\:\:\$account_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\ChartOfAccount\:\:\$code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\ChartOfAccount\:\:\$is_synthetic\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\ChartOfAccount\:\:\$level\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\ChartOfAccount\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\ChartOfAccount\:\:\$nature\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\AccountingService\:\:createEntry\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\AccountingService\:\:generateTrialBalance\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$paid_amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetCommitment\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetCommitment\:\:\$commitment_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetCommitment\:\:\$settled_amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetSettlement\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\BudgetExecutionService\:\:createCommitment\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\BudgetExecutionService\:\:createPayment\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\BudgetExecutionService\:\:createPayment\(\) should return Modules\\Finance\\Models\\BudgetPayment but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\BudgetExecutionService\:\:createSettlement\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\BudgetExecutionService\:\:createSettlement\(\) should return Modules\\Finance\\Models\\BudgetSettlement but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\Expense\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Finance/Services/FinanceService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\Revenue\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Finance/Services/FinanceService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\FinanceService\:\:createExpense\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Services/FinanceService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\FinanceService\:\:createRevenue\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Services/FinanceService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\FinanceService\:\:updateExpense\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Services/FinanceService.php
+
+		-
+			message: '#^Method Modules\\Finance\\Services\\FinanceService\:\:updateRevenue\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Services/FinanceService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\AccountingEntry\:\:\$total_amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Tests/Feature/AccountingPartidasDobradasTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\Revenue\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Tests/Feature/TenantIsolationTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Http/Resources/OrgUnitResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Http/Resources/OrgUnitResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Http/Resources/OrgUnitResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\OrgChart\\Http\\Resources\\OrgUnitResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Http/Resources/OrgUnitResource.php
+
+		-
+			message: '#^Access to an undefined property Modules\\OrgChart\\Http\\Resources\\OrgUnitResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Http/Resources/OrgUnitResource.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: Modules/OrgChart/Http/Resources/OrgUnitResource.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: Modules/OrgChart/Http/Resources/OrgUnitResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_primary" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: Modules/OrgChart/Http/Resources/OrgUnitResource.php
+
+		-
+			message: '#^Class Modules\\OrgChart\\Models\\OrgUnit has PHPDoc tag @property for property \$metadata with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:allChildren\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:children\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:getDescendants\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:members\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:parent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:responsibles\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:scopeActive\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:scopeByType\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:scopeRoots\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:unitUsers\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:users\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Class Modules\\OrgChart\\Models\\OrgUnitUser has PHPDoc tag @property for property \$metadata with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnitUser.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnitUser\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnitUser.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnitUser\:\:scopeMembers\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnitUser.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnitUser\:\:scopePrimary\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnitUser.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnitUser\:\:scopeResponsibles\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnitUser.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnitUser\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnitUser.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:hasPermissionTo\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/OrgChart/Policies/OrgUnitPolicy.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Policies\\OrgUnitPolicy\:\:safeHasRole\(\) has parameter \$roles with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/OrgChart/Policies/OrgUnitPolicy.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\OrgChart\\Models\\OrgUnit\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\OrgChart\\Models\\OrgUnit\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\OrgChart\\Models\\OrgUnitUser\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\OrgChart\\Models\\OrgUnitUser\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:all\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: Modules/OrgChart/Services/OrgExportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$acronym\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/OrgChart/Services/OrgScopeService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/OrgChart/Services/OrgScopeService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/OrgChart/Services/OrgScopeService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/OrgChart/Services/OrgScopeService.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:hasPermissionTo\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/OrgChart/Services/OrgScopeService.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Services\\OrgScopeService\:\:applyScopeToQuery\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Services/OrgScopeService.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Services\\OrgScopeService\:\:applyScopeToQuery\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Services/OrgScopeService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\OrgChart\\Models\\OrgUnitUser\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: Modules/OrgChart/Services/OrgScopeService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\OrgChart\\Models\\OrgUnitUser\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: Modules/OrgChart/Services/OrgScopeService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Services/OrgTreeService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Services/OrgTreeService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/OrgChart/Services/OrgTreeService.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Services\\OrgTreeService\:\:createUnit\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/OrgChart/Services/OrgTreeService.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Services\\OrgTreeService\:\:updateUnit\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/OrgChart/Services/OrgTreeService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: Modules/OrgChart/Services/OrgTreeService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: Modules/OrgChart/Services/OrgTreeService.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Services\\OrgUserService\:\:linkUser\(\) has parameter \$attributes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/OrgChart/Services/OrgUserService.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:assignRole\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: Modules/OrgChart/Tests/Feature/AdminOrgChartApiTest.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:assignRole\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/OrgChart/Tests/Feature/ClientOrgChartApiTest.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:assignRole\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/OrgChart/Tests/Feature/OrgExportServiceTest.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:assignRole\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: Modules/OrgChart/Tests/Feature/OrgScopeAbacTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoLance\:\:\$licitacao_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Events/LanceRecebido.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoArtefatosController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoArtefato\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoArtefatosController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoAditivo\:\:\$numero\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$numero\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoMedicao\:\:\$numero\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoPagamento\:\:\$nota_fiscal\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoPagamento\:\:\$valor_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$numero\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$objeto\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Parameter \#2 \$payload of method App\\Support\\OutboxPublisher\:\:publish\(\) expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Parameter \#3 \$tenantId of method App\\Support\\OutboxPublisher\:\:publish\(\) expects int\|null, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Procurement\\Models\\LicitacaoParticipante\>\|Modules\\Procurement\\Models\\LicitacaoParticipante\:\:\$razao_social\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoLancesController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoLancesController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoLance\:\:\$valor_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoLancesController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoParticipante\:\:\$razao_social\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoLancesController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$numero\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Parameter \#2 \$payload of method App\\Support\\OutboxPublisher\:\:publish\(\) expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Parameter \#3 \$tenantId of method App\\Support\\OutboxPublisher\:\:publish\(\) expects int\|null, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoPrecosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\Licitacao\:\:artefatos\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/Licitacao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\Licitacao\:\:contratos\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/Licitacao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\Licitacao\:\:creator\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/Licitacao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\Licitacao\:\:homologador\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/Licitacao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\Licitacao\:\:lances\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/Licitacao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\Licitacao\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/Licitacao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\Licitacao\:\:pareceres\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/Licitacao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\Licitacao\:\:participantes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/Licitacao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\Licitacao\:\:precos\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/Licitacao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoAditivo\:\:assinante\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoAditivo.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoAditivo\:\:contrato\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoAditivo.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoArtefato\:\:aprovador\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoArtefato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoArtefato\:\:creator\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoArtefato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoArtefato\:\:licitacao\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoArtefato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoContrato\:\:aditivos\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoContrato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoContrato\:\:fiscal\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoContrato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoContrato\:\:gestor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoContrato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoContrato\:\:licitacao\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoContrato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoContrato\:\:medicoes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoContrato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoContrato\:\:pagamentos\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoContrato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoDocumento\:\:licitacao\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoDocumento.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoDocumento\:\:uploader\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoDocumento.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoLance\:\:participante\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoLance.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoMedicao\:\:contrato\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoMedicao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoMedicao\:\:fiscal\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoMedicao.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoPagamento\:\:contrato\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoPagamento.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoParecer\:\:aprovador\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoParecer.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoParecer\:\:licitacao\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoParecer.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoParecer\:\:parecerista\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoParecer.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\LicitacaoParticipante\:\:licitacao\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/LicitacaoParticipante.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\ProcurementArtefato\:\:aprovador\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/ProcurementArtefato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\ProcurementArtefato\:\:autor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/ProcurementArtefato.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Models\\ProcurementArtefato\:\:licitacao\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/Models/ProcurementArtefato.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Policies/LicitacaoPolicy.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Procurement/Policies/LicitacaoPolicy.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoArtefato\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Policies/LicitacaoPolicy.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoParecer\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Policies/LicitacaoPolicy.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoParecer\:\:\$parecerista_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Policies/LicitacaoPolicy.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\ProcurementArtefato\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Policies/ProcurementArtefatoPolicy.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\ProcurementArtefato\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Policies/ProcurementArtefatoPolicy.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:belongsToTenant\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/Procurement/Policies/ProcurementArtefatoPolicy.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\AuditHMACService\:\:record\(\) has parameter \$after with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Procurement/Services/AuditHMACService.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\AuditHMACService\:\:record\(\) has parameter \$before with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Procurement/Services/AuditHMACService.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\AuditHMACService\:\:verifyChain\(\) has parameter \$recordData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Procurement/Services/AuditHMACService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cnpj\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$porte_me_epp\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$razao_social\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$modalidade\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$valor_estimado_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoLance\:\:\$lancado_em\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoLance\:\:\$participante_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoLance\:\:\$valor_cents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoParticipante\:\:\$licitacao_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoParticipante\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\BiddingRoomService\:\:getLiveRanking\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Procurement/Services/BiddingRoomService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$objeto\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Procurement/Services/ContractExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Procurement/Services/ContractExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$valor_atualizado_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/ContractExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$valor_inicial_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/ContractExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\ContratoLicitacao\:\:\$valor_inicial_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/GestaoContratualService.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\GestaoContratualService\:\:criarAditivo\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Procurement/Services/GestaoContratualService.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\GestaoContratualService\:\:registrarPagamento\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Procurement/Services/GestaoContratualService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$criterio_julgamento\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Procurement/Services/LegalDeadlinesService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$modalidade\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Procurement/Services/LegalDeadlinesService.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\LegalDeadlinesService\:\:calculateMinimumOpeningDate\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Procurement/Services/LegalDeadlinesService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoPreco\:\:\$valor_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/MapaPrecosService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoPreco\:\:\$valor_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/MarketResearchService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$ano\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$criterio_julgamento\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$data_abertura\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$fundamento_legal\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$modalidade\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$numero\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$objeto\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$srp\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$valor_estimado_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$fornecedor_cnpj\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$fornecedor_nome\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$numero\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$valor_inicial_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$vigencia_fim\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoContrato\:\:\$vigencia_inicio\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Parameter \#2 \$payload of method App\\Support\\OutboxPublisher\:\:publish\(\) expects array, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Parameter \#3 \$tenantId of method App\\Support\\OutboxPublisher\:\:publish\(\) expects int\|null, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: Modules/Procurement/Services/PncpIntegrationService.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\ProcurementWorkflowService\:\:createArtefato\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Procurement/Services/ProcurementWorkflowService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoAditivo\:\:\$percentual_aditivo\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Tests/Feature/ProcurementBusinessRulesTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoLance\:\:\$valor_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Tests/Feature/ProcurementBusinessRulesTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoPreco\:\:\$motivo_outlier\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Tests/Feature/ProcurementBusinessRulesTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoPreco\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Tests/Feature/ProcurementBusinessRulesTest.php
+
+		-
+			message: '#^Property Modules\\Procurement\\Tests\\Feature\\ProcurementBusinessRulesTest\:\:\$userAprovador is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: Modules/Procurement/Tests/Feature/ProcurementBusinessRulesTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$numero\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Tests/Feature/TenantIsolationTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$objeto\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/Tests/Feature/TenantIsolationTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: Modules/Procurement/Tests/Unit/ProcurementBusinessRulesTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: Modules/Procurement/Tests/Unit/TenantIsolationTest.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:edit\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:show\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:update\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 4
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoContratosController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:edit\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:show\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:update\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 4
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:edit\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:show\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:update\(\) has parameter \$id with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 4
+			path: Modules/Procurement/app/Http/Controllers/LicitacaoLifecycleController.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:isMfaVerified\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/Procurement/app/Http/Middleware/EnsureMfaForManagers.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Http\\Middleware\\EnsureMfaForManagers\:\:handle\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Http/Middleware/EnsureMfaForManagers.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Procurement/app/Policies/LicitacaoPolicy.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Policies\\LicitacaoPolicy\:\:approve\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: Modules/Procurement/app/Policies/LicitacaoPolicy.php
+
+		-
+			message: '#^Call to an undefined method Carbon\\Carbon\:\:diffInBusinessDays\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/Procurement/app/Services/LegalDeadlines.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\MarketResearch\:\:calculatePrices\(\) has parameter \$prices with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Procurement/app/Services/MarketResearch.php
+
+		-
+			message: '#^Method Modules\\Procurement\\Services\\MarketResearch\:\:calculatePrices\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Procurement/app/Services/MarketResearch.php
+
+		-
+			message: '#^Trait Modules\\Procurement\\Traits\\TenantAware is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: Modules/Procurement/app/Traits/TenantAware.php
+
+		-
+			message: '#^Access to an undefined property Modules\\TestModule\\Models\\TestModuleItem\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/TestModule/Http/Controllers/TestModuleController.php
+
+		-
+			message: '#^Parameter \#2 \$payload of method App\\Support\\OutboxPublisher\:\:publish\(\) expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/TestModule/Http/Controllers/TestModuleController.php
+
+		-
+			message: '#^Parameter \#3 \$tenantId of method App\\Support\\OutboxPublisher\:\:publish\(\) expects int\|null, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/TestModule/Http/Controllers/TestModuleController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\TestModule\\Models\\TestModuleItem\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/TestModule/Policies/TestModuleItemPolicy.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:belongsToTenant\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: Modules/TestModule/Policies/TestModuleItemPolicy.php
+
+		-
+			message: '#^Access to an undefined property Modules\\TestModule\\Models\\TestModuleItem\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/TestModule/Tests/Feature/TenantIsolationTest.php
+
+		-
+			message: '#^Access to an undefined property Modules\\TestModule\\Models\\TestModuleItem\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/TestModule/Tests/Feature/TenantIsolationTest.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Laravel\\Sanctum\\PersonalAccessToken\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Class App\\Http\\Middleware\\Authenticate not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Kernel.php
+
+		-
+			message: '#^Class App\\Http\\Middleware\\EncryptCookies not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Kernel.php
+
+		-
+			message: '#^Class App\\Http\\Middleware\\RedirectIfAuthenticated not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Kernel.php
+
+		-
+			message: '#^Class App\\Http\\Middleware\\VerifyCsrfToken not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Kernel.php
+
+		-
+			message: '#^Call to function abort_unless\(\) with arguments false, 403 and ''Tenant inválido ou…'' will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Http/Middleware/ResolveTenant.php
+
+		-
+			message: '#^Instanceof between \(Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\)\|null and App\\Models\\Tenant will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Http/Middleware/ResolveTenant.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Middleware/ResolveTenant.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\LoginRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/LoginRequest.php
+
+		-
+			message: '#^Method App\\Models\\BudgetUnit\:\:managementUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/BudgetUnit.php
+
+		-
+			message: '#^Method App\\Models\\Department\:\:managementUnits\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Department.php
+
+		-
+			message: '#^Method App\\Models\\Department\:\:organization\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Department.php
+
+		-
+			message: '#^Method App\\Models\\ManagementUnit\:\:budgetUnits\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ManagementUnit.php
+
+		-
+			message: '#^Method App\\Models\\ManagementUnit\:\:department\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ManagementUnit.php
+
+		-
+			message: '#^Method App\\Models\\Organization\:\:departments\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Organization.php
+
+		-
+			message: '#^Method App\\Models\\Permission\:\:roles\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Permission.php
+
+		-
+			message: '#^Method App\\Models\\Role\:\:permissions\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Role.php
+
+		-
+			message: '#^Method App\\Models\\Role\:\:users\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Role.php
+
+		-
+			message: '#^Class App\\Models\\Tenant uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Tenant.php
+
+		-
+			message: '#^Method App\\Models\\Tenant\:\:modules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Tenant.php
+
+		-
+			message: '#^Method App\\Models\\Tenant\:\:users\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Tenant.php
+
+		-
+			message: '#^Method App\\Models\\TenantAnalyst\:\:analyst\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TenantAnalyst.php
+
+		-
+			message: '#^Method App\\Models\\TenantAnalyst\:\:assigner\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TenantAnalyst.php
+
+		-
+			message: '#^Method App\\Models\\TenantAnalyst\:\:tenant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TenantAnalyst.php
+
+		-
+			message: '#^Class App\\Models\\User uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:analystTenants\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:invitations\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:moduleAccesses\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:receivedInvitations\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:roles\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:rolesForTenant\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Role\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:tenants\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\UserInvitation\:\:inviter\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/UserInvitation.php
+
+		-
+			message: '#^Method App\\Models\\UserInvitation\:\:role\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/UserInvitation.php
+
+		-
+			message: '#^Method App\\Models\\UserInvitation\:\:tenant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/UserInvitation.php
+
+		-
+			message: '#^Method App\\Models\\UserModuleAccess\:\:scopeForModule\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/UserModuleAccess.php
+
+		-
+			message: '#^Method App\\Models\\UserModuleAccess\:\:tenant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/UserModuleAccess.php
+
+		-
+			message: '#^Method App\\Models\\UserModuleAccess\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/UserModuleAccess.php
+
+		-
+			message: '#^Call to static method where\(\) on an unknown class App\\Models\\Module\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Providers/AuthServiceProvider.php
+
+		-
+			message: '#^Class Modules\\Admin\\Models\\Tenant not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Providers/AuthServiceProvider.php
+
+		-
+			message: '#^Class Modules\\Admin\\Models\\User not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Providers/AuthServiceProvider.php
+
+		-
+			message: '#^Method App\\Support\\OutboxPublisher\:\:publish\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/OutboxPublisher.php
+
+		-
+			message: '#^Function current_tenant\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Support/helpers.php

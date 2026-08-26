@@ -1,0 +1,19 @@
+{
+    "name": "TestModule",
+    "alias": "testmodule",
+    "description": "M\u00f3dulo de neg\u00f3cio TestModule para a plataforma SYSGOV",
+    "priority": 10,
+    "providers": [
+        "Modules\\TestModule\\Providers\\TestModuleServiceProvider",
+        "Modules\\TestModule\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin"
+    ],
+    "menu": {
+        "label": "TestModule",
+        "icon": "Layers",
+        "order": 50,
+        "permission": "testmodule.view"
+    }
+}

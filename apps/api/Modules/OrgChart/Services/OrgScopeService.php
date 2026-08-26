@@ -26,7 +26,7 @@ final readonly class OrgScopeService
         // 1. Se for platform admin, super admin, admin do tenant, auditor ou possuir permissão org.scope_all
         if (
             (bool) $user->getAttribute('is_platform_admin')
-            || $user->hasRole(['super_admin', 'admin_tenant', 'auditor'])
+            || $this->safeHasRole($user, ['super_admin', 'admin_tenant', 'auditor'])
             || $this->safeHasPermission($user, 'org.scope_all')
         ) {
             return null; // Acesso global sem restrição
@@ -140,6 +140,25 @@ final readonly class OrgScopeService
                 'acronym' => $l->orgUnit->acronym,
             ])->values()->all(),
         ];
+    }
+
+    /**
+     * @param array<int, string>|string $roles
+     */
+    private function safeHasRole(User $user, array|string $roles): bool
+    {
+        $roles = is_array($roles) ? $roles : [$roles];
+        foreach ($roles as $role) {
+            try {
+                if ($user->hasRole($role)) {
+                    return true;
+                }
+            } catch (Throwable) {
+                continue;
+            }
+        }
+
+        return false;
     }
 
     private function safeHasPermission(User $user, string $permission): bool

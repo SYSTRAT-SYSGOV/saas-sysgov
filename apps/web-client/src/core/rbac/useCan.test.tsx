@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { AuthProvider } from '@/core/auth/AuthProvider';
 import { useCan } from './useCan';
 
@@ -13,16 +13,24 @@ describe('useCan Hook', () => {
     <AuthProvider>{children}</AuthProvider>
   );
 
-  it('deve validar permissões concedidas e negadas', () => {
+  it('deve validar permissões concedidas e negadas', async () => {
     const { result } = renderHook(() => useCan(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.userPermissions.length).toBeGreaterThan(0);
+    });
 
     expect(result.current.can('procurement.view')).toBe(true);
     expect(result.current.can('finance.view')).toBe(true);
     expect(result.current.can('admin.unauthorized_feature')).toBe(false);
   });
 
-  it('deve validar módulos ativos', () => {
+  it('deve validar módulos ativos', async () => {
     const { result } = renderHook(() => useCan(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.activeModules.length).toBeGreaterThan(0);
+    });
 
     expect(result.current.hasModule('dashboard')).toBe(true);
     expect(result.current.hasModule('procurement')).toBe(true);
@@ -30,8 +38,12 @@ describe('useCan Hook', () => {
     expect(result.current.hasModule('non_existent_module')).toBe(false);
   });
 
-  it('deve checar roles do usuário autenticado', () => {
+  it('deve checar roles do usuário autenticado', async () => {
     const { result } = renderHook(() => useCan(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.activeModules.length).toBeGreaterThan(0);
+    });
 
     expect(result.current.hasRole('Secretário de Finanças')).toBe(true);
     expect(result.current.hasRole('Super Admin')).toBe(false);

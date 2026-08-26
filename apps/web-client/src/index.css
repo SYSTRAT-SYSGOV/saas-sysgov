@@ -11,10 +11,10 @@
   }
 
   body {
-    font-family: var(--gov-font-family-base, 'rawline', helvetica, arial, sans-serif);
-    font-size: var(--font-size-scale-base, 1rem);
-    line-height: var(--font-line-height-scale-base, 1.5rem);
-    font-weight: var(--font-weight-regular, 400);
+    font-family: var(--gov-font-family-base, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    font-size: 27px;
+    line-height: 36px;
+    font-weight: 700;
     font-style: normal;
     background-color: var(--gov-bg-page);
     color: var(--gov-text-primary);
@@ -76,7 +76,7 @@
     font-weight: 700;
   }
 
-  /* Dados Técnicos OBRIGATÓRIOS em JetBrains Mono */
+  /* Dados Técnicos também em Inter */
   code, kbd, samp, pre, .font-mono, .tabular-nums {
     font-family: var(--gov-font-family-mono) !important;
   }

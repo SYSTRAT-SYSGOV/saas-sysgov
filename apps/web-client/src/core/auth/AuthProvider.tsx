@@ -24,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const STORAGE_KEY = 'sysgov_auth_state';
 const TOKEN_KEY = 'sysgov_auth_token';
 const TENANT_ID_KEY = 'sysgov_active_tenant_id';
+const DEMO_TOKEN_FRAGMENT = 'abc123demo-sysgov-2026';
 
 // Default mock data conforming exactly to the backend login contract
 const DEMO_RESPONSE: LoginResponse = {
@@ -85,7 +86,7 @@ const DEMO_RESPONSE: LoginResponse = {
       },
     },
   ],
-  modules: ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios'],
+  modules: ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users'],
   permissions: [
     'dashboard.view',
     'org.view',
@@ -102,6 +103,7 @@ const DEMO_RESPONSE: LoginResponse = {
     'pedagogico.view',
     'rh.view',
     'cemiterios.view',
+    'users.manage',
   ],
   navigation: [
     {
@@ -121,6 +123,7 @@ const DEMO_RESPONSE: LoginResponse = {
       icon: 'Building2',
       items: [
         { id: 'nav-org', label: 'Organograma Municipal', icon: 'Network', route: '/organograma', shortcut: 'O', badge: null, module: 'org', permission: 'org.view' },
+        { id: 'nav-usr', label: 'Usuários & Acessos', icon: 'Users', route: '/usuarios', shortcut: 'U', badge: null, module: 'users', permission: 'users.manage' },
         { id: 'nav-ped', label: 'Módulo Pedagógico', icon: 'GraduationCap', route: '/pedagogico', shortcut: 'E', badge: null, module: 'pedagogico', permission: 'pedagogico.view' },
         { id: 'nav-rh', label: 'Recursos Humanos / Folha', icon: 'Users', route: '/rh', shortcut: 'R', badge: null, module: 'rh', permission: 'rh.view' },
         { id: 'nav-cem', label: 'Gestão de Cemitérios', icon: 'Cross', route: '/cemiterios', shortcut: 'G', badge: null, module: 'cemiterios', permission: 'cemiterios.view' },
@@ -141,11 +144,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Load initial state from LocalStorage
   useEffect(() => {
-    try {
-      const storedToken = localStorage.getItem(TOKEN_KEY);
-      const storedState = localStorage.getItem(STORAGE_KEY);
+    const storedToken = localStorage.getItem(TOKEN_KEY);
+    const storedState = localStorage.getItem(STORAGE_KEY);
 
-      if (storedToken && storedState) {
+    if (storedToken && storedState) {
+      // Sessão de demonstração antiga (backend ficou fora do ar em algum momento).
+      // Com o backend no ar, o token demo é inválido (401) — descarta e vai para o login.
+      if (storedToken.includes(DEMO_TOKEN_FRAGMENT)) {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(TENANT_ID_KEY);
+        window.location.href = '/login';
+        return;
+      }
+
+      try {
         const parsed: LoginResponse = JSON.parse(storedState);
         setToken(parsed.token || storedToken);
         setUser(parsed.user || null);
@@ -154,15 +167,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setModules(parsed.modules || []);
         setPermissions(parsed.permissions || []);
         setNavigation(parsed.navigation || []);
-      } else {
-        saveSession(DEMO_RESPONSE);
+      } catch (e) {
+        console.error('Erro ao carregar sessão do storage:', e);
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(STORAGE_KEY);
+        setIsLoading(false);
+        return;
       }
-    } catch (e) {
-      console.error('Erro ao carregar sessão do storage:', e);
-      saveSession(DEMO_RESPONSE);
-    } finally {
-      setIsLoading(false);
+
+      // Backend no ar: valida o token armazenado. Se ele foi invalidado
+      // (ex.: migrate:fresh --seed apagou os personal_access_tokens), redireciona
+      // para /login e limpa a sessão em vez de deixar o usuário preso com um token morto.
+      apiClient
+        .get('/auth/me', { timeout: 4000 })
+        .then(() => setIsLoading(false))
+        .catch((err: any) => {
+          if (err.response?.status === 401) {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(TENANT_ID_KEY);
+            window.location.href = '/login';
+          } else {
+            setIsLoading(false);
+          }
+        });
+      return;
     }
+
+    // Sem sessão armazenada: só entra em modo demonstração quando o backend
+    // estiver inacessível. Com o backend no ar, o usuário vai para o login —
+    // evita o bounce infinito causado pelo token de demonstração (401 → /login).
+    apiClient
+      .get('/health', { timeout: 4000 })
+      .then(() => setIsLoading(false))
+      .catch(() => {
+        saveSession(DEMO_RESPONSE);
+        setIsLoading(false);
+      });
   }, []);
 
   const saveSession = (data: LoginResponse) => {
@@ -188,7 +229,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = response.data;
       saveSession(data);
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      // Erro HTTP (ex.: 401 credenciais inválidas, 422 validação): não cai em demo
+      if (error.response) {
+        throw error;
+      }
+      // Erro de rede (backend inacessível): fallback para demonstração
       console.warn('Backend endpoint indisponível, aplicando fallback local:', error);
       const selectedTenant = DEMO_RESPONSE.tenants.find(t => t.slug === credentials.tenantSlug) || DEMO_RESPONSE.tenant;
       const customResponse: LoginResponse = {

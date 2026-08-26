@@ -56,4 +56,10 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     component: lazy(() => import('@/modules/cemiterios/CemiteriosModule')),
     requiredPermission: 'cemiterios.view',
   },
+  users: {
+    id: 'users',
+    name: 'Usuários & Acessos',
+    component: lazy(() => import('@/modules/access/AccessManagement')),
+    requiredPermission: 'users.manage',
+  },
 };

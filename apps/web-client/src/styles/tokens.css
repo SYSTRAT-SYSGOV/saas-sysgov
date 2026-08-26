@@ -4,8 +4,8 @@
        TIPOGRAFIA OFICIAL PADRÃO DIGITAL DE GOVERNO (DS GOV.BR v3)
        https://www.gov.br/ds/fundamentos-visuais/tipografia?tab=codigos
        ========================================================================== */
-    --gov-font-family-base: 'rawline', helvetica, arial, sans-serif;
-    --gov-font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --gov-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --gov-font-family-mono: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
 
     /* Escala de Pesos Oficiais (Font Weights) */
     --font-weight-light: 300;

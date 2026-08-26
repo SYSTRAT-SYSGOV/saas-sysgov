@@ -1,0 +1,14 @@
+{
+  "name": "Procurement",
+  "alias": "procurement",
+  "description": "Ciclo completo de licitações, contratações públicas (Lei 14.133/2021), disputa e execução contratual",
+  "priority": 10,
+  "providers": ["Modules\\Procurement\\Providers\\ProcurementServiceProvider"],
+  "requires": [],
+  "menu": {
+    "label": "Licitações & Editais",
+    "icon": "FileText",
+    "order": 20,
+    "permission": "procurement.view"
+  }
+}

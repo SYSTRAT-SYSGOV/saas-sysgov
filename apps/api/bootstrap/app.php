@@ -13,6 +13,7 @@ use Modules\Admin\Providers\AdminServiceProvider;
 use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\OrgChart\Providers\OrgChartServiceProvider;
+use Modules\Procurement\Providers\ProcurementServiceProvider;
 use Laravel\Tinker\TinkerServiceProvider;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -26,12 +27,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ContractsServiceProvider::class,
         FinanceServiceProvider::class,
         OrgChartServiceProvider::class,
+        ProcurementServiceProvider::class,
         TinkerServiceProvider::class,
     ])
     ->withCommands([MakeModule::class, ProcessOutbox::class])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
-        $middleware->alias(['tenant' => ResolveTenant::class, 'platform-admin' => EnsurePlatformAdmin::class]);
+        $middleware->alias([
+            'tenant' => ResolveTenant::class,
+            'platform-admin' => EnsurePlatformAdmin::class,
+            'mfa' => \Modules\Admin\Http\Middleware\EnsureMfa::class,
+            'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {})
     ->create();

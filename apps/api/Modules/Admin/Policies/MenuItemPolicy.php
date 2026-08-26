@@ -14,7 +14,8 @@ final class MenuItemPolicy
         if (!$item->permission) {
             return true;
         }
-        return $user->can($item->permission);
+        // Usa o sistema de permissões RBAC (hasPermission), não o Gate de abilities do Laravel.
+        return $user->hasPermission($item->permission);
     }
 
     public function viewAny(User $user): bool { return $user->is_platform_admin; }

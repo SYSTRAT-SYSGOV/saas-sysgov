@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save, User, Mail, Shield, Building2 } from 'lucide-react';
-import { User as UserType } from '../types';
+import { User as UserType } from './types';
 
 interface Props {
   user: UserType;

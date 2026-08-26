@@ -18,6 +18,7 @@ use Modules\OrgChart\Http\Resources\OrgUnitTreeResource;
 use Modules\OrgChart\Models\OrgUnit;
 use Modules\OrgChart\Services\OrgExportService;
 use Modules\OrgChart\Services\OrgScopeService;
+use Modules\OrgChart\Services\OrgSeedService;
 use Modules\OrgChart\Services\OrgTreeService;
 use Modules\OrgChart\Services\OrgUserService;
 
@@ -27,7 +28,8 @@ final class ClientOrgChartController extends Controller
         private readonly OrgTreeService $treeService,
         private readonly OrgUserService $userService,
         private readonly OrgScopeService $scopeService,
-        private readonly OrgExportService $exportService
+        private readonly OrgExportService $exportService,
+        private readonly OrgSeedService $seedService,
     ) {}
 
     /**
@@ -37,7 +39,6 @@ final class ClientOrgChartController extends Controller
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', OrgUnit::class);
-
         $rootId = $request->query('root_id') ? (int) $request->query('root_id') : null;
         $onlyActive = $request->boolean('active', true);
         $asFlat = $request->boolean('flat', false);
@@ -61,6 +62,39 @@ final class ClientOrgChartController extends Controller
         return response()->json([
             'data' => OrgUnitTreeResource::collection($tree),
         ]);
+    }
+
+    /**
+     * Semeia a estrutura organizacional mínima do município (Gabinete + Secretarias).
+     * POST /api/org-units/seed
+     * Autorizado para admin_tenant, super_admin ou quem tem permissão org.admin.seed.
+     */
+    public function seed(): JsonResponse
+    {
+        $user = request()->user();
+        $tenant = app(\App\Support\TenantContext::class)->get();
+
+        abort_unless($user !== null, 401);
+
+        if (!$user->is_platform_admin && !$user->hasRole('admin_tenant') && !$user->hasPermission('org.admin.seed')) {
+            abort(403, 'Somente o administrador do município pode inicializar o organograma.');
+        }
+
+        if ($this->seedService->hasRoot()) {
+            return response()->json([
+                'message' => 'O município já possui um organograma.',
+                'data' => OrgUnitTreeResource::collection($this->treeService->getTree()),
+            ]);
+        }
+
+        $this->seedService->seedDefaultMunicipalStructure($tenant);
+
+        $tree = $this->treeService->getTree();
+
+        return response()->json([
+            'message' => 'Estrutura organizacional inicial semeada com sucesso.',
+            'data' => OrgUnitTreeResource::collection($tree),
+        ], 201);
     }
 
     /**

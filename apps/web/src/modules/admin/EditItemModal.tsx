@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save, Tag, Hash, Link as LinkIcon, Command } from 'lucide-react';
-import { MenuItem } from '../types';
+import { MenuItem } from './types';
 
 interface Props {
   item: MenuItem;

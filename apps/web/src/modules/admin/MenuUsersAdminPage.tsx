@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Layers, Users, Sparkles, FolderTree } from 'lucide-react';
+import { Layers, Users, ShieldCheck, KeyRound, MailPlus, FolderTree, Sparkles } from 'lucide-react';
 import { adminApi } from './api';
-import { MenuGroup, MenuItem, User } from './types';
+import { MenuGroup, MenuItem } from './types';
 import { MenuManager } from './MenuManager';
 import { UserManagement } from './UserManagement';
+import { RoleManagement } from './RoleManagement';
+import { PermissionManagement } from './PermissionManagement';
+import { InvitationsPage } from './InvitationsPage';
 import { EditItemModal } from './EditItemModal';
-import { EditUserModal } from './EditUserModal';
-import { Tabs, Tab } from '../../components/admin/AdminTabs';
+import { Tabs } from '../../components/admin/AdminTabs';
 
 interface Props {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
-  initialTab?: 'menus' | 'users';
+  initialTab?: string;
 }
 
 const MOCK_MENUS: MenuGroup[] = [
@@ -60,21 +62,10 @@ const MOCK_MENUS: MenuGroup[] = [
   },
 ];
 
-const MOCK_USERS: User[] = [
-  {
-    id: 1, name: 'Administrador SYSGOV', email: 'admin@sysgov.local',
-    is_platform_admin: true, created_at: '2026-08-23T18:08:51.000000Z',
-    tenants: [{ id: 1, name: 'Prefeitura de Araucária', slug: 'araucaria' }],
-  },
-];
-
-export const MenuUsersAdminPage: React.FC<Props> = ({ onAddToast, initialTab = 'menus' }) => {
-  const [tab, setTab] = useState<Tab>(initialTab);
+export const MenuUsersAdminPage: React.FC<Props> = ({ onAddToast, initialTab = 'users' }) => {
+  const [tab, setTab] = useState<string>(initialTab);
   const [groups, setGroups] = useState<MenuGroup[]>(MOCK_MENUS);
-  const [users, setUsers] = useState<User[]>(MOCK_USERS);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(1);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   useEffect(() => {
     refresh();
@@ -82,11 +73,10 @@ export const MenuUsersAdminPage: React.FC<Props> = ({ onAddToast, initialTab = '
 
   const refresh = async () => {
     try {
-      const [g, u] = await Promise.all([adminApi.getMenus(), adminApi.getUsers()]);
+      const g = await adminApi.getMenus();
       if (Array.isArray(g) && g.length > 0) setGroups(g);
-      if (Array.isArray(u) && u.length > 0) setUsers(u);
     } catch (e) {
-      console.warn('Usando mock data:', e);
+      console.warn('Usando mock data de menus:', e);
     }
   };
 
@@ -102,7 +92,7 @@ export const MenuUsersAdminPage: React.FC<Props> = ({ onAddToast, initialTab = '
       });
       await Promise.all(updates);
     } catch {
-      /* offline: dados locais já foram atualizados */
+      /* offline */
     }
   };
 
@@ -120,12 +110,6 @@ export const MenuUsersAdminPage: React.FC<Props> = ({ onAddToast, initialTab = '
     onAddToast({ type: 'success', title: 'Item removido', message: i.label });
   };
 
-  const handleDeleteUser = (u: User) => {
-    adminApi.deleteUser(u.id).catch(() => undefined);
-    setUsers((prev) => prev.filter((item) => item.id !== u.id));
-    onAddToast({ type: 'success', title: 'Usuário removido', message: u.name });
-  };
-
   const totalItems = groups.reduce((acc, g) => acc + g.items.length, 0);
   const activeItems = groups.reduce((acc, g) => acc + g.items.filter((i) => i.is_active).length, 0);
   const withPermission = groups.reduce((acc, g) => acc + g.items.filter((i) => i.permission).length, 0);
@@ -137,7 +121,7 @@ export const MenuUsersAdminPage: React.FC<Props> = ({ onAddToast, initialTab = '
           { label: 'Grupos de Menu', value: groups.length, icon: FolderTree, color: 'text-indigo-500' },
           { label: 'Total de Itens', value: totalItems, icon: Layers, color: 'text-emerald-500' },
           { label: 'Itens Ativos', value: activeItems, icon: Sparkles, color: 'text-amber-500' },
-          { label: 'Com Permissões', value: withPermission, icon: Users, color: 'text-cyan-500' },
+          { label: 'Com Permissões', value: withPermission, icon: ShieldCheck, color: 'text-cyan-500' },
         ].map((s) => (
           <div key={s.label} className="mod-card p-4 flex items-center justify-between">
             <div>
@@ -149,10 +133,42 @@ export const MenuUsersAdminPage: React.FC<Props> = ({ onAddToast, initialTab = '
         ))}
       </div>
 
-      <Tabs value={tab} onChange={setTab} items={[
-        { id: 'menus', label: 'Gerenciamento de Menus', count: groups.length },
-        { id: 'users', label: 'Gestão de Usuários', count: users.length },
-      ]} />
+      <div className="mod-card overflow-hidden border-b mod-border">
+        <div className="flex">
+          {[
+            { id: 'users', label: 'Usuários', icon: Users },
+            { id: 'roles', label: 'Roles', icon: KeyRound },
+            { id: 'permissions', label: 'Permissões', icon: ShieldCheck },
+            { id: 'invitations', label: 'Convites', icon: MailPlus },
+            { id: 'menus', label: 'Menus', count: groups.length },
+          ].map((it) => {
+            const isActive = tab === it.id;
+            return (
+              <button
+                key={it.id}
+                onClick={() => setTab(it.id)}
+                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  isActive
+                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                    : 'border-transparent mod-text-secondary hover:mod-text-primary'
+                }`}
+              >
+                {it.label}
+                {typeof it.count === 'number' && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 mod-text-secondary">
+                    {it.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {tab === 'users' && <UserManagement />}
+      {tab === 'roles' && <RoleManagement />}
+      {tab === 'permissions' && <PermissionManagement />}
+      {tab === 'invitations' && <InvitationsPage onAddToast={onAddToast} />}
 
       {tab === 'menus' && (
         <MenuManager
@@ -179,16 +195,6 @@ export const MenuUsersAdminPage: React.FC<Props> = ({ onAddToast, initialTab = '
         />
       )}
 
-      {tab === 'users' && (
-        <UserManagement
-          users={users}
-          onCreate={() => onAddToast({ type: 'info', title: 'Novo Usuário', message: 'Modal de provisionamento.' })}
-          onEdit={(u) => setEditingUser(u)}
-          onDelete={handleDeleteUser}
-          currentUserId={currentUserId}
-        />
-      )}
-
       {editingItem && (
         <EditItemModal
           item={editingItem}
@@ -201,19 +207,6 @@ export const MenuUsersAdminPage: React.FC<Props> = ({ onAddToast, initialTab = '
             adminApi.updateItem(item.id, item as any).catch(() => undefined);
             setEditingItem(null);
             onAddToast({ type: 'success', title: 'Item atualizado', message: item.label });
-          }}
-        />
-      )}
-
-      {editingUser && (
-        <EditUserModal
-          user={editingUser}
-          onClose={() => setEditingUser(null)}
-          onSave={(user) => {
-            setUsers((prev) => prev.map(u => u.id === user.id ? user : u));
-            adminApi.updateUser(user.id, user as any).catch(() => undefined);
-            setEditingUser(null);
-            onAddToast({ type: 'success', title: 'Usuário atualizado', message: user.name });
           }}
         />
       )}

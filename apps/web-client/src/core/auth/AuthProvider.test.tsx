@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthProvider';
 
 describe('AuthProvider', () => {
@@ -13,10 +13,14 @@ describe('AuthProvider', () => {
     <AuthProvider>{children}</AuthProvider>
   );
 
-  it('deve inicializar com o estado padrão/demonstração quando não há storage', () => {
+  it('deve inicializar com o estado padrão/demonstração quando não há storage', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    expect(result.current.isAuthenticated).toBe(true);
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+
     expect(result.current.user?.name).toBe('Carlos Eduardo Silveira');
     expect(result.current.tenant?.slug).toBe('araucaria');
     expect(result.current.tenants.length).toBeGreaterThan(0);
@@ -26,6 +30,10 @@ describe('AuthProvider', () => {
   it('deve alternar o tenant ativo via switchTenant', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
 
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
     await act(async () => {
       await result.current.switchTenant(2);
     });
@@ -34,8 +42,12 @@ describe('AuthProvider', () => {
     expect(result.current.tenant?.slug).toBe('camara-araucaria');
   });
 
-  it('deve limpar os dados ao executar logout', () => {
+  it('deve limpar os dados ao executar logout', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
 
     // Mock seguro para window.location.href
     delete (window as any).location;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, ReactNode } from 'react';
 import { useAuth } from '@/core/auth/useAuth';
 import { Tenant, TenantSettings } from '@/types/navigation';
 import { applyWhiteLabelTheme } from '@/config/theme';
@@ -17,12 +17,16 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { tenant, tenants, switchTenant } = useAuth();
 
-  const settings: TenantSettings = tenant?.settings || {
-    customPrimaryColor: '#1351B4',
-    title: 'Portal de Gestão',
-    subtitle: tenant?.name || 'Prefeitura de Araucária',
-    hideProviderBranding: false,
-  };
+  const settings: TenantSettings = useMemo<TenantSettings>(
+    () =>
+      tenant?.settings || {
+        customPrimaryColor: '#1351B4',
+        title: 'Portal de Gestão',
+        subtitle: tenant?.name || 'Prefeitura de Araucária',
+        hideProviderBranding: false,
+      },
+    [tenant]
+  );
 
   useEffect(() => {
     if (tenant) {

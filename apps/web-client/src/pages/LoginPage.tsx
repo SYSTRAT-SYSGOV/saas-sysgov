@@ -18,9 +18,9 @@ export const LoginPage: React.FC = () => {
   const { login, loginWithSSO } = useAuth();
   const { isStandardBranding } = useTenant();
 
-  const [email, setEmail] = useState('carlos.silveira@araucaria.pr.gov.br');
-  const [password, setPassword] = useState('••••••••');
-  const [selectedTenantSlug, setSelectedTenantSlug] = useState('araucaria');
+  const [email, setEmail] = useState('admin@araucaria.pr.gov.br');
+  const [password, setPassword] = useState('Araucaria@123456');
+  const [selectedTenantSlug, setSelectedTenantSlug] = useState('araucaria-pr');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -106,7 +106,7 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setSelectedTenantSlug(e.target.value)}
                 className="w-full px-3 py-2 bg-gov-surface border border-gov-border rounded-md text-xs text-gov-text-primary focus:outline-none focus:border-gov-primary focus:ring-2 focus:ring-gov-primary/20 transition"
               >
-                <option value="araucaria">Prefeitura Municipal de Araucária (PR)</option>
+                <option value="araucaria-pr">Prefeitura Municipal de Araucária (PR)</option>
                 <option value="camara-araucaria">Câmara Municipal de Araucária (PR)</option>
                 <option value="sjp">Prefeitura de São José dos Pinhais (PR)</option>
               </select>

@@ -87,11 +87,18 @@ final readonly class OrgUnitPolicy
 
     private function safeHasRole(User $user, array|string $roles): bool
     {
-        try {
-            return $user->hasRole($roles);
-        } catch (Throwable) {
-            return false;
+        $roles = is_array($roles) ? $roles : [$roles];
+        foreach ($roles as $role) {
+            try {
+                if ($user->hasRole($role)) {
+                    return true;
+                }
+            } catch (Throwable) {
+                continue;
+            }
         }
+
+        return false;
     }
 
     private function safeHasPermission(User $user, string $permission): bool

@@ -17,3 +17,14 @@ apps/api/storage/framework/phpstan/
 *.log
 node_modules
 apps/web/tsconfig.tsbuildinfo
+
+# Scripts temporários de desenvolvimento
+PROMPT_*.md
+apps/api/create_*.php
+apps/api/register_*.php
+apps/api/verify_*.php
+apps/api/debug_*.php
+apps/api/list_*.php
+
+# Rascunhos duplicados do módulo Procurement
+apps/api/Modules/Procurement/app/

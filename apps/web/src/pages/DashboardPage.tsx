@@ -21,11 +21,11 @@ import { ModuleContratos } from '../components/ModuleContratos';
 import { ModuleHelpdesk } from '../components/ModuleHelpdesk';
 import { ModuleContabilidade } from '../components/ModuleContabilidade';
 import { MenuUsersAdminPage } from '../modules/admin/MenuUsersAdminPage';
+import { UserAccessModule } from '../modules/admin/UserAccessModule';
 
 // Universal Admin Views
 import { AdminDashboardOverview } from '../components/admin/AdminDashboardOverview';
 import { AdminAnalyticsView } from '../components/admin/AdminAnalyticsView';
-import { AdminUserManagement } from '../components/admin/AdminUserManagement';
 import { AdminTenantManagement } from '../components/admin/AdminTenantManagement';
 import { AdminGenericDataTable } from '../components/admin/AdminGenericDataTable';
 import { AdminFinancialBilling } from '../components/admin/AdminFinancialBilling';
@@ -204,7 +204,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         )}
 
         {activeTab === 'admin_users' && (
-          <AdminUserManagement onAddToast={onAddToast} />
+          <UserAccessModule onAddToast={onAddToast} />
         )}
 
         {activeTab === 'admin_tenants' && (

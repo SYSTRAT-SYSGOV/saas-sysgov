@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 final class MonitoringController
 {
@@ -17,6 +18,9 @@ final class MonitoringController
     {
         $this->authorize('viewAny', \App\Models\Tenant::class);
 
+        $queueSize = Schema::hasTable('jobs') ? DB::table('jobs')->count() : 0;
+        $failedJobs = Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->count() : 0;
+
         return response()->json([
             'generated_at' => now()->toISOString(),
             'database' => ['status' => 'ok'],
@@ -24,10 +28,10 @@ final class MonitoringController
                 'tenants_active' => DB::table('tenants')->where('status', 'active')->count(),
                 'tenants_total' => DB::table('tenants')->count(),
                 'users' => DB::table('users')->count(),
-                'modules_enabled' => DB::table('modules')->where('enabled', true)->count(),
-                'contracts_active' => DB::table('contracts')->where('status', 'active')->count(),
-                'saas_contracts_active' => DB::table('saas_contracts')->where('status', 'active')->count(),
-                'saas_invoices_overdue' => DB::table('saas_invoices')->where('status', 'overdue')->count(),
+                'modules_enabled' => Schema::hasTable('modules') ? DB::table('modules')->where('enabled', true)->count() : 0,
+                'contracts_active' => Schema::hasTable('contracts') ? DB::table('contracts')->where('status', 'active')->count() : 0,
+                'saas_contracts_active' => Schema::hasTable('saas_contracts') ? DB::table('saas_contracts')->where('status', 'active')->count() : 0,
+                'saas_invoices_overdue' => Schema::hasTable('saas_invoices') ? DB::table('saas_invoices')->where('status', 'overdue')->count() : 0,
             ],
             'outbox' => [
                 'pending' => DB::table('outbox_events')->where('status', 'pending')->count(),
@@ -35,8 +39,8 @@ final class MonitoringController
                 'failed' => DB::table('outbox_events')->where('status', 'failed')->count(),
             ],
             'queues' => [
-                'size' => DB::table('jobs')->count(),
-                'failed' => DB::table('failed_jobs')->count(),
+                'size' => $queueSize,
+                'failed' => $failedJobs,
             ],
         ]);
     }
@@ -46,14 +50,14 @@ final class MonitoringController
         $this->authorize('viewAny', \App\Models\Tenant::class);
 
         $rows = DB::table('tenants')
-            ->leftJoin('users', 'users.tenant_id', '=', 'tenants.id')
+            ->leftJoin('tenant_user', 'tenant_user.tenant_id', '=', 'tenants.id')
             ->leftJoin('saas_contracts', 'saas_contracts.tenant_id', '=', 'tenants.id')
             ->leftJoin('audit_logs', 'audit_logs.tenant_id', '=', 'tenants.id')
             ->select(
                 'tenants.id',
                 'tenants.name',
                 'tenants.status',
-                DB::raw('COUNT(DISTINCT users.id) AS users_count'),
+                DB::raw('COUNT(DISTINCT tenant_user.user_id) AS users_count'),
                 DB::raw('COUNT(DISTINCT saas_contracts.id) AS contracts_count'),
                 DB::raw('COUNT(DISTINCT audit_logs.id) AS audit_events_count')
             )

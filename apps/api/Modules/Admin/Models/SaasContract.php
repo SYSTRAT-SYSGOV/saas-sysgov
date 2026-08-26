@@ -6,15 +6,23 @@ namespace Modules\Admin\Models;
 
 use App\Models\Concerns\TenantAware;
 use App\Models\Tenant;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class SaasContract extends Model
 {
+    use HasFactory;
     use TenantAware;
 
     protected $table = 'saas_contracts';
+
+    protected static function newFactory(): Factory
+    {
+        return \Modules\Admin\Database\Factories\SaasContractFactory::new();
+    }
 
     protected $fillable = [
         'tenant_id',

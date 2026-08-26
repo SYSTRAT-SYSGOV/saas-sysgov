@@ -18,8 +18,23 @@ final readonly class OrgTreeService
     public function __construct(
         private AuditLogger $audit,
         private OutboxPublisher $outbox,
-        private TenantContext $tenantContext
+        private TenantContext $tenantContext,
     ) {}
+
+    private function treeCacheKey(?int $rootId = null, bool $onlyActive = true): string
+    {
+        return 'org:tree:'.$this->tenantContext->id().':'.($rootId ?? 0).':'.($onlyActive ? '1' : '0');
+    }
+
+    /**
+     * Invalida o cache da árvore do tenant atual após qualquer mutação.
+     */
+    private function clearTreeCache(): void
+    {
+        $tenantId = $this->tenantContext->id();
+        \Illuminate\Support\Facades\Cache::forget("org:tree:{$tenantId}:0:1");
+        \Illuminate\Support\Facades\Cache::forget("org:tree:{$tenantId}:0:0");
+    }
 
     /**
      * Cria uma nova unidade organizacional calculando level e path materializado em transação.
@@ -114,6 +129,8 @@ final readonly class OrgTreeService
                 ]
             );
 
+            $this->clearTreeCache();
+
             return $unit;
         });
     }
@@ -164,6 +181,8 @@ final readonly class OrgTreeService
                     'code' => $unit->code,
                 ]
             );
+
+            $this->clearTreeCache();
 
             return $unit;
         });
@@ -261,6 +280,8 @@ final readonly class OrgTreeService
                 ]
             );
 
+            $this->clearTreeCache();
+
             return $unit->fresh();
         });
     }
@@ -292,6 +313,8 @@ final readonly class OrgTreeService
                     ['is_active' => false, 'reason' => $reason]
                 );
 
+                $this->clearTreeCache();
+
                 return true;
             }
 
@@ -312,6 +335,8 @@ final readonly class OrgTreeService
                 ['id' => $unit->id, 'name' => $unit->name]
             );
 
+            $this->clearTreeCache();
+
             return true;
         });
     }
@@ -323,37 +348,39 @@ final readonly class OrgTreeService
      */
     public function getTree(?int $rootId = null, bool $onlyActive = true): array
     {
-        $query = OrgUnit::query()
-            ->with(['users', 'parent'])
-            ->orderBy('level')
-            ->orderBy('order')
-            ->orderBy('name');
-
-        if ($onlyActive) {
-            $query->where('is_active', true);
-        }
-
-        if ($rootId !== null) {
-            /** @var OrgUnit|null $root */
-            $root = OrgUnit::find($rootId);
-            if ($root === null) {
-                return [];
-            }
-            $units = OrgUnit::query()
-                ->where(function ($q) use ($root): void {
-                    $q->where('id', $root->id)
-                        ->orWhere('path', 'like', "{$root->path}.%");
-                })
-                ->when($onlyActive, fn($q) => $q->where('is_active', true))
-                ->with(['users'])
+        return \Illuminate\Support\Facades\Cache::remember($this->treeCacheKey($rootId, $onlyActive), 300, function () use ($rootId, $onlyActive): array {
+            $query = OrgUnit::query()
+                ->with(['users', 'parent'])
                 ->orderBy('level')
                 ->orderBy('order')
-                ->get();
-        } else {
-            $units = $query->get();
-        }
+                ->orderBy('name');
 
-        return $this->buildNestedTree($units);
+            if ($onlyActive) {
+                $query->where('is_active', true);
+            }
+
+            if ($rootId !== null) {
+                /** @var OrgUnit|null $root */
+                $root = OrgUnit::find($rootId);
+                if ($root === null) {
+                    return [];
+                }
+                $units = OrgUnit::query()
+                    ->where(function ($q) use ($root): void {
+                        $q->where('id', $root->id)
+                            ->orWhere('path', 'like', "{$root->path}.%");
+                    })
+                    ->when($onlyActive, fn($q) => $q->where('is_active', true))
+                    ->with(['users'])
+                    ->orderBy('level')
+                    ->orderBy('order')
+                    ->get();
+            } else {
+                $units = $query->get();
+            }
+
+            return $this->buildNestedTree($units);
+        });
     }
 
     /**

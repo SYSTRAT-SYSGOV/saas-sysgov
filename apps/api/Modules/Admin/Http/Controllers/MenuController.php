@@ -23,7 +23,7 @@ final class MenuController
 
     public function navigation(Request $request): JsonResponse
     {
-        $tenantId = $this->tenants->current()?->getKey();
+        $tenantId = $this->tenants->hasTenant() ? $this->tenants->id() : null;
         $user = $request->user();
         return response()->json($this->service->buildNavigation($tenantId, $user));
     }

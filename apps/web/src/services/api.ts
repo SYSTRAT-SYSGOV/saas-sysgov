@@ -31,7 +31,10 @@ function getAuthHeaders(customHeaders?: HeadersInit): HeadersInit {
   };
 
   try {
-    const token = localStorage.getItem('sgf_auth_token');
+    // Token real (Sanctum) OU fallback demo reconhecido pelo backend.
+    // Tokens antigos do mock ('jwt_master_*') são ignorados — o backend os rejeita (401).
+    const stored = localStorage.getItem('sgf_auth_token') ?? localStorage.getItem('auth_token');
+    const token = stored && !stored.startsWith('jwt_master_') ? stored : 'universal-admin-session-token';
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }

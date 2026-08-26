@@ -57,6 +57,7 @@ export const AppRouter: React.FC = () => {
   const PedagogicoComp = MODULE_REGISTRY.pedagogico.component;
   const RhComp = MODULE_REGISTRY.rh.component;
   const CemiteriosComp = MODULE_REGISTRY.cemiterios.component;
+  const UsersComp = MODULE_REGISTRY.users.component;
 
   return (
     <Routes>
@@ -135,6 +136,14 @@ export const AppRouter: React.FC = () => {
           element={
             <ModuleRouteGuard moduleId="cemiterios">
               <CemiteriosComp />
+            </ModuleRouteGuard>
+          }
+        />
+        <Route
+          path="usuarios"
+          element={
+            <ModuleRouteGuard moduleId="users">
+              <UsersComp />
             </ModuleRouteGuard>
           }
         />

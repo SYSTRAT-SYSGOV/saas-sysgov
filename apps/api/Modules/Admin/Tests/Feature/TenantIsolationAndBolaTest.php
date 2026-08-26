@@ -35,7 +35,7 @@ final class TenantIsolationAndBolaTest extends TestCase
         $tenantA = Tenant::factory()->create();
         $tenantB = Tenant::factory()->create();
 
-        $user = User::factory()->create(['tenant_id' => $tenantA->id, 'is_platform_admin' => false]);
+        $user = User::factory()->create(['is_platform_admin' => false]);
         $contractB = SaasContract::factory()->create(['tenant_id' => $tenantB->id]);
 
         $response = $this->actingAs($user)->getJson("/api/admin/saas-contracts/{$contractB->id}");

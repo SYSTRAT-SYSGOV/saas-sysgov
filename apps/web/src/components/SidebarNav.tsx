@@ -115,7 +115,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         id: String(grp.id),
         title: grp.name,
         items: grp.items.map((item) => ({
-          id: String(item.id),
+          // O id do item é a ROTA/tab (ex.: 'admin_users') — o DashboardPage troca por ele.
+          id: item.route || String(item.id),
           label: item.label,
           shortLabel: item.label.substring(0, 8),
           icon: ICON_MAP[item.icon] || LayoutDashboard,

@@ -30,7 +30,7 @@ final class AuthorizationTest extends TestCase
 
         $this->actingAs($admin, 'sanctum')->postJson('/api/admin/tenants', [
             'name' => 'Tenant Admin', 'slug' => 'tenant-admin', 'type' => 'prefeitura', 'status' => 'active',
-        ])->assertCreated()->assertJsonPath('slug', 'tenant-admin');
+        ])->assertCreated()->assertJsonPath('data.slug', 'tenant-admin');
     }
 
     public function test_policies_require_platform_admin(): void

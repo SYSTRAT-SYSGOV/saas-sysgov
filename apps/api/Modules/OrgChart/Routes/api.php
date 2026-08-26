@@ -9,6 +9,7 @@ Route::prefix('api/org-units')
     ->middleware(['auth:sanctum', 'tenant'])
     ->group(function (): void {
         Route::get('/scope', [ClientOrgChartController::class, 'scope']);
+        Route::post('/seed', [ClientOrgChartController::class, 'seed']);
         Route::post('/export', [ClientOrgChartController::class, 'export']);
         Route::get('/', [ClientOrgChartController::class, 'index']);
         Route::post('/', [ClientOrgChartController::class, 'store']);

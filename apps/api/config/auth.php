@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'defaults' => ['guard' => 'web', 'passwords' => 'users'],
+    'defaults' => ['guard' => 'sanctum', 'passwords' => 'users'],
     'guards' => [
         'web' => ['driver' => 'token', 'provider' => 'users'],
         'sanctum' => ['driver' => 'sanctum', 'provider' => 'users'],
