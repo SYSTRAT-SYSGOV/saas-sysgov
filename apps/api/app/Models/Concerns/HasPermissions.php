@@ -73,6 +73,24 @@ trait HasPermissions
         });
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Permission>
+     */
+    public function permissionsForSystrat(): Collection
+    {
+        $cacheKey = "user:{$this->id}:permissions:systrat";
+        return Cache::remember($cacheKey, 300, function (): Collection {
+            return Permission::query()
+                ->whereHas('roles', function ($query): void {
+                    $query->where('scope', 'systrat')
+                          ->whereHas('users', function ($q): void {
+                              $q->where('users.id', $this->id);
+                          });
+                })
+                ->get();
+        });
+    }
+
     public function currentTenantId(): ?int
     {
         $context = app(TenantContext::class);

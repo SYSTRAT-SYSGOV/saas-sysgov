@@ -53,6 +53,18 @@ final class AuthController
             ? $user->tenants()->where('tenants.slug', $credentials['tenant_slug'])->where('tenants.status', 'active')->where('tenant_user.status', 'active')->first()
             : $user->tenants()->where('tenants.status', 'active')->where('tenant_user.status', 'active')->first();
 
+        // Analista de suporte: não tem tenant_user, mas tem carteira de clientes (tenant_analyst)
+        if (!$user->is_platform_admin && !$tenant && $user->isSupportAnalyst()) {
+            $tenant = $user->analystTenants()
+                ->where('tenants.status', 'active')
+                ->where(function ($q) {
+                    $q->whereNull('tenant_analyst.expires_at')
+                      ->orWhere('tenant_analyst.expires_at', '>', now());
+                })
+                ->when(!empty($credentials['tenant_slug']), fn ($q) => $q->where('tenants.slug', $credentials['tenant_slug']))
+                ->first();
+        }
+
         if (!$user->is_platform_admin && !$tenant) {
             throw ValidationException::withMessages(['tenant_slug' => 'O usuário não possui um tenant ativo.']);
         }
@@ -138,15 +150,20 @@ final class AuthController
         $cacheKey = 'auth:session:'.$user->id.':'.($tenantId ?? 0);
 
         return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($user, $tenant, $tenantId): array {
+            // Analista de suporte: usa roles/permissões do escopo SYSTRAT (não tem tenant_user)
+            $isSupportAnalyst = $user->isSupportAnalyst();
+
             // Roles do usuário no tenant (slugs)
-            $roles = $tenantId
-                ? $user->rolesForTenant($tenantId)->pluck('slug')->all()
-                : [];
+            $roles = $isSupportAnalyst
+                ? $user->roles()->pluck('slug')->all()
+                : ($tenantId ? $user->rolesForTenant($tenantId)->pluck('slug')->all() : []);
 
             // Permissões do usuário no tenant ativo
             $permissions = $user->is_platform_admin
                 ? ['*']
-                : ($tenantId ? $user->permissionsForTenant($tenantId)->pluck('slug')->all() : []);
+                : ($isSupportAnalyst
+                    ? $user->permissionsForSystrat()->pluck('slug')->all()
+                    : ($tenantId ? $user->permissionsForTenant($tenantId)->pluck('slug')->all() : []));
 
             // Módulos ativos: se não houver vínculo, usa o conjunto padrão de módulos do web-client
             $activeModules = $this->resolveActiveModules($tenant);
@@ -171,21 +188,37 @@ final class AuthController
                     'type' => $tenant->type,
                     'settings' => $tenant->settings ?? [],
                 ] : null,
-                'tenants' => $user->tenants()
-                    ->where('tenants.status', 'active')
-                    ->where('tenant_user.status', 'active')
-                    ->get()
-                    ->map(function ($t): array {
-                        /** @var \App\Models\Tenant $t */
-                        return [
+                'tenants' => $isSupportAnalyst
+                    ? $user->analystTenants()
+                        ->where('tenants.status', 'active')
+                        ->where(function ($q) {
+                            $q->whereNull('tenant_analyst.expires_at')
+                              ->orWhere('tenant_analyst.expires_at', '>', now());
+                        })
+                        ->get()
+                        ->map(fn ($t): array => [
                             'id' => $t->id,
                             'name' => $t->name,
                             'slug' => $t->slug,
                             'type' => $t->type,
                             'settings' => $t->settings ?? [],
-                        ];
-                    })
-                    ->all(),
+                        ])
+                        ->all()
+                    : $user->tenants()
+                        ->where('tenants.status', 'active')
+                        ->where('tenant_user.status', 'active')
+                        ->get()
+                        ->map(function ($t): array {
+                            /** @var \App\Models\Tenant $t */
+                            return [
+                                'id' => $t->id,
+                                'name' => $t->name,
+                                'slug' => $t->slug,
+                                'type' => $t->type,
+                                'settings' => $t->settings ?? [],
+                            ];
+                        })
+                        ->all(),
                 'modules' => $activeModules,
                 'permissions' => $permissions,
                 'navigation' => $navigation,
