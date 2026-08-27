@@ -21,8 +21,8 @@ describe('AuthProvider', () => {
       expect(result.current.isAuthenticated).toBe(true);
     });
 
-    expect(result.current.user?.name).toBe('Carlos Eduardo Silveira');
-    expect(result.current.tenant?.slug).toBe('araucaria');
+    expect(result.current.user?.name).toBe('Administrador da Prefeitura de Araucária');
+    expect(result.current.tenant?.slug).toBe('araucaria-pr');
     expect(result.current.tenants.length).toBeGreaterThan(0);
     expect(result.current.navigation.length).toBeGreaterThan(0);
   });
@@ -35,11 +35,11 @@ describe('AuthProvider', () => {
     });
 
     await act(async () => {
-      await result.current.switchTenant(2);
+      await result.current.switchTenant(1);
     });
 
-    expect(result.current.tenant?.id).toBe(2);
-    expect(result.current.tenant?.slug).toBe('camara-araucaria');
+    expect(result.current.tenant?.id).toBe(1);
+    expect(result.current.tenant?.slug).toBe('systrat');
   });
 
   it('deve limpar os dados ao executar logout', async () => {

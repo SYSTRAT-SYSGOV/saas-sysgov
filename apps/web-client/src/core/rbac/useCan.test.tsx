@@ -45,8 +45,8 @@ describe('useCan Hook', () => {
       expect(result.current.activeModules.length).toBeGreaterThan(0);
     });
 
-    expect(result.current.hasRole('Secretário de Finanças')).toBe(true);
+    expect(result.current.hasRole('admin_tenant')).toBe(true);
     expect(result.current.hasRole('Super Admin')).toBe(false);
-    expect(result.current.hasAnyRole(['Super Admin', 'Secretário de Finanças'])).toBe(true);
+    expect(result.current.hasAnyRole(['Super Admin', 'admin_tenant'])).toBe(true);
   });
 });

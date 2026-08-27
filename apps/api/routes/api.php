@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => ['status' => 'ok', 'service' => 'sysgov-api']);
+Route::get('/auth/tenants', [AuthController::class, 'tenants']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/login-admin', [AuthController::class, 'loginAdmin']);
 

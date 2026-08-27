@@ -1,28 +1,63 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
-import { 
-  Building2, 
-  Lock, 
-  Mail, 
-  ArrowRight, 
-  ShieldCheck, 
-  Globe, 
-  AlertCircle
+import { apiClient } from '@/core/api/client';
+import {
+  Building2,
+  Lock,
+  Mail,
+  ArrowRight,
+  ShieldCheck,
+  Globe,
+  AlertCircle,
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
+
+interface LoginTenant {
+  id: number;
+  name: string;
+  slug: string;
+  type: string;
+}
+
+// Fallback quando o backend está indisponível (modo demonstração).
+const FALLBACK_TENANTS: LoginTenant[] = [
+  { id: 131, name: 'MUNICIPIO DE ARAUCARIA', slug: 'araucaria-pr', type: 'prefeitura' },
+  { id: 1, name: 'SYSTRAT (Sistema)', slug: 'systrat', type: 'interno' },
+];
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, loginWithSSO } = useAuth();
   const { isStandardBranding } = useTenant();
 
+  const [tenants, setTenants] = useState<LoginTenant[]>(FALLBACK_TENANTS);
   const [email, setEmail] = useState('admin@araucaria.pr.gov.br');
-  const [password, setPassword] = useState('Araucaria@123456');
+  const [password, setPassword] = useState('');
   const [selectedTenantSlug, setSelectedTenantSlug] = useState('araucaria-pr');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient
+      .get<{ data: LoginTenant[] }>('/auth/tenants', { timeout: 4000 })
+      .then((res) => {
+        if (cancelled || !Array.isArray(res.data.data) || res.data.data.length === 0) return;
+        setTenants(res.data.data);
+        setSelectedTenantSlug((current) => {
+          if (res.data.data.some((t) => t.slug === current)) return current;
+          return res.data.data[0].slug;
+        });
+      })
+      .catch(() => {
+        // Backend indisponível: mantém o fallback de demonstração.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +72,10 @@ export const LoginPage: React.FC = () => {
       });
       navigate('/');
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Falha ao autenticar no portal do cliente.');
+      const backendMessage = err?.response?.data?.errors
+        ? Object.values(err.response.data.errors).flat().join(' ')
+        : err?.response?.data?.message;
+      setErrorMsg(backendMessage || err?.message || 'Falha ao autenticar no portal do cliente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -100,15 +138,21 @@ export const LoginPage: React.FC = () => {
               >
                 Município / Órgão Vinculado
               </label>
-              <select
+<select
                 id="tenant-select"
                 value={selectedTenantSlug}
                 onChange={(e) => setSelectedTenantSlug(e.target.value)}
                 className="w-full px-3 py-2 bg-gov-surface border border-gov-border rounded-md text-xs text-gov-text-primary focus:outline-none focus:border-gov-primary focus:ring-2 focus:ring-gov-primary/20 transition"
               >
-                <option value="araucaria-pr">Prefeitura Municipal de Araucária (PR)</option>
-                <option value="camara-araucaria">Câmara Municipal de Araucária (PR)</option>
-                <option value="sjp">Prefeitura de São José dos Pinhais (PR)</option>
+                {tenants.length === 0 ? (
+                  <option value="">Nenhum município disponível</option>
+                ) : (
+                  tenants.map((t) => (
+                    <option key={t.id} value={t.slug}>
+                      {t.name} ({t.type})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 

@@ -49,9 +49,16 @@ trait HasPermissions
     {
         $cacheKey = "user:{$this->id}:roles:tenant:{$tenantId}";
         return Cache::remember($cacheKey, 300, function () use ($tenantId): Collection {
-            return $this->roles()
+            $roleId = \Illuminate\Support\Facades\DB::table('tenant_user')
+                ->where('user_id', $this->id)
                 ->where('tenant_id', $tenantId)
-                ->get();
+                ->value('role_id');
+
+            if (!$roleId) {
+                return new Collection();
+            }
+
+            return Role::query()->where('id', $roleId)->get();
         });
     }
 
@@ -62,12 +69,18 @@ trait HasPermissions
     {
         $cacheKey = "user:{$this->id}:permissions:tenant:{$tenantId}";
         return Cache::remember($cacheKey, 300, function () use ($tenantId): Collection {
+            $roleId = \Illuminate\Support\Facades\DB::table('tenant_user')
+                ->where('user_id', $this->id)
+                ->where('tenant_id', $tenantId)
+                ->value('role_id');
+
+            if (!$roleId) {
+                return new Collection();
+            }
+
             return Permission::query()
-                ->whereHas('roles', function ($query) use ($tenantId): void {
-                    $query->where('roles.tenant_id', $tenantId)
-                          ->whereHas('users', function ($q): void {
-                              $q->where('users.id', $this->id);
-                          });
+                ->whereHas('roles', function ($query) use ($roleId): void {
+                    $query->where('roles.id', $roleId);
                 })
                 ->get();
         });

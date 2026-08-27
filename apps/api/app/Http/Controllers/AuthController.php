@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Services\MfaService;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +16,20 @@ use Illuminate\Validation\ValidationException;
 final class AuthController
 {
     public function __construct(private readonly MfaService $mfaService) {}
+
+    /**
+     * Lista os tenants ativos para popular o seletor da tela de login do web-client.
+     * GET /api/auth/tenants
+     */
+    public function tenants(): JsonResponse
+    {
+        $tenants = Tenant::query()
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'type']);
+
+        return response()->json(['data' => $tenants]);
+    }
 
     public function login(LoginRequest $request): JsonResponse
     {
@@ -196,13 +211,16 @@ final class AuthController
                               ->orWhere('tenant_analyst.expires_at', '>', now());
                         })
                         ->get()
-                        ->map(fn ($t): array => [
-                            'id' => $t->id,
-                            'name' => $t->name,
-                            'slug' => $t->slug,
-                            'type' => $t->type,
-                            'settings' => $t->settings ?? [],
-                        ])
+                        ->map(function ($t): array {
+                            /** @var \App\Models\Tenant $t */
+                            return [
+                                'id' => $t->id,
+                                'name' => $t->name,
+                                'slug' => $t->slug,
+                                'type' => $t->type,
+                                'settings' => $t->settings ?? [],
+                            ];
+                        })
                         ->all()
                     : $user->tenants()
                         ->where('tenants.status', 'active')
