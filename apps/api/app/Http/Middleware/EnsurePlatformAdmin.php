@@ -67,9 +67,12 @@ final class EnsurePlatformAdmin
         }
         $token = trim(substr($header, 7));
 
-        // Token demo do modo desenvolvimento
-        if (in_array($token, ['universal-admin-session-token', 'demo-admin-token'], true)) {
-            return User::query()->where('is_platform_admin', true)->orderBy('id')->first();
+        // Token demo do modo desenvolvimento — SOMENTE em local/testing (nunca em produção)
+        if (app()->environment('local', 'testing')) {
+            $demoTokens = (array) config('services.demo_tokens', []);
+            if (in_array($token, $demoTokens, true)) {
+                return User::query()->where('is_platform_admin', true)->orderBy('id')->first();
+            }
         }
 
         // Token Sanctum real (de login via /api/auth/login)
