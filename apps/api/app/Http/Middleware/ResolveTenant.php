@@ -16,22 +16,31 @@ final class ResolveTenant
     {
         abort_unless($request->user(), 401);
 
-        $query = $request->user()->tenants()
-            ->where('tenant_user.status', 'active');
-
-        // Aceita X-Tenant-Slug (web-client clássico) OU X-Tenant-ID (id numérico)
         $slug = $request->header('X-Tenant-Slug');
         $tenantId = $request->header('X-Tenant-ID');
 
-        if ($slug) {
-            $query->where('tenants.slug', $slug);
-        } elseif ($tenantId) {
-            $query->where('tenants.id', (int) $tenantId);
-        } else {
-            abort(403, 'Tenant não informado.');
-        }
+        abort_unless($slug || $tenantId, 403, 'Tenant não informado.');
 
-        $tenant = $query->where('tenants.status', 'active')->first();
+        // 1. Tenta via tenant_user (vínculo direto do usuário ao tenant)
+        $tenant = $request->user()->tenants()
+            ->where('tenant_user.status', 'active')
+            ->when($slug, fn ($q) => $q->where('tenants.slug', $slug))
+            ->when($tenantId, fn ($q) => $q->where('tenants.id', (int) $tenantId))
+            ->where('tenants.status', 'active')
+            ->first();
+
+        // 2. Analista de suporte: acesso via carteira (tenant_analyst) mesmo sem tenant_user
+        if (!$tenant && $request->user()->isSupportAnalyst()) {
+            $tenant = $request->user()->analystTenants()
+                ->where('tenants.status', 'active')
+                ->where(function ($q) {
+                    $q->whereNull('tenant_analyst.expires_at')
+                      ->orWhere('tenant_analyst.expires_at', '>', now());
+                })
+                ->when($slug, fn ($q) => $q->where('tenants.slug', $slug))
+                ->when($tenantId, fn ($q) => $q->where('tenants.id', (int) $tenantId))
+                ->first();
+        }
 
         abort_unless($tenant instanceof Tenant, 403, 'Tenant inválido ou não associado ao usuário.');
 

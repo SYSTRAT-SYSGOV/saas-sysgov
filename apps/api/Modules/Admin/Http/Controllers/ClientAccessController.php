@@ -159,6 +159,8 @@ final class ClientAccessController
         $actor = $request->user();
         $tenantId = app(TenantContext::class)->id();
 
+        $this->assertCanWrite($actor, $tenantId);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
             'email' => ['required', 'email', 'max:160', 'unique:users,email'],
@@ -215,6 +217,8 @@ final class ClientAccessController
     {
         $actor = $request->user();
         $tenantId = app(TenantContext::class)->id();
+
+        $this->assertCanWrite($actor, $tenantId);
 
         $this->ensureBelongsToTenant($user, $tenantId);
 
@@ -324,6 +328,26 @@ final class ClientAccessController
     private function isGlobalAdmin(User $user, int $tenantId): bool
     {
         return $user->is_platform_admin || $user->hasRole('admin_tenant', $tenantId);
+    }
+
+    /**
+     * Analista de suporte com acesso somente leitura (tenant_analyst.can_write = 0)
+     * não pode criar/editar usuários.
+     */
+    private function assertCanWrite(User $actor, int $tenantId): void
+    {
+        if ($actor->is_platform_admin || $actor->hasRole('admin_tenant', $tenantId)) {
+            return;
+        }
+
+        $isReadOnly = $actor->analystTenants()
+            ->where('tenants.id', $tenantId)
+            ->wherePivot('can_write', false)
+            ->exists();
+
+        if ($isReadOnly) {
+            abort(403, 'Seu acesso é somente leitura neste tenant. Não é possível criar ou editar usuários.');
+        }
     }
 
     private function ensureBelongsToTenant(User $user, int $tenantId): void
