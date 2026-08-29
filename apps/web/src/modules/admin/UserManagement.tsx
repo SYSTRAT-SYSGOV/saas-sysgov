@@ -2,8 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Pencil, Power, RotateCcw, KeyRound, Users, Loader2, X, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { adminApi } from './api';
 import { User, Role } from './types';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 export const UserManagement: React.FC = () => {
+  const { currentUser } = useAuthContext();
+  const isSelf = (user: User) => String(user.id) === String(currentUser?.id ?? '');
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [search, setSearch] = useState('');
@@ -209,9 +212,15 @@ export const UserManagement: React.FC = () => {
                           <KeyRound className="w-4 h-4" />
                         </button>
                         {user.is_active ? (
-                          <button onClick={() => { setDeactivating(user); setReason(''); }} title="Desativar" className="p-2 mod-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors">
-                            <Power className="w-4 h-4" />
-                          </button>
+                          isSelf(user) ? (
+                            <span title="Você não pode desativar a própria conta" className="p-2 mod-text-secondary opacity-40 cursor-not-allowed inline-flex">
+                              <Power className="w-4 h-4" />
+                            </span>
+                          ) : (
+                            <button onClick={() => { setDeactivating(user); setReason(''); }} title="Desativar" className="p-2 mod-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors">
+                              <Power className="w-4 h-4" />
+                            </button>
+                          )
                         ) : (
                           <button onClick={() => handleReactivate(user)} title="Reativar" className="p-2 mod-text-secondary hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg transition-colors">
                             <RotateCcw className="w-4 h-4" />

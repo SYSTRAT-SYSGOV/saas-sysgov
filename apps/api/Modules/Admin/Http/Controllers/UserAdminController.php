@@ -79,6 +79,10 @@ final class UserAdminController
      */
     public function destroy(User $user): JsonResponse
     {
+        if ($user->is($this->currentUser())) {
+            abort(403, 'Não é possível excluir a própria conta de administrador.');
+        }
+
         $this->authorize('delete', $user);
 
         $this->userService->delete($user);
@@ -91,11 +95,38 @@ final class UserAdminController
      */
     public function deactivate(DeactivateUserRequest $request, User $user): JsonResponse
     {
+        if ($user->is($this->currentUser())) {
+            abort(403, 'Não é possível desativar a própria conta de administrador.');
+        }
+
+        $this->assertNotLastActivePlatformAdmin($user);
+
         $this->authorize('deactivate', $user);
 
         $this->userService->deactivate($user, (string) $request->string('reason'));
 
         return response()->json(['message' => 'Usuário desativado com sucesso.']);
+    }
+
+    private function currentUser(): ?User
+    {
+        return request()->user() ?? \Illuminate\Support\Facades\Auth::user();
+    }
+
+    private function assertNotLastActivePlatformAdmin(User $target): void
+    {
+        if (!$target->is_platform_admin) {
+            return;
+        }
+
+        $activePlatformAdmins = User::query()
+            ->where('is_platform_admin', true)
+            ->where('is_active', true)
+            ->count();
+
+        if ($activePlatformAdmins <= 1) {
+            abort(403, 'Não é possível desativar o último administrador ativo da plataforma.');
+        }
     }
 
     /**
