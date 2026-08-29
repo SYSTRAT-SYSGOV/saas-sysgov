@@ -6,6 +6,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "node scripts/start-dev.js",
     "dev:admin": "npm --workspace apps/web run dev",
     "dev:client": "npm --workspace apps/web-client run dev",
     "dev:all": "concurrently -n admin,client -c magenta,green \"npm run dev:admin\" \"npm run dev:client\"",
