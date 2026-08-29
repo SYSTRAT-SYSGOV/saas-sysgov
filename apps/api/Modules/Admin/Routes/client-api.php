@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Admin\Http\Controllers\AccessController;
 use Modules\Admin\Http\Controllers\AuthController;
 use Modules\Admin\Http\Controllers\ClientAccessController;
 use Modules\Admin\Http\Controllers\ClientUserController;
@@ -43,6 +44,14 @@ Route::prefix('api/access')
         Route::get('/users', [ClientAccessController::class, 'users']);
         Route::post('/users', [ClientAccessController::class, 'store']);
         Route::put('/users/{user}', [ClientAccessController::class, 'update']);
+
+        // Evolução Usuários & Acessos (Fase D) — painel do Administrador Geral
+        Route::get('/matrix', [AccessController::class, 'matrix']);
+        Route::get('/by-module', [AccessController::class, 'modules']);
+        Route::get('/expiring', [AccessController::class, 'expiring']);
+        Route::post('/', [AccessController::class, 'grant']);
+        Route::post('/{access}/revoke', [AccessController::class, 'revoke']);
+        Route::post('/{access}/renew', [AccessController::class, 'renew']);
     });
 
 // MFA do próprio usuário autenticado (RN-USR-005) — qualquer painel

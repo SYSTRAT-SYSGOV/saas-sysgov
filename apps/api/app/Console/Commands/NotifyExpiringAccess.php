@@ -26,11 +26,16 @@ final class NotifyExpiringAccess extends Command
 
         $count = 0;
         foreach ($expiring as $access) {
+            /** @var \App\Models\User|null $user */
+            $user = $access->user;
+            /** @var \App\Models\Tenant|null $tenant */
+            $tenant = $access->tenant;
+
             $outbox->publish('notification.access_expiring', [
                 'user_id' => $access->user_id,
-                'user_name' => $access->user?->name,
+                'user_name' => $user?->name,
                 'tenant_id' => $access->tenant_id,
-                'tenant_name' => $access->tenant?->name,
+                'tenant_name' => $tenant?->name,
                 'module_alias' => $access->module_alias,
                 'expires_at' => $access->valid_to?->toISOString(),
             ], $access->tenant_id);

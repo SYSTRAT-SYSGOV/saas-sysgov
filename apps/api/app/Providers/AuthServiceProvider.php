@@ -23,6 +23,7 @@ final class AuthServiceProvider extends ServiceProvider
         \Modules\Admin\Models\User::class => \Modules\Admin\Policies\UserPolicy::class,
         \App\Models\Role::class => \Modules\Admin\Policies\RolePolicy::class,
         \App\Models\Permission::class => \Modules\Admin\Policies\PermissionPolicy::class,
+        \App\Models\UserModuleAccess::class => \Modules\Admin\Policies\AccessPolicy::class,
         // Procurement policies
         \Modules\Procurement\Models\Licitacao::class => \Modules\Procurement\Policies\LicitacaoPolicy::class,
         \Modules\Procurement\Models\ProcurementArtefato::class => \Modules\Procurement\Policies\ProcurementArtefatoPolicy::class,
