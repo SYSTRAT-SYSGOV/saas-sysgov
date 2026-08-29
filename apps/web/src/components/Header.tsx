@@ -91,6 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [prefeituras, setPrefeituras] = useState<any[]>([]);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const cityDropdownRef = useRef<HTMLDivElement>(null);
+  const { currentUser } = useAuthContext();
 
   // Prefeituras carregadas exclusivamente da API SaaS (nenhuma lista local)
   useEffect(() => {
@@ -478,7 +479,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="p-2.5 bg-navy-950 border-b border-navy-800 text-xs">
                   <span className="text-[10px] text-slate-400 block uppercase font-bold">Conta Conectada</span>
                   <span className="font-bold text-white truncate block">
-                    {authRole === 'EMPRESA_MASTER' ? 'admin@sysgov.online' : 'gestor@sysgov.online'}
+                    {currentUser?.email || (authRole === 'EMPRESA_MASTER' ? 'admin@sysgov.online' : 'gestor@sysgov.online')}
                   </span>
                 </div>
 
@@ -488,7 +489,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="flex items-center gap-2">
                         <ShieldCheck className="w-4 h-4 text-emerald-400" />
                         <div>
-                          <span className="font-bold block">Administrador Master</span>
+                          <span className="font-bold block">{currentUser?.nome || 'Administrador Master'}</span>
                           <span className="text-[10px] text-slate-400 block">Gestão multi-tenant global</span>
                         </div>
                       </div>
