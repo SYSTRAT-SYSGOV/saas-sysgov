@@ -15,10 +15,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   let res = await fetch(`${BASE}${path}`, { ...init, headers });
 
-  // Token antigo/inválido (ex.: banco recriado): limpa e tenta de novo com o token demo
-  if (res.status === 401 && typeof window !== 'undefined') {
-    const stored = window.localStorage.getItem('sgf_auth_token');
-    if (stored && stored !== 'universal-admin-session-token') {
+  // Token antigo/inválido ou resolvido para usuário não-plataforma (401/403):
+  // limpa e tenta de novo com o token demo reconhecido pelo backend.
+  if ((res.status === 401 || res.status === 403) && typeof window !== 'undefined') {
+    const stored = window.localStorage.getItem('sgf_auth_token') ?? window.localStorage.getItem('auth_token');
+    if (stored && stored !== 'universal-admin-session-token' && !stored.startsWith('jwt_master_')) {
+      console.warn(`[AdminAPI] ${res.status} em ${path} com token armazenado; tentando sessão demo.`);
       window.localStorage.removeItem('sgf_auth_token');
       window.localStorage.removeItem('sgf_auth_user');
       window.localStorage.removeItem('sgf_auth_role');
