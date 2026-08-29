@@ -93,7 +93,7 @@ export const adminApi = {
     return request<User>(`/users/${id}`);
   },
 
-  async updateUser(id: number, payload: { name?: string; email?: string; role_slug?: string; is_active?: boolean }): Promise<User> {
+  async updateUser(id: number, payload: { name?: string; email?: string; role_slug?: string; is_active?: boolean; password?: string; password_confirmation?: string }): Promise<User> {
     return request<User>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
   },
 

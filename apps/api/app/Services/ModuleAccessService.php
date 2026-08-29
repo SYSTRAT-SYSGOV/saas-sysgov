@@ -154,7 +154,9 @@ final readonly class ModuleAccessService
 
     private function isGlobalAdmin(User $user, int $tenantId): bool
     {
-        return $user->is_platform_admin || $user->hasRole('admin_tenant', $tenantId);
+        return $user->is_platform_admin
+            || $user->isSupportAnalyst()
+            || $user->hasRole('admin_tenant', $tenantId);
     }
 
     private function resolveTenantId(User $user): ?int

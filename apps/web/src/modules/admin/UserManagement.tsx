@@ -78,12 +78,18 @@ export const UserManagement: React.FC = () => {
   const handleSave = async (data: any) => {
     try {
       if (editingUser) {
-        await adminApi.updateUser(editingUser.id, {
+        const payload: any = {
           name: data.name,
           email: data.email,
           role_slug: data.role_slug,
           is_active: data.is_active,
-        });
+        };
+        // Só envia a senha quando informada (edição sem troca de senha mantém a atual)
+        if (data.password) {
+          payload.password = data.password;
+          payload.password_confirmation = data.password_confirmation;
+        }
+        await adminApi.updateUser(editingUser.id, payload);
       } else {
         await adminApi.createUser({
           name: data.name,

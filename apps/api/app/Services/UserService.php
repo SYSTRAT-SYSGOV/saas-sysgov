@@ -146,9 +146,16 @@ final class UserService
      */
     public function update(User $user, array $data): User
     {
-        $validated = collect($data)->only(['name', 'email', 'is_active', 'role_slug'])->toArray();
+        $validated = collect($data)->only(['name', 'email', 'is_active', 'role_slug', 'password'])->toArray();
         $roleSlug = $validated['role_slug'] ?? null;
         unset($validated['role_slug']);
+
+        // Troca de senha: só persiste quando informada (não fica com string vazia/null)
+        if (isset($validated['password']) && $validated['password'] !== '') {
+            $validated['password'] = Hash::make($validated['password']);
+        } else {
+            unset($validated['password']);
+        }
 
         return DB::transaction(function () use ($user, $validated, $roleSlug): User {
             $before = $user->fresh(['roles'])->toArray();
