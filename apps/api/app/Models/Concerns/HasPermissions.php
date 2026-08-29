@@ -20,11 +20,17 @@ trait HasPermissions
 
         $tenantId = $tenantId ?? $this->currentTenantId();
 
-        if (!$tenantId) {
-            return false;
+        if ($tenantId && $this->permissionsForTenant($tenantId)->contains('slug', $permission)) {
+            return true;
         }
 
-        return $this->permissionsForTenant($tenantId)->contains('slug', $permission);
+        // Permissões de roles SYSTRAT vinculadas via role_user (Spatie)
+        // Ex.: super_admin, admin_ops, support_analyst — mesmo sem is_platform_admin ou tenant_user
+        if ($this->permissionsForSystrat()->contains('slug', $permission)) {
+            return true;
+        }
+
+        return false;
     }
 
     public function hasRole(string $roleSlug, ?int $tenantId = null): bool
@@ -35,11 +41,16 @@ trait HasPermissions
 
         $tenantId = $tenantId ?? $this->currentTenantId();
 
-        if (!$tenantId) {
-            return false;
+        if ($tenantId && $this->rolesForTenant($tenantId)->contains('slug', $roleSlug)) {
+            return true;
         }
 
-        return $this->rolesForTenant($tenantId)->contains('slug', $roleSlug);
+        // Roles SYSTRAT via role_user (Spatie)
+        if ($this->roles()->where('scope', 'systrat')->where('slug', $roleSlug)->exists()) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
