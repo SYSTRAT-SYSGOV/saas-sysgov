@@ -9,8 +9,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   headers.set('Accept', 'application/json');
   if (typeof window !== 'undefined') {
     const stored = window.localStorage.getItem('sgf_auth_token') ?? window.localStorage.getItem('auth_token');
-    // Ignora tokens antigos do mock ('jwt_master_*') — o backend os rejeita (401)
-    const token = stored && !stored.startsWith('jwt_master_') ? stored : 'universal-admin-session-token';
+    // Ignora tokens antigos do mock ('jwt_master_*', 'jwt_tenant_*') — o backend os rejeita
+    const token = stored && !stored.startsWith('jwt_master_') && !stored.startsWith('jwt_tenant_') ? stored : 'universal-admin-session-token';
     if (token) headers.set('Authorization', `Bearer ${token}`);
   }
   let res = await fetch(`${BASE}${path}`, { ...init, headers });
@@ -24,6 +24,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       window.localStorage.removeItem('sgf_auth_token');
       window.localStorage.removeItem('sgf_auth_user');
       window.localStorage.removeItem('sgf_auth_role');
+      window.localStorage.removeItem('auth_token');
       const retryHeaders = new Headers(headers);
       retryHeaders.set('Authorization', 'Bearer universal-admin-session-token');
       res = await fetch(`${BASE}${path}`, { ...init, headers: retryHeaders });
