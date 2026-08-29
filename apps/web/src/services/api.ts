@@ -575,11 +575,17 @@ export async function loginAdminMaster(email: string, senha: string): Promise<{
     if (res.ok) {
       return await res.json();
     }
-  } catch {
-    // Backend offline / proxy fallback
+    // Backend respondeu com erro (ex.: 401/403) — propaga a mensagem, NÃO cai no mock
+    const err = await res.json().catch(() => ({ message: 'Credenciais master inválidas.' }));
+    throw new Error(err.message || 'Credenciais master inválidas.');
+  } catch (e) {
+    if (e instanceof Error) {
+      throw e; // erro HTTP real do backend
+    }
+    // Backend offline / proxy fallback — modo demonstração
   }
 
-  // Resilient Mock Master Admin Login
+  // Resilient Mock Master Admin Login (apenas quando backend está offline)
   return {
     success: true,
     token: 'jwt_master_' + Math.random().toString(36).substring(2),
