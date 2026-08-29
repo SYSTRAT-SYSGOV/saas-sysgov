@@ -17,7 +17,23 @@
     ]
 },
   "config": {"allow-plugins": {"wikimedia/composer-merge-plugin": true}},
-  "scripts": {"test": "vendor/bin/phpunit", "analyse": "vendor/bin/phpunit --testsuite=Feature", "lint": "find app Modules -type f -name '*.php' -print0 | xargs -0 -n1 php -l", "static": "vendor/bin/phpstan analyse --no-progress"},
+  "scripts": {
+    "post-autoload-dump": [
+      "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+      "@php artisan package:discover --ansi"
+    ],
+    "post-update-cmd": [
+      "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+    ],
+    "dev": [
+      "@php artisan optimize:clear --ansi",
+      "@php artisan serve --host=localhost --port=8000"
+    ],
+    "test": "vendor/bin/phpunit",
+    "analyse": "vendor/bin/phpunit --testsuite=Feature",
+    "lint": "find app Modules -type f -name '*.php' -print0 | xargs -0 -n1 php -l",
+    "static": "vendor/bin/phpstan analyse --no-progress"
+  },
   "require-dev": {
     "laravel/tinker": "^3.0",
     "phpunit/phpunit": "^12.5",
