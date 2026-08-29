@@ -9,6 +9,8 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Configuration\Exceptions;
 use App\Console\Commands\MakeModule;
 use App\Console\Commands\ProcessOutbox;
+use App\Console\Commands\ExpireAccess;
+use App\Console\Commands\NotifyExpiringAccess;
 use Modules\Admin\Providers\AdminServiceProvider;
 use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
@@ -30,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ProcurementServiceProvider::class,
         TinkerServiceProvider::class,
     ])
-    ->withCommands([MakeModule::class, ProcessOutbox::class])
+    ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->alias([
