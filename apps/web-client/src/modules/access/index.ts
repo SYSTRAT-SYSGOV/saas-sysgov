@@ -8,4 +8,10 @@ export type {
   AccessSummary,
   OrgUnitNode,
   CreateAccessUserInput,
+  AccessStatus,
+  AccessMatrixRow,
+  AccessModuleGroup,
+  ExpiringAccess,
+  GrantAccessInput,
 } from './AccessApi';
+export { AccessBadge, ModuleAccessPicker, NewUserWizard, AdminAccessPanel } from './evolution';

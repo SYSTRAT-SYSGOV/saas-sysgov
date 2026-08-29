@@ -10,8 +10,11 @@ import {
   Pencil,
   KeyRound,
   Check,
+  LayoutDashboard,
+  Grid2x2,
 } from 'lucide-react';
 import { accessApi, AccessDashboardData, AccessUser, AccessModule, ModuleAccessItem, OrgUnitNode } from './AccessApi';
+import { AdminAccessPanel, NewUserWizard } from './evolution';
 
 const DASHBOARD_CACHE_KEY = 'sysgov:access:dashboard:v1';
 
@@ -71,6 +74,8 @@ export const AccessManagement: React.FC = () => {
   const [editingUser, setEditingUser] = useState<AccessUser | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [viewMode, setViewMode] = useState<'lista' | 'painel'>('lista');
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const load = useCallback(async () => {
     const setters = { setUsers, setModules, setUnits, setIsGlobalAdmin, setMyManagedModules };
@@ -212,14 +217,57 @@ export const AccessManagement: React.FC = () => {
               : `Você administra: ${myManagedModules.map(moduleName).join(', ')} — só é possível conceder acesso nesses módulos.`}
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 bg-gov-primary hover:bg-gov-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <UserPlus className="w-4 h-4" /> Novo Usuário
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-gov-primary/10 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('lista')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                viewMode === 'lista' ? 'bg-white dark:bg-slate-800 text-gov-primary shadow-sm' : 'text-gov-text-secondary'
+              }`}
+            >
+              <Users className="w-4 h-4" /> Lista
+            </button>
+            <button
+              onClick={() => setViewMode('painel')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                viewMode === 'painel' ? 'bg-white dark:bg-slate-800 text-gov-primary shadow-sm' : 'text-gov-text-secondary'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" /> Painel do Admin
+            </button>
+          </div>
+          <button
+            onClick={() => setWizardOpen(true)}
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <UserPlus className="w-4 h-4" /> Novo Usuário (Wizard)
+          </button>
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 bg-gov-primary hover:bg-gov-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <UserPlus className="w-4 h-4" /> Cadastro Rápido
+          </button>
+        </div>
       </div>
 
+      {wizardOpen && (
+        <NewUserWizard
+          modules={modules}
+          units={units}
+          isGlobalAdmin={isGlobalAdmin}
+          myManagedModules={myManagedModules}
+          onCreated={() => { setWizardOpen(false); load(); }}
+          onClose={() => setWizardOpen(false)}
+          notify={notify}
+        />
+      )}
+
+      {viewMode === 'painel' && !wizardOpen && (
+        <AdminAccessPanel notify={notify} />
+      )}
+
+      {viewMode === 'lista' && !wizardOpen && (<>
       <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gov-border shadow-sm">
         <div className="relative">
           <Search className="w-4 h-4 text-gov-text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -460,6 +508,7 @@ export const AccessManagement: React.FC = () => {
           </div>
         </div>
       )}
+      </>)}
 
       {/* Toasts */}
       <div className="fixed bottom-4 right-4 z-50 space-y-2">

@@ -47,6 +47,58 @@ export interface CreateAccessUserInput {
   accesses: ModuleAccessItem[];
 }
 
+export type AccessStatus = 'active' | 'expired' | 'revoked';
+
+export interface AccessMatrixRow {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  user_email: string | null;
+  module: string;
+  role: string;
+  all_org_units: boolean;
+  org_unit_ids: number[];
+  can_manage_users: boolean;
+  status: AccessStatus;
+  valid_from: string | null;
+  valid_to: string | null;
+  expiring: boolean;
+  granted_by: string | null;
+}
+
+export interface AccessModuleGroup {
+  module: string;
+  users: {
+    user_id: number;
+    user_name: string | null;
+    role: string;
+    all_org_units: boolean;
+    can_manage_users: boolean;
+    status: AccessStatus;
+    valid_to: string | null;
+  }[];
+}
+
+export interface ExpiringAccess {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  user_email: string | null;
+  module: string;
+  role: string;
+  valid_to: string;
+  days_left: number;
+}
+
+export interface GrantAccessInput {
+  user_id: number;
+  module_alias: string;
+  role?: string;
+  org_unit_ids?: number[];
+  can_manage_users?: boolean;
+  valid_to?: string;
+}
+
 export interface AccessDashboardData {
   summary: AccessSummary;
   modules: AccessModule[];
@@ -92,6 +144,38 @@ export const accessApi = {
 
   async seedOrgUnits(): Promise<{ message: string }> {
     const { data } = await apiClient.post<{ message: string }>('/org-units/seed');
+    return data;
+  },
+
+  // ==== Evolução Usuários & Acessos (Fase D/E) ====
+
+  async matrix(): Promise<AccessMatrixRow[]> {
+    const { data } = await apiClient.get<{ data: AccessMatrixRow[] }>('/access/matrix');
+    return data.data;
+  },
+
+  async byModule(): Promise<AccessModuleGroup[]> {
+    const { data } = await apiClient.get<{ data: AccessModuleGroup[] }>('/access/by-module');
+    return data.data;
+  },
+
+  async expiring(): Promise<ExpiringAccess[]> {
+    const { data } = await apiClient.get<{ data: ExpiringAccess[] }>('/access/expiring');
+    return data.data;
+  },
+
+  async grantAccess(input: GrantAccessInput): Promise<AccessMatrixRow> {
+    const { data } = await apiClient.post<{ data: AccessMatrixRow }>('/access', input);
+    return data.data;
+  },
+
+  async revokeAccess(id: number, reason?: string): Promise<{ message: string }> {
+    const { data } = await apiClient.post<{ message: string }>(`/access/${id}/revoke`, { reason });
+    return data;
+  },
+
+  async renewAccess(id: number, validTo?: string): Promise<{ message: string; valid_to: string | null }> {
+    const { data } = await apiClient.post<{ message: string; valid_to: string | null }>(`/access/${id}/renew`, { valid_to: validTo });
     return data;
   },
 };
