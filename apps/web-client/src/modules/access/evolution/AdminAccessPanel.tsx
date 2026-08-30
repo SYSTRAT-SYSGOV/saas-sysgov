@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { LayoutGrid, Building2, Clock, Users, MailWarning, Loader2, RotateCcw, XCircle, Briefcase, Layers } from 'lucide-react';
+import { LayoutGrid, Building2, Clock, Users, MailWarning, Loader2, RotateCcw, XCircle, Briefcase, Layers, ShieldCheck } from 'lucide-react';
 import { accessApi, AccessMatrixRow, AccessModuleGroup, ExpiringAccess, AccessModule, OrgUnitNode } from '../AccessApi';
 import { AccessBadge, formatDate } from './AccessBadge';
 import { CargosManagement } from './CargosManagement';
 import { GroupsManagement } from './GroupsManagement';
+import { RolesManagement } from './RolesManagement';
 
-type Tab = 'matrix' | 'byModule' | 'expiring' | 'pending' | 'cargos' | 'groups';
+type Tab = 'matrix' | 'byModule' | 'expiring' | 'pending' | 'cargos' | 'groups' | 'roles';
 
 interface AdminAccessPanelProps {
   modules: AccessModule[];
@@ -70,6 +71,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
     { key: 'pending', label: 'Pendentes', icon: <MailWarning className="w-4 h-4" /> },
     { key: 'cargos', label: 'Cargos', icon: <Briefcase className="w-4 h-4" /> },
     { key: 'groups', label: 'Grupos & Categorias', icon: <Layers className="w-4 h-4" /> },
+    { key: 'roles', label: 'Roles & Permissões', icon: <ShieldCheck className="w-4 h-4" /> },
   ];
 
   return (
@@ -151,6 +153,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
             {tab === 'pending' && <Empty text="Convites pendentes aparecem aqui. (Fluxo de convite por e-mail é mantido.)" />}
             {tab === 'cargos' && <CargosManagement notify={notify} />}
             {tab === 'groups' && <GroupsManagement modules={modules} units={units} notify={notify} />}
+            {tab === 'roles' && <RolesManagement notify={notify} />}
           </>
         )}
       </div>

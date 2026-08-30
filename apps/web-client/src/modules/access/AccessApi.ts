@@ -66,6 +66,23 @@ export interface AccessGroup {
   accesses: AccessGroupAccess[];
 }
 
+export interface TenantRole {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_system: boolean;
+  permissions: { id: number; name: string; slug: string; module: string }[];
+  created_at?: string | null;
+}
+
+export interface TenantPermission {
+  id: number;
+  name: string;
+  slug: string;
+  module: string | null;
+}
+
 export interface AccessModule {
   id: number;
   alias: string;
@@ -312,5 +329,30 @@ export const accessApi = {
 
   async removeGroupUser(id: number, userId: number): Promise<void> {
     await apiClient.delete(`/access/groups/${id}/users/${userId}`);
+  },
+
+  // ==== Roles e Permissões ====
+  async tenantRoles(): Promise<TenantRole[]> {
+    const { data } = await apiClient.get<{ data: TenantRole[] }>('/access/roles');
+    return data.data;
+  },
+
+  async createTenantRole(input: { name: string; slug: string; description?: string | null; permission_ids?: number[] }): Promise<TenantRole> {
+    const { data } = await apiClient.post<{ data: TenantRole }>('/access/roles', input);
+    return data.data;
+  },
+
+  async updateTenantRole(id: number, input: { name?: string; description?: string | null; permission_ids?: number[] }): Promise<TenantRole> {
+    const { data } = await apiClient.put<{ data: TenantRole }>(`/access/roles/${id}`, input);
+    return data.data;
+  },
+
+  async deleteTenantRole(id: number): Promise<void> {
+    await apiClient.delete(`/access/roles/${id}`);
+  },
+
+  async tenantPermissions(): Promise<TenantPermission[]> {
+    const { data } = await apiClient.get<{ data: TenantPermission[] }>('/access/permissions');
+    return data.data;
   },
 };
