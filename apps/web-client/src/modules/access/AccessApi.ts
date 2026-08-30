@@ -1,8 +1,10 @@
 import { apiClient } from '@/core/api/client';
 
+export type ModuleAccessRole = 'member' | 'manager' | 'admin' | 'editor' | 'viewer';
+
 export interface ModuleAccessItem {
   module: string;
-  role: 'member' | 'manager';
+  role: ModuleAccessRole;
   all_org_units: boolean;
   org_unit_ids: number[];
   can_manage_users: boolean;

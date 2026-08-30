@@ -10,8 +10,13 @@ use App\Services\ModuleAccessService;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 
+/**
+ * Endpoints do painel do Administrador Geral (Fase D/E da evolução Usuários & Acessos).
+ *
+ * Segue o mesmo padrão do ClientAccessController: sem Gate — usa isGlobalAdmin()
+ * e canGrantTo() diretamente, que é o padrão consolidado no projeto.
+ */
 final class AccessController
 {
     public function __construct(
@@ -21,7 +26,8 @@ final class AccessController
     public function matrix(Request $request): JsonResponse
     {
         $tenantId = app(TenantContext::class)->id();
-        Gate::authorize('viewAny', [UserModuleAccess::class, $tenantId]);
+        $actor = $this->requireActor($request);
+        $this->requireManager($actor, $tenantId);
 
         $rows = UserModuleAccess::query()
             ->where('tenant_id', $tenantId)
@@ -58,7 +64,8 @@ final class AccessController
     public function modules(Request $request): JsonResponse
     {
         $tenantId = app(TenantContext::class)->id();
-        Gate::authorize('viewAny', [UserModuleAccess::class, $tenantId]);
+        $actor = $this->requireActor($request);
+        $this->requireManager($actor, $tenantId);
 
         $moduleAccesses = UserModuleAccess::query()
             ->where('tenant_id', $tenantId)
@@ -92,7 +99,8 @@ final class AccessController
     public function expiring(Request $request): JsonResponse
     {
         $tenantId = app(TenantContext::class)->id();
-        Gate::authorize('viewAny', [UserModuleAccess::class, $tenantId]);
+        $actor = $this->requireActor($request);
+        $this->requireManager($actor, $tenantId);
 
         $rows = UserModuleAccess::query()
             ->where('tenant_id', $tenantId)
@@ -125,8 +133,7 @@ final class AccessController
     public function grant(Request $request): JsonResponse
     {
         $tenantId = app(TenantContext::class)->id();
-        $actor = $request->user();
-        abort_if($actor === null, 401, 'Não autenticado.');
+        $actor = $this->requireActor($request);
 
         $data = $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -140,7 +147,9 @@ final class AccessController
 
         $target = User::findOrFail($data['user_id']);
 
-        Gate::authorize('create', [UserModuleAccess::class, $tenantId, $data['module_alias'], $data['org_unit_ids'] ?? []]);
+        if (!$this->access->canGrantTo($actor, $data['module_alias'], $tenantId, $data['org_unit_ids'] ?? [])) {
+            abort(403, 'Você não tem permissão para conceder este acesso.');
+        }
 
         $access = $this->access->grantAccess($target, $tenantId, $data['module_alias'], $data, $actor);
 
@@ -150,11 +159,12 @@ final class AccessController
     public function revoke(Request $request, UserModuleAccess $access): JsonResponse
     {
         $tenantId = app(TenantContext::class)->id();
-        $actor = $request->user();
-        abort_if($actor === null, 401, 'Não autenticado.');
+        $actor = $this->requireActor($request);
         abort_if((int) $access->tenant_id !== $tenantId, 404, 'Acesso não encontrado neste tenant.');
 
-        Gate::authorize('revoke', [$access, $tenantId]);
+        if (!$this->access->canGrantTo($actor, $access->module_alias, $tenantId, $access->org_unit_ids ?? [])) {
+            abort(403, 'Você não tem permissão para revogar este acesso.');
+        }
 
         $this->access->revokeAccess($access, $actor, $request->input('reason'));
 
@@ -166,11 +176,25 @@ final class AccessController
         $tenantId = app(TenantContext::class)->id();
         abort_if((int) $access->tenant_id !== $tenantId, 404, 'Acesso não encontrado neste tenant.');
 
-        Gate::authorize('renew', [$access, $tenantId]);
-
         $validTo = $request->date('valid_to');
         $this->access->renewAccess($access, $validTo);
 
         return response()->json(['message' => 'Acesso renovado com sucesso.', 'valid_to' => $access->fresh()->valid_to?->toISOString()]);
+    }
+
+    private function requireActor(Request $request): User
+    {
+        $actor = $request->user();
+        abort_if($actor === null, 401, 'Não autenticado.');
+        return $actor;
+    }
+
+    private function requireManager(User $actor, int $tenantId): void
+    {
+        $ok = $actor->is_platform_admin
+            || $actor->isSupportAnalyst()
+            || $actor->hasRole('admin_tenant', $tenantId);
+
+        abort_unless($ok, 403, 'This action is unauthorized.');
     }
 }

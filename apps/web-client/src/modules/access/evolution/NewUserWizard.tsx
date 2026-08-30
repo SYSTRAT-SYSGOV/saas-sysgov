@@ -77,7 +77,7 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
     try {
       const accesses: ModuleAccessItem[] = entries.map((e) => ({
         module: e.module,
-        role: e.role as 'member' | 'manager',
+        role: e.role as ModuleAccessItem['role'],
         all_org_units: e.all_org_units,
         org_unit_ids: e.all_org_units ? [] : e.org_unit_ids,
         can_manage_users: e.can_manage_users,
