@@ -4,6 +4,7 @@ export {
 export type {
   ModuleAccessItem,
   AccessUser,
+  UserFilters,
   AccessModule,
   AccessSummary,
   OrgUnitNode,
@@ -13,5 +14,11 @@ export type {
   AccessModuleGroup,
   ExpiringAccess,
   GrantAccessInput,
+  Cargo,
+  AccessCategory,
+  AccessGroup,
+  AccessGroupAccess,
+  TenantRole,
+  TenantPermission,
 } from './AccessApi';
-export { AccessBadge, ModuleAccessPicker, NewUserWizard, AdminAccessPanel, CargosManagement, GroupsManagement } from './evolution';
+export { AccessBadge, ModuleAccessPicker, NewUserWizard, AdminAccessPanel, CargosManagement, GroupsManagement, UserEditModal, AdvancedFilters, DefaultPasswordModal } from './evolution';

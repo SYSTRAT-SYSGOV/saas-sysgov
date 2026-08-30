@@ -5,3 +5,7 @@ export { AdminAccessPanel } from './AdminAccessPanel';
 export { CargosManagement } from './CargosManagement';
 export { GroupsManagement } from './GroupsManagement';
 export { RolesManagement } from './RolesManagement';
+export { UserEditModal } from './UserEditModal';
+export { AdvancedFilters } from './AdvancedFilters';
+export type { UserFilters } from './AdvancedFilters';
+export { DefaultPasswordModal } from './DefaultPasswordModal';

@@ -116,6 +116,8 @@ final class ClientAccessController
         $actor = $request->user();
         $tenantId = app(TenantContext::class)->id();
         $search = $request->string('q')->toString();
+        $page = max(1, $request->integer('page', 1));
+        $perPage = min(100, max(5, $request->integer('per_page', 25)));
         $filters = [
             'module' => $request->string('module')->toString(),
             'org_unit_id' => $request->integer('org_unit_id') ?: null,
@@ -124,18 +126,23 @@ final class ClientAccessController
             'cargo_id' => $request->integer('cargo_id') ?: null,
         ];
 
-        $cacheKey = "access:users:{$this->usersCacheVersion($tenantId)}:{$tenantId}:{$actor->id}:".md5($search.json_encode($filters));
+        $cacheKey = "access:users:{$this->usersCacheVersion($tenantId)}:{$tenantId}:{$actor->id}:".md5($search.json_encode($filters).":{$page}:{$perPage}");
 
-        $payload = \Illuminate\Support\Facades\Cache::remember($cacheKey, 30, fn (): array => $this->usersData($actor, $tenantId, $search, $filters));
+        $payload = \Illuminate\Support\Facades\Cache::remember($cacheKey, 30, fn (): array => $this->usersData($actor, $tenantId, $search, $filters, $page, $perPage));
 
-        return response()->json(['data' => $payload]);
+        return response()->json(['data' => $payload['items'], 'meta' => [
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $payload['total'],
+            'last_page' => (int) ceil($payload['total'] / $perPage),
+        ]]);
     }
 
     /**
      * @param array<string, mixed> $filters
-     * @return array<int, array<string, mixed>>
+     * @return array{items: array<int, array<string, mixed>>, total: int}
      */
-    private function usersData(User $actor, int $tenantId, string $search = '', array $filters = []): array
+    private function usersData(User $actor, int $tenantId, string $search = '', array $filters = [], int $page = 1, int $perPage = 25): array
     {
         $query = User::query()
             ->whereHas('tenants', fn ($q) => $q->where('tenants.id', $tenantId))
@@ -176,12 +183,16 @@ final class ClientAccessController
             $myModules = $this->access->moduleSummary($actor, $tenantId);
             $managed = array_column(array_filter($myModules, fn ($m) => $m['can_manage_users']), 'module');
             if ($managed === []) {
-                return [];
+                return ['items' => [], 'total' => 0];
             }
             $query->whereHas('moduleAccesses', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('module_alias', $managed));
         }
 
-        return $query->get()->map(fn (User $u) => $this->userPayload($u, $tenantId))->values()->all();
+        $total = (int) $query->count();
+        $items = $query->orderBy('name')->skip(($page - 1) * $perPage)->take($perPage)->get()
+            ->map(fn (User $u) => $this->userPayload($u, $tenantId))->values()->all();
+
+        return ['items' => $items, 'total' => $total];
     }
 
     /**
@@ -198,7 +209,7 @@ final class ClientAccessController
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
             'email' => ['required', 'email', 'max:160', 'unique:users,email'],
-            'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
+            'password' => ['nullable', 'string', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
             'matricula' => ['nullable', 'string', 'max:40'],
             'cargo_id' => ['nullable', 'integer', 'exists:cargos,id'],
             'group_ids' => ['sometimes', 'array'],
@@ -217,6 +228,12 @@ final class ClientAccessController
         ]);
 
         $this->assertCanProvision($actor, $tenantId, $data['accesses'] ?? []);
+
+        $defaultPasswordSet = null;
+        if ($data['password'] === '' || $data['password'] === null) {
+            $defaultPasswordSet = $this->resolveOrCreateDefaultPassword($tenantId, $actor->id);
+            $data['password'] = $defaultPasswordSet;
+        }
 
         $user = DB::transaction(function () use ($data, $tenantId): User {
             $user = User::create([
@@ -314,6 +331,65 @@ final class ClientAccessController
         $this->bumpUsersCache($tenantId);
 
         return response()->json(['data' => $this->userPayload($user->fresh('moduleAccesses'), $tenantId)]);
+    }
+
+    /**
+     * Reseta a senha de um usuário (admin somente).
+     * PUT /api/access/users/{user}/reset-password
+     */
+    public function resetPassword(Request $request, User $user): JsonResponse
+    {
+        $actor = $request->user();
+        $tenantId = app(TenantContext::class)->id();
+
+        $this->assertCanWrite($actor, $tenantId);
+        $this->ensureBelongsToTenant($user, $tenantId);
+
+        $data = $request->validate([
+            'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
+        ]);
+
+        $user->update(['password' => $data['password']]);
+
+        $this->audit->record('tenant', 'access.user_password_reset', "User #{$user->id}", null, ['tenant_id' => $tenantId]);
+
+        return response()->json(['message' => 'Senha redefinida com sucesso.']);
+    }
+
+    private function resolveOrCreateDefaultPassword(int $tenantId, int $actorId): string
+    {
+        $setting = \App\Models\TenantSecuritySetting::where('tenant_id', $tenantId)->first();
+
+        if ($setting !== null && $setting->default_password_hash !== null) {
+            $plain = $setting->getDefaultPasswordPlain();
+            if ($plain !== null) {
+                return $plain;
+            }
+        }
+
+        $generated = $this->generateSecureDefaultPassword();
+        $setting = \App\Models\TenantSecuritySetting::updateOrCreate(
+            ['tenant_id' => $tenantId],
+            [
+                'default_password_hash' => \Illuminate\Support\Facades\Hash::make($generated),
+                'updated_by' => $actorId,
+                'default_password_set_at' => now(),
+            ]
+        );
+        $setting->setDefaultPasswordPlain($generated);
+        $setting->save();
+
+        return $generated;
+    }
+
+    private function generateSecureDefaultPassword(): string
+    {
+        $chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+        $password = '';
+        for ($i = 0; $i < 12; $i++) {
+            $password .= $chars[random_int(0, strlen($chars) - 1)];
+        }
+        return $password;
     }
 
     private function usersCacheVersion(int $tenantId): int
@@ -472,6 +548,8 @@ final class ClientAccessController
                 'default_password_set_at' => now(),
             ]
         );
+        $setting->setDefaultPasswordPlain($data['password']);
+        $setting->save();
 
         $this->audit->record('access', 'security.default_password_set', "Tenant #{$tenantId}", null, ['updated_by' => $actor->id]);
 

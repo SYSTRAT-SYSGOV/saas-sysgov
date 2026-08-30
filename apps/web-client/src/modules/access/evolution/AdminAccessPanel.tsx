@@ -97,7 +97,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
         ) : (
           <>
             {tab === 'matrix' && (
-              <MatrixTable rows={matrix} onRevoke={handleRevoke} onRenew={handleRenew} />
+              <MatrixTable rows={matrix} units={units} onRevoke={handleRevoke} onRenew={handleRenew} />
             )}
             {tab === 'byModule' && (
               <div className="space-y-5">
@@ -163,9 +163,16 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
 
 const MatrixTable: React.FC<{
   rows: AccessMatrixRow[];
+  units: OrgUnitNode[];
   onRevoke: (r: AccessMatrixRow) => void;
   onRenew: (r: AccessMatrixRow) => void;
-}> = ({ rows, onRevoke, onRenew }) => {
+}> = ({ rows, units, onRevoke, onRenew }) => {
+  const flatUnits: OrgUnitNode[] = [];
+  const buildFlat = (nodes: OrgUnitNode[]) => { nodes.forEach((n) => { flatUnits.push(n); if (n.children?.length) buildFlat(n.children); }); };
+  buildFlat(units);
+  const unitName = (id: number) => flatUnits.find((u) => u.id === id)?.name ?? `#${id}`;
+  const scopeDisplay = (r: AccessMatrixRow) => r.all_org_units ? 'Todas' : r.org_unit_ids.length === 0 ? '—' : r.org_unit_ids.map(unitName).join(', ');
+
   if (rows.length === 0) return <Empty text="Nenhum acesso configurado." />;
   return (
     <table className="w-full text-xs">
@@ -180,7 +187,7 @@ const MatrixTable: React.FC<{
             <td className="py-2 text-gov-text-primary font-medium">{r.user_name}</td>
             <td className="font-mono">{r.module}</td>
             <td className="font-mono text-gov-text-secondary">{r.role}</td>
-            <td>{r.all_org_units ? 'Todas' : `${r.org_unit_ids.length} un.`}</td>
+            <td className="max-w-[160px] truncate" title={scopeDisplay(r)}>{scopeDisplay(r)}</td>
             <td>{r.can_manage_users ? 'Sim' : 'Não'}</td>
             <td><AccessBadge status={r.status} expiring={r.expiring} validTo={r.valid_to} /></td>
             <td>{formatDate(r.valid_to)}</td>

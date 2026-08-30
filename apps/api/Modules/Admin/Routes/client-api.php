@@ -47,6 +47,7 @@ Route::prefix('api/access')
         Route::get('/users', [ClientAccessController::class, 'users']);
         Route::post('/users', [ClientAccessController::class, 'store']);
         Route::put('/users/{user}', [ClientAccessController::class, 'update']);
+        Route::put('/users/{user}/reset-password', [ClientAccessController::class, 'resetPassword']);
 
         // Evolução Usuários & Acessos (Fase D) — painel do Administrador Geral
         Route::get('/matrix', [AccessController::class, 'matrix']);

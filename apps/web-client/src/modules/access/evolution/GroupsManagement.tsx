@@ -30,7 +30,7 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
     setLoading(true);
     try {
       const [c, g, u] = await Promise.all([accessApi.categories(), accessApi.groups(), accessApi.users()]);
-      setCategories(c); setGroups(g); setAllUsers(u);
+      setCategories(c); setGroups(g); setAllUsers(u.items);
     } catch { notify({ type: 'error', title: 'Erro', message: 'Falha ao carregar grupos e categorias.' }); }
     finally { setLoading(false); }
   }, [notify]);

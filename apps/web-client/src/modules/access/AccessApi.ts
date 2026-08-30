@@ -19,11 +19,22 @@ export interface AccessUser {
   email: string;
   matricula?: string | null;
   cargo_id?: number | null;
+  cargo?: string | null;
   is_active: boolean;
   created_at: string;
   accesses: ModuleAccessItem[];
   primary_org_unit_id?: number | null;
   group_ids?: number[];
+  groups?: { id: number; name: string; category_id: number | null; category: string | null }[];
+}
+
+export interface UserFilters {
+  q?: string;
+  module?: string;
+  org_unit_id?: number;
+  group_id?: number;
+  category_id?: number;
+  cargo_id?: number;
 }
 
 export interface Cargo {
@@ -196,9 +207,26 @@ export const accessApi = {
     return data.data;
   },
 
-  async users(): Promise<AccessUser[]> {
-    const { data } = await apiClient.get<{ data: AccessUser[] }>('/access/users');
-    return data.data;
+  async users(filters?: UserFilters & { page?: number; per_page?: number }): Promise<{ items: AccessUser[]; meta: { current_page: number; per_page: number; total: number; last_page: number } }> {
+    const params = new URLSearchParams();
+    if (filters?.q) params.set('q', filters.q);
+    if (filters?.module) params.set('module', filters.module);
+    if (filters?.org_unit_id) params.set('org_unit_id', String(filters.org_unit_id));
+    if (filters?.group_id) params.set('group_id', String(filters.group_id));
+    if (filters?.category_id) params.set('category_id', String(filters.category_id));
+    if (filters?.cargo_id) params.set('cargo_id', String(filters.cargo_id));
+    if (filters?.page) params.set('page', String(filters.page));
+    if (filters?.per_page) params.set('per_page', String(filters.per_page));
+    const qs = params.toString();
+    const { data } = await apiClient.get<{ data: AccessUser[]; meta?: { current_page: number; per_page: number; total: number; last_page: number } }>(`/access/users${qs ? `?${qs}` : ''}`);
+    return {
+      items: Array.isArray(data.data) ? data.data : [],
+      meta: data.meta ?? { current_page: 1, per_page: 25, total: Array.isArray(data.data) ? data.data.length : 0, last_page: 1 },
+    };
+  },
+
+  async resetPassword(userId: number, password: string, password_confirmation: string): Promise<void> {
+    await apiClient.put(`/access/users/${userId}/reset-password`, { password, password_confirmation });
   },
 
   async createUser(input: CreateAccessUserInput): Promise<AccessUser> {
@@ -206,7 +234,7 @@ export const accessApi = {
     return data.data;
   },
 
-  async updateUser(id: number, input: { name?: string; email?: string; accesses?: ModuleAccessItem[] }): Promise<AccessUser> {
+  async updateUser(id: number, input: { name?: string; email?: string; matricula?: string | null; cargo_id?: number | null; group_ids?: number[]; primary_org_unit_id?: number | null; accesses?: ModuleAccessItem[] }): Promise<AccessUser> {
     const { data } = await apiClient.put<{ data: AccessUser }>(`/access/users/${id}`, input);
     return data.data;
   },
@@ -354,6 +382,17 @@ export const accessApi = {
 
   async tenantPermissions(): Promise<TenantPermission[]> {
     const { data } = await apiClient.get<{ data: TenantPermission[] }>('/access/permissions');
+    return data.data;
+  },
+
+  // ==== Senha padrão do sistema (somente admin) ====
+  async getDefaultPassword(): Promise<{ set: boolean; updated_by: number | null; updated_at: string | null }> {
+    const { data } = await apiClient.get<{ data: { set: boolean; updated_by: number | null; updated_at: string | null } }>('/access/security/default-password');
+    return data.data;
+  },
+
+  async setDefaultPassword(password: string, password_confirmation: string): Promise<{ set: boolean; updated_by: number; updated_at: string | null }> {
+    const { data } = await apiClient.put<{ data: { set: boolean; updated_by: number; updated_at: string | null } }>('/access/security/default-password', { password, password_confirmation });
     return data.data;
   },
 };
