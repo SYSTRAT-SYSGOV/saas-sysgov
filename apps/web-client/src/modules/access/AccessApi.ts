@@ -241,7 +241,7 @@ export const accessApi = {
     return data.data;
   },
 
-  async createCargo(input: { name: string; description?: string }): Promise<Cargo> {
+  async createCargo(input: { name: string; description?: string | null }): Promise<Cargo> {
     const { data } = await apiClient.post<{ data: Cargo }>('/access/cargos', input);
     return data.data;
   },
@@ -261,7 +261,7 @@ export const accessApi = {
     return data.data;
   },
 
-  async createCategory(input: { name: string; description?: string }): Promise<AccessCategory> {
+  async createCategory(input: { name: string; description?: string | null }): Promise<AccessCategory> {
     const { data } = await apiClient.post<{ data: AccessCategory }>('/access/categories', input);
     return data.data;
   },
@@ -283,7 +283,7 @@ export const accessApi = {
   async createGroup(input: {
     category_id?: number | null;
     name: string;
-    description?: string;
+    description?: string | null;
     accesses?: AccessGroupAccess[];
   }): Promise<AccessGroup> {
     const { data } = await apiClient.post<{ data: AccessGroup }>('/access/groups', input);

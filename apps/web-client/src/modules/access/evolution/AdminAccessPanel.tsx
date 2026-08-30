@@ -1,19 +1,23 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { LayoutGrid, Building2, Clock, Users, MailWarning, Loader2, RotateCcw, XCircle } from 'lucide-react';
-import { accessApi, AccessMatrixRow, AccessModuleGroup, ExpiringAccess } from '../AccessApi';
+import { LayoutGrid, Building2, Clock, Users, MailWarning, Loader2, RotateCcw, XCircle, Briefcase, Layers } from 'lucide-react';
+import { accessApi, AccessMatrixRow, AccessModuleGroup, ExpiringAccess, AccessModule, OrgUnitNode } from '../AccessApi';
 import { AccessBadge, formatDate } from './AccessBadge';
+import { CargosManagement } from './CargosManagement';
+import { GroupsManagement } from './GroupsManagement';
 
-type Tab = 'matrix' | 'byModule' | 'expiring' | 'pending';
+type Tab = 'matrix' | 'byModule' | 'expiring' | 'pending' | 'cargos' | 'groups';
 
 interface AdminAccessPanelProps {
+  modules: AccessModule[];
+  units: OrgUnitNode[];
   notify: (t: { type: 'success' | 'error' | 'info' | 'warning'; title: string; message: string }) => void;
 }
 
 /**
- * Painel do Administrador Geral: visões por módulo, por secretaria, expirando e pendentes.
- * Suporta revogar e renovar acessos.
+ * Painel do Administrador Geral: visões por módulo, por secretaria, expirando, pendentes,
+ * cargos e grupos/categorias de acesso.
  */
-export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ notify }) => {
+export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, units, notify }) => {
   const [tab, setTab] = useState<Tab>('matrix');
   const [matrix, setMatrix] = useState<AccessMatrixRow[]>([]);
   const [byModule, setByModule] = useState<AccessModuleGroup[]>([]);
@@ -64,6 +68,8 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ notify }) =>
     { key: 'byModule', label: 'Por Módulo', icon: <Users className="w-4 h-4" /> },
     { key: 'expiring', label: `Expirando (${expiring.length})`, icon: <Clock className="w-4 h-4" /> },
     { key: 'pending', label: 'Pendentes', icon: <MailWarning className="w-4 h-4" /> },
+    { key: 'cargos', label: 'Cargos', icon: <Briefcase className="w-4 h-4" /> },
+    { key: 'groups', label: 'Grupos & Categorias', icon: <Layers className="w-4 h-4" /> },
   ];
 
   return (
@@ -143,6 +149,8 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ notify }) =>
               </div>
             )}
             {tab === 'pending' && <Empty text="Convites pendentes aparecem aqui. (Fluxo de convite por e-mail é mantido.)" />}
+            {tab === 'cargos' && <CargosManagement notify={notify} />}
+            {tab === 'groups' && <GroupsManagement modules={modules} units={units} notify={notify} />}
           </>
         )}
       </div>

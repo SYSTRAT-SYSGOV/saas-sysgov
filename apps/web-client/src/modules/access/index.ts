@@ -14,4 +14,4 @@ export type {
   ExpiringAccess,
   GrantAccessInput,
 } from './AccessApi';
-export { AccessBadge, ModuleAccessPicker, NewUserWizard, AdminAccessPanel } from './evolution';
+export { AccessBadge, ModuleAccessPicker, NewUserWizard, AdminAccessPanel, CargosManagement, GroupsManagement } from './evolution';
