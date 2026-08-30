@@ -8,6 +8,7 @@ use Modules\Admin\Http\Controllers\AccessGroupController;
 use Modules\Admin\Http\Controllers\AuthController;
 use Modules\Admin\Http\Controllers\CargoController;
 use Modules\Admin\Http\Controllers\ClientAccessController;
+use Modules\Admin\Http\Controllers\ClientRoleController;
 use Modules\Admin\Http\Controllers\ClientUserController;
 use Modules\Admin\Http\Controllers\MfaController;
 
@@ -73,6 +74,14 @@ Route::prefix('api/access')
         Route::delete('/groups/{group}', [AccessGroupController::class, 'destroyGroup']);
         Route::post('/groups/{group}/users', [AccessGroupController::class, 'assignUsers']);
         Route::delete('/groups/{group}/users/{user}', [AccessGroupController::class, 'removeUser']);
+
+        // Roles e permissões do tenant (client SaaS)
+        Route::get('/permissions', [ClientRoleController::class, 'permissions']);
+        Route::get('/roles', [ClientRoleController::class, 'index']);
+        Route::post('/roles', [ClientRoleController::class, 'store']);
+        Route::get('/roles/{role}', [ClientRoleController::class, 'show']);
+        Route::put('/roles/{role}', [ClientRoleController::class, 'update']);
+        Route::delete('/roles/{role}', [ClientRoleController::class, 'destroy']);
     });
 
 // MFA do próprio usuário autenticado (RN-USR-005) — qualquer painel
