@@ -116,25 +116,59 @@ final class ClientAccessController
         $actor = $request->user();
         $tenantId = app(TenantContext::class)->id();
         $search = $request->string('q')->toString();
+        $filters = [
+            'module' => $request->string('module')->toString(),
+            'org_unit_id' => $request->integer('org_unit_id') ?: null,
+            'group_id' => $request->integer('group_id') ?: null,
+            'category_id' => $request->integer('category_id') ?: null,
+            'cargo_id' => $request->integer('cargo_id') ?: null,
+        ];
 
-        $cacheKey = "access:users:{$this->usersCacheVersion($tenantId)}:{$tenantId}:{$actor->id}:".md5($search);
+        $cacheKey = "access:users:{$this->usersCacheVersion($tenantId)}:{$tenantId}:{$actor->id}:".md5($search.json_encode($filters));
 
-        $payload = \Illuminate\Support\Facades\Cache::remember($cacheKey, 30, fn (): array => $this->usersData($actor, $tenantId, $search));
+        $payload = \Illuminate\Support\Facades\Cache::remember($cacheKey, 30, fn (): array => $this->usersData($actor, $tenantId, $search, $filters));
 
         return response()->json(['data' => $payload]);
     }
 
     /**
+     * @param array<string, mixed> $filters
      * @return array<int, array<string, mixed>>
      */
-    private function usersData(User $actor, int $tenantId, string $search = ''): array
+    private function usersData(User $actor, int $tenantId, string $search = '', array $filters = []): array
     {
         $query = User::query()
             ->whereHas('tenants', fn ($q) => $q->where('tenants.id', $tenantId))
-            ->with(['tenants' => fn ($q) => $q->where('tenant_id', $tenantId), 'moduleAccesses' => fn ($q) => $q->where('tenant_id', $tenantId)]);
+            ->with([
+                'tenants' => fn ($q) => $q->where('tenant_id', $tenantId),
+                'moduleAccesses' => fn ($q) => $q->where('tenant_id', $tenantId),
+                'cargo:id,name',
+                'accessGroups:id,name,category_id',
+                'accessGroups.category:id,name',
+            ]);
 
         if ($search !== '') {
-            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")->orWhere('matricula', 'like', "%{$search}%"));
+        }
+
+        // Filtros avançados
+        if (!empty($filters['module'])) {
+            $query->whereHas('moduleAccesses', fn ($q) => $q->where('tenant_id', $tenantId)->where('module_alias', $filters['module']));
+        }
+        if (!empty($filters['org_unit_id'])) {
+            $query->whereHas('moduleAccesses', function ($q) use ($tenantId, $filters) {
+                $q->where('tenant_id', $tenantId)
+                  ->where(fn ($q2) => $q2->whereNull('org_unit_ids')->orWhereJsonContains('org_unit_ids', (int) $filters['org_unit_id']));
+            });
+        }
+        if (!empty($filters['group_id'])) {
+            $query->whereHas('accessGroups', fn ($q) => $q->where('access_groups.id', (int) $filters['group_id']));
+        }
+        if (!empty($filters['category_id'])) {
+            $query->whereHas('accessGroups', fn ($q) => $q->where('access_groups.category_id', (int) $filters['category_id']));
+        }
+        if (!empty($filters['cargo_id'])) {
+            $query->where('cargo_id', (int) $filters['cargo_id']);
         }
 
         // Módulo-admin (não global) só vê usuários que compartilham pelo menos um módulo que ele administra
@@ -394,36 +428,122 @@ final class ClientAccessController
     }
 
     /**
+     * Consulta a senha padrão do sistema do tenant (não retorna o hash).
+     * GET /api/access/security/default-password
+     */
+    public function getDefaultPassword(Request $request): JsonResponse
+    {
+        $tenantId = app(TenantContext::class)->id();
+        $this->assertCanWrite($request->user(), $tenantId);
+
+        $setting = \App\Models\TenantSecuritySetting::where('tenant_id', $tenantId)->first();
+
+        return response()->json([
+            'data' => [
+                'set' => $setting !== null && $setting->default_password_hash !== null,
+                'updated_by' => $setting?->updated_by,
+                'updated_at' => $setting?->default_password_set_at?->toISOString(),
+            ],
+        ]);
+    }
+
+    /**
+     * Define a senha padrão do sistema (somente admin geral/gestor do tenant).
+     * PUT /api/access/security/default-password
+     */
+    public function setDefaultPassword(Request $request): JsonResponse
+    {
+        $tenantId = app(TenantContext::class)->id();
+        $actor = $request->user();
+
+        // Só admin geral (ou admin_tenant) pode alterar a senha padrão do sistema
+        $isManager = $actor->is_platform_admin || $actor->isSupportAnalyst() || $actor->hasRole('admin_tenant', $tenantId);
+        abort_unless($isManager, 403, 'Apenas o administrador geral do tenant pode alterar a senha padrão do sistema.');
+
+        $data = $request->validate([
+            'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
+        ]);
+
+        $setting = \App\Models\TenantSecuritySetting::updateOrCreate(
+            ['tenant_id' => $tenantId],
+            [
+                'default_password_hash' => \Illuminate\Support\Facades\Hash::make($data['password']),
+                'updated_by' => $actor->id,
+                'default_password_set_at' => now(),
+            ]
+        );
+
+        $this->audit->record('access', 'security.default_password_set', "Tenant #{$tenantId}", null, ['updated_by' => $actor->id]);
+
+        return response()->json([
+            'message' => 'Senha padrão do sistema atualizada.',
+            'data' => ['set' => true, 'updated_by' => $actor->id, 'updated_at' => $setting->default_password_set_at?->toISOString()],
+        ]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function userPayload(User $user, int $tenantId): array
     {
+        // Vínculo principal: busca direta na pivot para evitar tipagem genérica do Eloquent
+        $primaryOrgUnitId = (int) \Illuminate\Support\Facades\DB::table('tenant_user')
+            ->where('user_id', $user->id)
+            ->where('tenant_id', $tenantId)
+            ->value('primary_org_unit_id') ?: null;
+
+        $groups = [];
+        if ($user->relationLoaded('accessGroups')) {
+            foreach ($user->accessGroups as $g) {
+                /** @var \App\Models\AccessGroup $g */
+                $cat = null;
+                if ($g->relationLoaded('category')) {
+                    /** @var \App\Models\AccessCategory|null $cat */
+                    $cat = $g->category;
+                }
+                $groups[] = [
+                    'id' => $g->id,
+                    'name' => $g->name,
+                    'category_id' => $g->category_id,
+                    'category' => $cat?->name,
+                ];
+            }
+        }
+
+        /** @var \App\Models\Cargo|null $cargo */
+        $cargo = $user->relationLoaded('cargo') ? $user->cargo : null;
+
+        $accesses = [];
+        foreach ($user->moduleAccesses as $a) {
+            /** @var UserModuleAccess $a */
+            if ($a->tenant_id !== $tenantId) {
+                continue;
+            }
+            $accesses[] = [
+                'module' => $a->module_alias,
+                'role' => $a->role,
+                'all_org_units' => $a->isUnrestricted(),
+                'org_unit_ids' => $a->org_unit_ids ?? [],
+                'can_manage_users' => (bool) $a->can_manage_users,
+                'can_create' => (bool) $a->can_create,
+                'can_edit' => (bool) $a->can_edit,
+                'can_delete' => (bool) $a->can_delete,
+            ];
+        }
+
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'matricula' => $user->matricula,
+            'cargo_id' => $user->cargo_id,
+            'cargo' => $cargo?->name,
+            'primary_org_unit_id' => $primaryOrgUnitId,
+            'groups' => $groups,
+            'group_ids' => array_column($groups, 'id'),
             'is_active' => $user->is_active,
             'created_at' => $user->created_at,
-            'accesses' => $user->moduleAccesses
-                ->filter(function ($a) use ($tenantId): bool {
-                    /** @var UserModuleAccess $a */
-                    return $a->tenant_id === $tenantId;
-                })
-                ->map(function ($a): array {
-                    /** @var UserModuleAccess $a */
-                    return [
-                        'module' => $a->module_alias,
-                        'role' => $a->role,
-                        'all_org_units' => $a->isUnrestricted(),
-                        'org_unit_ids' => $a->org_unit_ids ?? [],
-                        'can_manage_users' => (bool) $a->can_manage_users,
-                        'can_create' => (bool) $a->can_create,
-                        'can_edit' => (bool) $a->can_edit,
-                        'can_delete' => (bool) $a->can_delete,
-                    ];
-                })
-                ->values()
-                ->all(),
+            'accesses' => $accesses,
         ];
     }
 }

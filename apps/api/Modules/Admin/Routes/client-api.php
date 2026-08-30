@@ -82,6 +82,10 @@ Route::prefix('api/access')
         Route::get('/roles/{role}', [ClientRoleController::class, 'show']);
         Route::put('/roles/{role}', [ClientRoleController::class, 'update']);
         Route::delete('/roles/{role}', [ClientRoleController::class, 'destroy']);
+
+        // Senha padrão do sistema (somente admin geral)
+        Route::get('/security/default-password', [ClientAccessController::class, 'getDefaultPassword']);
+        Route::put('/security/default-password', [ClientAccessController::class, 'setDefaultPassword']);
     });
 
 // MFA do próprio usuário autenticado (RN-USR-005) — qualquer painel
