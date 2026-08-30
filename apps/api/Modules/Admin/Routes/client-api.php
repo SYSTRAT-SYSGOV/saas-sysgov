@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Admin\Http\Controllers\AccessController;
+use Modules\Admin\Http\Controllers\AccessGroupController;
 use Modules\Admin\Http\Controllers\AuthController;
+use Modules\Admin\Http\Controllers\CargoController;
 use Modules\Admin\Http\Controllers\ClientAccessController;
 use Modules\Admin\Http\Controllers\ClientUserController;
 use Modules\Admin\Http\Controllers\MfaController;
@@ -52,6 +54,25 @@ Route::prefix('api/access')
         Route::post('/', [AccessController::class, 'grant']);
         Route::post('/{access}/revoke', [AccessController::class, 'revoke']);
         Route::post('/{access}/renew', [AccessController::class, 'renew']);
+
+        // Cargos (posições/funções) por secretaria/órgão
+        Route::get('/cargos', [CargoController::class, 'index']);
+        Route::post('/cargos', [CargoController::class, 'store']);
+        Route::put('/cargos/{cargo}', [CargoController::class, 'update']);
+        Route::delete('/cargos/{cargo}', [CargoController::class, 'destroy']);
+
+        // Categorias e Grupos de acesso (herança de permissões)
+        Route::get('/categories', [AccessGroupController::class, 'categories']);
+        Route::post('/categories', [AccessGroupController::class, 'storeCategory']);
+        Route::put('/categories/{category}', [AccessGroupController::class, 'updateCategory']);
+        Route::delete('/categories/{category}', [AccessGroupController::class, 'destroyCategory']);
+
+        Route::get('/groups', [AccessGroupController::class, 'groups']);
+        Route::post('/groups', [AccessGroupController::class, 'storeGroup']);
+        Route::put('/groups/{group}', [AccessGroupController::class, 'updateGroup']);
+        Route::delete('/groups/{group}', [AccessGroupController::class, 'destroyGroup']);
+        Route::post('/groups/{group}/users', [AccessGroupController::class, 'assignUsers']);
+        Route::delete('/groups/{group}/users/{user}', [AccessGroupController::class, 'removeUser']);
     });
 
 // MFA do próprio usuário autenticado (RN-USR-005) — qualquer painel

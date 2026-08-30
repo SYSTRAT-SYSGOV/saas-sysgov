@@ -165,6 +165,10 @@ final class ClientAccessController
             'name' => ['required', 'string', 'max:160'],
             'email' => ['required', 'email', 'max:160', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
+            'matricula' => ['nullable', 'string', 'max:40'],
+            'cargo_id' => ['nullable', 'integer', 'exists:cargos,id'],
+            'group_ids' => ['sometimes', 'array'],
+            'group_ids.*' => ['integer', 'exists:access_groups,id'],
             'primary_org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'accesses' => ['sometimes', 'array', 'max:30'],
             'accesses.*.module' => ['required', 'string', 'max:60'],
@@ -184,6 +188,8 @@ final class ClientAccessController
             $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
+                'matricula' => $data['matricula'] ?? null,
+                'cargo_id' => $data['cargo_id'] ?? null,
                 'password' => $data['password'],
                 'is_systrat' => false,
                 'is_active' => true,
@@ -203,6 +209,7 @@ final class ClientAccessController
             }
 
             $this->syncAccesses($user, $tenantId, $data['accesses'] ?? []);
+            $user->accessGroups()->sync($data['group_ids'] ?? []);
 
             return $user;
         });
@@ -233,6 +240,10 @@ final class ClientAccessController
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:160'],
             'email' => ['sometimes', 'email', 'max:160'],
+            'matricula' => ['nullable', 'string', 'max:40'],
+            'cargo_id' => ['nullable', 'integer', 'exists:cargos,id'],
+            'group_ids' => ['sometimes', 'array'],
+            'group_ids.*' => ['integer', 'exists:access_groups,id'],
             'primary_org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'accesses' => ['sometimes', 'array', 'max:30'],
             'accesses.*.module' => ['required', 'string', 'max:60'],
@@ -250,10 +261,14 @@ final class ClientAccessController
             $this->assertCanProvision($actor, $tenantId, $data['accesses']);
         }
 
-        $user->update(array_intersect_key($data, array_flip(['name', 'email'])));
+        $user->update(array_intersect_key($data, array_flip(['name', 'email', 'matricula', 'cargo_id'])));
 
         if (array_key_exists('primary_org_unit_id', $data)) {
             $user->tenants()->updateExistingPivot($tenantId, ['primary_org_unit_id' => $data['primary_org_unit_id']]);
+        }
+
+        if (array_key_exists('group_ids', $data)) {
+            $user->accessGroups()->sync($data['group_ids']);
         }
 
         if (array_key_exists('accesses', $data)) {

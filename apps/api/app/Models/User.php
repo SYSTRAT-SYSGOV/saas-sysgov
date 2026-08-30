@@ -21,6 +21,8 @@ final class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'matricula',
+        'cargo_id',
         'avatar_url',
         'password',
         'is_systrat',
@@ -86,6 +88,16 @@ final class User extends Authenticatable
     public function moduleAccesses(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(UserModuleAccess::class);
+    }
+
+    public function cargo(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Cargo::class);
+    }
+
+    public function accessGroups(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(AccessGroup::class, 'access_group_user', 'user_id', 'access_group_id');
     }
 
     public function receivedInvitations(): HasMany
