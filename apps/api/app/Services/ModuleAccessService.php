@@ -200,7 +200,7 @@ final class ModuleAccessService
     /**
      * RN-ACC-003: concede ou atualiza o acesso de um usuário a um módulo, com rastreabilidade.
      *
-     * @param array{role?: string, org_unit_ids?: array<int>|null, can_manage_users?: bool, valid_to?: Carbon|string|null, valid_from?: Carbon|string|null} $data
+     * @param array{role?: string, org_unit_ids?: array<int>|null, can_manage_users?: bool, can_create?: bool, can_edit?: bool, can_delete?: bool, valid_to?: Carbon|string|null, valid_from?: Carbon|string|null} $data
      */
     public function grantAccess(User $user, int $tenantId, string $moduleAlias, array $data, User $grantedBy): UserModuleAccess
     {
@@ -222,6 +222,9 @@ final class ModuleAccessService
             'role' => $data['role'] ?? $access->role ?? 'viewer',
             'org_unit_ids' => array_key_exists('org_unit_ids', $data) ? $data['org_unit_ids'] : ($access->org_unit_ids ?? null),
             'can_manage_users' => (bool) ($data['can_manage_users'] ?? $access->can_manage_users ?? false),
+            'can_create' => (bool) ($data['can_create'] ?? $access->can_create ?? false),
+            'can_edit' => (bool) ($data['can_edit'] ?? $access->can_edit ?? false),
+            'can_delete' => (bool) ($data['can_delete'] ?? $access->can_delete ?? false),
             'valid_from' => $validFrom,
             'valid_to' => $validTo,
             'status' => UserModuleAccess::STATUS_ACTIVE,

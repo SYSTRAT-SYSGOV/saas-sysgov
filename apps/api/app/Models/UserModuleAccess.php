@@ -31,12 +31,16 @@ final class UserModuleAccess extends Model
     protected $fillable = [
         'user_id', 'tenant_id', 'module_alias',
         'role', 'org_unit_ids', 'can_manage_users',
+        'can_create', 'can_edit', 'can_delete',
         'valid_from', 'valid_to', 'status', 'granted_by',
     ];
 
     protected $casts = [
         'org_unit_ids' => 'array',
         'can_manage_users' => 'boolean',
+        'can_create' => 'boolean',
+        'can_edit' => 'boolean',
+        'can_delete' => 'boolean',
         'valid_from' => 'datetime',
         'valid_to' => 'datetime',
         'status' => 'string',

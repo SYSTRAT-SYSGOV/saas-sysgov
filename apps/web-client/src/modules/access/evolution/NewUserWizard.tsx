@@ -19,10 +19,22 @@ interface Step3Entry {
   all_org_units: boolean;
   org_unit_ids: number[];
   can_manage_users: boolean;
+  can_create?: boolean;
+  can_edit?: boolean;
+  can_delete?: boolean;
   valid_to?: string;
 }
 
 const STEPS = ['Dados pessoais', 'Vínculo', 'Acessos por módulo', 'Ativação'];
+
+function flattenUnits(nodes: OrgUnitNode[], depth = 0): { node: OrgUnitNode; depth: number }[] {
+  const out: { node: OrgUnitNode; depth: number }[] = [];
+  nodes.forEach((n) => {
+    out.push({ node: n, depth });
+    if (n.children?.length) out.push(...flattenUnits(n.children, depth + 1));
+  });
+  return out;
+}
 
 /**
  * Wizard "Novo Usuário" (4 etapas): dados, vínculo, acessos por módulo e ativação.
@@ -47,6 +59,7 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
 
   // Etapa 2 — vínculo
   const [role, setRole] = useState('membro');
+  const [primaryOrgUnitId, setPrimaryOrgUnitId] = useState<number | ''>('');
 
   // Etapa 3 — acessos
   const [entries, setEntries] = useState<Step3Entry[]>([]);
@@ -81,6 +94,9 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
         all_org_units: e.all_org_units,
         org_unit_ids: e.all_org_units ? [] : e.org_unit_ids,
         can_manage_users: e.can_manage_users,
+        can_create: e.can_create ?? false,
+        can_edit: e.can_edit ?? false,
+        can_delete: e.can_delete ?? false,
       }));
 
       // Cria o usuário (cadastro rápido real) — convite por e-mail é mantido para fluxo externo
@@ -89,6 +105,7 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
         email,
         password: 'MudarSenha@123',
         password_confirmation: 'MudarSenha@123',
+        primary_org_unit_id: primaryOrgUnitId === '' ? null : primaryOrgUnitId,
         accesses,
       });
 
@@ -139,15 +156,30 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
         )}
 
         {step === 1 && (
-          <Field label="Papel no vínculo">
-            <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm">
-              <option value="membro">Membro</option>
-              <option value="gestor">Gestor</option>
-              <option value="fiscal">Fiscal</option>
-              <option value="admin_tenant">Administrador do tenant</option>
-            </select>
-            <p className="text-[11px] text-gov-text-muted mt-1">O papel define a autoridade global; os acessos por módulo são definidos na próxima etapa.</p>
-          </Field>
+          <>
+            <Field label="Papel no vínculo">
+              <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm">
+                <option value="membro">Membro</option>
+                <option value="gestor">Gestor</option>
+                <option value="fiscal">Fiscal</option>
+                <option value="admin_tenant">Administrador do tenant</option>
+              </select>
+              <p className="text-[11px] text-gov-text-muted mt-1">O papel define a autoridade global; os acessos por módulo são definidos na próxima etapa.</p>
+            </Field>
+            <Field label="Secretaria/órgão de vínculo (onde o usuário pertence)">
+              <select value={primaryOrgUnitId} onChange={(e) => setPrimaryOrgUnitId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm">
+                <option value="">Nenhuma (sem vínculo de secretaria)</option>
+                {flattenUnits(units).map(({ node, depth }) => (
+                  <option key={node.id} value={node.id}>
+                    {'\u00A0'.repeat(depth * 2)}{node.name} ({node.code})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-gov-text-muted mt-1">
+                O vínculo indica a secretaria principal do usuário. Na próxima etapa você define o acesso a módulos de qualquer secretaria (cross-secretaria).
+              </p>
+            </Field>
+          </>
         )}
 
         {step === 2 && (
@@ -170,6 +202,10 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
                     onToggleManageUsers={(v) => updateEntry(m.alias, { can_manage_users: v })}
                     role={entry?.role ?? 'viewer'}
                     onRoleChange={(r) => updateEntry(m.alias, { role: r })}
+                    canCreate={entry?.can_create ?? false}
+                    canEdit={entry?.can_edit ?? false}
+                    canDelete={entry?.can_delete ?? false}
+                    onPermissionChange={(perm, v) => updateEntry(m.alias, { [perm]: v })}
                     validTo={entry?.valid_to}
                     onValidToChange={(v) => updateEntry(m.alias, { valid_to: v })}
                   />

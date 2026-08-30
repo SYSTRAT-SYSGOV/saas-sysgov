@@ -8,6 +8,9 @@ export interface ModuleAccessItem {
   all_org_units: boolean;
   org_unit_ids: number[];
   can_manage_users: boolean;
+  can_create?: boolean;
+  can_edit?: boolean;
+  can_delete?: boolean;
 }
 
 export interface AccessUser {
@@ -17,6 +20,7 @@ export interface AccessUser {
   is_active: boolean;
   created_at: string;
   accesses: ModuleAccessItem[];
+  primary_org_unit_id?: number | null;
 }
 
 export interface AccessModule {
@@ -46,6 +50,7 @@ export interface CreateAccessUserInput {
   email: string;
   password: string;
   password_confirmation: string;
+  primary_org_unit_id?: number | null;
   accesses: ModuleAccessItem[];
 }
 
@@ -98,6 +103,9 @@ export interface GrantAccessInput {
   role?: string;
   org_unit_ids?: number[];
   can_manage_users?: boolean;
+  can_create?: boolean;
+  can_edit?: boolean;
+  can_delete?: boolean;
   valid_to?: string;
 }
 

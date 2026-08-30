@@ -220,7 +220,7 @@ export const AccessManagement: React.FC = () => {
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-gov-primary/10 rounded-lg p-1">
             <button
-              onClick={() => setViewMode('lista')}
+              onClick={() => { setViewMode('lista'); setWizardOpen(false); }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                 viewMode === 'lista' ? 'bg-white dark:bg-slate-800 text-gov-primary shadow-sm' : 'text-gov-text-secondary'
               }`}
@@ -228,7 +228,7 @@ export const AccessManagement: React.FC = () => {
               <Users className="w-4 h-4" /> Lista
             </button>
             <button
-              onClick={() => setViewMode('painel')}
+              onClick={() => { setViewMode('painel'); setWizardOpen(false); }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                 viewMode === 'painel' ? 'bg-white dark:bg-slate-800 text-gov-primary shadow-sm' : 'text-gov-text-secondary'
               }`}

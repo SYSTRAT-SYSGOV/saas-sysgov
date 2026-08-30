@@ -12,6 +12,10 @@ interface ModuleAccessPickerProps {
   onToggleManageUsers: (v: boolean) => void;
   role: string;
   onRoleChange: (role: string) => void;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onPermissionChange?: (perm: 'can_create' | 'can_edit' | 'can_delete', v: boolean) => void;
   validTo?: string;
   onValidToChange?: (v: string) => void;
   disabled?: boolean;
@@ -31,6 +35,10 @@ export const ModuleAccessPicker: React.FC<ModuleAccessPickerProps> = ({
   onToggleManageUsers,
   role,
   onRoleChange,
+  canCreate,
+  canEdit,
+  canDelete,
+  onPermissionChange,
   validTo,
   onValidToChange,
   disabled,
@@ -138,6 +146,28 @@ export const ModuleAccessPicker: React.FC<ModuleAccessPickerProps> = ({
         />
         <span className="text-gov-text-primary">Administrador do módulo (pode gerenciar usuários deste módulo)</span>
       </label>
+
+      {/* Permissões granulares — ler implícito pelo acesso; opções explícitas de criar/editar/excluir */}
+      {onPermissionChange && (
+        <div className="flex flex-wrap gap-3 pt-2 border-t border-gov-border">
+          <span className="text-xs text-gov-text-secondary font-semibold w-full">Permissões granulares no módulo:</span>
+          <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+            <input type="checkbox" checked={canCreate ?? false} disabled={disabled} onChange={(e) => onPermissionChange('can_create', e.target.checked)} className="accent-gov-primary" />
+            Criar
+          </label>
+          <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+            <input type="checkbox" checked={canEdit ?? false} disabled={disabled} onChange={(e) => onPermissionChange('can_edit', e.target.checked)} className="accent-gov-primary" />
+            Editar
+          </label>
+          <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+            <input type="checkbox" checked={canDelete ?? false} disabled={disabled} onChange={(e) => onPermissionChange('can_delete', e.target.checked)} className="accent-gov-primary" />
+            Excluir
+          </label>
+          <p className="text-[10px] text-gov-text-muted w-full">
+            A permissão de leitura é concedida automaticamente pelo acesso ao módulo.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

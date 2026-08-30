@@ -165,6 +165,7 @@ final class ClientAccessController
             'name' => ['required', 'string', 'max:160'],
             'email' => ['required', 'email', 'max:160', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
+            'primary_org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'accesses' => ['sometimes', 'array', 'max:30'],
             'accesses.*.module' => ['required', 'string', 'max:60'],
             'accesses.*.role' => ['required', 'in:member,manager,admin,editor,viewer'],
@@ -172,6 +173,9 @@ final class ClientAccessController
             'accesses.*.org_unit_ids' => ['sometimes', 'array'],
             'accesses.*.org_unit_ids.*' => ['integer'],
             'accesses.*.can_manage_users' => ['sometimes', 'boolean'],
+            'accesses.*.can_create' => ['sometimes', 'boolean'],
+            'accesses.*.can_edit' => ['sometimes', 'boolean'],
+            'accesses.*.can_delete' => ['sometimes', 'boolean'],
         ]);
 
         $this->assertCanProvision($actor, $tenantId, $data['accesses'] ?? []);
@@ -185,11 +189,15 @@ final class ClientAccessController
                 'is_active' => true,
             ]);
 
-            // Vincula ao tenant com a role base 'membro'
+            // Vincula ao tenant com a role base 'membro' e o vínculo principal (secretaria)
             $baseRole = Role::where('slug', 'membro')->where('scope', 'tenant')->where('tenant_id', $tenantId)->first()
                 ?? Role::where('slug', 'membro')->where('scope', 'tenant')->first();
 
-            $user->tenants()->syncWithoutDetaching([$tenantId => ['role_id' => $baseRole?->id, 'status' => 'active']]);
+            $user->tenants()->syncWithoutDetaching([$tenantId => [
+                'role_id' => $baseRole?->id,
+                'status' => 'active',
+                'primary_org_unit_id' => $data['primary_org_unit_id'] ?? null,
+            ]]);
             if ($baseRole) {
                 $user->roles()->syncWithoutDetaching([$baseRole->id]);
             }
@@ -225,6 +233,7 @@ final class ClientAccessController
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:160'],
             'email' => ['sometimes', 'email', 'max:160'],
+            'primary_org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'accesses' => ['sometimes', 'array', 'max:30'],
             'accesses.*.module' => ['required', 'string', 'max:60'],
             'accesses.*.role' => ['required', 'in:member,manager,admin,editor,viewer'],
@@ -232,6 +241,9 @@ final class ClientAccessController
             'accesses.*.org_unit_ids' => ['sometimes', 'array'],
             'accesses.*.org_unit_ids.*' => ['integer'],
             'accesses.*.can_manage_users' => ['sometimes', 'boolean'],
+            'accesses.*.can_create' => ['sometimes', 'boolean'],
+            'accesses.*.can_edit' => ['sometimes', 'boolean'],
+            'accesses.*.can_delete' => ['sometimes', 'boolean'],
         ]);
 
         if (array_key_exists('accesses', $data)) {
@@ -239,6 +251,10 @@ final class ClientAccessController
         }
 
         $user->update(array_intersect_key($data, array_flip(['name', 'email'])));
+
+        if (array_key_exists('primary_org_unit_id', $data)) {
+            $user->tenants()->updateExistingPivot($tenantId, ['primary_org_unit_id' => $data['primary_org_unit_id']]);
+        }
 
         if (array_key_exists('accesses', $data)) {
             $this->syncAccesses($user, $tenantId, $data['accesses']);
@@ -276,6 +292,9 @@ final class ClientAccessController
                 'role' => $a['role'],
                 'org_unit_ids' => !empty($a['all_org_units']) ? null : ($a['org_unit_ids'] ?? []),
                 'can_manage_users' => (bool) ($a['can_manage_users'] ?? false),
+                'can_create' => (bool) ($a['can_create'] ?? false),
+                'can_edit' => (bool) ($a['can_edit'] ?? false),
+                'can_delete' => (bool) ($a['can_delete'] ?? false),
             ]);
         }
     }
@@ -383,6 +402,9 @@ final class ClientAccessController
                         'all_org_units' => $a->isUnrestricted(),
                         'org_unit_ids' => $a->org_unit_ids ?? [],
                         'can_manage_users' => (bool) $a->can_manage_users,
+                        'can_create' => (bool) $a->can_create,
+                        'can_edit' => (bool) $a->can_edit,
+                        'can_delete' => (bool) $a->can_delete,
                     ];
                 })
                 ->values()
