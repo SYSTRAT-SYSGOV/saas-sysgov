@@ -63,6 +63,7 @@ export interface AccessGroup {
   description: string | null;
   is_active: boolean;
   users_count?: number;
+  users?: { id: number; name: string; email: string }[];
   accesses: AccessGroupAccess[];
 }
 

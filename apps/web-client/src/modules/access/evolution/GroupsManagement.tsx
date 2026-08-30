@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Loader2, X, Check, Users } from 'lucide-react';
-import { accessApi, AccessCategory, AccessGroup, AccessGroupAccess } from '../AccessApi';
+import { Plus, Pencil, Trash2, Loader2, X, Check, Users, UserCheck } from 'lucide-react';
+import { accessApi, AccessCategory, AccessGroup, AccessGroupAccess, AccessUser } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
 import { OrgUnitNode } from '../AccessApi';
 
@@ -23,12 +23,14 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
   const [gCategory, setGCategory] = useState<number | ''>('');
   const [gAccesses, setGAccesses] = useState<AccessGroupAccess[]>([]);
   const [showUsers, setShowUsers] = useState<number | null>(null);
+  const [allUsers, setAllUsers] = useState<AccessUser[]>([]);
+  const [userSearch, setUserSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [c, g] = await Promise.all([accessApi.categories(), accessApi.groups()]);
-      setCategories(c); setGroups(g);
+      const [c, g, u] = await Promise.all([accessApi.categories(), accessApi.groups(), accessApi.users()]);
+      setCategories(c); setGroups(g); setAllUsers(u);
     } catch { notify({ type: 'error', title: 'Erro', message: 'Falha ao carregar grupos e categorias.' }); }
     finally { setLoading(false); }
   }, [notify]);
@@ -48,6 +50,18 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
     if (!window.confirm(`Excluir categoria "${c.name}"? Grupos ficarão sem categoria.`)) return;
     try { await accessApi.deleteCategory(c.id); load(); }
     catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.message }); }
+  };
+
+  const toggleUser = async (groupId: number, userId: number, isMember: boolean) => {
+    try {
+      if (isMember) {
+        await accessApi.removeGroupUser(groupId, userId);
+      } else {
+        await accessApi.assignGroupUsers(groupId, [userId]);
+      }
+      notify({ type: 'success', title: isMember ? 'Removido' : 'Atribuído', message: 'Usuário atualizado.' });
+      load();
+    } catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.message }); }
   };
 
   const openGroup = (g?: AccessGroup) => {
@@ -212,6 +226,43 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
           </div>
         </div>
       )}
+
+      {/* Modal atribuir usuários */}
+      {showUsers !== null && (() => {
+        const group = groups.find((g) => g.id === showUsers);
+        if (!group) return null;
+        const members = (group as AccessGroup & { users?: { id: number }[] }).users?.map((u) => u.id) ?? [];
+        const filtered = allUsers.filter((u) => !userSearch || u.name.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase()));
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg mx-4 p-5 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold flex items-center gap-2"><UserCheck className="w-4 h-4 text-emerald-600" /> Usuários do grupo: {group.name}</h3>
+                <button onClick={() => setShowUsers(null)}><X className="w-5 h-5 text-gov-text-muted" /></button>
+              </div>
+              <input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="Buscar usuário..." className="w-full px-3 py-2 border border-gov-border rounded-lg text-sm mb-3" />
+              <div className="space-y-1 max-h-72 overflow-y-auto">
+                {filtered.length === 0 && <p className="text-xs text-gov-text-muted p-2">Nenhum usuário.</p>}
+                {filtered.map((u) => {
+                  const isMember = members.includes(u.id);
+                  return (
+                    <label key={u.id} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-gov-primary/5 cursor-pointer">
+                      <div>
+                        <p className="text-xs font-medium text-gov-text-primary">{u.name}</p>
+                        <p className="text-[10px] text-gov-text-muted font-mono">{u.email}</p>
+                      </div>
+                      <input type="checkbox" checked={isMember} onChange={() => toggleUser(group.id, u.id, isMember)} className="accent-emerald-600" />
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="flex justify-end pt-4">
+                <button onClick={() => setShowUsers(null)} className="px-4 py-2 text-xs border border-gov-border rounded-lg">Fechar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

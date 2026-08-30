@@ -83,7 +83,7 @@ final class AccessGroupController
         $tenantId = app(TenantContext::class)->id();
         $groups = AccessGroup::query()
             ->where('tenant_id', $tenantId)
-            ->with(['category:id,name', 'accesses'])
+            ->with(['category:id,name', 'accesses', 'users:id,name,email'])
             ->withCount('users')
             ->orderBy('name')
             ->get();
