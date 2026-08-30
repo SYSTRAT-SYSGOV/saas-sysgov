@@ -17,10 +17,53 @@ export interface AccessUser {
   id: number;
   name: string;
   email: string;
+  matricula?: string | null;
+  cargo_id?: number | null;
   is_active: boolean;
   created_at: string;
   accesses: ModuleAccessItem[];
   primary_org_unit_id?: number | null;
+  group_ids?: number[];
+}
+
+export interface Cargo {
+  id: number;
+  tenant_id: number;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+}
+
+export interface AccessCategory {
+  id: number;
+  tenant_id: number;
+  name: string;
+  description: string | null;
+  groups_count?: number;
+}
+
+export interface AccessGroupAccess {
+  id?: number;
+  module_alias: string;
+  role: string;
+  org_unit_ids: number[] | null;
+  can_manage_users: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+  valid_to: string | null;
+}
+
+export interface AccessGroup {
+  id: number;
+  tenant_id: number;
+  category_id: number | null;
+  category?: { id: number; name: string } | null;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  users_count?: number;
+  accesses: AccessGroupAccess[];
 }
 
 export interface AccessModule {
@@ -50,6 +93,9 @@ export interface CreateAccessUserInput {
   email: string;
   password: string;
   password_confirmation: string;
+  matricula?: string | null;
+  cargo_id?: number | null;
+  group_ids?: number[];
   primary_org_unit_id?: number | null;
   accesses: ModuleAccessItem[];
 }
@@ -187,5 +233,84 @@ export const accessApi = {
   async renewAccess(id: number, validTo?: string): Promise<{ message: string; valid_to: string | null }> {
     const { data } = await apiClient.post<{ message: string; valid_to: string | null }>(`/access/${id}/renew`, { valid_to: validTo });
     return data;
+  },
+
+  // ==== Cargos ====
+  async cargos(): Promise<Cargo[]> {
+    const { data } = await apiClient.get<{ data: Cargo[] }>('/access/cargos');
+    return data.data;
+  },
+
+  async createCargo(input: { name: string; description?: string }): Promise<Cargo> {
+    const { data } = await apiClient.post<{ data: Cargo }>('/access/cargos', input);
+    return data.data;
+  },
+
+  async updateCargo(id: number, input: { name?: string; description?: string | null; is_active?: boolean }): Promise<Cargo> {
+    const { data } = await apiClient.put<{ data: Cargo }>(`/access/cargos/${id}`, input);
+    return data.data;
+  },
+
+  async deleteCargo(id: number): Promise<void> {
+    await apiClient.delete(`/access/cargos/${id}`);
+  },
+
+  // ==== Categorias e Grupos ====
+  async categories(): Promise<AccessCategory[]> {
+    const { data } = await apiClient.get<{ data: AccessCategory[] }>('/access/categories');
+    return data.data;
+  },
+
+  async createCategory(input: { name: string; description?: string }): Promise<AccessCategory> {
+    const { data } = await apiClient.post<{ data: AccessCategory }>('/access/categories', input);
+    return data.data;
+  },
+
+  async updateCategory(id: number, input: { name?: string; description?: string | null }): Promise<AccessCategory> {
+    const { data } = await apiClient.put<{ data: AccessCategory }>(`/access/categories/${id}`, input);
+    return data.data;
+  },
+
+  async deleteCategory(id: number): Promise<void> {
+    await apiClient.delete(`/access/categories/${id}`);
+  },
+
+  async groups(): Promise<AccessGroup[]> {
+    const { data } = await apiClient.get<{ data: AccessGroup[] }>('/access/groups');
+    return data.data;
+  },
+
+  async createGroup(input: {
+    category_id?: number | null;
+    name: string;
+    description?: string;
+    accesses?: AccessGroupAccess[];
+  }): Promise<AccessGroup> {
+    const { data } = await apiClient.post<{ data: AccessGroup }>('/access/groups', input);
+    return data.data;
+  },
+
+  async updateGroup(id: number, input: Partial<{
+    category_id?: number | null;
+    name: string;
+    description?: string | null;
+    is_active?: boolean;
+    accesses?: AccessGroupAccess[];
+  }>): Promise<AccessGroup> {
+    const { data } = await apiClient.put<{ data: AccessGroup }>(`/access/groups/${id}`, input);
+    return data.data;
+  },
+
+  async deleteGroup(id: number): Promise<void> {
+    await apiClient.delete(`/access/groups/${id}`);
+  },
+
+  async assignGroupUsers(id: number, userIds: number[]): Promise<{ assigned: number; users: number[] }> {
+    const { data } = await apiClient.post<{ data: { assigned: number; users: number[] } }>(`/access/groups/${id}/users`, { user_ids: userIds });
+    return data.data;
+  },
+
+  async removeGroupUser(id: number, userId: number): Promise<void> {
+    await apiClient.delete(`/access/groups/${id}/users/${userId}`);
   },
 };

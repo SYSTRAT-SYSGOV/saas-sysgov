@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, UserPlus, Send, Loader2, Landmark } from 'lucide-react';
-import { accessApi, AccessModule, AccessUser, OrgUnitNode, ModuleAccessItem } from '../AccessApi';
+import { accessApi, AccessModule, AccessUser, AccessGroup, Cargo, OrgUnitNode, ModuleAccessItem } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
 
 interface NewUserWizardProps {
@@ -63,14 +63,26 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
+  // Listas auxiliares (cargos e grupos de acesso)
+  const [cargos, setCargos] = useState<Cargo[]>([]);
+  const [groups, setGroups] = useState<AccessGroup[]>([]);
+
+  useEffect(() => {
+    accessApi.cargos().then(setCargos).catch(() => setCargos([]));
+    accessApi.groups().then(setGroups).catch(() => setGroups([]));
+  }, []);
+
   // Etapa 1 — dados pessoais
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [matricula, setMatricula] = useState('');
+  const [cargoId, setCargoId] = useState<number | ''>('');
 
   // Etapa 2 — vínculo
   const [role, setRole] = useState('membro');
   const [primaryOrgUnitId, setPrimaryOrgUnitId] = useState<number | ''>('');
+  const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
 
   // Etapa 3 — acessos
   const [entries, setEntries] = useState<Step3Entry[]>([]);
@@ -87,6 +99,14 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
       if (!existing) return [...prev, { module: alias, role: 'viewer', all_org_units: false, org_unit_ids: [], can_manage_users: false, ...patch }];
       return prev.map((e) => (e.module === alias ? { ...e, ...patch } : e));
     });
+  };
+
+  const setModuleEnabled = (alias: string, enabled: boolean) => {
+    if (enabled) {
+      updateEntry(alias, {});
+    } else {
+      setEntries((prev) => prev.filter((e) => e.module !== alias));
+    }
   };
 
   const canNext = () => {
@@ -116,6 +136,9 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
         email,
         password: 'MudarSenha@123',
         password_confirmation: 'MudarSenha@123',
+        matricula: matricula.trim() || null,
+        cargo_id: cargoId === '' ? null : cargoId,
+        group_ids: selectedGroupIds,
         primary_org_unit_id: primaryOrgUnitId === '' ? null : primaryOrgUnitId,
         accesses,
       });
@@ -160,6 +183,19 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
             <Field label="E-mail *">
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm" placeholder="email@prefeitura.gov.br" />
             </Field>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Matrícula do servidor (opcional)">
+                <input value={matricula} onChange={(e) => setMatricula(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm font-mono" placeholder="000000" />
+              </Field>
+              <Field label="Cargo (opcional)">
+                <select value={cargoId} onChange={(e) => setCargoId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm">
+                  <option value="">Nenhum cargo</option>
+                  {cargos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
             <Field label="Telefone (opcional)">
               <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm" placeholder="(41) 99999-9999" />
             </Field>
@@ -190,6 +226,26 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
                 O vínculo indica a secretaria principal do usuário. Na próxima etapa você define o acesso a módulos de qualquer secretaria (cross-secretaria).
               </p>
             </Field>
+            <Field label="Grupos de acesso (herdar permissões)">
+              <div className="max-h-44 overflow-y-auto border border-gov-border rounded-lg p-2 space-y-1 bg-slate-50/50 dark:bg-slate-800/50">
+                {groups.length === 0 && <p className="text-xs text-gov-text-muted p-1">Nenhum grupo cadastrado. Crie grupos na aba "Grupos & Categorias".</p>}
+                {groups.map((g) => (
+                  <label key={g.id} className="flex items-center gap-2 py-1 px-1 text-xs cursor-pointer hover:bg-gov-primary/5 rounded">
+                    <input
+                      type="checkbox"
+                      checked={selectedGroupIds.includes(g.id)}
+                      onChange={(e) => setSelectedGroupIds((prev) => (e.target.checked ? [...prev, g.id] : prev.filter((x) => x !== g.id)))}
+                      className="accent-gov-primary"
+                    />
+                    <span className="text-gov-text-primary font-medium">{g.name}</span>
+                    <span className="text-[10px] text-gov-text-muted font-mono">
+                      {g.category?.name ?? 'sem categoria'} · {g.accesses?.length ?? 0} módulos
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] text-gov-text-muted mt-1">Usuários de um grupo herdam os acessos definidos nele, além dos acessos diretos.</p>
+            </Field>
           </>
         )}
 
@@ -216,12 +272,24 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
 
             {visibleModules.map((m) => {
               const entry = entries.find((e) => e.module === m.alias);
+              const enabled = !!entry;
               const isPrimarySelected = !entry?.all_org_units && (entry?.org_unit_ids ?? []).includes(Number(primaryOrgUnitId));
               return (
-                <div key={m.alias} className="border border-gov-border rounded-lg p-4">
+                <div key={m.alias} className={`border rounded-lg p-4 transition-colors ${enabled ? 'border-gov-primary/30 bg-gov-primary/[0.02]' : 'border-gov-border opacity-70'}`}>
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-xs font-bold text-gov-text-primary">{m.name} <span className="font-mono text-gov-text-muted">({m.alias})</span></h4>
-                    {primaryOrgUnitId !== '' && (
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        onChange={(e) => setModuleEnabled(m.alias, e.target.checked)}
+                        className="w-4 h-4 rounded accent-gov-primary"
+                      />
+                      <div>
+                        <h4 className="text-xs font-bold text-gov-text-primary">{m.name} <span className="font-mono text-gov-text-muted">({m.alias})</span></h4>
+                        <p className="text-[10px] text-gov-text-muted">{enabled ? 'Acesso concedido a este módulo' : 'Marque para habilitar o acesso'}</p>
+                      </div>
+                    </label>
+                    {enabled && primaryOrgUnitId !== '' && (
                       <button
                         type="button"
                         disabled={isPrimarySelected}
@@ -232,23 +300,25 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
                       </button>
                     )}
                   </div>
-                  <ModuleAccessPicker
-                    units={units}
-                    selectedIds={entry?.org_unit_ids ?? []}
-                    onChange={(ids) => updateEntry(m.alias, { org_unit_ids: ids, all_org_units: false })}
-                    allSelected={entry?.all_org_units ?? false}
-                    onToggleAll={() => updateEntry(m.alias, { all_org_units: !entry?.all_org_units, org_unit_ids: entry?.all_org_units ? [] : (entry?.org_unit_ids ?? []) })}
-                    canManageUsers={entry?.can_manage_users ?? false}
-                    onToggleManageUsers={(v) => updateEntry(m.alias, { can_manage_users: v })}
-                    role={entry?.role ?? 'viewer'}
-                    onRoleChange={(r) => updateEntry(m.alias, { role: r })}
-                    canCreate={entry?.can_create ?? false}
-                    canEdit={entry?.can_edit ?? false}
-                    canDelete={entry?.can_delete ?? false}
-                    onPermissionChange={(perm, v) => updateEntry(m.alias, { [perm]: v })}
-                    validTo={entry?.valid_to}
-                    onValidToChange={(v) => updateEntry(m.alias, { valid_to: v })}
-                  />
+                  {enabled && (
+                    <ModuleAccessPicker
+                      units={units}
+                      selectedIds={entry?.org_unit_ids ?? []}
+                      onChange={(ids) => updateEntry(m.alias, { org_unit_ids: ids, all_org_units: false })}
+                      allSelected={entry?.all_org_units ?? false}
+                      onToggleAll={() => updateEntry(m.alias, { all_org_units: !entry?.all_org_units, org_unit_ids: entry?.all_org_units ? [] : (entry?.org_unit_ids ?? []) })}
+                      canManageUsers={entry?.can_manage_users ?? false}
+                      onToggleManageUsers={(v) => updateEntry(m.alias, { can_manage_users: v })}
+                      role={entry?.role ?? 'viewer'}
+                      onRoleChange={(r) => updateEntry(m.alias, { role: r })}
+                      canCreate={entry?.can_create ?? false}
+                      canEdit={entry?.can_edit ?? false}
+                      canDelete={entry?.can_delete ?? false}
+                      onPermissionChange={(perm, v) => updateEntry(m.alias, { [perm]: v })}
+                      validTo={entry?.valid_to}
+                      onValidToChange={(v) => updateEntry(m.alias, { valid_to: v })}
+                    />
+                  )}
                 </div>
               );
             })}
