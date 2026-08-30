@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, UserPlus, Send, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, UserPlus, Send, Loader2, Landmark } from 'lucide-react';
 import { accessApi, AccessModule, AccessUser, OrgUnitNode, ModuleAccessItem } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
 
@@ -34,6 +34,17 @@ function flattenUnits(nodes: OrgUnitNode[], depth = 0): { node: OrgUnitNode; dep
     if (n.children?.length) out.push(...flattenUnits(n.children, depth + 1));
   });
   return out;
+}
+
+function findUnit(nodes: OrgUnitNode[], id: number): OrgUnitNode | null {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    if (n.children?.length) {
+      const found = findUnit(n.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 /**
@@ -187,11 +198,40 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
             {visibleModules.length === 0 && (
               <p className="text-xs text-gov-text-muted">Você não administra nenhum módulo neste tenant.</p>
             )}
+
+            {/* Banner do vínculo — deixa claro a secretaria do usuário e permite cross-secretaria */}
+            <div className="flex items-start gap-2.5 rounded-lg border border-gov-primary/25 bg-gov-primary/5 p-3">
+              <Landmark className="w-4 h-4 text-gov-primary mt-0.5 shrink-0" />
+              <div className="text-xs text-gov-text-secondary">
+                <span className="font-semibold text-gov-text-primary">
+                  {primaryOrgUnitId !== ''
+                    ? `Vinculado à secretaria: ${findUnit(units, Number(primaryOrgUnitId))?.name ?? '—'}`
+                    : 'Nenhuma secretaria de vínculo definida na etapa anterior.'}
+                </span>
+                <p className="mt-0.5">
+                  O usuário pertence à secretaria acima, mas pode receber acesso a <strong>módulos de outras secretarias</strong> conforme o perfil de acesso — selecione as secretarias desejadas abaixo em cada módulo.
+                </p>
+              </div>
+            </div>
+
             {visibleModules.map((m) => {
               const entry = entries.find((e) => e.module === m.alias);
+              const isPrimarySelected = !entry?.all_org_units && (entry?.org_unit_ids ?? []).includes(Number(primaryOrgUnitId));
               return (
                 <div key={m.alias} className="border border-gov-border rounded-lg p-4">
-                  <h4 className="text-xs font-bold text-gov-text-primary mb-3">{m.name} <span className="font-mono text-gov-text-muted">({m.alias})</span></h4>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-xs font-bold text-gov-text-primary">{m.name} <span className="font-mono text-gov-text-muted">({m.alias})</span></h4>
+                    {primaryOrgUnitId !== '' && (
+                      <button
+                        type="button"
+                        disabled={isPrimarySelected}
+                        onClick={() => updateEntry(m.alias, { all_org_units: false, org_unit_ids: [Number(primaryOrgUnitId)] })}
+                        className="text-[10px] font-semibold text-gov-primary hover:underline disabled:opacity-40 disabled:no-underline"
+                      >
+                        {isPrimarySelected ? '✓ Minha secretaria' : 'Aplicar Minha secretaria'}
+                      </button>
+                    )}
+                  </div>
                   <ModuleAccessPicker
                     units={units}
                     selectedIds={entry?.org_unit_ids ?? []}

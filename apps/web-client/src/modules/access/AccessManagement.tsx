@@ -240,13 +240,7 @@ export const AccessManagement: React.FC = () => {
             onClick={() => setWizardOpen(true)}
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            <UserPlus className="w-4 h-4" /> Novo Usuário (Wizard)
-          </button>
-          <button
-            onClick={openCreate}
-            className="inline-flex items-center gap-2 bg-gov-primary hover:bg-gov-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            <UserPlus className="w-4 h-4" /> Cadastro Rápido
+            <UserPlus className="w-4 h-4" /> Novo Usuário
           </button>
         </div>
       </div>
