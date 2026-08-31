@@ -84,14 +84,18 @@ trait HasPermissions
                 ->where('tenant_id', $tenantId)
                 ->value('role_id');
 
-            // Roles Spatie com scope=tenant vinculadas ESPECIFICAMENTE a este tenant (RN-CORE-001)
+            // Roles Spatie com scope=tenant vinculadas ESPECIFICAMENTE a este tenant (RN-CORE-001).
+            // Considera o tenant da própria role (roles.tenant_id) OU o vínculo do pivot
+            // (role_user.tenant_id) — cobre tanto o fluxo resolveTenantRole quanto o attach com pivot.
             $spatieRoles = Role::query()
                 ->where('scope', 'tenant')
-                ->where('roles.tenant_id', $tenantId)
+                ->where(function ($q) use ($tenantId): void {
+                    $q->where('roles.tenant_id', $tenantId)
+                      ->orWhereHas('users', fn ($uq) => $uq->where('users.id', $this->id)->where('role_user.tenant_id', $tenantId));
+                })
                 ->whereHas('users', fn ($q) => $q->where('users.id', $this->id))
                 ->pluck('id')
                 ->all();
-
             $allRoleIds = array_unique(array_filter(array_merge(
                 $primaryRoleId ? [$primaryRoleId] : [],
                 $spatieRoles
@@ -112,18 +116,31 @@ trait HasPermissions
     {
         $cacheKey = "user:{$this->id}:permissions:tenant:{$tenantId}";
         return Cache::remember($cacheKey, 300, function () use ($tenantId): Collection {
-            $roleId = \Illuminate\Support\Facades\DB::table('tenant_user')
+            // Papel primário do tenant_user
+            $roleId = (int) \Illuminate\Support\Facades\DB::table('tenant_user')
                 ->where('user_id', $this->id)
                 ->where('tenant_id', $tenantId)
                 ->value('role_id');
 
-            if (!$roleId) {
+            // Roles Spatie scope=tenant deste tenant (pivot)
+            $tenantRoleIds = Role::query()
+                ->where('scope', 'tenant')
+                ->whereHas('users', fn ($q) => $q->where('users.id', $this->id)->where('role_user.tenant_id', $tenantId))
+                ->pluck('id')
+                ->all();
+
+            $allRoleIds = array_unique(array_filter(array_merge(
+                $roleId ? [$roleId] : [],
+                $tenantRoleIds,
+            )));
+
+            if ($allRoleIds === []) {
                 return new Collection();
             }
 
             return Permission::query()
-                ->whereHas('roles', function ($query) use ($roleId): void {
-                    $query->where('roles.id', $roleId);
+                ->whereHas('roles', function ($query) use ($allRoleIds): void {
+                    $query->whereIn('roles.id', $allRoleIds);
                 })
                 ->get();
         });
