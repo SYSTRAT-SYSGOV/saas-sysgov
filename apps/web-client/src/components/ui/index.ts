@@ -40,5 +40,11 @@ export type { SwitchProps } from './Switch';
 export { Select } from './Select';
 export type { SelectProps, SelectOption } from './Select';
 
+export { Field } from './Field';
+export type { FieldProps } from './Field';
+
+export { Modal } from './Modal';
+export type { ModalProps } from './Modal';
+
 export { Tabs } from './Tabs';
 export type { TabsProps, TabsItem } from './Tabs';

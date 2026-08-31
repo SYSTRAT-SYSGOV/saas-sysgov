@@ -133,6 +133,20 @@ export const AccessManagement: React.FC = () => {
 
   const moduleName = (alias: string) => modules.find((m) => m.alias === alias)?.name ?? alias;
 
+  const orgUnitName = (id: number) => {
+    const find = (nodes: OrgUnitNode[]): string | null => {
+      for (const n of nodes) {
+        if (n.id === id) return n.name;
+        if (n.children?.length) {
+          const found = find(n.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    return find(units) ?? `#${id}`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -234,22 +248,30 @@ export const AccessManagement: React.FC = () => {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="py-3 pl-4 font-semibold">Nome</th>
-                  <th className="py-3 font-semibold">E-mail</th>
-                  <th className="py-3 font-semibold">Cargo</th>
-                  <th className="py-3 font-semibold">Acessos (módulos)</th>
+                <tr className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="py-3 pl-4 text-left font-semibold">Nome</th>
+                  <th className="py-3 text-center font-semibold">E-mail</th>
+                  <th className="py-3 text-center font-semibold">Secretaria</th>
+                  <th className="py-3 text-center font-semibold">Cargo</th>
+                  <th className="py-3 text-center font-semibold">Acessos (módulos)</th>
                   <th className="py-3 pr-4 text-right font-semibold">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {safeUsers.map((u) => (
-                  <tr key={u.id} className="transition-colors hover:bg-accent/40">
-                    <td className="py-3 pl-4 font-medium text-foreground">{u.name}</td>
+                  <tr key={u.id} className="text-center transition-colors hover:bg-accent/40">
+                    <td className="py-3 pl-4 text-left font-medium text-foreground">{u.name}</td>
                     <td className="py-3 font-mono text-xs text-muted-foreground">{u.email}</td>
+                    <td className="py-3">
+                      {u.primary_org_unit_id ? (
+                        <Badge variant="info">{orgUnitName(u.primary_org_unit_id)}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground/60">—</span>
+                      )}
+                    </td>
                     <td className="py-3 text-xs text-muted-foreground">{u.cargo ?? <span className="text-muted-foreground/60">—</span>}</td>
                     <td className="py-3">
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap justify-center gap-1">
                         {u.accesses.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
                         {u.accesses.map((a) => (
                           <Badge

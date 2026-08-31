@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/core/auth/useAuth';
-import { ChevronRight, ChevronDown, Building2, Shield, RefreshCw, Network, Layers } from 'lucide-react';
+import { ChevronRight, ChevronDown, Building2, Shield, RefreshCw, Network, Layers, ArrowLeft, Users } from 'lucide-react';
 import { apiClient } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/Card';
@@ -221,6 +221,14 @@ const ModuleGranularityManager: React.FC = () => {
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => { window.location.href = '/usuarios'; }}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title="Voltar para Usuários & Acessos"
+              aria-label="Voltar para Usuários & Acessos"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Shield className="h-6 w-6" />
             </span>
@@ -232,6 +240,12 @@ const ModuleGranularityManager: React.FC = () => {
               </p>
             </div>
           </div>
+          <a
+            href="/usuarios"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Users className="h-4 w-4" /> Voltar para Usuários & Acessos
+          </a>
         </div>
 
         <div className="mb-5 flex flex-col gap-4 lg:flex-row">
