@@ -1,257 +1,305 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
+import { MODULE_REGISTRY } from '@/config/moduleRegistry';
+import { apiClient } from '@/core/api/client';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { cn } from '@/lib/utils';
 import {
-  Building,
-  DollarSign,
+  Sparkles,
+  Building2,
+  Settings2,
+  Star,
+  Plus,
+  X,
+  Loader2,
+  ArrowRight,
+  LayoutDashboard,
   FileCheck,
-  CheckCircle2,
-  ShieldCheck,
-  ArrowUpRight,
-  Landmark,
-  TrendingUp,
-  AlertTriangle,
   Handshake,
-  CalendarClock,
-  PiggyBank,
+  DollarSign,
+  BookOpen,
+  Users,
+  ShieldCheck,
+  Shield,
 } from 'lucide-react';
-import { Card, Badge, Button, KpiCard, StatusChip, AlertCard, DataTable, Tabs } from '@/components/ui';
-import type { ColumnDef } from '@tanstack/react-table';
-import { formatCurrencyBRL, formatPercentBRL } from '@/config/theme';
 
-interface ContractRow {
-  numero: string;
-  objeto: string;
-  fornecedor: string;
-  cnpj: string;
-  valorGlobal: number;
-  vigenciaFim: string;
-  status: 'Regular' | 'Vencendo' | 'Crítico';
+const FAVORITES_KEY = 'sysgov:welcome:favorites';
+const CUSTOM_ORDER_KEY = 'sysgov:welcome:custom_order';
+
+interface ModuleShortcut {
+  id: string;
+  name: string;
+  icon: string;
+  route: string;
+  permission?: string;
 }
 
-const contractData: ContractRow[] = [
-  { numero: 'CT-048/2025', objeto: 'Manutenção preventiva da frota escolar', fornecedor: 'Auto Mecânica Paraná Ltda', cnpj: '04.128.940/0001-33', valorGlobal: 1480000, vigenciaFim: '15/12/2026', status: 'Regular' },
-  { numero: 'CT-012/2026', objeto: 'Fornecimento de Merenda Escolar', fornecedor: 'Alimentos Sul Distribuidora', cnpj: '19.340.560/0001-98', valorGlobal: 3820500, vigenciaFim: '28/02/2027', status: 'Regular' },
-  { numero: 'CT-089/2024', objeto: 'Pavimentação asfáltica bairros norte', fornecedor: 'Construtora Metropolitana S/A', cnpj: '76.890.111/0001-12', valorGlobal: 8940000, vigenciaFim: '18/09/2026', status: 'Vencendo' },
-  { numero: 'CT-120/2026', objeto: 'Consultoria de gestão de resíduos', fornecedor: 'Verde Consultoria Ambiental', cnpj: '33.210.456/0001-77', valorGlobal: 456000, vigenciaFim: '30/11/2026', status: 'Vencendo' },
-  { numero: 'CT-003/2026', objeto: 'Locação de veículos administrativos', fornecedor: 'Frota Total Locadora', cnpj: '11.450.222/0001-40', valorGlobal: 1890000, vigenciaFim: '31/12/2027', status: 'Regular' },
-  { numero: 'CT-155/2023', objeto: 'Obra de reforma do Paço Municipal', fornecedor: 'Engenharia Alfa Construções', cnpj: '52.001.334/0001-90', valorGlobal: 12500000, vigenciaFim: '10/07/2026', status: 'Crítico' },
-  { numero: 'CT-067/2026', objeto: 'Sistema de iluminação pública (LED)', fornecedor: 'Luminar Energia S/A', cnpj: '08.777.555/0001-21', valorGlobal: 7400000, vigenciaFim: '20/01/2028', status: 'Regular' },
-];
+interface OrgScopeInfo {
+  primary_unit: { id: number; name: string; code: string; acronym?: string | null; role: string } | null;
+  managed_units: { id: number; name: string; code: string; acronym?: string | null }[];
+  is_unrestricted: boolean;
+}
+
+function getModuleRoute(id: string): string {
+  const routes: Record<string, string> = {
+    dashboard: '/',
+    org: '/organograma',
+    procurement: '/licitacoes',
+    contracts: '/contratos',
+    finance: '/financeiro',
+    pedagogico: '/pedagogico',
+    rh: '/rh',
+    cemiterios: '/cemiterios',
+    users: '/usuarios',
+    menuManager: '/gerenciar-menus',
+    moduleGranularity: '/granularidade-módulos',
+  };
+  return routes[id] || '/';
+}
+
+function getModuleIcon(id: string): React.ReactNode {
+  const icons: Record<string, React.ReactNode> = {
+    dashboard: <LayoutDashboard className="h-6 w-6" />,
+    org: <Building2 className="h-6 w-6" />,
+    procurement: <FileCheck className="h-5 w-5" />,
+    contracts: <Handshake className="h-5 w-5" />,
+    finance: <DollarSign className="h-5 w-5" />,
+    pedagogico: <BookOpen className="h-5 w-5" />,
+    rh: <Users className="h-5 w-5" />,
+    cemiterios: <Shield className="h-5 w-5" />,
+    users: <ShieldCheck className="h-5 w-5" />,
+    menuManager: <Settings2 className="h-5 w-5" />,
+    moduleGranularity: <Shield className="h-5 w-5" />,
+  };
+  return icons[id] || <LayoutDashboard className="h-5 w-5" />;
+}
 
 export const DashboardModule: React.FC = () => {
+  const { user, modules: activeModules, permissions } = useAuth();
   const { tenant } = useTenant();
-  const [view, setView] = useState<'contratos' | 'empenhos'>('contratos');
+  const [scopeInfo, setScopeInfo] = useState<OrgScopeInfo | null>(null);
+  const [loadingScope, setLoadingScope] = useState(true);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { return []; }
+  });
+  const [customOrder, setCustomOrder] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]'); } catch { return []; }
+  });
+  const [editMode, setEditMode] = useState(false);
 
-  const receitaArrecadada = 348912450.2;
-  const despesaLiquidada = 295140800.0;
-  const limiteLRFPessoal = 46.82;
+  useEffect(() => {
+    apiClient.get<{ data: OrgScopeInfo }>('/org-units/scope')
+      .then((res) => setScopeInfo(res.data?.data ?? null))
+      .catch(() => setScopeInfo(null))
+      .finally(() => setLoadingScope(false));
+  }, []);
 
-  const contractColumns = useMemo<ColumnDef<ContractRow, any>[]>(() => [
-    {
-      id: 'numero',
-      header: 'Nº / Objeto',
-      cell: ({ row }) => (
-        <div className="text-left">
-          <span className="block font-mono font-bold text-sm text-foreground">{row.original.numero}</span>
-          <span className="block max-w-[240px] truncate text-xs text-muted-foreground">{row.original.objeto}</span>
-        </div>
-      ),
-    },
-    {
-      id: 'fornecedor',
-      header: 'Fornecedor / CNPJ',
-      cell: ({ row }) => (
-        <div className="text-left">
-          <span className="block text-sm font-medium text-foreground">{row.original.fornecedor}</span>
-          <span className="block font-mono text-xs text-muted-foreground tabular-nums">{row.original.cnpj}</span>
-        </div>
-      ),
-    },
-    {
-      id: 'valor',
-      header: 'Valor Global',
-      accessorKey: 'valorGlobal',
-      cell: ({ row }) => <span className="font-mono text-sm font-bold text-foreground tabular-nums">{formatCurrencyBRL(row.original.valorGlobal)}</span>,
-    },
-    {
-      id: 'vigencia',
-      header: 'Vigência',
-      accessorKey: 'vigenciaFim',
-      cell: ({ row }) => <span className="font-mono text-sm text-muted-foreground tabular-nums">{row.original.vigenciaFim}</span>,
-    },
-    {
-      id: 'status',
-      header: 'Status',
-      cell: ({ row }) => {
-        const variant = row.original.status === 'Regular' ? 'success' : row.original.status === 'Vencendo' ? 'warning' : 'danger';
-        return <StatusChip label={row.original.status} variant={variant} />;
-      },
-    },
-  ], []);
+  const saveFavorites = (f: string[]) => {
+    setFavorites(f);
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(f));
+  };
+
+  const saveCustomOrder = (o: string[]) => {
+    setCustomOrder(o);
+    localStorage.setItem(CUSTOM_ORDER_KEY, JSON.stringify(o));
+  };
+
+  const toggleFavorite = (id: string) => {
+    if (favorites.includes(id)) {
+      saveFavorites(favorites.filter((f) => f !== id));
+    } else {
+      saveFavorites([...favorites, id]);
+    }
+  };
+
+  const allModules = Object.entries(MODULE_REGISTRY)
+    .filter(([id, def]) => {
+      if (id === 'menuManager' || id === 'moduleGranularity') return false;
+      if (def.requiredPermission && !permissions.includes('*') && !permissions.includes(def.requiredPermission)) return false;
+      if (!activeModules.includes(id)) return false;
+      return true;
+    })
+    .map(([id, def]) => ({
+      id,
+      name: def.name,
+      icon: id,
+      route: getModuleRoute(id),
+      permission: def.requiredPermission,
+    }));
+
+  const orderedModules = customOrder.length > 0
+    ? [...customOrder.map((id) => allModules.find((m) => m.id === id)).filter(Boolean) as ModuleShortcut[],
+       ...allModules.filter((m) => !customOrder.includes(m.id))]
+    : allModules;
+
+  const pinnedModules = orderedModules.filter((m) => favorites.includes(m.id));
+  const otherModules = orderedModules.filter((m) => !favorites.includes(m.id));
+
+  const userInitial = user?.name?.charAt(0).toUpperCase() || 'U';
+  const secretariaName = scopeInfo?.primary_unit?.name;
+  const secretariaRole = scopeInfo?.primary_unit?.role;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Hero - Boas-vindas */}
       <Card className="!p-6 sm:!p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Landmark className="h-6 w-6" />
-              </span>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Painel de Gestão Municipal</h1>
-              <Badge variant="success" className="gap-1.5">
-                <ShieldCheck className="h-3 w-3" /> Ambiente Homologado
-              </Badge>
+          <div className="flex items-center gap-4">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary text-xl font-bold">
+              {userInitial}
+            </span>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                Olá, {user?.name?.split(' ')[0] || 'Usuário'}!
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Bem-vindo ao <strong className="text-foreground">{tenant?.name}</strong>
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {loadingScope ? (
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary" />
+                ) : scopeInfo?.is_unrestricted ? (
+                  <Badge variant="success" icon={<ShieldCheck className="h-3 w-3" />}>
+                    Acesso irrestrito a todas as unidades
+                  </Badge>
+                ) : secretariaName ? (
+                  <Badge variant="info" icon={<Building2 className="h-3 w-3" />}>
+                    {secretariaName} {secretariaRole ? `(${secretariaRole})` : ''}
+                  </Badge>
+                ) : (
+                  <Badge variant="neutral">Usuário sem vínculo de unidade</Badge>
+                )}
+                {user?.is_platform_admin && <Badge variant="warning">Administrador da Plataforma</Badge>}
+              </div>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-              Visão consolidada de execução orçamentária, contratos e conformidade fiscal de{' '}
-              <strong className="text-foreground">{tenant?.name}</strong>.
-            </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => window.location.href = '/contratos'}
-              className="inline-flex items-center gap-2"
+            <button
+              onClick={() => setEditMode(!editMode)}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                editMode ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-foreground hover:bg-accent'
+              )}
             >
-              Contratos <ArrowUpRight className="h-4 w-4" />
-            </Button>
-            <Button
-              onClick={() => window.location.href = '/financeiro'}
-              className="inline-flex items-center gap-2"
-            >
-              Execução Financeira <ArrowUpRight className="h-4 w-4" />
-            </Button>
+              <Settings2 className="h-4 w-4" />
+              {editMode ? 'Concluir edição' : 'Personalizar'}
+            </button>
           </div>
         </div>
       </Card>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          title="Receita Arrecadada"
-          value={formatCurrencyBRL(receitaArrecadada)}
-          icon={<DollarSign className="h-5 w-5" />}
-          iconBgColor="bg-success/10 text-success"
-          trend={{ value: '+12,4%', isPositive: true, label: 'vs. meta prevista' }}
-        />
-        <KpiCard
-          title="Despesa Liquidada"
-          value={formatCurrencyBRL(despesaLiquidada)}
-          icon={<FileCheck className="h-5 w-5" />}
-          iconBgColor="bg-status-info-bg text-status-info"
-          subtitle="84,5% do limite empenhado"
-        />
-        <KpiCard
-          title="Contratos Vigentes"
-          value="142"
-          icon={<Building className="h-5 w-5" />}
-          iconBgColor="bg-warning/15 text-warning"
-          statusBadge={<StatusChip label="6 vencem em < 30 dias" variant="warning" />}
-        />
-        <KpiCard
-          title="Gasto com Pessoal (LRF)"
-          value={formatPercentBRL(limiteLRFPessoal)}
-          icon={<PiggyBank className="h-5 w-5" />}
-          iconBgColor="bg-success/10 text-success"
-          statusBadge={<StatusChip label="Regular (Teto: 54,0%)" variant="success" />}
-        />
-      </div>
-
-      {/* Seção principal: DataTable de contratos + Alertas */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-3.5 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold uppercase tracking-wide text-foreground sm:text-lg">
-              Contratos Administrativos em Monitoramento
-            </h2>
-            <a href="/contratos" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
-              Ver todos <ArrowUpRight className="h-4 w-4" />
-            </a>
+      {/* Seção de atalhos favoritos */}
+      {pinnedModules.length > 0 && (
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <Star className="h-5 w-5 fill-warning text-warning" />
+            <h2 className="text-base font-bold text-foreground">Favoritos</h2>
+            <span className="text-xs text-muted-foreground">({pinnedModules.length} atalho(s))</span>
           </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {pinnedModules.map((mod) => (
+              <a
+                key={mod.id}
+                href={mod.route}
+                className={cn(
+                  'group relative flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 text-center transition-all',
+                  'hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5',
+                  editMode && 'border-dashed border-primary/60'
+                )}
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  {getModuleIcon(mod.id)}
+                </span>
+                <span className="text-sm font-semibold text-foreground">{mod.name}</span>
+                {editMode && (
+                  <button
+                    onClick={(e) => { e.preventDefault(); toggleFavorite(mod.id); }}
+                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
+                    title="Remover dos favoritos"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
-          <Tabs
-            items={[
-              { key: 'contratos', label: 'Contratos', icon: <Handshake className="h-4 w-4" /> },
-              { key: 'empenhos', label: 'Empenhos', icon: <FileCheck className="h-4 w-4" /> },
-            ]}
-            value={view}
-            onChange={setView}
-          />
-
-          {view === 'contratos' && (
-            <Card noPadding>
-              <div className="p-3">
-                <DataTable
-                  columns={contractColumns}
-                  data={contractData}
-                  emptyText="Nenhum contrato em monitoramento."
-                  searchable
-                  searchPlaceholder="Buscar contrato ou fornecedor..."
-                  pageSize={5}
-                />
-              </div>
-            </Card>
-          )}
-
-          {view === 'empenhos' && (
-            <Card className="p-8 text-center text-muted-foreground">
-              <FileCheck className="mx-auto mb-3 h-12 w-12 text-border" />
-              <p className="text-sm">Os empenhos serão carregados a partir do módulo de Execução Financeira.</p>
-            </Card>
+      {/* Seção de todos os módulos */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <LayoutDashboard className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-bold text-foreground">Módulos disponíveis</h2>
+            <span className="text-xs text-muted-foreground">({otherModules.length} módulo(s))</span>
+          </div>
+          {editMode && favorites.length > 0 && pinnedModules.length > 0 && (
+            <span className="text-xs text-muted-foreground">Clique no coração para adicionar/remover favoritos</span>
           )}
         </div>
-
-        {/* Alertas & Semáforo Fiscal */}
-        <div className="space-y-4">
-          <h2 className="flex items-center gap-2 text-base font-bold uppercase tracking-wide text-foreground sm:text-lg">
-            <AlertTriangle className="h-5 w-5 text-warning" /> Alertas & Semáforo Fiscal
-          </h2>
-
-          <AlertCard
-            priority="danger"
-            title="Saldo de Empenho Crítico"
-            tag="Ação 2045"
-            description="Dotação orçamentária da Secretaria de Obras atingiu 98,2% da reserva autorizada na LOA."
-            actionLabel="Ver Empenho"
-            onAction={() => window.location.href = '/financeiro'}
-          />
-
-          <AlertCard
-            priority="warning"
-            title="TCE-PR: Prestação Bimestral"
-            tag="D-5"
-            description="Remessa do 4º bimestre do SIM-AM pendente de validação e transmissão eletrônica."
-            actionLabel="Validar Remessa"
-            onAction={() => window.location.href = '/financeiro'}
-          />
-
-          <Card className="p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-bold text-foreground">Próximos vencimentos</h3>
-            </div>
-            <div className="space-y-2">
-              {contractData.filter((c) => c.status !== 'Regular').map((c) => (
-                <div key={c.numero} className="flex items-center justify-between rounded-lg bg-accent/40 px-3 py-2">
-                  <span className="font-mono text-xs font-semibold text-foreground">{c.numero}</span>
-                  <StatusChip label={c.status} variant={c.status === 'Vencendo' ? 'warning' : 'danger'} />
-                </div>
-              ))}
-            </div>
+        {otherModules.length === 0 ? (
+          <Card className="flex flex-col items-center gap-3 py-12 text-center">
+            <Sparkles className="h-12 w-12 text-border" />
+            <p className="text-sm text-muted-foreground">Nenhum outro módulo disponível no momento.</p>
           </Card>
-        </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {otherModules.map((mod) => (
+              <a
+                key={mod.id}
+                href={mod.route}
+                className={cn(
+                  'group relative flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 text-center transition-all',
+                  'hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5',
+                  editMode && 'border-dashed border-muted-foreground/30'
+                )}
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
+                  {getModuleIcon(mod.id)}
+                </span>
+                <span className="text-sm font-semibold text-foreground">{mod.name}</span>
+                {editMode && (
+                  <button
+                    onClick={(e) => { e.preventDefault(); toggleFavorite(mod.id); }}
+                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground"
+                    title="Adicionar aos favoritos"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                )}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Rodapé de contexto */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <TrendingUp className="h-4 w-4 text-success" />
-            Indicadores atualizados com dados da execução orçamentária do município.
+      {/* Seção de boas-vindas expandida */}
+      <Card className="p-6">
+        <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-warning/15 text-warning">
+            <Sparkles className="h-8 w-8" />
           </span>
-          <CheckCircle2 className="h-4 w-4 text-success" />
+          <div>
+            <h3 className="text-lg font-bold text-foreground">Dicas rápidas</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Use o botão <strong>Personalizar</strong> no topo da página para adicionar ou remover atalhos dos seus módulos favoritos.
+              Você pode organizar a página do jeito que for mais produtivo para o seu dia a dia.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                <Star className="h-3 w-3 text-warning" /> Marque como favorito
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                <Settings2 className="h-3 w-3" /> Personalize a página
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                <ArrowRight className="h-3 w-3" /> Navegue pelos módulos
+              </span>
+            </div>
+          </div>
         </div>
       </Card>
     </div>
