@@ -16,7 +16,7 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-gov-surface border border-gov-border rounded-lg shadow-sm overflow-hidden ${className}`}
+      className={`bg-gov-surface border border-gov-border rounded-lg shadow-sm ${className}`}
       {...props}
     >
       {header && (

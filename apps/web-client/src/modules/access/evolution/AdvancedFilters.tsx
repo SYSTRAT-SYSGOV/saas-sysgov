@@ -3,7 +3,6 @@ import { Filter, X, RotateCcw } from 'lucide-react';
 import { AccessModule, OrgUnitNode, AccessGroup, AccessCategory, Cargo } from '../AccessApi';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Select } from '@/components/ui/Select';
 import { cn } from '@/lib/utils';
 
 export interface UserFilters {
@@ -35,16 +34,20 @@ function flattenUnits(nodes: OrgUnitNode[], depth = 0): { node: OrgUnitNode; dep
 }
 
 /**
- * Filtros avançados da lista de usuários (server-side) — redesenhado com shadcn/GOV.BR.
+ * Filtros avançados da lista de usuários (server-side).
+ * Usa <select> nativo (não customizado) para máxima estabilidade — paleta GOV.BR.
  */
 export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ modules, units, groups, categories, cargos, filters, onChange }) => {
   const active = Number(Boolean(filters.module)) + Number(Boolean(filters.org_unit_id)) + Number(Boolean(filters.group_id)) + Number(Boolean(filters.category_id)) + Number(Boolean(filters.cargo_id));
   const flatUnits = flattenUnits(units);
 
+  const selectCls = 'w-full rounded-lg border border-input bg-background px-2.5 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring';
+  const labelCls = 'block text-[10px] font-bold uppercase tracking-wider text-foreground/70 mb-1';
+
   return (
     <Card className="p-4">
       <div className="mb-3 flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground">
           <Filter className="h-3.5 w-3.5 text-primary" /> Filtros avançados
           {active > 0 && <Badge variant="primary">{active}</Badge>}
         </span>
@@ -59,56 +62,43 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ modules, units
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Select
-          label="Módulo"
-          value={filters.module ?? ''}
-          onChange={(v) => onChange({ ...filters, module: v || undefined })}
-          options={[
-            { value: '', label: 'Todos os módulos' },
-            ...modules.map((m) => ({ value: m.alias, label: m.name })),
-          ]}
-          placeholder="Todos"
-        />
-        <Select
-          label="Secretaria / Departamento"
-          value={filters.org_unit_id ?? ''}
-          onChange={(v) => onChange({ ...filters, org_unit_id: v ? Number(v) : undefined })}
-          options={[
-            { value: '', label: 'Todas as unidades' },
-            ...flatUnits.map(({ node, depth }) => ({ value: node.id, label: `${'\u00A0'.repeat(depth * 2)}${node.name}` })),
-          ]}
-          placeholder="Todas"
-        />
-        <Select
-          label="Categoria"
-          value={filters.category_id ?? ''}
-          onChange={(v) => onChange({ ...filters, category_id: v ? Number(v) : undefined })}
-          options={[
-            { value: '', label: 'Todas as categorias' },
-            ...categories.map((c) => ({ value: c.id, label: c.name })),
-          ]}
-          placeholder="Todas"
-        />
-        <Select
-          label="Grupo"
-          value={filters.group_id ?? ''}
-          onChange={(v) => onChange({ ...filters, group_id: v ? Number(v) : undefined })}
-          options={[
-            { value: '', label: 'Todos os grupos' },
-            ...groups.map((g) => ({ value: g.id, label: g.name })),
-          ]}
-          placeholder="Todos"
-        />
-        <Select
-          label="Cargo"
-          value={filters.cargo_id ?? ''}
-          onChange={(v) => onChange({ ...filters, cargo_id: v ? Number(v) : undefined })}
-          options={[
-            { value: '', label: 'Todos os cargos' },
-            ...cargos.map((c) => ({ value: c.id, label: c.name })),
-          ]}
-          placeholder="Todos"
-        />
+        <div>
+          <label className={labelCls}>Módulo</label>
+          <select value={filters.module ?? ''} onChange={(e) => onChange({ ...filters, module: e.target.value || undefined })} className={selectCls}>
+            <option value="">Todos os módulos</option>
+            {modules.map((m) => <option key={m.alias} value={m.alias}>{m.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Secretaria / Departamento</label>
+          <select value={filters.org_unit_id ?? ''} onChange={(e) => onChange({ ...filters, org_unit_id: e.target.value ? Number(e.target.value) : undefined })} className={selectCls}>
+            <option value="">Todas as unidades</option>
+            {flatUnits.map(({ node, depth }) => (
+              <option key={node.id} value={node.id}>{'\u00A0'.repeat(depth * 2)}{node.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Categoria</label>
+          <select value={filters.category_id ?? ''} onChange={(e) => onChange({ ...filters, category_id: e.target.value ? Number(e.target.value) : undefined })} className={selectCls}>
+            <option value="">Todas as categorias</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Grupo</label>
+          <select value={filters.group_id ?? ''} onChange={(e) => onChange({ ...filters, group_id: e.target.value ? Number(e.target.value) : undefined })} className={selectCls}>
+            <option value="">Todos os grupos</option>
+            {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Cargo</label>
+          <select value={filters.cargo_id ?? ''} onChange={(e) => onChange({ ...filters, cargo_id: e.target.value ? Number(e.target.value) : undefined })} className={selectCls}>
+            <option value="">Todos os cargos</option>
+            {cargos.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
       </div>
     </Card>
   );

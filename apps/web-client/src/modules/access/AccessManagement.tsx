@@ -249,12 +249,11 @@ export const AccessManagement: React.FC = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="py-3 pl-4 text-left font-semibold">Nome</th>
-                  <th className="py-3 text-center font-semibold">E-mail</th>
-                  <th className="py-3 text-center font-semibold">Secretaria</th>
-                  <th className="py-3 text-center font-semibold">Cargo</th>
-                  <th className="py-3 text-center font-semibold">Acessos (módulos)</th>
-                  <th className="py-3 pr-4 text-right font-semibold">Ações</th>
+                  <th className="py-3 pl-4 text-center font-bold">Nome</th>
+                  <th className="py-3 text-center font-bold">E-mail</th>
+                  <th className="py-3 text-center font-bold">Secretaria</th>
+                  <th className="py-3 text-center font-bold">Acessos (módulos)</th>
+                  <th className="py-3 pr-4 text-right font-bold">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -269,7 +268,6 @@ export const AccessManagement: React.FC = () => {
                         <span className="text-muted-foreground/60">—</span>
                       )}
                     </td>
-                    <td className="py-3 text-xs text-muted-foreground">{u.cargo ?? <span className="text-muted-foreground/60">—</span>}</td>
                     <td className="py-3">
                       <div className="flex flex-wrap justify-center gap-1">
                         {u.accesses.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
