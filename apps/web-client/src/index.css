@@ -5,6 +5,55 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* ── GOV.BR — Azul Governo Federal (primário) ── */
+    --background: 210 20% 97%;        /* #f5f6f8 */
+    --foreground: 217 81% 14%;        /* #071d41 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 217 81% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 217 81% 14%;
+
+    --primary: 217 81% 39%;           /* #1351b4 — Azul Governo Federal */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 60% 92%;
+    --secondary-foreground: 217 81% 24%;
+
+    --muted: 210 20% 94%;
+    --muted-foreground: 217 20% 40%;
+
+    --accent: 217 60% 92%;
+    --accent-foreground: 217 81% 24%;
+
+    --destructive: 7 94% 46%;         /* #e52207 — Vermelho Crítico */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 20% 85%;
+    --input: 217 20% 85%;
+    --ring: 217 81% 39%;              /* foco = azul GOV.BR */
+
+    /* ── SIDEBAR: azul profundo institucional ── */
+    --sidebar: 217 81% 14%;           /* #071d41 */
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 217 81% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 60% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 217 60% 20%;
+    --sidebar-ring: 217 81% 39%;
+
+    /* ── Status GOV.BR ── */
+    --success: 126 72% 31%;          /* #168821 — verde conforme */
+    --success-foreground: 0 0% 100%;
+    --warning: 48 100% 51%;          /* #ffcd07 — âmbar atenção */
+    --warning-foreground: 217 81% 14%;
+
+    --radius: 0.5rem;
+  }
+
   html {
     font-size: 16px;
     -webkit-text-size-adjust: 100%;

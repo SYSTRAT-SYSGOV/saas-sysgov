@@ -34,7 +34,7 @@ import {
   OrgScopeIndicator,
   OrgTypeBadge,
   StatusChip,
-} from '@sysgov/ui';
+} from '@/components/ui';
 import {
   sysgovApi,
   type OrgUnitTreeNode,
