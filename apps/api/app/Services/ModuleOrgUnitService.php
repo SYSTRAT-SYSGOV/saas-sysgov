@@ -60,16 +60,16 @@ final class ModuleOrgUnitService
                 $ancestorIds = OrgUnit::query()
                     ->where('tenant_id', $tenantId)
                     ->whereIn('path', $ancestorPaths)
-                    ->orderByRaw("FIELD(path, '" . implode("','", $ancestorPaths) . "') DESC")
+                    ->orderByRaw('LENGTH(path) DESC')
                     ->pluck('id')
                     ->all();
 
                 $ancestorExplicit = TenantModuleOrgUnit::query()
                     ->where('tenant_id', $tenantId)
                     ->where('module_id', $moduleId)
-                    ->whereIn('org_unit_id', $ancestorIds)
                     ->where('inherited', false)
-                    ->orderByRaw("FIELD(org_unit_id, " . implode(',', $ancestorIds) . ") DESC")
+                    ->whereHas('orgUnit', fn ($q) => $q->whereIn('org_units.path', $ancestorPaths))
+                    ->orderByDesc(OrgUnit::selectRaw('LENGTH(org_units.path)')->whereColumn('org_units.id', 'tenant_module_org_unit.org_unit_id'))
                     ->first();
 
                 if ($ancestorExplicit) {
@@ -126,7 +126,7 @@ final class ModuleOrgUnitService
                     $ancestorId = OrgUnit::query()
                         ->where('tenant_id', $tenantId)
                         ->whereIn('path', $ancestorPaths)
-                        ->orderByRaw("FIELD(path, '" . implode("','", $ancestorPaths) . "') DESC")
+                        ->orderByRaw('LENGTH(path) DESC')
                         ->value('id');
 
                     if ($ancestorId) {
@@ -198,7 +198,7 @@ final class ModuleOrgUnitService
                     $ancestorId = OrgUnit::query()
                         ->where('tenant_id', $tenantId)
                         ->whereIn('path', $ancestorPaths)
-                        ->orderByRaw("CHAR_LENGTH(path) DESC")
+                        ->orderByRaw("LENGTH(path) DESC")
                         ->value('id');
 
                     if ($ancestorId) {
@@ -339,7 +339,7 @@ final class ModuleOrgUnitService
                         $ancestorId = OrgUnit::query()
                             ->where('tenant_id', $tenantId)
                             ->whereIn('path', $ancestorPaths)
-                            ->orderByRaw("FIELD(path, '" . implode("','", $ancestorPaths) . "') DESC")
+                            ->orderByRaw('LENGTH(path) DESC')
                             ->value('id');
 
                         if ($ancestorId) {
