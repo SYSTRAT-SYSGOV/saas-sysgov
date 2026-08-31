@@ -8,6 +8,7 @@ use App\Http\Requests\LoginRequest;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\MfaService;
+use Modules\Admin\Services\MenuService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,7 +16,13 @@ use Illuminate\Validation\ValidationException;
 
 final class AuthController
 {
-    public function __construct(private readonly MfaService $mfaService) {}
+    private ?int $menuTenantId = null;
+    private ?User $menuUser = null;
+
+    public function __construct(
+        private readonly MfaService $mfaService,
+        private readonly MenuService $menuService,
+    ) {}
 
     /**
      * Lista os tenants ativos para popular o seletor da tela de login do web-client.
@@ -183,7 +190,8 @@ final class AuthController
             // Módulos ativos: se não houver vínculo, usa o conjunto padrão de módulos do web-client
             $activeModules = $this->resolveActiveModules($tenant);
 
-            // Navegação do web-client (gated por módulos e permissões)
+            $this->menuTenantId = $tenantId;
+            $this->menuUser = $user;
             $navigation = $this->buildTenantNavigation($activeModules, $permissions);
 
             return [
@@ -195,6 +203,7 @@ final class AuthController
                     'email' => $user->email,
                     'avatarUrl' => $user->avatar_url,
                     'roles' => $roles,
+                    'is_platform_admin' => (bool) $user->is_platform_admin,
                 ],
                 'tenant' => $tenant ? [
                     'id' => $tenant->id,
@@ -264,8 +273,8 @@ final class AuthController
     }
 
     /**
-     * Navegação do web-client (gated por módulos e permissões).
-     * Espelha a estrutura do SDK: MenuGroup[] com MenuItem[].
+     * Navegação do web-client — populada do banco (menu_groups/menu_items)
+     * e filtrada por módulos ativos do tenant e permissões do usuário.
      *
      * @param array<int, string> $activeModules
      * @param array<int, string> $permissions
@@ -273,45 +282,26 @@ final class AuthController
      */
     private function buildTenantNavigation(array $activeModules, array $permissions): array
     {
-        $allGroups = [
-            [
-                'id' => 1,
-                'name' => 'GESTÃO FISCAL & ORÇAMENTÁRIA',
-                'icon' => 'PieChart',
-                'items' => [
-                    ['id' => 'nav-dash', 'label' => 'Painel Geral', 'icon' => 'LayoutDashboard', 'route' => '/', 'module' => 'dashboard', 'permission' => 'dashboard.view'],
-                    ['id' => 'nav-lic', 'label' => 'Licitações', 'icon' => 'FileText', 'route' => '/licitacoes', 'module' => 'procurement', 'permission' => 'procurement.view'],
-                    ['id' => 'nav-con', 'label' => 'Contratos', 'icon' => 'FileSignature', 'route' => '/contratos', 'module' => 'contracts', 'permission' => 'contracts.view'],
-                    ['id' => 'nav-fin', 'label' => 'Execução Financeira', 'icon' => 'Coins', 'route' => '/financeiro', 'module' => 'finance', 'permission' => 'finance.view'],
-                ],
-            ],
-            [
-                'id' => 2,
-                'name' => 'GESTÃO SETORIAL',
-                'icon' => 'Building2',
-                'items' => [
-                    ['id' => 'nav-org', 'label' => 'Organograma Municipal', 'icon' => 'Network', 'route' => '/organograma', 'module' => 'org', 'permission' => 'org.view'],
-                    ['id' => 'nav-usr', 'label' => 'Usuários & Acessos', 'icon' => 'Users', 'route' => '/usuarios', 'module' => 'users', 'permission' => 'users.manage'],
-                    ['id' => 'nav-ped', 'label' => 'Módulo Pedagógico', 'icon' => 'GraduationCap', 'route' => '/pedagogico', 'module' => 'pedagogico', 'permission' => 'pedagogico.view'],
-                    ['id' => 'nav-rh', 'label' => 'Recursos Humanos / Folha', 'icon' => 'Users', 'route' => '/rh', 'module' => 'rh', 'permission' => 'rh.view'],
-                    ['id' => 'nav-cem', 'label' => 'Gestão de Cemitérios', 'icon' => 'Cross', 'route' => '/cemiterios', 'module' => 'cemiterios', 'permission' => 'cemiterios.view'],
-                ],
-            ],
-        ];
+        $dbNav = $this->menuService->buildNavigation($this->menuTenantId, $this->menuUser);
 
-        // Filtra itens por módulo ativo e permissão
+        $tenantModules = array_fill_keys($activeModules, true);
+
         $filtered = [];
-        foreach ($allGroups as $group) {
-            $allowedItems = array_filter($group['items'], fn(array $item) =>
-                in_array($item['module'], $activeModules, true)
-                && (in_array('*', $permissions, true) || in_array($item['permission'], $permissions, true))
-            );
+        foreach ($dbNav as $group) {
+            $allowedItems = [];
+            foreach ($group['items'] as $item) {
+                $module = $item['module_alias'] ?? null;
+                if ($module !== null && !isset($tenantModules[$module])) {
+                    continue;
+                }
+                $allowedItems[] = $item;
+            }
             if (!empty($allowedItems)) {
                 $filtered[] = [
                     'id' => $group['id'],
                     'name' => $group['name'],
                     'icon' => $group['icon'],
-                    'items' => array_values($allowedItems),
+                    'items' => $allowedItems,
                 ];
             }
         }

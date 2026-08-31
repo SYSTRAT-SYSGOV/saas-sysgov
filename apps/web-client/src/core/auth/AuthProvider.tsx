@@ -34,6 +34,7 @@ const DEMO_RESPONSE: LoginResponse = {
     name: 'Administrador da Prefeitura de Araucária',
     email: 'admin@araucaria.pr.gov.br',
     roles: ['admin_tenant'],
+    is_platform_admin: true,
   },
   tenant: {
     id: 131,

@@ -48,6 +48,22 @@ const ModuleRouteGuard: React.FC<{ moduleId: string; children: React.ReactElemen
   return children;
 };
 
+// Admin-only route guard (platform admin)
+const AdminRouteGuard: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-gov-primary" />
+      </div>
+    );
+  }
+  if (!user?.is_platform_admin) {
+    return <Navigate to="/404" replace />;
+  }
+  return children;
+};
+
 export const AppRouter: React.FC = () => {
   const DashboardComp = MODULE_REGISTRY.dashboard.component;
   const OrgComp = MODULE_REGISTRY.org.component;
@@ -58,6 +74,7 @@ export const AppRouter: React.FC = () => {
   const RhComp = MODULE_REGISTRY.rh.component;
   const CemiteriosComp = MODULE_REGISTRY.cemiterios.component;
   const UsersComp = MODULE_REGISTRY.users.component;
+  const MenuManagerComp = MODULE_REGISTRY.menuManager.component;
 
   return (
     <Routes>
@@ -145,6 +162,14 @@ export const AppRouter: React.FC = () => {
             <ModuleRouteGuard moduleId="users">
               <UsersComp />
             </ModuleRouteGuard>
+          }
+        />
+        <Route
+          path="gerenciar-menus"
+          element={
+            <AdminRouteGuard>
+              <MenuManagerComp />
+            </AdminRouteGuard>
           }
         />
         <Route path="*" element={<NotFoundPage />} />

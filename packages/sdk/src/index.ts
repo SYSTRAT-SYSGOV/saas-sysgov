@@ -24,6 +24,7 @@ export interface User {
   email: string;
   avatarUrl?: string;
   roles?: string[];
+  is_platform_admin?: boolean;
 }
 
 export interface MenuItem {

@@ -62,4 +62,9 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     component: lazy(() => import('@/modules/access/AccessManagement')),
     requiredPermission: 'users.manage',
   },
+  menuManager: {
+    id: 'menuManager',
+    name: 'Gerenciador de Menus',
+    component: lazy(() => import('@/modules/access/MenuManager')),
+  },
 };
