@@ -2527,12 +2527,6 @@ parameters:
 			path: Modules/Procurement/Services/MarketResearch.php
 
 		-
-			message: '#^Trait Modules\\Procurement\\Traits\\TenantAware is used zero times and is not analysed\.$#'
-			identifier: trait.unused
-			count: 1
-			path: Modules/Procurement/Traits/TenantAware.php
-
-		-
 			message: '#^Access to an undefined property Modules\\TestModule\\Models\\TestModuleItem\:\:\$title\.$#'
 			identifier: property.notFound
 			count: 1
