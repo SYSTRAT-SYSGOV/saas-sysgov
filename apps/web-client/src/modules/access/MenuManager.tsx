@@ -62,7 +62,7 @@ export const MenuManager: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get<{ data: MenuGroup[] }>('/admin/menus');
+      const res = await apiClient.get<{ data: MenuGroup[] }>('/client/menus');
       setGroups(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch (e: any) {
       notify({ type: 'error', title: 'Erro ao carregar', message: e?.response?.data?.message || e?.message || 'Não foi possível carregar os menus.' });
@@ -93,10 +93,10 @@ export const MenuManager: React.FC = () => {
     setGroupSaving(true);
     try {
       if (editingGroup) {
-        await apiClient.put(`/admin/menus/groups/${editingGroup.id}`, { name: groupForm.name, slug: groupForm.slug, icon: groupForm.icon || null });
+        await apiClient.put(`/client/menus/groups/${editingGroup.id}`, { name: groupForm.name, slug: groupForm.slug, icon: groupForm.icon || null });
         notify({ type: 'success', title: 'Grupo atualizado', message: `"${groupForm.name}" foi salvo.` });
       } else {
-        await apiClient.post('/admin/menus/groups', { name: groupForm.name, slug: groupForm.slug, icon: groupForm.icon || null });
+        await apiClient.post('/client/menus/groups', { name: groupForm.name, slug: groupForm.slug, icon: groupForm.icon || null });
         notify({ type: 'success', title: 'Grupo criado', message: `"${groupForm.name}" foi criado.` });
       }
       setGroupModalOpen(false);
@@ -111,7 +111,7 @@ export const MenuManager: React.FC = () => {
   const handleDeleteGroup = async (g: MenuGroup) => {
     if (!window.confirm(`Excluir o grupo "${g.name}" e todos os seus itens?`)) return;
     try {
-      await apiClient.delete(`/admin/menus/groups/${g.id}`);
+      await apiClient.delete(`/client/menus/groups/${g.id}`);
       notify({ type: 'success', title: 'Grupo excluído', message: `"${g.name}" foi removido.` });
       load();
     } catch (e: any) {
@@ -157,10 +157,10 @@ export const MenuManager: React.FC = () => {
         module_alias: itemForm.module_alias || null,
       };
       if (editingItem) {
-        await apiClient.put(`/admin/menus/items/${editingItem.id}`, payload);
+        await apiClient.put(`/client/menus/items/${editingItem.id}`, payload);
         notify({ type: 'success', title: 'Item atualizado', message: `"${itemForm.label}" foi salvo.` });
       } else {
-        await apiClient.post('/admin/menus/items', payload);
+        await apiClient.post('/client/menus/items', payload);
         notify({ type: 'success', title: 'Item criado', message: `"${itemForm.label}" foi criado.` });
       }
       setItemModalOpen(false);
@@ -175,7 +175,7 @@ export const MenuManager: React.FC = () => {
   const handleDeleteItem = async (item: MenuItem) => {
     if (!window.confirm(`Excluir o item "${item.label}"?`)) return;
     try {
-      await apiClient.delete(`/admin/menus/items/${item.id}`);
+      await apiClient.delete(`/client/menus/items/${item.id}`);
       notify({ type: 'success', title: 'Item excluído', message: `"${item.label}" foi removido.` });
       load();
     } catch (e: any) {

@@ -1,0 +1,8 @@
+{
+  "name": "Client",
+  "alias": "client",
+  "description": "Funcionalidades do cliente/tenant do SYSGOV",
+  "priority": 99,
+  "providers": ["Modules\\Client\\Providers\\ClientServiceProvider"],
+  "requires": []
+}

@@ -8,7 +8,7 @@ use App\Http\Requests\LoginRequest;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\MfaService;
-use Modules\Admin\Services\MenuService;
+use Modules\Client\Services\ClientNavigationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -16,12 +16,9 @@ use Illuminate\Validation\ValidationException;
 
 final class AuthController
 {
-    private ?int $menuTenantId = null;
-    private ?User $menuUser = null;
-
     public function __construct(
         private readonly MfaService $mfaService,
-        private readonly MenuService $menuService,
+        private readonly ClientNavigationService $clientNav,
     ) {}
 
     /**
@@ -190,9 +187,7 @@ final class AuthController
             // Módulos ativos: se não houver vínculo, usa o conjunto padrão de módulos do web-client
             $activeModules = $this->resolveActiveModules($tenant);
 
-            $this->menuTenantId = $tenantId;
-            $this->menuUser = $user;
-            $navigation = $this->buildTenantNavigation($activeModules, $permissions);
+            $navigation = $this->clientNav->buildNavigation($tenantId, $user, $activeModules, $permissions);
 
             return [
                 // O token é definido pelo método de login; aqui fica vazio (não expõe o plainTextToken)
@@ -270,42 +265,5 @@ final class AuthController
 
         // Padrão: todos os módulos do web-client
         return ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users'];
-    }
-
-    /**
-     * Navegação do web-client — populada do banco (menu_groups/menu_items)
-     * e filtrada por módulos ativos do tenant e permissões do usuário.
-     *
-     * @param array<int, string> $activeModules
-     * @param array<int, string> $permissions
-     * @return array<int, array<string, mixed>>
-     */
-    private function buildTenantNavigation(array $activeModules, array $permissions): array
-    {
-        $dbNav = $this->menuService->buildNavigation($this->menuTenantId, $this->menuUser);
-
-        $tenantModules = array_fill_keys($activeModules, true);
-
-        $filtered = [];
-        foreach ($dbNav as $group) {
-            $allowedItems = [];
-            foreach ($group['items'] as $item) {
-                $module = $item['module_alias'] ?? null;
-                if ($module !== null && !isset($tenantModules[$module])) {
-                    continue;
-                }
-                $allowedItems[] = $item;
-            }
-            if (!empty($allowedItems)) {
-                $filtered[] = [
-                    'id' => $group['id'],
-                    'name' => $group['name'],
-                    'icon' => $group['icon'],
-                    'items' => $allowedItems,
-                ];
-            }
-        }
-
-        return $filtered;
     }
 }
