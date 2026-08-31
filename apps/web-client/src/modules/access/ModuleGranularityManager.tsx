@@ -93,13 +93,10 @@ const ModuleGranularityManager: React.FC = () => {
     if (!selectedModule) return;
     setSaving(unit.id);
     try {
-      if (currentEnabled) {
-        await apiClient.delete(`/client/granularity/${selectedModule}/units/${unit.id}`);
-        notify({ type: 'success', title: 'Desabilitado', message: `${unit.name} perdeu acesso a este módulo.` });
-      } else {
-        await apiClient.put(`/client/granularity/${selectedModule}/units/${unit.id}`, { enabled: true });
-        notify({ type: 'success', title: 'Habilitado', message: `${unit.name} ganhou acesso a este módulo.` });
-      }
+      // PUT {enabled: false} cria negação explícita (não apenas limpa herança),
+      // permitindo desabilitar um departamento mesmo que o ancestral esteja liberado.
+      await apiClient.put(`/client/granularity/${selectedModule}/units/${unit.id}`, { enabled: !currentEnabled });
+      notify({ type: 'success', title: currentEnabled ? 'Desabilitado' : 'Habilitado', message: `${unit.name} ${currentEnabled ? 'perdeu acesso' : 'ganhou acesso'} a este módulo.` });
       loadOrgUnits(selectedModule);
     } catch (e: any) {
       notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || 'Não foi possível atualizar.' });
