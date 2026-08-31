@@ -6,8 +6,10 @@ namespace Modules\Contracts\Services;
 
 use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
+use App\Support\TenantContext;
 use Modules\Contracts\Models\SupportTicket;
 use Modules\Contracts\Models\TicketMessage;
+use Throwable;
 
 final readonly class SupportTicketService
 {
@@ -16,10 +18,24 @@ final readonly class SupportTicketService
         private OutboxPublisher $outbox
     ) {}
 
+    private function resolveTenantId(): ?int
+    {
+        try {
+            return app(TenantContext::class)->id();
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
     public function openTicket(array $data, int $userId): SupportTicket
     {
+        $tenantId = $this->resolveTenantId();
         $year = date('Y');
-        $count = SupportTicket::query()->whereYear('created_at', $year)->count() + 1;
+        $countQuery = SupportTicket::query()->whereYear('created_at', $year);
+        if ($tenantId !== null) {
+            $countQuery->where('tenant_id', $tenantId);
+        }
+        $count = $countQuery->count() + 1;
         $ticketNumber = sprintf('TICK-%s-%04d', $year, $count);
 
         // SLA por prioridade: crítica (4h), alta (12h), media (24h), baixa (48h)

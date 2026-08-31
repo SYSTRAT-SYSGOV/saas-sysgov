@@ -34,10 +34,9 @@ final class ClientNavigationController
     {
         $tenantId = $this->tenants->id();
         $user = $request->user();
-        $activeModules = $request->input('modules', []);
-        $permissions = $request->input('permissions', []);
 
-        $nav = $this->service->buildNavigation($tenantId, $user, $activeModules, $permissions);
+        // SEGURANÇA: navegação montada 100% no backend. Inputs do frontend são IGNORADOS (anti-spoofing).
+        $nav = $this->service->buildNavigation($tenantId, $user);
 
         return response()->json($nav);
     }
@@ -212,27 +211,14 @@ final class ClientNavigationController
     public function modules(): JsonResponse
     {
         $tenantId = $this->tenants->id();
-        $user = request()->user();
-        $isAdminTenant = $tenantId
-            && $user->rolesForTenant($tenantId)->contains('slug', 'admin_tenant');
 
         $tenant = \App\Models\Tenant::find($tenantId);
         $linked = $tenant
             ? $tenant->modules()->wherePivot('enabled', true)->pluck('modules.alias')->all()
             : [];
 
-        $defaults = ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users'];
-
-        // admin_tenant vê todos os módulos se não há vínculos explícitos; caso contrário, só os habilitados
-        $data = $isAdminTenant && empty($linked) ? $defaults : (empty($linked) ? [] : $linked);
-
         return response()->json([
-            'data' => $data,
-            'debug' => [
-                'is_admin_tenant' => $isAdminTenant,
-                'tenant_id' => $tenantId,
-                'linked_modules' => $linked,
-            ],
+            'data' => array_values($linked),
         ]);
     }
 }

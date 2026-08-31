@@ -45,6 +45,7 @@ final class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'platform-admin' => \App\Http\Middleware\EnsurePlatformAdmin::class,
         'resolve.tenant' => \App\Http\Middleware\ResolveTenant::class,
+        'module-access' => \App\Http\Middleware\EnsureModuleAccess::class,
         'mfa' => \Modules\Admin\Http\Middleware\EnsureMfa::class,
     ];
 }

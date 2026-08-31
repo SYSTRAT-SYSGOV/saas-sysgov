@@ -12,6 +12,8 @@ use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Admin\Http\Requests\StoreTenantUserRequest;
 use Modules\Admin\Http\Requests\UpdateTenantUserRequest;
 use Modules\Admin\Http\Resources\UserResource;
@@ -79,8 +81,7 @@ public function show(Request $request, User $user): JsonResponse
         $user->tenants()->syncWithoutDetaching([
             $tenantId => ['role_id' => $role->id, 'status' => 'active', 'is_primary' => false],
         ]);
-        $user->roles()->syncWithoutDetaching([$role->id]);
-        $user->clearPermissionCache();
+        $this->attachTenantRole($user, $role, $tenantId);
 
         $this->audit->record('tenant', 'user.created', "User #{$user->id} in Tenant #{$tenantId}", null, $user->toArray());
 
@@ -106,12 +107,9 @@ public function show(Request $request, User $user): JsonResponse
             $user->fill($validated)->save();
         }
 
-        if ($roleSlug) {
+if ($roleSlug) {
             $role = $this->resolveTenantRole($tenantId, $roleSlug);
-
-            $user->roles()->sync([$role->id]);
-            $user->clearPermissionCache();
-            $user->tenants()->updateExistingPivot($tenantId, ['role_id' => $role->id]);
+            $this->attachTenantRole($user, $role, $tenantId);
         }
 
         $this->audit->record('tenant', 'user.updated', "User #{$user->id} in Tenant #{$tenantId}", $before, $user->fresh(['roles'])->toArray());
@@ -202,9 +200,7 @@ public function show(Request $request, User $user): JsonResponse
 
         $before = $user->fresh(['roles'])->toArray();
 
-        $user->roles()->syncWithoutDetaching([$role->id]);
-        $user->clearPermissionCache();
-        $user->tenants()->updateExistingPivot($tenantId, ['role_id' => $role->id]);
+        $this->attachTenantRole($user, $role, $tenantId);
 
         $this->audit->record('tenant', 'user.role_assigned', "User #{$user->id} Role #{$role->id}", $before, ['role_slug' => $role->slug]);
 
@@ -229,6 +225,22 @@ public function show(Request $request, User $user): JsonResponse
         $this->audit->record('tenant', 'user.unlinked', "User #{$user->id} from Tenant #{$tenantId}", $before, ['tenant_id' => $tenantId]);
 
         return response()->json(['message' => 'Vínculo do usuário com o tenant removido.']);
+    }
+
+    /**
+     * Atribui uma role de tenant ao usuário e registra o tenant no pivot role_user (RN-CORE-001).
+     */
+    private function attachTenantRole(User $user, Role $role, int $tenantId): void
+    {
+        $user->roles()->syncWithoutDetaching([$role->id]);
+        if (Schema::hasColumn('role_user', 'tenant_id')) {
+            DB::table('role_user')
+                ->where('role_id', $role->id)
+                ->where('user_id', $user->id)
+                ->update(['tenant_id' => $tenantId]);
+        }
+        $user->tenants()->updateExistingPivot($tenantId, ['role_id' => $role->id]);
+        $user->clearPermissionCache($tenantId);
     }
 
     /**

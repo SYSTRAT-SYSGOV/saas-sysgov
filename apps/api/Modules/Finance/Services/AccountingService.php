@@ -6,10 +6,12 @@ namespace Modules\Finance\Services;
 
 use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Finance\Models\AccountingEntry;
 use Modules\Finance\Models\ChartOfAccount;
+use Throwable;
 
 final readonly class AccountingService
 {
@@ -39,7 +41,6 @@ final readonly class AccountingService
             }
         }
 
-        // Validação fundamental do Método das Partidas Dobradas: Soma(Débitos) == Soma(Créditos)
         if ($totalDebits !== $totalCredits) {
             throw ValidationException::withMessages([
                 'lines' => [
@@ -50,11 +51,16 @@ final readonly class AccountingService
             ]);
         }
 
+        $tenantId = $this->resolveTenantId();
         $year = date('Y', strtotime($data['entry_date']));
-        $count = AccountingEntry::query()->whereYear('entry_date', $year)->count() + 1;
+        $countQuery = AccountingEntry::query()->whereYear('entry_date', $year);
+        if ($tenantId !== null) {
+            $countQuery->where('tenant_id', $tenantId);
+        }
+        $count = $countQuery->count() + 1;
         $entryNumber = sprintf('LC-%s-%05d', $year, $count);
 
-        return DB::transaction(function () use ($data, $userId, $entryNumber, $totalDebits, $lines) {
+        return DB::transaction(function () use ($data, $userId, $entryNumber, $totalDebits, $lines, $tenantId) {
             $entry = AccountingEntry::create([
                 'entry_number' => $entryNumber,
                 'entry_date' => $data['entry_date'],
@@ -85,25 +91,34 @@ final readonly class AccountingService
         });
     }
 
-    public function generateTrialBalance(int $year, ?int $month = null): array
+    public function generateTrialBalance(int $year, ?int $month = null, ?int $tenantId = null): array
     {
-        $accounts = ChartOfAccount::query()->orderBy('code')->get();
+        $tenantId = $tenantId ?? $this->resolveTenantId();
+
+        $accountsQuery = ChartOfAccount::query();
+        if ($tenantId !== null) {
+            $accountsQuery->where('tenant_id', $tenantId);
+        }
+        $accounts = $accountsQuery->orderBy('code')->get();
+
         $balanceRows = [];
         $grandTotalDebits = 0;
         $grandTotalCredits = 0;
 
         foreach ($accounts as $account) {
-            $query = $account->lines()->whereHas('entry', function ($q) use ($year, $month) {
+            $entryQuery = $account->lines()->whereHas('entry', function ($q) use ($year, $month, $tenantId) {
                 $q->whereYear('entry_date', $year);
                 if ($month !== null) {
                     $q->whereMonth('entry_date', '<=', $month);
                 }
+                if ($tenantId !== null) {
+                    $q->where($q->qualifyColumn('tenant_id'), $tenantId);
+                }
             });
 
-            $totalDebits = (int) (clone $query)->where('type', 'debito')->sum('amount_cents');
-            $totalCredits = (int) (clone $query)->where('type', 'credito')->sum('amount_cents');
+            $totalDebits = (int) (clone $entryQuery)->where('type', 'debito')->sum('amount_cents');
+            $totalCredits = (int) (clone $entryQuery)->where('type', 'credito')->sum('amount_cents');
 
-            // Saldo conforme a natureza da conta (devedora = débito - crédito; credora = crédito - débito)
             $balanceCents = $account->nature === 'devedora'
                 ? ($totalDebits - $totalCredits)
                 : ($totalCredits - $totalDebits);
@@ -134,5 +149,14 @@ final readonly class AccountingService
                 'is_balanced' => ($grandTotalDebits === $grandTotalCredits),
             ],
         ];
+    }
+
+    private function resolveTenantId(): ?int
+    {
+        try {
+            return app(TenantContext::class)->id();
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

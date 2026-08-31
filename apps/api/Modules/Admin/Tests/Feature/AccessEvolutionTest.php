@@ -36,6 +36,12 @@ final class AccessEvolutionTest extends TestCase
         return Tenant::create(['name' => 'Prefeitura Acessos', 'slug' => 'pref-acessos', 'type' => 'prefeitura', 'status' => 'active']);
     }
 
+    private function linkModule(Tenant $tenant, string $alias): void
+    {
+        $module = \Modules\Admin\Models\Module::where('alias', $alias)->firstOrFail();
+        $tenant->modules()->syncWithoutDetaching([$module->id => ['enabled' => true]]);
+    }
+
     private function member(string $email): User
     {
         return User::create(['name' => 'Membro', 'email' => $email, 'password' => 'StrongPass!123', 'is_active' => true]);
@@ -62,6 +68,7 @@ final class AccessEvolutionTest extends TestCase
     public function test_access_with_valid_validity_grants_access_and_reports_expiring(): void
     {
         $tenant = $this->tenant();
+        $this->linkModule($tenant, 'contracts');
         $grantor = User::where('is_platform_admin', true)->firstOrFail();
         $user = $this->member('valido@teste.gov');
         $service = app(ModuleAccessService::class);
@@ -98,6 +105,7 @@ final class AccessEvolutionTest extends TestCase
     public function test_renew_reactivates_revoked_access(): void
     {
         $tenant = $this->tenant();
+        $this->linkModule($tenant, 'finance');
         $grantor = User::where('is_platform_admin', true)->firstOrFail();
         $user = $this->member('renovado@teste.gov');
         $service = app(ModuleAccessService::class);

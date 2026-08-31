@@ -257,6 +257,12 @@ final class ClientAccessController
             ]]);
             if ($baseRole) {
                 $user->roles()->syncWithoutDetaching([$baseRole->id]);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('role_user', 'tenant_id')) {
+                    \Illuminate\Support\Facades\DB::table('role_user')
+                        ->where('role_id', $baseRole->id)
+                        ->where('user_id', $user->id)
+                        ->update(['tenant_id' => $tenantId]);
+                }
             }
 
             $this->syncAccesses($user, $tenantId, $data['accesses'] ?? []);

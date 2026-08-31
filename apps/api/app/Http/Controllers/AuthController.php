@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\MfaService;
 use Modules\Client\Services\ClientNavigationService;
+use Modules\OrgChart\Models\OrgUnitUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -183,10 +184,9 @@ final class AuthController
                 : ($tenantId ? $user->rolesForTenant($tenantId)->pluck('slug')->all() : []);
 
             $linkedModules = $this->resolveActiveModules($tenant);
-            $defaults = ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users'];
 
-            // admin_tenant vê todos os módulos se não há vínculos explícitos; caso contrário, só os habilitados
-            $activeModules = $finalIsAdminTenant && empty($linkedModules) ? $defaults : $linkedModules;
+            // Módulos ativos vêm SOMENTE do vínculo tenant_module.enabled (sem array hardcoded — Fase 0B)
+            $activeModules = $linkedModules;
 
             $permissions = $user->is_platform_admin || $finalIsAdminTenant
                 ? ['*']
@@ -194,7 +194,19 @@ final class AuthController
                     ? $user->permissionsForSystrat()->pluck('slug')->all()
                     : ($tenantId ? $user->permissionsForTenant($tenantId)->pluck('slug')->all() : []));
 
-            $navigation = $this->clientNav->buildNavigation($tenantId, $user, $activeModules, $permissions);
+            $orgUnitIds = null;
+            if (!$finalIsAdminTenant && $tenantId) {
+                $linkedIds = OrgUnitUser::query()
+                    ->where('user_id', $user->id)
+                    ->where('tenant_id', $tenantId)
+                    ->pluck('org_unit_id')
+                    ->all();
+                if ($linkedIds !== []) {
+                    $orgUnitIds = $linkedIds;
+                }
+            }
+
+            $navigation = $this->clientNav->buildNavigation($tenantId, $user, $orgUnitIds);
 
             return [
                 // O token é definido pelo método de login; aqui fica vazio (não expõe o plainTextToken)

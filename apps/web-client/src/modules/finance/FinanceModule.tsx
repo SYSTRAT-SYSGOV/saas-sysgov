@@ -1,29 +1,89 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTenant } from '@/core/tenant/useTenant';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  CreditCard, 
-  Receipt, 
-  FileText, 
-  PieChart 
+import {
+  DollarSign,
+  TrendingUp,
+  CreditCard,
+  Receipt,
+  FileText,
+  PieChart,
+  Loader2,
 } from 'lucide-react';
-import { 
-  Card, 
-  Button, 
-  KpiCard, 
-  StatusChip, 
-  Table, 
-  TableHead, 
-  TableHeaderCell, 
-  TableBody, 
-  TableRow, 
-  TableCell 
+import {
+  Card,
+  Button,
+  KpiCard,
+  StatusChip,
+  Table,
+  TableHead,
+  TableHeaderCell,
+  TableBody,
+  TableRow,
+  TableCell,
 } from '@/components/ui';
 import { formatCurrencyBRL } from '@/config/theme';
+import { apiClient } from '@/core/api/client';
+
+interface FinanceSummary {
+  tenant_id: number;
+  revenues_cents: number;
+  expenses_cents: number;
+  invoices_cents: number;
+  transfers_cents: number;
+  pending_reconciliations: number;
+}
+
+interface BudgetSummary {
+  total_committed_cents: number;
+  total_settled_cents: number;
+  total_paid_cents: number;
+  restos_a_pagar_cents: number;
+  execution_rate_percent: number;
+}
+
+interface Toast {
+  type: 'success' | 'error' | 'info' | 'warning';
+  title: string;
+  message: string;
+}
 
 export const FinanceModule: React.FC = () => {
   const { tenant } = useTenant();
+  const [summary, setSummary] = useState<FinanceSummary | null>(null);
+  const [budget, setBudget] = useState<BudgetSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const notify = useCallback((t: Toast) => {
+    setToasts((prev) => [...prev, t]);
+    setTimeout(() => setToasts((prev) => prev.filter((x) => x !== t)), 5000);
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [summaryRes, budgetRes] = await Promise.all([
+        apiClient.get<FinanceSummary>('/finance/summary'),
+        apiClient.get<BudgetSummary>('/finance/budget/summary'),
+      ]);
+      setSummary(summaryRes.data);
+      setBudget(budgetRes.data);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Erro ao carregar dados financeiros.';
+      setError(msg);
+      notify({ type: 'error', title: 'Erro', message: msg });
+    } finally {
+      setLoading(false);
+    }
+  }, [notify]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const formatCents = (cents: number) => formatCurrencyBRL(cents / 100);
 
   return (
     <div className="space-y-6">
@@ -53,92 +113,93 @@ export const FinanceModule: React.FC = () => {
         </div>
       </Card>
 
-      {/* Bento Grid KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          title="Receita Prevista"
-          value={formatCurrencyBRL(380000000)}
-          icon={<DollarSign className="w-5 h-5" />}
-          iconBgColor="bg-[#E8F0FE] text-[#1351B4]"
-        />
-        <KpiCard
-          title="Receita Realizada"
-          value={formatCurrencyBRL(348912450.20)}
-          icon={<TrendingUp className="w-5 h-5" />}
-          iconBgColor="bg-status-success-bg text-status-success"
-          trend={{ value: '91,8%', isPositive: true, label: 'arrecadado' }}
-        />
-        <KpiCard
-          title="Despesa Empenhada"
-          value={formatCurrencyBRL(310450000)}
-          icon={<Receipt className="w-5 h-5" />}
-          iconBgColor="bg-status-warning-bg text-status-warning"
-        />
-        <KpiCard
-          title="Despesa Paga"
-          value={formatCurrencyBRL(281900000)}
-          icon={<CreditCard className="w-5 h-5" />}
-          iconBgColor="bg-status-info-bg text-status-info"
-        />
-      </div>
+      {loading && !summary ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 text-gov-primary animate-spin" />
+        </div>
+      ) : error && !summary ? (
+        <div className="p-4 rounded-lg bg-rose-50 border border-rose-300 text-rose-800 text-sm">
+          {error}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard
+              title="Receita Realizada"
+              value={summary ? formatCents(summary.revenues_cents) : 'R$ 0,00'}
+              icon={<TrendingUp className="w-5 h-5" />}
+              iconBgColor="bg-status-success-bg text-status-success"
+            />
+            <KpiCard
+              title="Despesa Empenhada"
+              value={summary ? formatCents(summary.expenses_cents) : 'R$ 0,00'}
+              icon={<Receipt className="w-5 h-5" />}
+              iconBgColor="bg-status-warning-bg text-status-warning"
+            />
+            <KpiCard
+              title="Despesa Paga"
+              value={budget ? formatCents(budget.total_paid_cents) : 'R$ 0,00'}
+              icon={<CreditCard className="w-5 h-5" />}
+              iconBgColor="bg-status-info-bg text-status-info"
+            />
+            <KpiCard
+              title="Empenhado (Restos a Pagar)"
+              value={budget ? formatCents(budget.restos_a_pagar_cents) : 'R$ 0,00'}
+              icon={<DollarSign className="w-5 h-5" />}
+              iconBgColor="bg-[#E8F0FE] text-[#1351B4]"
+            />
+          </div>
 
-      {/* Table */}
-      <Table>
-        <TableHead>
-          <tr>
-            <TableHeaderCell>Unidade Gestora / Dotação</TableHeaderCell>
-            <TableHeaderCell className="text-right">Dotação Atual</TableHeaderCell>
-            <TableHeaderCell className="text-right">Empenhado</TableHeaderCell>
-            <TableHeaderCell className="text-right">Liquidado</TableHeaderCell>
-            <TableHeaderCell className="text-right">Saldo Disponível</TableHeaderCell>
-            <TableHeaderCell className="text-center">Execução</TableHeaderCell>
-          </tr>
-        </TableHead>
-        <TableBody>
-          <TableRow>
-            <TableCell>
-              <span className="font-bold text-gov-text-primary">02.01 — Secretaria Municipal de Educação</span>
-              <span className="block font-mono text-[11px] text-gov-text-muted">12.361.0004.2015</span>
-            </TableCell>
-            <TableCell isTechnical className="text-right font-bold text-gov-text-primary">
-              {formatCurrencyBRL(95000000)}
-            </TableCell>
-            <TableCell isTechnical className="text-right text-gov-text-secondary">
-              {formatCurrencyBRL(82400000)}
-            </TableCell>
-            <TableCell isTechnical className="text-right text-gov-text-secondary">
-              {formatCurrencyBRL(76100000)}
-            </TableCell>
-            <TableCell isTechnical className="text-right font-bold text-status-success">
-              {formatCurrencyBRL(12600000)}
-            </TableCell>
-            <TableCell className="text-center">
-              <StatusChip label="86,7%" variant="success" />
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>
-              <span className="font-bold text-gov-text-primary">03.01 — Secretaria Municipal de Saúde</span>
-              <span className="block font-mono text-[11px] text-gov-text-muted">10.301.0008.2030</span>
-            </TableCell>
-            <TableCell isTechnical className="text-right font-bold text-gov-text-primary">
-              {formatCurrencyBRL(110000000)}
-            </TableCell>
-            <TableCell isTechnical className="text-right text-gov-text-secondary">
-              {formatCurrencyBRL(98500000)}
-            </TableCell>
-            <TableCell isTechnical className="text-right text-gov-text-secondary">
-              {formatCurrencyBRL(91200000)}
-            </TableCell>
-            <TableCell isTechnical className="text-right font-bold text-status-warning">
-              {formatCurrencyBRL(11500000)}
-            </TableCell>
-            <TableCell className="text-center">
-              <StatusChip label="89,5%" variant="warning" />
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+          <Card className="!p-5 sm:!p-6">
+            <h2 className="text-lg font-bold text-gov-text-primary mb-4">Execução Orçamentária</h2>
+            {budget ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="text-center p-4 rounded-lg bg-gov-surface border border-gov-border">
+                  <p className="text-xs text-gov-text-muted mb-1">Empenhado</p>
+                  <p className="font-mono font-bold text-gov-text-primary text-sm">
+                    {formatCents(budget.total_committed_cents)}
+                  </p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-gov-surface border border-gov-border">
+                  <p className="text-xs text-gov-text-muted mb-1">Liquidado</p>
+                  <p className="font-mono font-bold text-gov-text-primary text-sm">
+                    {formatCents(budget.total_settled_cents)}
+                  </p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-gov-surface border border-gov-border">
+                  <p className="text-xs text-gov-text-muted mb-1">Pago</p>
+                  <p className="font-mono font-bold text-gov-text-primary text-sm">
+                    {formatCents(budget.total_paid_cents)}
+                  </p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-gov-surface border border-gov-border">
+                  <p className="text-xs text-gov-text-muted mb-1">Execução</p>
+                  <p className="font-mono font-bold text-gov-text-primary text-sm">
+                    {budget.execution_rate_percent}%
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gov-text-muted text-sm">Dados não disponíveis.</p>
+            )}
+          </Card>
+        </>
+      )}
+
+      {toasts.map((t, i) => (
+        <div
+          key={i}
+          className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm ${
+            t.type === 'success' ? 'bg-emerald-600 text-white' :
+            t.type === 'error' ? 'bg-rose-600 text-white' :
+            t.type === 'warning' ? 'bg-amber-500 text-white' :
+            'bg-blue-600 text-white'
+          }`}
+        >
+          <strong className="block text-xs font-bold uppercase">{t.title}</strong>
+          {t.message}
+        </div>
+      ))}
     </div>
   );
 };

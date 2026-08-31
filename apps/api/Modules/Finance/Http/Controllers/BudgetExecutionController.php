@@ -5,21 +5,35 @@ declare(strict_types=1);
 namespace Modules\Finance\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\ModuleAccessService;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Finance\Models\BudgetCommitment;
 use Modules\Finance\Models\BudgetSettlement;
 use Modules\Finance\Services\BudgetExecutionService;
+use Modules\OrgChart\Models\OrgUnitUser;
 
 final class BudgetExecutionController extends Controller
 {
     public function __construct(
-        private readonly BudgetExecutionService $budgetService
+        private readonly BudgetExecutionService $budgetService,
+        private readonly ModuleAccessService $access,
     ) {}
 
     public function commitments(Request $request): JsonResponse
     {
-        $commitments = BudgetCommitment::query()
+        $tenantId = (int) app(TenantContext::class)->id();
+        $user = $request->user();
+        $isAdmin = $this->isGlobalAdmin($user, $tenantId);
+
+        $query = BudgetCommitment::query();
+
+        if (!$isAdmin) {
+            $this->access->scopeQuery($query, $user, 'finance', $tenantId, 'org_unit_id');
+        }
+
+        $commitments = $query
             ->when($request->query('status'), fn ($q, $s) => $q->where('status', $s))
             ->when($request->query('search'), fn ($q, $term) => $q->where(function ($sub) use ($term) {
                 $sub->where('commitment_number', 'like', "%{$term}%")
@@ -34,7 +48,12 @@ final class BudgetExecutionController extends Controller
 
     public function storeCommitment(Request $request): JsonResponse
     {
+        $tenantId = (int) app(TenantContext::class)->id();
+        $user = $request->user();
+        $isAdmin = $this->isGlobalAdmin($user, $tenantId);
+
         $validated = $request->validate([
+            'org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'commitment_date' => ['required', 'date'],
             'supplier_name' => ['required', 'string', 'max:255'],
             'supplier_cnpj' => ['nullable', 'string', 'max:18'],
@@ -44,19 +63,47 @@ final class BudgetExecutionController extends Controller
             'amount_cents' => ['required', 'integer', 'min:1'],
         ]);
 
+        if (!$isAdmin) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'finance', $tenantId);
+            $validated['org_unit_id'] = $this->resolveOrgUnitId($validated['org_unit_id'] ?? null, $user, $tenantId, $allowedIds);
+        }
+
         $commitment = $this->budgetService->createCommitment($validated);
         return response()->json($commitment, 201);
     }
 
     public function showCommitment(int $id): JsonResponse
     {
+        $tenantId = (int) app(TenantContext::class)->id();
+        $user = request()->user();
+        $isAdmin = $this->isGlobalAdmin($user, $tenantId);
+
         $commitment = BudgetCommitment::with(['settlements.payments'])->findOrFail($id);
+
+        if (!$isAdmin) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'finance', $tenantId);
+            if ($allowedIds !== null && !in_array($commitment->org_unit_id, $allowedIds, true)) {
+                abort(403);
+            }
+        }
+
         return response()->json($commitment);
     }
 
     public function storeSettlement(Request $request, int $commitmentId): JsonResponse
     {
+        $tenantId = (int) app(TenantContext::class)->id();
+        $user = $request->user();
+        $isAdmin = $this->isGlobalAdmin($user, $tenantId);
+
         $commitment = BudgetCommitment::findOrFail($commitmentId);
+
+        if (!$isAdmin) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'finance', $tenantId);
+            if ($allowedIds !== null && !in_array($commitment->org_unit_id, $allowedIds, true)) {
+                abort(403);
+            }
+        }
 
         $validated = $request->validate([
             'settlement_date' => ['required', 'date'],
@@ -70,7 +117,18 @@ final class BudgetExecutionController extends Controller
 
     public function storePayment(Request $request, int $settlementId): JsonResponse
     {
+        $tenantId = (int) app(TenantContext::class)->id();
+        $user = $request->user();
+        $isAdmin = $this->isGlobalAdmin($user, $tenantId);
+
         $settlement = BudgetSettlement::with('commitment')->findOrFail($settlementId);
+
+        if (!$isAdmin) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'finance', $tenantId);
+            if ($allowedIds !== null && !in_array($settlement->org_unit_id, $allowedIds, true)) {
+                abort(403);
+            }
+        }
 
         $validated = $request->validate([
             'payment_date' => ['required', 'date'],
@@ -84,9 +142,19 @@ final class BudgetExecutionController extends Controller
 
     public function budgetSummary(): JsonResponse
     {
-        $totalCommittedCents = (int) BudgetCommitment::query()->sum('amount_cents');
-        $totalSettledCents = (int) BudgetCommitment::query()->sum('settled_amount_cents');
-        $totalPaidCents = (int) BudgetCommitment::query()->sum('paid_amount_cents');
+        $tenantId = (int) app(TenantContext::class)->id();
+        $user = request()->user();
+        $isAdmin = $this->isGlobalAdmin($user, $tenantId);
+
+        $query = BudgetCommitment::query();
+
+        if (!$isAdmin) {
+            $this->access->scopeQuery($query, $user, 'finance', $tenantId, 'org_unit_id');
+        }
+
+        $totalCommittedCents = (int) (clone $query)->sum('amount_cents');
+        $totalSettledCents = (int) (clone $query)->sum('settled_amount_cents');
+        $totalPaidCents = (int) (clone $query)->sum('paid_amount_cents');
         $restosAPagarCents = max(0, $totalCommittedCents - $totalPaidCents);
 
         return response()->json([
@@ -98,5 +166,31 @@ final class BudgetExecutionController extends Controller
                 ? round(($totalPaidCents / $totalCommittedCents) * 100, 2)
                 : 0,
         ]);
+    }
+
+    private function isGlobalAdmin($user, int $tenantId): bool
+    {
+        return $user->is_platform_admin
+            || $user->isSupportAnalyst()
+            || $user->hasRole('admin_tenant', $tenantId);
+    }
+
+    private function resolveOrgUnitId(?int $providedId, $user, int $tenantId, ?array $allowedIds): int
+    {
+        if ($allowedIds === null) {
+            if ($providedId === null) {
+                $firstLinked = OrgUnitUser::query()
+                    ->where('user_id', $user->id)
+                    ->where('tenant_id', $tenantId)
+                    ->value('org_unit_id');
+                return (int) $firstLinked;
+            }
+            return $providedId;
+        }
+
+        if (!in_array($providedId, $allowedIds, true)) {
+            abort(403, 'Org unit não autorizada.');
+        }
+        return $providedId;
     }
 }

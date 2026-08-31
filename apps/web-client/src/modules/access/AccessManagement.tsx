@@ -8,6 +8,7 @@ import {
   Pencil,
   KeyRound,
   LayoutDashboard,
+  Settings2,
 } from 'lucide-react';
 import { accessApi, AccessDashboardData, AccessUser, AccessModule, OrgUnitNode, Cargo, AccessGroup, AccessCategory } from './AccessApi';
 import { AdminAccessPanel, NewUserWizard, UserEditModal, AdvancedFilters, UserFilters } from './evolution';
@@ -176,6 +177,13 @@ export const AccessManagement: React.FC = () => {
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             <UserPlus className="w-4 h-4" /> Novo Usuário
+          </button>
+          <button
+            onClick={() => { window.location.href = '/granularidade-módulos'; }}
+            className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-200"
+            title="Granularidade de módulos por unidade"
+          >
+            <Settings2 className="w-4 h-4" /> Granularidade
           </button>
         </div>
       </div>

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Contracts\Http\Controllers\ContractController;
 use Modules\Contracts\Http\Controllers\SupportTicketController;
 
-Route::middleware(['auth:sanctum', 'resolve.tenant'])->prefix('api/contracts')->group(function (): void {
+Route::middleware(['auth:sanctum', 'resolve.tenant', 'bindings', 'module-access:contracts'])->prefix('api/contracts')->group(function (): void {
     // KPIs & Lista
     Route::get('/kpis', [ContractController::class, 'summaryKPIs']);
     Route::get('/', [ContractController::class, 'index']);

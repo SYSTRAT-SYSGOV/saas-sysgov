@@ -384,6 +384,55 @@ final readonly class OrgTreeService
     }
 
     /**
+     * Retorna a árvore organizacional filtrada por IDs de unidades permitidas.
+     * Usado quando o usuário tem escopo restrito (não global admin).
+     * NÃO é cacheado (escopo por usuário).
+     *
+     * @param array<int> $allowedIds IDs de unidades que o usuário pode ver
+     * @return array<int, array<string, mixed>>
+     */
+    public function getFilteredTree(?int $rootId = null, bool $onlyActive = true, array $allowedIds = []): array
+    {
+        if ($allowedIds === []) {
+            return [];
+        }
+
+        $query = OrgUnit::query()
+            ->with(['users', 'parent'])
+            ->whereIn('id', $allowedIds)
+            ->orderBy('level')
+            ->orderBy('order')
+            ->orderBy('name');
+
+        if ($onlyActive) {
+            $query->where('is_active', true);
+        }
+
+        if ($rootId !== null) {
+            /** @var OrgUnit|null $root */
+            $root = OrgUnit::find($rootId);
+            if ($root === null || !in_array($root->id, $allowedIds, true)) {
+                return [];
+            }
+            $units = OrgUnit::query()
+                ->whereIn('id', $allowedIds)
+                ->where(function ($q) use ($root): void {
+                    $q->where('id', $root->id)
+                        ->orWhere('path', 'like', "{$root->path}.%");
+                })
+                ->when($onlyActive, fn($q) => $q->where('is_active', true))
+                ->with(['users'])
+                ->orderBy('level')
+                ->orderBy('order')
+                ->get();
+        } else {
+            $units = $query->get();
+        }
+
+        return $this->buildNestedTree($units);
+    }
+
+    /**
      * Monta a estrutura aninhada a partir de uma coleção plana
      *
      * @param Collection<int, OrgUnit> $units

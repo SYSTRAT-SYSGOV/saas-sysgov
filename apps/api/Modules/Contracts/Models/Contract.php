@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Contracts\Models;
 
 use App\Models\Concerns\TenantAware;
+use Modules\OrgChart\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +19,7 @@ final class Contract extends Model
 
     protected $fillable = [
         'tenant_id',
+        'org_unit_id',
         'number',
         'title',
         'contract_type',
@@ -37,6 +39,7 @@ final class Contract extends Model
 
     protected $casts = [
         'tenant_id' => 'integer',
+        'org_unit_id' => 'integer',
         'manager_id' => 'integer',
         'inspector_id' => 'integer',
         'starts_at' => 'date',
@@ -54,6 +57,11 @@ final class Contract extends Model
     public function inspector(): BelongsTo
     {
         return $this->belongsTo(User::class, 'inspector_id');
+    }
+
+    public function orgUnit(): BelongsTo
+    {
+        return $this->belongsTo(OrgUnit::class, 'org_unit_id');
     }
 
     public function addenda(): HasMany

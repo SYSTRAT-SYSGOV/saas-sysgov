@@ -5,20 +5,28 @@ declare(strict_types=1);
 namespace Modules\Contracts\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Contracts\Models\SupportTicket;
 use Modules\Contracts\Services\SupportTicketService;
+use Throwable;
 
 final class SupportTicketController extends Controller
 {
     public function __construct(
-        private readonly SupportTicketService $ticketService
+        private readonly SupportTicketService $ticketService,
     ) {}
 
     public function index(Request $request): JsonResponse
     {
+        $tenantId = $this->resolveTenantId();
+
         $query = SupportTicket::query()->with(['requester:id,name,email', 'assigned:id,name']);
+
+        if ($tenantId !== null) {
+            $query->where('tenant_id', $tenantId);
+        }
 
         if ($status = $request->query('status')) {
             $query->where('status', $status);
@@ -52,15 +60,28 @@ final class SupportTicketController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $ticket = SupportTicket::with(['requester:id,name,email', 'assigned:id,name', 'messages.user:id,name,email'])
-            ->findOrFail($id);
+        $tenantId = $this->resolveTenantId();
+
+        $query = SupportTicket::with(['requester:id,name,email', 'assigned:id,name', 'messages.user:id,name,email']);
+
+        if ($tenantId !== null) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        $ticket = $query->findOrFail($id);
 
         return response()->json($ticket);
     }
 
     public function addMessage(Request $request, int $id): JsonResponse
     {
-        $ticket = SupportTicket::findOrFail($id);
+        $tenantId = $this->resolveTenantId();
+
+        $query = SupportTicket::query();
+        if ($tenantId !== null) {
+            $query->where('tenant_id', $tenantId);
+        }
+        $ticket = $query->findOrFail($id);
 
         $validated = $request->validate([
             'message' => ['required', 'string'],
@@ -81,8 +102,24 @@ final class SupportTicketController extends Controller
 
     public function resolve(int $id): JsonResponse
     {
-        $ticket = SupportTicket::findOrFail($id);
+        $tenantId = $this->resolveTenantId();
+
+        $query = SupportTicket::query();
+        if ($tenantId !== null) {
+            $query->where('tenant_id', $tenantId);
+        }
+        $ticket = $query->findOrFail($id);
+
         $resolved = $this->ticketService->resolveTicket($ticket);
         return response()->json($resolved);
+    }
+
+    private function resolveTenantId(): ?int
+    {
+        try {
+            return app(TenantContext::class)->id();
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

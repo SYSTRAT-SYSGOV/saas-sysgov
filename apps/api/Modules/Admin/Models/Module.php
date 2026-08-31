@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Modules\Admin\Models;
 
 use App\Models\Tenant;
+use App\Models\TenantModuleOrgUnit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Module extends Model
 {
@@ -22,5 +24,11 @@ final class Module extends Model
     {
         return $this->belongsToMany(Tenant::class, 'tenant_module')
             ->withPivot(['enabled', 'settings', 'monthly_fee_cents', 'trial_ends_at']);
+    }
+
+    /** @return HasMany<TenantModuleOrgUnit> */
+    public function orgUnits(): HasMany
+    {
+        return $this->hasMany(TenantModuleOrgUnit::class, 'module_id');
     }
 }

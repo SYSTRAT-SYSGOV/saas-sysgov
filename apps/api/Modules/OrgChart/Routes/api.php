@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\OrgChart\Http\Controllers\ClientOrgChartController;
 
 Route::prefix('api/org-units')
-    ->middleware(['auth:sanctum', 'tenant'])
+    ->middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:org'])
     ->group(function (): void {
         Route::get('/scope', [ClientOrgChartController::class, 'scope']);
         Route::post('/seed', [ClientOrgChartController::class, 'seed']);

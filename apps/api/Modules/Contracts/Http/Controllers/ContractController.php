@@ -5,20 +5,31 @@ declare(strict_types=1);
 namespace Modules\Contracts\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\ModuleAccessService;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Contracts\Models\Contract;
 use Modules\Contracts\Services\ContractLifecycleService;
+use Modules\OrgChart\Models\OrgUnitUser;
 
 final class ContractController extends Controller
 {
     public function __construct(
-        private readonly ContractLifecycleService $lifecycle
+        private readonly ContractLifecycleService $lifecycle,
+        private readonly ModuleAccessService $access,
     ) {}
 
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(TenantContext::class)->id();
+
         $query = Contract::query()->with(['manager:id,name', 'inspector:id,name']);
+
+        if (!$this->isGlobalAdmin($user, $tenantId)) {
+            $this->access->scopeQuery($query, $user, 'contracts', $tenantId, 'org_unit_id');
+        }
 
         if ($status = $request->query('status')) {
             $query->where('status', $status);
@@ -43,8 +54,18 @@ final class ContractController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $contract = Contract::with(['addenda', 'attachments', 'history.user:id,name', 'manager', 'inspector'])
+        $user = request()->user();
+        $tenantId = (int) app(TenantContext::class)->id();
+
+        $contract = Contract::with(['addenda', 'attachments', 'history.user:id,name', 'manager', 'inspector', 'orgUnit'])
             ->findOrFail($id);
+
+        if (!$this->isGlobalAdmin($user, $tenantId)) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'contracts', $tenantId);
+            if ($allowedIds !== null && !in_array($contract->org_unit_id, $allowedIds, true)) {
+                abort(403);
+            }
+        }
 
         return response()->json([
             'contract' => $contract,
@@ -62,7 +83,10 @@ final class ContractController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(TenantContext::class)->id();
         $validated = $request->validate([
+            'org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'number' => ['required', 'string', 'max:50'],
             'title' => ['required', 'string', 'max:255'],
             'contract_type' => ['nullable', 'string'],
@@ -77,15 +101,30 @@ final class ContractController extends Controller
             'renewal_rule' => ['nullable', 'string'],
         ]);
 
+        if (!$this->isGlobalAdmin($user, $tenantId)) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'contracts', $tenantId);
+            $validated['org_unit_id'] = $this->resolveOrgUnitId($validated['org_unit_id'] ?? null, $user, $tenantId, $allowedIds);
+        }
+
         $contract = $this->lifecycle->createContract($validated);
         return response()->json($contract, 201);
     }
 
     public function update(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(TenantContext::class)->id();
         $contract = Contract::findOrFail($id);
 
+        if (!$this->isGlobalAdmin($user, $tenantId)) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'contracts', $tenantId);
+            if ($allowedIds !== null && !in_array($contract->org_unit_id, $allowedIds, true)) {
+                abort(403);
+            }
+        }
+
         $validated = $request->validate([
+            'org_unit_id' => ['sometimes', 'integer', 'exists:org_units,id'],
             'title' => ['sometimes', 'string', 'max:255'],
             'supplier_name' => ['nullable', 'string', 'max:255'],
             'supplier_cnpj' => ['nullable', 'string', 'max:18'],
@@ -96,13 +135,27 @@ final class ContractController extends Controller
             'renewal_rule' => ['nullable', 'string'],
         ]);
 
+        if (!$this->isGlobalAdmin($user, $tenantId) && isset($validated['org_unit_id'])) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'contracts', $tenantId);
+            $validated['org_unit_id'] = $this->resolveOrgUnitId($validated['org_unit_id'], $user, $tenantId, $allowedIds);
+        }
+
         $contract->update($validated);
         return response()->json($contract);
     }
 
     public function addAddendum(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(TenantContext::class)->id();
         $contract = Contract::findOrFail($id);
+
+        if (!$this->isGlobalAdmin($user, $tenantId)) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'contracts', $tenantId);
+            if ($allowedIds !== null && !in_array($contract->org_unit_id, $allowedIds, true)) {
+                abort(403);
+            }
+        }
 
         $validated = $request->validate([
             'number' => ['required', 'string', 'max:50'],
@@ -117,7 +170,16 @@ final class ContractController extends Controller
 
     public function changeStatus(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(TenantContext::class)->id();
         $contract = Contract::findOrFail($id);
+
+        if (!$this->isGlobalAdmin($user, $tenantId)) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'contracts', $tenantId);
+            if ($allowedIds !== null && !in_array($contract->org_unit_id, $allowedIds, true)) {
+                abort(403);
+            }
+        }
 
         $validated = $request->validate([
             'status' => ['required', 'string', 'in:draft,active,in_renewal,suspended,ended,cancelled'],
@@ -130,17 +192,26 @@ final class ContractController extends Controller
 
     public function summaryKPIs(): JsonResponse
     {
-        $totalContracts = Contract::query()->count();
-        $activeContracts = Contract::query()->where('status', 'active')->count();
-        $totalAmountCents = (int) Contract::query()->sum('amount_cents');
-        $totalAddendaCents = (int) Contract::query()->sum('total_addenda_amount_cents');
-        
-        $expiring30Days = Contract::query()
+        $user = request()->user();
+        $tenantId = (int) app(TenantContext::class)->id();
+        $isAdmin = $this->isGlobalAdmin($user, $tenantId);
+
+        $baseQuery = Contract::query();
+        if (!$isAdmin) {
+            $this->access->scopeQuery($baseQuery, $user, 'contracts', $tenantId, 'org_unit_id');
+        }
+
+        $totalContracts = (clone $baseQuery)->count();
+        $activeContracts = (clone $baseQuery)->where('status', 'active')->count();
+        $totalAmountCents = (int) (clone $baseQuery)->sum('amount_cents');
+        $totalAddendaCents = (int) (clone $baseQuery)->sum('total_addenda_amount_cents');
+
+        $expiring30Days = (clone $baseQuery)
             ->where('status', 'active')
             ->whereBetween('ends_at', [now(), now()->addDays(30)])
             ->count();
 
-        $expiring60Days = Contract::query()
+        $expiring60Days = (clone $baseQuery)
             ->where('status', 'active')
             ->whereBetween('ends_at', [now(), now()->addDays(60)])
             ->count();
@@ -154,5 +225,31 @@ final class ContractController extends Controller
             'expiring_30_days' => $expiring30Days,
             'expiring_60_days' => $expiring60Days,
         ]);
+    }
+
+    private function isGlobalAdmin($user, int $tenantId): bool
+    {
+        return $user->is_platform_admin
+            || $user->isSupportAnalyst()
+            || $user->hasRole('admin_tenant', $tenantId);
+    }
+
+    private function resolveOrgUnitId(?int $providedId, $user, int $tenantId, ?array $allowedIds): int
+    {
+        if ($allowedIds === null) {
+            if ($providedId === null) {
+                $firstLinked = OrgUnitUser::query()
+                    ->where('user_id', $user->id)
+                    ->where('tenant_id', $tenantId)
+                    ->value('org_unit_id');
+                return (int) $firstLinked;
+            }
+            return $providedId;
+        }
+
+        if (!in_array($providedId, $allowedIds, true)) {
+            abort(403, 'Org unit não autorizada.');
+        }
+        return $providedId;
     }
 }

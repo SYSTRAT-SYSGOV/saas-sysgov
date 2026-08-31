@@ -18,11 +18,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { can, hasModule } = useCan();
   const location = useLocation();
 
-  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
-  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<number | string>>(new Set());
+  const [expandedItems, setExpandedItems] = useState<Set<number | string>>(new Set());
 
-  const toggleGroup = (id: number) => setExpandedGroups((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const toggleItem = (id: number) => setExpandedItems((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleGroup = (id: number | string) => setExpandedGroups((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleItem = (id: number | string) => setExpandedItems((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   return (
     <>

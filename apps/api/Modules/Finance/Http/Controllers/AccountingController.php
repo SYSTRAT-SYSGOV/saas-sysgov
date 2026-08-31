@@ -5,21 +5,31 @@ declare(strict_types=1);
 namespace Modules\Finance\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Finance\Models\AccountingEntry;
 use Modules\Finance\Models\ChartOfAccount;
 use Modules\Finance\Services\AccountingService;
+use Throwable;
 
 final class AccountingController extends Controller
 {
     public function __construct(
-        private readonly AccountingService $accountingService
+        private readonly AccountingService $accountingService,
     ) {}
 
     public function chartOfAccounts(Request $request): JsonResponse
     {
-        $accounts = ChartOfAccount::query()
+        $tenantId = $this->resolveTenantId();
+
+        $query = ChartOfAccount::query();
+
+        if ($tenantId !== null) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        $accounts = $query
             ->when($request->query('account_type'), fn ($q, $t) => $q->where('account_type', $t))
             ->orderBy('code')
             ->get();
@@ -29,10 +39,15 @@ final class AccountingController extends Controller
 
     public function entries(Request $request): JsonResponse
     {
-        $entries = AccountingEntry::query()
-            ->with(['lines.account:id,code,name,nature', 'creator:id,name'])
-            ->latest('entry_date')
-            ->paginate((int) $request->query('per_page', 25));
+        $tenantId = $this->resolveTenantId();
+
+        $query = AccountingEntry::query()->with(['lines.account:id,code,name,nature', 'creator:id,name']);
+
+        if ($tenantId !== null) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        $entries = $query->latest('entry_date')->paginate((int) $request->query('per_page', 25));
 
         return response()->json($entries);
     }
@@ -56,10 +71,20 @@ final class AccountingController extends Controller
 
     public function trialBalance(Request $request): JsonResponse
     {
+        $tenantId = $this->resolveTenantId();
         $year = (int) $request->query('year', date('Y'));
         $month = $request->query('month') ? (int) $request->query('month') : null;
 
-        $trialBalance = $this->accountingService->generateTrialBalance($year, $month);
+        $trialBalance = $this->accountingService->generateTrialBalance($year, $month, $tenantId);
         return response()->json($trialBalance);
+    }
+
+    private function resolveTenantId(): ?int
+    {
+        try {
+            return app(TenantContext::class)->id();
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

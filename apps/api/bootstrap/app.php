@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\EnsurePlatformAdmin;
+use App\Http\Middleware\EnsureModuleAccess;
+use App\Http\Middleware\EnsureAdminTenant;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -31,13 +33,16 @@ return Application::configure(basePath: dirname(__DIR__))
         OrgChartServiceProvider::class,
         ProcurementServiceProvider::class,
         TinkerServiceProvider::class,
+        \App\Providers\AuthServiceProvider::class,
     ])
-    ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class])
+    ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class, SeedModuleOrgUnit::class])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->alias([
             'tenant' => ResolveTenant::class,
             'platform-admin' => EnsurePlatformAdmin::class,
+            'module-access' => EnsureModuleAccess::class,
+            'admin-tenant' => EnsureAdminTenant::class,
             'mfa' => \Modules\Admin\Http\Middleware\EnsureMfa::class,
             'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);

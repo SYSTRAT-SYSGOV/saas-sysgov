@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\OrgChart\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\ModuleAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -30,6 +31,7 @@ final class ClientOrgChartController extends Controller
         private readonly OrgScopeService $scopeService,
         private readonly OrgExportService $exportService,
         private readonly OrgSeedService $seedService,
+        private readonly ModuleAccessService $access,
     ) {}
 
     /**
@@ -39,29 +41,39 @@ final class ClientOrgChartController extends Controller
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', OrgUnit::class);
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
         $rootId = $request->query('root_id') ? (int) $request->query('root_id') : null;
         $onlyActive = $request->boolean('active', true);
         $asFlat = $request->boolean('flat', false);
 
         if ($asFlat) {
-            $units = OrgUnit::query()
+            $query = OrgUnit::query()
                 ->when($onlyActive, fn($q) => $q->where('is_active', true))
                 ->with(['parent', 'responsibles'])
                 ->orderBy('level')
                 ->orderBy('order')
-                ->orderBy('name')
-                ->get();
+                ->orderBy('name');
 
-            return response()->json([
-                'data' => OrgUnitResource::collection($units),
-            ]);
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+            if ($allowedIds !== null && $allowedIds !== []) {
+                $query->whereIn('id', $allowedIds);
+            } elseif ($allowedIds === []) {
+                return response()->json(['data' => []]);
+            }
+
+            $units = $query->get();
+            return response()->json(['data' => OrgUnitResource::collection($units)]);
+        }
+
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+        if ($allowedIds !== null && $allowedIds !== []) {
+            $tree = $this->treeService->getFilteredTree($rootId, $onlyActive, $allowedIds);
+            return response()->json(['data' => OrgUnitTreeResource::collection($tree)]);
         }
 
         $tree = $this->treeService->getTree($rootId, $onlyActive);
-
-        return response()->json([
-            'data' => OrgUnitTreeResource::collection($tree),
-        ]);
+        return response()->json(['data' => OrgUnitTreeResource::collection($tree)]);
     }
 
     /**
@@ -101,12 +113,20 @@ final class ClientOrgChartController extends Controller
      * Retorna detalhes de uma unidade organizacional específica.
      * GET /api/org-units/{id}
      */
-    public function show(int $id): JsonResponse
+    public function show(int $id, Request $request): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
         /** @var OrgUnit $unit */
         $unit = OrgUnit::with(['parent', 'children', 'users', 'responsibles'])->findOrFail($id);
 
         Gate::authorize('view', $unit);
+
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+        if ($allowedIds !== null && !in_array($unit->id, $allowedIds, true)) {
+            return response()->json(['error' => 'Acesso negado a esta unidade.'], 403);
+        }
 
         return response()->json([
             'data' => new OrgUnitResource($unit),
@@ -139,6 +159,15 @@ final class ClientOrgChartController extends Controller
     {
         Gate::authorize('create', OrgUnit::class);
 
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+
+        $parentId = $request->validated('parent_id');
+        if ($parentId !== null && $allowedIds !== null && !in_array($parentId, $allowedIds, true)) {
+            return response()->json(['error' => 'Não é permitido criar unidades sob esta unidade pai.'], 403);
+        }
+
         $unit = $this->treeService->createUnit($request->validated());
 
         return response()->json([
@@ -153,10 +182,18 @@ final class ClientOrgChartController extends Controller
      */
     public function update(UpdateOrgUnitRequest $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
         /** @var OrgUnit $unit */
         $unit = OrgUnit::findOrFail($id);
 
         Gate::authorize('update', $unit);
+
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+        if ($allowedIds !== null && !in_array($unit->id, $allowedIds, true)) {
+            return response()->json(['error' => 'Acesso negado a esta unidade.'], 403);
+        }
 
         $updated = $this->treeService->updateUnit($unit, $request->validated());
 
@@ -172,10 +209,24 @@ final class ClientOrgChartController extends Controller
      */
     public function move(MoveOrgUnitRequest $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
         /** @var OrgUnit $unit */
         $unit = OrgUnit::findOrFail($id);
 
         Gate::authorize('move', $unit);
+
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+        if ($allowedIds !== null) {
+            if (!in_array($unit->id, $allowedIds, true)) {
+                return response()->json(['error' => 'Acesso negado a esta unidade.'], 403);
+            }
+            $newParentId = $request->input('new_parent_id');
+            if ($newParentId !== null && !in_array((int) $newParentId, $allowedIds, true)) {
+                return response()->json(['error' => 'Não é permitido mover para esta unidade.'], 403);
+            }
+        }
 
         $newParentId = $request->input('new_parent_id');
         $newOrder = $request->input('new_order');
@@ -194,10 +245,18 @@ final class ClientOrgChartController extends Controller
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
         /** @var OrgUnit $unit */
         $unit = OrgUnit::findOrFail($id);
 
         Gate::authorize('delete', $unit);
+
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+        if ($allowedIds !== null && !in_array($unit->id, $allowedIds, true)) {
+            return response()->json(['error' => 'Acesso negado a esta unidade.'], 403);
+        }
 
         $reason = $request->input('reason');
         $this->treeService->deleteUnit($unit, $reason);
@@ -213,10 +272,18 @@ final class ClientOrgChartController extends Controller
      */
     public function linkUser(LinkUserOrgUnitRequest $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
         /** @var OrgUnit $unit */
         $unit = OrgUnit::findOrFail($id);
 
         Gate::authorize('linkUser', $unit);
+
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+        if ($allowedIds !== null && !in_array($unit->id, $allowedIds, true)) {
+            return response()->json(['error' => 'Acesso negado a esta unidade.'], 403);
+        }
 
         $link = $this->userService->linkUser(
             $unit,
@@ -234,12 +301,20 @@ final class ClientOrgChartController extends Controller
      * Remove o vínculo de um usuário com uma unidade organizacional.
      * DELETE /api/org-units/{id}/users/{userId}
      */
-    public function unlinkUser(int $id, int $userId): JsonResponse
+    public function unlinkUser(int $id, int $userId, Request $request): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
         /** @var OrgUnit $unit */
         $unit = OrgUnit::findOrFail($id);
 
         Gate::authorize('unlinkUser', $unit);
+
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+        if ($allowedIds !== null && !in_array($unit->id, $allowedIds, true)) {
+            return response()->json(['error' => 'Acesso negado a esta unidade.'], 403);
+        }
 
         $this->userService->unlinkUser($unit, $userId);
 
@@ -252,12 +327,20 @@ final class ClientOrgChartController extends Controller
      * Define a unidade primária de um usuário.
      * POST /api/org-units/{id}/users/{userId}/primary
      */
-    public function setPrimaryUnit(int $id, int $userId): JsonResponse
+    public function setPrimaryUnit(int $id, int $userId, Request $request): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
         /** @var OrgUnit $unit */
         $unit = OrgUnit::findOrFail($id);
 
         Gate::authorize('linkUser', $unit);
+
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+        if ($allowedIds !== null && !in_array($unit->id, $allowedIds, true)) {
+            return response()->json(['error' => 'Acesso negado a esta unidade.'], 403);
+        }
 
         $link = $this->userService->setPrimaryUnit($userId, $unit->id);
 

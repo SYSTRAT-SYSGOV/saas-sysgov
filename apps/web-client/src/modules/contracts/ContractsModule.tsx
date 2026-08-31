@@ -1,74 +1,101 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTenant } from '@/core/tenant/useTenant';
-import { Plus, Download } from 'lucide-react';
-import { 
-  Card, 
-  Button, 
-  StatusChip, 
+import { Plus, Download, Loader2 } from 'lucide-react';
+import {
+  Card,
+  Button,
+  StatusChip,
   StatusVariant,
   Table,
   TableHead,
   TableHeaderCell,
   TableBody,
   TableRow,
-  TableCell
+  TableCell,
 } from '@/components/ui';
 import { formatCurrencyBRL } from '@/config/theme';
+import { apiClient } from '@/core/api/client';
 
-interface Contrato {
-  id: string;
-  numero: string;
-  objeto: string;
-  fornecedor: string;
-  cnpj: string;
-  valorGlobal: number;
-  valorExecutado: number;
-  vigencia: string;
+interface ContractApiResponse {
+  id: number;
+  number: string;
+  title: string;
+  contract_type: string;
+  supplier_name: string;
+  supplier_cnpj: string;
+  starts_at: string;
+  ends_at: string;
+  amount_cents: number;
+  total_addenda_amount_cents: number;
   status: string;
-  statusVariant: StatusVariant;
 }
+
+interface ContractsResponse {
+  data: ContractApiResponse[];
+  total: number;
+  current_page: number;
+  per_page: number;
+}
+
+interface Toast {
+  type: 'success' | 'error' | 'info' | 'warning';
+  title: string;
+  message: string;
+}
+
+const statusVariantMap: Record<string, StatusVariant> = {
+  draft: 'info',
+  active: 'success',
+  in_renewal: 'warning',
+  suspended: 'warning',
+  ended: 'neutral',
+  cancelled: 'danger',
+};
+
+const statusLabelMap: Record<string, string> = {
+  draft: 'Rascunho',
+  active: 'Regular',
+  in_renewal: 'Em Renovação',
+  suspended: 'Suspenso',
+  ended: 'Encerrado',
+  cancelled: 'Cancelado',
+};
 
 export const ContractsModule: React.FC = () => {
   const { tenant } = useTenant();
+  const [contracts, setContracts] = useState<ContractApiResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const contracts: Contrato[] = [
-    {
-      id: '1',
-      numero: 'CT-048/2025',
-      objeto: 'Prestação de serviços contínuos de manutenção preventiva e corretiva da frota escolar.',
-      fornecedor: 'Auto Mecânica Paraná Ltda',
-      cnpj: '04.128.940/0001-33',
-      valorGlobal: 1480000.00,
-      valorExecutado: 620000.00,
-      vigencia: '15/12/2026',
-      status: 'Regular',
-      statusVariant: 'success',
-    },
-    {
-      id: '2',
-      numero: 'CT-012/2026',
-      objeto: 'Fornecimento parcelado de gêneros alimentícios perecíveis e não perecíveis para a Merenda Escolar.',
-      fornecedor: 'Alimentos Sul Distribuidora S/A',
-      cnpj: '19.340.560/0001-98',
-      valorGlobal: 3820500.00,
-      valorExecutado: 1150000.00,
-      vigencia: '28/02/2027',
-      status: 'Regular',
-      statusVariant: 'success',
-    },
-    {
-      id: '3',
-      numero: 'CT-089/2024',
-      objeto: 'Obras de pavimentação em CBUQ, drenagem pluvial e sinalização viária no Bairro Iguaçu.',
-      fornecedor: 'Construtora Metropolitana S/A',
-      cnpj: '76.890.111/0001-12',
-      valorGlobal: 8940000.00,
-      valorExecutado: 7890000.00,
-      vigencia: '18/09/2026',
-      status: 'Vencendo',
-      statusVariant: 'warning',
-    },
-  ];
+  const notify = useCallback((t: Toast) => {
+    setToasts((prev) => [...prev, t]);
+    setTimeout(() => setToasts((prev) => prev.filter((x) => x !== t)), 5000);
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiClient.get<ContractsResponse>('/contracts');
+      setContracts(res.data?.data ?? []);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Erro ao carregar contratos.';
+      setError(msg);
+      notify({ type: 'error', title: 'Erro', message: msg });
+    } finally {
+      setLoading(false);
+    }
+  }, [notify]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('pt-BR');
+  };
 
   return (
     <div className="space-y-6">
@@ -98,45 +125,78 @@ export const ContractsModule: React.FC = () => {
         </div>
       </Card>
 
-      {/* Table */}
-      <Table>
-        <TableHead>
-          <tr>
-            <TableHeaderCell>Contrato / Objeto</TableHeaderCell>
-            <TableHeaderCell>Contratada / CNPJ</TableHeaderCell>
-            <TableHeaderCell className="text-right">Valor Global</TableHeaderCell>
-            <TableHeaderCell className="text-right">Executado</TableHeaderCell>
-            <TableHeaderCell className="text-center">Término Vigência</TableHeaderCell>
-            <TableHeaderCell className="text-center">Status</TableHeaderCell>
-          </tr>
-        </TableHead>
-        <TableBody>
-          {contracts.map((c) => (
-            <TableRow key={c.id}>
-              <TableCell>
-                <span className="font-mono font-bold text-gov-text-primary">{c.numero}</span>
-                <span className="block text-gov-text-muted text-[11px] truncate max-w-[280px]">{c.objeto}</span>
-              </TableCell>
-              <TableCell>
-                <span className="font-medium text-gov-text-primary">{c.fornecedor}</span>
-                <span className="block font-mono text-[11px] text-gov-text-muted tabular-nums">{c.cnpj}</span>
-              </TableCell>
-              <TableCell isTechnical className="text-right font-bold text-gov-text-primary">
-                {formatCurrencyBRL(c.valorGlobal)}
-              </TableCell>
-              <TableCell isTechnical className="text-right text-gov-text-secondary">
-                {formatCurrencyBRL(c.valorExecutado)}
-              </TableCell>
-              <TableCell isTechnical className="text-center text-gov-text-secondary">
-                {c.vigencia}
-              </TableCell>
-              <TableCell className="text-center">
-                <StatusChip label={c.status} variant={c.statusVariant} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      {loading && contracts.length === 0 ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 text-gov-primary animate-spin" />
+        </div>
+      ) : error && contracts.length === 0 ? (
+        <div className="p-4 rounded-lg bg-rose-50 border border-rose-300 text-rose-800 text-sm">
+          {error}
+        </div>
+      ) : contracts.length === 0 ? (
+        <Card className="!p-8 text-center text-gov-text-muted">
+          Nenhum contrato encontrado.
+        </Card>
+      ) : (
+        <Table>
+          <TableHead>
+            <tr>
+              <TableHeaderCell>Contrato / Objeto</TableHeaderCell>
+              <TableHeaderCell>Contratada / CNPJ</TableHeaderCell>
+              <TableHeaderCell className="text-right">Valor Global</TableHeaderCell>
+              <TableHeaderCell className="text-right">Executado</TableHeaderCell>
+              <TableHeaderCell className="text-center">Término Vigência</TableHeaderCell>
+              <TableHeaderCell className="text-center">Status</TableHeaderCell>
+            </tr>
+          </TableHead>
+          <TableBody>
+            {contracts.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell>
+                  <span className="font-mono font-bold text-gov-text-primary">{c.number}</span>
+                  <span className="block text-gov-text-muted text-[11px] truncate max-w-[280px]">{c.title}</span>
+                </TableCell>
+                <TableCell>
+                  <span className="font-medium text-gov-text-primary">{c.supplier_name ?? '-'}</span>
+                  <span className="block font-mono text-[11px] text-gov-text-muted tabular-nums">
+                    {c.supplier_cnpj ?? '-'}
+                  </span>
+                </TableCell>
+                <TableCell isTechnical className="text-right font-bold text-gov-text-primary">
+                  {formatCurrencyBRL(c.amount_cents / 100)}
+                </TableCell>
+                <TableCell isTechnical className="text-right text-gov-text-secondary">
+                  {formatCurrencyBRL((c.amount_cents + c.total_addenda_amount_cents) / 100)}
+                </TableCell>
+                <TableCell isTechnical className="text-center text-gov-text-secondary">
+                  {formatDate(c.ends_at)}
+                </TableCell>
+                <TableCell className="text-center">
+                  <StatusChip
+                    label={statusLabelMap[c.status] ?? c.status}
+                    variant={statusVariantMap[c.status] ?? 'secondary'}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+
+      {toasts.map((t, i) => (
+        <div
+          key={i}
+          className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm ${
+            t.type === 'success' ? 'bg-emerald-600 text-white' :
+            t.type === 'error' ? 'bg-rose-600 text-white' :
+            t.type === 'warning' ? 'bg-amber-500 text-white' :
+            'bg-blue-600 text-white'
+          }`}
+        >
+          <strong className="block text-xs font-bold uppercase">{t.title}</strong>
+          {t.message}
+        </div>
+      ))}
     </div>
   );
 };

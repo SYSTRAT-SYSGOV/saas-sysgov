@@ -8,7 +8,7 @@ use Modules\Finance\Http\Controllers\BudgetExecutionController;
 use Modules\Finance\Http\Controllers\FinanceController;
 use Modules\Finance\Http\Controllers\FinanceEntryController;
 
-Route::middleware(['auth:sanctum', 'resolve.tenant'])->prefix('api/finance')->group(function (): void {
+Route::middleware(['auth:sanctum', 'resolve.tenant', 'bindings', 'module-access:finance'])->prefix('api/finance')->group(function (): void {
     // 1. Resumo e Entradas Fiscais
     Route::get('/summary', [FinanceController::class, 'summary']);
     Route::get('/revenues', [FinanceEntryController::class, 'indexRevenues']);

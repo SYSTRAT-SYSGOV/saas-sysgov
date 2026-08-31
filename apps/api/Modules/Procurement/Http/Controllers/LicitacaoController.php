@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Procurement\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\ModuleAccessService;
 use App\Support\OutboxPublisher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ final class LicitacaoController extends Controller
     public function __construct(
         private readonly AuditHMACService $audit,
         private readonly OutboxPublisher $outbox,
-        private readonly LegalDeadlinesService $deadlines
+        private readonly LegalDeadlinesService $deadlines,
+        private readonly ModuleAccessService $access,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -47,13 +49,43 @@ final class LicitacaoController extends Controller
             });
         }
 
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
+        $scopedBase = Licitacao::query();
+        $this->access->scopeQuery($scopedBase, $user, 'procurement', $tenantId);
+
+        $query = (clone $scopedBase)
+            ->with(['orgUnit', 'creator'])
+            ->withCount(['artefatos', 'precos', 'participantes', 'lances', 'contratos']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->query('status'));
+        }
+
+        if ($request->filled('modalidade')) {
+            $query->where('modalidade', $request->query('modalidade'));
+        }
+
+        if ($request->filled('ano')) {
+            $query->where('ano', (int) $request->query('ano'));
+        }
+
+        if ($request->filled('search')) {
+            $term = '%' . $request->query('search') . '%';
+            $query->where(function ($q) use ($term): void {
+                $q->where('numero', 'like', $term)
+                  ->orWhere('objeto', 'like', $term)
+                  ->orWhere('fundamento_legal', 'like', $term);
+            });
+        }
+
         $licitacoes = $query->orderBy('id', 'desc')->paginate(20);
 
-        // KPIs consolidados
-        $totalProcessos = Licitacao::count();
-        $valorEstimadoTotal = (int) Licitacao::sum('valor_estimado_cents');
-        $emDisputaCount = Licitacao::whereIn('status', ['publicada', 'em_disputa'])->count();
-        $homologadasCount = Licitacao::where('status', 'homologada')->count();
+        $totalProcessos = (clone $scopedBase)->count();
+        $valorEstimadoTotal = (int) (clone $scopedBase)->sum('valor_estimado_cents');
+        $emDisputaCount = (clone $scopedBase)->whereIn('status', ['publicada', 'em_disputa'])->count();
+        $homologadasCount = (clone $scopedBase)->where('status', 'homologada')->count();
 
         return response()->json([
             'data' => $licitacoes->items(),
@@ -73,6 +105,9 @@ final class LicitacaoController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
         $validated = $request->validate([
             'numero' => ['required', 'string', 'max:50'],
             'ano' => ['nullable', 'integer', 'min:2020', 'max:2035'],
@@ -87,9 +122,25 @@ final class LicitacaoController extends Controller
             'data_abertura' => ['nullable', 'date'],
         ]);
 
+        if (isset($validated['org_unit_id'])) {
+            $allowedIds = $this->access->allowedOrgUnitIds($user, 'procurement', $tenantId);
+            if ($allowedIds !== null && !in_array($validated['org_unit_id'], $allowedIds, true)) {
+                return response()->json(['error' => 'Unidade organizacional não permitida.'], 403);
+            }
+        } else {
+            $linkedIds = \Modules\OrgChart\Models\OrgUnitUser::query()
+                ->where('user_id', $user->id)
+                ->where('tenant_id', $tenantId)
+                ->pluck('org_unit_id')
+                ->first();
+            if ($linkedIds) {
+                $validated['org_unit_id'] = is_array($linkedIds) ? ($linkedIds[0] ?? null) : $linkedIds;
+            }
+        }
+
         $validated['ano'] = $validated['ano'] ?? (int) date('Y');
         $validated['status'] = 'rascunho';
-        $validated['created_by'] = $request->user()?->id;
+        $validated['created_by'] = $user?->id;
 
         $licitacao = Licitacao::create($validated);
 
@@ -111,9 +162,12 @@ final class LicitacaoController extends Controller
         return response()->json($licitacao, 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(int $id, Request $request): JsonResponse
     {
-        $licitacao = Licitacao::query()
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
+        $query = Licitacao::query()
             ->with([
                 'orgUnit',
                 'creator',
@@ -125,8 +179,11 @@ final class LicitacaoController extends Controller
                 'pareceres.parecerista',
                 'pareceres.aprovador',
                 'contratos',
-            ])
-            ->findOrFail($id);
+            ]);
+
+        $query = $this->access->scopeQuery($query, $user, 'procurement', $tenantId);
+
+        $licitacao = $query->findOrFail($id);
 
         $deadlinesInfo = $this->deadlines->calculateMinimumOpeningDate($licitacao);
 

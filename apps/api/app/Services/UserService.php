@@ -13,6 +13,7 @@ use App\Support\OutboxPublisher;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -125,7 +126,13 @@ final class UserService
             ]);
 
             $user->roles()->syncWithoutDetaching([$adminRole->id]);
-            $user->clearPermissionCache();
+            if (Schema::hasColumn('role_user', 'tenant_id')) {
+                DB::table('role_user')
+                    ->where('role_id', $adminRole->id)
+                    ->where('user_id', $user->id)
+                    ->update(['tenant_id' => $tenant->id]);
+            }
+            $user->clearPermissionCache($tenant->id);
 
             $this->audit->record('admin', 'tenant_admin.created', "TenantAdmin #{$user->id} for Tenant #{$tenant->id}", null, $user->toArray());
             $this->outbox->publish('TenantAdminCreated', [
@@ -304,6 +311,14 @@ final class UserService
         if ($tenant) {
             // Assign role in specific tenant context
             $user->tenants()->updateExistingPivot($tenant->id, ['role_id' => $role->id]);
+            $user->roles()->syncWithoutDetaching([$role->id]);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('role_user', 'tenant_id')) {
+                \Illuminate\Support\Facades\DB::table('role_user')
+                    ->where('role_id', $role->id)
+                    ->where('user_id', $user->id)
+                    ->update(['tenant_id' => $tenant->id]);
+            }
+            $user->clearPermissionCache($tenant->id);
         } else {
             // Global role assignment (for SYSTRAT users)
             $user->roles()->syncWithoutDetaching([$role->id]);

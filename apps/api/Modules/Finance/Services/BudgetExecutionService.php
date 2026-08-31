@@ -62,6 +62,7 @@ final readonly class BudgetExecutionService
 
         return DB::transaction(function () use ($commitment, $data, $settlementNumber, $requestedAmountCents) {
             $settlement = $commitment->settlements()->create([
+                'org_unit_id' => $commitment->org_unit_id,
                 'settlement_number' => $settlementNumber,
                 'settlement_date' => $data['settlement_date'],
                 'invoice_number' => $data['invoice_number'] ?? null,
@@ -103,6 +104,7 @@ final readonly class BudgetExecutionService
 
         return DB::transaction(function () use ($settlement, $data, $paymentNumber, $requestedAmountCents) {
             $payment = $settlement->payments()->create([
+                'org_unit_id' => $settlement->org_unit_id,
                 'payment_number' => $paymentNumber,
                 'payment_date' => $data['payment_date'],
                 'amount_cents' => $requestedAmountCents,

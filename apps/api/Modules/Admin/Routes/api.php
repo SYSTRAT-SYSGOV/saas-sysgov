@@ -12,6 +12,7 @@ use Modules\Admin\Http\Controllers\PermissionController;
 use Modules\Admin\Http\Controllers\InvitationAdminController;
 use Modules\Admin\Http\Controllers\TenantUserViewController;
 use Modules\Admin\Http\Controllers\ModuleController;
+use Modules\Admin\Http\Controllers\ModuleOrgUnitController;
 use Modules\Admin\Http\Controllers\MonitoringController;
 use Modules\Admin\Http\Controllers\HierarchyController;
 use Modules\Admin\Http\Controllers\SaasContractController;
@@ -116,6 +117,12 @@ Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->g
     // Modules
     Route::get('/modules', [ModuleController::class, 'index']);
     Route::put('/tenants/{tenant}/modules/{module}', [ModuleController::class, 'toggle']);
+
+    // Module × OrgUnit granularity (Phase C)
+    Route::get('/tenants/{tenant}/modules/{module}/org-units', [ModuleOrgUnitController::class, 'index']);
+    Route::get('/tenants/{tenant}/org-units/{orgUnit}/modules', [ModuleOrgUnitController::class, 'effectiveModules']);
+    Route::put('/tenants/{tenant}/modules/{module}/org-units/{orgUnit}', [ModuleOrgUnitController::class, 'set']);
+    Route::delete('/tenants/{tenant}/modules/{module}/org-units/{orgUnit}', [ModuleOrgUnitController::class, 'clear']);
 
     // SaaS Contracts & Billing
     Route::get('/saas-contracts', [SaasContractController::class, 'index']);

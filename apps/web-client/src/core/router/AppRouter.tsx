@@ -76,6 +76,7 @@ export const AppRouter: React.FC = () => {
   const CemiteriosComp = MODULE_REGISTRY.cemiterios.component;
   const UsersComp = MODULE_REGISTRY.users.component;
   const MenuManagerComp = MODULE_REGISTRY.menuManager.component;
+  const ModuleGranularityComp = MODULE_REGISTRY.moduleGranularity.component;
 
   return (
     <Routes>
@@ -170,6 +171,14 @@ export const AppRouter: React.FC = () => {
           element={
             <AdminRouteGuard>
               <MenuManagerComp />
+            </AdminRouteGuard>
+          }
+        />
+        <Route
+          path="granularidade-módulos"
+          element={
+            <AdminRouteGuard>
+              <ModuleGranularityComp />
             </AdminRouteGuard>
           }
         />

@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Models\Module;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
+use Modules\Admin\Models\Module;
 
 final class AuthServiceProvider extends ServiceProvider
 {
@@ -33,18 +34,20 @@ final class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        // Gate: module access - verifica se tenant tem o módulo ativo E usuário tem permissão
         Gate::define('module', function (User $user, string $moduleAlias): bool {
             if ($user->is_platform_admin) {
                 return true;
             }
 
-            $tenantId = $user->currentTenantId();
-            if (!$tenantId) {
+            try {
+                $tenantId = app(TenantContext::class)->id();
+            } catch (\Throwable) {
                 return false;
             }
 
-            // Verifica se o módulo está ativo para o tenant
+            if ($user->hasRole('admin_tenant', $tenantId)) {
+                return true;
+            }
             $module = Module::where('alias', $moduleAlias)->first();
             if (!$module) {
                 return false;
@@ -53,13 +56,12 @@ final class AuthServiceProvider extends ServiceProvider
             $tenantModule = $module->tenants()
                 ->where('tenant_id', $tenantId)
                 ->where('enabled', true)
-                ->first();
+                ->exists();
 
             if (!$tenantModule) {
                 return false;
             }
 
-            // Verifica permissão base do módulo (ex: procurement.view)
             $basePermission = "{$moduleAlias}.view";
             if (!$user->hasPermission($basePermission, $tenantId)) {
                 return false;

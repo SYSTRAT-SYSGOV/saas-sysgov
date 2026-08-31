@@ -122,7 +122,13 @@ final class InvitationService
             }
 
             $user->roles()->syncWithoutDetaching([$role->id]);
-            $user->clearPermissionCache();
+            if ($invitation->tenant_id && \Illuminate\Support\Facades\Schema::hasColumn('role_user', 'tenant_id')) {
+                \Illuminate\Support\Facades\DB::table('role_user')
+                    ->where('role_id', $role->id)
+                    ->where('user_id', $user->id)
+                    ->update(['tenant_id' => $invitation->tenant_id]);
+            }
+            $user->clearPermissionCache($invitation->tenant_id);
 
             // Mark invitation as accepted
             $invitation->update(['accepted_at' => now()]);

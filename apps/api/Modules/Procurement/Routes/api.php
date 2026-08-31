@@ -11,7 +11,7 @@ use Modules\Procurement\Http\Controllers\LicitacaoLifecycleController;
 use Modules\Procurement\Http\Controllers\LicitacaoPrecosController;
 
 Route::prefix('api/licitacoes')
-    ->middleware(['auth:sanctum', 'tenant'])
+    ->middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:procurement'])
     ->group(function (): void {
         // CRUD Principal & Exportação
         Route::get('/export', [LicitacaoController::class, 'export']);
@@ -48,7 +48,7 @@ Route::prefix('api/licitacoes')
 
 // Rotas de Gestão Contratual Pós-Licitação
 Route::prefix('api/contratos-licitacao')
-    ->middleware(['auth:sanctum', 'tenant'])
+    ->middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:procurement'])
     ->group(function (): void {
         Route::get('/', [LicitacaoContratosController::class, 'index']);
         Route::post('/', [LicitacaoContratosController::class, 'store']);

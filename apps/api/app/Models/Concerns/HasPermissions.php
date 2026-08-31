@@ -20,6 +20,10 @@ trait HasPermissions
 
         $tenantId = $tenantId ?? $this->currentTenantId();
 
+        if ($tenantId && $this->hasRole('admin_tenant', $tenantId)) {
+            return true;
+        }
+
         if ($tenantId && $this->permissionsForTenant($tenantId)->contains('slug', $permission)) {
             return true;
         }
@@ -39,15 +43,29 @@ trait HasPermissions
             return true;
         }
 
-        $tenantId = $tenantId ?? $this->currentTenantId();
+        try {
+            $tenantId = $tenantId ?? $this->currentTenantId();
+        } catch (\Throwable) {
+            return false;
+        }
 
-        if ($tenantId && $this->rolesForTenant($tenantId)->contains('slug', $roleSlug)) {
-            return true;
+        if ($tenantId) {
+            try {
+                if ($this->rolesForTenant($tenantId)->contains('slug', $roleSlug)) {
+                    return true;
+                }
+            } catch (\Throwable) {
+                return false;
+            }
         }
 
         // Roles SYSTRAT via role_user (Spatie)
-        if ($this->roles()->where('scope', 'systrat')->where('slug', $roleSlug)->exists()) {
-            return true;
+        try {
+            if ($this->roles()->where('scope', 'systrat')->where('slug', $roleSlug)->exists()) {
+                return true;
+            }
+        } catch (\Throwable) {
+            return false;
         }
 
         return false;
@@ -66,9 +84,10 @@ trait HasPermissions
                 ->where('tenant_id', $tenantId)
                 ->value('role_id');
 
-            // Roles Spatie com scope=tenant (não filtra por tenant_id na roles)
+            // Roles Spatie com scope=tenant vinculadas ESPECIFICAMENTE a este tenant (RN-CORE-001)
             $spatieRoles = Role::query()
                 ->where('scope', 'tenant')
+                ->where('roles.tenant_id', $tenantId)
                 ->whereHas('users', fn ($q) => $q->where('users.id', $this->id))
                 ->pluck('id')
                 ->all();

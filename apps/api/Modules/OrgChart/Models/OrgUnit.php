@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\OrgChart\Models;
 
 use App\Models\Concerns\TenantAware;
+use App\Models\TenantModuleOrgUnit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -15,6 +16,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
+ * Fonte canônica da hierarquia organizacional (RN-ORG-002 / FASE 5).
+ * A tabela `org_units` (path materializado + TenantAware) é a autoridade única da árvore.
+ * Os models legados Organization/Department/ManagementUnit/BudgetUnit mantêm suas
+ * tabelas próprias por compatibilidade, mas NÃO alimentam mais o acesso — o escopo
+ * ABAC (OrgScope) e a granularidade por módulo usam exclusivamente OrgUnit.
+ *
+ * Mapeamento tipo ↔ org_units.type:
+ * - prefeitura  → raiz da árvore (level 1)
+ * - gabinete    → unidade de apoio direto à prefeitura
+ * - secretaria  → organização (antiga Organization)
+ * - departamento→ departamento dentro de secretaria (antiga Department)
+ * - divisao     → subdivisão de departamento
+ * - setor       → nível operacional
+ * - autarquia   → entidade descentralizada vinculada ao tenant
+ * - fundacao    → entidade descentralizada vinculada ao tenant
+ *
  * @property int $id
  * @property int $tenant_id
  * @property int|null $parent_id
@@ -35,6 +52,12 @@ final class OrgUnit extends Model
 {
     use TenantAware;
     use SoftDeletes;
+
+    /** Tipos organizacionais aceitos na árvore canônica (RN-ORG-002). */
+    public const TYPES = [
+        'prefeitura', 'gabinete', 'secretaria', 'departamento',
+        'divisao', 'setor', 'autarquia', 'fundacao',
+    ];
 
     protected $table = 'org_units';
 
@@ -186,5 +209,31 @@ final class OrgUnit extends Model
             })
             ->pluck('id')
             ->all();
+    }
+
+    /**
+     * Retorna os paths de todos os ancestrais a partir do path materializado.
+     * Ex.: path = "1.2.3" → ["1", "1.2", "1.2.3"]
+     *
+     * @return array<string>
+     */
+    public function getAncestorPaths(): array
+    {
+        $parts = explode('.', $this->path);
+        $paths = [];
+        $current = '';
+
+        foreach ($parts as $i => $part) {
+            $current .= ($i > 0 ? '.' : '') . $part;
+            $paths[] = $current;
+        }
+
+        return $paths;
+    }
+
+    /** @return HasMany<TenantModuleOrgUnit> */
+    public function moduleAccess(): HasMany
+    {
+        return $this->hasMany(TenantModuleOrgUnit::class, 'org_unit_id');
     }
 }

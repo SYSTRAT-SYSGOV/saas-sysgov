@@ -67,4 +67,9 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     name: 'Gerenciador de Menus',
     component: lazy(() => import('@/modules/access/MenuManager')),
   },
+  moduleGranularity: {
+    id: 'moduleGranularity',
+    name: 'Granularidade de Módulos',
+    component: lazy(() => import('@/modules/access/ModuleGranularityManager')),
+  },
 };

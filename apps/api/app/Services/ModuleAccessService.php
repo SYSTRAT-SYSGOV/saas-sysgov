@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Tenant;
+use App\Models\TenantModuleOrgUnit;
 use App\Models\User;
 use App\Models\UserModuleAccess;
 use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -33,12 +35,15 @@ final class ModuleAccessService
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly OutboxPublisher $outbox,
+        private readonly ModuleOrgUnitService $moduleOrgUnit,
+        private readonly AccessService $access,
     ) {}
 
     /**
      * Usuário tem acesso ao módulo (de alguma forma)? Respeita vigência e status (RN-ACC-001).
+     * FASE 1: delega ao AccessService único (unifica user_module_access + access_group_access + gate tenant_module.enabled).
      */
-    public function hasModuleAccess(User $user, string $moduleAlias, ?int $tenantId = null): bool
+    public function hasModuleAccess(User $user, string $moduleAlias, ?int $tenantId = null, ?int $orgUnitId = null): bool
     {
         $tenantId = $tenantId ?? $this->resolveTenantId($user);
 
@@ -46,14 +51,7 @@ final class ModuleAccessService
             return false;
         }
 
-        if ($this->isGlobalAdmin($user, $tenantId)) {
-            return true;
-        }
-
-        $access = $this->accessesFor($user, $tenantId)
-            ->firstWhere('module_alias', $moduleAlias);
-
-        return $access !== null && $access->isActive();
+        return $this->access->canAccessModule($user, $moduleAlias, $tenantId, $orgUnitId);
     }
 
     /**
@@ -156,6 +154,122 @@ final class ModuleAccessService
             })
             ->pluck('id')
             ->all();
+    }
+
+    /**
+     * Aplica escopo de unidades organizacionais a uma query para o módulo especificado.
+     *
+     * Combina dois filtros:
+     * 1. user_module_access.org_unit_ids (matriz de acesso) — expansão hierárquica via path
+     * 2. ModuleOrgUnitService — granularidade módulo×org_unit (tenant habilitou módulo na unidade?)
+     *
+     * @param Builder $query A query a ser filtrada (deve ter coluna org_unit_id ou similar)
+     * @param User $user Usuário logado
+     * @param string $moduleAlias Alias do módulo sendo acessado
+     * @param int $tenantId ID do tenant
+     * @param string $column Nome da coluna na query (default: org_unit_id)
+     * @return Builder Query com escopo aplicado
+     */
+    public function scopeQuery(Builder $query, User $user, string $moduleAlias, int $tenantId, string $column = 'org_unit_id'): Builder
+    {
+        $allowedFromAccess = $this->allowedOrgUnitIds($user, $moduleAlias, $tenantId);
+
+        if ($allowedFromAccess === null) {
+            return $this->applyGranularityFilter($query, $tenantId, $column);
+        }
+
+        if ($allowedFromAccess === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $module = \Modules\Admin\Models\Module::where('alias', $moduleAlias)->first();
+        $moduleId = $module?->id;
+
+        if (!$moduleId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $qualifiedColumn = $query->getModel()->qualifyColumn($column);
+
+        return $query->where(function ($q) use ($qualifiedColumn, $allowedFromAccess, $tenantId, $moduleId) {
+            $q->whereIn($qualifiedColumn, $allowedFromAccess);
+
+            $granularityEnabled = \Illuminate\Support\Facades\Cache::remember(
+                "module_org_unit:enabled:{$tenantId}:{$moduleId}",
+                60,
+                fn () => TenantModuleOrgUnit::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('module_id', $moduleId)
+                    ->where('enabled', true)
+                    ->exists()
+            );
+
+            if ($granularityEnabled) {
+                $enabledUnits = \Modules\OrgChart\Models\OrgUnit::query()
+                    ->where('tenant_id', $tenantId)
+                    ->get()
+                    ->filter(fn ($unit) => app(ModuleOrgUnitService::class)->isModuleEnabledForUnit($tenantId, $moduleId, $unit->id))
+                    ->pluck('id')
+                    ->all();
+
+                if ($enabledUnits !== []) {
+                    $q->whereIn($qualifiedColumn, $enabledUnits);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            }
+        });
+    }
+
+    private function applyGranularityFilter(Builder $query, int $tenantId, string $column): Builder
+    {
+        $module = $query->getModel()::class;
+        $qualifiedColumn = $query->getModel()->qualifyColumn($column);
+
+        $moduleAlias = $this->inferModuleAlias($module);
+        if (!$moduleAlias) {
+            return $query;
+        }
+
+        $moduleModel = \Modules\Admin\Models\Module::where('alias', $moduleAlias)->first();
+        if (!$moduleModel) {
+            return $query;
+        }
+
+        $granularityEnabled = TenantModuleOrgUnit::query()
+            ->where('tenant_id', $tenantId)
+            ->where('module_id', $moduleModel->id)
+            ->where('enabled', true)
+            ->exists();
+
+        if (!$granularityEnabled) {
+            return $query;
+        }
+
+        $enabledUnits = \Modules\OrgChart\Models\OrgUnit::query()
+            ->where('tenant_id', $tenantId)
+            ->get()
+            ->filter(fn ($unit) => app(ModuleOrgUnitService::class)->isModuleEnabledForUnit($tenantId, $moduleModel->id, $unit->id))
+            ->pluck('id')
+            ->all();
+
+        if ($enabledUnits === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn($qualifiedColumn, $enabledUnits);
+    }
+
+    private function inferModuleAlias(string $modelClass): ?string
+    {
+        $map = [
+            \Modules\Procurement\Models\Licitacao::class => 'procurement',
+            \Modules\Contracts\Models\Contract::class => 'contracts',
+            \Modules\Finance\Models\FinanceEntry::class => 'finance',
+            \Modules\OrgChart\Models\OrgUnit::class => 'org',
+        ];
+
+        return $map[$modelClass] ?? null;
     }
 
     /**
