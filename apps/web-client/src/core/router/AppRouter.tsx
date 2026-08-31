@@ -48,7 +48,7 @@ const ModuleRouteGuard: React.FC<{ moduleId: string; children: React.ReactElemen
   return children;
 };
 
-// Admin-only route guard (platform admin)
+// Admin-only route guard (admin_tenant only)
 const AdminRouteGuard: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, isLoading } = useAuth();
   if (isLoading) {
@@ -58,7 +58,8 @@ const AdminRouteGuard: React.FC<{ children: React.ReactElement }> = ({ children 
       </div>
     );
   }
-  if (!user?.is_platform_admin) {
+  const isAdminTenant = user?.roles?.includes('admin_tenant') ?? false;
+  if (!isAdminTenant) {
     return <Navigate to="/404" replace />;
   }
   return children;

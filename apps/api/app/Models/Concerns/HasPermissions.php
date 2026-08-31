@@ -60,16 +60,29 @@ trait HasPermissions
     {
         $cacheKey = "user:{$this->id}:roles:tenant:{$tenantId}";
         return Cache::remember($cacheKey, 300, function () use ($tenantId): Collection {
-            $roleId = \Illuminate\Support\Facades\DB::table('tenant_user')
+            // Papel primário do tenant_user
+            $primaryRoleId = (int) \Illuminate\Support\Facades\DB::table('tenant_user')
                 ->where('user_id', $this->id)
                 ->where('tenant_id', $tenantId)
                 ->value('role_id');
 
-            if (!$roleId) {
+            // Roles Spatie com scope=tenant (não filtra por tenant_id na roles)
+            $spatieRoles = Role::query()
+                ->where('scope', 'tenant')
+                ->whereHas('users', fn ($q) => $q->where('users.id', $this->id))
+                ->pluck('id')
+                ->all();
+
+            $allRoleIds = array_unique(array_filter(array_merge(
+                $primaryRoleId ? [$primaryRoleId] : [],
+                $spatieRoles
+            )));
+
+            if (empty($allRoleIds)) {
                 return new Collection();
             }
 
-            return Role::query()->where('id', $roleId)->get();
+            return Role::query()->whereIn('id', $allRoleIds)->get();
         });
     }
 

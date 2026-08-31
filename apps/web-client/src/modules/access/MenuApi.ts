@@ -15,6 +15,7 @@ export interface MenuItem {
   id: number;
   tenant_id: number | null;
   menu_group_id: number;
+  parent_id: number | null;
   label: string;
   icon: string | null;
   route: string;
@@ -47,6 +48,7 @@ export const menuApi = {
 
   async createItem(input: {
     menu_group_id: number;
+    parent_id?: number | null;
     label: string;
     route: string;
     icon?: string | null;
@@ -66,6 +68,7 @@ export const menuApi = {
     permission?: string | null;
     shortcut?: string | null;
     module_alias?: string | null;
+    parent_id?: number | null;
     order?: number;
     is_active?: boolean;
   }): Promise<MenuItem> {

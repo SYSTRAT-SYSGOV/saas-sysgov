@@ -21,7 +21,7 @@ final class ClientServiceProvider extends ServiceProvider
     {
         Gate::policy(ClientMenuGroup::class, ClientMenuGroupPolicy::class);
         Gate::policy(ClientMenuItem::class, ClientMenuItemPolicy::class);
-        $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
-        $this->loadRoutesFrom(__DIR__.'/../Routes/client-api.php');
+        $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
+        $this->loadRoutesFrom(__DIR__ . '/../Routes/client-api.php');
     }
 }

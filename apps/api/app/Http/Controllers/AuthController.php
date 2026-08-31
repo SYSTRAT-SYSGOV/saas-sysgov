@@ -166,26 +166,33 @@ final class AuthController
     private function buildClientSession(\App\Models\User $user, ?\App\Models\Tenant $tenant): array
     {
         $tenantId = $tenant?->id;
-        $cacheKey = 'auth:session:'.$user->id.':'.($tenantId ?? 0);
 
-        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($user, $tenant, $tenantId): array {
-            // Analista de suporte: usa roles/permissões do escopo SYSTRAT (não tem tenant_user)
+        $isAdminTenant = $tenantId
+            && $user->rolesForTenant($tenantId)->contains('slug', 'admin_tenant');
+
+        $navVersion = $tenantId ? (int) \Illuminate\Support\Facades\Cache::get('nav:version:' . $tenantId, 0) : 0;
+        $cacheKey = 'auth:session:' . $user->id . ':' . ($tenantId ?? 0) . ':v' . $navVersion;
+
+        $finalIsAdminTenant = $isAdminTenant;
+
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($user, $tenant, $tenantId, $finalIsAdminTenant): array {
             $isSupportAnalyst = $user->isSupportAnalyst();
 
-            // Roles do usuário no tenant (slugs)
             $roles = $isSupportAnalyst
                 ? $user->roles()->pluck('slug')->all()
                 : ($tenantId ? $user->rolesForTenant($tenantId)->pluck('slug')->all() : []);
 
-            // Permissões do usuário no tenant ativo
-            $permissions = $user->is_platform_admin
+            $linkedModules = $this->resolveActiveModules($tenant);
+            $defaults = ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users'];
+
+            // admin_tenant vê todos os módulos se não há vínculos explícitos; caso contrário, só os habilitados
+            $activeModules = $finalIsAdminTenant && empty($linkedModules) ? $defaults : $linkedModules;
+
+            $permissions = $user->is_platform_admin || $finalIsAdminTenant
                 ? ['*']
                 : ($isSupportAnalyst
                     ? $user->permissionsForSystrat()->pluck('slug')->all()
                     : ($tenantId ? $user->permissionsForTenant($tenantId)->pluck('slug')->all() : []));
-
-            // Módulos ativos: se não houver vínculo, usa o conjunto padrão de módulos do web-client
-            $activeModules = $this->resolveActiveModules($tenant);
 
             $navigation = $this->clientNav->buildNavigation($tenantId, $user, $activeModules, $permissions);
 
@@ -243,27 +250,27 @@ final class AuthController
                         ->all(),
                 'modules' => $activeModules,
                 'permissions' => $permissions,
+                'is_admin_tenant' => $finalIsAdminTenant,
                 'navigation' => $navigation,
             ];
         });
     }
 
     /**
-     * Módulos do tenant: busca na tabela tenant_module + modules.
-     * Se vazio, retorna o conjunto padrão de módulos do web-client.
+     * Módulos habilitados para o tenant (somente os explicitly enabled).
+     * Nunca retorna padrão — quem consome decide o fallback.
      *
      * @return array<int, string>
      */
     private function resolveActiveModules(?\App\Models\Tenant $tenant): array
     {
-        if ($tenant) {
-            $linked = $tenant->modules()->wherePivot('enabled', true)->pluck('modules.alias')->all();
-            if (!empty($linked)) {
-                return $linked;
-            }
+        if (!$tenant) {
+            return [];
         }
 
-        // Padrão: todos os módulos do web-client
-        return ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users'];
+        $linked = $tenant->modules()->wherePivot('enabled', true)->pluck('modules.alias')->all();
+
+        // Se não há vínculo explícito, retorna vazio (nenhum módulo liberado)
+        return array_values($linked);
     }
 }

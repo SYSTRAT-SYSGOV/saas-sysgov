@@ -26,22 +26,44 @@ final class ClientNavigationService
             })
             ->where('is_active', true)
             ->orderBy('order')
-            ->with(['items' => fn ($q) => $q->where('is_active', true)->orderBy('order')])
+            ->with(['items' => fn ($q) => $q->where('is_active', true)->whereNull('parent_id')->orderBy('order')->with(['children' => fn ($cq) => $cq->where('is_active', true)->orderBy('order')])])
             ->get();
 
         $moduleIndex = array_flip($activeModules);
+        $hasExplicitModules = !empty($moduleIndex);
         $payload = [];
 
         foreach ($groups as $group) {
             $items = [];
 
             foreach ($group->items as $item) {
-                if ($item->module_alias && !isset($moduleIndex[$item->module_alias])) {
+                // Se há configuração explícita de módulos no tenant, aplica filtro
+                if ($hasExplicitModules && $item->module_alias && !isset($moduleIndex[$item->module_alias])) {
                     continue;
                 }
 
                 if ($item->permission && !in_array('*', $permissions, true) && !in_array($item->permission, $permissions, true)) {
                     continue;
+                }
+
+                $children = [];
+                foreach ($item->children as $child) {
+                    if ($hasExplicitModules && $child->module_alias && !isset($moduleIndex[$child->module_alias])) {
+                        continue;
+                    }
+                    if ($child->permission && !in_array('*', $permissions, true) && !in_array($child->permission, $permissions, true)) {
+                        continue;
+                    }
+                    $children[] = [
+                        'id' => $child->getKey(),
+                        'label' => $child->label,
+                        'icon' => $child->icon,
+                        'route' => $child->route,
+                        'shortcut' => $child->shortcut,
+                        'module' => $child->module_alias,
+                        'permission' => $child->permission,
+                        'active' => false,
+                    ];
                 }
 
                 $items[] = [
@@ -53,6 +75,7 @@ final class ClientNavigationService
                     'module' => $item->module_alias,
                     'permission' => $item->permission,
                     'active' => false,
+                    'children' => $children,
                 ];
             }
 

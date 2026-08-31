@@ -32,10 +32,21 @@ final class ClientMenuSeeder extends Seeder
                 'order' => 2,
                 'items' => [
                     ['label' => 'Organograma Municipal', 'route' => '/organograma', 'icon' => 'Network', 'permission' => 'org.view', 'module_alias' => 'org'],
-                    ['label' => 'Usuários & Acessos', 'route' => '/usuarios', 'icon' => 'Users', 'permission' => 'users.manage', 'module_alias' => 'users'],
                     ['label' => 'Módulo Pedagógico', 'route' => '/pedagogico', 'icon' => 'GraduationCap', 'permission' => 'pedagogico.view', 'module_alias' => 'pedagogico'],
                     ['label' => 'Recursos Humanos / Folha', 'route' => '/rh', 'icon' => 'Users', 'permission' => 'rh.view', 'module_alias' => 'rh'],
                     ['label' => 'Gestão de Cemitérios', 'route' => '/cemiterios', 'icon' => 'Cross', 'permission' => 'cemiterios.view', 'module_alias' => 'cemiterios'],
+                ],
+            ],
+            [
+                'name' => 'SISTEMA',
+                'slug' => 'sistema',
+                'icon' => 'Settings',
+                'order' => 99,
+                'items' => [
+                    ['label' => 'Gerenciar Menus', 'route' => '/gerenciar-menus', 'icon' => 'Menu', 'permission' => 'menu.manager', 'module_alias' => null],
+                    ['label' => 'Usuários e Acessos', 'route' => '/usuarios', 'icon' => 'Users', 'permission' => 'users.manage', 'module_alias' => 'users'],
+                    ['label' => 'Reset de Senha', 'route' => '/reset-senha', 'icon' => 'Key', 'permission' => 'users.password.reset', 'module_alias' => 'users'],
+                    ['label' => 'Hierarquias', 'route' => '/hierarquias', 'icon' => 'GitBranch', 'permission' => 'org.admin', 'module_alias' => 'org'],
                 ],
             ],
         ];

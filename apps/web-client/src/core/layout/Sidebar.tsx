@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useCan } from '@/core/rbac/useCan';
 import { getIcon } from '@/config/iconMap';
 import { MenuItem, MenuGroup } from '@sysgov/sdk';
-import { X, ChevronRight, LogOut } from 'lucide-react';
+import { X, ChevronRight, ChevronDown, LogOut } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -18,21 +18,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { can, hasModule } = useCan();
   const location = useLocation();
 
-  // Filter groups and items by user permissions & active modules
-  const filteredGroups = navigation
-    .map((group: MenuGroup) => {
-      const allowedItems = group.items.filter((item: MenuItem) => {
-        const moduleAllowed = item.module ? hasModule(item.module) : true;
-        const permissionAllowed = item.permission ? can(item.permission) : true;
-        return moduleAllowed && permissionAllowed;
-      });
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
-      return {
-        ...group,
-        items: allowedItems,
-      };
-    })
-    .filter((group) => group.items.length > 0);
+  const toggleGroup = (id: number) => setExpandedGroups((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleItem = (id: number) => setExpandedItems((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   return (
     <>
@@ -104,76 +94,105 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* Corpo do Menu com Fundo Branco */}
         <nav className="flex-1 overflow-y-auto px-4 py-5 space-y-7 bg-white">
-          {filteredGroups.map((group) => {
+          {navigation.map((group) => {
             const GroupIcon = getIcon(group.icon);
+            const isExpanded = expandedGroups.has(group.id);
             return (
               <div key={group.id} className="space-y-1.5">
-                {/* Título do Grupo: GESTÃO FISCAL & ORÇAMENTÁRIA / GESTÃO SETORIAL em BOLD PESADO (800), #0c326f e tamanho ampliado */}
-                <div className="px-3.5 py-2.5 text-xs sm:text-sm font-bold uppercase tracking-wider text-[#0c326f] border-b-2 border-[#C5D8F6] flex items-center gap-2.5">
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-bold uppercase tracking-wider text-[#0c326f] border-b-2 border-[#C5D8F6] flex items-center gap-2.5 hover:bg-slate-50 rounded transition-colors cursor-pointer"
+                >
                   {group.icon && <GroupIcon className="w-5 h-5 text-[#0c326f] stroke-[2.5]" />}
-                  <span className="tracking-wider text-[#0c326f]" style={{ fontWeight: 800 }}>
+                  <span className="tracking-wider text-[#0c326f] flex-1 text-left" style={{ fontWeight: 800 }}>
                     {group.name}
                   </span>
-                </div>
+                  {isExpanded
+                    ? <ChevronDown className="w-4 h-4 text-[#0c326f]" />
+                    : <ChevronRight className="w-4 h-4 text-gov-text-muted" />
+                  }
+                </button>
 
-                {/* Itens de Navegação: COR PRETA (#1B1B1B), BOLD */}
-                <div className="pt-1 space-y-1">
-                  {group.items.map((item) => {
-                    const isActive = location.pathname === item.route;
-                    const ItemIcon = getIcon(item.icon);
-                    return (
-                      <NavLink
-                        key={item.id}
-                        to={item.route}
-                        onClick={onClose}
-                        className={`group flex items-center justify-between px-4 py-3.5 rounded-lg text-sm sm:text-base font-bold transition-all ${
-                          isActive
-                            ? 'bg-[#E8F0FE] text-[#0c326f] border-l-4 border-[#0c326f] shadow-2xs'
-                            : 'text-[#1B1B1B] hover:bg-[#F0F4FA] hover:text-[#0c326f]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3.5 truncate">
-                          <ItemIcon
-                            className={`w-5 h-5 shrink-0 transition-colors ${
-                              isActive ? 'text-[#0c326f]' : 'text-[#333333] group-hover:text-[#0c326f]'
-                            }`}
-                          />
-                          <span className="truncate font-bold tracking-tight">{item.label}</span>
-                        </div>
+                {isExpanded && (
+                  <div className="pt-1 space-y-1">
+                    {group.items.map((item) => {
+                      const isActive = location.pathname === item.route;
+                      const ItemIcon = getIcon(item.icon);
+                      const children = (item as any).children || [];
+                      const hasChildren = children.length > 0;
+                      const isItemExpanded = expandedItems.has(item.id);
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          {/* Badges de Notificação */}
-                          {item.badge !== undefined && item.badge !== null && (
-                            <span className="px-2.5 py-0.5 rounded-full font-mono text-xs font-bold bg-status-danger text-white tabular-nums">
-                              {item.badge}
-                            </span>
-                          )}
-
-                          {/* Atalhos de Teclado */}
-                          {item.shortcut && (
-                            <span
-                              className={`font-mono text-xs px-2 py-0.5 rounded border tabular-nums ${
+                      return (
+                        <div key={item.id}>
+                          <div className="flex items-center">
+                            <NavLink
+                              to={item.route}
+                              onClick={onClose}
+                              className={`group flex-1 flex items-center justify-between px-4 py-3.5 rounded-lg text-sm sm:text-base font-bold transition-all ${
                                 isActive
-                                  ? 'bg-white text-[#0c326f] border-[#C5D8F6] font-bold'
-                                  : 'bg-[#F0F2F5] text-gov-text-secondary border-gov-border group-hover:text-[#0c326f]'
+                                  ? 'bg-[#E8F0FE] text-[#0c326f] border-l-4 border-[#0c326f] shadow-2xs'
+                                  : 'text-[#1B1B1B] hover:bg-[#F0F4FA] hover:text-[#0c326f]'
                               }`}
                             >
-                              [{item.shortcut}]
-                            </span>
-                          )}
+                              <div className="flex items-center gap-3.5 truncate">
+                                <ItemIcon
+                                  className={`w-5 h-5 shrink-0 transition-colors ${
+                                    isActive ? 'text-[#0c326f]' : 'text-[#333333] group-hover:text-[#0c326f]'
+                                  }`}
+                                />
+                                <span className="truncate font-bold tracking-tight">{item.label}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {item.shortcut && (
+                                  <span className={`font-mono text-xs px-2 py-0.5 rounded border tabular-nums ${
+                                    isActive
+                                      ? 'bg-white text-[#0c326f] border-[#C5D8F6] font-bold'
+                                      : 'bg-[#F0F2F5] text-gov-text-secondary border-gov-border group-hover:text-[#0c326f]'
+                                  }`}>
+                                    [{item.shortcut}]
+                                  </span>
+                                )}
+                                {hasChildren && (
+                                  <button
+                                    onClick={(e) => { e.preventDefault(); toggleItem(item.id); }}
+                                    className="p-0.5 hover:bg-slate-200 rounded"
+                                  >
+                                    {isItemExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                  </button>
+                                )}
+                                {!hasChildren && <ChevronRight className="w-4 h-4 text-gov-border group-hover:text-[#0c326f]" />}
+                              </div>
+                            </NavLink>
+                          </div>
 
-                          <ChevronRight
-                            className={`w-4 h-4 transition-transform ${
-                              isActive
-                                ? 'text-[#0c326f] translate-x-0.5'
-                                : 'text-gov-border group-hover:text-[#0c326f]'
-                            }`}
-                          />
+                          {hasChildren && isItemExpanded && (
+                            <div className="pl-8 pr-2 space-y-0.5 pb-1">
+                              {children.map((child: any) => (
+                                <NavLink
+                                  key={child.id}
+                                  to={child.route}
+                                  onClick={onClose}
+                                  className={({ isActive }) =>
+                                    `group flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                                      isActive
+                                        ? 'bg-[#E8F0FE] text-[#0c326f] border-l-4 border-[#0c326f]'
+                                        : 'text-[#1B1B1B] hover:bg-[#F0F4FA] hover:text-[#0c326f]'
+                                    }`
+                                  }
+                                >
+                                  <div className="flex items-center gap-2.5 truncate">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gov-text-muted shrink-0" />
+                                    <span className="truncate tracking-tight">{child.label}</span>
+                                  </div>
+                                </NavLink>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </NavLink>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

@@ -15,4 +15,6 @@ Route::prefix('api/client')
         Route::post('/menus/items', [ClientNavigationController::class, 'storeItem']);
         Route::put('/menus/items/{item}', [ClientNavigationController::class, 'updateItem']);
         Route::delete('/menus/items/{item}', [ClientNavigationController::class, 'destroyItem']);
+        Route::put('/menus/reorder', [ClientNavigationController::class, 'reorder']);
+        Route::get('/modules', [ClientNavigationController::class, 'modules']);
     });

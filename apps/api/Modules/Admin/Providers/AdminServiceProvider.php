@@ -56,6 +56,9 @@ final class AdminServiceProvider extends ServiceProvider
         if (file_exists(__DIR__.'/../Routes/client-api.php')) {
             $this->loadRoutesFrom(__DIR__.'/../Routes/client-api.php');
         }
+
+        // Carrega rotas e providers do módulo Client (web-client menus)
+        $this->app->register(\Modules\Client\Providers\ClientServiceProvider::class);
     }
 }
 
