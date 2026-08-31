@@ -15,7 +15,9 @@ import { AdminAccessPanel, NewUserWizard, UserEditModal, AdvancedFilters, UserFi
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs } from '@/components/ui/Tabs';
+import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';
+import type { ColumnDef } from '@tanstack/react-table';
 
 const DASHBOARD_CACHE_KEY = 'sysgov:access:dashboard:v1';
 
@@ -147,6 +149,63 @@ export const AccessManagement: React.FC = () => {
     return find(units) ?? `#${id}`;
   };
 
+  const userColumns: ColumnDef<AccessUser, any>[] = [
+    {
+      id: 'name',
+      header: 'Nome',
+      accessorKey: 'name',
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span>,
+    },
+    {
+      id: 'email',
+      header: 'E-mail',
+      accessorKey: 'email',
+      cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.original.email}</span>,
+    },
+    {
+      id: 'secretaria',
+      header: 'Secretaria',
+      cell: ({ row }) =>
+        row.original.primary_org_unit_id ? (
+          <Badge variant="info">{orgUnitName(row.original.primary_org_unit_id)}</Badge>
+        ) : (
+          <span className="text-muted-foreground/60">—</span>
+        ),
+    },
+    {
+      id: 'acessos',
+      header: 'Acessos (módulos)',
+      cell: ({ row }) => (
+        <div className="flex flex-wrap justify-center gap-1">
+          {row.original.accesses.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
+          {row.original.accesses.map((a) => (
+            <Badge
+              key={a.module}
+              variant={a.can_manage_users ? 'warning' : 'neutral'}
+              icon={a.can_manage_users ? <KeyRound className="h-3 w-3" /> : undefined}
+            >
+              <span className="font-mono">{moduleName(a.module)}</span>
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      enableSorting: false,
+      cell: ({ row }) => (
+        <button
+          onClick={() => openEdit(row.original)}
+          className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          title="Editar usuário"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+      ),
+    },
+  ];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -240,98 +299,16 @@ export const AccessManagement: React.FC = () => {
           />
         </div>
 
-        <div className="overflow-x-auto">
-          {safeUsers.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              Nenhum usuário encontrado.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="py-3 pl-4 text-center font-bold">Nome</th>
-                  <th className="py-3 text-center font-bold">E-mail</th>
-                  <th className="py-3 text-center font-bold">Secretaria</th>
-                  <th className="py-3 text-center font-bold">Acessos (módulos)</th>
-                  <th className="py-3 pr-4 text-right font-bold">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {safeUsers.map((u) => (
-                  <tr key={u.id} className="text-center transition-colors hover:bg-accent/40">
-                    <td className="py-3 pl-4 text-left font-medium text-foreground">{u.name}</td>
-                    <td className="py-3 font-mono text-xs text-muted-foreground">{u.email}</td>
-                    <td className="py-3">
-                      {u.primary_org_unit_id ? (
-                        <Badge variant="info">{orgUnitName(u.primary_org_unit_id)}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground/60">—</span>
-                      )}
-                    </td>
-                    <td className="py-3">
-                      <div className="flex flex-wrap justify-center gap-1">
-                        {u.accesses.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
-                        {u.accesses.map((a) => (
-                          <Badge
-                            key={a.module}
-                            variant={a.can_manage_users ? 'warning' : 'neutral'}
-                            icon={a.can_manage_users ? <KeyRound className="h-3 w-3" /> : undefined}
-                          >
-                            <span className="font-mono">{moduleName(a.module)}</span>
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-3 pr-4 text-right">
-                      <button
-                        onClick={() => openEdit(u)}
-                        className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        title="Editar usuário"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div className="p-3">
+          <DataTable
+            columns={userColumns}
+            data={safeUsers}
+            loading={loading}
+            emptyText="Nenhum usuário encontrado."
+            pageSize={25}
+          />
         </div>
       </Card>
-
-      {pagination.total > pagination.per_page && (
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
-          <span className="text-xs text-muted-foreground">
-            Mostrando <span className="font-semibold text-foreground">{(pagination.current_page - 1) * pagination.per_page + 1}–{Math.min(pagination.current_page * pagination.per_page, pagination.total)}</span> de <span className="font-semibold text-foreground">{pagination.total}</span> usuários
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => { const p = pagination.current_page - 1; if (p >= 1) loadServerUsers({ ...filters, q: search || undefined }, p); }}
-              disabled={pagination.current_page <= 1}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Anterior
-            </button>
-            {Array.from({ length: Math.min(5, pagination.last_page) }, (_, i) => {
-              const page = pagination.current_page <= 3 ? i + 1 : pagination.current_page + i - 2;
-              if (page < 1 || page > pagination.last_page) return null;
-              return (
-                <button key={page} onClick={() => loadServerUsers({ ...filters, q: search || undefined }, page)}
-                  className={cn('h-8 w-8 rounded-lg border text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', page === pagination.current_page ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-accent')}>
-                  {page}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => { const p = pagination.current_page + 1; if (p <= pagination.last_page) loadServerUsers({ ...filters, q: search || undefined }, p); }}
-              disabled={pagination.current_page >= pagination.last_page}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Próxima
-            </button>
-          </div>
-        </div>
-      )}
 
       {editModalOpen && editingUser && (
         <UserEditModal

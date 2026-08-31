@@ -12,8 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@sysgov/ui": "*",
     "@sysgov/sdk": "*",
+    "@sysgov/ui": "*",
+    "@tanstack/react-table": "^8.21.3",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",

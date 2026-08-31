@@ -46,5 +46,8 @@ export type { FieldProps } from './Field';
 export { Modal } from './Modal';
 export type { ModalProps } from './Modal';
 
+export { DataTable } from './DataTable';
+export type { DataTableProps } from './DataTable';
+
 export { Tabs } from './Tabs';
 export type { TabsProps, TabsItem } from './Tabs';
