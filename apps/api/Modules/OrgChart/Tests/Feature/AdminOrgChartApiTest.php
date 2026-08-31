@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\OrgChart\Tests\Feature;
 
+use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -11,7 +12,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Modules\OrgChart\Models\OrgUnit;
 use Modules\OrgChart\Tests\TestCase;
-use Spatie\Permission\Models\Role;
 
 final class AdminOrgChartApiTest extends TestCase
 {
@@ -26,8 +26,8 @@ final class AdminOrgChartApiTest extends TestCase
         parent::setUp();
         $this->tenant = Tenant::create(['name' => 'Prefeitura de Pinhais', 'slug' => 'pinhais', 'type' => 'prefeitura', 'status' => 'active']);
 
-        Role::findOrCreate('super_admin', 'web');
-        Role::findOrCreate('membro', 'web');
+        $roleSuper = Role::create(['name' => 'Super Admin', 'slug' => 'super_admin', 'scope' => 'systrat', 'guard_name' => 'web', 'is_system' => true]);
+        $roleMembro = Role::create(['name' => 'Membro', 'slug' => 'membro', 'scope' => 'tenant', 'tenant_id' => $this->tenant->id, 'guard_name' => 'web', 'is_system' => true]);
 
         // Platform Admin da SYSTRAT
         $this->platformAdmin = User::create([
@@ -36,7 +36,7 @@ final class AdminOrgChartApiTest extends TestCase
             'password' => 'secret',
             'is_platform_admin' => true,
         ]);
-        $this->platformAdmin->assignRole('super_admin');
+        $this->platformAdmin->roles()->syncWithoutDetaching([$roleSuper->id]);
 
         // Usuário comum do município
         $this->regularUser = User::create([
@@ -45,7 +45,8 @@ final class AdminOrgChartApiTest extends TestCase
             'password' => 'secret',
             'is_platform_admin' => false,
         ]);
-        $this->regularUser->assignRole('membro');
+        $this->regularUser->roles()->syncWithoutDetaching([$roleMembro->id]);
+        $this->regularUser->tenants()->syncWithoutDetaching([$this->tenant->id => ['status' => 'active']]);
     }
 
     protected function tearDown(): void

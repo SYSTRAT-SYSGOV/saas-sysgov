@@ -58,6 +58,8 @@ final class ProcurementBusinessRulesTest extends TestCase
             'ano' => 2026,
             'modalidade' => 'pregao_eletronico',
             'objeto' => 'Aquisição de equipamentos hospitalares',
+            'criterio_julgamento' => 'menor_preco',
+            'regime_execucao' => 'global',
             'created_by' => $this->userElaborador->id,
         ]);
 
@@ -79,6 +81,8 @@ final class ProcurementBusinessRulesTest extends TestCase
             'ano' => 2026,
             'modalidade' => 'pregao_eletronico',
             'objeto' => 'Aquisição de notebooks corporativos',
+            'criterio_julgamento' => 'menor_preco',
+            'regime_execucao' => 'global',
             'created_by' => $this->userElaborador->id,
         ]);
 
@@ -216,6 +220,8 @@ final class ProcurementBusinessRulesTest extends TestCase
             'ano' => 2026,
             'modalidade' => 'pregao_eletronico',
             'objeto' => 'Aquisição de combustível',
+            'criterio_julgamento' => 'menor_preco',
+            'regime_execucao' => 'global',
             'valor_estimado_cents' => 10000000,
             'status' => 'em_disputa',
         ]);

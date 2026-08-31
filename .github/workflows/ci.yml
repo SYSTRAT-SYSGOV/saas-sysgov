@@ -46,8 +46,7 @@ jobs:
         with:
           {
             php-version: "8.3",
-            extensions: mbstring,
-            pdo_mysql,
+            extensions: mbstring, pdo_mysql,
             coverage: none,
           }
       - run: composer install --no-interaction --prefer-dist

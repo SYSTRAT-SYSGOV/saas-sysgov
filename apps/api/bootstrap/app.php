@@ -18,6 +18,7 @@ use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\OrgChart\Providers\OrgChartServiceProvider;
 use Modules\Procurement\Providers\ProcurementServiceProvider;
+use Modules\TestModule\Providers\TestModuleServiceProvider;
 use Laravel\Tinker\TinkerServiceProvider;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         FinanceServiceProvider::class,
         OrgChartServiceProvider::class,
         ProcurementServiceProvider::class,
+        TestModuleServiceProvider::class,
         TinkerServiceProvider::class,
         \App\Providers\AuthServiceProvider::class,
     ])

@@ -10,3 +10,5 @@ parameters:
     tmpDir: storage/framework/phpstan
     excludePaths:
         - */vendor/*
+        - Modules/*/app/*
+    reportUnmatchedIgnoredErrors: false

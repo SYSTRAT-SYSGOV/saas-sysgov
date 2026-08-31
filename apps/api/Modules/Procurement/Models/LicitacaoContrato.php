@@ -14,7 +14,7 @@ final class LicitacaoContrato extends Model
 {
     use TenantAware;
 
-    protected $table = 'licitacao_contratos';
+    protected $table = 'contratos_licitacao';
 
     protected $fillable = [
         'tenant_id',

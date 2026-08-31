@@ -517,6 +517,18 @@ parameters:
 			path: Modules/Admin/Models/MenuItem.php
 
 		-
+			message: '#^Generic type Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\TenantModuleOrgUnit\> in PHPDoc tag @return does not specify all template types of class Illuminate\\Database\\Eloquent\\Relations\\HasMany\: TRelatedModel, TDeclaringModel$#'
+			identifier: generics.lessTypes
+			count: 1
+			path: Modules/Admin/Models/Module.php
+
+		-
+			message: '#^Method Modules\\Admin\\Models\\Module\:\:orgUnits\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\TenantModuleOrgUnit\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\TenantModuleOrgUnit, \$this\(Modules\\Admin\\Models\\Module\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: Modules/Admin/Models/Module.php
+
+		-
 			message: '#^Method Modules\\Admin\\Models\\Module\:\:tenants\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
 			identifier: missingType.generics
 			count: 1
@@ -613,10 +625,40 @@ parameters:
 			path: Modules/Admin/Services/MenuService.php
 
 		-
+			message: '#^Method Modules\\Admin\\Tests\\Feature\\AccessUnificationTest\:\:tenantWithModule\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Tests/Feature/AccessUnificationTest.php
+
+		-
 			message: '#^Method Modules\\Admin\\Tests\\Feature\\InvitationLifecycleTest\:\:inviteViaService\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: Modules/Admin/Tests/Feature/InvitationLifecycleTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertNotNull\(\) with array will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: Modules/Admin/Tests/Feature/NavigationIsolationTest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Tests\\Feature\\NavigationIsolationTest\:\:flattenItems\(\) has parameter \$nav with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Tests/Feature/NavigationIsolationTest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Tests\\Feature\\NavigationIsolationTest\:\:flattenItems\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Tests/Feature/NavigationIsolationTest.php
+
+		-
+			message: '#^Method Modules\\Admin\\Tests\\Feature\\NavigationIsolationTest\:\:seedData\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Admin/Tests/Feature/NavigationIsolationTest.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
@@ -643,15 +685,51 @@ parameters:
 			path: Modules/Admin/Tests/Feature/TenantIsolationAndBolaTest.php
 
 		-
+			message: '#^Generic type Illuminate\\Database\\Eloquent\\Relations\\HasMany\<Modules\\Client\\Models\\ClientMenuItem\> in PHPDoc tag @return does not specify all template types of class Illuminate\\Database\\Eloquent\\Relations\\HasMany\: TRelatedModel, TDeclaringModel$#'
+			identifier: generics.lessTypes
+			count: 1
+			path: Modules/Client/Models/ClientMenuItem.php
+
+		-
+			message: '#^Method Modules\\Client\\Models\\ClientMenuItem\:\:children\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<Modules\\Client\\Models\\ClientMenuItem\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<Modules\\Client\\Models\\ClientMenuItem, \$this\(Modules\\Client\\Models\\ClientMenuItem\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: Modules/Client/Models/ClientMenuItem.php
+
+		-
 			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$amount_cents\.$#'
 			identifier: property.notFound
 			count: 2
 			path: Modules/Contracts/Http/Controllers/ContractController.php
 
 		-
+			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$org_unit_id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: Modules/Contracts/Http/Controllers/ContractController.php
+
+		-
 			message: '#^Access to an undefined property Modules\\Contracts\\Models\\Contract\:\:\$total_addenda_amount_cents\.$#'
 			identifier: property.notFound
 			count: 2
+			path: Modules/Contracts/Http/Controllers/ContractController.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Http\\Controllers\\ContractController\:\:isGlobalAdmin\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Contracts/Http/Controllers/ContractController.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Http\\Controllers\\ContractController\:\:resolveOrgUnitId\(\) has parameter \$allowedIds with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Contracts/Http/Controllers/ContractController.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Http\\Controllers\\ContractController\:\:resolveOrgUnitId\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
 			path: Modules/Contracts/Http/Controllers/ContractController.php
 
 		-
@@ -710,6 +788,12 @@ parameters:
 
 		-
 			message: '#^Method Modules\\Contracts\\Models\\Contract\:\:manager\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Contracts/Models/Contract.php
+
+		-
+			message: '#^Method Modules\\Contracts\\Models\\Contract\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: Modules/Contracts/Models/Contract.php
@@ -901,6 +985,54 @@ parameters:
 			path: Modules/Finance/Database/Migrations/2026_08_22_020001_upgrade_finance_tables.php
 
 		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetCommitment\:\:\$org_unit_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Finance/Http/Controllers/BudgetExecutionController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetSettlement\:\:\$org_unit_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Http/Controllers/BudgetExecutionController.php
+
+		-
+			message: '#^Method Modules\\Finance\\Http\\Controllers\\BudgetExecutionController\:\:isGlobalAdmin\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Finance/Http/Controllers/BudgetExecutionController.php
+
+		-
+			message: '#^Method Modules\\Finance\\Http\\Controllers\\BudgetExecutionController\:\:resolveOrgUnitId\(\) has parameter \$allowedIds with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Http/Controllers/BudgetExecutionController.php
+
+		-
+			message: '#^Method Modules\\Finance\\Http\\Controllers\\BudgetExecutionController\:\:resolveOrgUnitId\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Finance/Http/Controllers/BudgetExecutionController.php
+
+		-
+			message: '#^Method Modules\\Finance\\Http\\Controllers\\FinanceEntryController\:\:isGlobalAdmin\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Finance/Http/Controllers/FinanceEntryController.php
+
+		-
+			message: '#^Method Modules\\Finance\\Http\\Controllers\\FinanceEntryController\:\:resolveOrgUnitId\(\) has parameter \$allowedIds with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Finance/Http/Controllers/FinanceEntryController.php
+
+		-
+			message: '#^Method Modules\\Finance\\Http\\Controllers\\FinanceEntryController\:\:resolveOrgUnitId\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Finance/Http/Controllers/FinanceEntryController.php
+
+		-
 			message: '#^Method Modules\\Finance\\Http\\Requests\\StoreExpenseRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -949,10 +1081,22 @@ parameters:
 			path: Modules/Finance/Models/BudgetCommitment.php
 
 		-
+			message: '#^Method Modules\\Finance\\Models\\BudgetCommitment\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/BudgetCommitment.php
+
+		-
 			message: '#^Method Modules\\Finance\\Models\\BudgetCommitment\:\:settlements\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: Modules/Finance/Models/BudgetCommitment.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\BudgetPayment\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/BudgetPayment.php
 
 		-
 			message: '#^Method Modules\\Finance\\Models\\BudgetPayment\:\:settlement\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -962,6 +1106,12 @@ parameters:
 
 		-
 			message: '#^Method Modules\\Finance\\Models\\BudgetSettlement\:\:commitment\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/BudgetSettlement.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\BudgetSettlement\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: Modules/Finance/Models/BudgetSettlement.php
@@ -989,6 +1139,30 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: Modules/Finance/Models/ChartOfAccount.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\Expense\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/Expense.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\Invoice\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/Invoice.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\Revenue\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/Revenue.php
+
+		-
+			message: '#^Method Modules\\Finance\\Models\\Transfer\:\:orgUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Finance/Models/Transfer.php
 
 		-
 			message: '#^Access to an undefined property Modules\\Finance\\Models\\AccountingEntry\:\:\$entry_number\.$#'
@@ -1035,6 +1209,12 @@ parameters:
 		-
 			message: '#^Access to an undefined property Modules\\Finance\\Models\\ChartOfAccount\:\:\$nature\.$#'
 			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/AccountingService.php
+
+		-
+			message: '#^Anonymous function has an unused use \$tenantId\.$#'
+			identifier: closure.unusedUse
 			count: 1
 			path: Modules/Finance/Services/AccountingService.php
 
@@ -1087,6 +1267,12 @@ parameters:
 			path: Modules/Finance/Services/BudgetExecutionService.php
 
 		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetCommitment\:\:\$org_unit_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
 			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetCommitment\:\:\$settled_amount_cents\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1094,6 +1280,12 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetSettlement\:\:\$amount_cents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Finance/Services/BudgetExecutionService.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Finance\\Models\\BudgetSettlement\:\:\$org_unit_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: Modules/Finance/Services/BudgetExecutionService.php
@@ -1231,6 +1423,12 @@ parameters:
 			path: Modules/OrgChart/Models/OrgUnit.php
 
 		-
+			message: '#^Generic type Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\TenantModuleOrgUnit\> in PHPDoc tag @return does not specify all template types of class Illuminate\\Database\\Eloquent\\Relations\\HasMany\: TRelatedModel, TDeclaringModel$#'
+			identifier: generics.lessTypes
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
 			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:allChildren\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1251,6 +1449,12 @@ parameters:
 		-
 			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:members\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
 			identifier: missingType.generics
+			count: 1
+			path: Modules/OrgChart/Models/OrgUnit.php
+
+		-
+			message: '#^Method Modules\\OrgChart\\Models\\OrgUnit\:\:moduleAccess\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\TenantModuleOrgUnit\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\TenantModuleOrgUnit, \$this\(Modules\\OrgChart\\Models\\OrgUnit\)\>\.$#'
+			identifier: return.type
 			count: 1
 			path: Modules/OrgChart/Models/OrgUnit.php
 
@@ -1411,36 +1615,6 @@ parameters:
 			path: Modules/OrgChart/Services/OrgExportService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$acronym\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/OrgChart/Services/OrgScopeService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/OrgChart/Services/OrgScopeService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/OrgChart/Services/OrgScopeService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/OrgChart/Services/OrgScopeService.php
-
-		-
-			message: '#^Call to an undefined method App\\Models\\User\:\:hasPermissionTo\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: Modules/OrgChart/Services/OrgScopeService.php
-
-		-
 			message: '#^Method Modules\\OrgChart\\Services\\OrgScopeService\:\:applyScopeToQuery\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1449,18 +1623,6 @@ parameters:
 		-
 			message: '#^Method Modules\\OrgChart\\Services\\OrgScopeService\:\:applyScopeToQuery\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
 			identifier: missingType.generics
-			count: 1
-			path: Modules/OrgChart/Services/OrgScopeService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\OrgChart\\Models\\OrgUnitUser\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: Modules/OrgChart/Services/OrgScopeService.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\OrgChart\\Models\\OrgUnitUser\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
 			count: 1
 			path: Modules/OrgChart/Services/OrgScopeService.php
 
@@ -1529,12 +1691,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: Modules/OrgChart/Tests/Feature/OrgExportServiceTest.php
-
-		-
-			message: '#^Call to an undefined method App\\Models\\User\:\:assignRole\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: Modules/OrgChart/Tests/Feature/OrgScopeAbacTest.php
 
 		-
 			message: '#^Access to an undefined property Modules\\Procurement\\Models\\LicitacaoLance\:\:\$licitacao_id\.$#'
@@ -1606,6 +1762,18 @@ parameters:
 			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$status\.$#'
 			identifier: property.notFound
 			count: 2
+			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Called ''first'' on Laravel collection, but could have been retrieved as a query\.$#'
+			identifier: larastan.noUnnecessaryCollectionCall
+			count: 1
+			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
+
+		-
+			message: '#^Parameter \#1 \$licitacao of method Modules\\Procurement\\Services\\LegalDeadlinesService\:\:calculateMinimumOpeningDate\(\) expects Modules\\Procurement\\Models\\Licitacao, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
 			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
 
 		-
@@ -2269,246 +2437,6 @@ parameters:
 			path: Modules/Procurement/Tests/Unit/TenantIsolationTest.php
 
 		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:create\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:edit\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:edit\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoContratosController\:\:update\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 4
-			path: Modules/Procurement/Http/Controllers/LicitacaoContratosController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:create\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:edit\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:edit\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoController\:\:update\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 4
-			path: Modules/Procurement/Http/Controllers/LicitacaoController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:create\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:edit\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:edit\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Controllers\\LicitacaoLifecycleController\:\:update\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 4
-			path: Modules/Procurement/Http/Controllers/LicitacaoLifecycleController.php
-
-		-
-			message: '#^Call to an undefined method App\\Models\\User\:\:isMfaVerified\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: Modules/Procurement/Http/Middleware/EnsureMfaForManagers.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Http\\Middleware\\EnsureMfaForManagers\:\:handle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Http/Middleware/EnsureMfaForManagers.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Procurement\\Models\\Licitacao\:\:\$created_by\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Procurement/Policies/LicitacaoPolicy.php
-
-		-
-			message: '#^Method Modules\\Procurement\\Policies\\LicitacaoPolicy\:\:approve\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: Modules/Procurement/Policies/LicitacaoPolicy.php
-
-		-
 			message: '#^Access to an undefined property Modules\\TestModule\\Models\\TestModuleItem\:\:\$title\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2581,6 +2509,24 @@ parameters:
 			path: app/Http/Kernel.php
 
 		-
+			message: '#^Method App\\Http\\Middleware\\EnsureAdminTenant\:\:handle\(\) has parameter \$request with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Http/Middleware/EnsureAdminTenant.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Middleware/EnsureModuleAccess.php
+
+		-
+			message: '#^Property App\\Http\\Middleware\\EnsureModuleAccess\:\:\$access is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Http/Middleware/EnsureModuleAccess.php
+
+		-
 			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\User\|null given\.$#'
 			identifier: argument.type
 			count: 1
@@ -2591,6 +2537,36 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/LoginRequest.php
+
+		-
+			message: '#^Method App\\Models\\AccessCategory\:\:groups\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AccessCategory.php
+
+		-
+			message: '#^Method App\\Models\\AccessGroup\:\:accesses\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AccessGroup.php
+
+		-
+			message: '#^Method App\\Models\\AccessGroup\:\:category\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AccessGroup.php
+
+		-
+			message: '#^Method App\\Models\\AccessGroup\:\:users\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AccessGroup.php
+
+		-
+			message: '#^Method App\\Models\\AccessGroupAccess\:\:group\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AccessGroupAccess.php
 
 		-
 			message: '#^Method App\\Models\\BudgetUnit\:\:managementUnit\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -2683,13 +2659,49 @@ parameters:
 			path: app/Models/TenantAnalyst.php
 
 		-
+			message: '#^Method App\\Models\\TenantModuleOrgUnit\:\:scopeEnabled\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/TenantModuleOrgUnit.php
+
+		-
+			message: '#^Method App\\Models\\TenantModuleOrgUnit\:\:scopeEnabled\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/TenantModuleOrgUnit.php
+
+		-
+			message: '#^Method App\\Models\\TenantModuleOrgUnit\:\:scopeExplicit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/TenantModuleOrgUnit.php
+
+		-
+			message: '#^Method App\\Models\\TenantModuleOrgUnit\:\:scopeExplicit\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/TenantModuleOrgUnit.php
+
+		-
 			message: '#^Class App\\Models\\User uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/User.php
 
 		-
+			message: '#^Method App\\Models\\User\:\:accessGroups\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
 			message: '#^Method App\\Models\\User\:\:analystTenants\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:cargo\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/User.php
@@ -2743,6 +2755,12 @@ parameters:
 			path: app/Models/UserInvitation.php
 
 		-
+			message: '#^Method App\\Models\\UserModuleAccess\:\:grantor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/UserModuleAccess.php
+
+		-
 			message: '#^Method App\\Models\\UserModuleAccess\:\:scopeForModule\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -2761,60 +2779,6 @@ parameters:
 			path: app/Models/UserModuleAccess.php
 
 		-
-			message: '#^Method App\\Models\\UserModuleAccess\:\:grantor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/UserModuleAccess.php
-
-		-
-			message: '#^Method App\\Models\\AccessCategory\:\:groups\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AccessCategory.php
-
-		-
-			message: '#^Method App\\Models\\AccessGroup\:\:category\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AccessGroup.php
-
-		-
-			message: '#^Method App\\Models\\AccessGroup\:\:accesses\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AccessGroup.php
-
-		-
-			message: '#^Method App\\Models\\AccessGroup\:\:users\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AccessGroup.php
-
-		-
-			message: '#^Method App\\Models\\AccessGroupAccess\:\:group\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AccessGroupAccess.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:cargo\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:accessGroups\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Call to static method where\(\) on an unknown class App\\Models\\Module\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Providers/AuthServiceProvider.php
-
-		-
 			message: '#^Class Modules\\Admin\\Models\\Tenant not found\.$#'
 			identifier: class.notFound
 			count: 1
@@ -2825,6 +2789,126 @@ parameters:
 			identifier: class.notFound
 			count: 1
 			path: app/Providers/AuthServiceProvider.php
+
+		-
+			message: '#^Class Modules\\Finance\\Models\\FinanceEntry not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/ModuleAccessService.php
+
+		-
+			message: '#^Method App\\Services\\ModuleAccessService\:\:applyGranularityFilter\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/ModuleAccessService.php
+
+		-
+			message: '#^Method App\\Services\\ModuleAccessService\:\:applyGranularityFilter\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/ModuleAccessService.php
+
+		-
+			message: '#^Method App\\Services\\ModuleAccessService\:\:scopeQuery\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/ModuleAccessService.php
+
+		-
+			message: '#^Method App\\Services\\ModuleAccessService\:\:scopeQuery\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/ModuleAccessService.php
+
+		-
+			message: '#^Property App\\Services\\ModuleAccessService\:\:\$moduleOrgUnit is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/ModuleAccessService.php
+
+		-
+			message: '#^Property App\\Services\\ModuleOrgUnitService\:\:\$tenants is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/ModuleOrgUnitService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$acronym\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:hasPermissionTo\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getSelfAndDescendantIds\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Method App\\Support\\OrgScope\:\:applyToQuery\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Method App\\Support\\OrgScope\:\:applyToQuery\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Method App\\Support\\OrgScope\:\:getUserScopeSummary\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 2
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\OrgChart\\Models\\OrgUnitUser\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\OrgChart\\Models\\OrgUnitUser\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Support/OrgScope.php
+
+		-
+			message: '#^Unable to resolve the template type T in call to function array_values$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Support/OrgScope.php
 
 		-
 			message: '#^Method App\\Support\\OutboxPublisher\:\:publish\(\) has parameter \$payload with no value type specified in iterable type array\.$#'

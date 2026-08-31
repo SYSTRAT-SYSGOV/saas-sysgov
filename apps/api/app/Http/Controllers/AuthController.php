@@ -206,7 +206,7 @@ final class AuthController
                 }
             }
 
-            $navigation = $this->clientNav->buildNavigation($tenantId, $user, $orgUnitIds);
+            $navigation = $tenantId ? $this->clientNav->buildNavigation($tenantId, $user, $orgUnitIds) : [];
 
             return [
                 // O token é definido pelo método de login; aqui fica vazio (não expõe o plainTextToken)

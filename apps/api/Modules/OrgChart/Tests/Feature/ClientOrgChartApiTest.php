@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\OrgChart\Tests\Feature;
 
+use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -12,7 +13,6 @@ use Laravel\Sanctum\Sanctum;
 use Modules\OrgChart\Models\OrgUnit;
 use Modules\OrgChart\Services\OrgTreeService;
 use Modules\OrgChart\Tests\TestCase;
-use Spatie\Permission\Models\Role;
 
 final class ClientOrgChartApiTest extends TestCase
 {
@@ -27,10 +27,10 @@ final class ClientOrgChartApiTest extends TestCase
         $this->tenant = Tenant::create(['name' => 'Prefeitura de Araucária', 'slug' => 'araucaria', 'type' => 'prefeitura', 'status' => 'active']);
         app(TenantContext::class)->set($this->tenant);
 
-        Role::findOrCreate('admin_tenant', 'web');
+        $role = Role::create(['name' => 'Administrador do Tenant', 'slug' => 'admin_tenant', 'scope' => 'tenant', 'tenant_id' => $this->tenant->id, 'guard_name' => 'web', 'is_system' => true]);
         $this->adminUser = User::create(['name' => 'Gestor Municipal', 'email' => 'gestor@araucaria.pr.gov.br', 'password' => 'secret']);
-        $this->adminUser->assignRole('admin_tenant');
-        $this->tenant->users()->attach($this->adminUser->id);
+        $this->adminUser->roles()->syncWithoutDetaching([$role->id]);
+        $this->adminUser->tenants()->syncWithoutDetaching([$this->tenant->id => ['status' => 'active']]);
     }
 
     protected function tearDown(): void
