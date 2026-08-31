@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\Admin\Models\Module;
+use Modules\OrgChart\Models\OrgUnit;
 
 final class TenantModuleOrgUnit extends Model
 {
