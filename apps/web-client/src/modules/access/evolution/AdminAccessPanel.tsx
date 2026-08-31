@@ -1,10 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { LayoutGrid, Building2, Clock, Users, MailWarning, Loader2, RotateCcw, XCircle, Briefcase, Layers, ShieldCheck } from 'lucide-react';
+import { LayoutGrid, Users, Clock, MailWarning, RotateCcw, XCircle, Briefcase, Layers, ShieldCheck, Building2 } from 'lucide-react';
 import { accessApi, AccessMatrixRow, AccessModuleGroup, ExpiringAccess, AccessModule, OrgUnitNode } from '../AccessApi';
 import { AccessBadge, formatDate } from './AccessBadge';
 import { CargosManagement } from './CargosManagement';
 import { GroupsManagement } from './GroupsManagement';
 import { RolesManagement } from './RolesManagement';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Tabs } from '@/components/ui/Tabs';
+import { cn } from '@/lib/utils';
 
 type Tab = 'matrix' | 'byModule' | 'expiring' | 'pending' | 'cargos' | 'groups' | 'roles';
 
@@ -16,7 +20,7 @@ interface AdminAccessPanelProps {
 
 /**
  * Painel do Administrador Geral: visões por módulo, por secretaria, expirando, pendentes,
- * cargos e grupos/categorias de acesso.
+ * cargos e grupos/categorias de acesso. Redesenhado com componentes shadcn/GOV.BR.
  */
 export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, units, notify }) => {
   const [tab, setTab] = useState<Tab>('matrix');
@@ -39,9 +43,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
     }
   }, [notify]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const handleRevoke = async (row: AccessMatrixRow) => {
     if (!window.confirm(`Revogar o acesso de ${row.user_name} ao módulo ${row.module}?`)) return;
@@ -64,61 +66,57 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
     }
   };
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'matrix', label: 'Matriz de Acessos', icon: <LayoutGrid className="w-4 h-4" /> },
-    { key: 'byModule', label: 'Por Módulo', icon: <Users className="w-4 h-4" /> },
-    { key: 'expiring', label: `Expirando (${expiring.length})`, icon: <Clock className="w-4 h-4" /> },
-    { key: 'pending', label: 'Pendentes', icon: <MailWarning className="w-4 h-4" /> },
-    { key: 'cargos', label: 'Cargos', icon: <Briefcase className="w-4 h-4" /> },
-    { key: 'groups', label: 'Grupos & Categorias', icon: <Layers className="w-4 h-4" /> },
-    { key: 'roles', label: 'Roles & Permissões', icon: <ShieldCheck className="w-4 h-4" /> },
+  const tabs: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
+    { key: 'matrix', label: 'Matriz de Acessos', icon: <LayoutGrid className="h-4 w-4" /> },
+    { key: 'byModule', label: 'Por Módulo', icon: <Users className="h-4 w-4" /> },
+    { key: 'expiring', label: 'Expirando', icon: <Clock className="h-4 w-4" />, badge: expiring.length },
+    { key: 'pending', label: 'Pendentes', icon: <MailWarning className="h-4 w-4" /> },
+    { key: 'cargos', label: 'Cargos', icon: <Briefcase className="h-4 w-4" /> },
+    { key: 'groups', label: 'Grupos & Categorias', icon: <Layers className="h-4 w-4" /> },
+    { key: 'roles', label: 'Roles & Permissões', icon: <ShieldCheck className="h-4 w-4" /> },
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gov-border shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gov-border flex flex-wrap gap-1.5">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              tab === t.key ? 'bg-gov-primary text-white' : 'text-gov-text-secondary hover:bg-gov-primary/10'
-            }`}
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
+    <Card noPadding className="overflow-hidden">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-card px-4 py-3">
+        <Tabs items={tabs} value={tab} onChange={setTab} />
       </div>
 
       <div className="p-5">
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-gov-primary" /></div>
+          <div className="flex justify-center py-16">
+            <span className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" />
+          </div>
         ) : (
           <>
-            {tab === 'matrix' && (
-              <MatrixTable rows={matrix} units={units} onRevoke={handleRevoke} onRenew={handleRenew} />
-            )}
+            {tab === 'matrix' && <MatrixTable rows={matrix} units={units} onRevoke={handleRevoke} onRenew={handleRenew} />}
             {tab === 'byModule' && (
               <div className="space-y-5">
                 {byModule.length === 0 && <Empty text="Nenhum acesso configurado por módulo." />}
                 {byModule.map((g) => (
-                  <div key={g.module} className="border border-gov-border rounded-lg p-4">
-                    <h4 className="text-xs font-bold text-gov-text-primary mb-2">{g.module}</h4>
+                  <div key={g.module} className="overflow-hidden rounded-xl border border-border">
+                    <div className="flex items-center gap-2 border-b border-border bg-accent/40 px-4 py-2.5">
+                      <Badge variant="primary">{g.module}</Badge>
+                      <span className="text-xs font-semibold text-muted-foreground">{g.users.length} usuário(s)</span>
+                    </div>
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="text-left text-gov-text-muted uppercase tracking-wider text-[10px] border-b border-gov-border">
-                          <th className="py-1.5">Usuário</th><th>Papel</th><th>Escopo</th><th>Admin do módulo</th><th>Status</th>
+                        <tr className="text-left uppercase tracking-wider text-[10px] text-muted-foreground">
+                          <th className="py-2 pl-4 font-semibold">Usuário</th>
+                          <th className="py-2 font-semibold">Papel</th>
+                          <th className="py-2 font-semibold">Escopo</th>
+                          <th className="py-2 font-semibold">Admin do módulo</th>
+                          <th className="py-2 pr-4 text-right font-semibold">Status</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-border">
                         {g.users.map((u, i) => (
-                          <tr key={i} className="border-b border-gov-border/60">
-                            <td className="py-2 text-gov-text-primary">{u.user_name}</td>
-                            <td className="font-mono text-gov-text-secondary">{u.role}</td>
-                            <td>{u.all_org_units ? 'Todas' : 'Restrito'}</td>
-                            <td>{u.can_manage_users ? 'Sim' : 'Não'}</td>
-                            <td><AccessBadge status={u.status} validTo={u.valid_to} /></td>
+                          <tr key={i} className="transition-colors hover:bg-accent/40">
+                            <td className="py-2.5 pl-4 font-medium text-foreground">{u.user_name}</td>
+                            <td className="font-mono text-muted-foreground">{u.role}</td>
+                            <td>{u.all_org_units ? <Badge variant="success">Todas</Badge> : <Badge variant="neutral">Restrito</Badge>}</td>
+                            <td>{u.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span>}</td>
+                            <td className="pr-4 text-right"><AccessBadge status={u.status} validTo={u.valid_to} /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -132,17 +130,20 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
                 {expiring.length === 0 ? <Empty text="Nenhum acesso expirando nos próximos 30 dias." /> : (
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="text-left text-gov-text-muted uppercase tracking-wider text-[10px] border-b border-gov-border">
-                        <th className="py-1.5">Usuário</th><th>Módulo</th><th>Expira em</th><th>Dias restantes</th>
+                      <tr className="text-left uppercase tracking-wider text-[10px] text-muted-foreground">
+                        <th className="py-2 font-semibold">Usuário</th>
+                        <th className="py-2 font-semibold">Módulo</th>
+                        <th className="py-2 font-semibold">Expira em</th>
+                        <th className="py-2 text-right font-semibold">Dias restantes</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border">
                       {expiring.map((e) => (
-                        <tr key={e.id} className="border-b border-gov-border/60">
-                          <td className="py-2 text-gov-text-primary">{e.user_name}</td>
+                        <tr key={e.id} className="transition-colors hover:bg-accent/40">
+                          <td className="py-2.5 font-medium text-foreground">{e.user_name}</td>
                           <td className="font-mono">{e.module}</td>
-                          <td className="text-amber-600 dark:text-amber-400 font-semibold">{formatDate(e.valid_to)}</td>
-                          <td>{e.days_left} dia(s)</td>
+                          <td className="font-semibold text-warning">{formatDate(e.valid_to)}</td>
+                          <td className="text-right font-mono tabular-nums">{e.days_left} dia(s)</td>
                         </tr>
                       ))}
                     </tbody>
@@ -157,7 +158,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
           </>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -175,43 +176,57 @@ const MatrixTable: React.FC<{
 
   if (rows.length === 0) return <Empty text="Nenhum acesso configurado." />;
   return (
-    <table className="w-full text-xs">
-      <thead>
-        <tr className="text-left text-gov-text-muted uppercase tracking-wider text-[10px] border-b border-gov-border">
-          <th className="py-2">Usuário</th><th>Módulo</th><th>Papel</th><th>Secretarias</th><th>Admin</th><th>Status</th><th>Vigência</th><th>Concedido por</th><th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.id} className="border-b border-gov-border/60 hover:bg-gov-primary/5">
-            <td className="py-2 text-gov-text-primary font-medium">{r.user_name}</td>
-            <td className="font-mono">{r.module}</td>
-            <td className="font-mono text-gov-text-secondary">{r.role}</td>
-            <td className="max-w-[160px] truncate" title={scopeDisplay(r)}>{scopeDisplay(r)}</td>
-            <td>{r.can_manage_users ? 'Sim' : 'Não'}</td>
-            <td><AccessBadge status={r.status} expiring={r.expiring} validTo={r.valid_to} /></td>
-            <td>{formatDate(r.valid_to)}</td>
-            <td className="text-gov-text-muted">{r.granted_by ?? '—'}</td>
-            <td>
-              <div className="flex gap-1">
-                {(r.status === 'revoked' || r.status === 'expired') && (
-                  <button onClick={() => onRenew(r)} title="Renovar" className="p-1 text-gov-text-secondary hover:text-emerald-600"><RotateCcw className="w-4 h-4" /></button>
-                )}
-                {r.status === 'active' && (
-                  <button onClick={() => onRevoke(r)} title="Revogar" className="p-1 text-gov-text-secondary hover:text-rose-600"><XCircle className="w-4 h-4" /></button>
-                )}
-              </div>
-            </td>
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-border text-left uppercase tracking-wider text-[10px] text-muted-foreground">
+            <th className="py-2.5 pl-4 font-semibold">Usuário</th>
+            <th className="py-2.5 font-semibold">Módulo</th>
+            <th className="py-2.5 font-semibold">Papel</th>
+            <th className="py-2.5 font-semibold">Secretarias</th>
+            <th className="py-2.5 font-semibold">Admin</th>
+            <th className="py-2.5 font-semibold">Status</th>
+            <th className="py-2.5 font-semibold">Vigência</th>
+            <th className="py-2.5 font-semibold">Concedido por</th>
+            <th className="py-2.5 pr-4 text-right font-semibold">Ações</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map((r) => (
+            <tr key={r.id} className="transition-colors hover:bg-accent/40">
+              <td className="py-2.5 pl-4 font-medium text-foreground">{r.user_name}</td>
+              <td className="font-mono">{r.module}</td>
+              <td className="font-mono text-muted-foreground">{r.role}</td>
+              <td className="max-w-[160px] truncate" title={scopeDisplay(r)}>{scopeDisplay(r)}</td>
+              <td>{r.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span>}</td>
+              <td><AccessBadge status={r.status} expiring={r.expiring} validTo={r.valid_to} /></td>
+              <td className="font-mono text-muted-foreground">{formatDate(r.valid_to)}</td>
+              <td className="text-muted-foreground">{r.granted_by ?? '—'}</td>
+              <td className="pr-4">
+                <div className="flex justify-end gap-1">
+                  {(r.status === 'revoked' || r.status === 'expired') && (
+                    <button onClick={() => onRenew(r)} title="Renovar" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-success/10 hover:text-success focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <RotateCcw className="h-4 w-4" />
+                    </button>
+                  )}
+                  {r.status === 'active' && (
+                    <button onClick={() => onRevoke(r)} title="Revogar" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <XCircle className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 
 const Empty: React.FC<{ text: string }> = ({ text }) => (
-  <div className="py-16 text-center text-gov-text-muted flex flex-col items-center gap-2">
-    <Building2 className="w-8 h-8 opacity-40" />
+  <div className={cn('flex flex-col items-center gap-2 py-16 text-center text-muted-foreground')}>
+    <Building2 className="h-8 w-8 opacity-40" />
     <p className="text-sm">{text}</p>
   </div>
 );

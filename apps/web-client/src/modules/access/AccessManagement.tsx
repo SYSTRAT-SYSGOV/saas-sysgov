@@ -12,6 +12,10 @@ import {
 } from 'lucide-react';
 import { accessApi, AccessDashboardData, AccessUser, AccessModule, OrgUnitNode, Cargo, AccessGroup, AccessCategory } from './AccessApi';
 import { AdminAccessPanel, NewUserWizard, UserEditModal, AdvancedFilters, UserFilters } from './evolution';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Tabs } from '@/components/ui/Tabs';
+import { cn } from '@/lib/utils';
 
 const DASHBOARD_CACHE_KEY = 'sysgov:access:dashboard:v1';
 
@@ -139,51 +143,46 @@ export const AccessManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-[36px] sm:leading-[40px] font-bold text-[#0c326f] tracking-tight">Usuários & Acessos</h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gov-primary-light text-gov-primary border border-gov-primary/20">
-              <ShieldCheck className="w-3.5 h-3.5" /> Por módulo e secretaria
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <ShieldCheck className="h-6 w-6" />
             </span>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Usuários & Acessos</h1>
+              <Badge variant="primary" className="mt-1">
+                <ShieldCheck className="h-3 w-3" /> Por módulo e secretaria
+              </Badge>
+            </div>
           </div>
-          <p className="text-xs sm:text-sm text-gov-text-secondary mt-1">
+          <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
             {isGlobalAdmin
               ? 'Administrador geral: habilita módulos, secretarias e administradores de módulo.'
               : `Você administra: ${myManagedModules.map(moduleName).join(', ')} — só é possível conceder acesso nesses módulos.`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-gov-primary/10 rounded-lg p-1">
-            <button
-              onClick={() => { setViewMode('lista'); setWizardOpen(false); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                viewMode === 'lista' ? 'bg-white dark:bg-slate-800 text-gov-primary shadow-sm' : 'text-gov-text-secondary'
-              }`}
-            >
-              <Users className="w-4 h-4" /> Lista
-            </button>
-            <button
-              onClick={() => { setViewMode('painel'); setWizardOpen(false); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                viewMode === 'painel' ? 'bg-white dark:bg-slate-800 text-gov-primary shadow-sm' : 'text-gov-text-secondary'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" /> Painel do Admin
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Tabs
+            items={[
+              { key: 'lista', label: 'Lista', icon: <Users className="h-4 w-4" /> },
+              { key: 'painel', label: 'Painel do Admin', icon: <LayoutDashboard className="h-4 w-4" /> },
+            ]}
+            value={viewMode}
+            onChange={(v) => { setViewMode(v); setWizardOpen(false); }}
+          />
           <button
             onClick={() => setWizardOpen(true)}
-            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <UserPlus className="w-4 h-4" /> Novo Usuário
+            <UserPlus className="h-4 w-4" /> Novo Usuário
           </button>
           <button
             onClick={() => { window.location.href = '/granularidade-módulos'; }}
-            className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-200"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             title="Granularidade de módulos por unidade"
           >
-            <Settings2 className="w-4 h-4" /> Granularidade
+            <Settings2 className="h-4 w-4" /> Granularidade
           </button>
         </div>
       </div>
@@ -215,78 +214,81 @@ export const AccessManagement: React.FC = () => {
         onChange={(f) => { setFilters(f); setPagination((p) => ({ ...p, current_page: 1 })); }}
       />
 
-      <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-gov-border shadow-sm">
-        <div className="relative">
-          <Search className="w-4 h-4 text-gov-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+      <Card noPadding>
+        <div className="relative border-b border-border p-3">
+          <Search className="absolute left-6 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Buscar por nome ou e-mail..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-gov-border text-gov-text-primary placeholder-gov-text-muted focus:outline-none focus:ring-2 focus:ring-gov-primary/30"
+            className="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-      </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gov-border shadow-sm overflow-hidden">
-        {safeUsers.length === 0 ? (
-          <div className="p-12 text-center text-gov-text-muted">
-            Nenhum usuário encontrado.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gov-border text-left text-xs uppercase tracking-wider text-gov-text-secondary">
-                <th className="py-3 px-4 font-semibold">Nome</th>
-                <th className="py-3 px-4 font-semibold">E-mail</th>
-                <th className="py-3 px-4 font-semibold">Cargo</th>
-                <th className="py-3 px-4 font-semibold">Acessos (módulos)</th>
-                <th className="py-3 px-4 text-right font-semibold">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gov-border">
-              {safeUsers.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="py-3 px-4 font-medium text-gov-text-primary">{u.name}</td>
-                  <td className="py-3 px-4 font-mono text-xs text-gov-text-secondary">{u.email}</td>
-                  <td className="py-3 px-4 text-xs text-gov-text-secondary">{u.cargo ?? <span className="text-gov-text-muted">—</span>}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex flex-wrap gap-1">
-                      {u.accesses.length === 0 && <span className="text-xs text-gov-text-muted">—</span>}
-                      {u.accesses.map((a) => (
-                        <span key={a.module} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono ${a.can_manage_users ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
-                          {moduleName(a.module)}
-                          {a.can_manage_users && <KeyRound className="w-3 h-3" />}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => openEdit(u)}
-                      className="p-2 rounded-lg text-gov-primary hover:bg-gov-primary-light transition-colors"
-                      title="Editar usuário"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                  </td>
+        <div className="overflow-x-auto">
+          {safeUsers.length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground">
+              Nenhum usuário encontrado.
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="py-3 pl-4 font-semibold">Nome</th>
+                  <th className="py-3 font-semibold">E-mail</th>
+                  <th className="py-3 font-semibold">Cargo</th>
+                  <th className="py-3 font-semibold">Acessos (módulos)</th>
+                  <th className="py-3 pr-4 text-right font-semibold">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {safeUsers.map((u) => (
+                  <tr key={u.id} className="transition-colors hover:bg-accent/40">
+                    <td className="py-3 pl-4 font-medium text-foreground">{u.name}</td>
+                    <td className="py-3 font-mono text-xs text-muted-foreground">{u.email}</td>
+                    <td className="py-3 text-xs text-muted-foreground">{u.cargo ?? <span className="text-muted-foreground/60">—</span>}</td>
+                    <td className="py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {u.accesses.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
+                        {u.accesses.map((a) => (
+                          <Badge
+                            key={a.module}
+                            variant={a.can_manage_users ? 'warning' : 'neutral'}
+                            icon={a.can_manage_users ? <KeyRound className="h-3 w-3" /> : undefined}
+                          >
+                            <span className="font-mono">{moduleName(a.module)}</span>
+                          </Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3 pr-4 text-right">
+                      <button
+                        onClick={() => openEdit(u)}
+                        className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        title="Editar usuário"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </Card>
 
       {pagination.total > pagination.per_page && (
-        <div className="flex items-center justify-between px-4 py-3 border border-gov-border rounded-xl bg-white dark:bg-slate-900">
-          <span className="text-xs text-gov-text-secondary">
-            Mostrando <span className="font-semibold">{(pagination.current_page - 1) * pagination.per_page + 1}–{Math.min(pagination.current_page * pagination.per_page, pagination.total)}</span> de <span className="font-semibold">{pagination.total}</span> usuários
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
+          <span className="text-xs text-muted-foreground">
+            Mostrando <span className="font-semibold text-foreground">{(pagination.current_page - 1) * pagination.per_page + 1}–{Math.min(pagination.current_page * pagination.per_page, pagination.total)}</span> de <span className="font-semibold text-foreground">{pagination.total}</span> usuários
           </span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => { const p = pagination.current_page - 1; if (p >= 1) loadServerUsers({ ...filters, q: search || undefined }, p); }}
               disabled={pagination.current_page <= 1}
-              className="px-3 py-1.5 text-xs border border-gov-border rounded-lg disabled:opacity-40 hover:bg-gov-primary/5"
+              className="rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Anterior
             </button>
@@ -295,7 +297,7 @@ export const AccessManagement: React.FC = () => {
               if (page < 1 || page > pagination.last_page) return null;
               return (
                 <button key={page} onClick={() => loadServerUsers({ ...filters, q: search || undefined }, page)}
-                  className={`w-8 h-8 text-xs rounded-lg border ${page === pagination.current_page ? 'bg-gov-primary text-white border-gov-primary' : 'border-gov-border hover:bg-gov-primary/5'}`}>
+                  className={cn('h-8 w-8 rounded-lg border text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', page === pagination.current_page ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-accent')}>
                   {page}
                 </button>
               );
@@ -303,7 +305,7 @@ export const AccessManagement: React.FC = () => {
             <button
               onClick={() => { const p = pagination.current_page + 1; if (p <= pagination.last_page) loadServerUsers({ ...filters, q: search || undefined }, p); }}
               disabled={pagination.current_page >= pagination.last_page}
-              className="px-3 py-1.5 text-xs border border-gov-border rounded-lg disabled:opacity-40 hover:bg-gov-primary/5"
+              className="rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Próxima
             </button>
@@ -328,11 +330,13 @@ export const AccessManagement: React.FC = () => {
       {/* Toasts */}
       <div className="fixed bottom-4 right-4 z-50 space-y-2">
         {toasts.map((t, i) => (
-          <div key={i} className={`px-4 py-3 rounded-lg shadow-lg text-sm max-w-sm ${
-            t.type === 'success' ? 'bg-emerald-600 text-white' :
-            t.type === 'error' ? 'bg-rose-600 text-white' :
-            t.type === 'warning' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
-          }`}>
+          <div key={i} className={cn(
+            'rounded-lg px-4 py-3 text-sm shadow-lg max-w-sm',
+            t.type === 'success' && 'bg-success text-success-foreground',
+            t.type === 'error' && 'bg-destructive text-destructive-foreground',
+            t.type === 'warning' && 'bg-warning text-warning-foreground',
+            t.type === 'info' && 'bg-status-info text-white'
+          )}>
             <strong className="block text-xs font-bold uppercase">{t.title}</strong>
             {t.message}
           </div>
