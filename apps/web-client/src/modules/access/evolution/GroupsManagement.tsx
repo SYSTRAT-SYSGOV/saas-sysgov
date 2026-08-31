@@ -1,14 +1,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Loader2, X, Check, Users, UserCheck } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Save, Users, UserCheck, Briefcase, Layers, X } from 'lucide-react';
 import { accessApi, AccessCategory, AccessGroup, AccessGroupAccess, AccessUser } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
 import { OrgUnitNode } from '../AccessApi';
+import { Card } from '@/components/ui/Card';
+import { Modal } from '@/components/ui/Modal';
+import { Field } from '@/components/ui/Field';
+import { Badge } from '@/components/ui/Badge';
+import { DataTable } from '@/components/ui/DataTable';
+import type { ColumnDef } from '@tanstack/react-table';
 
 interface GroupsManagementProps {
   modules: { alias: string; name: string }[];
   units: OrgUnitNode[];
   notify: (t: any) => void;
 }
+
+const inputCls = 'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring';
 
 export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, units, notify }) => {
   const [categories, setCategories] = useState<AccessCategory[]>([]);
@@ -54,11 +62,8 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
 
   const toggleUser = async (groupId: number, userId: number, isMember: boolean) => {
     try {
-      if (isMember) {
-        await accessApi.removeGroupUser(groupId, userId);
-      } else {
-        await accessApi.assignGroupUsers(groupId, [userId]);
-      }
+      if (isMember) { await accessApi.removeGroupUser(groupId, userId); }
+      else { await accessApi.assignGroupUsers(groupId, [userId]); }
       notify({ type: 'success', title: isMember ? 'Removido' : 'Atribuído', message: 'Usuário atualizado.' });
       load();
     } catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.message }); }
@@ -94,106 +99,126 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
     });
   };
 
+  const categoryColumns: ColumnDef<AccessCategory, any>[] = [
+    { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
+    { id: 'groups_count', header: 'Grupos', cell: ({ row }) => <span className="text-muted-foreground">{row.original.groups_count ?? 0} grupos</span> },
+    { id: 'description', header: 'Descrição', cell: ({ row }) => <span className="text-muted-foreground">{row.original.description ?? ''}</span> },
+    {
+      id: 'actions', header: 'Ações', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-1">
+          <button onClick={() => { setCatName(row.original.name); setCatDesc(row.original.description ?? ''); setCatModal({ edit: row.original }); }} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
+          <button onClick={() => deleteCategory(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
+        </div>
+      ),
+    },
+  ];
+
+  const groupColumns: ColumnDef<AccessGroup, any>[] = [
+    { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
+    { id: 'details', header: 'Detalhes', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.category?.name ?? 'sem categoria'} · {row.original.accesses?.length ?? 0} módulos · {row.original.users_count ?? 0} usuários</span> },
+    {
+      id: 'actions', header: 'Ações', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-1">
+          <button onClick={() => setShowUsers(showUsers === row.original.id ? null : row.original.id)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Users className="h-4 w-4" /></button>
+          <button onClick={() => openGroup(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
+          <button onClick={() => deleteGroup(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-5">
       {/* Categorias */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gov-border shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gov-border flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gov-text-primary">Categorias</h3>
-          <button onClick={() => { setCatName(''); setCatDesc(''); setCatModal({}); }} className="inline-flex items-center gap-1.5 bg-gov-primary text-white px-3 py-1.5 rounded-lg text-xs font-semibold">
-            <Plus className="w-3.5 h-3.5" /> Nova Categoria
+      <Card noPadding className="overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
+            <Briefcase className="h-4 w-4 text-primary" /> Categorias
+          </h3>
+          <button onClick={() => { setCatName(''); setCatDesc(''); setCatModal({}); }} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Plus className="h-3.5 w-3.5" /> Nova Categoria
           </button>
         </div>
-        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-gov-primary" /></div>
-          : categories.length === 0 ? <p className="text-center text-gov-text-muted py-8 text-xs">Nenhuma categoria.</p>
-          : <ul className="divide-y divide-gov-border">
-            {categories.map((c) => (
-              <li key={c.id} className="px-5 py-3 flex items-center justify-between">
-                <div><p className="text-xs font-medium text-gov-text-primary">{c.name}</p><p className="text-[10px] text-gov-text-muted">{c.groups_count ?? 0} grupos · {c.description ?? ''}</p></div>
-                <div className="flex gap-1">
-                  <button onClick={() => { setCatName(c.name); setCatDesc(c.description ?? ''); setCatModal({ edit: c }); }} className="p-1.5 text-gov-text-secondary hover:text-gov-primary"><Pencil className="w-4 h-4" /></button>
-                  <button onClick={() => deleteCategory(c)} className="p-1.5 text-gov-text-secondary hover:text-rose-600"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              </li>
-            ))}
-          </ul>}
-      </div>
+        <div className="p-3">
+          <DataTable columns={categoryColumns} data={categories} loading={loading} emptyText="Nenhuma categoria." pageSize={10} />
+        </div>
+      </Card>
 
       {/* Grupos */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gov-border shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gov-border flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gov-text-primary">Grupos de Acesso</h3>
-          <button onClick={() => openGroup()} className="inline-flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">
-            <Plus className="w-3.5 h-3.5" /> Novo Grupo
+      <Card noPadding className="overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
+            <Layers className="h-4 w-4 text-primary" /> Grupos de Acesso
+          </h3>
+          <button onClick={() => openGroup()} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Plus className="h-3.5 w-3.5" /> Novo Grupo
           </button>
         </div>
-        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-gov-primary" /></div>
-          : groups.length === 0 ? <p className="text-center text-gov-text-muted py-8 text-xs">Nenhum grupo cadastrado.</p>
-          : <ul className="divide-y divide-gov-border">
-            {groups.map((g) => (
-              <li key={g.id} className="px-5 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gov-text-primary">{g.name}</p>
-                  <p className="text-[10px] text-gov-text-muted">{g.category?.name ?? 'sem categoria'} · {g.accesses?.length ?? 0} módulos · {g.users_count ?? 0} usuários</p>
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => setShowUsers(showUsers === g.id ? null : g.id)} className="p-1.5 text-gov-text-secondary hover:text-gov-primary"><Users className="w-4 h-4" /></button>
-                  <button onClick={() => openGroup(g)} className="p-1.5 text-gov-text-secondary hover:text-gov-primary"><Pencil className="w-4 h-4" /></button>
-                  <button onClick={() => deleteGroup(g)} className="p-1.5 text-gov-text-secondary hover:text-rose-600"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              </li>
-            ))}
-          </ul>}
-      </div>
+        <div className="p-3">
+          <DataTable columns={groupColumns} data={groups} loading={loading} emptyText="Nenhum grupo cadastrado." pageSize={10} />
+        </div>
+      </Card>
 
       {/* Modal categoria */}
-      {catModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm mx-4 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold">{catModal.edit ? 'Editar Categoria' : 'Nova Categoria'}</h3>
-              <button onClick={() => setCatModal(null)}><X className="w-5 h-5 text-gov-text-muted" /></button>
-            </div>
-            <div className="space-y-3">
-              <div><label className="block text-xs font-semibold mb-1">Nome *</label><input value={catName} onChange={(e) => setCatName(e.target.value)} className="w-full px-3 py-2 border border-gov-border rounded-lg text-sm" /></div>
-              <div><label className="block text-xs font-semibold mb-1">Descrição</label><input value={catDesc} onChange={(e) => setCatDesc(e.target.value)} className="w-full px-3 py-2 border border-gov-border rounded-lg text-sm" /></div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setCatModal(null)} className="px-4 py-2 text-xs border border-gov-border rounded-lg">Cancelar</button>
-                <button onClick={saveCategory} className="px-4 py-2 text-xs bg-gov-primary text-white rounded-lg"><Check className="w-3.5 h-3.5 inline" /> Salvar</button>
-              </div>
-            </div>
-          </div>
+      <Modal open={!!catModal} onClose={() => setCatModal(null)} title={catModal?.edit ? 'Editar Categoria' : 'Nova Categoria'} icon={<Briefcase className="h-5 w-5 text-primary" />} size="sm"
+        footer={
+          <>
+            <button onClick={() => setCatModal(null)} className="rounded-lg border border-border px-4 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">Cancelar</button>
+            <button onClick={saveCategory} disabled={!catName.trim()} className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Save className="h-3.5 w-3.5" /> Salvar
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Field label="Nome" required>
+            <input value={catName} onChange={(e) => setCatName(e.target.value)} className={inputCls} placeholder="Ex.: Licitações" />
+          </Field>
+          <Field label="Descrição">
+            <input value={catDesc} onChange={(e) => setCatDesc(e.target.value)} className={inputCls} placeholder="Descrição opcional" />
+          </Field>
         </div>
-      )}
+      </Modal>
 
       {/* Modal grupo */}
-      {groupModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl mx-4 p-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold">{groupModal.edit ? 'Editar Grupo' : 'Novo Grupo'}</h3>
-              <button onClick={() => setGroupModal(null)}><X className="w-5 h-5 text-gov-text-muted" /></button>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div><label className="block text-xs font-semibold mb-1">Nome *</label><input value={gName} onChange={(e) => setGName(e.target.value)} className="w-full px-3 py-2 border border-gov-border rounded-lg text-sm" /></div>
-              <div><label className="block text-xs font-semibold mb-1">Categoria</label>
-                <select value={gCategory} onChange={(e) => setGCategory(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-3 py-2 border border-gov-border rounded-lg text-sm">
-                  <option value="">Sem categoria</option>
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-            </div>
-            <div><label className="block text-xs font-semibold mb-1">Descrição</label><input value={gDesc} onChange={(e) => setGDesc(e.target.value)} className="w-full px-3 py-2 border border-gov-border rounded-lg text-sm mb-3" /></div>
+      <Modal open={!!groupModal} onClose={() => setGroupModal(null)} title={groupModal?.edit ? 'Editar Grupo' : 'Novo Grupo'} icon={<Layers className="h-5 w-5 text-primary" />} size="xl"
+        footer={
+          <>
+            <button onClick={() => setGroupModal(null)} className="rounded-lg border border-border px-4 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">Cancelar</button>
+            <button onClick={saveGroup} disabled={!gName.trim()} className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Save className="h-3.5 w-3.5" /> Salvar
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Nome" required>
+              <input value={gName} onChange={(e) => setGName(e.target.value)} className={inputCls} placeholder="Ex.: Grupo de Licitações" />
+            </Field>
+            <Field label="Categoria">
+              <select value={gCategory} onChange={(e) => setGCategory(e.target.value === '' ? '' : Number(e.target.value))} className={inputCls}>
+                <option value="">Sem categoria</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </Field>
+          </div>
+          <Field label="Descrição">
+            <input value={gDesc} onChange={(e) => setGDesc(e.target.value)} className={inputCls} placeholder="Descrição opcional" />
+          </Field>
 
-            <h4 className="text-xs font-bold text-gov-text-primary mb-2">Acessos do grupo (por módulo)</h4>
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+          <div className="border-t border-border pt-4">
+            <h4 className="mb-2 text-xs font-bold text-foreground">Acessos do grupo (por módulo)</h4>
+            <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
               {modules.map((m) => {
                 const acc = gAccesses.find((a) => a.module_alias === m.alias);
                 return (
-                  <div key={m.alias} className="border border-gov-border rounded-lg p-3">
-                    <label className="flex items-center gap-2 cursor-pointer mb-2">
-                      <input type="checkbox" checked={!!acc} onChange={(e) => { if (!e.target.checked) setGAccesses((p) => p.filter((a) => a.module_alias !== m.alias)); else updateAccess(m.alias, {}); }} className="accent-gov-primary" />
-                      <span className="text-xs font-bold">{m.name}</span>
+                  <div key={m.alias} className="rounded-xl border border-border p-3">
+                    <label className="mb-2 flex cursor-pointer items-center gap-2">
+                      <input type="checkbox" checked={!!acc} onChange={(e) => { if (!e.target.checked) setGAccesses((p) => p.filter((a) => a.module_alias !== m.alias)); else updateAccess(m.alias, {}); }} className="accent-primary" />
+                      <span className="text-xs font-bold text-foreground">{m.name}</span>
                     </label>
                     {acc && (
                       <ModuleAccessPicker
@@ -218,14 +243,9 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
                 );
               })}
             </div>
-
-            <div className="flex justify-end gap-2 pt-4 border-t border-gov-border mt-4">
-              <button onClick={() => setGroupModal(null)} className="px-4 py-2 text-xs border border-gov-border rounded-lg">Cancelar</button>
-              <button onClick={saveGroup} disabled={!gName.trim()} className="px-4 py-2 text-xs bg-emerald-600 text-white rounded-lg disabled:opacity-50"><Check className="w-3.5 h-3.5 inline" /> Salvar</button>
-            </div>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Modal atribuir usuários */}
       {showUsers !== null && (() => {
@@ -234,33 +254,32 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
         const members = (group as AccessGroup & { users?: { id: number }[] }).users?.map((u) => u.id) ?? [];
         const filtered = allUsers.filter((u) => !userSearch || u.name.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase()));
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg mx-4 p-5 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold flex items-center gap-2"><UserCheck className="w-4 h-4 text-emerald-600" /> Usuários do grupo: {group.name}</h3>
-                <button onClick={() => setShowUsers(null)}><X className="w-5 h-5 text-gov-text-muted" /></button>
+          <Modal open={!!showUsers} onClose={() => setShowUsers(null)} title={`Usuários do grupo: ${group.name}`} icon={<UserCheck className="h-5 w-5 text-primary" />} size="lg"
+            footer={
+              <button onClick={() => setShowUsers(null)} className="rounded-lg border border-border px-4 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">Fechar</button>
+            }
+          >
+            <div className="space-y-3">
+              <div className="relative">
+                <input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="Buscar usuário..." className={inputCls} />
               </div>
-              <input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="Buscar usuário..." className="w-full px-3 py-2 border border-gov-border rounded-lg text-sm mb-3" />
-              <div className="space-y-1 max-h-72 overflow-y-auto">
-                {filtered.length === 0 && <p className="text-xs text-gov-text-muted p-2">Nenhum usuário.</p>}
+              <div className="max-h-72 space-y-1 overflow-y-auto">
+                {filtered.length === 0 && <p className="p-2 text-xs text-muted-foreground">Nenhum usuário encontrado.</p>}
                 {filtered.map((u) => {
                   const isMember = members.includes(u.id);
                   return (
-                    <label key={u.id} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-gov-primary/5 cursor-pointer">
+                    <label key={u.id} className="flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 transition-colors hover:bg-accent/60">
                       <div>
-                        <p className="text-xs font-medium text-gov-text-primary">{u.name}</p>
-                        <p className="text-[10px] text-gov-text-muted font-mono">{u.email}</p>
+                        <p className="text-xs font-medium text-foreground">{u.name}</p>
+                        <p className="font-mono text-[10px] text-muted-foreground">{u.email}</p>
                       </div>
-                      <input type="checkbox" checked={isMember} onChange={() => toggleUser(group.id, u.id, isMember)} className="accent-emerald-600" />
+                      <input type="checkbox" checked={isMember} onChange={() => toggleUser(group.id, u.id, isMember)} className="h-4 w-4 accent-primary" />
                     </label>
                   );
                 })}
               </div>
-              <div className="flex justify-end pt-4">
-                <button onClick={() => setShowUsers(null)} className="px-4 py-2 text-xs border border-gov-border rounded-lg">Fechar</button>
-              </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
     </div>

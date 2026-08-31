@@ -49,5 +49,8 @@ export type { ModalProps } from './Modal';
 export { DataTable } from './DataTable';
 export type { DataTableProps } from './DataTable';
 
+export { Accordion } from './Accordion';
+export type { AccordionProps, AccordionItemProps } from './Accordion';
+
 export { Tabs } from './Tabs';
 export type { TabsProps, TabsItem } from './Tabs';
