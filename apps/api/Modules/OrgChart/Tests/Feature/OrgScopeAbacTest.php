@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\OrgChart\Tests\Feature;
 
+use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -13,7 +14,6 @@ use Modules\OrgChart\Services\OrgScopeService;
 use Modules\OrgChart\Services\OrgTreeService;
 use Modules\OrgChart\Services\OrgUserService;
 use Modules\OrgChart\Tests\TestCase;
-use Spatie\Permission\Models\Role;
 
 final class OrgScopeAbacTest extends TestCase
 {
@@ -34,9 +34,12 @@ final class OrgScopeAbacTest extends TestCase
         $this->userService = app(OrgUserService::class);
         $this->scopeService = app(OrgScopeService::class);
 
-        Role::findOrCreate('admin_tenant', 'web');
-        Role::findOrCreate('responsavel', 'web');
-        Role::findOrCreate('membro', 'web');
+        foreach (['admin_tenant', 'responsavel', 'membro'] as $slug) {
+            Role::query()->firstOrCreate(
+                ['slug' => $slug, 'scope' => 'tenant', 'tenant_id' => $this->tenant->id],
+                ['name' => ucfirst(str_replace('_', ' ', $slug)), 'guard_name' => 'web', 'is_system' => true],
+            );
+        }
     }
 
     protected function tearDown(): void
@@ -45,10 +48,17 @@ final class OrgScopeAbacTest extends TestCase
         parent::tearDown();
     }
 
+    private function attachRole(User $user, string $slug): void
+    {
+        $role = Role::where('slug', $slug)->firstOrFail();
+        $user->roles()->syncWithoutDetaching([$role->id]);
+        $user->tenants()->syncWithoutDetaching([$this->tenant->id => ['status' => 'active', 'is_primary' => true]]);
+    }
+
     public function test_scope_all_user_has_unrestricted_access(): void
     {
         $user = User::create(['name' => 'Admin Municipal', 'email' => 'admin@araucaria.pr.gov.br', 'password' => 'secret']);
-        $user->assignRole('admin_tenant');
+        $this->attachRole($user, 'admin_tenant');
 
         $allowedIds = $this->scopeService->getAllowedOrgUnitIds($user);
 
@@ -67,7 +77,7 @@ final class OrgScopeAbacTest extends TestCase
 
         // 2. Cria Secretário de Saúde com vínculo de 'responsavel'
         $secretario = User::create(['name' => 'Dr. Secretário', 'email' => 'secretario.saude@araucaria.pr.gov.br', 'password' => 'secret']);
-        $secretario->assignRole('responsavel');
+        $this->attachRole($secretario, 'responsavel');
         $this->userService->linkUser($secSaude, $secretario->id, ['role' => 'responsavel', 'is_primary' => true]);
 
         // 3. Verifica que ele acessa SMS, DVS e DFF, mas NÃO SMED nem Gabinete
@@ -89,7 +99,7 @@ final class OrgScopeAbacTest extends TestCase
 
         // Usuário membro apenas do Departamento
         $servidor = User::create(['name' => 'Servidor Operador', 'email' => 'servidor@araucaria.pr.gov.br', 'password' => 'secret']);
-        $servidor->assignRole('membro');
+        $this->attachRole($servidor, 'membro');
         $this->userService->linkUser($dept, $servidor->id, ['role' => 'membro', 'is_primary' => true]);
 
         $allowedIds = $this->scopeService->getAllowedOrgUnitIds($servidor);
