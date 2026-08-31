@@ -33,3 +33,9 @@ export type { OrgScopeIndicatorProps } from './OrgScopeIndicator';
 
 export { OrgTreeNodeCard } from './OrgTreeNodeCard';
 export type { OrgTreeNodeCardProps } from './OrgTreeNodeCard';
+
+export { Switch } from './Switch';
+export type { SwitchProps } from './Switch';
+
+export { Select } from './Select';
+export type { SelectProps, SelectOption } from './Select';
