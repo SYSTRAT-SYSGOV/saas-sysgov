@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Loader2, Save, ShieldCheck, Filter } from 'lucide-react';
 import { accessApi, TenantRole, TenantPermission } from '../AccessApi';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { DataTable } from '@/components/ui/DataTable';
+import type { ColumnDef } from '@tanstack/react-table';
 
 const inputCls = 'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring';
 
@@ -67,6 +69,39 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
   const modules = [...new Set(permissions.map((p) => p.module ?? 'admin'))].sort();
   const filteredPerms = permissions.filter((p) => !permFilter || (p.module ?? 'admin') === permFilter);
 
+  const roleColumns: ColumnDef<TenantRole, any>[] = [
+    {
+      id: 'name', header: 'Role', accessorKey: 'name',
+      cell: ({ row }) => (
+        <>
+          <span className="font-medium text-foreground">{row.original.name}</span>
+          {row.original.description ? <span className="block text-[10px] text-muted-foreground">{row.original.description}</span> : null}
+        </>
+      ),
+    },
+    { id: 'slug', header: 'Slug', accessorKey: 'slug', cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.slug}</span> },
+    {
+      id: 'permissions', header: 'Permissões',
+      cell: ({ row }) => (
+        <div className="flex max-w-xs flex-wrap justify-center gap-1">
+          {row.original.permissions.slice(0, 4).map((p) => <Badge key={p.id} variant="primary"><span className="font-mono">{p.slug}</span></Badge>)}
+          {row.original.permissions.length > 4 && <span className="text-[10px] text-muted-foreground">+{row.original.permissions.length - 4}</span>}
+          {row.original.permissions.length === 0 && <span className="text-[10px] text-muted-foreground">—</span>}
+        </div>
+      ),
+    },
+    { id: 'is_system', header: 'Sistema', cell: ({ row }) => row.original.is_system ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
+    {
+      id: 'actions', header: 'Ações', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-1">
+          <button onClick={() => openEdit(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
+          <button onClick={() => handleDelete(row.original)} disabled={row.original.is_system} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <Card noPadding className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -80,43 +115,10 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-      ) : roles.length === 0 ? (
-        <p className="py-12 text-center text-xs text-muted-foreground">Nenhuma role cadastrada.</p>
       ) : (
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border text-left uppercase tracking-wider text-[10px] text-muted-foreground">
-              <th className="py-3 pl-4 font-semibold">Role</th>
-              <th className="py-3 font-semibold">Slug</th>
-              <th className="py-3 font-semibold">Permissões</th>
-              <th className="py-3 font-semibold">Sistema</th>
-              <th className="py-3 pr-4 text-right font-semibold">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {roles.map((role) => (
-              <tr key={role.id} className="transition-colors hover:bg-accent/40">
-                <td className="py-3 pl-4">
-                  <span className="font-medium text-foreground">{role.name}</span>
-                  {role.description ? <span className="block text-[10px] text-muted-foreground">{role.description}</span> : null}
-                </td>
-                <td className="py-3 font-mono text-muted-foreground">{role.slug}</td>
-                <td className="py-3">
-                  <div className="flex max-w-xs flex-wrap gap-1">
-                    {role.permissions.slice(0, 4).map((p) => <Badge key={p.id} variant="primary"><span className="font-mono">{p.slug}</span></Badge>)}
-                    {role.permissions.length > 4 && <span className="text-[10px] text-muted-foreground">+{role.permissions.length - 4}</span>}
-                    {role.permissions.length === 0 && <span className="text-[10px] text-muted-foreground">—</span>}
-                  </div>
-                </td>
-                <td className="py-3">{role.is_system ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span>}</td>
-                <td className="py-3 pr-4 text-right">
-                  <button onClick={() => openEdit(role)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
-                  <button onClick={() => handleDelete(role)} disabled={role.is_system} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="p-3">
+          <DataTable columns={roleColumns} data={roles} loading={loading} emptyText="Nenhuma role cadastrada." pageSize={10} />
+        </div>
       )}
 
       <Modal

@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Loader2, Save, Briefcase } from 'lucide-react';
 import { accessApi, Cargo } from '../AccessApi';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { DataTable } from '@/components/ui/DataTable';
+import type { ColumnDef } from '@tanstack/react-table';
 
 const inputCls = 'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring';
 
@@ -47,6 +49,20 @@ export const CargosManagement: React.FC<{ notify: (t: any) => void }> = ({ notif
     catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || e?.message }); }
   };
 
+  const cargoColumns: ColumnDef<Cargo, any>[] = [
+    { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
+    { id: 'description', header: 'Descrição', cell: ({ row }) => <span className="text-muted-foreground">{row.original.description ?? '—'}</span> },
+    {
+      id: 'actions', header: 'Ações', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-1">
+          <button onClick={() => openEdit(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
+          <button onClick={() => handleDelete(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <Card noPadding className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -60,30 +76,10 @@ export const CargosManagement: React.FC<{ notify: (t: any) => void }> = ({ notif
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-      ) : cargos.length === 0 ? (
-        <p className="py-12 text-center text-xs text-muted-foreground">Nenhum cargo cadastrado.</p>
       ) : (
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border text-left uppercase tracking-wider text-[10px] text-muted-foreground">
-              <th className="py-3 pl-4 font-semibold">Nome</th>
-              <th className="py-3 font-semibold">Descrição</th>
-              <th className="py-3 pr-4 text-right font-semibold">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {cargos.map((c) => (
-              <tr key={c.id} className="transition-colors hover:bg-accent/40">
-                <td className="py-3 pl-4 font-medium text-foreground">{c.name}</td>
-                <td className="py-3 text-muted-foreground">{c.description ?? '—'}</td>
-                <td className="py-3 pr-4 text-right">
-                  <button onClick={() => openEdit(c)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
-                  <button onClick={() => handleDelete(c)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="p-3">
+          <DataTable columns={cargoColumns} data={cargos} loading={loading} emptyText="Nenhum cargo cadastrado." pageSize={10} />
+        </div>
       )}
 
       <Modal

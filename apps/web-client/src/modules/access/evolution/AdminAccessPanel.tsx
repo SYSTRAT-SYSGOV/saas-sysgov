@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { LayoutGrid, Users, Clock, MailWarning, RotateCcw, XCircle, Briefcase, Layers, ShieldCheck, Building2 } from 'lucide-react';
 import { accessApi, AccessMatrixRow, AccessModuleGroup, ExpiringAccess, AccessModule, OrgUnitNode } from '../AccessApi';
 import { AccessBadge, formatDate } from './AccessBadge';
@@ -8,7 +8,9 @@ import { RolesManagement } from './RolesManagement';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs } from '@/components/ui/Tabs';
+import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';
+import type { ColumnDef } from '@tanstack/react-table';
 
 type Tab = 'matrix' | 'byModule' | 'expiring' | 'pending' | 'cargos' | 'groups' | 'roles';
 
@@ -66,6 +68,21 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
     }
   };
 
+  const byModuleColumns: ColumnDef<AccessModuleGroup['users'][number], any>[] = [
+    { id: 'user_name', header: 'Usuário', accessorKey: 'user_name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.user_name}</span> },
+    { id: 'role', header: 'Papel', accessorKey: 'role', cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.role}</span> },
+    { id: 'scope', header: 'Escopo', cell: ({ row }) => row.original.all_org_units ? <Badge variant="success">Todas</Badge> : <Badge variant="neutral">Restrito</Badge> },
+    { id: 'can_manage_users', header: 'Admin do módulo', cell: ({ row }) => row.original.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
+    { id: 'status', header: 'Status', enableSorting: false, cell: ({ row }) => <AccessBadge status={row.original.status} validTo={row.original.valid_to} /> },
+  ];
+
+  const expiringColumns: ColumnDef<ExpiringAccess, any>[] = [
+    { id: 'user_name', header: 'Usuário', accessorKey: 'user_name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.user_name}</span> },
+    { id: 'module', header: 'Módulo', accessorKey: 'module', cell: ({ row }) => <span className="font-mono">{row.original.module}</span> },
+    { id: 'valid_to', header: 'Expira em', accessorKey: 'valid_to', cell: ({ row }) => <span className="font-semibold text-warning">{formatDate(row.original.valid_to)}</span> },
+    { id: 'days_left', header: 'Dias restantes', accessorKey: 'days_left', cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.days_left} dia(s)</span> },
+  ];
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: 'matrix', label: 'Matriz de Acessos', icon: <LayoutGrid className="h-4 w-4" /> },
     { key: 'byModule', label: 'Por Módulo', icon: <Users className="h-4 w-4" /> },
@@ -99,28 +116,9 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
                       <Badge variant="primary">{g.module}</Badge>
                       <span className="text-xs font-semibold text-muted-foreground">{g.users.length} usuário(s)</span>
                     </div>
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="text-left uppercase tracking-wider text-[10px] text-muted-foreground">
-                          <th className="py-2 pl-4 font-semibold">Usuário</th>
-                          <th className="py-2 font-semibold">Papel</th>
-                          <th className="py-2 font-semibold">Escopo</th>
-                          <th className="py-2 font-semibold">Admin do módulo</th>
-                          <th className="py-2 pr-4 text-right font-semibold">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {g.users.map((u, i) => (
-                          <tr key={i} className="transition-colors hover:bg-accent/40">
-                            <td className="py-2.5 pl-4 font-medium text-foreground">{u.user_name}</td>
-                            <td className="font-mono text-muted-foreground">{u.role}</td>
-                            <td>{u.all_org_units ? <Badge variant="success">Todas</Badge> : <Badge variant="neutral">Restrito</Badge>}</td>
-                            <td>{u.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span>}</td>
-                            <td className="pr-4 text-right"><AccessBadge status={u.status} validTo={u.valid_to} /></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <div className="p-3">
+                      <DataTable columns={byModuleColumns} data={g.users} emptyText="Sem usuários neste módulo." pageSize={10} pagination={g.users.length > 10} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -128,26 +126,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
             {tab === 'expiring' && (
               <div>
                 {expiring.length === 0 ? <Empty text="Nenhum acesso expirando nos próximos 30 dias." /> : (
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-left uppercase tracking-wider text-[10px] text-muted-foreground">
-                        <th className="py-2 font-semibold">Usuário</th>
-                        <th className="py-2 font-semibold">Módulo</th>
-                        <th className="py-2 font-semibold">Expira em</th>
-                        <th className="py-2 text-right font-semibold">Dias restantes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {expiring.map((e) => (
-                        <tr key={e.id} className="transition-colors hover:bg-accent/40">
-                          <td className="py-2.5 font-medium text-foreground">{e.user_name}</td>
-                          <td className="font-mono">{e.module}</td>
-                          <td className="font-semibold text-warning">{formatDate(e.valid_to)}</td>
-                          <td className="text-right font-mono tabular-nums">{e.days_left} dia(s)</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <DataTable columns={expiringColumns} data={expiring} emptyText="Nenhum acesso expirando." pageSize={10} />
                 )}
               </div>
             )}
@@ -174,52 +153,38 @@ const MatrixTable: React.FC<{
   const unitName = (id: number) => flatUnits.find((u) => u.id === id)?.name ?? `#${id}`;
   const scopeDisplay = (r: AccessMatrixRow) => r.all_org_units ? 'Todas' : r.org_unit_ids.length === 0 ? '—' : r.org_unit_ids.map(unitName).join(', ');
 
+  const matrixColumns: ColumnDef<AccessMatrixRow, any>[] = [
+    { id: 'user_name', header: 'Usuário', accessorKey: 'user_name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.user_name}</span> },
+    { id: 'module', header: 'Módulo', accessorKey: 'module', cell: ({ row }) => <span className="font-mono">{row.original.module}</span> },
+    { id: 'role', header: 'Papel', accessorKey: 'role', cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.role}</span> },
+    { id: 'scope', header: 'Secretarias', cell: ({ row }) => <span className="max-w-[160px] truncate" title={scopeDisplay(row.original)}>{scopeDisplay(row.original)}</span> },
+    { id: 'can_manage_users', header: 'Admin', cell: ({ row }) => row.original.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
+    { id: 'status', header: 'Status', enableSorting: false, cell: ({ row }) => <AccessBadge status={row.original.status} expiring={row.original.expiring} validTo={row.original.valid_to} /> },
+    { id: 'valid_to', header: 'Vigência', accessorKey: 'valid_to', cell: ({ row }) => <span className="font-mono text-muted-foreground">{formatDate(row.original.valid_to)}</span> },
+    { id: 'granted_by', header: 'Concedido por', accessorKey: 'granted_by', cell: ({ row }) => <span className="text-muted-foreground">{row.original.granted_by ?? '—'}</span> },
+    {
+      id: 'actions', header: 'Ações', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-1">
+          {(row.original.status === 'revoked' || row.original.status === 'expired') && (
+            <button onClick={() => onRenew(row.original)} title="Renovar" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-success/10 hover:text-success focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          )}
+          {row.original.status === 'active' && (
+            <button onClick={() => onRevoke(row.original)} title="Revogar" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <XCircle className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   if (rows.length === 0) return <Empty text="Nenhum acesso configurado." />;
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-border text-left uppercase tracking-wider text-[10px] text-muted-foreground">
-            <th className="py-2.5 pl-4 font-semibold">Usuário</th>
-            <th className="py-2.5 font-semibold">Módulo</th>
-            <th className="py-2.5 font-semibold">Papel</th>
-            <th className="py-2.5 font-semibold">Secretarias</th>
-            <th className="py-2.5 font-semibold">Admin</th>
-            <th className="py-2.5 font-semibold">Status</th>
-            <th className="py-2.5 font-semibold">Vigência</th>
-            <th className="py-2.5 font-semibold">Concedido por</th>
-            <th className="py-2.5 pr-4 text-right font-semibold">Ações</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((r) => (
-            <tr key={r.id} className="transition-colors hover:bg-accent/40">
-              <td className="py-2.5 pl-4 font-medium text-foreground">{r.user_name}</td>
-              <td className="font-mono">{r.module}</td>
-              <td className="font-mono text-muted-foreground">{r.role}</td>
-              <td className="max-w-[160px] truncate" title={scopeDisplay(r)}>{scopeDisplay(r)}</td>
-              <td>{r.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span>}</td>
-              <td><AccessBadge status={r.status} expiring={r.expiring} validTo={r.valid_to} /></td>
-              <td className="font-mono text-muted-foreground">{formatDate(r.valid_to)}</td>
-              <td className="text-muted-foreground">{r.granted_by ?? '—'}</td>
-              <td className="pr-4">
-                <div className="flex justify-end gap-1">
-                  {(r.status === 'revoked' || r.status === 'expired') && (
-                    <button onClick={() => onRenew(r)} title="Renovar" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-success/10 hover:text-success focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      <RotateCcw className="h-4 w-4" />
-                    </button>
-                  )}
-                  {r.status === 'active' && (
-                    <button onClick={() => onRevoke(r)} title="Revogar" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      <XCircle className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="p-3">
+      <DataTable columns={matrixColumns} data={rows} emptyText="Nenhum acesso configurado." pageSize={10} />
     </div>
   );
 };
