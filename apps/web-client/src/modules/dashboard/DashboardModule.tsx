@@ -6,8 +6,7 @@ import { useOrgUnit } from '@/core/orgunit';
 import { MODULE_REGISTRY } from '@/config/moduleRegistry';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { cn } from '@/lib/utils';
-import {
+import { cn } from '@/lib/utils';import {
   Sparkles,
   Building2,
   Settings2,
@@ -77,6 +76,7 @@ export const DashboardModule: React.FC = () => {
   const { user, modules: activeModules, permissions } = useAuth();
   const { tenant } = useTenant();
   const { scopeInfo, unitList, activeUnit, orgTree, loading: loadingUnits, hasMultipleUnits } = useOrgUnit();
+  const navigate = useNavigate();
   const [favorites, setFavorites] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { return []; }
   });
@@ -207,6 +207,7 @@ export const DashboardModule: React.FC = () => {
               <a
                 key={mod.id}
                 href={mod.route}
+                onClick={(e) => { e.preventDefault(); navigate(mod.route); }}
                 className={cn(
                   'group relative flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 text-center transition-all',
                   'hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5',
@@ -255,6 +256,7 @@ export const DashboardModule: React.FC = () => {
               <a
                 key={mod.id}
                 href={mod.route}
+                onClick={(e) => { e.preventDefault(); navigate(mod.route); }}
                 className={cn(
                   'group relative flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 text-center transition-all',
                   'hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5',
