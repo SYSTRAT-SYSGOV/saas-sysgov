@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { apiClient } from '@/core/api/client';
 
@@ -44,6 +45,7 @@ function buildUnitList(nodes: OrgTreeNode[], allowedIds: Set<number>, depth = 0)
 }
 
 export const OrgUnitProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { token } = useAuth();
   const { tenant } = useTenant();
   const [scopeInfo, setScopeInfo] = useState<OrgScopeInfo | null>(null);
   const [orgTree, setOrgTree] = useState<OrgTreeNode[]>([]);
@@ -54,6 +56,12 @@ export const OrgUnitProvider: React.FC<{ children: ReactNode }> = ({ children })
   });
 
   useEffect(() => {
+    if (!token) {
+      setScopeInfo(null);
+      setOrgTree([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     Promise.all([
       apiClient.get<{ data: OrgScopeInfo }>('/org-units/scope'),
@@ -65,7 +73,7 @@ export const OrgUnitProvider: React.FC<{ children: ReactNode }> = ({ children })
       })
       .catch(() => { setScopeInfo(null); setOrgTree([]); })
       .finally(() => setLoading(false));
-  }, [tenant?.id]);
+  }, [token, tenant?.id]);
 
   const updateActiveUnitId = useCallback((id: number) => {
     setActiveUnitId(id);

@@ -35,46 +35,43 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
 
   return (
     <header className="sticky top-0 z-30 w-full bg-white border-b border-border shadow-sm">
-      {/* Header Main — largura total */}
+      {/* Header Main — largura total, conteúdo alinhado à página */}
       <div className="w-full bg-white border-b border-border/40">
-        <div className="w-full flex items-center justify-between">
-          {/* Left: hamburger (borda esquerda) */}
-          <div className="pl-4 lg:pl-8 shrink-0">
-            <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring" aria-label="Abrir Menu">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3.5 flex items-center justify-between">
+          {/* Left: hamburger + título + subtítulo (alinhados à página) */}
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring shrink-0" aria-label="Abrir Menu">
               <Menu className="w-6 h-6" />
             </button>
-          </div>
-
-          {/* Center: título + subtítulo (alinhados à página) */}
-          <div className="mx-auto max-w-7xl flex-1 px-4 lg:px-8 py-3.5 min-w-0 text-left">
-            <span className="text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap">
-              <span className="text-[#1351b4] font-[900]">SYS</span>
-              <span className="ml-1 text-[#168821] font-[900]">GOV</span>
-            </span>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary whitespace-nowrap">
-                <Building2 className="h-3 w-3 shrink-0" />
-                {tenant?.name}
+            <div className="min-w-0">
+              <span className="text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap">
+                <span className="text-[#1351b4] font-[900]">SYS</span>
+                <span className="ml-1 text-[#168821] font-[900]">GOV</span>
               </span>
-              {loadingUnit ? (
-                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-              ) : activeUnit ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success whitespace-nowrap">
-                  <ShieldCheck className="h-3 w-3 shrink-0" />
-                  {activeUnit.name}
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary whitespace-nowrap">
+                  <Building2 className="h-3 w-3 shrink-0" />
+                  {tenant?.name}
                 </span>
-              ) : null}
+                {loadingUnit ? (
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                ) : activeUnit ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success whitespace-nowrap">
+                    <ShieldCheck className="h-3 w-3 shrink-0" />
+                    {activeUnit.name}
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          {/* Right: notificações + perfil (borda direita, largura total) */}
-          <div className="flex items-center gap-2 sm:gap-3 pr-4 lg:pr-8 shrink-0">
+          {/* Right: notificações + perfil (borda direita) */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button type="button" className="relative p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition" title="Notificações">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-white" />
             </button>
-
-            {/* Perfil: nome + sair */}
+            {/* Perfil */}
             <div className="relative">
               <button type="button" onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)} className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-lg hover:bg-accent border border-transparent hover:border-border transition">
                 <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-mono font-bold text-sm">
