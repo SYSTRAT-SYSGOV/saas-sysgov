@@ -795,51 +795,46 @@ export const OrgChartModule: React.FC = () => {
           {/* Lado Direito: Ações Alinhadas em Linha Única */}
           <div className="flex items-center gap-3 shrink-0 self-start lg:self-center">
             {/* Botão Atualizar */}
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:text-[#0c326f] hover:bg-slate-50 hover:border-slate-300 font-semibold text-sm transition-all shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0c326f]"
+              leftIcon={<RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
               title="Recarregar organograma"
             >
-              <RefreshCw className={`w-4 h-4 text-slate-500 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Atualizar</span>
-            </button>
+            </Button>
 
             {/* Menu / Botão de Exportação */}
             <div className="relative group">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:text-[#0c326f] hover:bg-slate-50 hover:border-slate-300 font-semibold text-sm transition-all shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0c326f]"
-              >
-                <Download className="w-4 h-4 text-slate-500" />
+              <Button variant="secondary" leftIcon={<Download className="w-4 h-4" />}>
                 <span>Exportar</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
 
               {/* Dropdown de Exportação */}
-              <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-2xl border border-slate-200 shadow-xl py-2 z-30 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-150">
+              <div className="absolute right-0 mt-1.5 w-60 bg-popover rounded-xl border border-border shadow-xl py-2 z-30 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-150">
                 <button
                   type="button"
                   onClick={handleExportJson}
-                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-foreground hover:bg-accent hover:text-primary flex items-center gap-2.5 transition-colors cursor-pointer"
                 >
                   <FileJson className="w-4 h-4 text-indigo-600 shrink-0" />
                   <div>
                     <span className="block font-bold">Manifest JSON</span>
-                    <span className="text-[11px] text-slate-500 font-normal">Com checksum SHA-256</span>
+                    <span className="text-[11px] text-muted-foreground font-normal">Com checksum SHA-256</span>
                   </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleExportCsv}
-                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-foreground hover:bg-accent hover:text-success flex items-center gap-2.5 transition-colors cursor-pointer"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
                   <div>
                     <span className="block font-bold">Exportar Planilha (CSV)</span>
-                    <span className="text-[11px] text-slate-500 font-normal">Compatível com MS Excel</span>
+                    <span className="text-[11px] text-muted-foreground font-normal">Compatível com MS Excel</span>
                   </div>
                 </button>
               </div>
@@ -847,14 +842,14 @@ export const OrgChartModule: React.FC = () => {
 
             {/* Botão Primário + Nova Unidade */}
             {can('org.create') && (
-              <button
-                type="button"
+              <Button
+                variant="primary"
                 onClick={() => handleOpenCreateModal(null)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white font-bold text-sm transition-all shadow-sm hover:shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#10b981] focus:ring-offset-2"
+                leftIcon={<Plus className="w-4 h-4" />}
+                className="bg-[#10b981] hover:bg-[#059669] text-white font-bold"
               >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>Nova Unidade</span>
-              </button>
+                Nova Unidade
+              </Button>
             )}
           </div>
         </div>
