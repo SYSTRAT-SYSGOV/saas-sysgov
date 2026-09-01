@@ -819,7 +819,7 @@ export const OrgChartModule: React.FC = () => {
                   onClick={handleExportJson}
                   className="w-full px-4 py-2.5 text-left text-xs font-semibold text-foreground hover:bg-accent hover:text-primary flex items-center gap-2.5 transition-colors cursor-pointer"
                 >
-                  <FileJson className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <FileJson className="w-4 h-4 text-primary shrink-0" />
                   <div>
                     <span className="block font-bold">Manifest JSON</span>
                     <span className="text-[11px] text-muted-foreground font-normal">Com checksum SHA-256</span>
@@ -873,7 +873,7 @@ export const OrgChartModule: React.FC = () => {
           <button
             type="button"
             onClick={() => setSuccessMessage(null)}
-            className="text-emerald-700 hover:text-emerald-900 text-xs font-bold uppercase tracking-wider px-2 py-1 rounded hover:bg-emerald-100/60"
+            className="text-emerald-700 hover:text-success text-xs font-bold uppercase tracking-wider px-2 py-1 rounded hover:bg-emerald-100/60"
           >
             Fechar
           </button>
@@ -898,7 +898,7 @@ export const OrgChartModule: React.FC = () => {
           title="Deptos. & Divisões"
           value={String(kpis.deptosDivisoes)}
           subtitle="Unidades subordinadas"
-          icon={<Network className="w-5 h-5 text-indigo-600" />}
+          icon={<Network className="w-5 h-5 text-primary" />}
         />
         <KpiCard
           title="Servidores Alocados"
@@ -1027,9 +1027,9 @@ export const OrgChartModule: React.FC = () => {
 
       {/* VISÃO 1: ÁRVORE HIERÁRQUICA INTERATIVA */}
       {viewMode === 'tree' && (
-        <div className="p-6 sm:p-8 rounded-2xl bg-[#F8F9FA] border border-slate-200/90 shadow-sm min-h-[480px]">
+        <div className="p-6 sm:p-8 rounded-2xl bg-[#F8F9FA] border border-border200/90 shadow-sm min-h-[480px]">
           {isLoading ? (
-            <div className="py-24 flex flex-col items-center justify-center gap-3 text-slate-600">
+            <div className="py-24 flex flex-col items-center justify-center gap-3 text-muted-foreground">
               <RefreshCw className="w-9 h-9 text-[#0c326f] animate-spin" />
               <span className="font-mono text-sm font-semibold">Carregando estrutura do organograma...</span>
             </div>
@@ -1037,9 +1037,9 @@ export const OrgChartModule: React.FC = () => {
             renderTreeNodes(filteredTree)
           ) : (
             <div className="py-20 text-center space-y-3">
-              <Building2 className="w-12 h-12 text-slate-600 mx-auto" />
+              <Building2 className="w-12 h-12 text-muted-foreground mx-auto" />
               <h3 className="text-lg font-bold text-[#0c326f]">Nenhuma unidade encontrada</h3>
-              <p className="text-sm text-slate-700 max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 Não há unidades correspondentes aos critérios de filtro aplicados.
               </p>
             </div>
@@ -1182,14 +1182,14 @@ export const OrgChartModule: React.FC = () => {
                     <span className="text-emerald-800 font-medium">{sec.responsibles[0].name}</span>
                   </div>
                 ) : (
-                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 mb-4 text-xs text-slate-600 italic">
+                  <div className="p-2.5 rounded-xl bg-accent/40 border border-border200 mb-4 text-xs text-muted-foreground italic">
                     Sem gestor titular registrado
                   </div>
                 )}
 
                 {/* Subdivisões */}
                 <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider font-mono">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider font-mono">
                     Unidades Subordinadas ({sec.children?.length || 0}):
                   </span>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
@@ -1197,22 +1197,22 @@ export const OrgChartModule: React.FC = () => {
                       sec.children.map((child) => (
                         <div
                           key={child.id}
-                          className="flex items-center justify-between p-2 rounded-lg bg-slate-50 text-xs border border-slate-100"
+                          className="flex items-center justify-between p-2 rounded-lg bg-accent/40 text-xs border border-border100"
                         >
-                          <span className="font-medium text-slate-800 truncate">{child.name}</span>
-                          <span className="font-mono font-bold text-slate-700">{child.code}</span>
+                          <span className="font-medium text-foreground truncate">{child.name}</span>
+                          <span className="font-mono font-bold text-muted-foreground">{child.code}</span>
                         </div>
                       ))
                     ) : (
-                      <span className="text-xs text-slate-600 italic">Nenhuma sub-unidade vinculada</span>
+                      <span className="text-xs text-muted-foreground italic">Nenhuma sub-unidade vinculada</span>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-mono text-xs text-slate-700 font-bold tabular-nums">
-                  <Users className="w-4 h-4 text-slate-600" />
+              <div className="mt-6 pt-4 border-t border-border100 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground font-bold tabular-nums">
+                  <Users className="w-4 h-4 text-muted-foreground" />
                   <span>{sec.users_count || 0} servidores</span>
                 </div>
 
@@ -1220,7 +1220,7 @@ export const OrgChartModule: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleOpenCreateModal(sec.id)}
-                    className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50"
+                    className="p-1.5 rounded-lg text-emerald-700 hover:bg-accent"
                     title="Adicionar sub-unidade"
                   >
                     <Plus className="w-4 h-4" />
@@ -1228,7 +1228,7 @@ export const OrgChartModule: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleOpenEditModal(sec)}
-                    className="p-1.5 rounded-lg text-amber-700 hover:bg-amber-50"
+                    className="p-1.5 rounded-lg text-amber-700 hover:bg-warning/10"
                     title="Editar"
                   >
                     <Edit3 className="w-4 h-4" />
@@ -1532,7 +1532,7 @@ export const OrgChartModule: React.FC = () => {
         open={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Manifest Versionado de Exportação"
-        icon={<FileJson className="h-5 w-5 text-indigo-600" />}
+        icon={<FileJson className="h-5 w-5 text-primary" />}
         size="full"
         footer={
           <div className="flex w-full items-center justify-between">
