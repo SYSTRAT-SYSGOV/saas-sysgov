@@ -34,6 +34,8 @@ import {
   OrgScopeIndicator,
   OrgTypeBadge,
   StatusChip,
+  Dialog,
+  Field,
 } from '@/components/ui';
 import {
   sysgovApi,
@@ -1246,77 +1248,66 @@ export const OrgChartModule: React.FC = () => {
         </div>
       )}
 
-      {/* --- MODAIS DE GESTÃO ORGANIZACIONAL --- */}
+      {/* --- MODAIS DE GESTÃO ORGANIZACIONAL (shadcn Dialog) --- */}
 
       {/* Modal 1: Criar Unidade */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-7 shadow-2xl border border-slate-200 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h3 className="text-xl font-bold text-[#0c326f]">
-                {targetParentId ? 'Adicionar Sub-unidade Subordinada' : 'Cadastrar Nova Unidade'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                  Nome da Unidade *
-                </label>
+      <Dialog
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title={targetParentId ? 'Adicionar Sub-unidade Subordinada' : 'Cadastrar Nova Unidade'}
+        icon={<Plus className="h-5 w-5 text-primary" />}
+        size="lg"
+        footer={
+          <>
+            <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" type="submit" form="org-create-form" className="bg-[#10b981] hover:bg-[#059669] text-white font-bold">
+              Cadastrar Unidade
+            </Button>
+          </>
+        }
+      >
+            <form id="org-create-form" onSubmit={handleCreateSubmit} className="space-y-4">
+              <Field label="Nome da Unidade" required>
                 <input
                   type="text"
                   required
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                   placeholder="Ex: Secretaria Municipal de Educação"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-[#0c326f] focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-ring focus:outline-none"
                 />
-              </div>
+              </Field>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                    Código Técnico *
-                  </label>
+                <Field label="Código Técnico" required>
                   <input
                     type="text"
                     required
                     value={createForm.code}
                     onChange={(e) => setCreateForm({ ...createForm, code: e.target.value.toUpperCase() })}
                     placeholder="Ex: SMED-01"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-mono uppercase focus:ring-2 focus:ring-[#0c326f] focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm font-mono uppercase focus:ring-2 focus:ring-ring focus:outline-none"
                   />
-                </div>
+                </Field>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                    Sigla
-                  </label>
+                <Field label="Sigla">
                   <input
                     type="text"
                     value={createForm.acronym || ''}
                     onChange={(e) => setCreateForm({ ...createForm, acronym: e.target.value.toUpperCase() })}
                     placeholder="Ex: SMED"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-mono uppercase focus:ring-2 focus:ring-[#0c326f] focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm font-mono uppercase focus:ring-2 focus:ring-ring focus:outline-none"
                   />
-                </div>
+                </Field>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                  Tipo Organizacional *
-                </label>
+              <Field label="Tipo Organizacional" required>
                 <select
                   value={createForm.type}
                   onChange={(e) => setCreateForm({ ...createForm, type: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-[#0c326f] focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
                 >
                   <option value="secretaria">Secretaria Municipal</option>
                   <option value="departamento">Departamento</option>
@@ -1326,85 +1317,65 @@ export const OrgChartModule: React.FC = () => {
                   <option value="fundacao">Fundação Pública</option>
                   {!targetParentId && <option value="raiz">Órgão Raiz / Gabinete</option>}
                 </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-                <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button variant="primary" type="submit" className="bg-[#10b981] hover:bg-[#059669] text-white font-bold">
-                  Cadastrar Unidade
-                </Button>
-              </div>
+              </Field>
             </form>
-          </div>
-        </div>
-      )}
+      </Dialog>
 
       {/* Modal 2: Editar Unidade */}
-      {isEditModalOpen && selectedUnit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-7 shadow-2xl border border-slate-200 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h3 className="text-xl font-bold text-[#0c326f]">Editar Unidade #{selectedUnit.id}</h3>
-              <button
-                type="button"
-                onClick={() => setIsEditModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                  Nome da Unidade *
-                </label>
+      <Dialog
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Editar Unidade #${selectedUnit?.id ?? ''}`}
+        icon={<Edit3 className="h-5 w-5 text-primary" />}
+        size="lg"
+        footer={
+          <>
+            <Button variant="ghost" type="button" onClick={() => setIsEditModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" type="submit" form="org-edit-form" className="bg-[#0c326f] hover:bg-[#08224d] text-white font-bold">
+              Salvar Alterações
+            </Button>
+          </>
+        }
+      >
+            <form id="org-edit-form" onSubmit={handleEditSubmit} className="space-y-4">
+              <Field label="Nome da Unidade" required>
                 <input
                   type="text"
                   required
                   value={editForm.name || ''}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-[#0c326f] focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-ring focus:outline-none"
                 />
-              </div>
+              </Field>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                    Código Técnico
-                  </label>
+                <Field label="Código Técnico" required>
                   <input
                     type="text"
                     required
                     value={editForm.code || ''}
                     onChange={(e) => setEditForm({ ...editForm, code: e.target.value.toUpperCase() })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-mono uppercase focus:ring-2 focus:ring-[#0c326f] focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm font-mono uppercase focus:ring-2 focus:ring-ring focus:outline-none"
                   />
-                </div>
+                </Field>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                    Sigla
-                  </label>
+                <Field label="Sigla">
                   <input
                     type="text"
                     value={editForm.acronym || ''}
                     onChange={(e) => setEditForm({ ...editForm, acronym: e.target.value.toUpperCase() })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-mono uppercase focus:ring-2 focus:ring-[#0c326f] focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm font-mono uppercase focus:ring-2 focus:ring-ring focus:outline-none"
                   />
-                </div>
+                </Field>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                  Tipo Organizacional
-                </label>
+              <Field label="Tipo Organizacional" required>
                 <select
                   value={editForm.type || 'secretaria'}
                   onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-[#0c326f] focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
                 >
                   <option value="raiz">Gabinete / Raiz</option>
                   <option value="secretaria">Secretaria Municipal</option>
@@ -1414,39 +1385,29 @@ export const OrgChartModule: React.FC = () => {
                   <option value="autarquia">Autarquia</option>
                   <option value="fundacao">Fundação Pública</option>
                 </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-                <Button variant="ghost" type="button" onClick={() => setIsEditModalOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button variant="primary" type="submit" className="bg-[#0c326f] hover:bg-[#08224d] text-white font-bold">
-                  Salvar Alterações
-                </Button>
-              </div>
+              </Field>
             </form>
-          </div>
-        </div>
-      )}
+      </Dialog>
 
       {/* Modal 3: Mover Unidade com Prevenção de Ciclos (RN-ORG-003) */}
-      {isMoveModalOpen && selectedUnit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-7 shadow-2xl border border-slate-200 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h3 className="text-xl font-bold text-[#0c326f]">
-                Remanejar Unidade Hierárquica
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsMoveModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
+      <Dialog
+        open={isMoveModalOpen}
+        onClose={() => setIsMoveModalOpen(false)}
+        title="Remanejamento Hierárquico"
+        icon={<Move className="h-5 w-5 text-primary" />}
+        size="lg"
+        footer={
+          <>
+            <Button variant="ghost" type="button" onClick={() => setIsMoveModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" type="submit" form="org-move-form" className="bg-[#0c326f] hover:bg-[#08224d] text-white font-bold">
+              Confirmar Remanejamento
+            </Button>
+          </>
+        }
+      >
+            <div className="rounded-lg bg-warning/15 border border-warning/30 px-4 py-3 text-xs text-[#8D5B00] space-y-1">
               <span className="block font-bold">Prevenção Estrita de Ciclos (RN-ORG-003):</span>
               <p>
                 Ao mover esta unidade, toda a sua subárvore terá os paths e níveis recalculados atomicamente.
@@ -1454,199 +1415,155 @@ export const OrgChartModule: React.FC = () => {
               </p>
             </div>
 
-            <form onSubmit={handleMoveSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                  Selecione o Novo Órgão / Secretaria Pai *
-                </label>
+            <form id="org-move-form" onSubmit={handleMoveSubmit} className="space-y-4 mt-4">
+              <Field label="Selecione o Novo Órgão / Secretaria Pai" required>
                 <select
                   required
                   value={moveForm.new_parent_id || ''}
                   onChange={(e) => setMoveForm({ new_parent_id: e.target.value ? Number(e.target.value) : null })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-[#0c326f] focus:outline-none"
+                  className="w-full px-4 py-3 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
                 >
                   <option value="">Selecione a nova unidade pai...</option>
                   {flatUnits
-                    .filter((u) => u.id !== selectedUnit.id && !u.path.startsWith(`${selectedUnit.path}.`))
+                    .filter((u) => u.id !== selectedUnit?.id && !u.path.startsWith(`${selectedUnit?.path}.`))
                     .map((candidate) => (
                       <option key={candidate.id} value={candidate.id}>
                         {candidate.name} ({candidate.code}) — Nível {candidate.level}
                       </option>
                     ))}
                 </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-                <Button variant="ghost" type="button" onClick={() => setIsMoveModalOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button variant="primary" type="submit" className="bg-[#0c326f] hover:bg-[#08224d] text-white font-bold">
-                  Confirmar Remanejamento
-                </Button>
-              </div>
+              </Field>
             </form>
-          </div>
-        </div>
-      )}
+      </Dialog>
 
       {/* Modal 4: Gerenciar Servidores (RN-ORG-007) */}
-      {isUsersModalOpen && selectedUnit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-7 shadow-2xl border border-slate-200 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <div>
-                <h3 className="text-xl font-bold text-[#0c326f]">Lotação de Servidores</h3>
-                <span className="text-xs font-mono font-bold text-slate-700">{selectedUnit.name}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsUsersModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Dialog
+        open={isUsersModalOpen}
+        onClose={() => setIsUsersModalOpen(false)}
+        title="Lotação de Servidores"
+        icon={<Users className="h-5 w-5 text-primary" />}
+        size="lg"
+        footer={
+          <Button variant="ghost" onClick={() => setIsUsersModalOpen(false)}>
+            Concluir
+          </Button>
+        }
+      >
+            <div className="space-y-4">
+              <span className="text-xs font-mono font-bold text-muted-foreground">{selectedUnit?.name}</span>
 
-            <form onSubmit={handleLinkUserSubmit} className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#0c326f] font-mono">
-                Novo Vínculo de Servidor
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-800 mb-1">ID do Servidor *</label>
+              <form onSubmit={handleLinkUserSubmit} className="rounded-xl bg-accent/30 border border-border p-5 space-y-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary font-mono">
+                  Novo Vínculo de Servidor
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <Field label="ID do Servidor" required>
+                      <input
+                        type="number"
+                        required
+                        value={linkUserForm.user_id}
+                        onChange={(e) => setLinkUserForm({ ...linkUserForm, user_id: Number(e.target.value) })}
+                        className="w-full px-3.5 py-2 rounded-lg border border-input bg-background text-sm font-mono focus:ring-2 focus:ring-ring focus:outline-none"
+                      />
+                    </Field>
+                  </div>
+                  <div>
+                    <Field label="Papel" required>
+                      <select
+                        value={linkUserForm.role}
+                        onChange={(e) => setLinkUserForm({ ...linkUserForm, role: e.target.value })}
+                        className="w-full px-3.5 py-2 rounded-lg border border-input bg-background text-sm font-semibold focus:ring-2 focus:ring-ring focus:outline-none"
+                      >
+                        <option value="membro">Membro</option>
+                        <option value="responsavel">Gestor / Titular</option>
+                      </select>
+                    </Field>
+                  </div>
+                </div>
+
+                <label className="flex cursor-pointer items-center gap-2.5 text-xs font-bold text-foreground">
                   <input
-                    type="number"
-                    required
-                    value={linkUserForm.user_id}
-                    onChange={(e) => setLinkUserForm({ ...linkUserForm, user_id: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono"
+                    type="checkbox"
+                    checked={linkUserForm.is_primary}
+                    onChange={(e) => setLinkUserForm({ ...linkUserForm, is_primary: e.target.checked })}
+                    className="h-4 w-4 accent-primary"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">Papel *</label>
-                  <select
-                    value={linkUserForm.role}
-                    onChange={(e) => setLinkUserForm({ ...linkUserForm, role: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold"
-                  >
-                    <option value="membro">Membro</option>
-                    <option value="responsavel">Gestor / Titular</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <input
-                  type="checkbox"
-                  id="is_primary"
-                  checked={linkUserForm.is_primary}
-                  onChange={(e) => setLinkUserForm({ ...linkUserForm, is_primary: e.target.checked })}
-                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                />
-                <label htmlFor="is_primary" className="text-xs text-slate-800 font-bold">
                   Definir como Lotação Primária Oficial (RN-ORG-007)
                 </label>
-              </div>
 
-              <Button variant="primary" type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2.5 font-bold">
-                Vincular Servidor
-              </Button>
-            </form>
-
-            <div className="flex items-center justify-end pt-3 border-t border-slate-200">
-              <Button variant="ghost" onClick={() => setIsUsersModalOpen(false)}>
-                Concluir
-              </Button>
+                <Button variant="primary" type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2.5 font-bold">
+                  Vincular Servidor
+                </Button>
+              </form>
             </div>
-          </div>
-        </div>
-      )}
+      </Dialog>
 
       {/* Modal 5: Inativar / Excluir (RN-ORG-004) */}
-      {isInactivateModalOpen && selectedUnit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-7 shadow-2xl border border-slate-200 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h3 className="text-xl font-bold text-red-700">Inativar Unidade Administrativa</h3>
-              <button
-                type="button"
-                onClick={() => setIsInactivateModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-sm text-slate-700 leading-relaxed">
-              Você está inativando a unidade <strong>{selectedUnit.name}</strong> ({selectedUnit.code}). Conforme as normas de governança (RN-ORG-004), informe a justificativa legal ou ato normativo.
+      <Dialog
+        open={isInactivateModalOpen}
+        onClose={() => setIsInactivateModalOpen(false)}
+        title="Inativar Unidade Administrativa"
+        icon={<Trash2 className="h-5 w-5 text-destructive" />}
+        size="lg"
+        footer={
+          <>
+            <Button variant="ghost" type="button" onClick={() => setIsInactivateModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" type="submit" form="org-inactivate-form" className="bg-red-600 hover:bg-red-700 text-white font-bold">
+              Confirmar Inativação
+            </Button>
+          </>
+        }
+      >
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Você está inativando a unidade <strong className="text-foreground">{selectedUnit?.name}</strong> ({selectedUnit?.code}). Conforme as normas de governança (RN-ORG-004), informe a justificativa legal ou ato normativo.
             </p>
 
-            <form onSubmit={handleInactivateSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-mono">
-                  Justificativa Legal / Motivo Administrativo *
-                </label>
+            <form id="org-inactivate-form" onSubmit={handleInactivateSubmit} className="space-y-4 mt-4">
+              <Field label="Justificativa Legal / Motivo Administrativo" required>
                 <textarea
                   required
                   rows={3}
                   value={inactivationReason}
                   onChange={(e) => setInactivationReason(e.target.value)}
                   placeholder="Ex: Reestruturação administrativa conforme Decreto Municipal nº 123/2026..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-red-600 focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-destructive focus:outline-none"
                 />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-                <Button variant="ghost" type="button" onClick={() => setIsInactivateModalOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button variant="destructive" type="submit" className="bg-red-600 hover:bg-red-700 text-white font-bold">
-                  Confirmar Inativação
-                </Button>
-              </div>
+              </Field>
             </form>
-          </div>
-        </div>
-      )}
+      </Dialog>
 
       {/* Modal 6: Preview do Manifest Versionado */}
-      {isExportModalOpen && exportPreviewData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-7 shadow-2xl border border-slate-200 space-y-5 max-h-[88vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <FileJson className="w-6 h-6 text-indigo-600" />
-                <h3 className="text-xl font-bold text-[#0c326f]">Manifest Versionado de Exportação</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsExportModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-950 text-xs shrink-0 font-mono flex items-center justify-between">
-              <span><strong>Checksum SHA-256:</strong> {exportPreviewData.manifest.checksum_sha256}</span>
-              <span className="font-bold text-indigo-700">Versão: {exportPreviewData.manifest.version}</span>
-            </div>
-
-            <pre className="flex-1 overflow-y-auto p-5 rounded-2xl bg-slate-900 text-emerald-400 text-xs font-mono tabular-nums leading-relaxed shadow-inner">
-              {JSON.stringify(exportPreviewData, null, 2)}
-            </pre>
-
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200 shrink-0">
-              <span className="text-xs font-mono text-slate-600">
-                Total de Unidades: {exportPreviewData.manifest.total_units}
-              </span>
-              <Button variant="primary" onClick={() => setIsExportModalOpen(false)} className="bg-[#0c326f] text-white font-bold">
-                Fechar Visualização
-              </Button>
-            </div>
+      <Dialog
+        open={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        title="Manifest Versionado de Exportação"
+        icon={<FileJson className="h-5 w-5 text-indigo-600" />}
+        size="full"
+        footer={
+          <div className="flex w-full items-center justify-between">
+            <span className="text-xs font-mono text-muted-foreground">
+              Total de Unidades: {exportPreviewData?.manifest.total_units}
+            </span>
+            <Button variant="primary" onClick={() => setIsExportModalOpen(false)} className="bg-[#0c326f] text-white font-bold">
+              Fechar Visualização
+            </Button>
           </div>
-        </div>
-      )}
+        }
+      >
+            <div className="space-y-4">
+              <div className="rounded-lg bg-accent/40 border border-border px-4 py-3 text-xs font-mono flex items-center justify-between">
+                <span><strong>Checksum SHA-256:</strong> {exportPreviewData?.manifest.checksum_sha256}</span>
+                <span className="font-bold text-primary">Versão: {exportPreviewData?.manifest.version}</span>
+              </div>
+
+              <pre className="max-h-[55vh] overflow-y-auto rounded-xl bg-foreground p-5 text-success text-xs font-mono tabular-nums leading-relaxed">
+                {JSON.stringify(exportPreviewData, null, 2)}
+              </pre>
+            </div>
+      </Dialog>
     </div>
   );
 };
