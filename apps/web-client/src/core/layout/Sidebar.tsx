@@ -96,24 +96,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </span>
         </div>
 
-        {/* Seletor de Secretaria / Departamento (contexto de trabalho) */}
+        {/* Seletor de Secretaria / Departamento */}
         <div className="px-4 py-3 bg-white border-b border-gov-border">
           {loadingUnits ? (
             <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-gov-border bg-[#F8F9FA]">
               <Loader2 className="w-4 h-4 animate-spin text-[#0c326f]" />
               <span className="text-xs text-gov-text-secondary">Carregando secretarias...</span>
             </div>
-          ) : activeUnit ? (
+          ) : unitList.length > 0 ? (
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                onClick={() => hasMultipleUnits && setIsUnitDropdownOpen(!isUnitDropdownOpen)}
                 className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-[#C5D8F6] bg-white hover:bg-[#F0F4FA] text-left transition"
               >
                 <ShieldCheck className="w-4 h-4 text-[#0c326f] shrink-0" />
                 <div className="min-w-0 flex-1">
                   <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-gov-text-muted">Secretaria / Departamento</span>
-                  <span className="block text-xs sm:text-sm font-bold text-[#0c326f] whitespace-nowrap">{activeUnit.name}</span>
+                  <span className="block text-xs sm:text-sm font-bold text-[#0c326f] whitespace-nowrap">{activeUnit?.name ?? 'Selecione...'}</span>
                 </div>
                 {hasMultipleUnits && <ChevronDown className="w-4 h-4 text-gov-text-muted shrink-0" />}
               </button>
@@ -124,25 +124,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                     Selecionar ambiente de trabalho
                   </div>
                   {unitList.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => { setActiveUnitId(u.id); setIsUnitDropdownOpen(false); }}
-                      className={cn(
-                        'w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-[#F0F4FA] transition',
-                        u.id === activeUnit.id ? 'bg-[#E8F0FE] text-[#0c326f]' : 'text-[#1B1B1B]'
-                      )}
-                      style={{ paddingLeft: `${16 + u.depth * 16}px` }}
-                    >
+                    <button key={u.id} type="button" onClick={() => { setActiveUnitId(u.id); setIsUnitDropdownOpen(false); }}
+                      className={cn('w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-[#F0F4FA] transition', u.id === (activeUnit?.id) ? 'bg-[#E8F0FE] text-[#0c326f]' : 'text-[#1B1B1B]')}
+                      style={{ paddingLeft: `${16 + u.depth * 16}px` }}>
                       {u.depth > 0 && <span className="text-gov-text-muted text-xs shrink-0">{'↳'}</span>}
                       <span className="text-sm font-medium truncate">{u.name}</span>
-                      {u.id === activeUnit.id && <Check className="w-4 h-4 text-[#0c326f] shrink-0 ml-auto" />}
+                      {u.id === activeUnit?.id && <Check className="w-4 h-4 text-[#0c326f] shrink-0 ml-auto" />}
                     </button>
                   ))}
                 </div>
               )}
             </div>
-          ) : null}
+          ) : (
+            <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-dashed border-gov-border bg-[#FAFAFA]">
+              <ShieldCheck className="w-4 h-4 text-gov-text-muted shrink-0" />
+              <span className="text-xs font-medium text-gov-text-muted">Nenhuma secretaria vinculada</span>
+            </div>
+          )}
         </div>
 
         {/* Corpo do Menu com Fundo Branco */}

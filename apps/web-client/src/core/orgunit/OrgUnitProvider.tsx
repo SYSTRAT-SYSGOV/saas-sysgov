@@ -72,14 +72,25 @@ export const OrgUnitProvider: React.FC<{ children: ReactNode }> = ({ children })
     localStorage.setItem(ORG_UNIT_KEY, String(id));
   }, []);
 
-  const allowedIds = new Set(scopeInfo
-    ? [
-        ...(scopeInfo.primary_unit ? [scopeInfo.primary_unit.id] : []),
-        ...scopeInfo.managed_units.map((u) => u.id),
-      ]
+const allowedIds = new Set(scopeInfo
+    ? scopeInfo.is_unrestricted
+      ? flattenTreeIds(orgTree)
+      : [
+          ...(scopeInfo.primary_unit ? [scopeInfo.primary_unit.id] : []),
+          ...scopeInfo.managed_units.map((u) => u.id),
+        ]
     : []);
 
-  const unitList = buildUnitList(orgTree, allowedIds);
+function flattenTreeIds(nodes: OrgTreeNode[]): number[] {
+  const ids: number[] = [];
+  for (const n of nodes) {
+    ids.push(n.id);
+    if (n.children?.length) ids.push(...flattenTreeIds(n.children));
+  }
+  return ids;
+}
+
+const unitList = buildUnitList(orgTree, allowedIds);
   const activeUnit = unitList.find((u) => u.id === activeUnitId) ?? unitList[0] ?? null;
   const hasMultipleUnits = unitList.length > 1;
 

@@ -36,7 +36,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
     <header className="sticky top-0 z-30 w-full bg-white border-b border-border shadow-sm">
       {/* Header Main — largura total */}
       <div className="w-full bg-white border-b border-border/40">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3.5 flex items-center justify-between">
+        <div className="w-full px-4 lg:px-8 py-3.5 flex items-center justify-between">
           {/* Left: Hamburger + SYS GOV + Tenant/Secretaria */}
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring" aria-label="Abrir Menu">
@@ -109,9 +109,9 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
         </div>
       </div>
 
-      {/* Subbar — largura total, conteúdo alinhado */}
+      {/* Subbar — largura total */}
       <div className="w-full bg-muted/40 border-t border-border/40">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-2.5 flex items-center">
+        <div className="w-full px-4 lg:px-8 py-2.5 flex items-center">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link to="/" className="text-primary hover:underline font-bold">SYSGOV</Link>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
