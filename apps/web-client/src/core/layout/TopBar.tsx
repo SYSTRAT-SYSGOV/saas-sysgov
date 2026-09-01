@@ -47,18 +47,18 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
                 <span className="text-[#1351b4] font-[900]">SYS</span>
                 <span className="ml-1 text-[#168821] font-[900]">GOV</span>
               </span>
-              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                <span className="text-xs font-semibold text-foreground whitespace-nowrap">{tenant?.name}</span>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary whitespace-nowrap">
+                  <Building2 className="h-3 w-3 shrink-0" />
+                  {tenant?.name}
+                </span>
                 {loadingUnit ? (
                   <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                 ) : activeUnit ? (
-                  <>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="flex items-center gap-1 text-xs font-medium text-primary whitespace-nowrap">
-                      <ShieldCheck className="h-3 w-3" />
-                      {activeUnit.name}
-                    </span>
-                  </>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success whitespace-nowrap">
+                    <ShieldCheck className="h-3 w-3 shrink-0" />
+                    {activeUnit.name}
+                  </span>
                 ) : null}
               </div>
             </div>
@@ -109,9 +109,9 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
         </div>
       </div>
 
-      {/* Subbar — largura total */}
+      {/* Subbar — largura total, breadcrumb alinhado à página */}
       <div className="w-full bg-muted/40 border-t border-border/40">
-        <div className="w-full px-4 lg:px-8 py-2.5 flex items-center">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-2.5 flex items-center">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link to="/" className="text-primary hover:underline font-bold">SYSGOV</Link>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />

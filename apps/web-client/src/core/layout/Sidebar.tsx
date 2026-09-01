@@ -113,7 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <ShieldCheck className="w-4 h-4 text-[#0c326f] shrink-0" />
                 <div className="min-w-0 flex-1">
                   <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-gov-text-muted">Secretaria / Departamento</span>
-                  <span className="block text-xs sm:text-sm font-bold text-[#0c326f] whitespace-nowrap">{activeUnit?.name ?? 'Selecione...'}</span>
+                  <span className="block truncate text-xs sm:text-sm font-bold text-[#0c326f]">{activeUnit?.name ?? 'Selecione...'}</span>
                 </div>
                 {hasMultipleUnits && <ChevronDown className="w-4 h-4 text-gov-text-muted shrink-0" />}
               </button>
@@ -128,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       className={cn('w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-[#F0F4FA] transition', u.id === (activeUnit?.id) ? 'bg-[#E8F0FE] text-[#0c326f]' : 'text-[#1B1B1B]')}
                       style={{ paddingLeft: `${16 + u.depth * 16}px` }}>
                       {u.depth > 0 && <span className="text-gov-text-muted text-xs shrink-0">{'↳'}</span>}
-                      <span className="text-sm font-medium truncate">{u.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{u.name}</span>
                       {u.id === activeUnit?.id && <Check className="w-4 h-4 text-[#0c326f] shrink-0 ml-auto" />}
                     </button>
                   ))}
