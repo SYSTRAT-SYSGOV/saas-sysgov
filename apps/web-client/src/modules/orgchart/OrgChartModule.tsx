@@ -914,23 +914,23 @@ export const OrgChartModule: React.FC = () => {
       </div>
 
       {/* 5. Barra de Filtros, Pesquisa e Alternador de Visões */}
-      <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-4">
+      <Card className="p-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Campo de Busca em Inter */}
+          {/* Campo de Busca */}
           <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-slate-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar unidade por nome, código, sigla..."
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0c326f] focus:border-transparent text-slate-800 bg-slate-50/50 hover:bg-white transition-colors"
+              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -942,7 +942,7 @@ export const OrgChartModule: React.FC = () => {
             <select
               value={selectedTypeFilter}
               onChange={(e) => setSelectedTypeFilter(e.target.value)}
-              className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0c326f]"
+              className="px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="todos">Todos os Tipos</option>
               <option value="raiz">Gabinete / Raiz</option>
@@ -957,7 +957,7 @@ export const OrgChartModule: React.FC = () => {
             <select
               value={selectedLevelFilter}
               onChange={(e) => setSelectedLevelFilter(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}
-              className="px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0c326f]"
+              className="px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="todos">Todos os Níveis</option>
               <option value={1}>Nível 1 (Gabinete)</option>
@@ -968,14 +968,14 @@ export const OrgChartModule: React.FC = () => {
           </div>
 
           {/* Segmented Control de Modos de Visão */}
-          <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/90 self-start lg:self-auto">
+          <div className="flex items-center p-1 bg-accent/60 rounded-lg self-start lg:self-auto">
             <button
               type="button"
               onClick={() => setViewMode('tree')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 viewMode === 'tree'
-                  ? 'bg-white text-[#0c326f] shadow-xs'
-                  : 'text-slate-700 hover:text-[#0c326f]'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <ListTree className="w-4 h-4" />
@@ -985,10 +985,10 @@ export const OrgChartModule: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 viewMode === 'table'
-                  ? 'bg-white text-[#0c326f] shadow-xs'
-                  : 'text-slate-700 hover:text-[#0c326f]'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <TableIcon className="w-4 h-4" />
@@ -998,10 +998,10 @@ export const OrgChartModule: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode('cards')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 viewMode === 'cards'
-                  ? 'bg-white text-[#0c326f] shadow-xs'
-                  : 'text-slate-700 hover:text-[#0c326f]'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <LayoutGrid className="w-4 h-4" />
@@ -1012,29 +1012,21 @@ export const OrgChartModule: React.FC = () => {
 
         {/* Barra de Ações da Árvore (Apenas no Modo Tree) */}
         {viewMode === 'tree' && (
-          <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-            <span className="font-mono text-slate-700 tabular-nums">
+          <div className="flex items-center justify-between pt-3 border-t border-border text-xs">
+            <span className="font-mono text-muted-foreground tabular-nums">
               Exibindo {filteredFlatUnits.length} unidade(s) na árvore
             </span>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={expandAll}
-                className="px-3 py-1 rounded-lg font-bold text-[#0c326f] bg-[#E8F0FE] hover:bg-[#D5E3FC] transition border border-[#C5D8F6] cursor-pointer"
-              >
+              <Button variant="secondary" size="sm" onClick={expandAll}>
                 Expandir Todos os Nós
-              </button>
-              <button
-                type="button"
-                onClick={collapseAll}
-                className="px-3 py-1 rounded-lg font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition border border-slate-200 cursor-pointer"
-              >
+              </Button>
+              <Button variant="ghost" size="sm" onClick={collapseAll}>
                 Recolher Sub-árvores
-              </button>
+              </Button>
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* 6. ÁREA DE VISUALIZAÇÃO CONFORME O MODO SELECIONADO */}
 
