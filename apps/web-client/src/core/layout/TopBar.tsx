@@ -1,25 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
+import { apiClient } from '@/core/api/client';
 import {
   Menu,
-  Search,
-  Calendar,
   Building2,
   ChevronDown,
   ChevronRight,
   Check,
-  RefreshCw,
-  FileDown,
   Bell,
-  LogOut
+  LogOut,
+  UserCircle,
+  Settings2,
+  ShieldCheck,
+  Loader2,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 interface TopBarProps {
   onToggleSidebar: () => void;
 }
+
+interface OrgScopeInfo {
+  primary_unit: { id: number; name: string; code: string; acronym?: string | null; role: string } | null;
+  managed_units: { id: number; name: string; code: string; acronym?: string | null }[];
+  is_unrestricted: boolean;
+}
+
+const ORG_UNIT_KEY = 'sysgov:active_org_unit_id';
 
 export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
   const { user, tenants, switchTenant, logout } = useAuth();
@@ -28,9 +37,40 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
 
   const [isTenantDropdownOpen, setIsTenantDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  const [selectedYear, setSelectedYear] = useState('2026');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+  const [scopeInfo, setScopeInfo] = useState<OrgScopeInfo | null>(null);
+  const [loadingScope, setLoadingScope] = useState(false);
+  const [activeUnitId, setActiveUnitId] = useState<number | null>(() => {
+    const v = localStorage.getItem(ORG_UNIT_KEY);
+    return v ? Number(v) : null;
+  });
+
+  useEffect(() => {
+    setLoadingScope(true);
+    apiClient.get<{ data: OrgScopeInfo }>('/org-units/scope')
+      .then((res) => setScopeInfo(res.data?.data ?? null))
+      .catch(() => setScopeInfo(null))
+      .finally(() => setLoadingScope(false));
+  }, [tenant?.id]);
+
+  const selectableUnits = scopeInfo
+    ? [
+        ...(scopeInfo.primary_unit ? [{ id: scopeInfo.primary_unit.id, name: scopeInfo.primary_unit.name, code: scopeInfo.primary_unit.code, isPrimary: true }] : []),
+        ...scopeInfo.managed_units
+          .filter((u) => u.id !== scopeInfo.primary_unit?.id)
+          .map((u) => ({ id: u.id, name: u.name, code: u.code, isPrimary: false })),
+      ]
+    : [];
+
+  const hasMultipleUnits = selectableUnits.length > 1;
+
+  const activeUnit = selectableUnits.find((u) => u.id === activeUnitId) ?? selectableUnits[0];
+
+  const switchUnit = (unitId: number) => {
+    setActiveUnitId(unitId);
+    localStorage.setItem(ORG_UNIT_KEY, String(unitId));
+    setIsUnitDropdownOpen(false);
+  };
 
   const getBreadcrumbName = (pathname: string) => {
     switch (pathname) {
@@ -41,29 +81,30 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
       case '/pedagogico': return 'Módulo Pedagógico';
       case '/rh': return 'Recursos Humanos / Folha';
       case '/cemiterios': return 'Gestão de Cemitérios';
+      case '/organograma': return 'Organograma Municipal';
+      case '/usuarios': return 'Usuários & Acessos';
       default: return 'Visão Geral';
     }
   };
 
-  const handleSync = () => {
-    setIsSyncing(true);
-    setTimeout(() => setIsSyncing(false), 1000);
-  };
+  const roleLabel = user?.roles?.[0]
+    ? user.roles[0].replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    : 'Operador';
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-gov-border shadow-xs">
-      {/* Header Main — Título SYS GOV e Busca (br-header main) */}
-      <div className="px-4 lg:px-8 py-3.5 bg-white flex items-center justify-between gap-4 border-b border-gov-border/50">
+    <header className="sticky top-0 z-30 bg-white border-b border-border shadow-sm">
+      {/* Header Main */}
+      <div className="px-4 lg:px-8 py-3.5 bg-white flex items-center justify-between gap-4">
         {/* Left: Hambúrguer + Brasão + Título SYS GOV */}
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="p-2.5 rounded-full text-gov-text-secondary hover:bg-[#E8F0FE] hover:text-[#1351B4] transition focus-visible:ring-2 focus-visible:ring-[#1351B4]"
+            className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Abrir Menu de Navegação"
-            title="Menu Principal (Atalho: M)"
+            title="Menu Principal"
           >
-            <Menu className="w-6 h-6 text-gov-text-primary" />
+            <Menu className="w-6 h-6" />
           </button>
 
           <div className="flex items-center gap-3.5 min-w-0">
@@ -71,55 +112,27 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
               <img
                 src={settings.customLogoUrl}
                 alt="Brasão"
-                className="w-11 h-11 rounded-lg object-contain bg-white border border-gov-border p-1 shrink-0 shadow-2xs"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
+                className="w-11 h-11 rounded-lg object-contain bg-white border border-border p-1 shrink-0"
+                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
               />
             ) : (
-              <div className="w-11 h-11 rounded-lg bg-[#1351B4] text-white font-mono font-bold flex items-center justify-center text-base shadow-xs shrink-0">
+              <div className="w-11 h-11 rounded-lg bg-primary text-primary-foreground font-mono font-extrabold flex items-center justify-center text-base shadow-sm shrink-0">
                 SG
               </div>
             )}
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base sm:text-lg text-[#0c326f] tracking-tight truncate uppercase">
-                  <span className="text-[#0c326f]">SYS</span>
-                  <span className="text-[#10b981]"> GOV</span>
-                </span>
-                <span className="hidden md:inline-flex px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[#E8F0FE] text-[#0c326f] border border-[#C5D8F6]">
-                  CLIENTE V3
-                </span>
-              </div>
-              <span className="block text-xs sm:text-sm text-gov-text-secondary truncate font-normal">
+              <span className="font-extrabold text-base sm:text-lg tracking-tight truncate uppercase text-[#0c326f]">
+                SYS GOV
+              </span>
+              <span className="block text-xs sm:text-sm text-muted-foreground truncate font-normal">
                 {settings.subtitle || tenant?.name}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Center: Barra de Busca Oficial Gov.br (br-input search) */}
-        <div className="hidden lg:flex flex-1 max-w-lg mx-4">
-          <div className="relative w-full flex items-center">
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="O que você procura em processos, contratos ou despesas?"
-              className="w-full bg-[#F8F9FA] border border-gov-border rounded-full py-2.5 pl-5 pr-11 text-sm sm:text-base text-gov-text-primary placeholder:text-gov-text-muted focus:outline-none focus:border-[#1351B4] focus:bg-white focus:ring-2 focus:ring-[#1351B4]/20 transition"
-            />
-            <button
-              type="button"
-              className="absolute right-3.5 text-gov-text-muted hover:text-[#1351B4] transition p-1"
-              aria-label="Buscar"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Right: Seletor de Órgão + Ações + Perfil */}
+        {/* Right: Seletor de Órgão + Secretaria + Notificações + Perfil */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Seletor de Município / Tenant */}
           <div className="relative">
@@ -128,25 +141,20 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
                 <button
                   type="button"
                   onClick={() => setIsTenantDropdownOpen(!isTenantDropdownOpen)}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-gov-border bg-[#F8F9FA] hover:bg-white hover:border-[#1351B4] text-left transition shadow-2xs"
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-accent/40 hover:bg-accent text-left transition"
                 >
-                  <Building2 className="w-4 h-4 text-[#1351B4] shrink-0" />
-                  <div className="text-xs sm:text-sm">
-                    <span className="font-semibold text-gov-text-primary block truncate max-w-[130px] sm:max-w-[200px]">
-                      {tenant?.name}
-                    </span>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gov-text-muted ml-0.5" />
+                  <Building2 className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold text-foreground truncate max-w-[130px] sm:max-w-[200px]">
+                    {tenant?.name}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground ml-0.5" />
                 </button>
 
                 {isTenantDropdownOpen && (
                   <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setIsTenantDropdownOpen(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-80 rounded-xl bg-white shadow-xl border border-gov-border py-2 z-50 divide-y divide-gov-border">
-                      <div className="px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-gov-text-secondary">
+                    <div className="fixed inset-0 z-40" onClick={() => setIsTenantDropdownOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-80 rounded-xl bg-popover shadow-xl border border-border py-2 z-50 divide-y divide-border">
+                      <div className="px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         Alternar Órgão / Município
                       </div>
                       <div className="py-1">
@@ -154,18 +162,17 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
                           <button
                             key={t.id}
                             type="button"
-                            onClick={() => {
-                              switchTenant(t.id);
-                              setIsTenantDropdownOpen(false);
-                            }}
-                            className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left hover:bg-[#F0F4FA] transition ${t.id === tenant?.id ? 'bg-[#E8F0FE] text-[#1351B4] font-semibold' : 'text-gov-text-primary'
-                              }`}
+                            onClick={() => { switchTenant(t.id); setIsTenantDropdownOpen(false); }}
+                            className={cn(
+                              'w-full flex items-center justify-between px-4 py-3 text-sm text-left hover:bg-accent transition',
+                              t.id === tenant?.id ? 'bg-accent text-primary font-semibold' : 'text-foreground'
+                            )}
                           >
                             <div className="truncate">
                               <span className="block font-medium truncate">{t.name}</span>
-                              <span className="font-mono text-xs text-gov-text-secondary uppercase">{t.type}</span>
+                              <span className="font-mono text-xs text-muted-foreground uppercase">{t.type}</span>
                             </div>
-                            {t.id === tenant?.id && <Check className="w-5 h-5 text-[#1351B4] shrink-0" />}
+                            {t.id === tenant?.id && <Check className="w-5 h-5 text-primary shrink-0" />}
                           </button>
                         ))}
                       </div>
@@ -174,40 +181,79 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-sm bg-[#F8F9FA] px-3.5 py-2 rounded-full border border-gov-border">
-                <Building2 className="w-4 h-4 text-[#1351B4]" />
-                <span className="font-semibold text-gov-text-primary truncate max-w-[160px]">{tenant?.name}</span>
+              <div className="flex items-center gap-2 text-sm bg-accent/40 px-3.5 py-2 rounded-lg border border-border">
+                <Building2 className="w-4 h-4 text-primary" />
+                <span className="font-semibold text-foreground truncate max-w-[160px]">{tenant?.name}</span>
               </div>
             )}
           </div>
 
-          {/* Exercício Fiscal Selector */}
-          <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full border border-gov-border bg-white shadow-2xs">
-            <Calendar className="w-4 h-4 text-[#1351B4]" />
-            <label htmlFor="select-year" className="font-mono text-xs font-bold text-gov-text-secondary uppercase">
-              Ano:
-            </label>
-            <select
-              id="select-year"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="font-mono text-sm font-bold text-gov-text-primary bg-transparent focus:outline-none cursor-pointer tabular-nums"
-            >
-              <option value="2026">2026</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-            </select>
-          </div>
+          {/* Seletor de Secretaria / Unidade */}
+          {loadingScope ? (
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            </div>
+          ) : hasMultipleUnits ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card hover:bg-accent text-left transition"
+                title="Alternar secretaria de trabalho"
+              >
+                <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+                <span className="text-xs sm:text-sm font-semibold text-foreground truncate max-w-[140px] sm:max-w-[180px]">
+                  {activeUnit?.name ?? 'Minha unidade'}
+                </span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground ml-0.5" />
+              </button>
+
+              {isUnitDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsUnitDropdownOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-72 rounded-xl bg-popover shadow-xl border border-border py-2 z-50 divide-y divide-border">
+                    <div className="px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Alternar Secretaria
+                    </div>
+                    <div className="py-1">
+                      {selectableUnits.map((u) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => switchUnit(u.id)}
+                          className={cn(
+                            'w-full flex items-center justify-between px-4 py-3 text-sm text-left hover:bg-accent transition',
+                            u.id === (activeUnit?.id) ? 'bg-accent text-primary font-semibold' : 'text-foreground'
+                          )}
+                        >
+                          <div className="truncate">
+                            <span className="block font-medium truncate">{u.name}</span>
+                            <span className="font-mono text-xs text-muted-foreground">{u.code}{u.isPrimary ? ' · principal' : ''}</span>
+                          </div>
+                          {u.id === activeUnit?.id && <Check className="w-5 h-5 text-primary shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : activeUnit ? (
+            <div className="hidden sm:flex items-center gap-2 text-sm bg-card px-3.5 py-2 rounded-lg border border-border">
+              <ShieldCheck className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-foreground truncate max-w-[160px]">{activeUnit.name}</span>
+            </div>
+          ) : null}
 
           {/* Notificações */}
           <button
             type="button"
-            className="relative p-2.5 rounded-full text-gov-text-secondary hover:bg-[#E8F0FE] hover:text-[#1351B4] transition"
+            className="relative p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition"
             title="Notificações"
             aria-label="Notificações"
           >
             <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-status-danger ring-2 ring-white" />
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-white" />
           </button>
 
           {/* Usuário Menu Dropdown */}
@@ -215,36 +261,60 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
             <button
               type="button"
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full hover:bg-[#F0F4FA] border border-transparent hover:border-gov-border transition"
+              className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-lg hover:bg-accent border border-transparent hover:border-border transition"
             >
-              <div className="w-8 h-8 rounded-full bg-[#1351B4] text-white flex items-center justify-center font-mono font-bold text-sm">
-                {user?.name ? user.name.charAt(0) : 'U'}
+              <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-mono font-bold text-sm">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="hidden md:block text-left">
-                <span className="block text-sm font-semibold text-gov-text-primary truncate max-w-[120px]">
+                <span className="block text-sm font-semibold text-foreground truncate max-w-[120px]">
                   {user?.name?.split(' ')[0] || 'Usuário'}
                 </span>
-                <span className="block text-xs text-gov-text-secondary truncate max-w-[120px]">
-                  {user?.roles?.[0] || 'Gestor'}
+                <span className="block text-xs text-muted-foreground truncate max-w-[120px]">
+                  {roleLabel}
                 </span>
               </div>
-              <ChevronDown className="w-4 h-4 text-gov-text-muted hidden md:block" />
+              <ChevronDown className="w-4 h-4 text-muted-foreground hidden md:block" />
             </button>
 
             {isUserDropdownOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsUserDropdownOpen(false)}
-                />
-                <div className="absolute right-0 mt-2 w-72 rounded-xl bg-white shadow-xl border border-gov-border py-2 z-50 divide-y divide-gov-border">
+                <div className="fixed inset-0 z-40" onClick={() => setIsUserDropdownOpen(false)} />
+                <div className="absolute right-0 mt-2 w-72 rounded-xl bg-popover shadow-xl border border-border py-2 z-50 divide-y divide-border">
                   <div className="px-4 py-3">
-                    <span className="block text-sm font-semibold text-gov-text-primary">{user?.name}</span>
-                    <span className="block text-xs text-gov-text-secondary font-mono mt-0.5">{user?.email}</span>
-                    <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[#E8F0FE] text-[#1351B4]">
-                      {user?.roles?.[0] || 'Operador'}
+                    <span className="block text-sm font-semibold text-foreground">{user?.name}</span>
+                    <span className="block text-xs text-muted-foreground font-mono mt-0.5">{user?.email}</span>
+                    <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/10 text-primary">
+                      {roleLabel}
                     </span>
                   </div>
+
+                  {/* Editar Perfil */}
+                  <div className="py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserDropdownOpen(false);
+                        window.location.href = '/perfil';
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium"
+                    >
+                      <UserCircle className="w-4 h-4 text-primary" />
+                      <span>Editar Perfil</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserDropdownOpen(false);
+                        window.location.href = '/configuracoes';
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium"
+                    >
+                      <Settings2 className="w-4 h-4 text-muted-foreground" />
+                      <span>Configurações</span>
+                    </button>
+                  </div>
+
                   <div className="py-1.5">
                     <button
                       type="button"
@@ -252,7 +322,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
                         setIsUserDropdownOpen(false);
                         logout();
                       }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-status-danger hover:bg-status-danger-bg transition font-semibold"
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition font-semibold"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Encerrar Sessão</span>
@@ -265,36 +335,17 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
         </div>
       </div>
 
-      {/* 3. Header Subbar — Breadcrumb Oficial Gov.br e Ações Rápidas (br-breadcrumb) */}
-      <div className="px-4 lg:px-8 py-2.5 bg-[#F8F9FA] flex items-center justify-between text-sm border-t border-gov-border/40">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gov-text-secondary font-sans">
-          <Link to="/" className="text-[#0c326f] hover:underline font-bold flex items-center gap-1">
+      {/* Subbar — Breadcrumb */}
+      <div className="px-4 lg:px-8 py-2.5 bg-muted/40 flex items-center justify-between text-sm border-t border-border/40">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link to="/" className="text-primary hover:underline font-bold flex items-center gap-1">
             SYSGOV
           </Link>
-          <ChevronRight className="w-4 h-4 text-gov-text-muted" />
-          <span className="text-[#0c326f] font-bold">
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <span className="text-foreground font-bold">
             {getBreadcrumbName(location.pathname)}
           </span>
         </nav>
-
-        <div className="hidden sm:flex items-center gap-2.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSync}
-            isLoading={isSyncing}
-            leftIcon={<RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />}
-          >
-            Sincronizar
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            leftIcon={<FileDown className="w-4 h-4" />}
-          >
-            Exportar PDF
-          </Button>
-        </div>
       </div>
     </header>
   );

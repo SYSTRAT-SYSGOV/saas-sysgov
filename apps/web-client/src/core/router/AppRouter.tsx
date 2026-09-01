@@ -7,6 +7,7 @@ import { AppShell } from '@/core/layout/AppShell';
 import { LoginPage } from '@/pages/LoginPage';
 import { TenantSelectorPage } from '@/pages/TenantSelectorPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { ProfilePage } from '@/pages/ProfilePage';
 import { Loader2 } from 'lucide-react';
 
 // Protected Route Guard
@@ -182,6 +183,7 @@ export const AppRouter: React.FC = () => {
             </AdminRouteGuard>
           }
         />
+        <Route path="perfil" element={<ProfilePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
