@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   UserPlus,
@@ -40,6 +41,7 @@ interface Toast {
 }
 
 export const AccessManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const notify = (t: Toast) => {
     setToasts((prev) => [...prev, t]);
@@ -251,7 +253,7 @@ export const AccessManagement: React.FC = () => {
             <UserPlus className="h-4 w-4" /> Novo Usuário
           </button>
           <button
-            onClick={() => { window.location.href = '/granularidade-módulos'; }}
+            onClick={() => { navigate('/granularidade-módulos'); }}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             title="Granularidade de módulos por unidade"
           >

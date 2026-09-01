@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useOrgUnit } from '@/core/orgunit';
@@ -7,16 +7,12 @@ import { Bell, LogOut, UserCircle, Settings2, ChevronRight, ChevronDown, Menu, B
 
 interface TopBarProps { onToggleSidebar: () => void; }
 
-/**
- * TopBar: hamburger na borda esquerda, título + subtítulo alinhados à página,
- * perfil (nome + sair) na lateral direita ocupando a largura total.
- * Comboboxes de tenant/secretaria removidos (vivem na Sidebar).
- */
 export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
   const { tenant } = useTenant();
   const { activeUnit, loading: loadingUnit } = useOrgUnit();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   const getBreadcrumbName = (pathname: string) => {
@@ -94,10 +90,10 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
                     <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/10 text-primary">{roleLabel}</span>
                   </div>
                   <div className="py-1.5">
-                    <button onClick={() => { setIsUserDropdownOpen(false); window.location.href = '/perfil'; }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium">
+                    <button onClick={() => { setIsUserDropdownOpen(false); navigate('/perfil'); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium">
                       <UserCircle className="w-4 h-4 text-primary" /> Editar Perfil
                     </button>
-                    <button onClick={() => { setIsUserDropdownOpen(false); window.location.href = '/configuracoes'; }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium">
+                    <button onClick={() => { setIsUserDropdownOpen(false); navigate('/configuracoes'); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium">
                       <Settings2 className="w-4 h-4 text-muted-foreground" /> Configurações
                     </button>
                   </div>
