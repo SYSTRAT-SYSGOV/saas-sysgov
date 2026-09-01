@@ -3,20 +3,18 @@ import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useOrgUnit } from '@/core/orgunit';
-import { Bell, LogOut, UserCircle, Settings2, ChevronRight, ChevronDown, Menu, Building2, ShieldCheck, Loader2 } from 'lucide-react';
+import { Bell, LogOut, UserCircle, Settings2, ChevronRight, ChevronDown, Menu, Building2, ShieldCheck, Loader2, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TopBarProps { onToggleSidebar: () => void; }
 
-/**
- * TopBar largura total: SYS GOV + tenant + secretaria abaixo do título.
- * Notificações e perfil à direita. Breadcrumb alinhado ao conteúdo.
- */
 export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
-  const { user, logout } = useAuth();
+  const { user, tenants, switchTenant, logout } = useAuth();
   const { tenant } = useTenant();
   const { activeUnit, loading: loadingUnit } = useOrgUnit();
   const location = useLocation();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isTenantDropdownOpen, setIsTenantDropdownOpen] = useState(false);
 
   const getBreadcrumbName = (pathname: string) => {
     const map: Record<string, string> = {
@@ -34,42 +32,71 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
 
   return (
     <header className="sticky top-0 z-30 w-full bg-white border-b border-border shadow-sm">
-      {/* Header Main — largura total */}
+      {/* Header Main: hamburger borda esquerda | título alinhado | combobox + perfil borda direita */}
       <div className="w-full bg-white border-b border-border/40">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3.5 flex items-center justify-between">
-          {/* Left: Hamburger + SYS GOV + Tenant/Secretaria */}
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring" aria-label="Abrir Menu">
-              <Menu className="w-6 h-6" />
-            </button>
-            <div className="min-w-0">
-              <span className="text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap">
-                <span className="text-[#1351b4] font-[900]">SYS</span>
-                <span className="ml-1 text-[#168821] font-[900]">GOV</span>
-              </span>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary whitespace-nowrap">
-                  <Building2 className="h-3 w-3 shrink-0" />
-                  {tenant?.name}
+        <div className="w-full px-4 lg:px-8 py-3.5 flex items-center justify-between">
+          {/* Left: hamburger (borda) */}
+          <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring shrink-0" aria-label="Abrir Menu">
+            <Menu className="w-6 h-6" />
+          </button>
+
+          {/* Center: título + subtítulo (alinhados à página) */}
+          <div className="mx-auto max-w-7xl flex-1 px-4 lg:px-8 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="min-w-0">
+                <span className="text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap">
+                  <span className="text-[#1351b4] font-[900]">SYS</span>
+                  <span className="ml-1 text-[#168821] font-[900]">GOV</span>
                 </span>
-                {loadingUnit ? (
-                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                ) : activeUnit ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success whitespace-nowrap">
-                    <ShieldCheck className="h-3 w-3 shrink-0" />
-                    {activeUnit.name}
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary whitespace-nowrap">
+                    <Building2 className="h-3 w-3 shrink-0" />
+                    {tenant?.name}
                   </span>
-                ) : null}
+                  {loadingUnit ? (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  ) : activeUnit ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success whitespace-nowrap">
+                      <ShieldCheck className="h-3 w-3 shrink-0" />
+                      {activeUnit.name}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right: Notificações + Perfil */}
+          {/* Right: combobox (tenant) + notificações + perfil (borda) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Combobox: troca de órgão/município */}
+            {tenants.length > 1 ? (
+              <div className="relative">
+                <button type="button" onClick={() => setIsTenantDropdownOpen(!isTenantDropdownOpen)} className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-accent/40 hover:bg-accent text-left transition max-w-[200px]">
+                  <Building2 className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold text-foreground truncate">{tenant?.name}</span>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                </button>
+                {isTenantDropdownOpen && (
+                  <><div className="fixed inset-0 z-40" onClick={() => setIsTenantDropdownOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-80 rounded-xl bg-popover shadow-xl border border-border py-2 z-50 divide-y divide-border">
+                    <div className="px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground">Alternar Órgão/Município</div>
+                    <div className="py-1">{tenants.map((t) => (
+                      <button key={t.id} type="button" onClick={() => { switchTenant(t.id); setIsTenantDropdownOpen(false); }} className={cn('w-full flex items-center justify-between px-4 py-3 text-sm text-left hover:bg-accent transition', t.id === tenant?.id ? 'bg-accent text-primary font-semibold' : 'text-foreground')}>
+                        <div className="truncate"><span className="block font-medium truncate">{t.name}</span><span className="font-mono text-xs text-muted-foreground uppercase">{t.type}</span></div>
+                        {t.id === tenant?.id && <Check className="w-5 h-5 text-primary shrink-0" />}
+                      </button>
+                    ))}</div>
+                  </div>
+                  </>)}
+              </div>
+            ) : null}
+
             <button type="button" className="relative p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition" title="Notificações">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-white" />
             </button>
+
+            {/* Perfil */}
             <div className="relative">
               <button type="button" onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)} className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-lg hover:bg-accent border border-transparent hover:border-border transition">
                 <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-mono font-bold text-sm">
@@ -109,7 +136,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
         </div>
       </div>
 
-      {/* Subbar — largura total, breadcrumb alinhado à página */}
+      {/* Subbar — breadcrumb alinhado à página */}
       <div className="w-full bg-muted/40 border-t border-border/40">
         <div className="mx-auto max-w-7xl px-4 lg:px-8 py-2.5 flex items-center">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-muted-foreground">
