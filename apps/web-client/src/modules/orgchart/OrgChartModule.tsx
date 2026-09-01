@@ -36,6 +36,8 @@ import {
   StatusChip,
   Dialog,
   Field,
+  Card,
+  Badge,
 } from '@/components/ui';
 import {
   sysgovApi,
@@ -749,39 +751,42 @@ export const OrgChartModule: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
-      {/* 1. Header do Módulo Premium (Gov.br / SYSGOV) */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 md:p-7 transition-all">
+      {/* 1. Header do Módulo Premium */}
+      <Card className="p-6 md:p-7">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Lado Esquerdo: Identificação, Título e Badges */}
           <div className="space-y-2.5 flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-[#E8F0FE] text-[#0c326f] border border-[#C5D8F6] shadow-2xs">
-                <Network className="w-3.5 h-3.5 stroke-[2.5]" />
-                ESTRUTURA ADMINISTRATIVA
-              </span>
+              <Badge variant="primary" className="gap-1.5 px-3 py-1 font-mono uppercase tracking-wider">
+                <Network className="w-3.5 h-3.5" />
+                Estrutura Administrativa
+              </Badge>
 
-              <span className="text-xs font-semibold text-slate-400">•</span>
+              <span className="text-xs font-semibold text-muted-foreground">•</span>
 
-              <span className="text-xs font-bold text-slate-700 font-mono uppercase tracking-wide">
+              <span className="text-xs font-bold text-muted-foreground font-mono uppercase tracking-wide">
                 {tenant?.name || 'Prefeitura Municipal'}
               </span>
 
-              {/* Indicador de Escopo ABAC Integrado como Pill */}
+              {/* Indicador de Escopo ABAC */}
               {scopeSummary && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <Badge
+                  variant={scopeSummary.is_unrestricted ? 'success' : 'info'}
+                  className="gap-1.5 px-3 py-1 text-xs"
+                >
+                  <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
                   <span>
                     <strong>Escopo ABAC:</strong> {scopeSummary.is_unrestricted ? 'Visão Global Irrestrita' : 'Lotação Hierárquica'}
                   </span>
-                </div>
+                </Badge>
               )}
             </div>
 
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-[#0c326f] tracking-tight font-heading leading-tight" style={{ fontWeight: 800 }}>
+              <h1 className="text-3xl md:text-4xl font-extrabold text-[#0c326f] tracking-tight leading-tight">
                 Organograma Municipal
               </h1>
-              <p className="text-sm md:text-base text-slate-600 mt-1 font-normal max-w-2xl">
+              <p className="text-sm md:text-base text-muted-foreground mt-1 font-normal max-w-2xl">
                 Hierarquia oficial de secretarias, órgãos públicos, departamentos e controle de escopo (ABAC).
               </p>
             </div>
@@ -853,7 +858,7 @@ export const OrgChartModule: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* 2. Mensagens de Feedback */}
       {errorMessage && (
