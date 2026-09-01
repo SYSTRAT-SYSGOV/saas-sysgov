@@ -35,15 +35,17 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
 
   return (
     <header className="sticky top-0 z-30 w-full bg-white border-b border-border shadow-sm">
-      {/* Header Main — largura total, conteúdo alinhado à página */}
+      {/* Header Main — hamburger na borda esquerda, título alinhado à página, perfil na borda direita */}
       <div className="w-full bg-white border-b border-border/40">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3.5 flex items-center justify-between">
-          {/* Left: hamburger + título + subtítulo (alinhados à página) */}
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring shrink-0" aria-label="Abrir Menu">
-              <Menu className="w-6 h-6" />
-            </button>
-            <div className="min-w-0">
+        <div className="w-full flex items-center justify-between px-4 lg:px-8 py-3.5">
+          {/* Left: hamburger (borda esquerda da tela) */}
+          <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring shrink-0" aria-label="Abrir Menu">
+            <Menu className="w-6 h-6" />
+          </button>
+
+          {/* Center: título + subtítulo (alinhados à página, max-w-7xl) */}
+          <div className="flex-1 min-w-0 mx-4 lg:mx-8">
+            <div className="max-w-7xl mx-auto text-left">
               <span className="text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap">
                 <span className="text-[#1351b4] font-[900]">SYS</span>
                 <span className="ml-1 text-[#168821] font-[900]">GOV</span>
@@ -65,7 +67,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
             </div>
           </div>
 
-          {/* Right: notificações + perfil (borda direita) */}
+          {/* Right: notificações + perfil (borda direita da tela) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button type="button" className="relative p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition" title="Notificações">
               <Bell className="w-5 h-5" />
