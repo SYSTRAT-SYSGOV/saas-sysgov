@@ -108,6 +108,11 @@ export const OrgChartModule: React.FC = () => {
     type: 'secretaria',
   });
 
+  // Gestor titular (responsável) — busca e vínculo
+  const [editGestorSearch, setEditGestorSearch] = useState<string>('');
+  const [editGestorResults, setEditGestorResults] = useState<any[]>([]);
+  const [currentGestor, setCurrentGestor] = useState<any>(null);
+
   const [moveForm, setMoveForm] = useState<MoveOrgUnitInput>({
     new_parent_id: null,
   });
@@ -407,7 +412,56 @@ export const OrgChartModule: React.FC = () => {
       acronym: unit.acronym || '',
       type: unit.type,
     });
+    setEditGestorSearch('');
+    setEditGestorResults([]);
+    const gestor = (unit as OrgUnitTreeNode).responsibles?.[0];
+    setCurrentGestor(gestor
+      ? { id: gestor.id, name: gestor.name, email: gestor.email ?? '', matricula: (gestor as any).matricula ?? null }
+      : null);
     setIsEditModalOpen(true);
+  };
+
+  const searchGestor = async (q: string) => {
+    if (!selectedUnit || q.trim().length < 2) {
+      setEditGestorResults([]);
+      return;
+    }
+    try {
+      const res = await apiClient.get<{ data: any[] }>('/org-units/users/search', {
+        params: { q: q.trim(), exclude_unit_id: selectedUnit.id },
+      });
+      setEditGestorResults(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch {
+      setEditGestorResults([]);
+    }
+  };
+
+  const handleGestorSearchChange = (q: string) => {
+    setEditGestorSearch(q);
+    if (gestorTimeoutRef.current) clearTimeout(gestorTimeoutRef.current);
+    if (q.trim().length < 2) {
+      setEditGestorResults([]);
+      return;
+    }
+    gestorTimeoutRef.current = setTimeout(() => searchGestor(q.trim()), 350);
+  };
+
+  const handleLinkGestor = async (userId: number) => {
+    if (!selectedUnit) return;
+    try {
+      const res = await apiClient.post<{ data: any }>(`/org-units/${selectedUnit.id}/users`, {
+        user_id: userId,
+        role: 'responsavel',
+        is_primary: true,
+      });
+      setCurrentGestor({ id: userId, name: '', email: '', matricula: null });
+      setEditGestorSearch('');
+      setEditGestorResults([]);
+      setSuccessMessage('Gestor titular vinculado com sucesso.');
+      await loadOrgChart();
+    } catch (e: any) {
+      setErrorMessage(e?.response?.data?.message || 'Erro ao vincular gestor.');
+    }
   };
 
   const handleOpenMoveModal = (unit: OrgUnit | OrgUnitTreeNode) => {
@@ -452,6 +506,7 @@ export const OrgChartModule: React.FC = () => {
   };
 
   const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearchChange = (q: string) => {
     setUserSearchQuery(q);
@@ -1483,6 +1538,69 @@ export const OrgChartModule: React.FC = () => {
                   <option value="fundacao">Fundação Pública</option>
                 </select>
               </Field>
+
+              {/* Gestor Titular (responsável) */}
+              <div className="rounded-xl border border-border bg-accent/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-primary font-mono">
+                    Gestor Titular
+                  </span>
+                  {currentGestor && (
+                    <Badge variant="success">vinculado</Badge>
+                  )}
+                </div>
+
+                {currentGestor ? (
+                  <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground truncate">{currentGestor.name || `Usuário #${currentGestor.id}`}</p>
+                      {currentGestor.email && (
+                        <p className="font-mono text-[10px] text-muted-foreground truncate">
+                          {currentGestor.matricula ? `Matrícula ${currentGestor.matricula} · ` : ''}{currentGestor.email}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentGestor(null)}
+                      className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      title="Remover gestor titular"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={editGestorSearch}
+                        onChange={(e) => handleGestorSearchChange(e.target.value)}
+                        placeholder="Buscar gestor por nome ou matrícula..."
+                        className="w-full pl-9 py-2 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-ring focus:outline-none"
+                      />
+                    </div>
+                    {editGestorResults.length > 0 && (
+                      <div className="mt-1 max-h-36 overflow-y-auto rounded-lg border border-border bg-background">
+                        {editGestorResults.map((u) => (
+                          <div key={u.id} className="flex items-center justify-between px-3 py-2 hover:bg-accent/60">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-foreground truncate">{u.name}</p>
+                              <p className="font-mono text-[10px] text-muted-foreground truncate">
+                                {u.matricula ? `Matrícula ${u.matricula} · ` : ''}{u.email}
+                              </p>
+                            </div>
+                            <Button variant="secondary" size="sm" onClick={() => handleLinkGestor(u.id)}>
+                              Definir como gestor
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </form>
       </Dialog>
 
