@@ -25,6 +25,7 @@ import {
   UserPlus,
   Trash2,
   Download,
+  Filter,
 } from 'lucide-react';
 import {
   KpiCard,
@@ -38,6 +39,7 @@ import {
   Field,
   Card,
   Badge,
+  Accordion,
 } from '@/components/ui';
 import {
   sysgovApi,
@@ -682,6 +684,11 @@ export const OrgChartModule: React.FC = () => {
     return list;
   }, [filteredTree]);
 
+  const activeFiltersCount =
+    (searchTerm.trim() !== '' ? 1 : 0) +
+    (selectedTypeFilter !== 'todos' ? 1 : 0) +
+    (selectedLevelFilter !== 'todos' ? 1 : 0);
+
   // Lista de Secretarias para o Cards View
   const secretariasList = useMemo(() => {
     const list: OrgUnitTreeNode[] = [];
@@ -909,59 +916,80 @@ export const OrgChartModule: React.FC = () => {
       </div>
 
       {/* 5. Barra de Filtros, Pesquisa e Alternador de Visões */}
-      <Card className="p-5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Campo de Busca */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar unidade por nome, código, sigla..."
-              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+      <Card noPadding className="overflow-hidden">
+        <Accordion
+          icon={<Filter className="h-4 w-4 text-primary" />}
+          items={[
+            {
+              value: 'filtros',
+              title: (
+                <span className="inline-flex items-center gap-2">
+                  Filtros, Pesquisa e Visualização
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {activeFiltersCount > 0 ? `${activeFiltersCount} filtro(s) ativo(s)` : 'colapsado — expanda para filtrar'}
+                  </span>
+                </span>
+              ),
+              children: (
+                <div className="space-y-4">
+                  {/* Campo de Busca */}
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Buscar unidade por nome, código, sigla..."
+                      className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {searchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
 
-          {/* Filtros Dropdowns */}
-          <div className="flex flex-wrap items-center gap-3">
-            <select
-              value={selectedTypeFilter}
-              onChange={(e) => setSelectedTypeFilter(e.target.value)}
-              className="px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="todos">Todos os Tipos</option>
-              <option value="raiz">Gabinete / Raiz</option>
-              <option value="secretaria">Secretarias Municipais</option>
-              <option value="departamento">Departamentos</option>
-              <option value="divisao">Divisões</option>
-              <option value="setor">Setores / Seções</option>
-              <option value="autarquia">Autarquias</option>
-              <option value="fundacao">Fundações</option>
-            </select>
+                  {/* Filtros Dropdowns */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <select
+                      value={selectedTypeFilter}
+                      onChange={(e) => setSelectedTypeFilter(e.target.value)}
+                      className="px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="todos">Todos os Tipos</option>
+                      <option value="raiz">Gabinete / Raiz</option>
+                      <option value="secretaria">Secretarias Municipais</option>
+                      <option value="departamento">Departamentos</option>
+                      <option value="divisao">Divisões</option>
+                      <option value="setor">Setores / Seções</option>
+                      <option value="autarquia">Autarquias</option>
+                      <option value="fundacao">Fundações</option>
+                    </select>
 
-            <select
-              value={selectedLevelFilter}
-              onChange={(e) => setSelectedLevelFilter(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}
-              className="px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="todos">Todos os Níveis</option>
-              <option value={1}>Nível 1 (Gabinete)</option>
-              <option value={2}>Nível 2 (Secretarias)</option>
-              <option value={3}>Nível 3 (Departamentos)</option>
-              <option value={4}>Nível 4 (Divisões)</option>
-            </select>
-          </div>
+                    <select
+                      value={selectedLevelFilter}
+                      onChange={(e) => setSelectedLevelFilter(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}
+                      className="px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="todos">Todos os Níveis</option>
+                      <option value={1}>Nível 1 (Gabinete)</option>
+                      <option value={2}>Nível 2 (Secretarias)</option>
+                      <option value={3}>Nível 3 (Departamentos)</option>
+                      <option value={4}>Nível 4 (Divisões)</option>
+                    </select>
+                  </div>
+                </div>
+              ),
+            },
+          ]}
+        />
 
+        {/* Barra inferior: modos de visão + ações da árvore */}
+        <div className="flex flex-col gap-3 border-t border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           {/* Segmented Control de Modos de Visão */}
           <div className="flex items-center p-1 bg-accent/60 rounded-lg self-start lg:self-auto">
             <button
@@ -1003,24 +1031,24 @@ export const OrgChartModule: React.FC = () => {
               <span>Secretarias</span>
             </button>
           </div>
-        </div>
 
-        {/* Barra de Ações da Árvore (Apenas no Modo Tree) */}
-        {viewMode === 'tree' && (
-          <div className="flex items-center justify-between pt-3 border-t border-border text-xs">
-            <span className="font-mono text-muted-foreground tabular-nums">
-              Exibindo {filteredFlatUnits.length} unidade(s) na árvore
-            </span>
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={expandAll}>
-                Expandir Todos os Nós
-              </Button>
-              <Button variant="ghost" size="sm" onClick={collapseAll}>
-                Recolher Sub-árvores
-              </Button>
+          {/* Barra de Ações da Árvore (Apenas no Modo Tree) */}
+          {viewMode === 'tree' && (
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="font-mono text-muted-foreground tabular-nums">
+                Exibindo {filteredFlatUnits.length} unidade(s) na árvore
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={expandAll}>
+                  Expandir Todos os Nós
+                </Button>
+                <Button variant="ghost" size="sm" onClick={collapseAll}>
+                  Recolher Sub-árvores
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
 
       {/* 6. ÁREA DE VISUALIZAÇÃO CONFORME O MODO SELECIONADO */}
