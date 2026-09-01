@@ -11,6 +11,7 @@ Route::prefix('api/org-units')
         Route::get('/scope', [ClientOrgChartController::class, 'scope']);
         Route::post('/seed', [ClientOrgChartController::class, 'seed']);
         Route::post('/export', [ClientOrgChartController::class, 'export']);
+        Route::get('/users/search', [ClientOrgChartController::class, 'searchUsers']);
         Route::get('/', [ClientOrgChartController::class, 'index']);
         Route::post('/', [ClientOrgChartController::class, 'store']);
         Route::get('/{id}', [ClientOrgChartController::class, 'show']);
@@ -19,6 +20,7 @@ Route::prefix('api/org-units')
         Route::post('/{id}/move', [ClientOrgChartController::class, 'move']);
         
         // Gestão de Vínculos de Usuários
+        Route::get('/{id}/users', [ClientOrgChartController::class, 'users']);
         Route::post('/{id}/users', [ClientOrgChartController::class, 'linkUser']);
         Route::delete('/{id}/users/{userId}', [ClientOrgChartController::class, 'unlinkUser']);
         Route::post('/{id}/users/{userId}/primary', [ClientOrgChartController::class, 'setPrimaryUnit']);

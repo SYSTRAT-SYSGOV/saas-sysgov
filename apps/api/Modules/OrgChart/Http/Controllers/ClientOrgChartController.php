@@ -373,4 +373,89 @@ final class ClientOrgChartController extends Controller
             'data' => $json,
         ]);
     }
+
+    /**
+     * Lista os servidores vinculados a uma unidade organizacional.
+     * GET /api/org-units/{id}/users
+     *
+     * @return JsonResponse
+     */
+    public function users(int $id, Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+
+        /** @var OrgUnit $unit */
+        $unit = OrgUnit::findOrFail($id);
+
+        Gate::authorize('view', $unit);
+
+        $allowedIds = $this->access->allowedOrgUnitIds($user, 'org', $tenantId);
+        if ($allowedIds !== null && !in_array($unit->id, $allowedIds, true)) {
+            return response()->json(['error' => 'Acesso negado a esta unidade.'], 403);
+        }
+
+        $links = $unit->users()
+            ->withPivot(['role', 'is_primary', 'valid_from', 'valid_to'])
+            ->get();
+
+        $data = $links->map(function (\App\Models\User $u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'matricula' => $u->matricula,
+                'role' => $u->pivot->role,
+                'is_primary' => (bool) $u->pivot->is_primary,
+                'valid_from' => $u->pivot->valid_from,
+                'valid_to' => $u->pivot->valid_to,
+            ];
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
+    /**
+     * Busca usuários do tenant para vínculo (por nome, matrícula ou e-mail).
+     * GET /api/org-units/users/search?q=...
+     */
+    public function searchUsers(Request $request): JsonResponse
+    {
+        $tenantId = (int) app(\App\Support\TenantContext::class)->id();
+        $q = trim((string) $request->query('q', ''));
+        $excludeUnitId = $request->query('exclude_unit_id') ? (int) $request->query('exclude_unit_id') : null;
+
+        if ($q === '') {
+            return response()->json(['data' => []]);
+        }
+
+        $query = User::query()
+            ->whereHas('tenants', fn ($tq) => $tq->where('tenants.id', $tenantId)->where('tenant_user.status', 'active'))
+            ->where(function ($where) use ($q): void {
+                $where->where('name', 'like', "%{$q}%")
+                    ->orWhere('matricula', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%");
+            })
+            ->orderBy('name')
+            ->limit(20);
+
+        if ($excludeUnitId !== null) {
+            $query->whereNotIn('users.id', function ($sub) use ($excludeUnitId): void {
+                $sub->select('user_id')
+                    ->from('org_unit_user')
+                    ->where('org_unit_id', $excludeUnitId);
+            });
+        }
+
+        $users = $query->get(['id', 'name', 'email', 'matricula']);
+
+        return response()->json([
+            'data' => $users->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'matricula' => $u->matricula,
+            ]),
+        ]);
+    }
 }

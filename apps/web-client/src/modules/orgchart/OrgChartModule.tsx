@@ -54,6 +54,7 @@ import {
 } from '@sysgov/sdk';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useCan } from '@/core/rbac/useCan';
+import { apiClient } from '@/core/api/client';
 
 type ViewMode = 'tree' | 'table' | 'cards';
 
@@ -116,6 +117,13 @@ export const OrgChartModule: React.FC = () => {
     role: 'membro',
     is_primary: true,
   });
+
+  // Lista de servidores vinculados à unidade + busca de novos
+  const [linkedUsers, setLinkedUsers] = useState<any[]>([]);
+  const [loadingLinkedUsers, setLoadingLinkedUsers] = useState<boolean>(false);
+  const [userSearchQuery, setUserSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState<boolean>(false);
 
   const [inactivationReason, setInactivationReason] = useState<string>('');
 
@@ -413,6 +421,75 @@ export const OrgChartModule: React.FC = () => {
   const handleOpenUsersModal = (unit: OrgUnit | OrgUnitTreeNode) => {
     setSelectedUnit(unit);
     setIsUsersModalOpen(true);
+    loadLinkedUsers(unit.id);
+  };
+
+  const loadLinkedUsers = async (unitId: number) => {
+    setLoadingLinkedUsers(true);
+    try {
+      const res = await apiClient.get<{ data: any[] }>(`/org-units/${unitId}/users`);
+      setLinkedUsers(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch {
+      setLinkedUsers([]);
+    } finally {
+      setLoadingLinkedUsers(false);
+    }
+  };
+
+  const searchUsers = async (q: string) => {
+    if (!selectedUnit) return;
+    setSearchingUsers(true);
+    try {
+      const res = await apiClient.get<{ data: any[] }>('/org-units/users/search', {
+        params: { q, exclude_unit_id: selectedUnit.id },
+      });
+      setSearchResults(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchingUsers(false);
+    }
+  };
+
+  const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchChange = (q: string) => {
+    setUserSearchQuery(q);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (q.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    searchTimeoutRef.current = setTimeout(() => searchUsers(q.trim()), 350);
+  };
+
+  const handleLinkUser = async (userId: number) => {
+    if (!selectedUnit) return;
+    try {
+      await apiClient.post(`/org-units/${selectedUnit.id}/users`, {
+        user_id: userId,
+        role: linkUserForm.role,
+        is_primary: linkUserForm.is_primary,
+      });
+      setSuccessMessage('Servidor vinculado com sucesso.');
+      setUserSearchQuery('');
+      setSearchResults([]);
+      loadLinkedUsers(selectedUnit.id);
+    } catch (e: any) {
+      setErrorMessage(e?.response?.data?.message || 'Erro ao vincular servidor.');
+    }
+  };
+
+  const handleUnlinkUser = async (userId: number) => {
+    if (!selectedUnit) return;
+    if (!window.confirm('Remover este servidor da unidade?')) return;
+    try {
+      await apiClient.delete(`/org-units/${selectedUnit.id}/users/${userId}`);
+      setLinkedUsers((prev) => prev.filter((u) => u.id !== userId));
+      setSuccessMessage('Servidor removido da unidade.');
+    } catch (e: any) {
+      setErrorMessage(e?.response?.data?.message || 'Erro ao remover servidor.');
+    }
   };
 
   const handleOpenInactivateModal = (unit: OrgUnit | OrgUnitTreeNode) => {
@@ -1469,31 +1546,59 @@ export const OrgChartModule: React.FC = () => {
           </Button>
         }
       >
-            <div className="space-y-4">
-              <span className="text-xs font-mono font-bold text-muted-foreground">{selectedUnit?.name}</span>
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-mono font-bold text-muted-foreground">{selectedUnit?.name}</span>
+                <Badge variant="primary">{linkedUsers.length} servidor(es)</Badge>
+              </div>
 
-              <form onSubmit={handleLinkUserSubmit} className="rounded-xl bg-accent/30 border border-border p-5 space-y-4">
+              {/* Busca e vínculo de novo servidor */}
+              <div className="rounded-xl bg-accent/30 border border-border p-4 space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-primary font-mono">
-                  Novo Vínculo de Servidor
+                  Vincular novo servidor
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
-                    <Field label="ID do Servidor" required>
-                      <input
-                        type="number"
-                        required
-                        value={linkUserForm.user_id}
-                        onChange={(e) => setLinkUserForm({ ...linkUserForm, user_id: Number(e.target.value) })}
-                        className="w-full px-3.5 py-2 rounded-lg border border-input bg-background text-sm font-mono focus:ring-2 focus:ring-ring focus:outline-none"
-                      />
+                    <Field label="Buscar por nome ou matrícula">
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={userSearchQuery}
+                          onChange={(e) => handleSearchChange(e.target.value)}
+                          placeholder="Digite nome ou matrícula..."
+                          className="w-full pl-9 py-2 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-ring focus:outline-none"
+                        />
+                      </div>
                     </Field>
+                    {searchingUsers && <p className="mt-1 text-xs text-muted-foreground">Buscando...</p>}
+                    {userSearchQuery.trim().length >= 2 && !searchingUsers && searchResults.length > 0 && (
+                      <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-border bg-background">
+                        {searchResults.map((u) => (
+                          <div key={u.id} className="flex items-center justify-between px-3 py-2 hover:bg-accent/60">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-foreground truncate">{u.name}</p>
+                              <p className="font-mono text-[10px] text-muted-foreground truncate">
+                                {u.matricula ? `Matrícula: ${u.matricula} · ` : ''}{u.email}
+                              </p>
+                            </div>
+                            <Button variant="secondary" size="sm" onClick={() => handleLinkUser(u.id)}>
+                              Vincular
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {userSearchQuery.trim().length >= 2 && !searchingUsers && searchResults.length === 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">Nenhum usuário encontrado.</p>
+                    )}
                   </div>
                   <div>
-                    <Field label="Papel" required>
+                    <Field label="Papel">
                       <select
                         value={linkUserForm.role}
                         onChange={(e) => setLinkUserForm({ ...linkUserForm, role: e.target.value })}
-                        className="w-full px-3.5 py-2 rounded-lg border border-input bg-background text-sm font-semibold focus:ring-2 focus:ring-ring focus:outline-none"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm font-semibold focus:ring-2 focus:ring-ring focus:outline-none"
                       >
                         <option value="membro">Membro</option>
                         <option value="responsavel">Gestor / Titular</option>
@@ -1511,11 +1616,48 @@ export const OrgChartModule: React.FC = () => {
                   />
                   Definir como Lotação Primária Oficial (RN-ORG-007)
                 </label>
+              </div>
 
-                <Button variant="primary" type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2.5 font-bold">
-                  Vincular Servidor
-                </Button>
-              </form>
+              {/* Lista de servidores vinculados */}
+              <div>
+                <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground font-mono">
+                  Servidores vinculados
+                </h4>
+                {loadingLinkedUsers ? (
+                  <div className="flex justify-center py-6">
+                    <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-border border-t-primary" />
+                  </div>
+                ) : linkedUsers.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-muted-foreground">
+                    Nenhum servidor vinculado a esta unidade.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {linkedUsers.map((u) => (
+                      <div key={u.id} className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate">
+                            {u.name}
+                            {u.is_primary && <span className="ml-2 text-[10px] font-bold text-success uppercase">· Primária</span>}
+                          </p>
+                          <p className="font-mono text-[10px] text-muted-foreground truncate">
+                            {u.role === 'responsavel' ? 'Gestor / Titular' : 'Membro'}
+                            {u.matricula ? ` · Matrícula ${u.matricula}` : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleUnlinkUser(u.id)}
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          title="Remover vínculo"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
       </Dialog>
 
