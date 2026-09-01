@@ -1054,66 +1054,66 @@ export const OrgChartModule: React.FC = () => {
 
       {/* VISÃO 2: TABELA ESTRUTURADA ANALÍTICA */}
       {viewMode === 'table' && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+        <Card noPadding className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-[#F0F4FA] border-b border-slate-200 text-[#0c326f] text-xs font-mono font-bold uppercase tracking-wider">
-                  <th className="py-4 px-5">Código</th>
-                  <th className="py-4 px-5">Unidade / Nome Oficial</th>
-                  <th className="py-4 px-5">Tipo</th>
-                  <th className="py-4 px-5">Nível</th>
-                  <th className="py-4 px-5">Path</th>
-                  <th className="py-4 px-5">Gestor Responsável</th>
+                <tr className="bg-muted/40 border-b border-border text-muted-foreground text-xs font-mono font-bold uppercase tracking-wider">
+                  <th className="py-4 px-5 text-center">Código</th>
+                  <th className="py-4 px-5 text-center">Unidade / Nome Oficial</th>
+                  <th className="py-4 px-5 text-center">Tipo</th>
+                  <th className="py-4 px-5 text-center">Nível</th>
+                  <th className="py-4 px-5 text-center">Path</th>
+                  <th className="py-4 px-5 text-center">Gestor Responsável</th>
                   <th className="py-4 px-5 text-center">Servidores</th>
                   <th className="py-4 px-5 text-center">Status</th>
                   <th className="py-4 px-5 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody className="divide-y divide-border">
                 {filteredFlatUnits.map((u) => {
                   const gestor = u.responsibles?.[0];
                   return (
-                    <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-5 font-mono text-xs font-bold text-[#0c326f] tabular-nums">
+                    <tr key={u.id} className="hover:bg-accent/40 transition-colors">
+                      <td className="py-3.5 px-5 font-mono text-xs font-bold text-[#0c326f] tabular-nums text-center">
                         {u.code}
                       </td>
-                      <td className="py-3.5 px-5">
-                        <div className="flex items-center gap-2">
+                      <td className="py-3.5 px-5 text-center">
+                        <div className="flex items-center justify-center gap-2">
                           <span
-                            className="text-xs font-mono text-slate-600"
+                            className="text-xs font-mono text-muted-foreground"
                             style={{ paddingLeft: `${(u.level - 1) * 16}px` }}
                           >
                             {u.level > 1 ? '↳' : '•'}
                           </span>
-                          <span className="font-bold text-slate-900">{u.name}</span>
+                          <span className="font-bold text-foreground">{u.name}</span>
                           {u.acronym && (
-                            <span className="font-mono text-xs text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                            <span className="font-mono text-xs text-muted-foreground bg-accent px-1.5 py-0.5 rounded">
                               {u.acronym}
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="py-3.5 px-5">
+                      <td className="py-3.5 px-5 text-center">
                         <OrgTypeBadge type={u.type} />
                       </td>
-                      <td className="py-3.5 px-5 font-mono text-xs font-bold text-slate-700 tabular-nums">
+                      <td className="py-3.5 px-5 font-mono text-xs font-bold text-muted-foreground tabular-nums text-center">
                         Nível {u.level}
                       </td>
-                      <td className="py-3.5 px-5 font-mono text-xs text-slate-600 tabular-nums">
+                      <td className="py-3.5 px-5 font-mono text-xs text-muted-foreground tabular-nums text-center">
                         {u.path}
                       </td>
-                      <td className="py-3.5 px-5">
+                      <td className="py-3.5 px-5 text-center">
                         {gestor ? (
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-success">
+                            <span className="w-2 h-2 rounded-full bg-success" />
                             <span>{gestor.name}</span>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-600 italic">Não vinculado</span>
+                          <span className="text-xs text-muted-foreground italic">Não vinculado</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-5 text-center font-mono text-xs font-bold text-slate-700 tabular-nums">
+                      <td className="py-3.5 px-5 text-center font-mono text-xs font-bold text-muted-foreground tabular-nums">
                         {u.users_count || 0}
                       </td>
                       <td className="py-3.5 px-5 text-center">
@@ -1127,7 +1127,7 @@ export const OrgChartModule: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(u)}
-                            className="p-1.5 rounded-lg text-slate-700 hover:text-amber-700 hover:bg-amber-50"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-warning hover:bg-warning/10"
                             title="Editar"
                           >
                             <Edit3 className="w-4 h-4" />
@@ -1136,7 +1136,7 @@ export const OrgChartModule: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenMoveModal(u)}
-                              className="p-1.5 rounded-lg text-slate-700 hover:text-[#0c326f] hover:bg-blue-50"
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
                               title="Mover"
                             >
                               <Move className="w-4 h-4" />
@@ -1145,7 +1145,7 @@ export const OrgChartModule: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleOpenUsersModal(u)}
-                            className="p-1.5 rounded-lg text-slate-700 hover:text-indigo-700 hover:bg-indigo-50"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
                             title="Servidores"
                           >
                             <UserPlus className="w-4 h-4" />
@@ -1158,16 +1158,16 @@ export const OrgChartModule: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* VISÃO 3: CARDS POR SECRETARIAS / BENTO VIEW */}
       {viewMode === 'cards' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {secretariasList.map((sec) => (
-            <div
+            <Card
               key={sec.id}
-              className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              className="p-6 flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-start justify-between gap-3 mb-3">
@@ -1240,7 +1240,7 @@ export const OrgChartModule: React.FC = () => {
                   </button>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
