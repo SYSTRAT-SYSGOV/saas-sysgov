@@ -11,10 +11,11 @@ interface TopBarProps { onToggleSidebar: () => void; }
 export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
   const { user, tenants, switchTenant, logout } = useAuth();
   const { tenant } = useTenant();
-  const { activeUnit, loading: loadingUnit } = useOrgUnit();
+  const { activeUnit, loading: loadingUnit, unitList, setActiveUnitId, hasMultipleUnits } = useOrgUnit();
   const location = useLocation();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isTenantDropdownOpen, setIsTenantDropdownOpen] = useState(false);
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
 
   const getBreadcrumbName = (pathname: string) => {
     const map: Record<string, string> = {
@@ -66,8 +67,40 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
             </div>
           </div>
 
-          {/* Right: combobox (tenant) + notificações + perfil (borda) */}
+          {/* Right: combobox (secretaria) + combobox (tenant) + notificações + perfil (borda) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Combobox: troca de secretaria / hierarquia */}
+            {!loadingUnit && activeUnit && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => hasMultipleUnits && setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card hover:bg-accent text-left transition max-w-[220px]"
+                  title="Alternar secretaria / hierarquia"
+                >
+                  <ShieldCheck className="w-4 h-4 text-success shrink-0" />
+                  <span className="min-w-0 flex-1 truncate text-xs sm:text-sm font-semibold text-foreground">{activeUnit.name}</span>
+                  {hasMultipleUnits && <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+                </button>
+                {hasMultipleUnits && isUnitDropdownOpen && (
+                  <><div className="fixed inset-0 z-40" onClick={() => setIsUnitDropdownOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-72 rounded-xl bg-popover shadow-xl border border-border py-1.5 z-50 max-h-64 overflow-y-auto">
+                    <div className="px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Selecionar Secretaria</div>
+                    {unitList.map((u) => (
+                      <button key={u.id} type="button" onClick={() => { setActiveUnitId(u.id); setIsUnitDropdownOpen(false); }}
+                        className={cn('w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-accent transition', u.id === (activeUnit.id) ? 'bg-accent/60 text-primary font-semibold' : 'text-foreground')}
+                        style={{ paddingLeft: `${16 + u.depth * 16}px` }}>
+                        {u.depth > 0 && <span className="text-muted-foreground text-xs shrink-0">{'↳'}</span>}
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium">{u.name}</span>
+                        {u.id === activeUnit.id && <Check className="w-4 h-4 text-primary shrink-0 ml-auto" />}
+                      </button>
+                    ))}
+                  </div>
+                  </>)}
+              </div>
+            )}
+            {loadingUnit && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
+
             {/* Combobox: troca de órgão/município */}
             {tenants.length > 1 ? (
               <div className="relative">
