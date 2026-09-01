@@ -2,10 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
+import { useOrgUnit } from '@/core/orgunit';
 import { useCan } from '@/core/rbac/useCan';
 import { getIcon } from '@/config/iconMap';
 import { MenuItem, MenuGroup } from '@sysgov/sdk';
-import { X, ChevronRight, ChevronDown, LogOut } from 'lucide-react';
+import { X, ChevronRight, ChevronDown, LogOut, ShieldCheck, Check, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -16,10 +18,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { navigation, logout, user } = useAuth();
   const { tenant, settings, isStandardBranding } = useTenant();
   const { can, hasModule } = useCan();
+  const { unitList, activeUnit, setActiveUnitId, loading: loadingUnits, hasMultipleUnits } = useOrgUnit();
   const location = useLocation();
 
   const [expandedGroups, setExpandedGroups] = useState<Set<number | string>>(new Set());
   const [expandedItems, setExpandedItems] = useState<Set<number | string>>(new Set());
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
 
   const toggleGroup = (id: number | string) => setExpandedGroups((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleItem = (id: number | string) => setExpandedItems((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -90,6 +94,55 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-white text-[#0c326f] border border-[#C5D8F6]">
             Padrão Gov.br
           </span>
+        </div>
+
+        {/* Seletor de Secretaria / Departamento (contexto de trabalho) */}
+        <div className="px-4 py-3 bg-white border-b border-gov-border">
+          {loadingUnits ? (
+            <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-gov-border bg-[#F8F9FA]">
+              <Loader2 className="w-4 h-4 animate-spin text-[#0c326f]" />
+              <span className="text-xs text-gov-text-secondary">Carregando secretarias...</span>
+            </div>
+          ) : activeUnit ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-[#C5D8F6] bg-white hover:bg-[#F0F4FA] text-left transition"
+              >
+                <ShieldCheck className="w-4 h-4 text-[#0c326f] shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-gov-text-muted">Secretaria / Departamento</span>
+                  <span className="block text-xs sm:text-sm font-bold text-[#0c326f] whitespace-nowrap">{activeUnit.name}</span>
+                </div>
+                {hasMultipleUnits && <ChevronDown className="w-4 h-4 text-gov-text-muted shrink-0" />}
+              </button>
+
+              {hasMultipleUnits && isUnitDropdownOpen && (
+                <div className="absolute left-0 right-0 mt-2 rounded-xl bg-white shadow-xl border border-gov-border py-1.5 z-50 max-h-64 overflow-y-auto">
+                  <div className="px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-gov-text-muted">
+                    Selecionar ambiente de trabalho
+                  </div>
+                  {unitList.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => { setActiveUnitId(u.id); setIsUnitDropdownOpen(false); }}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-[#F0F4FA] transition',
+                        u.id === activeUnit.id ? 'bg-[#E8F0FE] text-[#0c326f]' : 'text-[#1B1B1B]'
+                      )}
+                      style={{ paddingLeft: `${16 + u.depth * 16}px` }}
+                    >
+                      {u.depth > 0 && <span className="text-gov-text-muted text-xs shrink-0">{'↳'}</span>}
+                      <span className="text-sm font-medium truncate">{u.name}</span>
+                      {u.id === activeUnit.id && <Check className="w-4 h-4 text-[#0c326f] shrink-0 ml-auto" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
 
         {/* Corpo do Menu com Fundo Branco */}

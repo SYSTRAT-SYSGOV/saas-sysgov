@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
+import { useOrgUnit } from '@/core/orgunit';
 import { MODULE_REGISTRY } from '@/config/moduleRegistry';
-import { apiClient } from '@/core/api/client';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,8 @@ import {
   Users,
   ShieldCheck,
   Shield,
+  ChevronRight,
+  MapPin,
 } from 'lucide-react';
 
 const FAVORITES_KEY = 'sysgov:welcome:favorites';
@@ -34,12 +36,6 @@ interface ModuleShortcut {
   icon: string;
   route: string;
   permission?: string;
-}
-
-interface OrgScopeInfo {
-  primary_unit: { id: number; name: string; code: string; acronym?: string | null; role: string } | null;
-  managed_units: { id: number; name: string; code: string; acronym?: string | null }[];
-  is_unrestricted: boolean;
 }
 
 function getModuleRoute(id: string): string {
@@ -79,8 +75,7 @@ function getModuleIcon(id: string): React.ReactNode {
 export const DashboardModule: React.FC = () => {
   const { user, modules: activeModules, permissions } = useAuth();
   const { tenant } = useTenant();
-  const [scopeInfo, setScopeInfo] = useState<OrgScopeInfo | null>(null);
-  const [loadingScope, setLoadingScope] = useState(true);
+  const { scopeInfo, unitList, activeUnit, orgTree, loading: loadingUnits, hasMultipleUnits } = useOrgUnit();
   const [favorites, setFavorites] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { return []; }
   });
@@ -88,13 +83,6 @@ export const DashboardModule: React.FC = () => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]'); } catch { return []; }
   });
   const [editMode, setEditMode] = useState(false);
-
-  useEffect(() => {
-    apiClient.get<{ data: OrgScopeInfo }>('/org-units/scope')
-      .then((res) => setScopeInfo(res.data?.data ?? null))
-      .catch(() => setScopeInfo(null))
-      .finally(() => setLoadingScope(false));
-  }, []);
 
   const saveFavorites = (f: string[]) => {
     setFavorites(f);
@@ -138,8 +126,6 @@ export const DashboardModule: React.FC = () => {
   const otherModules = orderedModules.filter((m) => !favorites.includes(m.id));
 
   const userInitial = user?.name?.charAt(0).toUpperCase() || 'U';
-  const secretariaName = scopeInfo?.primary_unit?.name;
-  const secretariaRole = scopeInfo?.primary_unit?.role;
 
   return (
     <div className="space-y-6">
@@ -158,16 +144,33 @@ export const DashboardModule: React.FC = () => {
                 Bem-vindo ao <strong className="text-foreground">{tenant?.name}</strong>
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                {loadingScope ? (
+                {loadingUnits ? (
                   <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary" />
                 ) : scopeInfo?.is_unrestricted ? (
                   <Badge variant="success" icon={<ShieldCheck className="h-3 w-3" />}>
                     Acesso irrestrito a todas as unidades
                   </Badge>
-                ) : secretariaName ? (
-                  <Badge variant="info" icon={<Building2 className="h-3 w-3" />}>
-                    {secretariaName} {secretariaRole ? `(${secretariaRole})` : ''}
-                  </Badge>
+                ) : activeUnit ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="info" icon={<Building2 className="h-3 w-3" />}>
+                      {activeUnit.name}
+                    </Badge>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      Hierarquia: {(() => {
+                        const parts: string[] = [];
+                        const findAncestors = (id: number, nodes: typeof orgTree): boolean => {
+                          for (const n of nodes) {
+                            if (n.id === id) { parts.push(n.name); return true; }
+                            if (n.children?.length && findAncestors(id, n.children)) { parts.push(n.name); return true; }
+                          }
+                          return false;
+                        };
+                        const root = findAncestors(activeUnit.id, orgTree);
+                        return parts.reverse().join(' › ') || '—';
+                      })()}
+                    </span>
+                  </div>
                 ) : (
                   <Badge variant="neutral">Usuário sem vínculo de unidade</Badge>
                 )}
