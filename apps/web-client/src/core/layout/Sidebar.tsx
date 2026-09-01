@@ -64,12 +64,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </div>
             )}
             <div className="min-w-0">
-              <span className="block font-bold text-base tracking-tight text-[#0c326f] uppercase truncate" style={{ fontWeight: 800 }}>
-                <span className="text-[#0c326f]">SYS</span>
-                <span className="text-[#10b981]"> GOV</span>
+              <span className="block font-bold text-base tracking-tight text-[#0c326f] uppercase" style={{ fontWeight: 800 }}>
+                <span className="text-[#1351b4]">SYS</span>
+                <span className="text-[#168821]"> GOV</span>
               </span>
-              <span className="block text-xs sm:text-sm text-gov-text-secondary truncate font-normal">
-                {settings.subtitle || tenant?.name}
+              <span className="block text-xs sm:text-sm text-gov-text-primary font-semibold whitespace-nowrap truncate">
+                {tenant?.name || settings.subtitle}
               </span>
             </div>
           </div>

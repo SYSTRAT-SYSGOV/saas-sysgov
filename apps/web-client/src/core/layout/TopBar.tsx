@@ -1,36 +1,17 @@
 import React, { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
-import { useTenant } from '@/core/tenant/useTenant';
-import { useOrgUnit } from '@/core/orgunit';
-import {
-  Menu,
-  Building2,
-  ChevronDown,
-  ChevronRight,
-  Check,
-  Bell,
-  LogOut,
-  UserCircle,
-  Settings2,
-  ShieldCheck,
-  Loader2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Bell, LogOut, UserCircle, Settings2, ChevronRight, ChevronDown, Menu } from 'lucide-react';
 
 interface TopBarProps { onToggleSidebar: () => void; }
 
 /**
- * TopBar avançado: largura total, título SYS azul + GOV verde bold,
- * tenant sem truncate, secretaria ativa via OrgUnitContext (compartilhado).
+ * TopBar simplificado: hamburger + SYS GOV alinhados à esquerda,
+ * notificações + perfil à direita. Tenant e secretaria vivem na Sidebar.
  */
 export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
-  const { user, tenants, switchTenant, logout } = useAuth();
-  const { tenant, settings } = useTenant();
-  const { activeUnit, loading: loadingUnit } = useOrgUnit();
+  const { user, logout } = useAuth();
   const location = useLocation();
-
-  const [isTenantDropdownOpen, setIsTenantDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   const getBreadcrumbName = (pathname: string) => {
@@ -49,123 +30,73 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
 
   return (
     <header className="sticky top-0 z-30 w-full bg-white border-b border-border shadow-sm">
-      {/* Header Main — largura total */}
-      <div className="w-full px-4 lg:px-8 py-3.5 bg-white flex items-center justify-between gap-4">
-        {/* Left: Hambúrger + Brasão + Título */}
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring" aria-label="Abrir Menu">
-            <Menu className="w-6 h-6" />
-          </button>
-          <div className="flex items-center gap-3.5 min-w-0">
-            {settings.customLogoUrl ? (
-              <img src={settings.customLogoUrl} alt="Brasão" className="w-11 h-11 rounded-lg object-contain bg-white border border-border p-1 shrink-0" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-            ) : (
-              <div className="w-11 h-11 rounded-lg bg-primary text-primary-foreground font-mono font-extrabold flex items-center justify-center text-base shadow-sm shrink-0">SG</div>
-            )}
-            <div className="min-w-0">
-              <span className="text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap">
-                <span className="text-[#1351b4] font-[900]">SYS</span>
-                <span className="ml-1 text-[#168821] font-[900]">GOV</span>
-              </span>
-              <span className="block text-xs sm:text-sm text-muted-foreground font-normal">{settings.subtitle || tenant?.name}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Tenant + Secretaria + Notificações + Perfil */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Tenant — texto inteiro, sem truncate */}
-          <div className="relative">
-            {tenants.length > 1 ? (
-              <div>
-                <button type="button" onClick={() => setIsTenantDropdownOpen(!isTenantDropdownOpen)} className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-accent/40 hover:bg-accent text-left transition max-w-[320px]">
-                  <Building2 className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">{tenant?.name}</span>
-                  <ChevronDown className="w-4 h-4 text-muted-foreground ml-0.5 shrink-0" />
-                </button>
-                {isTenantDropdownOpen && (
-                  <><div className="fixed inset-0 z-40" onClick={() => setIsTenantDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-80 rounded-xl bg-popover shadow-xl border border-border py-2 z-50 divide-y divide-border">
-                    <div className="px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground">Alternar Órgão/Município</div>
-                    <div className="py-1">{tenants.map((t) => (
-                      <button key={t.id} type="button" onClick={() => { switchTenant(t.id); setIsTenantDropdownOpen(false); }} className={cn('w-full flex items-center justify-between px-4 py-3 text-sm text-left hover:bg-accent transition', t.id === tenant?.id ? 'bg-accent text-primary font-semibold' : 'text-foreground')}>
-                        <div className="truncate"><span className="block font-medium truncate">{t.name}</span><span className="font-mono text-xs text-muted-foreground uppercase">{t.type}</span></div>
-                        {t.id === tenant?.id && <Check className="w-5 h-5 text-primary shrink-0" />}
-                      </button>
-                    ))}</div>
-                  </div>
-                  </>)}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-sm bg-accent/40 px-3.5 py-2 rounded-lg border border-border max-w-[360px]">
-                <Building2 className="w-4 h-4 text-primary shrink-0" />
-                <span className="font-semibold text-foreground whitespace-nowrap">{tenant?.name}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Secretaria ativa — sem truncate, reflete troca via sidebar */}
-          {loadingUnit ? (
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card"><Loader2 className="w-4 h-4 animate-spin text-primary" /></div>
-          ) : activeUnit ? (
-            <div className="hidden sm:flex items-center gap-2 text-sm bg-card px-3.5 py-2 rounded-lg border border-border max-w-[320px]">
-              <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
-              <span className="font-semibold text-foreground whitespace-nowrap">{activeUnit.name}</span>
-            </div>
-          ) : null}
-
-          {/* Notificações */}
-          <button type="button" className="relative p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition" title="Notificações">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-white" />
-          </button>
-
-          {/* Perfil */}
-          <div className="relative">
-            <button type="button" onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)} className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-lg hover:bg-accent border border-transparent hover:border-border transition">
-              <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-mono font-bold text-sm">
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-              </div>
-              <div className="hidden md:block text-left">
-                <span className="block text-sm font-semibold text-foreground truncate max-w-[120px]">{user?.name?.split(' ')[0] || 'Usuário'}</span>
-                <span className="block text-xs text-muted-foreground truncate max-w-[120px]">{roleLabel}</span>
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground hidden md:block" />
+      {/* Header Main — largura total, conteudo alinhado */}
+      <div className="w-full bg-white border-b border-border/40">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring" aria-label="Abrir Menu">
+              <Menu className="w-6 h-6" />
             </button>
-            {isUserDropdownOpen && (
-              <><div className="fixed inset-0 z-40" onClick={() => setIsUserDropdownOpen(false)} />
-              <div className="absolute right-0 mt-2 w-72 rounded-xl bg-popover shadow-xl border border-border py-2 z-50 divide-y divide-border">
-                <div className="px-4 py-3">
-                  <span className="block text-sm font-semibold text-foreground">{user?.name}</span>
-                  <span className="block text-xs text-muted-foreground font-mono mt-0.5">{user?.email}</span>
-                  <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/10 text-primary">{roleLabel}</span>
+            <span className="text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap">
+              <span className="text-[#1351b4] font-[900]">SYS</span>
+              <span className="ml-1 text-[#168821] font-[900]">GOV</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button type="button" className="relative p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition" title="Notificações">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-white" />
+            </button>
+            {/* Perfil */}
+            <div className="relative">
+              <button type="button" onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)} className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-lg hover:bg-accent border border-transparent hover:border-border transition">
+                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-mono font-bold text-sm">
+                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
                 </div>
-                <div className="py-1.5">
-                  <button onClick={() => { setIsUserDropdownOpen(false); window.location.href = '/perfil'; }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium">
-                    <UserCircle className="w-4 h-4 text-primary" /> Editar Perfil
-                  </button>
-                  <button onClick={() => { setIsUserDropdownOpen(false); window.location.href = '/configuracoes'; }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium">
-                    <Settings2 className="w-4 h-4 text-muted-foreground" /> Configurações
-                  </button>
+                <div className="hidden md:block text-left">
+                  <span className="block text-sm font-semibold text-foreground truncate max-w-[120px]">{user?.name?.split(' ')[0] || 'Usuário'}</span>
+                  <span className="block text-xs text-muted-foreground truncate max-w-[120px]">{roleLabel}</span>
                 </div>
-                <div className="py-1.5">
-                  <button onClick={() => { setIsUserDropdownOpen(false); logout(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition font-semibold">
-                    <LogOut className="w-4 h-4" /> Encerrar Sessão
-                  </button>
+                <ChevronDown className="w-4 h-4 text-muted-foreground hidden md:block" />
+              </button>
+              {isUserDropdownOpen && (
+                <><div className="fixed inset-0 z-40" onClick={() => setIsUserDropdownOpen(false)} />
+                <div className="absolute right-0 mt-2 w-72 rounded-xl bg-popover shadow-xl border border-border py-2 z-50 divide-y divide-border">
+                  <div className="px-4 py-3">
+                    <span className="block text-sm font-semibold text-foreground">{user?.name}</span>
+                    <span className="block text-xs text-muted-foreground font-mono mt-0.5">{user?.email}</span>
+                    <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/10 text-primary">{roleLabel}</span>
+                  </div>
+                  <div className="py-1.5">
+                    <button onClick={() => { setIsUserDropdownOpen(false); window.location.href = '/perfil'; }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium">
+                      <UserCircle className="w-4 h-4 text-primary" /> Editar Perfil
+                    </button>
+                    <button onClick={() => { setIsUserDropdownOpen(false); window.location.href = '/configuracoes'; }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition font-medium">
+                      <Settings2 className="w-4 h-4 text-muted-foreground" /> Configurações
+                    </button>
+                  </div>
+                  <div className="py-1.5">
+                    <button onClick={() => { setIsUserDropdownOpen(false); logout(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition font-semibold">
+                      <LogOut className="w-4 h-4" /> Encerrar Sessão
+                    </button>
+                  </div>
                 </div>
-              </div>
-              </>)}
+                </>)}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Subbar — largura total */}
-      <div className="w-full px-4 lg:px-8 py-2.5 bg-muted/40 flex items-center justify-between text-sm border-t border-border/40">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to="/" className="text-primary hover:underline font-bold">SYSGOV</Link>
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          <span className="text-foreground font-bold">{getBreadcrumbName(location.pathname)}</span>
-        </nav>
+      {/* Subbar — largura total, conteúdo alinhado */}
+      <div className="w-full bg-muted/40 border-t border-border/40">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-2.5 flex items-center">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link to="/" className="text-primary hover:underline font-bold">SYSGOV</Link>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="text-foreground font-bold">{getBreadcrumbName(location.pathname)}</span>
+          </nav>
+        </div>
       </div>
     </header>
   );
