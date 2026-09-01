@@ -58,6 +58,21 @@ import { apiClient } from '@/core/api/client';
 
 type ViewMode = 'tree' | 'table' | 'cards';
 
+// Cache em memória da estrutura do organograma (evita recarregamentos lentos)
+let _orgCache: { tree: OrgUnitTreeNode[]; flat: OrgUnit[]; scope: OrgScopeSummary | null } | null = null;
+
+function flattenUnits(nodes: OrgUnitTreeNode[]): OrgUnit[] {
+  const list: OrgUnit[] = [];
+  const flatten = (ns: OrgUnitTreeNode[]) => {
+    ns.forEach((n) => {
+      list.push(n);
+      if (n.children) flatten(n.children);
+    });
+  };
+  flatten(nodes);
+  return list;
+}
+
 export const OrgChartModule: React.FC = () => {
   const { tenant } = useTenant();
   const { can } = useCan();
@@ -277,8 +292,18 @@ export const OrgChartModule: React.FC = () => {
     ];
   };
 
-  // Carrega dados da API ou do storage persistido
-  const loadOrgChart = useCallback(async () => {
+  // Carrega dados da API ou do storage persistido (com cache em memória)
+  const loadOrgChart = useCallback(async (force = false) => {
+    // Cache em memória: evita recarregar a estrutura em re-renders desnecessários
+    if (!force && _orgCache) {
+      setTreeData(_orgCache.tree);
+      setFlatUnits(_orgCache.flat);
+      setScopeSummary(_orgCache.scope);
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
     try {
       setErrorMessage(null);
       const [tree, flat, scope] = await Promise.all([
@@ -287,6 +312,7 @@ export const OrgChartModule: React.FC = () => {
         sysgovApi.getOrgScope().catch(() => null),
       ]);
 
+      _orgCache = { tree, flat, scope };
       setTreeData(tree);
       setFlatUnits(flat);
       setScopeSummary(scope);
@@ -313,22 +339,13 @@ export const OrgChartModule: React.FC = () => {
         localTree = getInitialTree();
       }
 
+      _orgCache = { tree: localTree, flat: flattenUnits(localTree), scope: null };
       setTreeData(localTree);
-
-      // Achata para lista flat
-      const flatList: OrgUnit[] = [];
-      const flatten = (nodes: OrgUnitTreeNode[]) => {
-        nodes.forEach((n) => {
-          flatList.push(n);
-          if (n.children) flatten(n.children);
-        });
-      };
-      flatten(localTree);
-      setFlatUnits(flatList);
+      setFlatUnits(_orgCache.flat);
 
       setScopeSummary({
         is_unrestricted: true,
-        allowed_unit_ids: flatList.map((u) => u.id),
+        allowed_unit_ids: _orgCache.flat.map((u) => u.id),
         primary_unit: { id: 2, name: 'Secretaria Municipal de Administração & Recursos Humanos', code: 'SMA-01', acronym: 'SMA', role: 'responsavel' },
         managed_units: [{ id: 2, name: 'Secretaria Municipal de Administração & Recursos Humanos', code: 'SMA-01', acronym: 'SMA' }],
       });
@@ -356,7 +373,7 @@ export const OrgChartModule: React.FC = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadOrgChart();
+    await loadOrgChart(true);
   };
 
   // Toggle de expansão de nós
@@ -458,7 +475,7 @@ export const OrgChartModule: React.FC = () => {
       setEditGestorSearch('');
       setEditGestorResults([]);
       setSuccessMessage('Gestor titular vinculado com sucesso.');
-      await loadOrgChart();
+      await loadOrgChart(true);
     } catch (e: any) {
       setErrorMessage(e?.response?.data?.message || 'Erro ao vincular gestor.');
     }
@@ -568,7 +585,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
       });
       setSuccessMessage(`Unidade '${createForm.name}' cadastrada com sucesso.`);
       setIsCreateModalOpen(false);
-      await loadOrgChart();
+      await loadOrgChart(true);
     } catch {
       // Fallback local: Adiciona diretamente à árvore
       const newId = Date.now();
@@ -654,7 +671,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
       await sysgovApi.updateOrgUnit(selectedUnit.id, editForm);
       setSuccessMessage(`Unidade '${editForm.name}' atualizada com sucesso.`);
       setIsEditModalOpen(false);
-      await loadOrgChart();
+      await loadOrgChart(true);
     } catch (err: unknown) {
       setErrorMessage((err as Error).message || 'Erro ao atualizar unidade.');
     }
@@ -667,7 +684,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
       await sysgovApi.moveOrgUnit(selectedUnit.id, moveForm);
       setSuccessMessage(`Hierarquia remanejada com sucesso.`);
       setIsMoveModalOpen(false);
-      await loadOrgChart();
+      await loadOrgChart(true);
     } catch (err: unknown) {
       setErrorMessage((err as Error).message || 'Erro ao mover unidade.');
     }
@@ -680,7 +697,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
       await sysgovApi.deleteOrgUnit(selectedUnit.id, inactivationReason);
       setSuccessMessage(`Unidade processada com sucesso.`);
       setIsInactivateModalOpen(false);
-      await loadOrgChart();
+      await loadOrgChart(true);
     } catch (err: unknown) {
       setErrorMessage((err as Error).message || 'Erro ao inativar unidade.');
     }
@@ -692,7 +709,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
     try {
       await sysgovApi.linkOrgUnitUser(selectedUnit.id, linkUserForm);
       setSuccessMessage('Servidor vinculado com sucesso.');
-      await loadOrgChart();
+      await loadOrgChart(true);
     } catch (err: unknown) {
       setErrorMessage((err as Error).message || 'Erro ao vincular servidor.');
     }
