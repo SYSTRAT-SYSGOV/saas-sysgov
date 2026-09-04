@@ -31,7 +31,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (t: Toast) => void }
         'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium border',
         t.type === 'success' && 'bg-success/10 border-success/30 text-success',
         t.type === 'error' && 'bg-destructive/10 border-destructive/30 text-destructive',
-        t.type === 'warning' && 'bg-warning/15 border-warning/40 text-[#8D5B00]',
+        t.type === 'warning' && 'bg-warning/15 border-warning/40 text-warning',
         t.type === 'info' && 'bg-status-info-bg border-status-info-border text-status-info'
       )}>
         <span className="font-semibold">{t.title}:</span> {t.message}

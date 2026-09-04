@@ -146,7 +146,7 @@ export const UsersModule: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl sm:text-[36px] sm:leading-[40px] font-bold text-[#0c326f] tracking-tight">
+              <h1 className="text-2xl sm:text-[36px] sm:leading-[40px] font-bold text-primary tracking-tight">
                 Usuários do Município
               </h1>
               <StatusChip label="Gestão de Acesso" variant="primary" />
@@ -275,7 +275,7 @@ export const UsersModule: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gov-border">
-              <h2 className="text-lg font-bold text-[#0c326f]">
+              <h2 className="text-lg font-bold text-primary">
                 {editingUser ? 'Editar Usuário' : 'Novo Usuário do Município'}
               </h2>
               <button onClick={() => setModalOpen(false)} className="text-gov-text-muted hover:text-gov-text-primary">✕</button>

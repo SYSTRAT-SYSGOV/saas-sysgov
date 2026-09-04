@@ -259,7 +259,7 @@ export const MenuManager: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#0c326f]">Gerenciador de Menus</h1>
+          <h1 className="text-2xl font-bold text-primary">Gerenciador de Menus</h1>
           <p className="text-xs text-gov-text-secondary mt-1">Arraste itens para outro grupo ou solte sobre um item para criar sub-item.</p>
         </div>
         <div className="flex gap-2">
@@ -374,7 +374,7 @@ export const MenuManager: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gov-border">
-              <h2 className="text-lg font-bold text-[#0c326f]">{editingGroup ? 'Editar Grupo' : 'Novo Grupo'}</h2>
+              <h2 className="text-lg font-bold text-primary">{editingGroup ? 'Editar Grupo' : 'Novo Grupo'}</h2>
               <button onClick={() => setGroupModalOpen(false)} className="text-gov-text-muted hover:text-gov-text-primary"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -406,7 +406,7 @@ export const MenuManager: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gov-border">
-              <h2 className="text-lg font-bold text-[#0c326f]">{editingItem ? 'Editar Item' : 'Novo Item'}</h2>
+              <h2 className="text-lg font-bold text-primary">{editingItem ? 'Editar Item' : 'Novo Item'}</h2>
               <button onClick={() => setItemModalOpen(false)} className="text-gov-text-muted hover:text-gov-text-primary"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">

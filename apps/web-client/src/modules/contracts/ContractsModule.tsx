@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { useTenant } from '@/core/tenant/useTenant';
+import { useExport } from '@/core/export';
 import { Plus, Download, FileText, Search } from 'lucide-react';
 import { PageHeader, Card, Button, StatusChip, DataTable, EmptyState, SearchInput, Badge, ScreenState } from '@/components/ui';
 import { formatCurrencyBRL } from '@/config/theme';
@@ -47,6 +48,7 @@ const statusLabelMap: Record<string, string> = {
 
 export const ContractsModule: React.FC = () => {
   const { tenant } = useTenant();
+  const { exportData } = useExport();
   const [contracts, setContracts] = useState<ContractApiResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +154,7 @@ export const ContractsModule: React.FC = () => {
           subtitle={`${tenant?.name} — Fiscalização, aditivos, reajustes e cronogramas financeiros`}
           actions={
             <div className="flex gap-2">
-              <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />}>Exportar</Button>
+              <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />} onClick={() => exportData(filtered, { filename: `contratos-${new Date().toISOString().split('T')[0]}`, format: 'csv', BOM: true })}>Exportar</Button>
               <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>Novo Contrato</Button>
             </div>
           }
@@ -185,7 +187,7 @@ export const ContractsModule: React.FC = () => {
         subtitle={`${tenant?.name} — Fiscalização, aditivos, reajustes e cronogramas financeiros`}
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />}>Exportar</Button>
+            <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />} onClick={() => exportData(filtered, { filename: `contratos-${new Date().toISOString().split('T')[0]}`, format: 'csv', BOM: true })}>Exportar</Button>
             <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>Novo Contrato</Button>
           </div>
         }

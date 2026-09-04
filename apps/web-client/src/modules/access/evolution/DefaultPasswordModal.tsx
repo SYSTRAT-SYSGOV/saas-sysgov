@@ -57,7 +57,7 @@ export const DefaultPasswordModal: React.FC<DefaultPasswordModalProps> = ({ onCl
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gov-border">
-          <h2 className="text-lg font-bold text-[#0c326f] dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-primary dark:text-white flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-gov-primary" /> Senha Padrão do Sistema
           </h2>
           <button onClick={onClose} className="text-gov-text-muted hover:text-gov-text-primary"><X className="w-5 h-5" /></button>

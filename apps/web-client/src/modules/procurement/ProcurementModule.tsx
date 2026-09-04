@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useCan } from '@/core/rbac/useCan';
-import { Plus, FileCheck, Building2 } from 'lucide-react';
+import { useExport } from '@/core/export';
+import { Plus, FileCheck, Building2, Download } from 'lucide-react';
 import { PageHeader, Card, Badge, Button, StatusChip, DataTable, EmptyState, SearchInput, Accordion } from '@/components/ui';
 import { formatCurrencyBRL } from '@/config/theme';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -30,6 +31,7 @@ const faseVariant = (fase: string) => {
 export const ProcurementModule: React.FC = () => {
   const { tenant } = useTenant();
   const { can } = useCan();
+  const { exportData } = useExport();
   const [search, setSearch] = useState('');
 
   const columns = useMemo<ColumnDef<Licitacao, any>[]>(() => [
@@ -52,9 +54,16 @@ export const ProcurementModule: React.FC = () => {
         title="Licitações, Editais & Compras Públicas"
         badge="Lei 14.133/2021"
         subtitle={`${tenant?.name} — Acompanhamento de processos licitatórios`}
-        actions={can('procurement.create') && (
-          <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>Novo Processo</Button>
-        )}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />} onClick={() => exportData(filtered, { filename: `licitacoes-${new Date().toISOString().split('T')[0]}`, format: 'csv', BOM: true })}>
+              Exportar
+            </Button>
+            {can('procurement.create') && (
+              <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>Novo Processo</Button>
+            )}
+          </div>
+        }
       />
 
       <Card noPadding>

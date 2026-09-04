@@ -857,7 +857,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
   // Renderização Recursiva da Árvore
   const renderTreeNodes = (nodes: OrgUnitTreeNode[], depth = 0) => {
     return (
-      <div className={`space-y-4 ${depth > 0 ? 'ml-6 sm:ml-12 pl-4 sm:pl-6 border-l-2 border-[#C5D8F6] relative' : ''}`}>
+      <div className={`space-y-4 ${depth > 0 ? 'ml-6 sm:ml-12 pl-4 sm:pl-6 border-l-2 border-primary/20 relative' : ''}`}>
         {nodes.map((node) => {
           const isExpanded = expandedNodeIds.has(node.id);
           const hasChildren = !!node.children && node.children.length > 0;
@@ -867,7 +867,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
             <div key={node.id} className="relative group/node">
               {depth > 0 && (
                 <div
-                  className="absolute -left-4 sm:-left-6 top-7 w-4 sm:w-6 h-0.5 bg-[#C5D8F6]"
+                  className="absolute -left-4 sm:-left-6 top-7 w-4 sm:w-6 h-0.5 bg-primary/20"
                   aria-hidden="true"
                 />
               )}
@@ -939,7 +939,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
             </div>
 
             <div>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-[#0c326f] tracking-tight leading-tight">
+              <h1 className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight leading-tight">
                 Organograma Municipal
               </h1>
               <p className="text-sm md:text-base text-muted-foreground mt-1 font-normal max-w-2xl">
@@ -999,10 +999,9 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
             {/* Botão Primário + Nova Unidade */}
             {can('org.create') && (
               <Button
-                variant="primary"
+                variant="success"
                 onClick={() => handleOpenCreateModal(null)}
                 leftIcon={<Plus className="w-4 h-4" />}
-                className="bg-[#10b981] hover:bg-[#059669] text-white font-bold"
               >
                 Nova Unidade
               </Button>
@@ -1042,7 +1041,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
           title="Total de Unidades"
           value={String(kpis.total)}
           subtitle="Estrutura administrativa completa"
-          icon={<Building2 className="w-5 h-5 text-[#0c326f]" />}
+          icon={<Building2 className="w-5 h-5 text-primary" />}
         />
         <KpiCard
           title="Secretarias Municipais"
@@ -1204,10 +1203,10 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
 
       {/* VISÃO 1: ÁRVORE HIERÁRQUICA INTERATIVA */}
       {viewMode === 'tree' && (
-        <div className="p-6 sm:p-8 rounded-2xl bg-[#F8F9FA] border border-border200/90 shadow-sm min-h-[480px]">
+        <div className="p-6 sm:p-8 rounded-2xl bg-muted/30 border border-border shadow-sm min-h-[480px]">
           {isLoading ? (
             <div className="py-24 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-              <RefreshCw className="w-9 h-9 text-[#0c326f] animate-spin" />
+              <RefreshCw className="w-9 h-9 text-primary animate-spin" />
               <span className="font-mono text-sm font-semibold">Carregando estrutura do organograma...</span>
             </div>
           ) : filteredTree.length > 0 ? (
@@ -1215,7 +1214,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
           ) : (
             <div className="py-20 text-center space-y-3">
               <Building2 className="w-12 h-12 text-muted-foreground mx-auto" />
-              <h3 className="text-lg font-bold text-[#0c326f]">Nenhuma unidade encontrada</h3>
+              <h3 className="text-lg font-bold text-primary">Nenhuma unidade encontrada</h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 Não há unidades correspondentes aos critérios de filtro aplicados.
               </p>
@@ -1247,7 +1246,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
                   const gestor = u.responsibles?.[0];
                   return (
                     <tr key={u.id} className="hover:bg-accent/40 transition-colors">
-                      <td className="py-3.5 px-5 font-mono text-xs font-bold text-[#0c326f] tabular-nums text-center">
+                      <td className="py-3.5 px-5 font-mono text-xs font-bold text-primary tabular-nums text-center">
                         {u.code}
                       </td>
                       <td className="py-3.5 px-5 text-center">
@@ -1343,13 +1342,13 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
             >
               <div>
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <span className="font-mono text-xs font-bold uppercase text-[#10b981] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 tabular-nums">
+                  <span className="font-mono text-xs font-bold uppercase text-success bg-success/10 px-2.5 py-0.5 rounded-full border border-success/20 tabular-nums">
                     {sec.code}
                   </span>
                   <OrgTypeBadge type={sec.type} />
                 </div>
 
-                <h3 className="text-lg font-bold text-[#0c326f] leading-snug mb-2">
+                <h3 className="text-lg font-bold text-primary leading-snug mb-2">
                   {sec.name}
                 </h3>
 
@@ -1431,7 +1430,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
             <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="primary" type="submit" form="org-create-form" className="bg-[#10b981] hover:bg-[#059669] text-white font-bold">
+            <Button variant="success" type="submit" form="org-create-form">
               Cadastrar Unidade
             </Button>
           </>
@@ -1502,7 +1501,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
             <Button variant="ghost" type="button" onClick={() => setIsEditModalOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="primary" type="submit" form="org-edit-form" className="bg-[#0c326f] hover:bg-[#08224d] text-white font-bold">
+            <Button variant="primary" type="submit" form="org-edit-form">
               Salvar Alterações
             </Button>
           </>
@@ -1633,13 +1632,13 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
             <Button variant="ghost" type="button" onClick={() => setIsMoveModalOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="primary" type="submit" form="org-move-form" className="bg-[#0c326f] hover:bg-[#08224d] text-white font-bold">
+            <Button variant="primary" type="submit" form="org-move-form">
               Confirmar Remanejamento
             </Button>
           </>
         }
       >
-            <div className="rounded-lg bg-warning/15 border border-warning/30 px-4 py-3 text-xs text-[#8D5B00] space-y-1">
+            <div className="rounded-lg bg-warning/15 border border-warning/30 px-4 py-3 text-xs text-warning space-y-1">
               <span className="block font-bold">Prevenção Estrita de Ciclos (RN-ORG-003):</span>
               <p>
                 Ao mover esta unidade, toda a sua subárvore terá os paths e níveis recalculados atomicamente.
@@ -1844,7 +1843,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
             <span className="text-xs font-mono text-muted-foreground">
               Total de Unidades: {exportPreviewData?.manifest.total_units}
             </span>
-            <Button variant="primary" onClick={() => setIsExportModalOpen(false)} className="bg-[#0c326f] text-white font-bold">
+            <Button variant="primary" onClick={() => setIsExportModalOpen(false)}>
               Fechar Visualização
             </Button>
           </div>
