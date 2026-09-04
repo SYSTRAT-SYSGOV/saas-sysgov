@@ -71,7 +71,7 @@ export const AppShell: React.FC = () => {
       />
 
       {/* 3. Corpo Principal da Aplicação (.main-content no Template Base) */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 lg:ml-[22rem]">
         <div className="max-w-7xl mx-auto">
           <Suspense
             fallback={

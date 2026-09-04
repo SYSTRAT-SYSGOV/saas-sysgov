@@ -42,9 +42,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {/* 2. Menu Lateral Retrátil com Fundo Branco Limpo Oficial (#FFFFFF) */}
       <aside
         aria-label="Menu Principal de Navegação"
-        className={`fixed top-0 bottom-0 left-0 z-50 w-80 sm:w-96 bg-white border-r border-gov-border flex flex-col shadow-2xl transition-transform duration-300 ease-in-out transform font-sans ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-80 sm:w-[22rem] bg-white border-r border-gov-border flex flex-col shadow-2xl transition-transform duration-300 ease-in-out transform font-sans ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } lg:translate-x-0 lg:z-30`}
       >
         {/* Header do Menu */}
         <div className="p-4 sm:p-5 border-b border-gov-border bg-[#F8F9FA] flex items-center justify-between">
