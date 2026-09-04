@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useOrgUnit } from '@/core/orgunit';
 import { MODULE_REGISTRY } from '@/config/moduleRegistry';
+import { apiClient } from '@/core/api/client';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { KpiCard } from '@/components/ui/KpiCard';
+import { StatusChip } from '@/components/ui/StatusChip';
+import { ScreenState } from '@/components/ui/ScreenState';
 import { cn } from '@/lib/utils';import {
   Sparkles,
   Building2,
@@ -84,6 +88,30 @@ export const DashboardModule: React.FC = () => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]'); } catch { return []; }
   });
   const [editMode, setEditMode] = useState(false);
+  const [kpis, setKpis] = useState<{
+    unidades: number | null; licitacoes: number | null; contratos: number | null; receita: number | null;
+    loading: boolean; error: boolean;
+  }>({ unidades: null, licitacoes: null, contratos: null, receita: null, loading: true, error: false });
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      apiClient.get<{ data: any[] }>('/org-units').catch(() => ({ data: { data: [] } })),
+      apiClient.get<{ data: any[] }>('/licitacoes?status=em_andamento').catch(() => ({ data: { data: [] } })),
+      apiClient.get<{ data: any[] }>('/contratos?status=vigente').catch(() => ({ data: { data: [] } })),
+      apiClient.get<{ data: { receita_arrecadada?: number } }>('/financeiro/resumo').catch(() => ({ data: { data: { receita_arrecadada: undefined } as { receita_arrecadada?: number } } })),
+    ]).then(([org, lic, cont, fin]) => {
+      if (cancelled) return;
+      setKpis({
+        unidades: Array.isArray(org.data?.data) ? org.data.data.length : null,
+        licitacoes: Array.isArray(lic.data?.data) ? lic.data.data.length : null,
+        contratos: Array.isArray(cont.data?.data) ? cont.data.data.length : null,
+        receita: fin.data?.data?.receita_arrecadada ?? null,
+        loading: false, error: false,
+      });
+    }).catch(() => { if (!cancelled) setKpis((p) => ({ ...p, loading: false, error: true })); });
+    return () => { cancelled = true; };
+  }, []);
 
   const saveFavorites = (f: string[]) => {
     setFavorites(f);
@@ -193,6 +221,22 @@ export const DashboardModule: React.FC = () => {
           </div>
         </div>
       </Card>
+
+      {/* KPIs — indicadores reais dos módulos */}
+      {kpis.loading ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[1,2,3,4].map((i) => (
+            <Card key={i} className="p-5"><div className="h-5 w-24 animate-pulse rounded bg-muted" /><div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" /></Card>
+          ))}
+        </div>
+      ) : kpis.error ? null : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <KpiCard title="Unidades" value={kpis.unidades !== null ? String(kpis.unidades) : '—'} icon={<Building2 className="h-5 w-5" />} iconBgColor="bg-primary/10 text-primary" />
+          <KpiCard title="Licitações em Andamento" value={kpis.licitacoes !== null ? String(kpis.licitacoes) : '—'} icon={<FileCheck className="h-5 w-5" />} iconBgColor="bg-warning/15 text-warning" />
+          <KpiCard title="Contratos Vigentes" value={kpis.contratos !== null ? String(kpis.contratos) : '—'} icon={<Handshake className="h-5 w-5" />} iconBgColor="bg-success/10 text-success" />
+          <KpiCard title="Receita Arrecadada" value={kpis.receita !== null ? `R$ ${(kpis.receita / 1e6).toFixed(1)}M` : '—'} icon={<DollarSign className="h-5 w-5" />} iconBgColor="bg-status-info-bg text-status-info" />
+        </div>
+      )}
 
       {/* Seção de atalhos favoritos */}
       {pinnedModules.length > 0 && (
