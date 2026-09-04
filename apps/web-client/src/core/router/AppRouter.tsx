@@ -7,6 +7,7 @@ import { AppShell } from '@/core/layout/AppShell';
 import { LoginPage } from '@/pages/LoginPage';
 import { TenantSelectorPage } from '@/pages/TenantSelectorPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { Loader2 } from 'lucide-react';
 
@@ -30,26 +31,23 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
   return children;
 };
 
-// Module Access Guard
-const ModuleRouteGuard: React.FC<{ moduleId: string; children: React.ReactElement }> = ({
-  moduleId,
-  children,
-}) => {
+// Module Access Guard — 403 se autenticado sem permissão, 404 se módulo inexistente
+const ModuleRouteGuard: React.FC<{ moduleId: string; children: React.ReactElement }> = ({ moduleId, children }) => {
   const { hasModule, can } = useCan();
   const moduleDef = MODULE_REGISTRY[moduleId];
 
   if (!hasModule(moduleId)) {
-    return <Navigate to="/404" replace />;
+    return <ForbiddenPage />;
   }
 
   if (moduleDef?.requiredPermission && !can(moduleDef.requiredPermission)) {
-    return <Navigate to="/404" replace />;
+    return <ForbiddenPage />;
   }
 
   return children;
 };
 
-// Admin-only route guard (admin_tenant only)
+// Admin-only route guard (admin_tenant only) — 403 se não for admin
 const AdminRouteGuard: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, isLoading } = useAuth();
   if (isLoading) {
@@ -61,7 +59,7 @@ const AdminRouteGuard: React.FC<{ children: React.ReactElement }> = ({ children 
   }
   const isAdminTenant = user?.roles?.includes('admin_tenant') ?? false;
   if (!isAdminTenant) {
-    return <Navigate to="/404" replace />;
+    return <ForbiddenPage />;
   }
   return children;
 };
