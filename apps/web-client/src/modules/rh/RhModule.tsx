@@ -1,116 +1,47 @@
 import React from 'react';
 import { useTenant } from '@/core/tenant/useTenant';
-import { Users, Briefcase, FileCheck2, UserCheck, Plus, FileSpreadsheet } from 'lucide-react';
-import { 
-  Card, 
-  Button, 
-  KpiCard, 
-  StatusChip, 
-  Table, 
-  TableHead, 
-  TableHeaderCell, 
-  TableBody, 
-  TableRow, 
-  TableCell 
-} from '@/components/ui';
+import { Users, Briefcase, FileCheck2, UserCheck, Plus } from 'lucide-react';
+import { PageHeader, Card, Button, KpiCard, DataTable, StatusChip, Badge } from '@/components/ui';
 import { formatCurrencyBRL } from '@/config/theme';
+import type { ColumnDef } from '@tanstack/react-table';
+
+interface Servidor {
+  matricula: string; nome: string; cargo: string; secretaria: string; vinculo: string;
+}
+
+const servidores: Servidor[] = [
+  { matricula: '001234', nome: 'Ana Beatriz Moreira', cargo: 'Professor III', secretaria: 'Educação', vinculo: 'Efetivo' },
+  { matricula: '001567', nome: 'Carlos Eduardo Lima', cargo: 'Médico Clínico Geral', secretaria: 'Saúde', vinculo: 'Efetivo' },
+  { matricula: '002345', nome: 'Diana Ferreira Santos', cargo: 'Técnico Administrativo', secretaria: 'Administração', vinculo: 'Comissionado' },
+  { matricula: '004567', nome: 'Fernando Almeida Neto', cargo: 'Engenheiro Civil', secretaria: 'Obras', vinculo: 'Efetivo' },
+];
 
 export const RhModule: React.FC = () => {
   const { tenant } = useTenant();
 
+  const columns: ColumnDef<Servidor, any>[] = [
+    { id: 'matricula', header: 'Matrícula', accessorKey: 'matricula', cell: ({ row }) => <span className="font-mono font-bold text-foreground tabular-nums">{row.original.matricula}</span> },
+    { id: 'nome', header: 'Nome', accessorKey: 'nome', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.nome}</span> },
+    { id: 'cargo', header: 'Cargo', accessorKey: 'cargo', cell: ({ row }) => <span className="text-muted-foreground">{row.original.cargo}</span> },
+    { id: 'secretaria', header: 'Secretaria', accessorKey: 'secretaria', cell: ({ row }) => <Badge variant="info">{row.original.secretaria}</Badge> },
+    { id: 'vinculo', header: 'Vínculo', cell: ({ row }) => <StatusChip label={row.original.vinculo} variant={row.original.vinculo === 'Efetivo' ? 'success' : 'warning'} /> },
+  ];
+
   return (
     <div className="space-y-6">
-      <Card className="!p-5 sm:!p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl sm:text-[36px] sm:leading-[40px] font-bold text-[#0c326f] tracking-tight">
-                Recursos Humanos & Folha de Pagamento
-              </h1>
-              <StatusChip label="eSocial Homologado" variant="success" />
-            </div>
-            <p className="text-xs sm:text-sm text-gov-text-secondary mt-1">
-              Quadro funcional, remunerações, previdência e eSocial de{' '}
-              <strong className="text-gov-text-primary">{tenant?.name}</strong>.
-            </p>
-          </div>
+      <PageHeader icon={<Users className="h-6 w-6" />} title="Recursos Humanos & Folha de Pagamento" badge="eSocial Homologado"
+        subtitle={`${tenant?.name} — Quadro de servidores ativos (conforme eSocial)`}
+        actions={<Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>Novo Servidor</Button>}
+      />
 
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="md" leftIcon={<FileSpreadsheet className="w-4 h-4" />}>
-              Remessa eSocial
-            </Button>
-            <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}>
-              Admitir Servidor
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          title="Servidores Ativos"
-          value="4.820"
-          icon={<Users className="w-5 h-5" />}
-          iconBgColor="bg-[#E8F0FE] text-[#1351B4]"
-        />
-        <KpiCard
-          title="Folha Mensal Bruta"
-          value={formatCurrencyBRL(21450800)}
-          icon={<Briefcase className="w-5 h-5" />}
-          iconBgColor="bg-status-success-bg text-status-success"
-        />
-        <KpiCard
-          title="Concursados / Efetivos"
-          value="88,4%"
-          icon={<UserCheck className="w-5 h-5" />}
-          iconBgColor="bg-status-info-bg text-status-info"
-        />
-        <KpiCard
-          title="Status Fechamento"
-          value="08/2026 Fechada"
-          icon={<FileCheck2 className="w-5 h-5" />}
-          iconBgColor="bg-status-success-bg text-status-success"
-          statusBadge={<StatusChip label="Enviado eSocial" variant="success" />}
-        />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard title="Total de Servidores" value="1.247" subtitle="Ativos na folha" icon={<Users className="h-5 w-5" />} iconBgColor="bg-primary/10 text-primary" />
+        <KpiCard title="Folha Bruta" value={formatCurrencyBRL(8425000)} subtitle="Mensal (R$)" icon={<Briefcase className="h-5 w-5" />} iconBgColor="bg-success/10 text-success" />
+        <KpiCard title="Encargos" value={formatCurrencyBRL(2106000)} subtitle="INSS + FGTS mensal" icon={<FileCheck2 className="h-5 w-5" />} iconBgColor="bg-warning/15 text-warning" />
+        <KpiCard title="Comissionados" value="43" subtitle="Cargos de livre nomeação" icon={<UserCheck className="h-5 w-5" />} iconBgColor="bg-status-info-bg text-status-info" />
       </div>
 
-      {/* Table */}
-      <Table>
-        <TableHead>
-          <tr>
-            <TableHeaderCell>Matrícula / Servidor</TableHeaderCell>
-            <TableHeaderCell>Cargo / Função</TableHeaderCell>
-            <TableHeaderCell>Secretaria / Lotação</TableHeaderCell>
-            <TableHeaderCell className="text-center">Regime</TableHeaderCell>
-            <TableHeaderCell className="text-right">Vencimento Base</TableHeaderCell>
-            <TableHeaderCell className="text-center">Situação</TableHeaderCell>
-          </tr>
-        </TableHead>
-        <TableBody>
-          <TableRow>
-            <TableCell>
-              <span className="font-mono font-bold text-gov-text-primary">MAT-10482</span>
-              <span className="block text-xs text-gov-text-secondary">Maria Helena Ribeiro</span>
-            </TableCell>
-            <TableCell>
-              <span className="font-medium text-gov-text-primary">Professor de Ensino Fundamental II</span>
-            </TableCell>
-            <TableCell>
-              <span className="text-xs text-gov-text-secondary">Secretaria de Educação</span>
-            </TableCell>
-            <TableCell className="text-center">
-              <StatusChip label="Estatutário" variant="primary" />
-            </TableCell>
-            <TableCell isTechnical className="text-right font-bold text-gov-text-primary">
-              {formatCurrencyBRL(5820.40)}
-            </TableCell>
-            <TableCell className="text-center">
-              <StatusChip label="Ativo" variant="success" />
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+      <Card noPadding><div className="p-3"><DataTable columns={columns} data={servidores} emptyText="Nenhum servidor encontrado." pageSize={10} /></div></Card>
     </div>
   );
 };

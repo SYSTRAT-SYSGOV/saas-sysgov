@@ -1,200 +1,80 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useCan } from '@/core/rbac/useCan';
-import { Plus, Search, Filter, Download, Eye } from 'lucide-react';
-import { 
-  Card, 
-  Button, 
-  Input, 
-  StatusChip, 
-  StatusVariant,
-  Table,
-  TableHead,
-  TableHeaderCell,
-  TableBody,
-  TableRow,
-  TableCell
-} from '@/components/ui';
+import { Plus, FileCheck, Building2 } from 'lucide-react';
+import { PageHeader, Card, Badge, Button, StatusChip, DataTable, EmptyState, SearchInput, Accordion } from '@/components/ui';
 import { formatCurrencyBRL } from '@/config/theme';
+import type { ColumnDef } from '@tanstack/react-table';
 
 interface Licitacao {
-  id: string;
-  numero: string;
-  modalidade: string;
-  objeto: string;
-  valorEstimado: number;
-  dataAbertura: string;
-  fase: string;
-  statusVariant: StatusVariant;
+  id: string; numero: string; modalidade: string; objeto: string;
+  valorEstimado: number; dataAbertura: string; fase: string;
 }
+
+const licitacoes: Licitacao[] = [
+  { id: '1', numero: 'PE 034/2026', modalidade: 'Pregão Eletrônico', objeto: 'Aquisição de combustíveis para frota municipal.', valorEstimado: 4250000, dataAbertura: '04/09/2026 09:00', fase: 'Publicado' },
+  { id: '2', numero: 'CC 008/2026', modalidade: 'Concorrência Pública', objeto: 'Construção de CMEI no Bairro Costeira.', valorEstimado: 6890150, dataAbertura: '22/09/2026 14:00', fase: 'Em Andamento' },
+  { id: '3', numero: 'PE 029/2026', modalidade: 'Pregão Eletrônico', objeto: 'Link dedicado de internet e fibra óptica.', valorEstimado: 890000, dataAbertura: '15/08/2026 10:00', fase: 'Homologado' },
+  { id: '4', numero: 'DL 015/2026', modalidade: 'Dispensa de Licitação', objeto: 'Aquisição emergencial de medicamentos.', valorEstimado: 142300, dataAbertura: '10/08/2026 08:30', fase: 'Homologado' },
+  { id: '5', numero: 'PE 041/2026', modalidade: 'Pregão Eletrônico', objeto: 'Serviços de vigilância patrimonial 24h.', valorEstimado: 2150000, dataAbertura: '12/10/2026 09:00', fase: 'Em Andamento' },
+  { id: '6', numero: 'TP 002/2026', modalidade: 'Tomada de Preços', objeto: 'Pavimentação asfáltica de ruas do bairro Industrial.', valorEstimado: 3780000, dataAbertura: '30/10/2026 10:00', fase: 'Planejamento' },
+];
+
+const faseVariant = (fase: string) => {
+  if (fase === 'Homologado') return 'success' as const;
+  if (fase === 'Em Andamento') return 'warning' as const;
+  if (fase === 'Publicado') return 'info' as const;
+  return 'neutral' as const;
+};
 
 export const ProcurementModule: React.FC = () => {
   const { tenant } = useTenant();
   const { can } = useCan();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
 
-  const licitacoes: Licitacao[] = [
-    {
-      id: '1',
-      numero: 'PE 034/2026',
-      modalidade: 'Pregão Eletrônico',
-      objeto: 'Aquisição de combustíveis (gasolina comum e óleo diesel S10) para abastecimento da frota municipal.',
-      valorEstimado: 4250000.00,
-      dataAbertura: '04/09/2026 09:00',
-      fase: 'Publicado',
-      statusVariant: 'info',
-    },
-    {
-      id: '2',
-      numero: 'CC 008/2026',
-      modalidade: 'Concorrência Pública',
-      objeto: 'Contratação de empresa especializada de engenharia para construção de CMEI no Bairro Costeira.',
-      valorEstimado: 6890150.00,
-      dataAbertura: '22/09/2026 14:00',
-      fase: 'Em Andamento',
-      statusVariant: 'warning',
-    },
-    {
-      id: '3',
-      numero: 'PE 029/2026',
-      modalidade: 'Pregão Eletrônico',
-      objeto: 'Registro de preços para contratação de serviços de link dedicado de internet e fibra óptica.',
-      valorEstimado: 890000.00,
-      dataAbertura: '15/08/2026 10:00',
-      fase: 'Homologado',
-      statusVariant: 'success',
-    },
-    {
-      id: '4',
-      numero: 'DL 015/2026',
-      modalidade: 'Dispensa de Licitação',
-      objeto: 'Aquisição emergencial de medicamentos de alta complexidade para atendimento à ordem judicial.',
-      valorEstimado: 142300.00,
-      dataAbertura: '10/08/2026 08:30',
-      fase: 'Homologado',
-      statusVariant: 'success',
-    },
-  ];
+  const columns = useMemo<ColumnDef<Licitacao, any>[]>(() => [
+    { id: 'numero', header: 'Nº Processo', accessorKey: 'numero', cell: ({ row }) => <span className="font-mono font-bold text-foreground">{row.original.numero}</span> },
+    { id: 'modalidade', header: 'Modalidade', accessorKey: 'modalidade', cell: ({ row }) => <span className="text-muted-foreground">{row.original.modalidade}</span> },
+    { id: 'objeto', header: 'Objeto', accessorKey: 'objeto', cell: ({ row }) => <span className="max-w-xs truncate text-foreground">{row.original.objeto}</span> },
+    { id: 'valor', header: 'Valor Estimado', accessorKey: 'valorEstimado', cell: ({ row }) => <span className="font-mono tabular-nums font-bold text-foreground">{formatCurrencyBRL(row.original.valorEstimado)}</span> },
+    { id: 'data', header: 'Abertura', accessorKey: 'dataAbertura', cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.dataAbertura}</span> },
+    { id: 'fase', header: 'Fase', cell: ({ row }) => <StatusChip label={row.original.fase} variant={faseVariant(row.original.fase)} /> },
+  ], []);
 
-  const filtered = licitacoes.filter(item => 
-    item.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.objeto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.modalidade.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = useMemo(() => licitacoes.filter((l) =>
+    [l.numero, l.objeto, l.modalidade].some((t) => t.toLowerCase().includes(search.toLowerCase()))
+  ), [search]);
 
   return (
     <div className="space-y-6">
-      {/* Header DS Gov.br */}
-      <Card className="!p-5 sm:!p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl sm:text-[36px] sm:leading-[40px] font-bold text-[#0c326f] tracking-tight">
-                Licitações, Editais & Compras Públicas
-              </h1>
-              <StatusChip
-                label="Lei 14.133/2021"
-                variant="neutral"
-              />
-            </div>
-            <p className="text-xs sm:text-sm text-gov-text-secondary mt-1">
-              Editais, pregões eletrônicos, concorrências e homologações de{' '}
-              <strong className="text-gov-text-primary">{tenant?.name}</strong>.
-            </p>
-          </div>
+      <PageHeader
+        icon={<FileCheck className="h-6 w-6" />}
+        title="Licitações, Editais & Compras Públicas"
+        badge="Lei 14.133/2021"
+        subtitle={`${tenant?.name} — Acompanhamento de processos licitatórios`}
+        actions={can('procurement.create') && (
+          <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>Novo Processo</Button>
+        )}
+      />
 
-          {can('procurement.create') && (
-            <Button
-              variant="primary"
-              size="md"
-              leftIcon={<Plus className="w-4 h-4" />}
-            >
-              Novo Processo Licitatório
-            </Button>
-          )}
-        </div>
+      <Card noPadding>
+        <Accordion
+          icon={<Building2 className="h-4 w-4 text-primary" />}
+          items={[{
+            value: 'filtros',
+            title: <span>Filtros e busca</span>,
+            children: (
+              <SearchInput value={search} onChange={setSearch} placeholder="Buscar por número, modalidade ou objeto..." />
+            ),
+          }]}
+        />
       </Card>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="w-full sm:w-96">
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por edital, modalidade ou objeto..."
-            leftIcon={<Search className="w-4 h-4" />}
-          />
+      <Card noPadding>
+        <div className="p-3">
+          <DataTable columns={columns} data={filtered} emptyText="Nenhuma licitação encontrada." pageSize={10} />
         </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            leftIcon={<Filter className="w-3.5 h-3.5" />}
-          >
-            Filtros Avançados
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            leftIcon={<Download className="w-3.5 h-3.5" />}
-          >
-            Exportar Planilha
-          </Button>
-        </div>
-      </div>
-
-      {/* Data Table */}
-      <Table>
-        <TableHead>
-          <tr>
-            <TableHeaderCell>Processo / Edital</TableHeaderCell>
-            <TableHeaderCell>Modalidade</TableHeaderCell>
-            <TableHeaderCell>Objeto do Edital</TableHeaderCell>
-            <TableHeaderCell className="text-right">Valor Estimado</TableHeaderCell>
-            <TableHeaderCell className="text-center">Abertura</TableHeaderCell>
-            <TableHeaderCell className="text-center">Fase / Status</TableHeaderCell>
-            <TableHeaderCell className="text-center">Ações</TableHeaderCell>
-          </tr>
-        </TableHead>
-        <TableBody>
-          {filtered.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell isTechnical className="font-bold text-gov-text-primary">
-                {item.numero}
-              </TableCell>
-              <TableCell className="font-medium text-gov-text-secondary">
-                {item.modalidade}
-              </TableCell>
-              <TableCell className="text-gov-text-secondary max-w-sm">
-                <p className="line-clamp-2">{item.objeto}</p>
-              </TableCell>
-              <TableCell isTechnical className="text-right font-bold text-gov-text-primary">
-                {formatCurrencyBRL(item.valorEstimado)}
-              </TableCell>
-              <TableCell isTechnical className="text-center text-gov-text-secondary">
-                {item.dataAbertura}
-              </TableCell>
-              <TableCell className="text-center">
-                <StatusChip
-                  label={item.fase}
-                  variant={item.statusVariant}
-                />
-              </TableCell>
-              <TableCell className="text-center">
-                <button
-                  type="button"
-                  className="p-1.5 rounded text-gov-text-secondary hover:bg-gov-page hover:text-gov-primary transition focus-visible:ring-1 focus-visible:ring-gov-primary"
-                  title="Visualizar detalhes do processo"
-                  aria-label={`Visualizar detalhes de ${item.numero}`}
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      </Card>
     </div>
   );
 };
