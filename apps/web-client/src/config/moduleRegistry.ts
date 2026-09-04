@@ -72,4 +72,9 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     name: 'Granularidade de Módulos',
     component: lazy(() => import('@/modules/access/ModuleGranularityManager')),
   },
+  permissionMatrix: {
+    id: 'permissionMatrix',
+    name: 'Matriz de Permissões',
+    component: lazy(() => import('@/modules/access/PermissionMatrix')),
+  },
 };

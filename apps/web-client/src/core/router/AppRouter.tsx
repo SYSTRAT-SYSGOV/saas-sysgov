@@ -76,6 +76,7 @@ export const AppRouter: React.FC = () => {
   const UsersComp = MODULE_REGISTRY.users.component;
   const MenuManagerComp = MODULE_REGISTRY.menuManager.component;
   const ModuleGranularityComp = MODULE_REGISTRY.moduleGranularity.component;
+  const PermissionMatrixComp = MODULE_REGISTRY.permissionMatrix.component;
 
   return (
     <Routes>
@@ -178,6 +179,14 @@ export const AppRouter: React.FC = () => {
           element={
             <AdminRouteGuard>
               <ModuleGranularityComp />
+            </AdminRouteGuard>
+          }
+        />
+        <Route
+          path="matriz-permissoes"
+          element={
+            <AdminRouteGuard>
+              <PermissionMatrixComp />
             </AdminRouteGuard>
           }
         />
