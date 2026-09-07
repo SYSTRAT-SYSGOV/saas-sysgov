@@ -355,6 +355,22 @@ final class RbacSeeder extends Seeder
                 $sysTenant->id => ['role_id' => $superAdminRole->id, 'status' => 'active', 'is_primary' => true],
             ]);
             $superAdmin->roles()->syncWithoutDetaching([$superAdminRole->id]);
+
+            // Usuário admin master corporativo (utilizado no login rápido do painel admin)
+            $masterAdmin = User::updateOrCreate(
+                ['email' => 'admin@sgfiscal.com.br'],
+                [
+                    'name' => 'Administrador Master SYSTRAT',
+                    'password' => Hash::make('admin123'),
+                    'is_platform_admin' => true,
+                    'is_systrat' => true,
+                    'is_active' => true,
+                ]
+            );
+            $masterAdmin->tenants()->syncWithoutDetaching([
+                $sysTenant->id => ['role_id' => $superAdminRole->id, 'status' => 'active', 'is_primary' => true],
+            ]);
+            $masterAdmin->roles()->syncWithoutDetaching([$superAdminRole->id]);
         }
 
         $this->command?->info('RBAC seeded: permissions, roles, and super admin created.');

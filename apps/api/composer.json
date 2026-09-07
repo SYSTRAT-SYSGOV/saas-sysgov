@@ -3,7 +3,7 @@
   "description": "API modular multi-tenant da plataforma SYSGOV",
   "license": "proprietary",
   "type": "project",
-  "require": {"php": "^8.2", "laravel/framework": "^12.0", "laravel/sanctum": "^4.0", "nwidart/laravel-modules": "^11.0", "spatie/laravel-permission": "^6.0",
+  "require": {"php": "^8.4", "laravel/framework": "^13.0", "laravel/sanctum": "^4.0", "nwidart/laravel-modules": "^13.0", "spatie/laravel-permission": "^6.0",
     "pragmarx/google2fa-laravel": "^3.0",
     "predis/predis": "^3.6"},
   "autoload": {
@@ -40,7 +40,7 @@
     "phpunit/phpunit": "^12.5",
     "mockery/mockery": "^1.6",
     "phpstan/phpstan": "^2.2",
-    "larastan/larastan": "^3.10",
-    "laravel/telescope": "^5.22"
+    "larastan/larastan": "^3.11",
+    "laravel/telescope": "^5.23"
   }
 }

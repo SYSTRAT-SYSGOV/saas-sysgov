@@ -1,4 +1,4 @@
-FROM php:8.3-cli
+FROM php:8.4-cli
 WORKDIR /var/www/html
 RUN docker-php-ext-install pdo_mysql
 COPY apps/api .
