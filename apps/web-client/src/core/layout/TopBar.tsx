@@ -33,15 +33,14 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
     <header className="sticky top-0 z-30 w-full bg-white border-b border-border shadow-sm">
       {/* Header Main — hamburger na borda esquerda, título alinhado à página, perfil na borda direita */}
       <div className="w-full bg-white border-b border-border/40">
-        <div className="w-full flex items-center justify-between px-4 lg:px-8 py-3.5">
+        <div className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3.5">
           {/* Left: hamburger (borda esquerda da tela) */}
           <button type="button" onClick={onToggleSidebar} className="p-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-ring shrink-0" aria-label="Abrir Menu">
             <Menu className="w-6 h-6" />
           </button>
 
           {/* Center: título + subtítulo (alinhados à página, max-w-7xl) */}
-          <div className="flex-1 min-w-0 mx-4 lg:mx-8">
-            <div className="max-w-7xl mx-auto text-left">
+          <div className="flex-1 min-w-0">
               <span className="text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap">
                 <span className="text-[#1351b4] font-[900]">SYS</span>
                 <span className="ml-1 text-[#168821] font-[900]">GOV</span>
@@ -60,7 +59,6 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
                   </span>
                 ) : null}
               </div>
-            </div>
           </div>
 
           {/* Right: notificações + perfil (borda direita da tela) */}
@@ -111,7 +109,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
 
       {/* Subbar — breadcrumb alinhado à página */}
       <div className="w-full bg-muted/40 border-t border-border/40">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-2.5 flex items-center">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 flex items-center">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link to="/" className="text-primary hover:underline font-bold">SYSGOV</Link>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />

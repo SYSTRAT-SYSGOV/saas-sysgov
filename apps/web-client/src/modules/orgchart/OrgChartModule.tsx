@@ -906,7 +906,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-20">
+    <div className="space-y-6 pb-20">
       {/* 1. Header do Módulo Premium */}
       <Card className="p-6 md:p-7">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">

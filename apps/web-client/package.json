@@ -14,8 +14,10 @@
   "dependencies": {
     "@sysgov/sdk": "*",
     "@sysgov/ui": "*",
+    "@tanstack/query-sync-storage-persister": "^5.102.8",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-query-devtools": "^5.102.8",
+    "@tanstack/react-query-persist-client": "^5.102.8",
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",

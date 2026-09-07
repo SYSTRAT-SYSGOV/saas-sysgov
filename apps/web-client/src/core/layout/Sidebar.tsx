@@ -47,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         }`}
       >
         {/* Header do Menu */}
-        <div className="p-4 sm:p-5 border-b border-gov-border bg-[#F8F9FA] flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-gov-border bg-[#F8F9FA] flex items-center justify-between max-w-[22rem] mx-auto w-full">
           <div className="flex items-center gap-3.5 min-w-0">
             {settings.customLogoUrl ? (
               <img
