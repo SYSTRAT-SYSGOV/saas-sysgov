@@ -13,51 +13,60 @@ apps/web-client/
 ├── public/                 # Assets estáticos e logos
 ├── src/
 │   ├── components/
-│   │   └── ui/             # Re-exports e componentes base (@sysgov/ui)
+│   │   ├── audit/         # AuditTimeline - trilha de auditoria por registro
+│   │   └── ui/            # Componentes shadcn/ui locais
 │   ├── config/
-│   │   ├── iconMap.ts      # Mapeador de ícones Lucide para menu dinâmico
+│   │   ├── iconMap.ts     # Mapeador de ícones Lucide para menu dinâmico
 │   │   ├── moduleRegistry.ts # Registro de módulos de negócio lazy
-│   │   └── theme.ts        # Tokens e funções de White-label dinâmico
+│   │   └── theme.ts       # Tokens e funções de White-label dinâmico
 │   ├── core/
 │   │   ├── api/
-│   │   │   └── client.ts   # Axios configurado (baseURL: /api, interceptors)
+│   │   │   └── client.ts  # Axios configurado (baseURL: /api, interceptors)
 │   │   ├── auth/
-│   │   │   ├── AuthProvider.tsx # Contexto de autenticação, sessão e multi-tenant
+│   │   │   ├── AuthProvider.tsx # Contexto de autenticação e multi-tenant
 │   │   │   └── useAuth.ts  # Hook de autenticação
+│   │   ├── export/
+│   │   │   └── useExport.ts # Hook unificado para exportação CSV/JSON
 │   │   ├── layout/
-│   │   │   ├── AppShell.tsx # App Shell unificado (Sidebar + TopBar + Conteúdo)
-│   │   │   ├── Sidebar.tsx  # Menu dinâmico do backend com atalhos e badges
-│   │   │   ├── TopBar.tsx   # Cabeçalho com busca, contexto e ações
+│   │   │   ├── AppShell.tsx # Shell unificado (Sidebar + TopBar + Conteúdo)
+│   │   │   ├── Sidebar.tsx  # Menu drawer responsivo com seletor de unidade
+│   │   │   ├── TopBar.tsx  # Cabeçalho com breadcrumbs e perfil
 │   │   │   └── Footer.tsx   # Rodapé institucional Gov.br / White-label
+│   │   ├── orgunit/
+│   │   │   ├── OrgUnitProvider.tsx # Contexto de unidade + ABAC
+│   │   │   └── index.ts
 │   │   ├── rbac/
-│   │   │   └── useCan.ts    # Hook de controle de acesso (permissões, módulos, roles)
+│   │   │   └── useCan.ts   # Hook de controle de acesso
 │   │   ├── router/
 │   │   │   └── AppRouter.tsx # Roteador com guards e lazy loading
 │   │   └── tenant/
-│   │       ├── TenantProvider.tsx # Contexto de tenant e aplicação de tema
-│   │       └── useTenant.ts # Hook do tenant ativo
-│   ├── modules/            # Módulos de negócio como plugins do shell
-│   │   ├── cemiterios/     # Módulo Gestão de Cemitérios
-│   │   ├── contracts/      # Módulo Contratos & Aditivos
-│   │   ├── dashboard/      # Módulo Painel Geral / Visão Estratégica
-│   │   ├── finance/        # Módulo Execução Financeira
-│   │   ├── pedagogico/     # Módulo Pedagógico / Educação
-│   │   ├── procurement/    # Módulo Licitações & Editais
-│   │   └── rh/             # Módulo Recursos Humanos & Folha
+│   │       ├── TenantProvider.tsx # Contexto de tenant e tema
+│   │       └── useTenant.ts  # Hook do tenant ativo
+│   ├── modules/            # Módulos de negócio lazy-loaded
+│   │   ├── access/        # AccessManagement, ModuleGranularityManager, MenuManager, PermissionMatrix
+│   │   ├── cemiterios/    # Gestão de Cemitérios
+│   │   ├── contracts/     # Contratos & Aditivos
+│   │   ├── dashboard/     # Painel Geral / Visão Estratégica
+│   │   ├── finance/       # Execução Financeira
+│   │   ├── orgchart/      # Organograma (árvore, tabela, cards)
+│   │   ├── pedagogico/    # Pedagógico / Educação
+│   │   ├── procurement/    # Licitações & Editais
+│   │   ├── rh/            # Recursos Humanos & Folha
+│   │   └── users/         # Usuários (listagem, MFA)
 │   ├── pages/              # Páginas de nível superior
 │   │   ├── LoginPage.tsx   # Login local e SSO (Gov.br / OpenID Connect)
+│   │   ├── ProfilePage.tsx # Perfil (dados, senha, sessões, permissões)
 │   │   ├── TenantSelectorPage.tsx # Seleção de órgão/município
-│   │   └── NotFoundPage.tsx # Página 404 padronizada
-│   ├── styles/
-│   │   └── tokens.css      # CSS variables Gov.br e SYSGOV
+│   │   ├── ForbiddenPage.tsx # Página 403 (sem permissão)
+│   │   └── NotFoundPage.tsx # Página 404
 │   ├── test/
-│   │   └── setup.ts        # Setup de ambiente de testes Vitest
+│   │   └── setup.ts        # Setup Vitest (@testing-library/jest-dom)
 │   ├── App.tsx             # Componente raiz com Providers
-│   ├── index.css           # Estilos globais e fontes
+│   ├── index.css           # Estilos globais e CSS vars (GOV.BR + SYSGOV)
 │   └── main.tsx            # Ponto de entrada React
 ├── package.json            # Scripts, dependências do workspace
 ├── tsconfig.json           # Configuração TypeScript e aliases
-└── vite.config.ts          # Configuração Vite (porta 5174, proxies /api e /sanctum)
+└── vite.config.ts         # Configuração Vite (porta 5174, proxies /api e /sanctum)
 ```
 
 ---
@@ -77,75 +86,59 @@ apps/web-client/
    php artisan serve --port=8000
    ```
 
-2. **Terminal 2 — Frontend Integrado**:
+2. **Terminal 2 — Frontend**:
    ```bash
-   # Executar apenas o web-client:
-   npm run dev:client
-
-   # Ou executar ambos os frontends simultaneamente:
-   npm run dev:all
+   cd apps/web-client
+   npm run dev
    ```
 
 3. **Acesso no Navegador**:
    - Acesse [http://localhost:5174](http://localhost:5174)
-   - O proxy reverso no `vite.config.ts` encaminha automaticamente `/api` e `/sanctum` para `http://localhost:8000`, eliminando erros de CORS em desenvolvimento.
+   - O proxy reverso no `vite.config.ts` encaminha `/api` e `/sanctum` para `http://localhost:8000`
 
 ---
 
 ## 🧩 3. Como Registrar um Novo Módulo de Negócio
 
-Para adicionar um novo módulo ao `web-client` (ex: `Organograma` ou `Almoxarifado`):
+Para adicionar um novo módulo ao `web-client`:
 
-### 1. Criar o componente do módulo em `src/modules/{nome}/`:
+### 1. Criar o componente em `src/modules/{nome}/`:
 ```tsx
-// src/modules/organograma/OrganogramaModule.tsx
+// src/modules/almoxarifado/AlmoxarifadoModule.tsx
 import React from 'react';
-import { Card, KpiCard, Button } from '@sysgov/ui';
+import { PageHeader, Card, DataTable } from '@/components/ui';
 
-export const OrganogramaModule: React.FC = () => {
+export const AlmoxarifadoModule: React.FC = () => {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gov-text-primary font-sans">
-        Estrutura Organizacional
-      </h1>
-      {/* Conteúdo do módulo */}
+      <PageHeader title="Almoxarifado" subtitle="Gestão de estoques" />
+      {/* Conteúdo */}
     </div>
   );
 };
-
-export default OrganogramaModule;
+export default AlmoxarifadoModule;
 ```
 
 ### 2. Registrar no `src/config/moduleRegistry.ts`:
 ```typescript
-export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
-  // ... outros módulos
-  organograma: {
-    id: 'organograma',
-    name: 'Organograma & Unidades',
-    component: lazy(() => import('@/modules/organograma/OrganogramaModule')),
-    requiredPermission: 'organograma.view',
-  },
-};
+almoxarifado: {
+  id: 'almoxarifado',
+  name: 'Almoxarifado',
+  component: lazy(() => import('@/modules/almoxarifado/AlmoxarifadoModule')),
+  requiredPermission: 'almoxarifado.view',
+},
 ```
 
-### 3. Registrar o ícone no `src/config/iconMap.ts` (se necessário):
-```typescript
-import { Network } from 'lucide-react';
-
-export const ICON_MAP: Record<string, LucideIcon> = {
-  // ...
-  Network,
-};
-```
-
-### 4. Adicionar a rota protegida no `src/core/router/AppRouter.tsx`:
+### 3. Adicionar a rota no `src/core/router/AppRouter.tsx`:
 ```tsx
+const AlmoxarifadoComp = MODULE_REGISTRY.almoxarifado.component;
+
+// Na seção Routes:
 <Route
-  path="organograma"
+  path="almoxarifado"
   element={
-    <ModuleRouteGuard moduleId="organograma">
-      <OrganogramaComp />
+    <ModuleRouteGuard moduleId="almoxarifado">
+      <AlmoxarifadoComp />
     </ModuleRouteGuard>
   }
 />
@@ -153,39 +146,158 @@ export const ICON_MAP: Record<string, LucideIcon> = {
 
 ---
 
-## 🔒 4. Autenticação e Gestão de Sessão (ADR)
+## 🔒 4. Autenticação e Gestão de Sessão
 
-- **Estratégia de Token**:
-  - `baseURL`: `/api` (relativa).
-  - O `apiClient` (`axios`) injeta automaticamente o cabeçalho `Authorization: Bearer <token>` e `X-Tenant-ID`.
-  - Tratamento de erro `401`: limpa o storage e redireciona automaticamente para `/login`.
-  - No MVP, o token de sessão é armazenado em `localStorage` sob a chave `sysgov_auth_token` com CSP estrita, mantendo compatibilidade direta para migração transparente para cookies HttpOnly + CSRF Sanctum em produção.
-- **Navegação Dinâmica**:
-  - A árvore da barra lateral (`Sidebar`) é estritamente renderizada a partir da lista `navigation` retornada pelo backend na resposta de autenticação / seleção de tenant.
-  - O controle de acesso visual utiliza o hook `useCan()` (`can()`, `hasModule()`, `hasRole()`).
+- **Token**: `apiClient` injeta `Authorization: Bearer <token>` e `X-Tenant-ID` automaticamente.
+- **Tratamento 401**: limpa storage e redireciona para `/login`.
+- **Navegação**: Sidebar 100% vinda do backend via `AuthProvider`.
+- **Controle de acesso**: `useCan()` — `can()`, `hasModule()`, `hasRole()`.
 
----
-
-## 🎨 5. Design System e White-Label
-
-- **Padrão Obrigatório**: Padrão Digital Gov.br com paleta SYSGOV (Emerald `#10B981`, Dark Navy `#0a1128`).
-- **Tipografia**:
-  - Textos: `Inter` / `rawline` (`font-sans`).
-  - **Dados Técnicos**: Obrigatoriamente `JetBrains Mono` (`font-mono tabular-nums`) para valores monetários (`R$`), percentuais (`%`), datas, CNPJs, códigos de processo e identificadores.
-- **White-Label por Tenant**:
-  - O `TenantProvider` atualiza dinamicamente as variáveis CSS `--gov-primary`, `--gov-primary-hover` e `--gov-primary-light` e os logos conforme o tenant ativo selecionado.
+### Guards Disponíveis:
+- `ProtectedRoute` — exige autenticação
+- `ModuleRouteGuard` — exige módulo ativo (`hasModule`)
+- `AdminRouteGuard` — exige role `admin_tenant`
 
 ---
 
-## 🧪 6. Comandos de Validação e Testes
+## 🎨 5. Design System e Tokens
+
+### Componentes shadcn/ui Locais (`@/components/ui`):
+`Button`, `Card`, `Badge`, `DataTable`, `Dialog`, `Field`, `Select`, `Switch`, `Tabs`, `Accordion`, `Modal`, `KpiCard`, `StatusChip`, `OrgTypeBadge`, `OrgScopeIndicator`, `OrgTreeNodeCard`, `EmptyState`, `Skeleton`, `PageHeader`, `SearchInput`, `ConfirmDialog`, `ScreenState`
+
+### Tokens Obrigatórios:
+| Token | Uso |
+|---|---|
+| `text-primary` | Títulos e elementos principais |
+| `text-muted-foreground` | Textos secundários |
+| `bg-primary` | Fundos primários |
+| `bg-success/10` | Indicadores de sucesso |
+| `bg-destructive` | Ações destrutivas |
+| `border-border` | Bordas consistentes |
+| `font-mono tabular-nums` | Dados técnicos (R$, %, CNPJ, datas) |
+
+### Cores Hardcoded PROIBIDAS:
+Não use `bg-[#...]`, `text-[#...]`, `border-[#...]` nos módulos. Use tokens semânticos.
+
+---
+
+## 🧪 6. Comandos de Validação
 
 ```bash
-# Executar a suíte de testes unitários (Vitest)
-npm --workspace apps/web-client run test
+# Tests unitários (Vitest)
+cd apps/web-client
+npm run test
 
-# Executar checagem estrita de tipos (TypeScript)
-npm --workspace apps/web-client run typecheck
+# Checagem de tipos (TypeScript)
+npm run typecheck
 
-# Executar build de produção
-npm --workspace apps/web-client run build
+# Build de produção
+npm run build
 ```
+
+### Testes Implementados:
+- `AuthProvider.test.tsx` — contexto de autenticação
+- `useCan.test.tsx` — hook de permissões
+- `PageHeader.test.tsx` — componente de cabeçalho
+- `ScreenState.test.tsx` — estados de tela
+- `ConfirmDialog.test.tsx` — dialog de confirmação
+- `DataTable.test.tsx` — tabela com ordenação
+- `iconMap.test.ts` — mapeador de ícones
+
+---
+
+## 📦 7. Padrão de Módulo de Negócio
+
+Todo módulo de negócio deve seguir:
+
+```tsx
+import React, { useState, useCallback, useEffect } from 'react';
+import { PageHeader, Card, DataTable, ScreenState, SearchInput, Button } from '@/components/ui';
+import { useExport } from '@/core/export';
+import { apiClient } from '@/core/api/client';
+
+export const MeuModulo: React.FC = () => {
+  const { exportData } = useExport();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+
+  // Carregar dados da API
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiClient.get('/meu-modulo');
+      setData(res.data?.data ?? []);
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao carregar.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Colunas da DataTable
+  const columns = useMemo(() => [
+    { id: 'col1', header: 'Coluna 1', accessorKey: 'col1', cell: ({ row }) => <span>{row.original.col1}</span> },
+  ], []);
+
+  if (loading) return (
+    <div className="space-y-6">
+      <PageHeader title="Meu Módulo" />
+      <ScreenState type="loading" title="Carregando..." />
+    </div>
+  );
+
+  if (error) return (
+    <div className="space-y-6">
+      <PageHeader title="Meu Módulo" />
+      <ScreenState type="error" title="Erro" description={error} onAction={load} />
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Meu Módulo"
+        subtitle="Descrição do módulo"
+        actions={<Button onClick={() => exportData(data, { filename: 'export', format: 'csv', BOM: true })}>Exportar</Button>}
+      />
+      <Card noPadding>
+        <div className="p-3 border-b border-border">
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar..." />
+        </div>
+        <div className="p-3">
+          <DataTable columns={columns} data={data} pageSize={10} />
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+export default MeuModulo;
+```
+
+---
+
+## 📝 8. Rotas Registradas
+
+| Rota | Módulo | Guard |
+|---|---|---|
+| `/` | Dashboard | `ModuleRouteGuard` |
+| `/organograma` | OrgChart | `ModuleRouteGuard` |
+| `/licitacoes` | Procurement | `ModuleRouteGuard` |
+| `/contratos` | Contracts | `ModuleRouteGuard` |
+| `/financeiro` | Finance | `ModuleRouteGuard` |
+| `/pedagogico` | Pedagogico | `ModuleRouteGuard` |
+| `/rh` | Rh | `ModuleRouteGuard` |
+| `/cemiterios` | Cemiterios | `ModuleRouteGuard` |
+| `/usuarios` | Users | `ModuleRouteGuard` |
+| `/gerenciar-menus` | MenuManager | `AdminRouteGuard` |
+| `/granularidade-módulos` | ModuleGranularity | `AdminRouteGuard` |
+| `/matriz-permissoes` | PermissionMatrix | `AdminRouteGuard` |
+| `/perfil` | ProfilePage | `ProtectedRoute` |
+| `/login` | LoginPage | Público |
+| `/*` | NotFoundPage | — |
