@@ -209,19 +209,19 @@ function MainDashboardApp() {
           />
         </main>
 
-        <footer className="bg-[#0a1128] dark:bg-[#0a1128] border-t border-[#1a2a52] text-slate-400 text-xs py-5 mt-auto">
+        <footer className="bg-white dark:bg-[#0a1128] border-t border-slate-200 dark:border-[#1a2a52] text-slate-600 dark:text-slate-400 text-xs py-5 mt-auto transition-colors">
           <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-semibold text-white">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
+              <span className="font-semibold text-slate-900 dark:text-white">
                 {config.appName} — {config.appSubtitle}
               </span>
             </div>
-            <div className="flex items-center gap-4 text-slate-400 text-xs font-mono">
+            <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400 text-xs font-mono">
               {config.showPoweredBy && (
                 <span>Powered by {config.companyName}</span>
               )}
-              <span className="text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-800/80 px-2 py-0.5 rounded">
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-2 py-0.5 rounded">
                 v2.5.0-universal
               </span>
             </div>

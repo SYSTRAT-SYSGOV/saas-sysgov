@@ -362,16 +362,16 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   const getBadgeClass = (color?: string) => {
     switch (color) {
       case 'rose':
-        return 'bg-rose-500/20 text-rose-300 border-rose-500/40 font-bold';
+        return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/40 font-bold';
       case 'amber':
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold';
+        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40 font-bold';
       case 'blue':
       case 'indigo':
-        return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 font-bold';
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/40 font-bold';
       case 'emerald':
-        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40 font-bold';
       default:
-        return 'bg-slate-800 text-slate-300 border-slate-700 font-bold';
+        return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 font-bold';
     }
   };
 
@@ -381,21 +381,21 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       {isOpen && (
         <div
           onClick={onToggleOpen}
-          className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300 animate-fade-in"
+          className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300 animate-fade-in"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
         id="sidebar-navigation"
-        className={`fixed top-0 left-0 h-full z-50 bg-[#0a1128] dark:bg-[#0a1128] border-r border-[#1a2a52] text-white transition-all duration-300 ease-in-out flex flex-col shadow-2xl overflow-x-hidden ${
+        className={`fixed top-0 left-0 h-full z-50 bg-white dark:bg-[#0a1128] border-r border-slate-200 dark:border-[#1a2a52] text-slate-800 dark:text-white transition-all duration-300 ease-in-out flex flex-col shadow-xl dark:shadow-2xl overflow-x-hidden ${
           isOpen
             ? 'translate-x-0 w-80 max-w-[85vw]'
             : '-translate-x-full lg:translate-x-0 lg:w-16 w-80'
         }`}
       >
         {/* Sidebar Header / Logo */}
-        <div className="h-14 border-b border-[#1a2a52] flex items-center justify-between px-3 shrink-0 bg-[#0a1128] dark:bg-[#0a1128]">
+        <div className="h-14 border-b border-slate-200 dark:border-[#1a2a52] flex items-center justify-between px-3 shrink-0 bg-slate-50 dark:bg-[#0a1128]">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-slate-950 text-sm shrink-0 shadow-sm"
@@ -405,10 +405,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
             </div>
             {isOpen && (
               <div className="flex flex-col min-w-0 transition-opacity duration-200">
-                <span className="text-xs font-bold font-mono tracking-tight text-white uppercase truncate">
+                <span className="text-xs font-bold font-mono tracking-tight text-slate-900 dark:text-white uppercase truncate">
                   {config.appName || 'SYSGOV ADMIN'}
                 </span>
-                <span className="text-[11px] text-emerald-400 font-mono font-medium truncate">
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium truncate">
                   {config.appSubtitle || 'Painel de Controle'}
                 </span>
               </div>
@@ -421,17 +421,17 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
                 onClick={onTogglePinned}
                 className={`p-1.5 rounded-lg transition cursor-pointer ${
                   isPinned
-                    ? 'text-emerald-300 bg-emerald-500/20 border border-emerald-500/40'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'
+                    ? 'text-emerald-700 bg-emerald-100 border border-emerald-300 dark:text-emerald-300 dark:bg-emerald-500/20 dark:border-emerald-500/40'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 border border-transparent'
                 }`}
                 title={isPinned ? 'Desafixar menu' : 'Fixar menu aberto'}
               >
-                {isPinned ? <Pin className="w-3.5 h-3.5 text-emerald-400" /> : <PinOff className="w-3.5 h-3.5" />}
+                {isPinned ? <Pin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <PinOff className="w-3.5 h-3.5" />}
               </button>
 
               <button
                 onClick={onToggleOpen}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
                 title="Recolher menu lateral"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -442,7 +442,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
 
         {/* Search in Sidebar */}
         {isOpen && (
-          <div className="p-3 border-b border-[#1a2a52]/80 bg-[#0a1128]/80 dark:bg-[#0a1128]/80 shrink-0">
+          <div className="p-3 border-b border-slate-200 dark:border-[#1a2a52]/80 bg-slate-50/80 dark:bg-[#0a1128]/80 shrink-0">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -450,12 +450,12 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 placeholder="Filtrar módulos e telas..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#101a3a] border border-[#1a2a52] rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono"
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-[#101a3a] border border-slate-200 dark:border-[#1a2a52] rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono"
               />
               {searchFilter && (
                 <button
                   onClick={() => setSearchFilter('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -479,7 +479,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
             return (
               <div key={group.id} className="space-y-1.5">
                 {isOpen && (
-                  <div className="px-2.5 py-1 text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase border-b border-[#1a2a52]/60 pb-1">
+                  <div className="px-2.5 py-1 text-[11px] font-mono font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-[#1a2a52]/60 pb-1">
                     {group.title}
                   </div>
                 )}
@@ -509,15 +509,15 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
                             isOpen ? 'gap-3 px-2.5 text-left' : 'justify-center px-0 text-center'
                           } py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer group border ${
                             isActive
-                              ? 'bg-[#101a3a] border-emerald-400 text-white font-bold shadow-sm'
-                              : 'bg-[#0a1128] border-transparent text-slate-300 hover:bg-[#101a3a] hover:text-white'
+                              ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold shadow-xs dark:bg-[#101a3a] dark:border-emerald-400 dark:text-white'
+                              : 'bg-transparent border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-[#101a3a] dark:hover:text-white'
                           }`}
                         >
                           <div
                             className={`p-1.5 rounded-lg shrink-0 transition-colors ${
                               isActive
-                                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
-                                : 'bg-[#101a3a] text-slate-300 group-hover:text-white group-hover:bg-[#1a2a52] border border-[#1a2a52]'
+                                ? 'bg-emerald-600 text-white font-bold shadow-xs dark:bg-emerald-500 dark:text-slate-950'
+                                : 'bg-slate-100 text-slate-500 group-hover:text-slate-900 group-hover:bg-slate-200 border border-slate-200 dark:bg-[#101a3a] dark:text-slate-300 dark:group-hover:text-white dark:group-hover:bg-[#1a2a52] dark:border-[#1a2a52]'
                             }`}
                           >
                             <Icon className="w-4 h-4" />
@@ -525,7 +525,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
 
                           {isOpen && (
                             <div className="flex-1 min-w-0 flex items-center justify-between gap-2 overflow-hidden">
-                              <span className="text-[13px] font-medium text-slate-200 group-hover:text-white truncate">
+                              <span className="text-[13px] font-medium text-slate-700 group-hover:text-slate-900 dark:text-slate-200 dark:group-hover:text-white truncate">
                                 {item.label}
                               </span>
 
@@ -544,11 +544,11 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
 
                         {/* Floating Tooltip when Collapsed */}
                         {!isOpen && hoveredTab === item.id && (
-                          <div className="fixed left-16 ml-2 z-50 bg-[#101a3a] border border-[#1a2a52] text-white rounded-lg py-2 px-3.5 shadow-2xl pointer-events-none min-w-[220px] animate-fade-in">
-                            <div className="font-bold text-xs font-mono text-emerald-400 pb-1 border-b border-[#1a2a52]">
+                          <div className="fixed left-16 ml-2 z-50 bg-white dark:bg-[#101a3a] border border-slate-200 dark:border-[#1a2a52] text-slate-900 dark:text-white rounded-lg py-2 px-3.5 shadow-xl dark:shadow-2xl pointer-events-none min-w-[220px] animate-fade-in">
+                            <div className="font-bold text-xs font-mono text-emerald-600 dark:text-emerald-400 pb-1 border-b border-slate-200 dark:border-[#1a2a52]">
                               {item.label}
                             </div>
-                            <p className="text-xs text-slate-300 leading-relaxed mt-1 font-sans">
+                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mt-1 font-sans">
                               {item.desc}
                             </p>
                             {item.badge && (
@@ -572,19 +572,19 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-2.5 border-t border-[#1a2a52] bg-[#0a1128]/95 dark:bg-[#0a1128]/95 shrink-0 text-center">
+        <div className="p-2.5 border-t border-slate-200 dark:border-[#1a2a52] bg-slate-50 dark:bg-[#0a1128]/95 shrink-0 text-center">
           {!isOpen ? (
             <button
               onClick={onToggleOpen}
-              className="p-2 text-slate-300 hover:text-white hover:bg-[#101a3a] rounded-lg w-full flex justify-center transition cursor-pointer"
+              className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#101a3a] rounded-lg w-full flex justify-center transition cursor-pointer"
               title="Expandir menu lateral"
             >
-              <ChevronRight className="w-4 h-4 text-emerald-400" />
+              <ChevronRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </button>
           ) : (
-            <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+            <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 px-1">
               <span>{config.appName}</span>
-              <span className="text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-800/80 px-1.5 py-0.5 rounded">
+              <span className="text-emerald-700 bg-emerald-100 border border-emerald-300 dark:text-emerald-400 dark:bg-emerald-950/60 dark:border-emerald-800/80 px-1.5 py-0.5 rounded font-bold">
                 v2.5.0
               </span>
             </div>
