@@ -28,6 +28,7 @@ return [
         Illuminate\Foundation\Providers\ConsoleSupportServiceProvider::class,
         Illuminate\Foundation\Providers\ArtisanServiceProvider::class,
         Illuminate\Auth\AuthServiceProvider::class,
+        Illuminate\Redis\RedisServiceProvider::class,
         Laravel\Sanctum\SanctumServiceProvider::class,
         App\Providers\AppServiceProvider::class,
     ],

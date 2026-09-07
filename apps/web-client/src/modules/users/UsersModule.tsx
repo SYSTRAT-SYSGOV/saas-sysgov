@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   Button,
@@ -15,8 +15,15 @@ import {
 import { Users, UserPlus, Search, Pencil, Power, RotateCcw, Loader2, ShieldCheck } from 'lucide-react';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useCan } from '@/core/rbac/useCan';
-import { usersApi } from './UsersApi';
 import { TenantUser } from './types';
+import {
+  useUsers,
+  useCreateUser,
+  useUpdateUser,
+  useDeactivateUser,
+  useReactivateUser,
+} from '@/hooks/useUsers';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const TENANT_ROLES = [
   'admin_tenant',
@@ -41,69 +48,59 @@ const EMPTY_FORM: FormState = { name: '', email: '', password: '', password_conf
 export const UsersModule: React.FC = () => {
   const { tenant } = useTenant();
   const { can } = useCan();
-  const [users, setUsers] = useState<TenantUser[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebounce(search, 300);
   const [roleFilter, setRoleFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<TenantUser | null>(null);
   const [deactivating, setDeactivating] = useState<TenantUser | null>(null);
   const [reason, setReason] = useState('');
-  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
   const canManage = can('users.manage') || can('*');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await usersApi.list({ search: search || undefined, role: roleFilter || undefined });
-      setUsers(res.data);
-    } catch (error) {
-      console.error('Erro ao carregar usuários do tenant:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [search, roleFilter]);
+  const { data: users = [], isLoading, isFetching } = useUsers({
+    search: debouncedSearch || undefined,
+    role: roleFilter || undefined,
+  });
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const deactivateUser = useDeactivateUser();
+  const reactivateUser = useReactivateUser();
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     try {
       if (editingUser) {
-        await usersApi.update(editingUser.id, {
-          name: form.name,
-          email: form.email,
-          role_slug: form.role_slug,
+        await updateUser.mutateAsync({
+          id: editingUser.id,
+          data: {
+            name: form.name,
+            email: form.email,
+            role_slug: form.role_slug,
+          },
         });
       } else {
-        await usersApi.create(form);
+        await createUser.mutateAsync(form);
       }
       setModalOpen(false);
       setEditingUser(null);
       setForm(EMPTY_FORM);
-      load();
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Erro ao salvar usuário.');
-    } finally {
-      setSaving(false);
     }
   };
 
-  const handleDeactivate = async (user: TenantUser) => {
-    if (!reason.trim() || reason.trim().length < 10) {
+  const handleDeactivate = async () => {
+    if (!deactivating || !reason.trim() || reason.trim().length < 10) {
       alert('Informe o motivo da desativação (mínimo 10 caracteres).');
       return;
     }
     try {
-      await usersApi.deactivate(user.id, reason.trim());
+      await deactivateUser.mutateAsync({ id: deactivating.id, reason: reason.trim() });
       setDeactivating(null);
       setReason('');
-      load();
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Erro ao desativar usuário.');
     }
@@ -111,8 +108,7 @@ export const UsersModule: React.FC = () => {
 
   const handleReactivate = async (user: TenantUser) => {
     try {
-      await usersApi.reactivate(user.id);
-      load();
+      await reactivateUser.mutateAsync(user.id);
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Erro ao reativar usuário.');
     }
@@ -139,6 +135,9 @@ export const UsersModule: React.FC = () => {
     user.is_active
       ? { label: 'Ativo', variant: 'success' }
       : { label: 'Inativo', variant: 'neutral' };
+
+  const isSaving = createUser.isPending || updateUser.isPending;
+  const isProcessing = deactivateUser.isPending || reactivateUser.isPending;
 
   return (
     <div className="space-y-6">
@@ -172,13 +171,16 @@ export const UsersModule: React.FC = () => {
 
       <Card className="!p-4">
         <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1">
+          <div className="flex-1 relative">
             <Input
               placeholder="Buscar por nome ou e-mail..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               leftIcon={<Search className="w-4 h-4 text-gov-text-muted" />}
             />
+            {isFetching && !isLoading && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gov-primary animate-spin" />
+            )}
           </div>
           <select
             value={roleFilter}
@@ -192,7 +194,7 @@ export const UsersModule: React.FC = () => {
       </Card>
 
       <Card className="!p-0 overflow-hidden">
-        {loading && users.length === 0 ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-8 h-8 text-gov-primary animate-spin" />
           </div>
@@ -316,7 +318,7 @@ export const UsersModule: React.FC = () => {
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-gov-border">
                 <Button variant="ghost" type="button" onClick={() => setModalOpen(false)}>Cancelar</Button>
-                <Button variant="primary" type="submit" isLoading={saving}>
+                <Button variant="primary" type="submit" isLoading={isSaving}>
                   {editingUser ? 'Atualizar' : 'Criar Usuário'}
                 </Button>
               </div>
@@ -345,7 +347,7 @@ export const UsersModule: React.FC = () => {
               />
               <div className="flex justify-end gap-3 pt-4 border-t border-gov-border">
                 <Button variant="ghost" onClick={() => setDeactivating(null)}>Cancelar</Button>
-                <Button variant="destructive" onClick={() => handleDeactivate(deactivating)}>
+                <Button variant="destructive" onClick={handleDeactivate} isLoading={isProcessing}>
                   Desativar
                 </Button>
               </div>
