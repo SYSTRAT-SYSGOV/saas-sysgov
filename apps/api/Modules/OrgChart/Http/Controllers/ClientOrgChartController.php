@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\OrgChart\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\ModuleAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -399,18 +400,23 @@ final class ClientOrgChartController extends Controller
             ->withPivot(['role', 'is_primary', 'valid_from', 'valid_to'])
             ->get();
 
-        $data = $links->map(function (\App\Models\User $u) {
-            return [
+        $data = [];
+        foreach ($links as $u) {
+            /** @var \App\Models\User $u */
+            /** @var object{role?: mixed, is_primary?: mixed, valid_from?: mixed, valid_to?: mixed}|null $pivot */
+            $pivot = $u->pivot ?? null;
+
+            $data[] = [
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
                 'matricula' => $u->matricula,
-                'role' => $u->pivot->role,
-                'is_primary' => (bool) $u->pivot->is_primary,
-                'valid_from' => $u->pivot->valid_from,
-                'valid_to' => $u->pivot->valid_to,
+                'role' => $pivot->role ?? null,
+                'is_primary' => (bool) ($pivot->is_primary ?? false),
+                'valid_from' => $pivot->valid_from ?? null,
+                'valid_to' => $pivot->valid_to ?? null,
             ];
-        });
+        }
 
         return response()->json(['data' => $data]);
     }

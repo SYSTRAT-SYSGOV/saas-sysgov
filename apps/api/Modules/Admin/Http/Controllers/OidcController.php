@@ -101,7 +101,7 @@ final class OidcController
         $tokenResponse = $this->http->post($discovery['token_endpoint'], [
             'form_params' => [
                 'grant_type' => 'authorization_code',
-                'code' => $code,
+                'code' => (string) $code,
                 'redirect_uri' => url('/api/admin/oidc/callback'),
                 'client_id' => $config['client_id'],
                 'client_secret' => $config['client_secret'],
