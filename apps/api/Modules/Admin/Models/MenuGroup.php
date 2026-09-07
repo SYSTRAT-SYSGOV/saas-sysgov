@@ -9,6 +9,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property string $name
+ * @property string $slug
+ * @property string|null $icon
+ * @property int $order
+ * @property bool $is_active
+ * @property int|null $tenant_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, MenuItem> $items
+ * @property-read Tenant|null $tenant
+ */
 final class MenuGroup extends Model
 {
     protected $table = 'menu_groups';
@@ -36,6 +48,16 @@ final class MenuGroup extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function getName(): string
+    {
+        return $this->attributes['name'] ?? '';
+    }
+
+    public function getSlug(): string
+    {
+        return $this->attributes['slug'] ?? '';
     }
 
     public static function forTenant(?int $tenantId): \Illuminate\Database\Eloquent\Collection

@@ -9,7 +9,7 @@ interface BaseFieldProps {
   help?: string;
   error?: string;
   className?: string;
-  type?: 'text' | 'number' | 'email' | 'password' | 'checkbox' | 'tel' | 'url';
+  type?: 'text' | 'number' | 'email' | 'password' | 'checkbox' | 'tel' | 'url' | 'date';
   as?: 'input' | 'textarea' | 'select';
   options?: { value: string; label: string }[];
   rows?: number;

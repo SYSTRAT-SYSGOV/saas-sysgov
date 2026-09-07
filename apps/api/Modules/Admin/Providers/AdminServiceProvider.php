@@ -35,6 +35,7 @@ final class AdminServiceProvider extends ServiceProvider
             $this->commands([
                 \Modules\Admin\Console\Commands\SeedMenusCommand::class,
                 \Modules\Admin\Console\Commands\SetupMfaCommand::class,
+                \Modules\Admin\Console\Commands\RegisterModuleCommand::class,
             ]);
         }
 

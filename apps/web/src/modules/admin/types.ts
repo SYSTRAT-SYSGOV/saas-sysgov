@@ -165,3 +165,14 @@ export interface Analyst {
   created_at: string;
   tenants: AnalystTenantLink[];
 }
+
+export interface BatchProvisionItem {
+  tenant_id: number;
+  success: boolean;
+  module_alias?: string;
+  error?: string;
+}
+
+export interface BatchProvisionResult {
+  results: BatchProvisionItem[];
+}

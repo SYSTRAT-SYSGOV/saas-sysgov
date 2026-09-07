@@ -1,4 +1,4 @@
-import { Invitation, MenuGroup, User, Role, Permission, Paginated, Tenant, SaasModule, CnpjLookupResult, Analyst, AnalystTenantLink } from './types';
+import { Invitation, MenuGroup, User, Role, Permission, Paginated, Tenant, SaasModule, CnpjLookupResult, Analyst, AnalystTenantLink, BatchProvisionResult } from './types';
 import { withApiBase } from '../../config/env';
 
 const BASE = withApiBase('/api/admin');
@@ -267,6 +267,21 @@ export const adminApi = {
 
   async revokeAnalystTenant(analystId: number, tenantId: number): Promise<void> {
     await request<void>(`/analysts/${analystId}/tenants/${tenantId}`, { method: 'DELETE' });
+  },
+
+  // Batch Module Provisioning
+  async batchProvisionModules(payload: {
+    tenant_ids: number[];
+    module_alias: string;
+    enabled: boolean;
+    monthly_fee_cents?: number;
+    trial_ends_at?: string | null;
+    settings?: Record<string, unknown>;
+  }): Promise<BatchProvisionResult> {
+    return request<BatchProvisionResult>('/modules/batch-provision', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
   async getMyAnalystTenants(): Promise<AnalystTenantLink[]> {

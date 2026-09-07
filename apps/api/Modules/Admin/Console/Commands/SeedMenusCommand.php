@@ -84,7 +84,7 @@ final class SeedMenusCommand extends Command
                     array_merge(['menu_group_id' => $group->getKey(), 'is_active' => true], $item),
                 );
             }
-            $this->info("Grupo '{$group->name}' populado com ".count($items).' itens.');
+            $this->info("Grupo '{$group->getName()}' populado com ".count($items).' itens.');
         }
 
         return self::SUCCESS;

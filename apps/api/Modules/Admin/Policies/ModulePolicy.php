@@ -9,7 +9,38 @@ use Modules\Admin\Models\Module;
 
 final class ModulePolicy
 {
-    public function viewAny(User $user): bool { return $user->is_platform_admin; }
-    public function toggle(User $user, Module $module): bool { return $user->is_platform_admin; }
-    public function update(User $user, Module $module): bool { return $user->is_platform_admin; }
+    public function viewAny(User $user): bool
+    {
+        return $user->is_platform_admin;
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->is_platform_admin;
+    }
+
+    public function view(User $user, Module $module): bool
+    {
+        return $user->is_platform_admin;
+    }
+
+    public function update(User $user, Module $module): bool
+    {
+        return $user->is_platform_admin;
+    }
+
+    public function delete(User $user, Module $module): bool
+    {
+        return $user->is_platform_admin;
+    }
+
+    public function toggle(User $user, Module $module): bool
+    {
+        return $user->is_platform_admin;
+    }
+
+    public function batchProvision(User $user): bool
+    {
+        return $user->is_platform_admin;
+    }
 }

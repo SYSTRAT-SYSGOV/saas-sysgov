@@ -24,9 +24,16 @@ import {
   FileSearch,
   UserPlus,
   KeyRound,
+  CheckSquare,
+  Square,
+  Zap,
+  Calendar,
 } from 'lucide-react';
 import { adminApi } from '../../modules/admin/api';
-import { Tenant, SaasModule, CnpjLookupResult } from '../../modules/admin/types';
+import { Tenant, SaasModule, CnpjLookupResult, BatchProvisionResult } from '../../modules/admin/types';
+import { Dialog } from '../../components/ui/Dialog';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Field } from '../../components/ui/Field';
 
 interface Props {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -71,6 +78,100 @@ const DEFAULT_FORM: TenantForm = {
 const formatCents = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+function TenantCard({ t, selectedTenantIds, handleTenantSelectionChange, getStatusBadge, formatCents }: { t: Tenant; selectedTenantIds: number[]; handleTenantSelectionChange: (id: number, checked: boolean) => void; getStatusBadge: (status: string) => React.ReactNode; formatCents: (cents: number) => string }) {
+  const userUsagePercent = Math.min(100, Math.round(((t.user_count ?? 0) / (t.max_users || 1)) * 100));
+  const storagePercent = 10;
+
+  return (
+    <div key={t.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+      {/* Selection checkbox */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={selectedTenantIds.includes(t.id)}
+            onChange={(e) => handleTenantSelectionChange(t.id, e.target.checked)}
+            className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            aria-label={`Selecionar ${t.name}`}
+          />
+          <span className="text-xs text-slate-500 dark:text-slate-400">Selecionar para ações em lote</span>
+        </div>
+        {getStatusBadge(t.status)}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t.name}</h3>
+        <span className="text-[11px] text-slate-400 font-mono block mt-0.5">id: {t.slug} {t.cnpj ? `• ${t.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')}` : ''}</span>
+      </div>
+
+      {t.domain && (
+        <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-md mb-4 border border-indigo-200 dark:border-indigo-900/50">
+          <Globe className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate font-mono text-[11px]">{t.domain}</span>
+        </div>
+      )}
+
+      <div className="space-y-3 pt-2">
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Assentos de Usuário</span>
+            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{(t.user_count ?? 0)} / {t.max_users} ({userUsagePercent}%)</span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full ${userUsagePercent > 85 ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${userUsagePercent}%` }} />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><HardDrive className="w-3.5 h-3.5" /> Armazenamento</span>
+            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">0 GB / {(t.storage_limit_mb / 1024).toFixed(0)} GB</span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '10%' }} />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><Link2 className="w-3.5 h-3.5" /> Módulos Ativos</span>
+            <span className="font-mono text-slate-500">{t.modules?.filter((m) => m.pivot?.enabled).length ?? 0}</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {(t.modules ?? []).filter((m) => m.pivot?.enabled).map((m) => (
+              <span key={m.id} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{m.alias}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer inside the card */}
+      <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div>
+          <span className="block font-mono text-xs font-bold text-slate-900 dark:text-white">R$ {formatCents(t.mrr_cents ?? 0)}/mês</span>
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider">{t.plan}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => {}}
+            title="Criar Admin Inicial (onboarding)"
+            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 transition-colors"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+          </button>
+          <button title="Diagnóstico de Organograma" className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 transition-colors">
+            <Network className="w-3.5 h-3.5" />
+          </button>
+          <button title="Editar" className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 transition-colors">
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+          <button title="Excluir" className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 transition-colors">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+</div>
+      </div>
+    </div>
+  );
+};
+
 export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [modules, setModules] = useState<SaasModule[]>([]);
@@ -83,6 +184,16 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
   const [saving, setSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [formData, setFormData] = useState<TenantForm>(DEFAULT_FORM);
+
+  // Batch Provisioning
+  const [selectedTenantIds, setSelectedTenantIds] = useState<number[]>([]);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchModule, setBatchModule] = useState<string>('');
+  const [batchEnabled, setBatchEnabled] = useState(true);
+  const [batchMonthlyFee, setBatchMonthlyFee] = useState<number>(0);
+  const [batchTrialEndsAt, setBatchTrialEndsAt] = useState<string>('');
+  const [batchSaving, setBatchSaving] = useState(false);
+  const [batchResult, setBatchResult] = useState<BatchProvisionResult | null>(null);
 
   // CNPJ
   const [cnpjLookup, setCnpjLookup] = useState<CnpjLookupResult | null>(null);
@@ -250,6 +361,77 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
     }
   };
 
+  // Batch Provisioning handlers
+  const handleTenantSelectionChange = (tenantId: number, checked: boolean) => {
+    setSelectedTenantIds(prev => checked ? [...prev, tenantId] : prev.filter(id => id !== tenantId));
+  };
+
+  const handleSelectAllTenants = (checked: boolean) => {
+    if (checked) {
+      setSelectedTenantIds(tenants.map(t => t.id));
+    } else {
+      setSelectedTenantIds([]);
+    }
+  };
+
+  const openBatchModal = () => {
+    setBatchModule('');
+    setBatchEnabled(true);
+    setBatchMonthlyFee(0);
+    setBatchTrialEndsAt('');
+    setBatchResult(null);
+    setBatchModalOpen(true);
+  };
+
+  const closeBatchModal = () => {
+    setBatchModalOpen(false);
+    setBatchResult(null);
+  };
+
+  const handleBatchProvision = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!batchModule) {
+      onAddToast({ type: 'warning', title: 'Módulo Obrigatório', message: 'Selecione um módulo para provisionar.' });
+      return;
+    }
+    if (selectedTenantIds.length === 0) {
+      onAddToast({ type: 'warning', title: 'Nenhum Tenant Selecionado', message: 'Selecione ao menos um tenant na tabela.' });
+      return;
+    }
+
+    setBatchSaving(true);
+    try {
+      const trialEndsAt = batchTrialEndsAt ? new Date(batchTrialEndsAt).toISOString() : null;
+      const result = await adminApi.batchProvisionModules({
+        tenant_ids: selectedTenantIds,
+        module_alias: batchModule,
+        enabled: batchEnabled,
+        monthly_fee_cents: batchMonthlyFee * 100,
+        trial_ends_at: trialEndsAt,
+        settings: {},
+      });
+      setBatchResult(result);
+
+      const successCount = result.results.filter(r => r.success).length;
+      const failCount = result.results.length - successCount;
+
+      onAddToast({
+        type: successCount > 0 ? 'success' : 'error',
+        title: failCount === 0 ? 'Provisionamento em Lote Concluído' : 'Provisionamento Parcial',
+        message: `${successCount} tenant(s) atualizado(s)${failCount > 0 ? `, ${failCount} falha(s)` : ''}.`,
+      });
+
+      if (successCount > 0) {
+        setSelectedTenantIds([]);
+        load();
+      }
+    } catch (error: any) {
+      onAddToast({ type: 'error', title: 'Falha no Provisionamento em Lote', message: error.message || 'Não foi possível provisionar o módulo em lote.' });
+    } finally {
+      setBatchSaving(false);
+    }
+  };
+
   const handleOpenDiagnosticModal = async (tenant: Tenant) => {
     setDiagnosticTenant(tenant);
     setIsLoadingOrgChart(true);
@@ -398,95 +580,55 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {tenants.length === 0 ? (
-          <div className="col-span-full py-16 text-center text-slate-500 dark:text-slate-400">
-            Nenhum tenant encontrado. Clique em "Provisionar Novo Tenant".
-          </div>
-        ) : (
-          tenants.map((t) => {
-            const userUsagePercent = Math.min(100, Math.round(((t.user_count ?? 0) / (t.max_users || 1)) * 100));
-            const storagePercent = 10; // storage real ainda não medido
-            return (
-              <div key={t.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t.name}</h3>
-                      <span className="text-[11px] text-slate-400 font-mono block mt-0.5">id: {t.slug} {t.cnpj ? `• ${t.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')}` : ''}</span>
-                    </div>
-                    {getStatusBadge(t.status)}
-                  </div>
-
-                  {t.domain && (
-                    <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-md mb-4 border border-indigo-200 dark:border-indigo-900/50">
-                      <Globe className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate font-mono text-[11px]">{t.domain}</span>
-                    </div>
-                  )}
-
-                  <div className="space-y-3 pt-2">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Assentos de Usuário</span>
-                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{(t.user_count ?? 0)} / {t.max_users} ({userUsagePercent}%)</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${userUsagePercent > 85 ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${userUsagePercent}%` }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><HardDrive className="w-3.5 h-3.5" /> Armazenamento</span>
-                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">0 GB / {(t.storage_limit_mb / 1024).toFixed(0)} GB</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${storagePercent}%` }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><Link2 className="w-3.5 h-3.5" /> Módulos Ativos</span>
-                        <span className="font-mono text-slate-500">{t.modules?.filter((m) => m.pivot?.enabled).length ?? 0}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {(t.modules ?? []).filter((m) => m.pivot?.enabled).map((m) => (
-                          <span key={m.id} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{m.alias}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <div>
-                    <span className="block font-mono text-xs font-bold text-slate-900 dark:text-white">R$ {formatCents(t.mrr_cents ?? 0)}/mês</span>
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">{t.plan}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => { setOnboardingTenant(t); setOnboardingForm({ name: '', email: '', password: '', password_confirmation: '' }); }}
-                      title="Criar Admin Inicial (onboarding)"
-                      className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 transition-colors"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => handleOpenDiagnosticModal(t)} title="Diagnóstico de Organograma" className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 transition-colors">
-                      <Network className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => handleOpenEditModal(t)} title="Editar" className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 transition-colors">
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => setDeleteConfirmId(t.id)} title="Excluir" className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
+      {/* Batch Actions Bar */}
+      {selectedTenantIds.length > 0 && (
+        <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 animate-slide-down">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <CheckSquare className="w-5 h-5 text-amber-600" />
+              <div>
+                <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">{selectedTenantIds.length} tenant(s) selecionado(s)</span>
+                <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">Ações em lote disponíveis</span>
               </div>
-            );
-          })
-        )}
-      </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={openBatchModal}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-all shadow-md"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Provisionar Módulo em Lote
+              </button>
+              <button
+                onClick={() => setSelectedTenantIds([])}
+                className="px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/30 rounded-lg transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+                Limpar Seleção
+              </button>
+            </div>
+          </div>
+</div>
+      )}
+
+      {tenants.length === 0 ? (
+        <div className="col-span-full py-16 text-center text-slate-500 dark:text-slate-400">
+          Nenhum tenant encontrado. Clique em "Provisionar Novo Tenant".
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {tenants.map((t) => (
+            <TenantCard
+              key={t.id}
+              t={t}
+              selectedTenantIds={selectedTenantIds}
+              handleTenantSelectionChange={handleTenantSelectionChange}
+              getStatusBadge={getStatusBadge}
+              formatCents={formatCents}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Modal Provisionar / Editar */}
       {isModalOpen && (
@@ -698,6 +840,92 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
               <button type="button" onClick={() => setDiagnosticTenant(null)} className="px-5 py-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 rounded-xl transition-colors">Fechar</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal Provisionamento em Lote */}
+      {batchModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <Dialog open={batchModalOpen} onClose={closeBatchModal} title="Provisionar Módulo em Lote" size="lg">
+            <form onSubmit={handleBatchProvision} className="space-y-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Provisionar o módulo selecionado em <strong>{selectedTenantIds.length}</strong> tenant(s).
+                Ação de super admin SYSTRAT — auditable e irreversível sem intervenção manual.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Módulo"
+                  name="batchModule"
+                  value={batchModule}
+                  onChange={(e) => setBatchModule(e.target.value)}
+                  required
+                  as="select"
+                  options={modules.filter(m => m.alias !== 'dashboard').map(m => ({ value: m.alias, label: `${m.name} (${m.alias})` }))}
+                />
+                <Field
+                  label="Status"
+                  name="batchEnabled"
+                  type="checkbox"
+                  value={batchEnabled}
+                  onChange={(e) => setBatchEnabled((e.target as HTMLInputElement).checked)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Field
+                  label="Mensalidade Customizada (R$)"
+                  name="batchMonthlyFee"
+                  type="number"
+                  value={batchMonthlyFee}
+                  onChange={(e) => setBatchMonthlyFee(Number(e.target.value) || 0)}
+                  min="0"
+                  help="Deixe 0 para usar o preço padrão do catálogo"
+                />
+                <Field
+                  label="Fim do Trial (opcional)"
+                  name="batchTrialEndsAt"
+                  as="input"
+                  value={batchTrialEndsAt}
+                  onChange={(e) => setBatchTrialEndsAt(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  type="date"
+                />
+              </div>
+
+              {batchResult && (
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">Resultado do Último Provisionamento</h4>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="text-emerald-600 dark:text-emerald-400 font-mono">
+                      Sucessos: {batchResult.results.filter(r => r.success).length}
+                    </div>
+                    <div className="text-rose-600 dark:text-rose-400 font-mono">
+                      Falhas: {batchResult.results.filter(r => !r.success).length}
+                    </div>
+                  </div>
+                  <details className="mt-2">
+                    <summary className="text-xs text-slate-500 cursor-pointer">Ver detalhes</summary>
+                    <div className="mt-1 max-h-32 overflow-y-auto text-[10px] font-mono space-y-1">
+                      {batchResult.results.map((r, i) => (
+                        <div key={i} className={r.success ? 'text-emerald-600' : 'text-rose-600'}>
+                          {r.success ? '✓' : '✗'} Tenant #{r.tenant_id} — {r.module_alias} {r.error ? `(${r.error})` : ''}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button type="button" onClick={closeBatchModal} className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">Cancelar</button>
+                <button type="submit" disabled={batchSaving} className="px-4 py-2 text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-all shadow-md disabled:opacity-50 inline-flex items-center gap-1.5">
+                  {batchSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                  {batchSaving ? 'Provisionando...' : 'Provisionar em Lote'}
+                </button>
+              </div>
+            </form>
+          </Dialog>
         </div>
       )}
 

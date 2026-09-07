@@ -12,6 +12,7 @@ use Modules\Admin\Http\Controllers\PermissionController;
 use Modules\Admin\Http\Controllers\InvitationAdminController;
 use Modules\Admin\Http\Controllers\TenantUserViewController;
 use Modules\Admin\Http\Controllers\ModuleController;
+use Modules\Admin\Http\Controllers\ModuleCatalogController;
 use Modules\Admin\Http\Controllers\ModuleOrgUnitController;
 use Modules\Admin\Http\Controllers\MonitoringController;
 use Modules\Admin\Http\Controllers\HierarchyController;
@@ -117,6 +118,15 @@ Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->g
     // Modules
     Route::get('/modules', [ModuleController::class, 'index']);
     Route::put('/tenants/{tenant}/modules/{module}', [ModuleController::class, 'toggle']);
+    Route::post('/modules/batch-provision', [ModuleController::class, 'batchProvision']);
+
+    // Module Catalog (platform modules management)
+    Route::get('/module-catalog', [ModuleCatalogController::class, 'index']);
+    Route::post('/module-catalog', [ModuleCatalogController::class, 'store']);
+    Route::get('/module-catalog/{module}', [ModuleCatalogController::class, 'show']);
+    Route::put('/module-catalog/{module}', [ModuleCatalogController::class, 'update']);
+    Route::delete('/module-catalog/{module}', [ModuleCatalogController::class, 'destroy']);
+    Route::patch('/module-catalog/{module}/toggle', [ModuleCatalogController::class, 'toggle']);
 
     // Module × OrgUnit granularity (Phase C)
     Route::get('/tenants/{tenant}/modules/{module}/org-units', [ModuleOrgUnitController::class, 'index']);
