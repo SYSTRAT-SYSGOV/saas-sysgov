@@ -5,7 +5,7 @@ import { useOrgUnit } from '@/core/orgunit';
 import { useCan } from '@/core/rbac/useCan';
 import { apiClient } from '@/core/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Card } from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';

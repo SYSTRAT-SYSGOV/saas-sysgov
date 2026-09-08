@@ -4,7 +4,7 @@ import { accessApi, TenantRole, TenantPermission } from '../AccessApi';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -103,7 +103,7 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
   ];
 
   return (
-    <Card noPadding className="overflow-hidden">
+    <Card className="gap-0 py-0 overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
           <ShieldCheck className="h-4 w-4 text-primary" /> Roles & Permissões

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clock, User, Edit3, Plus, Trash2, Ban, CheckCircle2, XCircle } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/Badge';
 import { ScreenState } from '@/components/ui/ScreenState';
 

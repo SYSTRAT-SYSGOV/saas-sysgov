@@ -1,8 +1,7 @@
 export { Button, buttonVariants } from './button';
 export type { ButtonProps } from './button';
 
-export { Card } from './Card';
-export type { CardProps } from './Card';
+export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent } from './card';
 
 export { Input } from './Input';
 export type { InputProps } from './Input';

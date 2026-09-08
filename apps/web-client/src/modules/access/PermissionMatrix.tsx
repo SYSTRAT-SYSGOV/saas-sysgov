@@ -118,7 +118,7 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = () => {
         actions={<Button variant="secondary" leftIcon={<Download className="h-4 w-4" />} onClick={exportMatrix}>Exportar CSV</Button>}
       />
 
-      <Card noPadding>
+      <Card className="gap-0 py-0">
         <div className="p-3 border-b border-border">
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar por usuário, módulo ou papel..." />
         </div>

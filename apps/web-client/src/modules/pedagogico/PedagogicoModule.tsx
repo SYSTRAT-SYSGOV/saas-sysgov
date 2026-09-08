@@ -118,7 +118,7 @@ export const PedagogicoModule: React.FC = () => {
         />
       </div>
 
-      <Card noPadding>
+      <Card className="gap-0 py-0">
         <div className="p-3">
           <DataTable columns={columns} data={escolas} emptyText="Nenhuma unidade escolar encontrada." pageSize={10} />
         </div>
