@@ -1,11 +1,12 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -18,13 +19,16 @@ export default defineConfig({
     strictPort: true,
     host: true,
     proxy: {
+      // Em Docker, aponte VITE_API_PROXY_TARGET para o serviço da API
+      // (ex.: http://api:8000), já que 'localhost' dentro do container
+      // se refere ao próprio container, não ao host nem a outros serviços.
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },
       '/sanctum': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },
