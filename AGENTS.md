@@ -35,3 +35,12 @@ Consulte a skill oficial em [`.agents/skills/sysgov-module-scaffolding/SKILL.md`
 - Siga estritamente o [`DESIGN_SYSTEM.md`](file:///c:/laragon/www/saas-sysgov/DESIGN_SYSTEM.md).
 - **Tipografia Técnica**: Todo dado numérico, monetário (R$), percentual (%), CPF, CNPJ, código e data DEVE usar obrigatoriamente `JetBrains Mono` (`font-mono tabular-nums`).
 - **Paleta Oficial**: Dark Navy (`#0a1128`, `#101a3a`, superfícies `#152244`, bordas `#1a2a52`), Esmeralda (`#10b981`), Índigo (`#6366f1`), Ciano (`#06b6d4`), Âmbar (`#f59e0b`) e Rose (`#e11d48`).
+
+---
+
+## 🔄 5. Colaboração Multi-Desenvolvedor & Git Workflow
+Como múltiplos desenvolvedores trabalham simultaneamente no repositório:
+1. **Consultar sempre o remoto no início**: Antes de iniciar qualquer tarefa ou alteração de código, o agente DEVE consultar atualizações remotas (`git fetch origin`) e verificar se há novos commits (`git status`, `git log main..origin/main`).
+2. **Sincronização prévia**: Havendo atualizações no remoto, integrar antes de desenvolver para prevenir conflitos e divergências (`git pull --ff-only` ou rebase seguro).
+3. **Qualidade antes do push**: Garantir testes verdes (`npm run test`) antes de comitar e enviar (`git push origin <branch>`), sempre utilizando *Conventional Commits*.
+
