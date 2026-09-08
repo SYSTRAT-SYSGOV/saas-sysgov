@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { DataTable } from '@/components/ui/DataTable';
-import { Dialog } from '@/components/ui/Dialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { Plus, Edit, Trash2, ToggleRight, ToggleLeft, Search, Loader2, Shield, Key, LayoutDashboard, ChevronDown, X, Save, ArrowLeft } from 'lucide-react';
+import { Modal, Button } from '@sysgov/ui';
 
 interface Module {
   id: number;
@@ -247,10 +247,9 @@ export function ModuleCatalogPage() {
         title="Módulos da Plataforma"
         subtitle="Catálogo de módulos disponíveis para provisionamento nos tenants"
         actions={
-          <button onClick={openCreateDialog} className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors">
-            <Plus className="w-4 h-4" />
+          <Button onClick={openCreateDialog} className="bg-emerald-600 hover:bg-emerald-500" leftIcon={<Plus className="w-4 h-4" />}>
             Novo Módulo
-          </button>
+          </Button>
         }
       />
 
@@ -275,8 +274,21 @@ export function ModuleCatalogPage() {
       />
 
       {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} title={editingModule ? 'Editar Módulo' : 'Novo Módulo'} size="lg">
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <Modal
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        title={editingModule ? 'Editar Módulo' : 'Novo Módulo'}
+        size="lg"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button type="submit" form="module-form" isLoading={saving} className="bg-emerald-600 hover:bg-emerald-500" leftIcon={!saving ? <Save className="w-4 h-4" /> : undefined}>
+              {editingModule ? 'Atualizar' : 'Criar'}
+            </Button>
+          </>
+        }
+      >
+        <form id="module-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field
               label="Nome"
@@ -370,20 +382,8 @@ export function ModuleCatalogPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button type="button" onClick={() => setDialogOpen(false)} className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-              Cancelar
-            </button>
-            <button type="submit" disabled={saving} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg disabled:opacity-50">
-              {saving ? (
-                <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</span>
-              ) : (
-                <span className="flex items-center gap-2"><Save className="w-4 h-4" /> {editingModule ? 'Atualizar' : 'Criar'}</span>
-              )}
-            </button>
-          </div>
         </form>
-      </Dialog>
+      </Modal>
 
       {/* Delete Confirm Dialog */}
       <ConfirmDialog
