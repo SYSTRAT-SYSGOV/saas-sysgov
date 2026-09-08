@@ -76,6 +76,13 @@ jobs:
           coverage: none
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist
+      - name: Check PSR-4 autoload case consistency
+        # Pega divergências de case entre namespace e pasta (ex.: database/seeders
+        # vs Database\Seeders) que passam despercebidas em filesystem
+        # case-insensitive (Windows/macOS) mas quebram silenciosamente em
+        # produção/CI (Linux) — o composer aqui roda com --optimize e --strict-psr
+        # justamente pra falhar o build em vez de deixar a classe sumir do autoload.
+        run: composer dump-autoload --optimize --strict-psr
       - name: Check PHP syntax
         run: Get-ChildItem app,Modules -Recurse -Filter *.php | ForEach-Object { php -l $_.FullName }
         shell: pwsh
