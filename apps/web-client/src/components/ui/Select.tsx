@@ -1,6 +1,13 @@
 import * as React from 'react';
-import { Check, ChevronDown } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Select as SelectPrimitive,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './select-primitive';
 
 export interface SelectOption {
   value: string | number;
@@ -22,102 +29,72 @@ export interface SelectProps {
 }
 
 /**
- * Select acessível no padrão shadcn/ui (sem dependência externa),
- * com paleta GOV.BR. Usa botão + lista customizada (dropdown nativo-free).
+ * Select "flat" (value/onChange/options[]) usado no painel do cliente.
+ * Por baixo, usa o Select real do shadcn/ui (Radix — teclado/typeahead/ARIA
+ * nativos) em vez do dropdown hand-rolled anterior (que já cuidava disso na
+ * mão: mousedown fora, Esc, aria-expanded...).
  */
-export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
-  ({ value, onChange, options, placeholder = 'Selecione...', disabled, loading, label, className, emptyText = 'Nenhuma opção' }, ref) => {
-    const [open, setOpen] = React.useState(false);
-    const containerRef = React.useRef<HTMLDivElement>(null);
-    const selected = options.find((o) => String(o.value) === String(value));
+export const Select: React.FC<SelectProps> = ({
+  value,
+  onChange,
+  options,
+  placeholder = 'Selecione...',
+  disabled,
+  loading,
+  label,
+  className,
+  emptyText = 'Nenhuma opção',
+}) => {
+  const selected = options.find((o) => String(o.value) === String(value));
 
-    React.useEffect(() => {
-      const handler = (e: MouseEvent) => {
-        if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-      };
-      document.addEventListener('mousedown', handler);
-      return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
-    React.useEffect(() => {
-      if (!open) return;
-      const handler = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') setOpen(false);
-      };
-      document.addEventListener('keydown', handler);
-      return () => document.removeEventListener('keydown', handler);
-    }, [open]);
-
-    return (
-      <div ref={containerRef} className={cn('relative', className)}>
-        {label && (
-          <label className="block text-xs font-bold uppercase tracking-wider text-foreground/70 mb-1.5">{label}</label>
-        )}
-        <button
-          type="button"
-          disabled={disabled || loading}
-          onClick={() => setOpen((o) => !o)}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          className={cn(
-            'flex w-full items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2.5 text-sm transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-            'disabled:cursor-not-allowed disabled:opacity-50',
-            open ? 'border-ring ring-1 ring-ring' : 'border-border hover:border-ring/50'
+  return (
+    <div className={className}>
+      {label && (
+        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground/70">
+          {label}
+        </label>
+      )}
+      <SelectPrimitive
+        value={value !== null && value !== undefined ? String(value) : undefined}
+        onValueChange={onChange}
+        disabled={disabled || loading}
+      >
+        <SelectTrigger className="w-full">
+          {loading ? (
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            </span>
+          ) : (
+            <SelectValue placeholder={placeholder}>
+              {selected && (
+                <span className="flex items-center gap-2">
+                  {selected.icon && <span className="shrink-0 text-primary">{selected.icon}</span>}
+                  <span className="font-medium">{selected.label}</span>
+                </span>
+              )}
+            </SelectValue>
           )}
-        >
-          <span className="flex items-center gap-2 truncate">
-            {loading ? (
-              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-primary" />
-            ) : selected ? (
-              <>
-                {selected.icon && <span className="shrink-0 text-primary">{selected.icon}</span>}
-                <span className="font-medium text-foreground">{selected.label}</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
-            )}
-          </span>
-          <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
-        </button>
+        </SelectTrigger>
+        <SelectContent>
+          {options.length === 0 ? (
+            <div className="px-3 py-2.5 text-sm text-muted-foreground">{emptyText}</div>
+          ) : (
+            options.map((opt) => (
+              <SelectItem key={String(opt.value)} value={String(opt.value)}>
+                <span className="flex min-w-0 items-center gap-2">
+                  {opt.icon && <span className="shrink-0 text-primary">{opt.icon}</span>}
+                  <span className="truncate font-medium">{opt.label}</span>
+                  {opt.hint && <span className="ml-1 truncate text-xs text-muted-foreground">{opt.hint}</span>}
+                </span>
+              </SelectItem>
+            ))
+          )}
+        </SelectContent>
+      </SelectPrimitive>
+    </div>
+  );
+};
 
-        {open && (
-          <ul
-            role="listbox"
-            className="absolute z-50 mt-1.5 max-h-72 w-full overflow-auto rounded-lg border border-border bg-popover p-1 shadow-lg animate-in fade-in-0 zoom-in-95"
-          >
-            {options.length === 0 ? (
-              <li className="px-3 py-2.5 text-sm text-muted-foreground">{emptyText}</li>
-            ) : (
-              options.map((opt) => {
-                const isSel = String(opt.value) === String(value);
-                return (
-                  <li
-                    key={String(opt.value)}
-                    role="option"
-                    aria-selected={isSel}
-                    onClick={() => { onChange(String(opt.value)); setOpen(false); }}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-sm transition-colors',
-                      isSel ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60'
-                    )}
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      {opt.icon && <span className="shrink-0 text-primary">{opt.icon}</span>}
-                      <span className="truncate font-medium">{opt.label}</span>
-                      {opt.hint && <span className="ml-1 truncate text-xs text-muted-foreground">{opt.hint}</span>}
-                    </span>
-                    {isSel && <Check className="h-4 w-4 shrink-0 text-primary" />}
-                  </li>
-                );
-              })
-            )}
-          </ul>
-        )}
-      </div>
-    );
-  }
-);
 Select.displayName = 'Select';
 
 export default Select;
