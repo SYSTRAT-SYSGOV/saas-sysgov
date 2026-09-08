@@ -1,8 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, Button } from '@sysgov/ui';
 
 export const ForbiddenPage: React.FC = () => {
   const navigate = useNavigate();

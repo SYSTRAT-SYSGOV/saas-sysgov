@@ -3,10 +3,8 @@ import { Plus, Pencil, Trash2, Loader2, Save, Users, UserCheck, Briefcase, Layer
 import { accessApi, AccessCategory, AccessGroup, AccessGroupAccess, AccessUser } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
 import { OrgUnitNode } from '../AccessApi';
-import { Card } from '@/components/ui/card';
-import { Modal } from '@/components/ui/Dialog';
+import { Card, Modal, Badge } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
-import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 

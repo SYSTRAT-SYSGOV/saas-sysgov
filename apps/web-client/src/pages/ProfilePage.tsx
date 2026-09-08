@@ -5,13 +5,10 @@ import { useOrgUnit } from '@/core/orgunit';
 import { useCan } from '@/core/rbac/useCan';
 import { apiClient } from '@/core/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Card } from '@/components/ui/card';
+import { Card, Badge, Button, Dialog } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/DataTable';
 import { ScreenState } from '@/components/ui/ScreenState';
-import { Dialog } from '@/components/ui/Dialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import {

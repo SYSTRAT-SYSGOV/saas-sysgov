@@ -4,10 +4,7 @@ import { useAuth } from '@/core/auth/useAuth';
 import { ChevronRight, ChevronDown, Building2, Shield, RefreshCw, Network, Layers, ArrowLeft, Users } from 'lucide-react';
 import { apiClient } from '@/core/api/client';
 import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectOption } from '@/components/ui/Select';
-import { Switch } from '@/components/ui/switch';
+import { Card, Badge, Select, SelectOption, Switch } from '@sysgov/ui';
 
 interface Module { id: number; alias: string; name: string; }
 interface OrgUnitNode {

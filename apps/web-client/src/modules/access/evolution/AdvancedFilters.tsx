@@ -1,9 +1,7 @@
 import React from 'react';
 import { Filter, RotateCcw } from 'lucide-react';
 import { AccessModule, OrgUnitNode, AccessGroup, AccessCategory, Cargo } from '../AccessApi';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Accordion } from '@/components/ui/Accordion';
+import { Card, Badge, Accordion } from '@sysgov/ui';
 
 export interface UserFilters {
   q?: string;

@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Loader2, Save, Briefcase } from 'lucide-react';
 import { accessApi, Cargo } from '../AccessApi';
-import { Modal } from '@/components/ui/Dialog';
+import { Modal, Badge, Card } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 

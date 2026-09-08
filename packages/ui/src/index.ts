@@ -15,16 +15,50 @@ export const sysgovTokens = {
 
 export type FiscalSeverity = 'regular' | 'attention' | 'critical' | 'info';
 
-// Export components
+// Utilitário de merge de classes (clsx + tailwind-merge)
+export { cn } from './lib/utils';
+
+// ============================================================
+// Componentes base — reais do shadcn/ui (cva + radix-ui), migrados
+// da Fase 2 da unificação de UI (ver apps/web-client). Os arquivos
+// *-primitive.tsx são detalhe de implementação (não exportados) —
+// só os wrappers de domínio (mesma API que os call-sites já usavam)
+// saem no pacote público.
+// ============================================================
+export { Button, buttonVariants } from './components/button';
+export type { ButtonProps } from './components/button';
+
+export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent } from './components/card';
+
+export { Badge, badgeVariants } from './components/badge';
+export type { BadgeProps } from './components/badge';
+
+export { Input, InputPrimitive } from './components/input';
+export type { InputProps } from './components/input';
+
+export { Switch } from './components/switch';
+export type { SwitchProps } from './components/switch';
+
+export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from './components/table';
+
+export { Accordion } from './components/Accordion';
+export type { AccordionProps, AccordionItemProps } from './components/Accordion';
+
+export { Skeleton } from './components/skeleton';
+
+export { Dialog, Modal } from './components/Dialog';
+export type { DialogProps, ModalProps } from './components/Dialog';
+
+export { Select } from './components/Select';
+export type { SelectProps, SelectOption } from './components/Select';
+
+// ============================================================
+// Componentes de domínio SYSGOV (sem equivalente no catálogo shadcn)
+// ============================================================
 export * from './components/AlertCard';
-export * from './components/Badge';
-export * from './components/Button';
-export * from './components/Card';
-export * from './components/Input';
 export * from './components/KpiCard';
 export * from './components/StatusChip';
 export * from './components/SystratBrand';
-export * from './components/Table';
 export * from './components/OrgTypeBadge';
 export * from './components/OrgTreeNodeCard';
 export * from './components/OrgScopeIndicator';
