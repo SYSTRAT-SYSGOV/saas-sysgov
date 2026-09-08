@@ -135,9 +135,17 @@ export const RoleManagement: React.FC = () => {
 
               return (
                 <div key={role.id} className="bg-white hover:bg-slate-50 transition-colors">
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setExpandedId(isExpanded ? null : role.id)}
-                    className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setExpandedId(isExpanded ? null : role.id);
+                      }
+                    }}
+                    className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div className="p-2 bg-emerald-100 rounded-lg">
@@ -171,7 +179,7 @@ export const RoleManagement: React.FC = () => {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                  </button>
+                  </div>
 
                   {isExpanded && (
                     <div className="bg-slate-50 border-t border-slate-200 p-4">

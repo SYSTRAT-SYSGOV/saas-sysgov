@@ -4,7 +4,7 @@ import {
   MessageSquare, ChevronRight, X, Send, Lock, User, Tag, Zap,
   Ticket,
 } from 'lucide-react';
-import { Button } from '@sysgov/ui';
+import { Button, Modal } from '@sysgov/ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -286,22 +286,31 @@ const TicketRow: React.FC<{ t: TicketItem; onClick: () => void }> = ({ t, onClic
   );
 };
 
+const emptyTicketForm = { title: '', description: '', module: '', priority: 'media' as TicketPriority, requester: '' };
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export const ModuleHelpdesk: React.FC = () => {
+interface ModuleHelpdeskProps {
+  onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
+}
+
+export const ModuleHelpdesk: React.FC<ModuleHelpdeskProps> = ({ onAddToast = () => {} }) => {
+  const [tickets, setTickets] = useState<TicketItem[]>(TICKETS_MOCK);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [selected, setSelected] = useState<TicketItem | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState(emptyTicketForm);
 
   const kpis = useMemo(() => ({
-    abertos:   TICKETS_MOCK.filter(t => t.status === 'aberto').length,
-    emAnalise: TICKETS_MOCK.filter(t => t.status === 'em_analise').length,
-    criticos:  TICKETS_MOCK.filter(t => t.priority === 'critica' && !['resolvido', 'fechado'].includes(t.status)).length,
-    resolvidos: TICKETS_MOCK.filter(t => t.status === 'resolvido' || t.status === 'fechado').length,
-  }), []);
+    abertos:   tickets.filter(t => t.status === 'aberto').length,
+    emAnalise: tickets.filter(t => t.status === 'em_analise').length,
+    criticos:  tickets.filter(t => t.priority === 'critica' && !['resolvido', 'fechado'].includes(t.status)).length,
+    resolvidos: tickets.filter(t => t.status === 'resolvido' || t.status === 'fechado').length,
+  }), [tickets]);
 
-  const filtered = useMemo(() => TICKETS_MOCK.filter(t => {
+  const filtered = useMemo(() => tickets.filter(t => {
     const matchSearch = search === '' ||
       t.ticket_number.toLowerCase().includes(search.toLowerCase()) ||
       t.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -309,7 +318,36 @@ export const ModuleHelpdesk: React.FC = () => {
     const matchStatus = filterStatus === 'all' || t.status === filterStatus;
     const matchPriority = filterPriority === 'all' || t.priority === filterPriority;
     return matchSearch && matchStatus && matchPriority;
-  }), [search, filterStatus, filterPriority]);
+  }), [tickets, search, filterStatus, filterPriority]);
+
+  const handleOpenCreate = () => {
+    setForm(emptyTicketForm);
+    setCreateOpen(true);
+  };
+
+  const handleCreate = () => {
+    if (!form.title.trim() || !form.description.trim()) {
+      onAddToast({ type: 'warning', title: 'Campos obrigatórios', message: 'Informe ao menos o título e a descrição do chamado.' });
+      return;
+    }
+    const now = new Date().toISOString();
+    const novo: TicketItem = {
+      id: `novo-${Date.now()}`,
+      ticket_number: `SUP-${new Date().getFullYear()}-${String(tickets.length + 1).padStart(4, '0')}`,
+      title: form.title.trim(),
+      description: form.description.trim(),
+      status: 'aberto',
+      priority: form.priority,
+      module: form.module.trim() || 'Geral',
+      requester: form.requester.trim() || 'Você',
+      sla_deadline: new Date(Date.now() + 48 * 3600000).toISOString(),
+      created_at: now,
+      messages: [{ id: 'm1', body: form.description.trim(), author: form.requester.trim() || 'Você', is_internal: false, created_at: now }],
+    };
+    setTickets(prev => [novo, ...prev]);
+    setCreateOpen(false);
+    onAddToast({ type: 'success', title: 'Chamado Aberto', message: `${novo.ticket_number} — ${novo.title} registrado.` });
+  };
 
   return (
     <div className="space-y-6">
@@ -358,7 +396,7 @@ export const ModuleHelpdesk: React.FC = () => {
           <option value="media">🟡 Média</option>
           <option value="baixa">🟢 Baixa</option>
         </select>
-        <Button className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus size={15} />}>
+        <Button onClick={handleOpenCreate} className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus size={15} />}>
           Abrir Chamado
         </Button>
       </div>
@@ -377,6 +415,50 @@ export const ModuleHelpdesk: React.FC = () => {
       </div>
 
       {selected && <TicketChat ticket={selected} onClose={() => setSelected(null)} />}
+
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Abrir Chamado"
+        icon={<Ticket size={18} className="text-indigo-500" />}
+        size="md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-500">Abrir Chamado</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Título *</label>
+            <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Resumo do problema" className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Descrição *</label>
+            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descreva o problema em detalhes..." className="mod-textarea w-full mt-1 h-24 resize-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Módulo</label>
+              <input value={form.module} onChange={e => setForm(f => ({ ...f, module: e.target.value }))} placeholder="Ex: Contratos" className="mod-input w-full mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Prioridade</label>
+              <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value as TicketPriority }))} className="mod-input w-full mt-1">
+                <option value="critica">🔴 Crítica</option>
+                <option value="alta">🟠 Alta</option>
+                <option value="media">🟡 Média</option>
+                <option value="baixa">🟢 Baixa</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Solicitante</label>
+            <input value={form.requester} onChange={e => setForm(f => ({ ...f, requester: e.target.value }))} placeholder="Seu nome" className="mod-input w-full mt-1" />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
