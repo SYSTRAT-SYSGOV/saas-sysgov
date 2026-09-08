@@ -17,10 +17,14 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       proxy: {
+        // Em Docker, aponte VITE_API_PROXY_TARGET para o serviço da API
+        // (ex.: http://api:8000), já que 'localhost' dentro do container
+        // se refere ao próprio container, não ao host nem a outros serviços.
+        // Não usar VITE_API_URL aqui: essa variável também é lida pelo
+        // código do navegador (config/env.ts) e um valor como
+        // 'http://api:8000' não resolve fora da rede Docker.
         '/api': {
-          // Em desenvolvimento o backend roda em :8000 via artisan serve.
-          // Configure VITE_API_URL no .env para apontar a outro host em nuvem.
-          target: process.env.VITE_API_URL || 'http://localhost:8000',
+          target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
           changeOrigin: true,
         },
       },

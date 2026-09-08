@@ -23,7 +23,9 @@ export interface AdminModuleDefinition {
   id: string;
   name: string;
   path: string;
-  component: React.LazyExoticComponent<React.FC>;
+  // Módulos podem ou não usar as props injetadas via contexto do Outlet
+  // (onNavigate/onAddToast) — ver ModuleRoute em core/router/AppRouter.tsx.
+  component: React.LazyExoticComponent<React.FC<any>>;
   requiredPermission?: string;
   icon?: LucideIcon;
   badge?: string;
@@ -37,7 +39,11 @@ export const ADMIN_MODULE_REGISTRY: Record<string, AdminModuleDefinition> = {
     id: 'admin_dashboard',
     name: 'Visão Geral & KPIs',
     path: '/admin/dashboard',
-    component: lazyWithNamedExport(() => import('@/pages/DashboardPage'), 'DashboardPage'),
+    // Nota: DashboardPage é o componente monolítico legado (App.tsx antigo),
+    // que só renderiza algo quando recebe uma prop `activeTab` — o ModuleRoute
+    // atual não a passa, então ele ficava em branco. AdminDashboardOverview é
+    // o card de métricas que substitui essa tela na Admin Suite.
+    component: lazyWithNamedExport(() => import('@/components/admin/AdminDashboardOverview'), 'AdminDashboardOverview'),
     requiredPermission: 'admin.dashboard.view',
     icon: LayoutDashboard,
     badge: 'Ao Vivo',

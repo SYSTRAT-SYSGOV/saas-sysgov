@@ -18,5 +18,35 @@ services:
   redis:
     image: redis:7-alpine
     ports: ["6379:6379"]
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on: [api]
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
+    ports: ["5175:5175"]
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web-client/node_modules
+      - /app/packages/ui/node_modules
+      - /app/packages/sdk/node_modules
+  web-client:
+    build:
+      context: .
+      dockerfile: apps/web-client/Dockerfile
+    depends_on: [api]
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
+    ports: ["5174:5174"]
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web-client/node_modules
+      - /app/packages/ui/node_modules
+      - /app/packages/sdk/node_modules
 volumes:
   sysgov-mysql:

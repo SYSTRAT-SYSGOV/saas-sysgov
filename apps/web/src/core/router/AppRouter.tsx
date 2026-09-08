@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { SidebarNav } from '@/components/SidebarNav';
 import { ToastContainer } from '@/components/Toast';
@@ -32,15 +32,25 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+interface AdminLayoutContext {
+  onNavigate: (tabId: string) => void;
+  onAddToast: (toast: Omit<ToastMessage, 'id' | 'timestamp'>) => void;
+}
+
+export function useAdminLayoutContext() {
+  return useOutletContext<AdminLayoutContext>();
+}
+
 export function ModuleRoute({ path }: { path: string }) {
   const module = getAdminModuleByPath(path);
+  const layoutContext = useOutletContext<AdminLayoutContext>();
   if (!module) {
     return <Navigate to="/admin/dashboard" replace />;
   }
   const Component = module.component;
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <Component />
+      <Component onNavigate={layoutContext.onNavigate} onAddToast={layoutContext.onAddToast} />
     </Suspense>
   );
 }
@@ -181,7 +191,7 @@ function AdminLayout() {
         />
 
         <main className="flex-1 w-full max-w-full px-3 sm:px-5 lg:px-7 py-4 sm:py-5 transition-all duration-300 pb-16 overflow-x-hidden bg-slate-50 dark:bg-[#0a1128]">
-          <Outlet />
+          <Outlet context={{ onNavigate: handleNavigateTab, onAddToast: addToast } satisfies AdminLayoutContext} />
         </main>
 
         <footer className="bg-white dark:bg-[#0a1128] border-t border-slate-200 dark:border-[#1a2a52] text-slate-600 dark:text-slate-400 text-xs py-5 mt-auto transition-colors">
