@@ -16,6 +16,7 @@ import { AuditLogEntry } from '../../types/admin';
 import { ScreenState, ScreenStateType } from '../ui/ScreenState';
 import api from '../../api/client';
 import { INITIAL_AUDIT_LOGS } from '../../services/adminMockData';
+import { Card } from '@sysgov/ui';
 
 interface AdminAuditLogsProps {
   onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -218,7 +219,7 @@ export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) =>
         emptyMessage="Nenhum log de auditoria registrado até o momento."
       >
         {/* Filter and Search Bar */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
+        <Card className="p-4 flex-col md:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -256,10 +257,10 @@ export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) =>
               ))}
             </select>
           </div>
-        </div>
+        </Card>
 
         {/* Logs Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <Card className="gap-0 py-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -348,7 +349,7 @@ export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) =>
             </span>
             <span className="text-[11px] font-mono">audit-ledger-hmac</span>
           </div>
-        </div>
+        </Card>
       </ScreenState>
 
       {/* JSON Payload Modal */}

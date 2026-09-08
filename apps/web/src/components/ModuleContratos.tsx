@@ -4,6 +4,7 @@ import {
   Paperclip, GitBranch, Scale, Building2, Calendar, DollarSign, Eye,
   Edit3, X,
 } from 'lucide-react';
+import { Button } from '@sysgov/ui';
 
 // ─── Mock Data ───────────────────────────────────────────────────────────────
 
@@ -343,9 +344,9 @@ export const ModuleContratos: React.FC = () => {
           </h1>
           <p className="text-sm mod-text-secondary mt-1">Ciclo de vida contratual, aditivos e fiscalização em tempo real.</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors whitespace-nowrap">
-          <Plus size={15} /> Novo Contrato
-        </button>
+        <Button className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus size={15} />}>
+          Novo Contrato
+        </Button>
       </div>
 
       {/* KPI Cards */}

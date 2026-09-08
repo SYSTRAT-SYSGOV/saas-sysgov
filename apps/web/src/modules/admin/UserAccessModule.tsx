@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, ShieldCheck, KeyRound, MailPlus, UserCog, Headset } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { Card } from '@sysgov/ui';
 import { UserManagement } from './UserManagement';
 import { RoleManagement } from './RoleManagement';
 import { PermissionManagement } from './PermissionManagement';
@@ -60,7 +61,7 @@ export const UserAccessModule: React.FC<Props> = ({ onAddToast = () => {}, initi
       </div>
 
       {/* Submenus (Abas) */}
-      <div className="bg-white dark:bg-[#101a3a] rounded-xl border border-slate-200 dark:border-[#1a2a52] overflow-hidden shadow-sm">
+      <Card className="gap-0 py-0 overflow-hidden">
         <div className="flex flex-wrap border-b border-slate-200 dark:border-[#1a2a52]">
           {tabs.map((it) => {
             const isActive = tab === it.id;
@@ -81,7 +82,7 @@ export const UserAccessModule: React.FC<Props> = ({ onAddToast = () => {}, initi
             );
           })}
         </div>
-      </div>
+      </Card>
 
       {/* Conteúdo da Aba Ativa */}
       {tab === 'users' && <UserManagement />}

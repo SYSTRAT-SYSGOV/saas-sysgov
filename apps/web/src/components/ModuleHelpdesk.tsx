@@ -4,6 +4,7 @@ import {
   MessageSquare, ChevronRight, X, Send, Lock, User, Tag, Zap,
   Ticket,
 } from 'lucide-react';
+import { Button } from '@sysgov/ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -357,9 +358,9 @@ export const ModuleHelpdesk: React.FC = () => {
           <option value="media">🟡 Média</option>
           <option value="baixa">🟢 Baixa</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors whitespace-nowrap">
-          <Plus size={15} /> Abrir Chamado
-        </button>
+        <Button className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus size={15} />}>
+          Abrir Chamado
+        </Button>
       </div>
 
       {/* Ticket List */}

@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { adminApi } from '../../modules/admin/api';
 import { Tenant, SaasModule, CnpjLookupResult, BatchProvisionResult } from '../../modules/admin/types';
-import { StatusChip } from '@sysgov/ui';
+import { StatusChip, Card } from '@sysgov/ui';
 import { Dialog } from '../../components/ui/Dialog';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field } from '../../components/ui/Field';
@@ -593,7 +593,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
+      <Card className="p-4 flex-col md:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -614,7 +614,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           <option value="trial">Trial</option>
           <option value="suspended">Suspensos</option>
         </select>
-      </div>
+      </Card>
 
       {/* Batch Actions Bar */}
       {selectedTenantIds.length > 0 && (

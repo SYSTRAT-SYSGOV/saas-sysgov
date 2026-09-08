@@ -22,6 +22,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { DataSourceMetadata } from '../types/fiscal';
+import { Card } from '@sysgov/ui';
 
 // ===========================================================================
 // TIPOS
@@ -156,7 +157,7 @@ export const DataProvenancePanel: React.FC<DataProvenancePanelProps> = ({
   const demoCount = sources.length - officialCount;
 
   return (
-    <div className={`rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden ${className}`}>
+    <Card className={`gap-0 py-0 overflow-hidden ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
@@ -307,7 +308,7 @@ export const DataProvenancePanel: React.FC<DataProvenancePanelProps> = ({
           Dados [OFICIAL] foram obtidos diretamente de APIs governamentais homologadas.
         </span>
       </div>
-    </div>
+    </Card>
   );
 };
 

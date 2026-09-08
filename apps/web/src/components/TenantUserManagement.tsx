@@ -16,6 +16,7 @@ import {
   Key,
 } from 'lucide-react';
 import { SaaSUser, UserRole } from '../types/saas';
+import { Card } from '@sysgov/ui';
 import {
   getTenantUsers,
   createTenantUser,
@@ -163,7 +164,7 @@ export const TenantUserManagement: React.FC<TenantUserManagementProps> = ({
       )}
 
       {/* Header & Plan Quota Banner */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
+      <Card className="p-6 space-y-6">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-gray-100 pb-5">
           <div>
             <div className="flex items-center gap-2">
@@ -277,10 +278,10 @@ export const TenantUserManagement: React.FC<TenantUserManagementProps> = ({
             <strong>Regra de Negócio de Usuários:</strong> O plano municipal básico dá direito a <strong>2 (dois) usuários com acesso pleno inclusos</strong> (Prefeito e Secretário de Finanças). Cada usuário adicional cadastrado (Controladoria, Secretários Setoriais de Saúde, Educação, Obras ou Técnicos) é cobrado automaticamente na fatura mensal do município com acréscimo de <strong>R$ 150,00/mês</strong>.
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Users List Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+      <Card className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-gray-900">
             Usuários Cadastrados ({users.length})
@@ -413,10 +414,10 @@ export const TenantUserManagement: React.FC<TenantUserManagementProps> = ({
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       {/* RBAC Roles Documentation Card */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+      <Card className="p-6 space-y-4">
         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
           <Lock className="w-4 h-4 text-[#0c326f]" />
           Matriz de Permissões e Perfis de Acesso (RBAC)
@@ -459,7 +460,7 @@ export const TenantUserManagement: React.FC<TenantUserManagementProps> = ({
             </p>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* MODAL: NOVO USUÁRIO */}
       {showAddModal && (

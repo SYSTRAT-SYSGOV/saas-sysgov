@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { INITIAL_API_CONNECTORS } from '../../services/adminMockData';
 import { ApiConnector } from '../../types/admin';
+import { StatusChip } from '@sysgov/ui';
 
 interface AdminApiIntegrationsProps {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -98,31 +99,18 @@ export const AdminApiIntegrations: React.FC<AdminApiIntegrationsProps> = ({ onAd
     switch (status) {
       case 'operational':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Operacional
-          </span>
+          <StatusChip
+            label="Operacional"
+            variant="success"
+            icon={<span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+          />
         );
       case 'degraded':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            <AlertTriangle className="w-3 h-3" />
-            Degradado
-          </span>
-        );
+        return <StatusChip label="Degradado" variant="warning" icon={<AlertTriangle className="w-3 h-3" />} />;
       case 'down':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-            <XCircle className="w-3 h-3" />
-            Fora do Ar
-          </span>
-        );
+        return <StatusChip label="Fora do Ar" variant="danger" icon={<XCircle className="w-3 h-3" />} />;
       default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-500 border border-slate-500/20">
-            Manutenção
-          </span>
-        );
+        return <StatusChip label="Manutenção" variant="neutral" />;
     }
   };
 
