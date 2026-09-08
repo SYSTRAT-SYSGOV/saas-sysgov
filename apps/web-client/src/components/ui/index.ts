@@ -41,8 +41,8 @@ export type { SelectProps, SelectOption } from './Select';
 export { Field } from './Field';
 export type { FieldProps } from './Field';
 
-export { Modal } from './Modal';
-export type { ModalProps } from './Modal';
+export { Modal } from './Dialog';
+export type { ModalProps } from './Dialog';
 
 export { DataTable } from './DataTable';
 export type { DataTableProps } from './DataTable';

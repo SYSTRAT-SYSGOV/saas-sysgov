@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Loader2, Save, UserCog, KeyRound, ShieldCheck } from 'lucide-react';
 import { accessApi, AccessUser, AccessModule, OrgUnitNode, Cargo, AccessGroup, ModuleAccessItem, ModuleAccessRole } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
-import { Modal } from '@/components/ui/Modal';
+import { Modal } from '@/components/ui/Dialog';
 import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';

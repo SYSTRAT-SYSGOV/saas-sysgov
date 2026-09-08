@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Loader2, Save, ShieldCheck, Filter } from 'lucide-react';
 import { accessApi, TenantRole, TenantPermission } from '../AccessApi';
-import { Modal } from '@/components/ui/Modal';
+import { Modal } from '@/components/ui/Dialog';
 import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';

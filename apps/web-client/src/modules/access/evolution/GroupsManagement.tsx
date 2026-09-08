@@ -4,7 +4,7 @@ import { accessApi, AccessCategory, AccessGroup, AccessGroupAccess, AccessUser }
 import { ModuleAccessPicker } from './ModuleAccessPicker';
 import { OrgUnitNode } from '../AccessApi';
 import { Card } from '@/components/ui/card';
-import { Modal } from '@/components/ui/Modal';
+import { Modal } from '@/components/ui/Dialog';
 import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/DataTable';
