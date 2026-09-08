@@ -1,6 +1,14 @@
 @import './styles/tokens.css';
 @import "tailwindcss";
 
+/* @sysgov/ui vive fora da raiz do projeto (packages/ui, workspace
+   separado) — o scanner automático de conteúdo do Tailwind v4 não
+   inclui esse diretório por padrão, então classes usadas SÓ lá dentro
+   (ex.: top-[50%], translate-x-[-50%], animate-in — usadas pelo
+   Dialog/Select) nunca eram geradas, mesmo com o componente
+   funcionando em JS. @source força a inclusão. */
+@source "../../../packages/ui/src";
+
 /* ============================================================
    Tailwind v4 @theme — mapeia os tokens shadcn/GOV.BR (definidos
    como CSS vars em :root, abaixo e em styles/tokens.css) para as
