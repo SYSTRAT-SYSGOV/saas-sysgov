@@ -114,6 +114,15 @@ final class TenantController
         $tenant->update($data);
 
         if ($moduleAliases !== null) {
+            // Libera o módulo "dashboard" por padrão (base do painel) — mesma regra
+            // de TenantProvisionService::provision(). O front nem mostra esse módulo
+            // na lista de checkboxes, então sem isso o sync() abaixo o removia do
+            // tenant sempre que os módulos eram editados, deixando o Painel do
+            // Cliente inteiro inacessível (a rota "/" exige o módulo "dashboard").
+            if (!in_array('dashboard', $moduleAliases, true)) {
+                $moduleAliases[] = 'dashboard';
+            }
+
             $modules = \Modules\Admin\Models\Module::query()->whereIn('alias', $moduleAliases)->get();
             $pivot = [];
             foreach ($modules as $module) {
