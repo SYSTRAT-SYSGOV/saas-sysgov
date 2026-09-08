@@ -113,8 +113,11 @@ describe('AdminAuditLogs', () => {
     expect(screen.getByText(/Payload: module.activated/i)).toBeInTheDocument();
     expect(screen.getByText(/hmac-sha256-abc12345/i)).toBeInTheDocument();
 
-    const closeBtn = screen.getByRole('button', { name: 'Fechar' });
-    fireEvent.click(closeBtn);
+    // O Modal real (@sysgov/ui) tem um X de fechar embutido no header (nome
+    // acessível "Fechar" via sr-only) além do botão "Fechar" do rodapé —
+    // pega o último (rodapé), que é o que o usuário de fato vê e clica.
+    const closeButtons = screen.getAllByRole('button', { name: 'Fechar' });
+    fireEvent.click(closeButtons[closeButtons.length - 1]);
 
     expect(screen.queryByText(/Payload: module.activated/i)).not.toBeInTheDocument();
   });

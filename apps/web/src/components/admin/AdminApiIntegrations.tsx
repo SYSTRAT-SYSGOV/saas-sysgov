@@ -13,11 +13,10 @@ import {
   ArrowUpRight,
   Clock,
   ShieldCheck,
-  X,
 } from 'lucide-react';
 import { INITIAL_API_CONNECTORS } from '../../services/adminMockData';
 import { ApiConnector } from '../../types/admin';
-import { StatusChip } from '@sysgov/ui';
+import { StatusChip, Modal, Input, Select, Button } from '@sysgov/ui';
 
 interface AdminApiIntegrationsProps {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -128,13 +127,9 @@ export const AdminApiIntegrations: React.FC<AdminApiIntegrationsProps> = ({ onAd
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md hover:shadow-indigo-600/30"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Adicionar Nova Integração</span>
-        </button>
+        <Button onClick={() => setIsModalOpen(true)} className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus className="w-3.5 h-3.5" />}>
+          Adicionar Nova Integração
+        </Button>
       </div>
 
       {/* Connectors Grid */}
@@ -224,87 +219,49 @@ export const AdminApiIntegrations: React.FC<AdminApiIntegrationsProps> = ({ onAd
       </div>
 
       {/* Modal Add Connector */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Plug className="w-4 h-4 text-indigo-500" />
-                Nova Integração / Webhook
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateConnector} className="space-y-4 mt-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Nome do Conector *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ex: Gateway de Pagamentos / Webhook CRM"
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Endpoint URL *
-                </label>
-                <input
-                  type="url"
-                  required
-                  value={formData.endpoint}
-                  onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
-                  placeholder="https://api.empresa.com/v1/webhook"
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Tipo de Integração
-                </label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                >
-                  <option value="REST">REST API</option>
-                  <option value="WEBHOOK">Webhook Receiver / Dispatcher</option>
-                  <option value="GRAPHQL">GraphQL Gateway</option>
-                  <option value="DATABASE">Direct Database Connection</option>
-                  <option value="OAUTH">OAuth 2.0 Provider</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all shadow-md"
-                >
-                  Salvar Integração
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Nova Integração / Webhook"
+        icon={<Plug className="w-4 h-4 text-indigo-500" />}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button type="submit" form="connector-form" className="bg-indigo-600 hover:bg-indigo-500">Salvar Integração</Button>
+          </>
+        }
+      >
+        <form id="connector-form" onSubmit={handleCreateConnector} className="space-y-4">
+          <Input
+            label="Nome do Conector *"
+            required
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Ex: Gateway de Pagamentos / Webhook CRM"
+          />
+          <Input
+            label="Endpoint URL *"
+            type="url"
+            required
+            value={formData.endpoint}
+            onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
+            placeholder="https://api.empresa.com/v1/webhook"
+            className="font-mono"
+          />
+          <Select
+            label="Tipo de Integração"
+            value={formData.type}
+            onChange={(v) => setFormData({ ...formData, type: v as typeof formData.type })}
+            options={[
+              { value: 'REST', label: 'REST API' },
+              { value: 'WEBHOOK', label: 'Webhook Receiver / Dispatcher' },
+              { value: 'GRAPHQL', label: 'GraphQL Gateway' },
+              { value: 'DATABASE', label: 'Direct Database Connection' },
+              { value: 'OAUTH', label: 'OAuth 2.0 Provider' },
+            ]}
+          />
+        </form>
+      </Modal>
     </div>
   );
 };
