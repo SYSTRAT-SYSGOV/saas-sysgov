@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectOption } from '@/components/ui/Select';
-import { Switch } from '@/components/ui/Switch';
+import { Switch } from '@/components/ui/switch';
 
 interface Module { id: number; alias: string; name: string; }
 interface OrgUnitNode {

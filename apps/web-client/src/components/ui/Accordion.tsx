@@ -1,6 +1,10 @@
 import * as React from 'react';
-import { ChevronDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {
+  Accordion as AccordionPrimitive,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from './accordion-primitive';
 
 export interface AccordionItemProps {
   value: string;
@@ -17,50 +21,38 @@ export interface AccordionProps {
 }
 
 /**
- * Accordion no padrão shadcn/ui, paleta GOV.BR.
- * Acessível: role="button", aria-expanded, animação suave.
+ * Accordion "data-driven" (API por array de `items`) usado nas telas do
+ * painel do cliente. Por baixo, usa o Accordion real do shadcn/ui
+ * (Radix — foco/teclado/ARIA nativos) em vez do state hand-rolled anterior.
  */
 export const Accordion: React.FC<AccordionProps> = ({ items, className, multiple = false, icon }) => {
-  const [openValues, setOpenValues] = React.useState<Set<string>>(new Set(items.filter((i) => i.defaultOpen).map((i) => i.value)));
+  const renderItems = () =>
+    items.map((item) => (
+      <AccordionItem key={item.value} value={item.value}>
+        <AccordionTrigger className="px-4 hover:no-underline">
+          <span className="flex flex-1 items-center gap-2 text-left">
+            {icon}
+            {item.title}
+          </span>
+        </AccordionTrigger>
+        <AccordionContent className="px-4">{item.children}</AccordionContent>
+      </AccordionItem>
+    ));
 
-  const toggle = (value: string) => {
-    setOpenValues((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) {
-        next.delete(value);
-      } else {
-        if (!multiple) next.clear();
-        next.add(value);
-      }
-      return next;
-    });
-  };
+  if (multiple) {
+    const defaultValue = items.filter((i) => i.defaultOpen).map((i) => i.value);
+    return (
+      <AccordionPrimitive type="multiple" defaultValue={defaultValue} className={className}>
+        {renderItems()}
+      </AccordionPrimitive>
+    );
+  }
 
+  const defaultValue = items.find((i) => i.defaultOpen)?.value;
   return (
-    <div className={cn('divide-y divide-border rounded-xl border border-border bg-card', className)}>
-      {items.map((item) => {
-        const isOpen = openValues.has(item.value);
-        return (
-          <div key={item.value}>
-            <button
-              type="button"
-              onClick={() => toggle(item.value)}
-              aria-expanded={isOpen}
-              className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-foreground transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', isOpen && 'rotate-0', !isOpen && '-rotate-90')} />
-              {icon}
-              <span className="flex-1">{item.title}</span>
-            </button>
-            {isOpen && (
-              <div className="px-4 pb-4 pt-1">
-                {item.children}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <AccordionPrimitive type="single" collapsible defaultValue={defaultValue} className={className}>
+      {renderItems()}
+    </AccordionPrimitive>
   );
 };
 

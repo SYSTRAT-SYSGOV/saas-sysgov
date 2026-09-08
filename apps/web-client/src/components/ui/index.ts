@@ -3,8 +3,8 @@ export type { ButtonProps } from './button';
 
 export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent } from './card';
 
-export { Input } from './Input';
-export type { InputProps } from './Input';
+export { Input, InputPrimitive } from './input';
+export type { InputProps } from './input';
 
 export { Badge, badgeVariants } from './badge';
 export type { BadgeProps } from './badge';
@@ -21,8 +21,7 @@ export type { KpiCardProps } from './KpiCard';
 export { SystratBrand, SystratWings } from './SystratBrand';
 export type { SystratBrandProps } from './SystratBrand';
 
-export { Table, TableHead, TableHeaderCell, TableBody, TableRow, TableCell } from './Table';
-export type { TableProps, TableCellProps } from './Table';
+export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from './table';
 
 export { OrgTypeBadge } from './OrgTypeBadge';
 export type { OrgType } from './OrgTypeBadge';
@@ -33,8 +32,8 @@ export type { OrgScopeIndicatorProps } from './OrgScopeIndicator';
 export { OrgTreeNodeCard } from './OrgTreeNodeCard';
 export type { OrgTreeNodeCardProps } from './OrgTreeNodeCard';
 
-export { Switch } from './Switch';
-export type { SwitchProps } from './Switch';
+export { Switch } from './switch';
+export type { SwitchProps } from './switch';
 
 export { Select } from './Select';
 export type { SelectProps, SelectOption } from './Select';
@@ -60,8 +59,7 @@ export type { TabsProps, TabsItem } from './Tabs';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 
-export { Skeleton } from './Skeleton';
-export type { SkeletonProps } from './Skeleton';
+export { Skeleton } from './skeleton';
 
 export { PageHeader } from './PageHeader';
 export type { PageHeaderProps } from './PageHeader';
