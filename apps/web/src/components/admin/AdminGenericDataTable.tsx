@@ -15,7 +15,6 @@ import {
   Square,
   FileSpreadsheet,
   FileCode,
-  X,
   Tag,
   Calendar,
   DollarSign,
@@ -27,7 +26,7 @@ import {
 } from 'lucide-react';
 import { INITIAL_GENERIC_RECORDS } from '../../services/adminMockData';
 import { GenericRecord } from '../../types/admin';
-import { StatusChip, Card } from '@sysgov/ui';
+import { StatusChip, Card, Modal, Input, Select, Button } from '@sysgov/ui';
 
 interface AdminGenericDataTableProps {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -314,13 +313,9 @@ export const AdminGenericDataTable: React.FC<AdminGenericDataTableProps> = ({ on
             <span>Exportar CSV</span>
           </button>
 
-          <button
-            onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md hover:shadow-indigo-600/30"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Novo Registro</span>
-          </button>
+          <Button onClick={handleOpenCreateModal} className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus className="w-3.5 h-3.5" />}>
+            Novo Registro
+          </Button>
         </div>
       </div>
 
@@ -591,236 +586,153 @@ export const AdminGenericDataTable: React.FC<AdminGenericDataTableProps> = ({ on
       </Card>
 
       {/* Add / Edit Record Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Table className="w-4 h-4 text-indigo-500" />
-                {editingRecordId ? 'Editar Registro' : 'Novo Registro de Dados'}
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="w-4 h-4" />
-              </button>
+      <Modal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingRecordId ? 'Editar Registro' : 'Novo Registro de Dados'}
+        icon={<Table size={18} className="text-indigo-500" />}
+        size="lg"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button type="submit" form="record-form" className="bg-indigo-600 hover:bg-indigo-500">
+              {editingRecordId ? 'Salvar Registro' : 'Criar Registro'}
+            </Button>
+          </>
+        }
+      >
+        <form id="record-form" onSubmit={handleSaveRecord} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input
+              label="Código Identificador"
+              required
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              className="font-mono"
+            />
+            <div className="sm:col-span-2">
+              <Input
+                label="Categoria"
+                required
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              />
             </div>
-
-            <form onSubmit={handleSaveRecord} className="space-y-4 mt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Código Identificador
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Categoria
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Título do Registro / Documento *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Ex: Contrato de Manutenção de Servidores"
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  >
-                    <option value="ativo">Ativo</option>
-                    <option value="em_revisao">Em Revisão</option>
-                    <option value="rascunho">Rascunho</option>
-                    <option value="arquivado">Arquivado</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Prioridade
-                  </label>
-                  <select
-                    value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  >
-                    <option value="baixa">Baixa</option>
-                    <option value="media">Média</option>
-                    <option value="alta">Alta</option>
-                    <option value="critica">Crítica</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Valor (R$)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.value}
-                    onChange={(e) => setFormData({ ...formData, value: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Responsável
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.assignee}
-                    onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Tags (separadas por vírgula)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tags}
-                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    placeholder="SaaS, Contrato, 2026"
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all shadow-md"
-                >
-                  {editingRecordId ? 'Salvar Registro' : 'Criar Registro'}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+
+          <Input
+            label="Título do Registro / Documento *"
+            required
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Ex: Contrato de Manutenção de Servidores"
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Select
+              label="Status"
+              value={formData.status}
+              onChange={(v) => setFormData({ ...formData, status: v as GenericRecord['status'] })}
+              options={[
+                { value: 'ativo', label: 'Ativo' },
+                { value: 'em_revisao', label: 'Em Revisão' },
+                { value: 'rascunho', label: 'Rascunho' },
+                { value: 'arquivado', label: 'Arquivado' },
+              ]}
+            />
+            <Select
+              label="Prioridade"
+              value={formData.priority}
+              onChange={(v) => setFormData({ ...formData, priority: v as GenericRecord['priority'] })}
+              options={[
+                { value: 'baixa', label: 'Baixa' },
+                { value: 'media', label: 'Média' },
+                { value: 'alta', label: 'Alta' },
+                { value: 'critica', label: 'Crítica' },
+              ]}
+            />
+            <Input
+              label="Valor (R$)"
+              type="number"
+              value={formData.value}
+              onChange={(e) => setFormData({ ...formData, value: Number(e.target.value) })}
+              className="font-mono"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Responsável"
+              value={formData.assignee}
+              onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
+            />
+            <Input
+              label="Tags (separadas por vírgula)"
+              value={formData.tags}
+              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              placeholder="SaaS, Contrato, 2026"
+            />
+          </div>
+        </form>
+      </Modal>
 
       {/* Details Preview Drawer / Modal */}
-      {previewRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+      <Modal
+        open={!!previewRecord}
+        onClose={() => setPreviewRecord(null)}
+        title={previewRecord?.title ?? ''}
+        icon={<span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{previewRecord?.code}</span>}
+        size="md"
+        footer={<Button variant="outline" onClick={() => setPreviewRecord(null)}>Fechar</Button>}
+      >
+        {previewRecord && (
+          <div className="space-y-3 text-xs">
+            <div className="grid grid-cols-2 gap-2 bg-muted/40 p-3 rounded-lg">
               <div>
-                <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                  {previewRecord.code}
+                <span className="text-muted-foreground block">Categoria:</span>
+                <span className="font-semibold text-foreground">
+                  {previewRecord.category}
                 </span>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
-                  {previewRecord.title}
-                </h2>
               </div>
-              <button
-                onClick={() => setPreviewRecord(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 mt-4 text-xs">
-              <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Categoria:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {previewRecord.category}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Responsável:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {previewRecord.assignee}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Status:</span>
-                  <div className="mt-0.5">{getStatusBadge(previewRecord.status)}</div>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Valor:</span>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white">
-                    R$ {previewRecord.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </div>
-
               <div>
-                <span className="text-slate-500 dark:text-slate-400 block mb-1">Tags do Registro:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {previewRecord.tags.map((t) => (
-                    <span
-                      key={t}
-                      className="px-2 py-0.5 rounded text-xs bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/40"
-                    >
-                      #{t}
-                    </span>
-                  ))}
-                </div>
+                <span className="text-muted-foreground block">Responsável:</span>
+                <span className="font-semibold text-foreground">
+                  {previewRecord.assignee}
+                </span>
               </div>
-
-              <div className="flex justify-between text-slate-400 font-mono text-[11px] pt-3 border-t border-slate-100 dark:border-slate-800">
-                <span>Criado em: {previewRecord.createdAt}</span>
-                <span>Atualizado em: {previewRecord.updatedAt}</span>
+              <div>
+                <span className="text-muted-foreground block">Status:</span>
+                <div className="mt-0.5">{getStatusBadge(previewRecord.status)}</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground block">Valor:</span>
+                <span className="font-mono font-bold text-foreground">
+                  R$ {previewRecord.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
               </div>
             </div>
 
-            <div className="mt-5 flex justify-end">
-              <button
-                onClick={() => setPreviewRecord(null)}
-                className="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
-              >
-                Fechar
-              </button>
+            <div>
+              <span className="text-muted-foreground block mb-1">Tags do Registro:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {previewRecord.tags.map((t) => (
+                  <span
+                    key={t}
+                    className="px-2 py-0.5 rounded text-xs bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/40"
+                  >
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between text-muted-foreground font-mono text-[11px] pt-3 border-t border-border">
+              <span>Criado em: {previewRecord.createdAt}</span>
+              <span>Atualizado em: {previewRecord.updatedAt}</span>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 };
