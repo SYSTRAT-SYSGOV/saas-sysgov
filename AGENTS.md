@@ -27,7 +27,7 @@ Para gerar um novo módulo com scaffold completo e teste de isolamento:
 ```bash
 php artisan make:module {NomeDoModulo}
 ```
-Consulte a skill oficial em [`.agents/skills/sysgov-module-scaffolding/SKILL.md`](file:///c:/laragon/www/saas-sysgov/.agents/skills/sysgov-module-scaffolding/SKILL.md) para o guia detalhado passo a passo.
+Consulte a skill oficial em [`.claude/skills/sysgov-module-scaffolding/SKILL.md`](./.claude/skills/sysgov-module-scaffolding/SKILL.md) para o guia detalhado passo a passo.
 
 ---
 
