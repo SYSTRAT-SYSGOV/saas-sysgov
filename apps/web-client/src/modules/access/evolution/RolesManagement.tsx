@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Loader2, Save, ShieldCheck, Filter } from 'lucide
 import { accessApi, TenantRole, TenantPermission } from '../AccessApi';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';

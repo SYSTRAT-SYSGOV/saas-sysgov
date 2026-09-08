@@ -4,7 +4,7 @@ import { accessApi, AccessUser, AccessModule, OrgUnitNode, Cargo, AccessGroup, M
 import { ModuleAccessPicker } from './ModuleAccessPicker';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface UserEditModalProps {

@@ -6,8 +6,8 @@ export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, C
 export { Input } from './Input';
 export type { InputProps } from './Input';
 
-export { Badge } from './Badge';
-export type { BadgeProps, BadgeVariant } from './Badge';
+export { Badge, badgeVariants } from './badge';
+export type { BadgeProps } from './badge';
 
 export { AlertCard } from './AlertCard';
 export type { AlertCardProps, AlertPriority } from './AlertCard';

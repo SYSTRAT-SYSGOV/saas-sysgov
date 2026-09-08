@@ -14,7 +14,7 @@ import {
 import { accessApi, AccessDashboardData, AccessUser, AccessModule, OrgUnitNode, Cargo, AccessGroup, AccessCategory } from './AccessApi';
 import { AdminAccessPanel, NewUserWizard, UserEditModal, AdvancedFilters, UserFilters } from './evolution';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge';
 import { Tabs } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';

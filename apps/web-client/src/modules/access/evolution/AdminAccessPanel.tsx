@@ -6,7 +6,7 @@ import { CargosManagement } from './CargosManagement';
 import { GroupsManagement } from './GroupsManagement';
 import { RolesManagement } from './RolesManagement';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge';
 import { Tabs } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';

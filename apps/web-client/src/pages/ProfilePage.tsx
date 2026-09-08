@@ -7,7 +7,7 @@ import { apiClient } from '@/core/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Field } from '@/components/ui/Field';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/DataTable';
 import { ScreenState } from '@/components/ui/ScreenState';

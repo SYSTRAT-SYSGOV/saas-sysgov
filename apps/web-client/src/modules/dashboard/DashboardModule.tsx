@@ -7,7 +7,7 @@ import { apiClient } from '@/core/api/client';
 import { MODULE_REGISTRY, getModuleRoute } from '@/config/moduleRegistry';
 import type { ModuleDefinition } from '@/config/moduleRegistry';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge';
 import { KpiCard } from '@/components/ui/KpiCard';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { ScreenState } from '@/components/ui/ScreenState';

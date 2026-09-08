@@ -6,7 +6,7 @@ import { OrgUnitNode } from '../AccessApi';
 import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 
