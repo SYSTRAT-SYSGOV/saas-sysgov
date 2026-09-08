@@ -49,9 +49,14 @@ public function catalog(): JsonResponse
                     'enabled' => $module->enabled,
                     'monthly_fee_cents' => $module->monthly_fee_cents,
                     'metadata' => $module->metadata ?? [],
-                    'icon' => $menuGroup?->icon ?? 'Layers',
-                    'menu_label' => $menuGroup?->name ?? $module->name,
-                    'menu_order' => $menuGroup?->order ?? 50,
+                    // O Larastan não modela a nulidade de belongsTo() acessado via
+                    // propriedade mágica (acha que $menuGroup nunca é null aqui) —
+                    // mas menu_group_id É nullable de verdade (todo módulo do
+                    // catálogo hoje está sem grupo), então o ?-> continua
+                    // necessário em runtime. Ver Modules/Admin/Models/Module.php.
+                    'icon' => $menuGroup?->icon ?? 'Layers', // @phpstan-ignore nullsafe.neverNull
+                    'menu_label' => $menuGroup?->name ?? $module->name, // @phpstan-ignore nullsafe.neverNull
+                    'menu_order' => $menuGroup?->order ?? 50, // @phpstan-ignore nullsafe.neverNull
                     'permissions' => $permissions,
                     'menu_items' => $menuItems->map(function ($item) {
                         return [
@@ -136,6 +141,7 @@ public function catalog(): JsonResponse
         return response()->json($module);
     }
 
+    /** @param array<string, string> $permissions */
     private function syncDefaultPermissions(Module $module, array $permissions): void
     {
         $defaultPermissions = [
@@ -159,6 +165,7 @@ public function catalog(): JsonResponse
         $module->permissions()->sync($permissionIds);
     }
 
+    /** @param array<string, mixed> $menuData */
     private function createDefaultMenu(Module $module, array $menuData): void
     {
         $groupName = $menuData['label'] ?? $module->name;

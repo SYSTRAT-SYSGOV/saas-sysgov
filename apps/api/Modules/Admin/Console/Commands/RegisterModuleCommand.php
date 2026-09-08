@@ -79,6 +79,7 @@ final class RegisterModuleCommand extends Command
         });
     }
 
+    /** @param array<string, mixed> $config */
     private function registerPlatformModule(string $moduleName, array $config, bool $dryRun): PlatformModule
     {
         $alias = $config['alias'] ?? Str::lower($moduleName);
@@ -107,7 +108,10 @@ final class RegisterModuleCommand extends Command
         return $module;
     }
 
-    /** @return list<int> */
+    /**
+     * @param array<string, mixed> $config
+     * @return list<int>
+     */
     private function registerModulePermissions(array $config, bool $force, bool $dryRun): array
     {
         $alias = $config['alias'] ?? '';
@@ -149,6 +153,7 @@ final class RegisterModuleCommand extends Command
         return $permissionIds;
     }
 
+    /** @param array<string, mixed> $config */
     private function registerModuleMenu(array $config, bool $force, bool $dryRun): ?MenuGroup
     {
         $menuConfig = $config['menu'] ?? null;
