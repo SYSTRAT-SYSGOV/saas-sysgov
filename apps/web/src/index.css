@@ -434,6 +434,15 @@ html {
 @layer base {
   *, ::before, ::after {
     font-family: var(--font-family-base);
+    /* Tailwind v4 não define mais um border-color padrão via preflight
+       (diferente do v3) — sem isso, qualquer classe "border"/"border-b"/
+       "border-t" sem cor explícita herda `currentColor` (a cor do texto
+       do elemento) em vez do token --color-border. Em modo escuro o
+       texto é quase branco, então bordas "genéricas" saem bem mais
+       claras/contrastadas do que deveriam (efeito de "borda grossa").
+       Regra padrão do setup shadcn/Tailwind v4 — ver components.json. */
+    border-color: var(--color-border, currentColor);
+    outline-color: var(--color-ring, currentColor);
   }
 
   body {
