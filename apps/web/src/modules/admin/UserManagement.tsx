@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Pencil, Power, RotateCcw, KeyRound, Users, Loader2, X, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Plus, Search, Pencil, Power, RotateCcw, KeyRound, Users, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { adminApi } from './api';
 import { User, Role } from './types';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { Modal, Input, Select, Button } from '@sysgov/ui';
 
 export const UserManagement: React.FC = () => {
   const { currentUser } = useAuthContext();
@@ -147,12 +148,9 @@ export const UserManagement: React.FC = () => {
             Equipe da plataforma: super_admin, admin_ops e suporte.
           </p>
         </div>
-        <button
-          onClick={() => { setEditingUser(null); setModalOpen(true); }}
-          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Novo Usuário
-        </button>
+        <Button onClick={() => { setEditingUser(null); setModalOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700" leftIcon={<Plus className="w-4 h-4" />}>
+          Novo Usuário
+        </Button>
       </div>
 
       <div className="mod-card p-4 border-b mod-border">
@@ -265,36 +263,39 @@ export const UserManagement: React.FC = () => {
         />
       )}
 
-      {deactivating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="mod-card w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between p-4 border-b mod-border">
-              <h3 className="text-sm font-bold mod-text-primary">Desativar Usuário</h3>
-              <button onClick={() => setDeactivating(null)} className="p-1 rounded-lg hover:mod-inner mod-text-secondary"><X size={16} /></button>
-            </div>
-            <div className="p-4 space-y-4">
-              <p className="text-xs mod-text-secondary">
-                Desativar <strong className="font-mono">{deactivating.email}</strong>? O motivo é obrigatório e será registrado na auditoria (RN-USR-007).
-              </p>
+      <Modal
+        open={!!deactivating}
+        onClose={() => setDeactivating(null)}
+        title="Desativar Usuário"
+        icon={<Power size={18} className="text-rose-500" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setDeactivating(null)}>Cancelar</Button>
+            <Button onClick={() => deactivating && handleDeactivate(deactivating)} className="bg-rose-600 hover:bg-rose-700">Desativar</Button>
+          </>
+        }
+      >
+        {deactivating && (
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Desativar <strong className="font-mono">{deactivating.email}</strong>? O motivo é obrigatório e será registrado na auditoria (RN-USR-007).
+            </p>
+            <div className="w-full space-y-2">
+              <label className="block font-mono text-xs sm:text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Motivo da desativação
+              </label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
-                placeholder="Motivo da desativação (mín. 10 caracteres)..."
-                className="mod-input w-full"
+                placeholder="Mín. 10 caracteres..."
+                className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
               />
-              <div className="flex justify-end gap-3 pt-4 border-t mod-border">
-                <button type="button" onClick={() => setDeactivating(null)} className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 border mod-border rounded-lg hover:mod-inner">
-                  Cancelar
-                </button>
-                <button onClick={() => handleDeactivate(deactivating)} className="px-4 py-2 text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-lg">
-                  Desativar
-                </button>
-              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 };
@@ -313,6 +314,7 @@ const UserFormModal: React.FC<{
     role_slug: '',
   });
   const [saving, setSaving] = useState(false);
+  const [roleError, setRoleError] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -328,56 +330,77 @@ const UserFormModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.role_slug) {
+      setRoleError(true);
+      return;
+    }
+    setRoleError(false);
     setSaving(true);
     onSave(formData);
     setSaving(false);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="mod-card w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b mod-border">
-          <h2 className="text-sm font-bold mod-text-primary">{user ? 'Editar Usuário' : 'Novo Usuário SYSTRAT'}</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:mod-inner mod-text-secondary"><X size={16} /></button>
+    <Modal
+      open
+      onClose={onClose}
+      title={user ? 'Editar Usuário' : 'Novo Usuário SYSTRAT'}
+      icon={<Users size={18} className="text-emerald-500" />}
+      size="lg"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" form="user-form" isLoading={saving} className="bg-emerald-600 hover:bg-emerald-700">
+            {user ? 'Atualizar' : 'Criar'}
+          </Button>
+        </>
+      }
+    >
+      <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          label="Nome *"
+          required
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        />
+        <Input
+          label="E-mail *"
+          type="email"
+          required
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          className="font-mono"
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label={user ? 'Nova senha' : 'Senha *'}
+            type="password"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            required={!user}
+            minLength={8}
+            helperText="Mín. 8 chars, maiúscula, minúscula, número e símbolo."
+          />
+          <Input
+            label="Confirmar senha"
+            type="password"
+            value={formData.password_confirmation}
+            onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
+            required={!user}
+          />
         </div>
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold mod-text-secondary mb-1">Nome *</label>
-            <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="mod-input w-full" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold mod-text-secondary mb-1">E-mail *</label>
-            <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="mod-input w-full font-mono" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold mod-text-secondary mb-1">{user ? 'Nova senha' : 'Senha *'}</label>
-              <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required={!user} minLength={8} className="mod-input w-full" />
-              <p className="text-[10px] mod-text-secondary mt-1">Mín. 8 chars, maiúscula, minúscula, número e símbolo.</p>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mod-text-secondary mb-1">Confirmar senha</label>
-              <input type="password" value={formData.password_confirmation} onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })} required={!user} className="mod-input w-full" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold mod-text-secondary mb-1">Role *</label>
-            <select required value={formData.role_slug} onChange={(e) => setFormData({ ...formData, role_slug: e.target.value })} className="mod-input w-full">
-              <option value="">— Selecione a role —</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.slug}>{r.name} ({r.slug})</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t mod-border">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 border mod-border rounded-lg hover:mod-inner">Cancelar</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50">
-              {saving ? 'Salvando...' : (user ? 'Atualizar' : 'Criar')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div>
+          <Select
+            label="Role *"
+            value={formData.role_slug || null}
+            onChange={(v) => { setFormData({ ...formData, role_slug: v }); setRoleError(false); }}
+            placeholder="— Selecione a role —"
+            options={roles.map((r) => ({ value: r.slug, label: `${r.name} (${r.slug})` }))}
+          />
+          {roleError && <p className="mt-1.5 text-xs sm:text-sm font-medium text-destructive">Selecione uma role.</p>}
+        </div>
+      </form>
+    </Modal>
   );
 };
 
