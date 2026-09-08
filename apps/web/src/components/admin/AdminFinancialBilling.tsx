@@ -14,6 +14,7 @@ import { InvoiceItem } from '../../types/admin';
 import { ScreenState, ScreenStateType } from '../ui/ScreenState';
 import api from '../../api/client';
 import { INITIAL_INVOICES } from '../../services/adminMockData';
+import { StatusChip } from '@sysgov/ui';
 
 interface AdminFinancialBillingProps {
   onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -161,29 +162,13 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
   const getStatusBadge = (status: InvoiceItem['status']) => {
     switch (status) {
       case 'paid':
-        return (
-          <span className="sgf-badge-oficial inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs">
-            <CheckCircle2 className="w-3 h-3" /> Pago
-          </span>
-        );
+        return <StatusChip label="Pago" variant="success" icon={<CheckCircle2 className="w-3 h-3" />} />;
       case 'pending':
-        return (
-          <span className="sgf-badge-demo inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs">
-            <Clock className="w-3 h-3" /> Pendente
-          </span>
-        );
+        return <StatusChip label="Pendente" variant="warning" icon={<Clock className="w-3 h-3" />} />;
       case 'overdue':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-700/40">
-            <AlertTriangle className="w-3 h-3" /> Em Atraso
-          </span>
-        );
+        return <StatusChip label="Em Atraso" variant="danger" icon={<AlertTriangle className="w-3 h-3" />} />;
       case 'refunded':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800/60 text-slate-500 border border-slate-300 dark:border-slate-700">
-            Estornado
-          </span>
-        );
+        return <StatusChip label="Estornado" variant="neutral" />;
     }
   };
 

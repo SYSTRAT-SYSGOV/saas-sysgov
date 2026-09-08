@@ -1,9 +1,7 @@
 import React from 'react';
 import { Filter, RotateCcw } from 'lucide-react';
 import { AccessModule, OrgUnitNode, AccessGroup, AccessCategory, Cargo } from '../AccessApi';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Accordion } from '@/components/ui/Accordion';
+import { Card, Badge, Accordion } from '@sysgov/ui';
 
 export interface UserFilters {
   q?: string;
@@ -87,7 +85,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ modules, units
   );
 
   return (
-    <Card noPadding>
+    <Card className="gap-0 py-0">
       <Accordion
         icon={<Filter className="h-4 w-4 text-primary" />}
         items={[

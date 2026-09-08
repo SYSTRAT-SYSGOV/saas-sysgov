@@ -4,6 +4,7 @@ import {
   Paperclip, GitBranch, Scale, Building2, Calendar, DollarSign, Eye,
   Edit3, X,
 } from 'lucide-react';
+import { Button, Modal } from '@sysgov/ui';
 
 // ─── Mock Data ───────────────────────────────────────────────────────────────
 
@@ -306,15 +307,28 @@ const ContractDetail: React.FC<{ c: Contrato; onClose: () => void }> = ({ c, onC
   );
 };
 
+const emptyForm = {
+  number: '', title: '', contract_type: 'termo_contrato' as Contrato['contract_type'],
+  supplier_name: '', supplier_cnpj: '', starts_at: '', ends_at: '',
+  amount: '', max_addenda_percent: '25', manager: '', inspector: '',
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export const ModuleContratos: React.FC = () => {
+interface ModuleContratosProps {
+  onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
+}
+
+export const ModuleContratos: React.FC<ModuleContratosProps> = ({ onAddToast = () => {} }) => {
+  const [contratos, setContratos] = useState<Contrato[]>(CONTRATOS_MOCK);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [selected, setSelected] = useState<Contrato | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState(emptyForm);
 
-  const filtered = useMemo(() => CONTRATOS_MOCK.filter(c => {
+  const filtered = useMemo(() => contratos.filter(c => {
     const matchSearch = search === '' ||
       c.number.toLowerCase().includes(search.toLowerCase()) ||
       c.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -322,15 +336,46 @@ export const ModuleContratos: React.FC = () => {
     const matchStatus = filterStatus === 'all' || c.status === filterStatus;
     const matchType = filterType === 'all' || c.contract_type === filterType;
     return matchSearch && matchStatus && matchType;
-  }), [search, filterStatus, filterType]);
+  }), [contratos, search, filterStatus, filterType]);
 
   const kpis = useMemo(() => ({
-    total: CONTRATOS_MOCK.length,
-    active: CONTRATOS_MOCK.filter(c => c.status === 'active').length,
-    totalAmount: CONTRATOS_MOCK.reduce((a, c) => a + c.amount_cents + c.total_addenda_amount_cents, 0),
-    expiring30: CONTRATOS_MOCK.filter(c => c.status === 'active' && Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000) <= 30).length,
-    expiring90: CONTRATOS_MOCK.filter(c => c.status === 'active' && Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000) <= 90).length,
-  }), []);
+    total: contratos.length,
+    active: contratos.filter(c => c.status === 'active').length,
+    totalAmount: contratos.reduce((a, c) => a + c.amount_cents + c.total_addenda_amount_cents, 0),
+    expiring30: contratos.filter(c => c.status === 'active' && Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000) <= 30).length,
+    expiring90: contratos.filter(c => c.status === 'active' && Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000) <= 90).length,
+  }), [contratos]);
+
+  const handleOpenCreate = () => {
+    setForm(emptyForm);
+    setCreateOpen(true);
+  };
+
+  const handleCreate = () => {
+    if (!form.title.trim() || !form.supplier_name.trim()) {
+      onAddToast({ type: 'warning', title: 'Campos obrigatórios', message: 'Informe ao menos o título e o fornecedor do contrato.' });
+      return;
+    }
+    const novo: Contrato = {
+      id: `novo-${Date.now()}`,
+      number: form.number.trim() || `CT-${new Date().getFullYear()}/${String(contratos.length + 1).padStart(4, '0')}`,
+      title: form.title.trim(),
+      contract_type: form.contract_type,
+      supplier_name: form.supplier_name.trim(),
+      supplier_cnpj: form.supplier_cnpj.trim(),
+      starts_at: form.starts_at || new Date().toISOString().slice(0, 10),
+      ends_at: form.ends_at || new Date().toISOString().slice(0, 10),
+      amount_cents: Math.round(Number(form.amount.replace(',', '.')) * 100) || 0,
+      total_addenda_amount_cents: 0,
+      max_addenda_percent: Number(form.max_addenda_percent) || 25,
+      status: 'draft',
+      manager: form.manager.trim(),
+      inspector: form.inspector.trim(),
+    };
+    setContratos(prev => [novo, ...prev]);
+    setCreateOpen(false);
+    onAddToast({ type: 'success', title: 'Contrato Criado', message: `${novo.number} — ${novo.title} adicionado como minuta.` });
+  };
 
   return (
     <div className="space-y-6">
@@ -343,9 +388,9 @@ export const ModuleContratos: React.FC = () => {
           </h1>
           <p className="text-sm mod-text-secondary mt-1">Ciclo de vida contratual, aditivos e fiscalização em tempo real.</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors whitespace-nowrap">
-          <Plus size={15} /> Novo Contrato
-        </button>
+        <Button onClick={handleOpenCreate} className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus size={15} />}>
+          Novo Contrato
+        </Button>
       </div>
 
       {/* KPI Cards */}
@@ -409,6 +454,72 @@ export const ModuleContratos: React.FC = () => {
       </div>
 
       {selected && <ContractDetail c={selected} onClose={() => setSelected(null)} />}
+
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Novo Contrato"
+        icon={<FileText size={18} className="text-indigo-500" />}
+        size="lg"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-500">Criar Contrato</Button>
+          </>
+        }
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <label className="text-xs font-medium mod-text-secondary">Título do Contrato *</label>
+            <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Locação de Software de Gestão Fiscal" className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Número</label>
+            <input value={form.number} onChange={e => setForm(f => ({ ...f, number: e.target.value }))} placeholder="Gerado automaticamente" className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Tipo</label>
+            <select value={form.contract_type} onChange={e => setForm(f => ({ ...f, contract_type: e.target.value as Contrato['contract_type'] }))} className="mod-input w-full mt-1">
+              <option value="termo_contrato">Termo de Contrato</option>
+              <option value="ata_rp">Ata de Registro de Preços</option>
+              <option value="convenio">Convênio</option>
+              <option value="termo_aditivo">Termo Aditivo</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Fornecedor *</label>
+            <input value={form.supplier_name} onChange={e => setForm(f => ({ ...f, supplier_name: e.target.value }))} placeholder="Razão social" className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">CNPJ</label>
+            <input value={form.supplier_cnpj} onChange={e => setForm(f => ({ ...f, supplier_cnpj: e.target.value }))} placeholder="00.000.000/0000-00" className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Início da Vigência</label>
+            <input type="date" value={form.starts_at} onChange={e => setForm(f => ({ ...f, starts_at: e.target.value }))} className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Fim da Vigência</label>
+            <input type="date" value={form.ends_at} onChange={e => setForm(f => ({ ...f, ends_at: e.target.value }))} className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Valor (R$)</label>
+            <input value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0,00" className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Limite de Aditamento (%)</label>
+            <input value={form.max_addenda_percent} onChange={e => setForm(f => ({ ...f, max_addenda_percent: e.target.value }))} className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Gestor do Contrato</label>
+            <input value={form.manager} onChange={e => setForm(f => ({ ...f, manager: e.target.value }))} className="mod-input w-full mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Fiscal do Contrato</label>
+            <input value={form.inspector} onChange={e => setForm(f => ({ ...f, inspector: e.target.value }))} className="mod-input w-full mt-1" />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -3,10 +3,8 @@ import { Plus, Pencil, Trash2, Loader2, Save, Users, UserCheck, Briefcase, Layer
 import { accessApi, AccessCategory, AccessGroup, AccessGroupAccess, AccessUser } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
 import { OrgUnitNode } from '../AccessApi';
-import { Card } from '@/components/ui/Card';
-import { Modal } from '@/components/ui/Modal';
+import { Card, Modal, Badge } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
-import { Badge } from '@/components/ui/Badge';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -132,7 +130,7 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
   return (
     <div className="space-y-5">
       {/* Categorias */}
-      <Card noPadding className="overflow-hidden">
+      <Card className="gap-0 py-0 overflow-hidden">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
             <Briefcase className="h-4 w-4 text-primary" /> Categorias
@@ -147,7 +145,7 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
       </Card>
 
       {/* Grupos */}
-      <Card noPadding className="overflow-hidden">
+      <Card className="gap-0 py-0 overflow-hidden">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
             <Layers className="h-4 w-4 text-primary" /> Grupos de Acesso

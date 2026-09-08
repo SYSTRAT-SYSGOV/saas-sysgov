@@ -9,6 +9,14 @@
 
 @import "tailwindcss";
 
+/* @sysgov/ui vive fora da raiz do projeto (packages/ui, workspace
+   separado) — o scanner automático de conteúdo do Tailwind v4 não
+   inclui esse diretório por padrão, então classes usadas SÓ lá dentro
+   (ex.: top-[50%], translate-x-[-50%], animate-in — usadas pelo
+   Dialog/Select) nunca seriam geradas, mesmo com o componente
+   funcionando em JS. @source força a inclusão. */
+@source "../../../packages/ui/src";
+
 /* 1. Design Tokens do Gov.br DS (somente variáveis CSS) */
 @import "@govbr-ds/core/dist/core-tokens.min.css";
 
@@ -162,6 +170,118 @@
 }
 
 /* ============================================================
+   5b. Tokens shadcn/ui (@sysgov/ui — Fase 4 da unificação de UI)
+   Mesmo vocabulário de variáveis que o web-client usa (--background,
+   --primary, --card, --border...), só que aqui apontando pra paleta
+   Navy + Esmeralda do admin em vez do azul institucional GOV.BR — é
+   o mesmo componente (<Button>, <Card>, <Dialog>...), pele diferente
+   por app. Decisão: o admin mantém a paleta Navy escura (não
+   converge com o web-client).
+   ============================================================ */
+:root {
+  --background: var(--canvas);
+  --foreground: var(--text-primary);
+
+  --card: var(--surface);
+  --card-foreground: var(--text-primary);
+
+  --popover: var(--surface);
+  --popover-foreground: var(--text-primary);
+
+  --primary: var(--sem-success);       /* Esmeralda — acento primário SYSGOV */
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1f5f9;
+  --secondary-foreground: var(--text-primary);
+
+  --muted: #f1f5f9;
+  --muted-foreground: var(--text-secondary);
+
+  --accent: #f1f5f9;
+  --accent-foreground: var(--text-primary);
+
+  --destructive: var(--sem-danger);
+  --destructive-foreground: #ffffff;
+
+  --success: var(--sem-success);
+  --success-foreground: #ffffff;
+  --warning: var(--sem-warning);
+  --warning-foreground: #1f2937;
+
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: var(--sem-success);
+
+  /* Semáforo fiscal (usado por StatusChip/Badge — mesmos nomes que o
+     web-client já usa, aqui apontando pra paleta Navy/Esmeralda) */
+  --status-success-base: var(--sem-success);
+  --status-success-bg: #d1fae5;
+  --status-success-border: #6ee7b7;
+  --status-warning-base: var(--sem-warning);
+  --status-warning-bg: #fef3c7;
+  --status-warning-border: #fcd34d;
+  --status-danger-base: var(--sem-danger);
+  --status-danger-bg: #fee2e2;
+  --status-danger-border: #fca5a5;
+  --status-info-base: var(--sem-info);
+  --status-info-bg: #dbeafe;
+  --status-info-border: #93c5fd;
+
+  /* Aliases 'gov-*' — usados pela variante neutral do Badge/StatusChip
+     (mesmos nomes do web-client, aqui resolvendo pra paleta do admin) */
+  --gov-text-secondary: var(--text-secondary);
+  --gov-border: var(--border);
+
+  /* Sidebar do admin é sempre escura (Navy), nos dois modos */
+  --sidebar: var(--navy-950);
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: var(--sem-success);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--navy-800);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: var(--navy-800);
+  --sidebar-ring: var(--sem-success);
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: var(--navy-950);
+  --foreground: var(--text-primary);
+
+  --card: var(--surface);
+  --card-foreground: var(--text-primary);
+
+  --popover: var(--surface);
+  --popover-foreground: var(--text-primary);
+
+  --secondary: var(--navy-850);
+  --secondary-foreground: var(--text-primary);
+
+  --muted: var(--navy-850);
+  --muted-foreground: var(--text-secondary);
+
+  --accent: var(--navy-800);
+  --accent-foreground: var(--text-primary);
+
+  --destructive: var(--sem-danger-soft);
+  --destructive-foreground: #ffffff;
+  --warning-foreground: var(--navy-950);
+
+  --border: var(--navy-800);
+  --input: var(--navy-800);
+
+  --status-success-bg: rgba(16, 185, 129, 0.15);
+  --status-success-border: rgba(16, 185, 129, 0.35);
+  --status-warning-bg: rgba(245, 158, 11, 0.15);
+  --status-warning-border: rgba(245, 158, 11, 0.35);
+  --status-danger-bg: rgba(229, 34, 7, 0.15);
+  --status-danger-border: rgba(229, 34, 7, 0.35);
+  --status-info-bg: rgba(21, 91, 203, 0.18);
+  --status-info-border: rgba(59, 130, 246, 0.4);
+}
+
+/* ============================================================
    6. Tailwind v4 @theme — tokens Navy, Canvas, Semânticos & Gov.br
    ============================================================ */
 @theme {
@@ -235,6 +355,61 @@
   --text-govbr-xl:   24.192px;
   --text-govbr-2xl:  29.036px;
   --text-govbr-3xl:  34.832px;
+
+  /* Tokens shadcn/ui (@sysgov/ui) — expõe as CSS vars da seção 5b como
+     classes utilitárias (bg-primary, border-border, text-foreground...) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-status-success: var(--status-success-base);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-success-border: var(--status-success-border);
+  --color-status-warning: var(--status-warning-base);
+  --color-status-warning-bg: var(--status-warning-bg);
+  --color-status-warning-border: var(--status-warning-border);
+  --color-status-danger: var(--status-danger-base);
+  --color-status-danger-bg: var(--status-danger-bg);
+  --color-status-danger-border: var(--status-danger-border);
+  --color-status-info: var(--status-info-base);
+  --color-status-info-bg: var(--status-info-bg);
+  --color-status-info-border: var(--status-info-border);
+
+  --color-gov-text-secondary: var(--gov-text-secondary);
+  --color-gov-border: var(--gov-border);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 /* ============================================================

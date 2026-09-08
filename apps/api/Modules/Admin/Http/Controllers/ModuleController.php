@@ -24,11 +24,17 @@ final class ModuleController
     {
         $this->authorize('toggle', $module);
         $payload = $request->validated();
+
+        // O módulo "dashboard" é a base do Painel do Cliente (a rota "/" exige
+        // ele) — nunca pode ficar desabilitado pra um tenant, senão o usuário
+        // cai em "Acesso Negado" assim que loga.
+        $enabled = $module->alias === 'dashboard' ? true : (bool) $payload['enabled'];
+
         $before = $module->tenants()->whereKey($tenant->getKey())->first()?->pivot?->toArray();
-        DB::transaction(fn () => $module->tenants()->syncWithoutDetaching([$tenant->getKey() => ['enabled' => $payload['enabled'], 'settings' => json_encode($payload['settings'] ?? [])]]));
+        DB::transaction(fn () => $module->tenants()->syncWithoutDetaching([$tenant->getKey() => ['enabled' => $enabled, 'settings' => json_encode($payload['settings'] ?? [])]]));
         $after = $module->tenants()->whereKey($tenant->getKey())->first()?->pivot?->toArray();
         $audit->record('admin', 'module.toggled', 'tenant:'.$tenant->getKey().'/module:'.$module->getKey(), $before, $after);
-        return response()->json(['tenant_id' => $tenant->getKey(), 'module_id' => $module->getKey(), 'enabled' => (bool) $payload['enabled'], 'settings' => $payload['settings'] ?? []]);
+        return response()->json(['tenant_id' => $tenant->getKey(), 'module_id' => $module->getKey(), 'enabled' => $enabled, 'settings' => $payload['settings'] ?? []]);
     }
 
     /**
@@ -41,7 +47,8 @@ final class ModuleController
         $data = $request->validated();
         $tenantIds = $data['tenant_ids'];
         $moduleAlias = $data['module_alias'];
-        $enabled = $data['enabled'];
+        // Ver nota em toggle(): "dashboard" nunca pode ser desabilitado.
+        $enabled = $moduleAlias === 'dashboard' ? true : $data['enabled'];
         $monthlyFeeCents = $data['monthly_fee_cents'] ?? 0;
         $trialEndsAt = $data['trial_ends_at'] ?? null;
         $settings = $data['settings'] ?? [];

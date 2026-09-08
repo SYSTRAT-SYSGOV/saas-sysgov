@@ -13,8 +13,7 @@ import {
 } from 'lucide-react';
 import { accessApi, AccessDashboardData, AccessUser, AccessModule, OrgUnitNode, Cargo, AccessGroup, AccessCategory } from './AccessApi';
 import { AdminAccessPanel, NewUserWizard, UserEditModal, AdvancedFilters, UserFilters } from './evolution';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Card, Badge } from '@sysgov/ui';
 import { Tabs } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';
@@ -289,7 +288,7 @@ export const AccessManagement: React.FC = () => {
         onChange={(f) => { setFilters(f); setPagination((p) => ({ ...p, current_page: 1 })); }}
       />
 
-      <Card noPadding>
+      <Card className="gap-0 py-0">
         <div className="relative border-b border-border p-3">
           <Search className="absolute left-6 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input

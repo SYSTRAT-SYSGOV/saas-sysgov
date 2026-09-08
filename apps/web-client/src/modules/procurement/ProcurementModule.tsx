@@ -66,7 +66,7 @@ export const ProcurementModule: React.FC = () => {
         }
       />
 
-      <Card noPadding>
+      <Card className="gap-0 py-0">
         <Accordion
           icon={<Building2 className="h-4 w-4 text-primary" />}
           items={[{
@@ -79,7 +79,7 @@ export const ProcurementModule: React.FC = () => {
         />
       </Card>
 
-      <Card noPadding>
+      <Card className="gap-0 py-0">
         <div className="p-3">
           <DataTable columns={columns} data={filtered} emptyText="Nenhuma licitação encontrada." pageSize={10} />
         </div>

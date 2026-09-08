@@ -179,6 +179,7 @@ export const MenuManager: React.FC<Props> = ({
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingGroup, setEditingGroup] = useState<MenuGroup | null>(null);
   const [creatingForGroupId, setCreatingForGroupId] = useState<number | null>(null);
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   // Carrega da API quando usado standalone
   useEffect(() => {
@@ -322,17 +323,7 @@ export const MenuManager: React.FC<Props> = ({
     if (externalOnCreateGroup) {
       externalOnCreateGroup();
     } else {
-      const name = window.prompt('Nome do novo grupo de menu:');
-      if (!name) return;
-      const newGroup: MenuGroup = {
-        id: Date.now(),
-        name: name.toUpperCase(),
-        slug: name.toLowerCase().replace(/\s+/g, '-'),
-        order: safeGroups.length + 1,
-        is_active: true,
-        items: [],
-      };
-      updateGroups([...safeGroups, newGroup]);
+      setCreatingGroup(true);
     }
   };
 
@@ -456,6 +447,60 @@ export const MenuManager: React.FC<Props> = ({
             })
           )}
         </div>
+
+        {/* Modal de Novo Grupo quando standalone */}
+        {creatingGroup && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="mod-card w-full max-w-lg shadow-2xl p-6">
+              <div className="flex items-center justify-between pb-3 border-b mod-border">
+                <h2 className="text-sm font-bold mod-text-primary">Novo Grupo de Menu</h2>
+                <button onClick={() => setCreatingGroup(false)} className="p-1 rounded-lg mod-text-secondary hover:mod-inner">
+                  <X size={16} />
+                </button>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.target as HTMLFormElement;
+                  const name = (form.elements.namedItem('groupName') as HTMLInputElement).value.trim();
+                  if (!name) return;
+
+                  const newGroup: MenuGroup = {
+                    id: Date.now(),
+                    name: name.toUpperCase(),
+                    slug: name.toLowerCase().replace(/\s+/g, '-'),
+                    order: safeGroups.length + 1,
+                    is_active: true,
+                    items: [],
+                  };
+                  updateGroups([...safeGroups, newGroup]);
+                  setCreatingGroup(false);
+                }}
+                className="mt-4 space-y-3 text-xs"
+              >
+                <div>
+                  <label className="block font-semibold mod-text-secondary mb-1">Nome do Grupo</label>
+                  <input name="groupName" required autoFocus placeholder="Ex: Organograma" className="mod-input w-full" />
+                </div>
+                <div className="mt-5 flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreatingGroup(false)}
+                    className="px-4 py-2 text-xs rounded-lg mod-text-secondary hover:mod-inner"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm"
+                  >
+                    Criar Grupo
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Modal de Edição de Item quando standalone */}
         {editingItem && (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { Dialog } from './Dialog';
+import { Dialog } from '@sysgov/ui';
 
 export interface ConfirmDialogProps {
   open: boolean;

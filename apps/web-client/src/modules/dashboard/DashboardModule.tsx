@@ -6,8 +6,7 @@ import { useOrgUnit } from '@/core/orgunit';
 import { apiClient } from '@/core/api/client';
 import { MODULE_REGISTRY, getModuleRoute } from '@/config/moduleRegistry';
 import type { ModuleDefinition } from '@/config/moduleRegistry';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Card, Badge } from '@sysgov/ui';
 import { KpiCard } from '@/components/ui/KpiCard';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { ScreenState } from '@/components/ui/ScreenState';
@@ -275,7 +274,7 @@ export const DashboardModule: React.FC = () => {
           )}
         </div>
         {otherModules.length === 0 ? (
-          <Card className="flex flex-col items-center gap-3 py-12 text-center">
+          <Card className="flex flex-col items-center gap-3 px-6 py-12 text-center">
             <Sparkles className="h-12 w-12 text-border" />
             <p className="text-sm text-muted-foreground">Nenhum outro módulo disponível no momento.</p>
           </Card>

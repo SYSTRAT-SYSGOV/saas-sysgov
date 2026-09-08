@@ -1064,7 +1064,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
       </div>
 
       {/* 5. Barra de Filtros, Pesquisa e Alternador de Visões */}
-      <Card noPadding className="overflow-hidden">
+      <Card className="gap-0 py-0 overflow-hidden">
         <Accordion
           icon={<Filter className="h-4 w-4 text-primary" />}
           items={[
@@ -1225,7 +1225,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
 
       {/* VISÃO 2: TABELA ESTRUTURADA ANALÍTICA */}
       {viewMode === 'table' && (
-        <Card noPadding className="overflow-hidden">
+        <Card className="gap-0 py-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
               <thead>

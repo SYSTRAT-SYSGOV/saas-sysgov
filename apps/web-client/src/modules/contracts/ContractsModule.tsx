@@ -193,7 +193,7 @@ export const ContractsModule: React.FC = () => {
         }
       />
 
-      <Card noPadding>
+      <Card className="gap-0 py-0">
         <div className="p-3 border-b border-border">
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar por número, objeto ou contratada..." />
         </div>

@@ -3,6 +3,7 @@ import {
   BookOpen, ChevronRight, ChevronDown, Search, TrendingUp,
   CheckCircle2, Clock, AlertTriangle, BarChart2, Plus,
 } from 'lucide-react';
+import { Button, Modal } from '@sysgov/ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -159,35 +160,48 @@ const PCASPRow: React.FC<{ node: PCASPNode }> = ({ node }) => {
 
 type Tab = 'execucao' | 'pcasp' | 'lancamentos';
 
+const emptyEmpenhoForm = { ne_number: '', description: '', funcao: '', amount: '', date: '' };
+const emptyLancamentoForm = { date: '', description: '', debito_account: '', credito_account: '', amount: '' };
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export const ModuleContabilidade: React.FC = () => {
+interface ModuleContabilidadeProps {
+  onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
+}
+
+export const ModuleContabilidade: React.FC<ModuleContabilidadeProps> = ({ onAddToast = () => {} }) => {
   const [activeTab, setActiveTab] = useState<Tab>('execucao');
   const [search, setSearch] = useState('');
+  const [empenhos, setEmpenhos] = useState<OrcItem[]>(EMPENHOS_MOCK);
+  const [lancamentos, setLancamentos] = useState<LancamentoContabil[]>(LANCAMENTOS_MOCK);
+  const [empenhoOpen, setEmpenhoOpen] = useState(false);
+  const [empenhoForm, setEmpenhoForm] = useState(emptyEmpenhoForm);
+  const [lancamentoOpen, setLancamentoOpen] = useState(false);
+  const [lancamentoForm, setLancamentoForm] = useState(emptyLancamentoForm);
 
   const kpis = useMemo(() => {
-    const ativos = EMPENHOS_MOCK.filter(e => e.status !== 'cancelado');
+    const ativos = empenhos.filter(e => e.status !== 'cancelado');
     const empenhado = ativos.reduce((a, e) => a + e.amount_cents, 0);
     const liquidado = ativos.reduce((a, e) => a + e.liquidado_cents, 0);
     const pago = ativos.reduce((a, e) => a + e.pago_cents, 0);
     return { empenhado, liquidado, pago };
-  }, []);
+  }, [empenhos]);
 
   const filteredEmpenhos = useMemo(() =>
-    EMPENHOS_MOCK.filter(e =>
+    empenhos.filter(e =>
       search === '' ||
       e.ne_number.toLowerCase().includes(search.toLowerCase()) ||
       e.description.toLowerCase().includes(search.toLowerCase()) ||
       e.funcao.toLowerCase().includes(search.toLowerCase())
-    ), [search]);
+    ), [empenhos, search]);
 
   const filteredLancamentos = useMemo(() =>
-    LANCAMENTOS_MOCK.filter(l =>
+    lancamentos.filter(l =>
       search === '' ||
       l.description.toLowerCase().includes(search.toLowerCase()) ||
       l.debito_account.toLowerCase().includes(search.toLowerCase()) ||
       l.credito_account.toLowerCase().includes(search.toLowerCase())
-    ), [search]);
+    ), [lancamentos, search]);
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'execucao',    label: 'Execução Orçamentária', icon: TrendingUp },
@@ -195,12 +209,62 @@ export const ModuleContabilidade: React.FC = () => {
     { id: 'lancamentos', label: 'Lançamentos Contábeis', icon: BarChart2 },
   ];
 
+  const handleOpenEmpenho = () => {
+    setEmpenhoForm(emptyEmpenhoForm);
+    setEmpenhoOpen(true);
+  };
+
+  const handleCreateEmpenho = () => {
+    if (!empenhoForm.description.trim() || !empenhoForm.funcao.trim()) {
+      onAddToast({ type: 'warning', title: 'Campos obrigatórios', message: 'Informe ao menos a descrição e a função do empenho.' });
+      return;
+    }
+    const novo: OrcItem = {
+      id: `novo-${Date.now()}`,
+      ne_number: empenhoForm.ne_number.trim() || `${new Date().getFullYear()}NE${String(empenhos.length + 1).padStart(6, '0')}`,
+      description: empenhoForm.description.trim(),
+      funcao: empenhoForm.funcao.trim(),
+      amount_cents: Math.round(Number(empenhoForm.amount.replace(',', '.')) * 100) || 0,
+      liquidado_cents: 0,
+      pago_cents: 0,
+      status: 'empenhado',
+      date: empenhoForm.date || new Date().toISOString().slice(0, 10),
+    };
+    setEmpenhos(prev => [novo, ...prev]);
+    setEmpenhoOpen(false);
+    onAddToast({ type: 'success', title: 'Empenho Registrado', message: `${novo.ne_number} — ${novo.description}.` });
+  };
+
+  const handleOpenLancamento = () => {
+    setLancamentoForm(emptyLancamentoForm);
+    setLancamentoOpen(true);
+  };
+
+  const handleCreateLancamento = () => {
+    if (!lancamentoForm.description.trim() || !lancamentoForm.debito_account.trim() || !lancamentoForm.credito_account.trim()) {
+      onAddToast({ type: 'warning', title: 'Campos obrigatórios', message: 'Informe histórico, conta de débito e conta de crédito.' });
+      return;
+    }
+    const novo: LancamentoContabil = {
+      id: `novo-${Date.now()}`,
+      date: lancamentoForm.date || new Date().toISOString().slice(0, 10),
+      description: lancamentoForm.description.trim(),
+      debito_account: lancamentoForm.debito_account.trim(),
+      credito_account: lancamentoForm.credito_account.trim(),
+      amount_cents: Math.round(Number(lancamentoForm.amount.replace(',', '.')) * 100) || 0,
+      status: 'rascunho',
+    };
+    setLancamentos(prev => [novo, ...prev]);
+    setLancamentoOpen(false);
+    onAddToast({ type: 'success', title: 'Lançamento Criado', message: `${novo.description} registrado como rascunho.` });
+  };
+
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Total Empenhado', value: kpis.empenhado, sub: `${EMPENHOS_MOCK.filter(e => e.status !== 'cancelado').length} notas de empenho`, color: 'text-amber-500', icon: Clock },
+          { label: 'Total Empenhado', value: kpis.empenhado, sub: `${empenhos.filter(e => e.status !== 'cancelado').length} notas de empenho`, color: 'text-amber-500', icon: Clock },
           { label: 'Total Liquidado', value: kpis.liquidado, sub: pct(kpis.liquidado, kpis.empenhado) + ' do empenhado', color: 'text-sky-500', icon: CheckCircle2 },
           { label: 'Total Pago (OB)', value: kpis.pago, sub: pct(kpis.pago, kpis.empenhado) + ' do empenhado', color: 'text-emerald-500', icon: TrendingUp },
         ].map((k) => (
@@ -304,7 +368,7 @@ export const ModuleContabilidade: React.FC = () => {
             {filteredEmpenhos.length === 0 && (
               <div className="mod-empty">Nenhum empenho encontrado.</div>
             )}
-            <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-sm transition-colors">
+            <button onClick={handleOpenEmpenho} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-sm transition-colors">
               <Plus size={14} /> Registrar Empenho
             </button>
           </div>
@@ -418,12 +482,94 @@ export const ModuleContabilidade: React.FC = () => {
               </div>
             </div>
 
-            <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-sm transition-colors">
+            <button onClick={handleOpenLancamento} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-sm transition-colors">
               <Plus size={14} /> Novo Lançamento Contábil
             </button>
           </div>
         )}
       </div>
+
+      <Modal
+        open={empenhoOpen}
+        onClose={() => setEmpenhoOpen(false)}
+        title="Registrar Empenho"
+        icon={<Clock size={18} className="text-indigo-500" />}
+        size="md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setEmpenhoOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateEmpenho} className="bg-indigo-600 hover:bg-indigo-500">Registrar</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Descrição *</label>
+            <input value={empenhoForm.description} onChange={e => setEmpenhoForm(f => ({ ...f, description: e.target.value }))} placeholder="Ex: Locação de Software Fiscal" className="mod-input w-full mt-1" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Nota de Empenho</label>
+              <input value={empenhoForm.ne_number} onChange={e => setEmpenhoForm(f => ({ ...f, ne_number: e.target.value }))} placeholder="Gerado automaticamente" className="mod-input w-full mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Data</label>
+              <input type="date" value={empenhoForm.date} onChange={e => setEmpenhoForm(f => ({ ...f, date: e.target.value }))} className="mod-input w-full mt-1" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Função *</label>
+              <input value={empenhoForm.funcao} onChange={e => setEmpenhoForm(f => ({ ...f, funcao: e.target.value }))} placeholder="Ex: 04 Administração" className="mod-input w-full mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Valor (R$)</label>
+              <input value={empenhoForm.amount} onChange={e => setEmpenhoForm(f => ({ ...f, amount: e.target.value }))} placeholder="0,00" className="mod-input w-full mt-1" />
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={lancamentoOpen}
+        onClose={() => setLancamentoOpen(false)}
+        title="Novo Lançamento Contábil"
+        icon={<BarChart2 size={18} className="text-indigo-500" />}
+        size="md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setLancamentoOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateLancamento} className="bg-indigo-600 hover:bg-indigo-500">Criar Lançamento</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-medium mod-text-secondary">Histórico *</label>
+            <input value={lancamentoForm.description} onChange={e => setLancamentoForm(f => ({ ...f, description: e.target.value }))} placeholder="Ex: Reconhecimento de receita tributária" className="mod-input w-full mt-1" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Conta Débito *</label>
+              <input value={lancamentoForm.debito_account} onChange={e => setLancamentoForm(f => ({ ...f, debito_account: e.target.value }))} placeholder="1.1.1.1 - Caixa" className="mod-input w-full mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Conta Crédito *</label>
+              <input value={lancamentoForm.credito_account} onChange={e => setLancamentoForm(f => ({ ...f, credito_account: e.target.value }))} placeholder="4.1.1.1 - Receita" className="mod-input w-full mt-1" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Data</label>
+              <input type="date" value={lancamentoForm.date} onChange={e => setLancamentoForm(f => ({ ...f, date: e.target.value }))} className="mod-input w-full mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium mod-text-secondary">Valor (R$)</label>
+              <input value={lancamentoForm.amount} onChange={e => setLancamentoForm(f => ({ ...f, amount: e.target.value }))} placeholder="0,00" className="mod-input w-full mt-1" />
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

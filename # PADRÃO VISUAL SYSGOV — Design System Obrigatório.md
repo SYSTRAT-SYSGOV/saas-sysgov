@@ -7,7 +7,7 @@ componentes fora deste contrato.
 ## 1. Stack e Ferramentas
 - Frontend: React + TypeScript + Tailwind CSS.
 - Ícones: lucide-react (nunca emojis ou SVGs soltos).
-- Componentes base: Shadcn/UI ou Radix UI (cards, badges, botões, diálogos).
+- Componentes base: Shadcn/UI ou Radix UI (cards, badges, botões, diálogos) — SEMPRE via o pacote compartilhado `@sysgov/ui` (`packages/ui`), nunca reimplementados por app. Ver `AGENTS.md` § 4.1 e `packages/ui/README.md`.
 - NUNCA usar CSS inline ou estilos fora do design system.
 
 ## 2. Tipografia

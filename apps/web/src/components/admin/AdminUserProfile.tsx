@@ -13,6 +13,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { Card } from '@sysgov/ui';
 
 interface AdminUserProfileProps {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -116,7 +117,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Profile Info Form */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+        <Card className="p-5 space-y-4">
           <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <UserCheck className="w-4 h-4 text-indigo-500" />
             Dados Cadastrais
@@ -169,10 +170,10 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
               </button>
             </div>
           </form>
-        </div>
+        </Card>
 
         {/* Change Password Form */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+        <Card className="p-5 space-y-4">
           <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Lock className="w-4 h-4 text-emerald-500" />
             Alterar Senha de Acesso
@@ -231,11 +232,11 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
               </button>
             </div>
           </form>
-        </div>
+        </Card>
       </div>
 
       {/* Active Sessions */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+      <Card className="p-5 space-y-4">
         <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <Laptop className="w-4 h-4 text-cyan-500" />
           Sessões & Dispositivos Conectados
@@ -279,7 +280,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
             );
           })}
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

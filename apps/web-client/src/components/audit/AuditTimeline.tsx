@@ -1,7 +1,6 @@
 import React from 'react';
 import { Clock, User, Edit3, Plus, Trash2, Ban, CheckCircle2, XCircle } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Card, Badge } from '@sysgov/ui';
 import { ScreenState } from '@/components/ui/ScreenState';
 
 export type AuditEventType = 'create' | 'update' | 'delete' | 'activate' | 'deactivate' | 'revoke' | 'grant' | 'login' | 'logout' | 'custom';

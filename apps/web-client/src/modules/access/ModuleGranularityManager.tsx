@@ -4,10 +4,7 @@ import { useAuth } from '@/core/auth/useAuth';
 import { ChevronRight, ChevronDown, Building2, Shield, RefreshCw, Network, Layers, ArrowLeft, Users } from 'lucide-react';
 import { apiClient } from '@/core/api/client';
 import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Select, SelectOption } from '@/components/ui/Select';
-import { Switch } from '@/components/ui/Switch';
+import { Card, Badge, Select, SelectOption, Switch } from '@sysgov/ui';
 
 interface Module { id: number; alias: string; name: string; }
 interface OrgUnitNode {
@@ -297,7 +294,7 @@ const ModuleGranularityManager: React.FC = () => {
               </div>
             )}
 
-            <Card noPadding>
+            <Card className="gap-0 py-0">
               <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-3">
                 <Shield className="h-4 w-4 text-primary" />
                 <span className="text-sm font-bold text-foreground">
@@ -326,7 +323,7 @@ const ModuleGranularityManager: React.FC = () => {
             </Card>
           </>
         ) : (
-          <Card className="flex flex-col items-center justify-center py-20 text-center">
+          <Card className="flex flex-col items-center justify-center px-6 py-20 text-center">
             <Network className="mb-3 h-14 w-14 text-border" />
             <p className="text-lg font-semibold text-foreground">Selecione um módulo</p>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">

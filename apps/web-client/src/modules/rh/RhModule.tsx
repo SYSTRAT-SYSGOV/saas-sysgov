@@ -41,7 +41,7 @@ export const RhModule: React.FC = () => {
         <KpiCard title="Comissionados" value="43" subtitle="Cargos de livre nomeação" icon={<UserCheck className="h-5 w-5" />} iconBgColor="bg-status-info-bg text-status-info" />
       </div>
 
-      <Card noPadding><div className="p-3"><DataTable columns={columns} data={servidores} emptyText="Nenhum servidor encontrado." pageSize={10} /></div></Card>
+      <Card className="gap-0 py-0"><div className="p-3"><DataTable columns={columns} data={servidores} emptyText="Nenhum servidor encontrado." pageSize={10} /></div></Card>
     </div>
   );
 };

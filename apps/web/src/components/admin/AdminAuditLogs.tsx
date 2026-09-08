@@ -9,13 +9,13 @@ import {
   XCircle,
   Code2,
   Terminal,
-  X,
   RefreshCw,
 } from 'lucide-react';
 import { AuditLogEntry } from '../../types/admin';
 import { ScreenState, ScreenStateType } from '../ui/ScreenState';
 import api from '../../api/client';
 import { INITIAL_AUDIT_LOGS } from '../../services/adminMockData';
+import { Card, Modal, Button } from '@sysgov/ui';
 
 interface AdminAuditLogsProps {
   onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -218,7 +218,7 @@ export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) =>
         emptyMessage="Nenhum log de auditoria registrado até o momento."
       >
         {/* Filter and Search Bar */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
+        <Card className="p-4 flex-col md:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -256,10 +256,10 @@ export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) =>
               ))}
             </select>
           </div>
-        </div>
+        </Card>
 
         {/* Logs Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <Card className="gap-0 py-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -348,51 +348,23 @@ export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) =>
             </span>
             <span className="text-[11px] font-mono">audit-ledger-hmac</span>
           </div>
-        </div>
+        </Card>
       </ScreenState>
 
       {/* JSON Payload Modal */}
-      {selectedPayloadLog && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Payload: ${selectedPayloadLog.event}`}
-        >
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-indigo-500" />
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white font-mono">
-                  Payload: {selectedPayloadLog.event}
-                </h2>
-              </div>
-              <button
-                onClick={() => setSelectedPayloadLog(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                aria-label="Fechar modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mt-4">
-              <pre className="p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl overflow-x-auto border border-slate-800 leading-relaxed">
-                {JSON.stringify(selectedPayloadLog.payload, null, 2)}
-              </pre>
-            </div>
-
-            <div className="mt-5 flex justify-end">
-              <button
-                onClick={() => setSelectedPayloadLog(null)}
-                className="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={!!selectedPayloadLog}
+        onClose={() => setSelectedPayloadLog(null)}
+        title={`Payload: ${selectedPayloadLog?.event ?? ''}`}
+        icon={<Terminal className="w-4 h-4 text-indigo-500" />}
+        footer={<Button variant="outline" onClick={() => setSelectedPayloadLog(null)}>Fechar</Button>}
+      >
+        {selectedPayloadLog && (
+          <pre className="p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl overflow-x-auto border border-slate-800 leading-relaxed">
+            {JSON.stringify(selectedPayloadLog.payload, null, 2)}
+          </pre>
+        )}
+      </Modal>
     </div>
   );
 };

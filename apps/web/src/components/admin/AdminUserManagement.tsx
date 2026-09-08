@@ -20,6 +20,7 @@ import {
 import { INITIAL_ADMIN_USERS } from '../../services/adminMockData';
 import { ADMIN_PERMISSIONS, AVAILABLE_ROLES } from '../../config/adminConfig';
 import { AdminUser, AdminRole, UserStatus } from '../../types/admin';
+import { StatusChip, Card } from '@sysgov/ui';
 
 interface AdminUserManagementProps {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -237,31 +238,18 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onAddT
     switch (status) {
       case 'active':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Ativo
-          </span>
+          <StatusChip
+            label="Ativo"
+            variant="success"
+            icon={<span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+          />
         );
       case 'pending':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            <Clock className="w-3 h-3" />
-            Pendente
-          </span>
-        );
+        return <StatusChip label="Pendente" variant="warning" icon={<Clock className="w-3 h-3" />} />;
       case 'suspended':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-            <XCircle className="w-3 h-3" />
-            Suspenso
-          </span>
-        );
+        return <StatusChip label="Suspenso" variant="danger" icon={<XCircle className="w-3 h-3" />} />;
       default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-500 border border-slate-500/20">
-            Inativo
-          </span>
-        );
+        return <StatusChip label="Inativo" variant="neutral" />;
     }
   };
 
@@ -299,7 +287,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onAddT
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
+      <Card className="p-4 flex-col md:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -338,10 +326,10 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onAddT
             <option value="suspended">Suspensos</option>
           </select>
         </div>
-      </div>
+      </Card>
 
       {/* Users Data Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <Card className="gap-0 py-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -458,7 +446,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onAddT
           </span>
           <span className="text-[11px] font-mono">sysgov-rbac-v2</span>
         </div>
-      </div>
+      </Card>
 
       {/* Add / Edit User Modal */}
       {isModalOpen && (

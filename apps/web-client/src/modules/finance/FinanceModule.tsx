@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTenant } from '@/core/tenant/useTenant';
 import { DollarSign, TrendingUp, CreditCard, Receipt, FileText, PieChart } from 'lucide-react';
-import { PageHeader, Card, Button, KpiCard, ScreenState, Badge } from '@/components/ui';
+import { PageHeader, Card, CardContent, Button, KpiCard, ScreenState, Badge } from '@/components/ui';
 import { formatCurrencyBRL } from '@/config/theme';
 import { apiClient } from '@/core/api/client';
 
@@ -130,6 +130,7 @@ export const FinanceModule: React.FC = () => {
       </div>
 
       <Card>
+        <CardContent>
         <h2 className="text-lg font-bold text-foreground mb-4">Execução Orçamentária</h2>
         {budget ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -161,6 +162,7 @@ export const FinanceModule: React.FC = () => {
         ) : (
           <p className="text-muted-foreground text-sm">Dados não disponíveis.</p>
         )}
+        </CardContent>
       </Card>
     </div>
   );

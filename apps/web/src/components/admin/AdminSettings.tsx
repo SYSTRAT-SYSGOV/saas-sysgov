@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAdminConfig } from '../../contexts/AdminConfigContext';
 import { SystemBrandingConfig } from '../../types/admin';
+import { Card } from '@sysgov/ui';
 
 interface AdminSettingsProps {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -149,7 +150,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
       {/* Tab: Branding & White-Label */}
       {activeTab === 'branding' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <Card className="lg:col-span-2 p-6 space-y-4">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Layout className="w-4 h-4 text-emerald-500" />
               Identidade Visual & Textos da Aplicação
@@ -258,10 +259,10 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                 <span>Exibir assinatura "Powered by {form.companyName}" no rodapé do sistema</span>
               </label>
             </div>
-          </div>
+          </Card>
 
           {/* Live Preview Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between">
+          <Card className="p-6 flex flex-col justify-between">
             <div>
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">
                 Pré-Visualização do Branding
@@ -290,13 +291,13 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
             <div className="mt-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500 dark:text-slate-400">
               💡 As cores e títulos configurados são aplicados automaticamente em todos os módulos e na sidebar.
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Tab: Security */}
       {activeTab === 'security' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4 max-w-2xl">
+        <Card className="p-6 space-y-4 max-w-2xl">
           <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Lock className="w-4 h-4 text-rose-500" />
             Políticas de Acesso & Segurança
@@ -358,12 +359,12 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Tab: Notifications */}
       {activeTab === 'notifications' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4 max-w-2xl">
+        <Card className="p-6 space-y-4 max-w-2xl">
           <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Mail className="w-4 h-4 text-blue-500" />
             Canais de Notificação & Alertas
@@ -411,7 +412,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
               />
             </label>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

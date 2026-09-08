@@ -33,7 +33,7 @@ export const TenantSelectorPage: React.FC = () => {
             <Card
               key={t.id}
               onClick={() => handleSelect(t.id)}
-              className={`cursor-pointer transition-all hover:border-gov-primary hover:shadow-md ${
+              className={`cursor-pointer transition-all hover:border-gov-primary hover:shadow-md p-5 sm:p-6 ${
                 t.id === currentTenant?.id ? 'border-2 border-gov-primary bg-gov-primary-light/30' : ''
               }`}
             >

@@ -5,8 +5,7 @@ import { AccessBadge, formatDate } from './AccessBadge';
 import { CargosManagement } from './CargosManagement';
 import { GroupsManagement } from './GroupsManagement';
 import { RolesManagement } from './RolesManagement';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Card, Badge } from '@sysgov/ui';
 import { Tabs } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';
@@ -94,7 +93,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
   ];
 
   return (
-    <Card noPadding className="overflow-hidden">
+    <Card className="gap-0 py-0 overflow-hidden">
       <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-card px-4 py-3">
         <Tabs items={tabs} value={tab} onChange={setTab} />
       </div>

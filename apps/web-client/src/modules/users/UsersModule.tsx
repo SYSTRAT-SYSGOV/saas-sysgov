@@ -5,8 +5,8 @@ import {
   StatusChip,
   StatusVariant,
   Table,
+  TableHeader,
   TableHead,
-  TableHeaderCell,
   TableBody,
   TableRow,
   TableCell,
@@ -204,27 +204,27 @@ export const UsersModule: React.FC = () => {
           </div>
         ) : (
           <Table>
-            <TableHead>
-              <tr>
-                <TableHeaderCell>Nome</TableHeaderCell>
-                <TableHeaderCell>E-mail</TableHeaderCell>
-                <TableHeaderCell>Role</TableHeaderCell>
-                <TableHeaderCell>MFA</TableHeaderCell>
-                <TableHeaderCell className="text-center">Status</TableHeaderCell>
-                {canManage && <TableHeaderCell className="text-right">Ações</TableHeaderCell>}
-              </tr>
-            </TableHead>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>E-mail</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>MFA</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                {canManage && <TableHead className="text-right">Ações</TableHead>}
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {users.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell>
                     <span className="font-medium text-gov-text-primary">{u.name}</span>
                   </TableCell>
-                  <TableCell isTechnical className="text-gov-text-secondary">
+                  <TableCell className="font-mono tabular-nums font-semibold text-muted-foreground">
                     {u.email}
                   </TableCell>
                   <TableCell>{roleBadge(u)}</TableCell>
-                  <TableCell isTechnical>
+                  <TableCell className="font-mono tabular-nums font-semibold">
                     {u.mfa_enabled ? (
                       <span className="inline-flex items-center gap-1 text-status-success font-mono text-[11px]">
                         <ShieldCheck className="w-3.5 h-3.5" /> Ativado
