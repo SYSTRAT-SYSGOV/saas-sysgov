@@ -1,5 +1,9 @@
 ---
-Padrão completo do SYSGOV: arquitetura, módulos, segurança e design.# PADRÃO SYSGOV — Arquitetura, Contrato de Módulo, Design System e Scaffolding
+name: sysgov-module-scaffolding
+description: Use ao criar um módulo de negócio novo no backend (apps/api/Modules) ou ao precisar do contrato completo de arquitetura, multi-tenant, segurança, RBAC e design system do SYSGOV — cobre o passo a passo de scaffolding (make:module, migration, model, controller, teste de isolamento) e o checklist de qualidade antes de concluir.
+---
+
+# PADRÃO SYSGOV — Arquitetura, Contrato de Módulo, Design System e Scaffolding
 
 Todo desenvolvimento no ecossistema SYSGOV (plataforma SaaS de Gestão Governamental da SYSTRAT) DEVE seguir exatamente este padrão. Aplicar em qualquer módulo novo, sistema novo ou correção, seja por IA ou por desenvolvedor humano. Não inventar arquitetura, estilos, cores ou regras fora deste contrato.
 
@@ -132,7 +136,7 @@ final class {Nome}Controller extends Controller
 ## 8. Design System (Obrigatório — Padrão Visual SYSGOV, derivado do SGF Araucária)
 
 ### 8.1 Stack e Ferramentas
-- React + TypeScript + Tailwind CSS. Ícones lucide-react (nunca emojis/SVGs soltos). Componentes base Shadcn/UI ou Radix UI. NUNCA CSS inline.
+- React + TypeScript + Tailwind CSS. Ícones lucide-react (nunca emojis/SVGs soltos). Componentes base Shadcn/UI ou Radix UI — SEMPRE via o pacote compartilhado `@sysgov/ui` (`packages/ui`), nunca reimplementados por app. Ver skill `sysgov-ui-components`, `AGENTS.md` § 4.1 e `packages/ui/README.md`. NUNCA CSS inline.
 
 ### 8.2 Tipografia e Fontes
 - Fonte Técnica e Dados Numéricos — JetBrains Mono (font-mono tabular-nums): OBRIGATÓRIA para todos os valores monetários (R$), percentuais (%), datas, códigos IBGE, CNPJ, CPF, limites da LRF, dados de tabelas e métricas estatísticas.
