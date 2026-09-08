@@ -24,6 +24,7 @@ final class LastSuperAdminProtectionTest extends TestCase
     public function test_cannot_deactivate_last_super_admin(): void
     {
         $superAdmin = User::where('is_platform_admin', true)->firstOrFail();
+        User::where('is_platform_admin', true)->where('id', '!=', $superAdmin->id)->delete();
         $ops = User::create(['name' => 'Admin Ops', 'email' => 'ops@sysgov.test', 'password' => 'StrongPass!123', 'is_platform_admin' => false, 'is_systrat' => true, 'is_active' => true]);
 
         // admin_ops possui users.deactivate
@@ -55,6 +56,7 @@ final class LastSuperAdminProtectionTest extends TestCase
     public function test_http_deactivation_of_last_super_admin_returns_422(): void
     {
         $superAdmin = User::where('is_platform_admin', true)->firstOrFail();
+        User::where('is_platform_admin', true)->where('id', '!=', $superAdmin->id)->delete();
         $ops = User::create(['name' => 'Admin Ops 2', 'email' => 'ops2@sysgov.test', 'password' => 'StrongPass!123', 'is_platform_admin' => false, 'is_systrat' => true, 'is_active' => true]);
         $opsRole = \App\Models\Role::where('slug', 'admin_ops')->firstOrFail();
         $ops->roles()->attach($opsRole->id);

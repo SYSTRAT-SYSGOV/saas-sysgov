@@ -57,16 +57,23 @@ final class RegisterModuleCommand extends Command
             // 1. Registrar/Atualizar módulo no catálogo da plataforma
             $platformModule = $this->registerPlatformModule($moduleName, $moduleConfig, $dryRun);
 
-            // 2. Criar/Atualizar permissões padrão do módulo
-            $this->registerModulePermissions($moduleConfig, $force, $dryRun);
+            // 2. Criar/Atualizar permissões padrão do módulo e associar
+            $permissionIds = $this->registerModulePermissions($moduleConfig, $force, $dryRun);
+            if (!$dryRun && !empty($permissionIds)) {
+                $platformModule->permissions()->sync($permissionIds);
+            }
 
-            // 3. Criar/Atualizar grupos e itens de menu
-            $this->registerModuleMenu($moduleConfig, $force, $dryRun);
+            // 3. Criar/Atualizar grupos e itens de menu e associar
+            $menuGroup = $this->registerModuleMenu($moduleConfig, $force, $dryRun);
+            if (!$dryRun && $menuGroup !== null) {
+                $platformModule->menuGroup()->associate($menuGroup);
+                $platformModule->save();
+            }
 
             $this->info("✓ Módulo '{$moduleName}' registrado com sucesso!");
             $this->info("  - Catálogo: {$platformModule->name} (alias: {$platformModule->alias})");
-            $this->info("  - Permissões: criadas/atualizadas");
-            $this->info("  - Menu: grupos/itens criados/atualizados");
+            $this->info("  - Permissões: criadas/atualizadas e vinculadas");
+            $this->info("  - Menu: grupo ({$menuGroup?->name}) e itens vinculados");
 
             return self::SUCCESS;
         });
@@ -100,12 +107,13 @@ final class RegisterModuleCommand extends Command
         return $module;
     }
 
-    private function registerModulePermissions(array $config, bool $force, bool $dryRun): void
+    /** @return list<int> */
+    private function registerModulePermissions(array $config, bool $force, bool $dryRun): array
     {
         $alias = $config['alias'] ?? '';
         if (!$alias) {
             $this->warn('  Sem alias no module.json — pulando criação de permissões.');
-            return;
+            return [];
         }
 
         // Permissões padrão CRUD baseadas no alias
@@ -120,6 +128,7 @@ final class RegisterModuleCommand extends Command
         $customPermissions = $config['permissions'] ?? [];
 
         $allPermissions = array_merge($defaultPermissions, $customPermissions);
+        $permissionIds = [];
 
         foreach ($allPermissions as $slug => $name) {
             if ($dryRun) {
@@ -132,17 +141,20 @@ final class RegisterModuleCommand extends Command
                 ['name' => $name, 'module' => $alias, 'guard_name' => 'web']
             );
 
+            $permissionIds[] = $perm->id;
             $action = $perm->wasRecentlyCreated ? 'criada' : ($force ? 'atualizada' : 'existente');
             $this->info("  ✓ Permissão {$action}: {$slug}");
         }
+
+        return $permissionIds;
     }
 
-    private function registerModuleMenu(array $config, bool $force, bool $dryRun): void
+    private function registerModuleMenu(array $config, bool $force, bool $dryRun): ?MenuGroup
     {
         $menuConfig = $config['menu'] ?? null;
         if (!$menuConfig) {
             $this->warn('  Sem configuração de menu no module.json — pulando.');
-            return;
+            return null;
         }
 
         $groupName = $menuConfig['label'] ?? $config['name'];
@@ -153,7 +165,7 @@ final class RegisterModuleCommand extends Command
 
         if ($dryRun) {
             $this->info("  [DRY-RUN] Menu Group: {$groupName} (slug: {$groupSlug})");
-            return;
+            return null;
         }
 
         $group = MenuGroup::updateOrCreate(
@@ -191,5 +203,7 @@ final class RegisterModuleCommand extends Command
                 $this->info("  ✓ Menu Item: {$itemData['label']} ({$itemData['route']})");
             }
         }
+
+        return $group;
     }
 }

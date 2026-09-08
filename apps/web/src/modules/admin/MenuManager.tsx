@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -26,20 +26,89 @@ import {
   FolderTree,
   ShieldAlert,
   GripVertical,
-  Layers,
-  Sparkles,
+  X,
+  Save,
 } from 'lucide-react';
 import { MenuGroup, MenuItem } from './types';
+import { adminApi } from './api';
+
+const DEFAULT_MENUS: MenuGroup[] = [
+  {
+    id: 1,
+    name: 'PAINEL PRINCIPAL',
+    slug: 'painel-principal',
+    icon: 'LayoutDashboard',
+    order: 1,
+    is_active: true,
+    items: [
+      { id: 1, label: 'Visão Geral & KPIs', route: '/admin/dashboard', icon: 'LayoutDashboard', shortcut: '1', module_alias: 'dashboard', order: 1, is_active: true },
+      { id: 2, label: 'Desempenho & Métricas', route: '/admin/analytics', icon: 'BarChart3', shortcut: '2', module_alias: 'analytics', order: 2, is_active: true },
+    ],
+  },
+  {
+    id: 2,
+    name: 'GESTÃO & CADASTROS',
+    slug: 'gestao-cadastros',
+    icon: 'Building2',
+    order: 2,
+    is_active: true,
+    items: [
+      { id: 3, label: 'Usuários & Permissões', route: '/admin/users', icon: 'Users', shortcut: 'U', module_alias: 'users', order: 1, is_active: true },
+      { id: 4, label: 'Organizações & Tenants', route: '/admin/tenants', icon: 'Building2', shortcut: 'T', module_alias: 'tenants', order: 2, is_active: true },
+      { id: 5, label: 'Registros & Tabelas', route: '/admin/records', icon: 'Layers', shortcut: 'R', module_alias: 'records', order: 3, is_active: true },
+      { id: 6, label: 'Gerenciador de Menus', route: '/admin/menus', icon: 'FolderTree', shortcut: 'M', module_alias: 'menus', order: 4, is_active: true },
+      { id: 15, label: 'Módulos da Plataforma', route: '/admin/module-catalog', icon: 'Database', shortcut: 'C', module_alias: 'catalog', order: 5, is_active: true },
+    ],
+  },
+  {
+    id: 3,
+    name: 'FINANCEIRO & INFRAESTRUTURA',
+    slug: 'financeiro-infra',
+    icon: 'CreditCard',
+    order: 3,
+    is_active: true,
+    items: [
+      { id: 7, label: 'Faturamento & Invoices', route: '/admin/billing', icon: 'CreditCard', shortcut: 'F', module_alias: 'billing', order: 1, is_active: true },
+      { id: 8, label: 'APIs & Integrações', route: '/admin/apis', icon: 'Plug', shortcut: 'I', module_alias: 'apis', order: 2, is_active: true },
+      { id: 9, label: 'Logs & Auditoria', route: '/admin/logs', icon: 'ShieldAlert', shortcut: 'L', module_alias: 'compliance', order: 3, is_active: true },
+    ],
+  },
+  {
+    id: 4,
+    name: 'SISTEMA & PREFERÊNCIAS',
+    slug: 'sistema-preferencias',
+    icon: 'Settings',
+    order: 4,
+    is_active: true,
+    items: [
+      { id: 10, label: 'Configurações & White-Label', route: '/admin/settings', icon: 'Settings', module_alias: 'settings', order: 1, is_active: true },
+      { id: 11, label: 'Meu Perfil & Segurança', route: '/admin/profile', icon: 'UserCheck', module_alias: 'profile', order: 2, is_active: true },
+    ],
+  },
+  {
+    id: 5,
+    name: 'MÓDULOS DE NEGÓCIO',
+    slug: 'modulos-negocio',
+    icon: 'FileText',
+    order: 5,
+    is_active: true,
+    items: [
+      { id: 12, label: 'Gestão de Contratos', route: '/admin/contratos', icon: 'FileText', module_alias: 'contracts', order: 1, is_active: true },
+      { id: 13, label: 'Suporte & Helpdesk', route: '/admin/helpdesk', icon: 'Ticket', module_alias: 'support', order: 2, is_active: true },
+      { id: 14, label: 'Contabilidade Pública', route: '/admin/contabilidade', icon: 'BookOpen', module_alias: 'contabilidade', order: 3, is_active: true },
+    ],
+  },
+];
 
 interface Props {
-  groups: MenuGroup[];
-  onUpdateGroups: (groups: MenuGroup[]) => void;
-  onCreateGroup: () => void;
-  onCreateItem: (groupId: number) => void;
-  onEditGroup: (group: MenuGroup) => void;
-  onEditItem: (item: MenuItem) => void;
-  onDeleteGroup: (group: MenuGroup) => void;
-  onDeleteItem: (item: MenuItem) => void;
+  groups?: MenuGroup[];
+  onUpdateGroups?: (groups: MenuGroup[]) => void;
+  onCreateGroup?: () => void;
+  onCreateItem?: (groupId: number) => void;
+  onEditGroup?: (group: MenuGroup) => void;
+  onEditItem?: (item: MenuItem) => void;
+  onDeleteGroup?: (group: MenuGroup) => void;
+  onDeleteItem?: (item: MenuItem) => void;
 }
 
 const SortableItem: React.FC<{
@@ -63,12 +132,12 @@ const SortableItem: React.FC<{
       style={style}
       className="flex items-center gap-3 p-3 mod-card mod-row-hover text-xs transition-colors group"
     >
-      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Arrastar item">
         <GripVertical size={14} />
       </button>
       <span className="flex-1 mod-text-primary font-medium">{item.label}</span>
       {item.shortcut && (
-        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 mod-text-secondary">
+        <span className="font-mono tabular-nums text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 mod-text-secondary">
           [{item.shortcut}]
         </span>
       )}
@@ -95,17 +164,42 @@ const SortableItem: React.FC<{
 };
 
 export const MenuManager: React.FC<Props> = ({
-  groups,
-  onUpdateGroups,
-  onCreateGroup,
-  onCreateItem,
-  onEditGroup,
-  onEditItem,
-  onDeleteGroup,
-  onDeleteItem,
+  groups: externalGroups,
+  onUpdateGroups: externalOnUpdateGroups,
+  onCreateGroup: externalOnCreateGroup,
+  onCreateItem: externalOnCreateItem,
+  onEditGroup: externalOnEditGroup,
+  onEditItem: externalOnEditItem,
+  onDeleteGroup: externalOnDeleteGroup,
+  onDeleteItem: externalOnDeleteItem,
 }) => {
+  const [internalGroups, setInternalGroups] = useState<MenuGroup[]>(DEFAULT_MENUS);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [editingGroup, setEditingGroup] = useState<MenuGroup | null>(null);
+  const [creatingForGroupId, setCreatingForGroupId] = useState<number | null>(null);
+
+  // Carrega da API quando usado standalone
+  useEffect(() => {
+    if (!externalGroups) {
+      adminApi.getMenus()
+        .then((res) => {
+          if (Array.isArray(res) && res.length > 0) {
+            setInternalGroups(res);
+          }
+        })
+        .catch(() => {
+          /* mantém DEFAULT_MENUS */
+        });
+    }
+  }, [externalGroups]);
+
+  const activeGroups = externalGroups !== undefined ? externalGroups : internalGroups;
+  const safeGroups = (activeGroups || []).map((g) => ({
+    ...g,
+    items: Array.isArray(g?.items) ? g.items : [],
+  }));
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -114,12 +208,24 @@ export const MenuManager: React.FC<Props> = ({
     })
   );
 
-  const filtered = groups.filter((g) =>
-    g.name.toLowerCase().includes(search.toLowerCase()) ||
-    g.items.some((i) => i.label.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = safeGroups.filter((g) => {
+    const groupName = (g?.name || '').toLowerCase();
+    const matchesGroup = groupName.includes(search.toLowerCase());
+    const matchesItems = (g.items || []).some((i) =>
+      (i?.label || '').toLowerCase().includes(search.toLowerCase())
+    );
+    return matchesGroup || matchesItems;
+  });
 
   const toggle = (id: number) => setExpanded((s) => ({ ...s, [id]: !s[id] }));
+
+  const updateGroups = (newGroups: MenuGroup[]) => {
+    if (externalOnUpdateGroups) {
+      externalOnUpdateGroups(newGroups);
+    } else {
+      setInternalGroups(newGroups);
+    }
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -135,7 +241,7 @@ export const MenuManager: React.FC<Props> = ({
       let sourceGroup: MenuGroup | undefined;
       let targetGroup: MenuGroup | undefined;
 
-      for (const g of groups) {
+      for (const g of safeGroups) {
         if (g.items.some((i) => i.id === activeItemId)) sourceGroup = g;
         if (g.items.some((i) => i.id === overItemId)) targetGroup = g;
       }
@@ -146,12 +252,11 @@ export const MenuManager: React.FC<Props> = ({
           const newIndex = sourceGroup.items.findIndex((i) => i.id === overItemId);
           const newItems = arrayMove(sourceGroup.items, oldIndex, newIndex);
 
-          const updated = groups.map((g) =>
+          const updated = safeGroups.map((g) =>
             g.id === sourceGroup!.id ? { ...g, items: newItems } : g
           );
-          onUpdateGroups(updated);
+          updateGroups(updated);
         } else {
-          // Mover entre grupos diferentes
           const itemToMove = sourceGroup.items.find((i) => i.id === activeItemId);
           if (!itemToMove) return;
 
@@ -163,14 +268,79 @@ export const MenuManager: React.FC<Props> = ({
             menu_group_id: targetGroup.id,
           } as any);
 
-          const updated = groups.map((g) => {
+          const updated = safeGroups.map((g) => {
             if (g.id === sourceGroup!.id) return { ...g, items: sourceItems };
             if (g.id === targetGroup!.id) return { ...g, items: targetItems };
             return g;
           });
-          onUpdateGroups(updated);
+          updateGroups(updated);
         }
       }
+    }
+  };
+
+  const handleEditItem = (item: MenuItem) => {
+    if (externalOnEditItem) {
+      externalOnEditItem(item);
+    } else {
+      setEditingItem(item);
+    }
+  };
+
+  const handleDeleteItem = (item: MenuItem) => {
+    if (externalOnDeleteItem) {
+      externalOnDeleteItem(item);
+    } else {
+      if (!window.confirm(`Excluir o item "${item.label}"?`)) return;
+      const updated = safeGroups.map((g) => ({
+        ...g,
+        items: g.items.filter((i) => i.id !== item.id),
+      }));
+      updateGroups(updated);
+    }
+  };
+
+  const handleEditGroup = (group: MenuGroup) => {
+    if (externalOnEditGroup) {
+      externalOnEditGroup(group);
+    } else {
+      setEditingGroup(group);
+    }
+  };
+
+  const handleDeleteGroup = (group: MenuGroup) => {
+    if (externalOnDeleteGroup) {
+      externalOnDeleteGroup(group);
+    } else {
+      if (!window.confirm(`Excluir o grupo "${group.name}"?`)) return;
+      const updated = safeGroups.filter((g) => g.id !== group.id);
+      updateGroups(updated);
+    }
+  };
+
+  const handleCreateGroup = () => {
+    if (externalOnCreateGroup) {
+      externalOnCreateGroup();
+    } else {
+      const name = window.prompt('Nome do novo grupo de menu:');
+      if (!name) return;
+      const newGroup: MenuGroup = {
+        id: Date.now(),
+        name: name.toUpperCase(),
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+        order: safeGroups.length + 1,
+        is_active: true,
+        items: [],
+      };
+      updateGroups([...safeGroups, newGroup]);
+    }
+  };
+
+  const handleCreateItem = (groupId: number) => {
+    if (externalOnCreateItem) {
+      externalOnCreateItem(groupId);
+    } else {
+      setCreatingForGroupId(groupId);
     }
   };
 
@@ -188,7 +358,7 @@ export const MenuManager: React.FC<Props> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={onCreateGroup}
+              onClick={handleCreateGroup}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md"
             >
               <Plus className="w-3.5 h-3.5" /> Novo Grupo
@@ -209,78 +379,217 @@ export const MenuManager: React.FC<Props> = ({
         </div>
 
         <div className="space-y-4">
-          {filtered.map((group) => {
-            const isOpen = expanded[group.id] ?? true;
-            const itemIds = group.items.map((i) => `item-${i.id}`);
+          {filtered.length === 0 ? (
+            <div className="mod-card p-8 text-center text-xs mod-text-secondary">
+              Nenhum menu ou item localizado para a busca informada.
+            </div>
+          ) : (
+            filtered.map((group) => {
+              const isOpen = expanded[group.id] ?? true;
+              const itemIds = (group.items || []).map((i) => `item-${i.id}`);
 
-            return (
-              <div key={group.id} className="mod-card overflow-hidden shadow-sm">
-                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#101a3a]/40 border-b mod-border">
-                  <button
-                    onClick={() => toggle(group.id)}
-                    className="flex items-center gap-3 flex-1 text-left min-w-0"
-                  >
-                    {isOpen ? <ChevronDown size={16} className="mod-text-secondary" /> : <ChevronRight size={16} className="mod-text-secondary" />}
-                    <span className="text-xs font-bold uppercase tracking-wider mod-text-primary truncate">
-                      {group.name}
-                    </span>
-                    <span className="sgf-badge-oficial px-2 py-0.5 rounded-full text-[10px]">
-                      {group.items.length} {group.items.length === 1 ? 'item' : 'itens'}
-                    </span>
-                  </button>
+              return (
+                <div key={group.id} className="mod-card overflow-hidden shadow-sm">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#101a3a]/40 border-b mod-border">
+                    <button
+                      onClick={() => toggle(group.id)}
+                      className="flex items-center gap-3 flex-1 text-left min-w-0"
+                    >
+                      {isOpen ? <ChevronDown size={16} className="mod-text-secondary" /> : <ChevronRight size={16} className="mod-text-secondary" />}
+                      <span className="text-xs font-bold uppercase tracking-wider mod-text-primary truncate">
+                        {group.name}
+                      </span>
+                      <span className="sgf-badge-oficial px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums">
+                        {group.items.length} {group.items.length === 1 ? 'item' : 'itens'}
+                      </span>
+                    </button>
 
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => onCreateItem(group.id)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
-                      title="Adicionar Item"
-                    >
-                      <Plus size={12} /> Adicionar Item
-                    </button>
-                    <button
-                      onClick={() => onEditGroup(group)}
-                      className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-blue-500 transition-colors"
-                      title="Editar Grupo"
-                    >
-                      <Edit size={14} />
-                    </button>
-                    <button
-                      onClick={() => onDeleteGroup(group)}
-                      className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-500 transition-colors"
-                      title="Excluir Grupo"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleCreateItem(group.id)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                        title="Adicionar Item"
+                      >
+                        <Plus size={12} /> Adicionar Item
+                      </button>
+                      <button
+                        onClick={() => handleEditGroup(group)}
+                        className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-blue-500 transition-colors"
+                        title="Editar Grupo"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGroup(group)}
+                        className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-500 transition-colors"
+                        title="Excluir Grupo"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                {isOpen && (
-                  <div className="p-3 bg-white dark:bg-[#152244]/40">
-                    {group.items.length === 0 ? (
-                      <div className="text-center py-6 text-xs mod-text-secondary italic border border-dashed mod-border rounded-xl">
-                        Nenhum item neste grupo. Clique em "Adicionar Item" ou arraste itens para cá.
-                      </div>
-                    ) : (
-                      <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                        <div className="space-y-2">
-                          {group.items.map((item) => (
-                            <SortableItem
-                              key={item.id}
-                              item={item}
-                              onEdit={onEditItem}
-                              onDelete={onDeleteItem}
-                            />
-                          ))}
+                  {isOpen && (
+                    <div className="p-3 bg-white dark:bg-[#152244]/40">
+                      {group.items.length === 0 ? (
+                        <div className="text-center py-6 text-xs mod-text-secondary italic border border-dashed mod-border rounded-xl">
+                          Nenhum item neste grupo. Clique em "Adicionar Item" ou arraste itens para cá.
                         </div>
-                      </SortableContext>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                      ) : (
+                        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                          <div className="space-y-2">
+                            {group.items.map((item) => (
+                              <SortableItem
+                                key={item.id}
+                                item={item}
+                                onEdit={handleEditItem}
+                                onDelete={handleDeleteItem}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
+
+        {/* Modal de Edição de Item quando standalone */}
+        {editingItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="mod-card w-full max-w-lg shadow-2xl p-6">
+              <div className="flex items-center justify-between pb-3 border-b mod-border">
+                <h2 className="text-sm font-bold mod-text-primary">Editar Item: {editingItem.label}</h2>
+                <button onClick={() => setEditingItem(null)} className="p-1 rounded-lg mod-text-secondary hover:mod-inner">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="mt-4 space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold mod-text-secondary mb-1">Rótulo</label>
+                  <input
+                    className="mod-input w-full"
+                    value={editingItem.label}
+                    onChange={(e) => setEditingItem({ ...editingItem, label: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mod-text-secondary mb-1">Rota</label>
+                  <input
+                    className="mod-input w-full font-mono"
+                    value={editingItem.route}
+                    onChange={(e) => setEditingItem({ ...editingItem, route: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mod-text-secondary mb-1">Permissão Obrigatória</label>
+                  <input
+                    className="mod-input w-full font-mono"
+                    value={editingItem.permission || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, permission: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => setEditingItem(null)}
+                  className="px-4 py-2 text-xs rounded-lg mod-text-secondary hover:mod-inner"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    const updated = safeGroups.map((g) => ({
+                      ...g,
+                      items: g.items.map((i) => (i.id === editingItem.id ? editingItem : i)),
+                    }));
+                    updateGroups(updated);
+                    setEditingItem(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Novo Item quando standalone */}
+        {creatingForGroupId !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="mod-card w-full max-w-lg shadow-2xl p-6">
+              <div className="flex items-center justify-between pb-3 border-b mod-border">
+                <h2 className="text-sm font-bold mod-text-primary">Adicionar Item de Menu</h2>
+                <button onClick={() => setCreatingForGroupId(null)} className="p-1 rounded-lg mod-text-secondary hover:mod-inner">
+                  <X size={16} />
+                </button>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.target as HTMLFormElement;
+                  const label = (form.elements.namedItem('itemLabel') as HTMLInputElement).value;
+                  const route = (form.elements.namedItem('itemRoute') as HTMLInputElement).value;
+                  const perm = (form.elements.namedItem('itemPerm') as HTMLInputElement).value;
+
+                  const newItem: MenuItem = {
+                    id: Date.now(),
+                    label,
+                    route,
+                    icon: 'Layers',
+                    permission: perm || undefined,
+                    module_alias: route.replace('/admin/', ''),
+                    order: 99,
+                    is_active: true,
+                    menu_group_id: creatingForGroupId,
+                  };
+
+                  const updated = safeGroups.map((g) =>
+                    g.id === creatingForGroupId ? { ...g, items: [...g.items, newItem] } : g
+                  );
+                  updateGroups(updated);
+                  setCreatingForGroupId(null);
+                }}
+                className="mt-4 space-y-3 text-xs"
+              >
+                <div>
+                  <label className="block font-semibold mod-text-secondary mb-1">Rótulo do Item</label>
+                  <input name="itemLabel" required placeholder="Ex: Novo Módulo" className="mod-input w-full" />
+                </div>
+                <div>
+                  <label className="block font-semibold mod-text-secondary mb-1">Rota</label>
+                  <input name="itemRoute" required placeholder="Ex: /admin/novo-modulo" className="mod-input w-full font-mono" />
+                </div>
+                <div>
+                  <label className="block font-semibold mod-text-secondary mb-1">Permissão (opcional)</label>
+                  <input name="itemPerm" placeholder="Ex: novo_modulo.view" className="mod-input w-full font-mono" />
+                </div>
+                <div className="mt-5 flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreatingForGroupId(null)}
+                    className="px-4 py-2 text-xs rounded-lg mod-text-secondary hover:mod-inner"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm"
+                  >
+                    Adicionar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </DndContext>
   );
 };
+
+export default MenuManager;

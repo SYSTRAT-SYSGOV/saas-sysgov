@@ -61,7 +61,7 @@ export const ADMIN_MODULE_REGISTRY: Record<string, AdminModuleDefinition> = {
     id: 'admin_users',
     name: 'Usuários & Permissões',
     path: '/admin/users',
-    component: lazyWithNamedExport(() => import('@/modules/admin/UserManagement'), 'UserManagement'),
+    component: lazyWithNamedExport(() => import('@/modules/admin/UserAccessModule'), 'UserAccessModule'),
     requiredPermission: 'admin.users.manage',
     icon: Users,
     badge: 'RBAC',

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Admin\Http\Controllers;
 
+use Modules\Admin\Models\Module as PlatformModule;
+use App\Models\Permission;
 use App\Support\AuditLogger;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +26,47 @@ final class ModuleCatalogController
     {
         $this->authorize('viewAny', Module::class);
         return response()->json(Module::query()->orderBy('name')->paginate(50));
+    }
+
+public function catalog(): JsonResponse
+    {
+        \Log::info('Catalog endpoint hit via public route', ['url' => request()->fullUrl()]);
+        $modules = PlatformModule::query()
+            ->where('enabled', true)
+            ->orderBy('name')
+            ->with(['permissions', 'menuGroup'])
+            ->get()
+            ->map(function (PlatformModule $module) {
+                $menuGroup = $module->menuGroup;
+                $permissions = $module->permissions->pluck('slug')->toArray();
+                $menuItems = $menuGroup ? $menuGroup->items()->where('is_active', true)->get() : collect();
+
+                return [
+                    'id' => $module->id,
+                    'name' => $module->name,
+                    'alias' => $module->alias,
+                    'description' => $module->description,
+                    'enabled' => $module->enabled,
+                    'monthly_fee_cents' => $module->monthly_fee_cents,
+                    'metadata' => $module->metadata ?? [],
+                    'icon' => $menuGroup?->icon ?? 'Layers',
+                    'menu_label' => $menuGroup?->name ?? $module->name,
+                    'menu_order' => $menuGroup?->order ?? 50,
+                    'permissions' => $permissions,
+                    'menu_items' => $menuItems->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'label' => $item->label,
+                            'route' => $item->route,
+                            'icon' => $item->icon,
+                            'permission' => $item->permission,
+                            'order' => $item->order,
+                        ];
+                    })->toArray(),
+                ];
+            })->toArray();
+
+        return response()->json(['data' => $modules]);
     }
 
     public function store(StoreModuleRequest $request): JsonResponse

@@ -36,7 +36,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field } from '../../components/ui/Field';
 
 interface Props {
-  onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
+  onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
 }
 
 interface TenantForm {
@@ -78,9 +78,28 @@ const DEFAULT_FORM: TenantForm = {
 const formatCents = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function TenantCard({ t, selectedTenantIds, handleTenantSelectionChange, getStatusBadge, formatCents }: { t: Tenant; selectedTenantIds: number[]; handleTenantSelectionChange: (id: number, checked: boolean) => void; getStatusBadge: (status: string) => React.ReactNode; formatCents: (cents: number) => string }) {
+function TenantCard({
+  t,
+  selectedTenantIds,
+  handleTenantSelectionChange,
+  getStatusBadge,
+  formatCents,
+  onEdit,
+  onDelete,
+  onDiagnostic,
+  onOnboarding,
+}: {
+  t: Tenant;
+  selectedTenantIds: number[];
+  handleTenantSelectionChange: (id: number, checked: boolean) => void;
+  getStatusBadge: (status: string) => React.ReactNode;
+  formatCents: (cents: number) => string;
+  onEdit: (t: Tenant) => void;
+  onDelete: (id: number) => void;
+  onDiagnostic: (t: Tenant) => void;
+  onOnboarding: (t: Tenant) => void;
+}) {
   const userUsagePercent = Math.min(100, Math.round(((t.user_count ?? 0) / (t.max_users || 1)) * 100));
-  const storagePercent = 10;
 
   return (
     <div key={t.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
@@ -91,7 +110,7 @@ function TenantCard({ t, selectedTenantIds, handleTenantSelectionChange, getStat
             type="checkbox"
             checked={selectedTenantIds.includes(t.id)}
             onChange={(e) => handleTenantSelectionChange(t.id, e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
             aria-label={`Selecionar ${t.name}`}
           />
           <span className="text-xs text-slate-500 dark:text-slate-400">Selecionar para ações em lote</span>
@@ -151,28 +170,44 @@ function TenantCard({ t, selectedTenantIds, handleTenantSelectionChange, getStat
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => {}}
+            type="button"
+            onClick={() => onOnboarding(t)}
             title="Criar Admin Inicial (onboarding)"
-            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 transition-colors"
+            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer"
           >
             <UserPlus className="w-3.5 h-3.5" />
           </button>
-          <button title="Diagnóstico de Organograma" className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 transition-colors">
+          <button
+            type="button"
+            onClick={() => onDiagnostic(t)}
+            title="Diagnóstico de Organograma"
+            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 transition-colors cursor-pointer"
+          >
             <Network className="w-3.5 h-3.5" />
           </button>
-          <button title="Editar" className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 transition-colors">
+          <button
+            type="button"
+            onClick={() => onEdit(t)}
+            title="Editar Organização"
+            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 transition-colors cursor-pointer"
+          >
             <Edit2 className="w-3.5 h-3.5" />
           </button>
-          <button title="Excluir" className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 transition-colors">
+          <button
+            type="button"
+            onClick={() => onDelete(t.id)}
+            title="Excluir Organização"
+            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 transition-colors cursor-pointer"
+          >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
-</div>
+        </div>
       </div>
     </div>
   );
-};
+}
 
-export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
+export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }) => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [modules, setModules] = useState<SaasModule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -625,6 +660,13 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
               handleTenantSelectionChange={handleTenantSelectionChange}
               getStatusBadge={getStatusBadge}
               formatCents={formatCents}
+              onEdit={handleOpenEditModal}
+              onDelete={(id) => setDeleteConfirmId(id)}
+              onDiagnostic={handleOpenDiagnosticModal}
+              onOnboarding={(tenant) => {
+                setOnboardingTenant(tenant);
+                setOnboardingForm({ name: '', email: '', password: '', password_confirmation: '' });
+              }}
             />
           ))}
         </div>
@@ -689,11 +731,16 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
                   <input type="text" required value={formData.slug} onChange={(e) => setFormData({ ...formData, slug: e.target.value })} placeholder="cascavel-pr" className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Cidade / UF</label>
-                  <div className="flex gap-2">
-                    <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} placeholder="Cidade" className="flex-1 px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none" />
-                    <input type="text" value={formData.uf} maxLength={2} onChange={(e) => setFormData({ ...formData, uf: e.target.value.toUpperCase() })} placeholder="UF" className="w-16 px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none" />
-                  </div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">CNPJ</label>
+                  <input type="text" value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: e.target.value.replace(/\D/g, '').slice(0, 14) })} placeholder="00.000.000/0000-00" className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Cidade / UF</label>
+                <div className="flex gap-2">
+                  <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} placeholder="Cidade" className="flex-1 px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+                  <input type="text" value={formData.uf} maxLength={2} onChange={(e) => setFormData({ ...formData, uf: e.target.value.toUpperCase() })} placeholder="UF" className="w-16 px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none" />
                 </div>
               </div>
 
@@ -724,7 +771,15 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Status</label>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <option value="active">Ativo</option>
+                    <option value="trial">Trial</option>
+                    <option value="suspended">Suspenso</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Plano</label>
                   <select value={formData.plan} onChange={(e) => setFormData({ ...formData, plan: e.target.value })} className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
@@ -734,11 +789,11 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Limite de Usuários</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Limite Usuários</label>
                   <input type="number" min={1} value={formData.maxUsers} onChange={(e) => setFormData({ ...formData, maxUsers: Number(e.target.value) })} className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Cota de Armazenamento (MB)</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Cota Armaz. (MB)</label>
                   <input type="number" min={1} value={formData.storageLimitMb} onChange={(e) => setFormData({ ...formData, storageLimitMb: Number(e.target.value) })} className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none" />
                 </div>
               </div>

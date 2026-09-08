@@ -15,24 +15,32 @@ import {
   Building2,
   Terminal,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { loginAdminMaster } from '../services/api';
 import { useAuthContext } from '../contexts/AuthContext';
 
 interface AdminLoginPageProps {
   onNavigateToTenantLogin?: () => void;
-  onLoginSuccess: () => void;
+  onLoginSuccess?: () => void;
 }
 
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   onNavigateToTenantLogin = () => {},
   onLoginSuccess,
 }) => {
-  const { loginAdminSession } = useAuthContext();
+  const { loginAdminSession, isAuthenticated } = useAuthContext();
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +60,12 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
       const response = await loginAdminMaster(email.trim(), password);
       if (response.success && response.user) {
         loginAdminSession(response.user, response.token);
-        onLoginSuccess();
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        setErrorMessage(response.message || 'Credenciais master inválidas.');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Credenciais master inválidas.');

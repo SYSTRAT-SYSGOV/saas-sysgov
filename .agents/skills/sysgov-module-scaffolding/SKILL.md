@@ -111,11 +111,13 @@ final class {Nome}Controller extends Controller
 ### Passo 5 — Executar teste de isolamento
 `php artisan test --filter=TenantIsolationTest` — valida que (1) registros do Tenant A não aparecem no Tenant B; (2) é impossível criar sem contexto de tenant resolvido (LogicException).
 
-### Passo 6 — Integração no frontend
-1. Registrar navegação em apps/web/src/config/adminNavigation.ts no grupo correspondente.
-2. Criar tela/componente em apps/web/src/components/ usando a paleta oficial.
-3. Usar `<span className="font-mono tabular-nums">` para R$, %, CNPJ, CPF, datas e códigos.
-4. Importar sob demanda via React.lazy no App Shell.
+### Passo 6 — Integração no SDK e no Frontend (Menos Invasiva)
+1. **Declarar Contrato no SDK**: Crie `packages/sdk/src/modules/{alias}/` contendo `types.ts`, `client.ts` e `index.ts`. Reexporte em `packages/sdk/src/index.ts`.
+2. **Criar Tela no Cliente**: Crie o componente em `apps/web-client/src/modules/{alias}/{Nome}Module.tsx` usando a paleta oficial de `DESIGN_SYSTEM.md`.
+3. **Dados Técnicos**: Sempre utilize `<span className="font-mono tabular-nums">` para R$, %, CNPJ, CPF, datas e códigos.
+4. **Registrar no Catálogo**: Execute `php artisan module:register {Nome}` no backend para persistir permissões, menus e catálogo.
+5. **Gerar Registry**: Execute `npm run generate:registry`. O `AppRouter.tsx` do `web-client` absorve a nova rota, permissão e lazy loading de forma 100% orientada a dados, sem necessidade de alteração manual no shell.
+6. **Provisionamento**: Ative o módulo para os tenants desejados através do painel administrativo SYSTRAT (`apps/web`).
 
 ## 7. Exportação e Migração de Dados (Obrigatório — Requisito de Primeira Classe)
 - Exportador construído DESDE O INÍCIO, não depois. O cliente pode exigir exportação a qualquer momento (self-service).
@@ -183,7 +185,9 @@ final class {Nome}Controller extends Controller
 - [ ] Ações de mutação chamam $audit->record(...) e $outbox->publish(...)?
 - [ ] Toda ação de escrita tem Policy server-side?
 - [ ] Rotas registradas via RouteServiceProvider do módulo, nunca no web.php global?
-- [ ] Frontend usa font-mono tabular-nums para dados técnicos?
+- [ ] Contrato do módulo isolado em `packages/sdk/src/modules/{alias}` sem colidir com o núcleo?
+- [ ] Módulo registrado no catálogo via `php artisan module:register` e `moduleRegistry` gerado sem edição forçada no shell?
+- [ ] Frontend usa font-mono tabular-nums para dados técnicos (R$, %, datas, códigos)?
 - [ ] Teste de isolamento multi-tenant (Tenant A vs Tenant B) passou com sucesso?
 - [ ] Exportação/migração de dados considerada no módulo?
 

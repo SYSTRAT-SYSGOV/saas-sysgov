@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useOrgUnit } from '@/core/orgunit';
-import { MODULE_REGISTRY } from '@/config/moduleRegistry';
 import { apiClient } from '@/core/api/client';
+import { MODULE_REGISTRY, getModuleRoute } from '@/config/moduleRegistry';
+import type { ModuleDefinition } from '@/config/moduleRegistry';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { KpiCard } from '@/components/ui/KpiCard';
@@ -42,22 +43,6 @@ interface ModuleShortcut {
   permission?: string;
 }
 
-function getModuleRoute(id: string): string {
-  const routes: Record<string, string> = {
-    dashboard: '/',
-    org: '/organograma',
-    procurement: '/licitacoes',
-    contracts: '/contratos',
-    finance: '/financeiro',
-    pedagogico: '/pedagogico',
-    rh: '/rh',
-    cemiterios: '/cemiterios',
-    users: '/usuarios',
-    menuManager: '/gerenciar-menus',
-    moduleGranularity: '/granularidade-módulos',
-  };
-  return routes[id] || '/';
-}
 
 function getModuleIcon(id: string): React.ReactNode {
   const icons: Record<string, React.ReactNode> = {
@@ -131,18 +116,18 @@ export const DashboardModule: React.FC = () => {
     }
   };
 
-  const allModules = Object.entries(MODULE_REGISTRY)
-    .filter(([id, def]) => {
-      if (id === 'menuManager' || id === 'moduleGranularity') return false;
+  const allModules = Object.values(MODULE_REGISTRY)
+    .filter((def: ModuleDefinition) => {
+      if (def.id === 'menuManager' || def.id === 'moduleGranularity' || def.isAdminOnly) return false;
       if (def.requiredPermission && !permissions.includes('*') && !permissions.includes(def.requiredPermission)) return false;
-      if (!activeModules.includes(id)) return false;
+      if (!activeModules.includes(def.id)) return false;
       return true;
     })
-    .map(([id, def]) => ({
-      id,
+    .map((def: ModuleDefinition) => ({
+      id: def.id,
       name: def.name,
-      icon: id,
-      route: getModuleRoute(id),
+      icon: def.id,
+      route: getModuleRoute(def.id),
       permission: def.requiredPermission,
     }));
 

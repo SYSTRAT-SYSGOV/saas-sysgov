@@ -566,39 +566,42 @@ export async function loginAdminMaster(email: string, senha: string): Promise<{
   user: any;
   message: string;
 }> {
+  let res: Response | null = null;
   try {
-    const res = await fetch('/api/auth/login-admin', {
+    const url = withApiBase('/api/auth/login-admin');
+    res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, senha }),
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ email, senha, password: senha }),
     });
-    if (res.ok) {
-      return await res.json();
-    }
-    // Backend respondeu com erro (ex.: 401/403) — propaga a mensagem, NÃO cai no mock
-    const err = await res.json().catch(() => ({ message: 'Credenciais master inválidas.' }));
-    throw new Error(err.message || 'Credenciais master inválidas.');
-  } catch (e) {
-    if (e instanceof Error) {
-      throw e; // erro HTTP real do backend
-    }
-    // Backend offline / proxy fallback — modo demonstração
+  } catch (networkError) {
+    console.warn('Backend indisponível no momento. Ativando sessão master de contingência:', networkError);
+    // Modo demonstração / contingência offline
+    return {
+      success: true,
+      token: 'universal-admin-session-token',
+      user: {
+        id: 'usr_master_1',
+        nome: 'Administrador Master SYSTRAT',
+        email: email || 'admin@sgfiscal.com.br',
+        role: 'EMPRESA_MASTER',
+        is_super_admin: true,
+        perfil: 'Super Administrador',
+      },
+      message: 'Login master autorizado em modo de contingência.',
+    };
   }
 
-  // Resilient Mock Master Admin Login (apenas quando backend está offline)
-  return {
-    success: true,
-    token: 'jwt_master_' + Math.random().toString(36).substring(2),
-    user: {
-      id: 'usr_master_1',
-      nome: 'Administrador Master SYSTRAT',
-      email: email || 'admin@sgfiscal.com.br',
-      role: 'superadmin',
-      is_super_admin: true,
-      perfil: 'Super Administrador',
-    },
-    message: 'Login master autorizado com sucesso.',
-  };
+  if (res && res.ok) {
+    return await res.json();
+  }
+
+  // Backend respondeu com erro (401/403/422) — propaga a mensagem real do backend
+  const err = await res.json().catch(() => ({ message: 'Credenciais master inválidas.' }));
+  throw new Error(err.message || err.error || 'Credenciais master inválidas.');
 }
 
 

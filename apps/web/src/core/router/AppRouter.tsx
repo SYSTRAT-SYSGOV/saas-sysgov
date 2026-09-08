@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { SidebarNav } from '@/components/SidebarNav';
 import { ToastContainer } from '@/components/Toast';
@@ -7,7 +7,7 @@ import { ToastMessage, ComparativeMode } from '@/types/fiscal';
 import { AuthProvider, useAuthContext } from '@/contexts/AuthContext';
 import { TenantProvider } from '@/contexts/TenantContext';
 import { AdminConfigProvider, useAdminConfig } from '@/contexts/AdminConfigContext';
-import { ADMIN_MODULE_REGISTRY, getAdminModuleByPath } from '@/config/adminModuleRegistry';
+import { ADMIN_MODULE_REGISTRY, getAdminModuleByPath, getAdminModuleById } from '@/config/adminModuleRegistry';
 import { lazyWithNamedExport } from '@/lib/lazy';
 
 const AdminLoginPage = lazyWithNamedExport(() => import('@/pages/AdminLoginPage'), 'AdminLoginPage');
@@ -24,7 +24,7 @@ function LoadingFallback() {
   );
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthContext();
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
@@ -32,7 +32,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function ModuleRoute({ path }: { path: string }) {
+export function ModuleRoute({ path }: { path: string }) {
   const module = getAdminModuleByPath(path);
   if (!module) {
     return <Navigate to="/admin/dashboard" replace />;
@@ -48,6 +48,8 @@ function ModuleRoute({ path }: { path: string }) {
 function AdminLayout() {
   const { isAuthenticated, authRole, logout } = useAuthContext();
   const { config } = useAdminConfig();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [ano, setAno] = React.useState<number>(2026);
   const [isPresentationMode, setIsPresentationMode] = React.useState<boolean>(false);
@@ -111,6 +113,20 @@ function AdminLayout() {
       title: 'Sessão Encerrada',
       message: 'Você saiu da plataforma administrativa com segurança.',
     });
+    navigate('/admin/login', { replace: true });
+  };
+
+  const handleNavigateTab = (target: string) => {
+    if (target.startsWith('/')) {
+      navigate(target);
+    } else {
+      const mod = getAdminModuleById(target) || getAdminModuleByPath(target);
+      if (mod) {
+        navigate(mod.path);
+      } else {
+        navigate(`/admin/${target}`);
+      }
+    }
   };
 
   return (
@@ -123,8 +139,8 @@ function AdminLayout() {
 
       {!isPresentationMode && (
         <SidebarNav
-          activeTab={window.location.pathname}
-          setActiveTab={() => {}}
+          activeTab={location.pathname}
+          setActiveTab={handleNavigateTab}
           isOpen={isSidebarOpen}
           onToggleOpen={handleToggleSidebar}
           isPinned={isSidebarPinned}
@@ -140,8 +156,8 @@ function AdminLayout() {
         }`}
       >
         <Header
-          activeTab={window.location.pathname}
-          setActiveTab={() => {}}
+          activeTab={location.pathname}
+          setActiveTab={handleNavigateTab}
           isDarkMode={isDarkMode}
           onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
           onToggleSidebar={handleToggleSidebar}
@@ -191,6 +207,23 @@ function AdminLayout() {
   );
 }
 
+export function LoginPageWrapper() {
+  const { isAuthenticated } = useAuthContext();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  return (
+    <AdminLoginPage
+      onLoginSuccess={() => navigate('/admin/dashboard', { replace: true })}
+    />
+  );
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
@@ -198,11 +231,13 @@ export function AppRouter() {
         <AuthProvider>
           <TenantProvider>
             <Routes>
-              <Route path="/admin/login" element={<AdminLoginPage onLoginSuccess={() => {}} />} />
+              <Route path="/admin/login" element={<LoginPageWrapper />} />
               <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
                 <Route path="/admin/dashboard" element={<ModuleRoute path="/admin/dashboard" />} />
                 <Route path="/admin/analytics" element={<ModuleRoute path="/admin/analytics" />} />
                 <Route path="/admin/users" element={<ModuleRoute path="/admin/users" />} />
+                <Route path="/admin/roles" element={<Navigate to="/admin/users?tab=roles" replace />} />
+                <Route path="/admin/permissions" element={<Navigate to="/admin/users?tab=permissions" replace />} />
                 <Route path="/admin/tenants" element={<ModuleRoute path="/admin/tenants" />} />
                 <Route path="/admin/records" element={<ModuleRoute path="/admin/records" />} />
                 <Route path="/admin/menus" element={<ModuleRoute path="/admin/menus" />} />

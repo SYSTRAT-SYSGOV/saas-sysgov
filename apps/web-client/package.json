@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate:registry": "node ../../scripts/generate-module-registry.js"
   },
   "dependencies": {
     "@sysgov/sdk": "*",

@@ -28,3 +28,7 @@ apps/api/list_*.php
 
 # Rascunhos duplicados do módulo Procurement
 apps/api/Modules/Procurement/app/
+
+# Editor / IDE
+.kilo/
+

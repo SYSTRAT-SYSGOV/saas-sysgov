@@ -65,19 +65,6 @@ const AdminRouteGuard: React.FC<{ children: React.ReactElement }> = ({ children 
 };
 
 export const AppRouter: React.FC = () => {
-  const DashboardComp = MODULE_REGISTRY.dashboard.component;
-  const OrgComp = MODULE_REGISTRY.org.component;
-  const ProcurementComp = MODULE_REGISTRY.procurement.component;
-  const ContractsComp = MODULE_REGISTRY.contracts.component;
-  const FinanceComp = MODULE_REGISTRY.finance.component;
-  const PedagogicoComp = MODULE_REGISTRY.pedagogico.component;
-  const RhComp = MODULE_REGISTRY.rh.component;
-  const CemiteriosComp = MODULE_REGISTRY.cemiterios.component;
-  const UsersComp = MODULE_REGISTRY.users.component;
-  const MenuManagerComp = MODULE_REGISTRY.menuManager.component;
-  const ModuleGranularityComp = MODULE_REGISTRY.moduleGranularity.component;
-  const PermissionMatrixComp = MODULE_REGISTRY.permissionMatrix.component;
-
   return (
     <Routes>
       {/* Public Auth Routes */}
@@ -94,102 +81,45 @@ export const AppRouter: React.FC = () => {
           </ProtectedRoute>
         }
       >
-        <Route
-          index
-          element={
-            <ModuleRouteGuard moduleId="dashboard">
-              <DashboardComp />
-            </ModuleRouteGuard>
-          }
-        />
-        <Route
-          path="organograma"
-          element={
-            <ModuleRouteGuard moduleId="org">
-              <OrgComp />
-            </ModuleRouteGuard>
-          }
-        />
-        <Route
-          path="licitacoes"
-          element={
-            <ModuleRouteGuard moduleId="procurement">
-              <ProcurementComp />
-            </ModuleRouteGuard>
-          }
-        />
-        <Route
-          path="contratos"
-          element={
-            <ModuleRouteGuard moduleId="contracts">
-              <ContractsComp />
-            </ModuleRouteGuard>
-          }
-        />
-        <Route
-          path="financeiro"
-          element={
-            <ModuleRouteGuard moduleId="finance">
-              <FinanceComp />
-            </ModuleRouteGuard>
-          }
-        />
-        <Route
-          path="pedagogico"
-          element={
-            <ModuleRouteGuard moduleId="pedagogico">
-              <PedagogicoComp />
-            </ModuleRouteGuard>
-          }
-        />
-        <Route
-          path="rh"
-          element={
-            <ModuleRouteGuard moduleId="rh">
-              <RhComp />
-            </ModuleRouteGuard>
-          }
-        />
-        <Route
-          path="cemiterios"
-          element={
-            <ModuleRouteGuard moduleId="cemiterios">
-              <CemiteriosComp />
-            </ModuleRouteGuard>
-          }
-        />
-        <Route
-          path="usuarios"
-          element={
-            <ModuleRouteGuard moduleId="users">
-              <UsersComp />
-            </ModuleRouteGuard>
-          }
-        />
-        <Route
-          path="gerenciar-menus"
-          element={
-            <AdminRouteGuard>
-              <MenuManagerComp />
-            </AdminRouteGuard>
-          }
-        />
-        <Route
-          path="granularidade-módulos"
-          element={
-            <AdminRouteGuard>
-              <ModuleGranularityComp />
-            </AdminRouteGuard>
-          }
-        />
-        <Route
-          path="matriz-permissoes"
-          element={
-            <AdminRouteGuard>
-              <PermissionMatrixComp />
-            </AdminRouteGuard>
-          }
-        />
+        {/* Dynamic Module Routes driven by MODULE_REGISTRY */}
+        {Object.values(MODULE_REGISTRY).flatMap((moduleDef) => {
+          const Component = moduleDef.component;
+          const routes = moduleDef.routes && moduleDef.routes.length > 0
+            ? moduleDef.routes
+            : [moduleDef.routePath !== undefined ? moduleDef.routePath : moduleDef.id];
+
+          return routes.map((route) => {
+            const isIndex = route === '';
+            const guardElement = moduleDef.isAdminOnly ? (
+              <AdminRouteGuard>
+                <Component />
+              </AdminRouteGuard>
+            ) : (
+              <ModuleRouteGuard moduleId={moduleDef.id}>
+                <Component />
+              </ModuleRouteGuard>
+            );
+
+            if (isIndex) {
+              return (
+                <Route
+                  key={`${moduleDef.id}-index`}
+                  index
+                  element={guardElement}
+                />
+              );
+            }
+
+            return (
+              <Route
+                key={`${moduleDef.id}-${route}`}
+                path={route}
+                element={guardElement}
+              />
+            );
+          });
+        })}
+
         <Route path="perfil" element={<ProfilePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
@@ -201,3 +131,4 @@ export const AppRouter: React.FC = () => {
 };
 
 export default AppRouter;
+

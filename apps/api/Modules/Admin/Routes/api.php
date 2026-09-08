@@ -36,6 +36,15 @@ Route::prefix('api/admin')->middleware('bindings')->group(function (): void {
     Route::get('/oidc/callback', [OidcController::class, 'callback']);
 });
 
+// Module Catalog público (para consumo do web-client) — prefixo separado sem platform-admin
+Route::prefix('api/public')->middleware('bindings')->group(function (): void {
+    Route::get('/module-catalog/catalog', [ModuleCatalogController::class, 'catalog']);
+    Route::get('/module-catalog/test', function () { return response()->json(['ok' => true]); });
+});
+
+// Teste direto
+Route::get('/api/test-catalog', function () { return response()->json(['test' => 'direct route works']); });
+
 // Rotas autenticadas do web-admin (platform-admin + gate MFA)
 Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->group(function (): void {
     // Tenants

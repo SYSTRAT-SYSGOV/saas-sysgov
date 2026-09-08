@@ -1,0 +1,59 @@
+# ==============================================================================
+# SYSGOV — Regras de Code Ownership (CODEOWNERS)
+# ==============================================================================
+# Proteção obrigatória para o núcleo transacional, multi-tenant e segurança.
+# Alterações no núcleo exigem revisão e aprovação de engenheiros sêniores/leads.
+# Módulos de negócio são abertos para contribuição da equipe de desenvolvimento.
+# ==============================================================================
+
+# Padrão global para o repositório
+* @systrat/core-team
+
+# ==============================================================================
+# 1. NÚCLEO DO BACKEND (LARAVEL) & MULTI-TENANT
+# ==============================================================================
+apps/api/bootstrap/app.php                       @systrat/backend-seniors @systrat/security-leads
+apps/api/config/                                 @systrat/backend-seniors
+apps/api/app/Models/Concerns/TenantAware.php     @systrat/backend-seniors @systrat/security-leads
+apps/api/app/Support/TenantContext.php           @systrat/backend-seniors @systrat/security-leads
+apps/api/app/Support/Money.php                   @systrat/backend-seniors
+apps/api/app/Support/AuditLogger.php             @systrat/backend-seniors @systrat/security-leads
+apps/api/app/Http/Middleware/ResolveTenant.php   @systrat/backend-seniors @systrat/security-leads
+apps/api/app/Services/UserService.php            @systrat/backend-seniors
+apps/api/app/Services/AccessService.php           @systrat/backend-seniors @systrat/security-leads
+
+# ==============================================================================
+# 2. AUTENTICAÇÃO, MFA, OIDC & GESTÃO DA PLATAFORMA (MÓDULO ADMIN)
+# ==============================================================================
+apps/api/Modules/Admin/                          @systrat/backend-seniors @systrat/security-leads
+apps/api/Modules/Admin/Http/Controllers/OidcController.php  @systrat/security-leads
+apps/api/Modules/Admin/Http/Controllers/MfaController.php   @systrat/security-leads
+
+# ==============================================================================
+# 3. PACOTES COMPARTILHADOS & NÚCLEO DO FRONTEND
+# ==============================================================================
+packages/ui/                                     @systrat/frontend-seniors
+packages/sdk/src/client.ts                       @systrat/core-team
+packages/sdk/src/index.ts                        @systrat/core-team
+packages/sdk/src/modules/base.ts                 @systrat/core-team
+
+# App Shell do Admin e do Cliente
+apps/web/src/core/                               @systrat/frontend-seniors
+apps/web-client/src/core/                        @systrat/frontend-seniors
+apps/web/src/components/ui/                      @systrat/frontend-seniors
+apps/web-client/src/components/ui/               @systrat/frontend-seniors
+
+# ==============================================================================
+# 4. DEVOPS, WORKFLOWS CI/CD & AUTOMAÇÕES
+# ==============================================================================
+.github/                                         @systrat/core-team
+scripts/                                         @systrat/core-team
+
+# ==============================================================================
+# 5. MÓDULOS DE NEGÓCIO (ABERTOS PARA A EQUIPE / SQUADS DE PRODUTO)
+# ==============================================================================
+apps/api/Modules/TestModule/                     @systrat/feature-devs
+apps/api/Modules/Frota/                          @systrat/feature-devs
+apps/api/Modules/Contratos/                      @systrat/feature-devs
+apps/web-client/src/modules/                     @systrat/feature-devs
+packages/sdk/src/modules/                        @systrat/feature-devs
