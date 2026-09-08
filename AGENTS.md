@@ -29,6 +29,14 @@ php artisan make:module {NomeDoModulo}
 ```
 Consulte a skill oficial em [`.claude/skills/sysgov-module-scaffolding/SKILL.md`](./.claude/skills/sysgov-module-scaffolding/SKILL.md) para o guia detalhado passo a passo.
 
+> **Duas cópias, de propósito**: as skills deste repo existem tanto em
+> `.claude/skills/` (convenção que o Claude Code escaneia e invoca de fato)
+> quanto em `.agents/skills/` (convenção mais genérica, usada por outras
+> ferramentas de IA que leem `AGENTS.md`/`.agents/`). São arquivos idênticos
+> nos dois lugares — **ao editar uma skill, replique manualmente a mudança
+> na outra cópia** (não há symlink por compatibilidade com checkouts
+> Windows). Fonte de verdade em caso de divergência: `.claude/skills/`.
+
 ---
 
 ## 🎨 4. Design System & Tipografia
