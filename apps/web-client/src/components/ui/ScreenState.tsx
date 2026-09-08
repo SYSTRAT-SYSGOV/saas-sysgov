@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, AlertCircle, FileX } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from './Button';
+import { Button } from './button';
 
 export type ScreenStateType = 'loading' | 'error' | 'empty' | 'ready';
 

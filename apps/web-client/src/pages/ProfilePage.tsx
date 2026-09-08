@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/DataTable';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { Dialog } from '@/components/ui/Dialog';
