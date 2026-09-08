@@ -41,7 +41,7 @@ Listeners/, Tests/, module.json.
 10. Usar o comando Artisan make:module customizado (scaffold tenant-aware com testes de isolamento).
 
 ## 5. Design System (Obrigatório — Padrão Visual SYSGOV, derivado do SGF Araucária)
-1. Stack: React + TypeScript + Tailwind CSS. Ícones lucide-react (nunca emojis/SVGs soltos). Componentes base Shadcn/UI ou Radix UI. NUNCA CSS inline.
+1. Stack: React + TypeScript + Tailwind CSS. Ícones lucide-react (nunca emojis/SVGs soltos). Componentes base Shadcn/UI ou Radix UI — SEMPRE via o pacote compartilhado `@sysgov/ui` (`packages/ui`), nunca reimplementados por app. Ver `AGENTS.md` § 4.1 e `packages/ui/README.md`. NUNCA CSS inline.
 2. Tipografia: JetBrains Mono (font-mono) OBRIGATÓRIA para dados numéricos (valores R$, %, datas, CNPJ, CPF, limites LRF, métricas de tabelas). Inter/Roboto (font-sans) para texto institucional.
 3. Paleta:
    - Fundo Master Admin/Dark: bg-slate-950, bg-slate-900, bg-slate-800/80.

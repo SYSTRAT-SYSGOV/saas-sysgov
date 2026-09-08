@@ -47,6 +47,13 @@ Este documento é a especificação visual e estrutural obrigatória para todas 
 
 ## 🧩 4. Componentes Padronizados
 
+> **Implementação obrigatória via `@sysgov/ui`** (`packages/ui`): todos os
+> componentes abaixo já existem como implementação real (shadcn/ui + Radix +
+> `class-variance-authority`) nesse pacote compartilhado. Importe de lá —
+> nunca reimplemente localmente. Se faltar um componente, crie-o em
+> `packages/ui/src/components/` seguindo [`packages/ui/README.md`](./packages/ui/README.md),
+> não dentro do app. Ver também `AGENTS.md` § 4.1.
+
 1. **Cards de KPI**:
    - Compactos com cabeçalho (título uppercase), valor numérico em destaque (bold, tamanho maior, `font-mono tabular-nums`) e rodapé com informação secundária/variação percentual.
 2. **Cards de Alerta**:
