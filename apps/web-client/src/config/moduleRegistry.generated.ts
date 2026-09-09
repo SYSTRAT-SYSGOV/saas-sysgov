@@ -16,6 +16,7 @@ const MenuManagerComponent = lazy(() => import('@/modules/access/MenuManager'));
 const ModuleGranularityComponent = lazy(() => import('@/modules/access/ModuleGranularityManager'));
 const PermissionMatrixComponent = lazy(() => import('@/modules/access/PermissionMatrix'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
+const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
 const TestmoduleComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "TestModule", alias: "testmodule", description: "Módulo de negócio TestModule para a plataforma SYSGOV" }) }));
 
 export interface ModuleDefinition {
@@ -149,6 +150,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['client'],
     requiredPermission: 'client.view',
     icon: 'Layers',
+  },
+  licita: {
+    id: 'licita',
+    name: "Licita",
+    component: LicitaComponent,
+    routePath: 'licita',
+    routes: ['licita'],
+    requiredPermission: 'licita.view',
+    icon: 'FileText',
   },
   testmodule: {
     id: 'testmodule',

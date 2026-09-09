@@ -13,6 +13,7 @@ final class DatabaseSeeder extends Seeder
         $this->call([
             ModuleCatalogSeeder::class,
             RbacSeeder::class,
+            \Modules\Client\Database\Seeders\ClientMenuSeeder::class,
         ]);
     }
 }

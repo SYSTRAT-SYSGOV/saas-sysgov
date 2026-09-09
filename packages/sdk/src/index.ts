@@ -209,5 +209,7 @@ export * as ContractsSdk from './modules/contracts';
 export * from './modules/contracts';
 export * as CatalogSdk from './modules/catalog';
 export * from './modules/catalog';
+export * as LicitaSdk from './modules/licita';
+export * from './modules/licita';
 export * as ExampleSdk from './modules/template';
 

@@ -1,0 +1,22 @@
+{
+    "name": "Licita",
+    "alias": "licita",
+    "description": "Instrução processual de licitações (Lei 14.133/2021) — DFD, ETP, Mapa de Riscos, Pesquisa de Preços, TR e Edital",
+    "priority": 15,
+    "providers": [
+        "Modules\\Licita\\Providers\\LicitaServiceProvider",
+        "Modules\\Licita\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin"
+    ],
+    "permissions": {
+        "licita.aprovar": "Aprovar/Rejeitar DFD, ETP e demais fases (Licita)"
+    },
+    "menu": {
+        "label": "Licita",
+        "icon": "FileText",
+        "order": 25,
+        "permission": "licita.view"
+    }
+}

@@ -22,6 +22,7 @@ import {
   Briefcase,
   Vote,
   Network,
+  Scale,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -48,6 +49,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Briefcase,
   Vote,
   Network,
+  Scale,
 };
 
 /**
