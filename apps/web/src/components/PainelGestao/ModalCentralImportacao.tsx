@@ -393,7 +393,7 @@ export const ModalCentralImportacao: React.FC<ModalCentralImportacaoProps> = ({
         )}
 
         {/* Conteúdo das Abas */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
           {/* ABA 1: APIs */}
           {activeTab === 'api' && (
             <div className="space-y-4">

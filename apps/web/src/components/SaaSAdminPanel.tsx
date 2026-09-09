@@ -2303,7 +2303,7 @@ CREATE TABLE tenant_api_configs (
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1 pr-1 space-y-5">
+            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-5">
               {/* HERO BUSCA AUTOMÁTICA */}
               <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-xl p-4 sm:p-5 border border-slate-700 shadow-md space-y-3">
                 <div className="flex items-center justify-between">

@@ -289,7 +289,7 @@ const RoleFormModal: React.FC<{
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Nome *</label>
@@ -335,7 +335,7 @@ const RoleFormModal: React.FC<{
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Permissões</label>
-            <div className="space-y-3 max-h-96 overflow-y-auto border border-slate-200 rounded-lg p-4">
+            <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar border border-slate-200 rounded-lg p-4">
               {Object.entries(
                 permissions.reduce((acc, p) => {
                   if (!acc[p.module]) acc[p.module] = [];

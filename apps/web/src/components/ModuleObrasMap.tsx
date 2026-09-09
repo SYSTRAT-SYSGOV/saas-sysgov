@@ -969,7 +969,7 @@ export const ModuleObrasMap: React.FC<ModuleObrasMapProps> = ({
               </div>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-5 text-xs font-sans">
+            <div className="p-5 overflow-y-auto custom-scrollbar space-y-5 text-xs font-sans">
               {/* Quadro Resumo */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded border border-slate-200 dark:border-slate-800 font-mono">
                 <div>

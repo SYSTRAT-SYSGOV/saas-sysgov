@@ -184,7 +184,7 @@ export const PredictiveAnalysisModal: React.FC<PredictiveAnalysisModalProps> = (
         </div>
 
         {/* Modal Body - Scrollable */}
-        <div className="p-5 overflow-y-auto space-y-6 flex-1">
+        <div className="p-5 overflow-y-auto custom-scrollbar space-y-6 flex-1">
           {/* Section 1: 6-Month Percentage Variations Dashboard Matrix */}
           <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-sm p-4 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">

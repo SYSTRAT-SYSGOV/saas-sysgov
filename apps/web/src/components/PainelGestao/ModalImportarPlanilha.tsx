@@ -122,7 +122,7 @@ export const ModalImportarPlanilha: React.FC<ModalImportarPlanilhaProps> = ({
         </div>
 
         {/* Corpo do Modal */}
-        <div className="p-5 overflow-y-auto space-y-4 flex-1">
+        <div className="p-5 overflow-y-auto custom-scrollbar space-y-4 flex-1">
           {/* Caixa de ação para download do template */}
           <div className="flex items-center justify-between p-3.5 bg-slate-800/40 border border-slate-700/60 rounded-sm flex-wrap gap-3">
             <div className="text-xs text-slate-300">
@@ -200,7 +200,7 @@ export const ModalImportarPlanilha: React.FC<ModalImportarPlanilhaProps> = ({
               </div>
 
               {/* Tabela de Preview */}
-              <div className="max-h-60 overflow-y-auto border border-slate-800 rounded-sm">
+              <div className="max-h-60 overflow-y-auto custom-scrollbar border border-slate-800 rounded-sm">
                 <table className="w-full text-left text-xs font-mono">
                   <thead className="bg-slate-950 text-slate-400 sticky top-0 border-b border-slate-800">
                     <tr>
