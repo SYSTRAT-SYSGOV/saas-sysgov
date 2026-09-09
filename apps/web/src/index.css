@@ -308,13 +308,12 @@
   --sidebar-ring: #6366f1;
 }
 [data-theme="indigo"].dark {
-  --primary: #818cf8;
-  --primary-foreground: #1e1b4b;
-  --ring: #818cf8;
+  /* --primary/--ring/--sidebar-primary/--sidebar-ring ficam iguais ao
+     modo claro (não clareamos aqui) — um tom mais claro exigiria texto
+     escuro em cima pra manter contraste, e isso destoa do resto do
+     admin (que sempre usa texto branco em botão de destaque). */
   --accent: #1e1b4b;
   --accent-foreground: #c7d2fe;
-  --sidebar-primary: #818cf8;
-  --sidebar-ring: #818cf8;
 }
 
 [data-theme="gov-blue"] {
@@ -327,13 +326,8 @@
   --sidebar-ring: #155bcb;
 }
 [data-theme="gov-blue"].dark {
-  --primary: #3b82f6;
-  --primary-foreground: #0b1c39;
-  --ring: #3b82f6;
   --accent: #17264a;
   --accent-foreground: #bfdbfe;
-  --sidebar-primary: #3b82f6;
-  --sidebar-ring: #3b82f6;
 }
 
 [data-theme="cyan"] {
@@ -346,13 +340,8 @@
   --sidebar-ring: #0891b2;
 }
 [data-theme="cyan"].dark {
-  --primary: #22d3ee;
-  --primary-foreground: #083344;
-  --ring: #22d3ee;
   --accent: #164e63;
   --accent-foreground: #a5f3fc;
-  --sidebar-primary: #22d3ee;
-  --sidebar-ring: #22d3ee;
 }
 
 /* Pérola (Menu Claro) — o inverso dos temas acima: aqui é a SIDEBAR
@@ -382,13 +371,8 @@
   --sidebar-ring: #8b5cf6;
 }
 [data-theme="pearl"].dark {
-  --primary: #a78bfa;
-  --primary-foreground: #2e1065;
-  --ring: #a78bfa;
   --accent: #2e1065;
   --accent-foreground: #ddd6fe;
-  --sidebar-primary: #a78bfa;
-  --sidebar-ring: #a78bfa;
 }
 
 /* ============================================================
