@@ -760,7 +760,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               {/* Módulos com preço */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Módulos Liberados (cada um com mensalidade própria)</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                   {modules.filter((m) => m.alias !== 'dashboard').map((m) => {
                     const checked = formData.modules.includes(m.alias);
                     return (
@@ -874,7 +874,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 min-h-[260px]">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 min-h-[260px]">
               {isLoadingOrgChart ? (
                 <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-500"><RefreshCw className="w-7 h-7 animate-spin text-emerald-600" /><span className="text-xs font-mono">Consultando árvore hierárquica...</span></div>
               ) : orgChartTree && orgChartTree.length > 0 ? (
@@ -984,7 +984,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
                   </div>
                   <details className="mt-2">
                     <summary className="text-xs text-slate-500 cursor-pointer">Ver detalhes</summary>
-                    <div className="mt-1 max-h-32 overflow-y-auto text-[10px] font-mono space-y-1">
+                    <div className="mt-1 max-h-32 overflow-y-auto custom-scrollbar text-[10px] font-mono space-y-1">
                       {batchResult.results.map((r, i) => (
                         <div key={i} className={r.success ? 'text-emerald-600' : 'text-rose-600'}>
                           {r.success ? '✓' : '✗'} Tenant #{r.tenant_id} — {r.module_alias} {r.error ? `(${r.error})` : ''}
