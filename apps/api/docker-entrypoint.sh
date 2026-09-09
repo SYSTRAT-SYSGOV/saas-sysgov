@@ -17,4 +17,11 @@ echo "Banco de dados disponível."
 php artisan migrate --force
 php artisan db:seed --force
 
+# sysgov:seed-menus é um comando artisan avulso (não um Seeder de
+# database/Seeders), então não entra no db:seed acima — precisa ser
+# chamado à parte. Também idempotente (updateOrCreate por slug/route).
+# Sem isso, o menu do admin fica vazio-ish (só os grupos registrados
+# via module:register aparecem) até alguém rodar isso na mão.
+php artisan sysgov:seed-menus
+
 exec "$@"
