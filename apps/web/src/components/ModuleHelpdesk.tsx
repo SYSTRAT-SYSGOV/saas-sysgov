@@ -179,7 +179,7 @@ const TicketChat: React.FC<{ ticket: TicketItem; onClose: () => void }> = ({ tic
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50 dark:bg-[#0a1128]/50">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4 bg-slate-50 dark:bg-[#0a1128]/50">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex gap-3 ${msg.is_internal ? 'opacity-80' : ''}`}>
               <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold border ${msg.is_internal ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700/40' : msg.author === ticket.requester ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700/40' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700/40'}`}>

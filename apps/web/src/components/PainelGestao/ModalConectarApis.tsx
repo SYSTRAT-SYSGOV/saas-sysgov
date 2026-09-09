@@ -102,7 +102,7 @@ export const ModalConectarApis: React.FC<ModalConectarApisProps> = ({
         </div>
 
         {/* Corpo do Modal */}
-        <div className="p-5 overflow-y-auto space-y-4 flex-1">
+        <div className="p-5 overflow-y-auto custom-scrollbar space-y-4 flex-1">
           {feedbackMsg && (
             <div
               className={`p-3 rounded-sm border text-xs flex items-start gap-2 ${
@@ -226,7 +226,7 @@ export const ModalConectarApis: React.FC<ModalConectarApisProps> = ({
                 Nenhuma sincronização oficial registrada ainda para este município.
               </div>
             ) : (
-              <div className="max-h-44 overflow-y-auto border border-slate-800 rounded-sm">
+              <div className="max-h-44 overflow-y-auto custom-scrollbar border border-slate-800 rounded-sm">
                 <table className="w-full text-left text-xs font-mono">
                   <thead className="bg-slate-950 text-slate-400 sticky top-0 border-b border-slate-800">
                     <tr>

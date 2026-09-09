@@ -451,7 +451,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onAddT
       {/* Add / Edit User Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-xl p-6 shadow-2xl overflow-y-auto custom-scrollbar max-h-[90vh]">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-500" />
@@ -564,7 +564,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onAddT
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
                   Permissões Granulares
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700/60 max-h-48 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700/60 max-h-48 overflow-y-auto custom-scrollbar">
                   {ADMIN_PERMISSIONS.map((p) => {
                     const isChecked = formData.permissions.includes(p.id);
                     return (

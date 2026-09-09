@@ -161,7 +161,7 @@ const ContractDetail: React.FC<{ c: Contrato; onClose: () => void }> = ({ c, onC
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-2xl h-full mod-panel overflow-y-auto flex flex-col shadow-2xl">
+      <div className="w-full max-w-2xl h-full mod-panel overflow-y-auto custom-scrollbar flex flex-col shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white/95 dark:bg-[#101a3a]/95 backdrop-blur border-b mod-border p-5">
           <div className="flex items-start justify-between gap-3">

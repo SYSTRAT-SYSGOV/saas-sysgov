@@ -140,7 +140,7 @@ Validação: ${hashValidacao}`;
             ============================================================ */}
         <div
           ref={printRef}
-          className="p-6 sm:p-10 overflow-y-auto space-y-6 text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-950 font-sans print:p-0 print:bg-white print:text-black"
+          className="p-6 sm:p-10 overflow-y-auto custom-scrollbar space-y-6 text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-950 font-sans print:p-0 print:bg-white print:text-black"
         >
           {/* Cabeçalho Timbrado Oficial */}
           <div className="border-b-2 border-slate-900 dark:border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

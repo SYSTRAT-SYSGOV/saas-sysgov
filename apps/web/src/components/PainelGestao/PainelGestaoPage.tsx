@@ -4401,7 +4401,7 @@ export const PainelGestaoPage: React.FC<PainelGestaoPageProps> = ({
             </div>
 
             {/* Modal Body - Tabela de Contratos */}
-            <div className="p-3 sm:p-4 overflow-y-auto overflow-x-auto flex-1 space-y-4 font-sans">
+            <div className="p-3 sm:p-4 overflow-y-auto overflow-x-auto custom-scrollbar flex-1 space-y-4 font-sans">
               <div className="border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden min-w-[1100px] shadow-xs">
                 <table className="w-full text-xs text-left border-collapse font-sans">
                   <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 text-[11px] font-mono uppercase">
@@ -4655,7 +4655,7 @@ export const PainelGestaoPage: React.FC<PainelGestaoPageProps> = ({
             </div>
 
             {/* Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-xs font-sans">
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar space-y-5 text-xs font-sans">
               {/* Painel de Identificação Oficial */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-sm border border-slate-200 dark:border-slate-800 font-mono">
                 <div>
@@ -5191,7 +5191,7 @@ export const PainelGestaoPage: React.FC<PainelGestaoPageProps> = ({
               </div>
 
               {/* 4. Tabela de Detalhamento Analítico com Todas as Colunas */}
-              <div className="p-3 sm:p-4 overflow-y-auto overflow-x-auto flex-1 font-sans">
+              <div className="p-3 sm:p-4 overflow-y-auto overflow-x-auto custom-scrollbar flex-1 font-sans">
                 <div className="border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden min-w-[1100px] shadow-xs">
                   <table className="w-full text-left text-xs border-collapse font-sans">
                     <thead className="bg-slate-100 dark:bg-slate-800 text-[11px] font-mono uppercase text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">

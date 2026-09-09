@@ -855,7 +855,7 @@ export const ModuleAIDiagnostico: React.FC<ModuleAIDiagnosticoProps> = ({
             </div>
 
             {/* Modal Body - History List */}
-            <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1">
+            <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar space-y-3 flex-1">
               {filteredHistory.length === 0 ? (
                 <div className="py-16 text-center text-slate-400 font-mono space-y-2">
                   <History className="w-8 h-8 mx-auto opacity-40" />

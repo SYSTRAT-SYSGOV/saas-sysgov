@@ -60,7 +60,7 @@ export const Dialog: React.FC<DialogProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className={cn('flex-1 overflow-y-auto p-6', !footer && 'pb-6')}>
+        <div className={cn('flex-1 overflow-y-auto custom-scrollbar p-6', !footer && 'pb-6')}>
           {children}
         </div>
 
