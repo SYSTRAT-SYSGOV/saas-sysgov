@@ -26,6 +26,9 @@ final class DfdWorkflowTest extends TestCase
         return app(ProcessoService::class)->criar(['numero' => '01', 'ano' => 2026, 'objeto' => null], $elaborador);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function dadosDfd(): array
     {
         return [
@@ -40,6 +43,9 @@ final class DfdWorkflowTest extends TestCase
         ];
     }
 
+    /**
+     * @return array{0: Tenant, 1: User, 2: User}
+     */
     private function setUpTenantEUsuarios(): array
     {
         $tenant = Tenant::create(['name' => 'Prefeitura Teste', 'slug' => 'pref-teste', 'type' => 'prefeitura', 'status' => 'active']);
