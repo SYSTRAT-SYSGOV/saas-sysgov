@@ -136,7 +136,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
 
           <button
             onClick={() => onNavigate('admin_users')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md hover:shadow-emerald-600/30"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-md hover:shadow-primary/30"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Novo Usuário</span>

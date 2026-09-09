@@ -163,7 +163,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
             <div className="pt-2 flex justify-end">
               <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-sm"
               >
                 <Save className="w-3.5 h-3.5" />
                 Salvar Dados
@@ -225,7 +225,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
             <div className="pt-2 flex justify-end">
               <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-sm"
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 Atualizar Senha

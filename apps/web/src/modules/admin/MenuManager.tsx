@@ -350,7 +350,7 @@ export const MenuManager: React.FC<Props> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleCreateGroup}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-md"
             >
               <Plus className="w-3.5 h-3.5" /> Novo Grupo
             </button>
@@ -492,7 +492,7 @@ export const MenuManager: React.FC<Props> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm"
+                    className="px-4 py-2 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-sm"
                   >
                     Criar Grupo
                   </button>
@@ -554,7 +554,7 @@ export const MenuManager: React.FC<Props> = ({
                     updateGroups(updated);
                     setEditingItem(null);
                   }}
-                  className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm"
+                  className="px-4 py-2 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-sm"
                 >
                   Salvar
                 </button>
@@ -623,7 +623,7 @@ export const MenuManager: React.FC<Props> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm"
+                    className="px-4 py-2 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-sm"
                   >
                     Adicionar
                   </button>

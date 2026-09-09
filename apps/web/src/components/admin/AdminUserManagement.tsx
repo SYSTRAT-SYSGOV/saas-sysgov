@@ -278,7 +278,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onAddT
 
           <button
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md hover:shadow-blue-600/30"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-md hover:shadow-primary/30"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Adicionar Usuário</span>
@@ -596,7 +596,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onAddT
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all shadow-md"
+                  className="px-4 py-2 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-all shadow-md"
                 >
                   {editingUserId ? 'Salvar Alterações' : 'Cadastrar Usuário'}
                 </button>

@@ -498,7 +498,7 @@ export const ModuleContabilidade: React.FC<ModuleContabilidadeProps> = ({ onAddT
         footer={
           <>
             <Button variant="outline" onClick={() => setEmpenhoOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCreateEmpenho} className="bg-indigo-600 hover:bg-indigo-500">Registrar</Button>
+            <Button onClick={handleCreateEmpenho}>Registrar</Button>
           </>
         }
       >
@@ -539,7 +539,7 @@ export const ModuleContabilidade: React.FC<ModuleContabilidadeProps> = ({ onAddT
         footer={
           <>
             <Button variant="outline" onClick={() => setLancamentoOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCreateLancamento} className="bg-indigo-600 hover:bg-indigo-500">Criar Lançamento</Button>
+            <Button onClick={handleCreateLancamento}>Criar Lançamento</Button>
           </>
         }
       >

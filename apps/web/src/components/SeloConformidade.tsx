@@ -393,7 +393,7 @@ export const SeloConformidade: React.FC<SeloConformidadeProps> = ({
             className={`px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition flex items-center gap-2 border cursor-pointer ${
               isSyncing
                 ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 active:scale-95 shadow-sm'
+                : 'bg-primary hover:bg-primary/90 text-primary-foreground border-primary active:scale-95 shadow-sm'
             }`}
             title="Atualiza e persiste o selo na base de dados"
           >
@@ -411,7 +411,7 @@ export const SeloConformidade: React.FC<SeloConformidadeProps> = ({
 
           <button
             onClick={handlePrint}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition flex items-center gap-1.5 border border-emerald-500 shadow-md cursor-pointer active:scale-95"
+            className="px-3.5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition flex items-center gap-1.5 border border-primary shadow-md cursor-pointer active:scale-95"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Imprimir Diploma</span>

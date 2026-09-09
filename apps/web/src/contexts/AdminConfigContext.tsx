@@ -33,6 +33,16 @@ export const AdminConfigProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   });
 
+  // Aplica o tema escolhido (Accent Theme) na raiz do documento via
+  // data-theme, lido pelos overrides de CSS em src/index.css (seção
+  // "5c. Presets de Tema do Admin"). Roda a cada mudança de config e
+  // uma vez no boot, para refletir o que veio do localStorage.
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', config.themeId);
+    } catch {}
+  }, [config.themeId]);
+
   const updateConfig = (newConfig: Partial<SystemBrandingConfig>) => {
     setConfig(prev => {
       const updated = { ...prev, ...newConfig };

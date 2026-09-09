@@ -420,7 +420,7 @@ export const Header: React.FC<HeaderProps> = ({
           {onOpenRelatorioExecutivo && (
             <button
               onClick={onOpenRelatorioExecutivo}
-              className="flex items-center gap-1 px-2 sm:px-2.5 py-1 text-xs font-mono font-bold rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 transition cursor-pointer shadow-xs shrink-0"
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1 text-xs font-mono font-bold rounded-sm bg-primary hover:bg-primary/90 text-primary-foreground border border-primary transition cursor-pointer shadow-xs shrink-0"
               title="Gerar Dossiê Executivo Consolidado Timbrado em PDF"
             >
               <Printer className="w-3.5 h-3.5" />

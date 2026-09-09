@@ -388,7 +388,7 @@ export const ModuleContratos: React.FC<ModuleContratosProps> = ({ onAddToast = (
           </h1>
           <p className="text-sm mod-text-secondary mt-1">Ciclo de vida contratual, aditivos e fiscalização em tempo real.</p>
         </div>
-        <Button onClick={handleOpenCreate} className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus size={15} />}>
+        <Button onClick={handleOpenCreate} className="whitespace-nowrap" leftIcon={<Plus size={15} />}>
           Novo Contrato
         </Button>
       </div>
@@ -464,7 +464,7 @@ export const ModuleContratos: React.FC<ModuleContratosProps> = ({ onAddToast = (
         footer={
           <>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-500">Criar Contrato</Button>
+            <Button onClick={handleCreate}>Criar Contrato</Button>
           </>
         }
       >

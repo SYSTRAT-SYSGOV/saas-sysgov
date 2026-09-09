@@ -52,7 +52,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             <button
               type="button"
               onClick={this.handleReset}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs uppercase tracking-wider rounded transition cursor-pointer shadow-md"
+              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-mono font-bold text-xs uppercase tracking-wider rounded transition cursor-pointer shadow-md"
             >
               Recarregar Painel
             </button>

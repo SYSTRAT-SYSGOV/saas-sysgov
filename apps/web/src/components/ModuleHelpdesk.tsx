@@ -396,7 +396,7 @@ export const ModuleHelpdesk: React.FC<ModuleHelpdeskProps> = ({ onAddToast = () 
           <option value="media">🟡 Média</option>
           <option value="baixa">🟢 Baixa</option>
         </select>
-        <Button onClick={handleOpenCreate} className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus size={15} />}>
+        <Button onClick={handleOpenCreate} className="whitespace-nowrap" leftIcon={<Plus size={15} />}>
           Abrir Chamado
         </Button>
       </div>
@@ -425,7 +425,7 @@ export const ModuleHelpdesk: React.FC<ModuleHelpdeskProps> = ({ onAddToast = () 
         footer={
           <>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-500">Abrir Chamado</Button>
+            <Button onClick={handleCreate}>Abrir Chamado</Button>
           </>
         }
       >

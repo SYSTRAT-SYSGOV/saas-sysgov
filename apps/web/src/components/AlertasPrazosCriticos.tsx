@@ -372,7 +372,7 @@ export const AlertasPrazosCriticos: React.FC<AlertasPrazosCriticosProps> = ({
             className={`px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition flex items-center gap-2 border cursor-pointer ${
               isSyncing
                 ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 active:scale-95 shadow-sm'
+                : 'bg-primary hover:bg-primary/90 text-primary-foreground border-primary active:scale-95 shadow-sm'
             }`}
             title="Atualiza e persiste prazos na base de dados"
           >

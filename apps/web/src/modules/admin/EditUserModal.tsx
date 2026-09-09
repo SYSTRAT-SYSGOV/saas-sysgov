@@ -46,7 +46,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onClose }) => {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold mod-text-secondary hover:mod-inner rounded-lg">Cancelar</button>
-            <button type="submit" className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-md"><Save className="inline mr-2" size={12}/>Salvar</button>
+            <button type="submit" className="px-4 py-2 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-md"><Save className="inline mr-2" size={12}/>Salvar</button>
           </div>
         </form>
       </div>

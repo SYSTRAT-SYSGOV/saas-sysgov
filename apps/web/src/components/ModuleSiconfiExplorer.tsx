@@ -205,7 +205,7 @@ export const ModuleSiconfiExplorer: React.FC<ModuleSiconfiExplorerProps> = ({
             <button
               key={idx}
               onClick={() => handleApplyPreset(q)}
-              className="text-left p-3 rounded-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 text-xs font-medium text-slate-800 dark:text-slate-200 transition group font-mono"
+              className="text-left p-3 rounded-sm border border-slate-200 dark:border-slate-800 hover:border-primary dark:hover:border-primary bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 text-xs font-medium text-slate-800 dark:text-slate-200 transition group font-mono"
             >
               <div className="flex items-center justify-between">
                 <span className="font-semibold group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition font-sans text-xs">
@@ -269,7 +269,7 @@ export const ModuleSiconfiExplorer: React.FC<ModuleSiconfiExplorerProps> = ({
             <button
               onClick={() => handleExecuteQuery()}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono font-bold uppercase tracking-wider rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono font-bold uppercase tracking-wider rounded-sm bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition disabled:opacity-50"
             >
               <Play className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
               <span>{loading ? 'Consultando...' : 'Executar'}</span>

@@ -313,7 +313,7 @@ export const AdminGenericDataTable: React.FC<AdminGenericDataTableProps> = ({ on
             <span>Exportar CSV</span>
           </button>
 
-          <Button onClick={handleOpenCreateModal} className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus className="w-3.5 h-3.5" />}>
+          <Button onClick={handleOpenCreateModal} className="whitespace-nowrap" leftIcon={<Plus className="w-3.5 h-3.5" />}>
             Novo Registro
           </Button>
         </div>
@@ -595,7 +595,7 @@ export const AdminGenericDataTable: React.FC<AdminGenericDataTableProps> = ({ on
         footer={
           <>
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" form="record-form" className="bg-indigo-600 hover:bg-indigo-500">
+            <Button type="submit" form="record-form">
               {editingRecordId ? 'Salvar Registro' : 'Criar Registro'}
             </Button>
           </>

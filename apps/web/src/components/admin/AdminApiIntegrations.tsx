@@ -127,7 +127,7 @@ export const AdminApiIntegrations: React.FC<AdminApiIntegrationsProps> = ({ onAd
           </p>
         </div>
 
-        <Button onClick={() => setIsModalOpen(true)} className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500" leftIcon={<Plus className="w-3.5 h-3.5" />}>
+        <Button onClick={() => setIsModalOpen(true)} className="whitespace-nowrap" leftIcon={<Plus className="w-3.5 h-3.5" />}>
           Adicionar Nova Integração
         </Button>
       </div>
@@ -227,7 +227,7 @@ export const AdminApiIntegrations: React.FC<AdminApiIntegrationsProps> = ({ onAd
         footer={
           <>
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" form="connector-form" className="bg-indigo-600 hover:bg-indigo-500">Salvar Integração</Button>
+            <Button type="submit" form="connector-form">Salvar Integração</Button>
           </>
         }
       >

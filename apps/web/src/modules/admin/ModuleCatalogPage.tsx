@@ -247,7 +247,7 @@ export function ModuleCatalogPage() {
         title="Módulos da Plataforma"
         subtitle="Catálogo de módulos disponíveis para provisionamento nos tenants"
         actions={
-          <Button onClick={openCreateDialog} className="bg-emerald-600 hover:bg-emerald-500" leftIcon={<Plus className="w-4 h-4" />}>
+          <Button onClick={openCreateDialog} leftIcon={<Plus className="w-4 h-4" />}>
             Novo Módulo
           </Button>
         }
@@ -282,7 +282,7 @@ export function ModuleCatalogPage() {
         footer={
           <>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button type="submit" form="module-form" isLoading={saving} className="bg-emerald-600 hover:bg-emerald-500" leftIcon={!saving ? <Save className="w-4 h-4" /> : undefined}>
+            <Button type="submit" form="module-form" isLoading={saving} leftIcon={!saving ? <Save className="w-4 h-4" /> : undefined}>
               {editingModule ? 'Atualizar' : 'Criar'}
             </Button>
           </>

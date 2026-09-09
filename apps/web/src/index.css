@@ -232,7 +232,11 @@
   --gov-text-secondary: var(--text-secondary);
   --gov-border: var(--border);
 
-  /* Sidebar do admin é sempre escura (Navy), nos dois modos */
+  /* Sidebar do admin é sempre escura (Navy), nos dois modos — é o que
+     dá contraste/variação em relação ao resto da tela (que segue o
+     alternador claro/escuro normalmente). Temas de contraste invertido
+     (ex.: "pearl") sobrescrevem esse grupo pra sidebar sempre clara —
+     ver seção "5c. Presets de Tema do Admin" mais abaixo. */
   --sidebar: var(--navy-950);
   --sidebar-foreground: #ffffff;
   --sidebar-primary: var(--sem-success);
@@ -279,6 +283,112 @@
   --status-danger-border: rgba(229, 34, 7, 0.35);
   --status-info-bg: rgba(21, 91, 203, 0.18);
   --status-info-border: rgba(59, 130, 246, 0.4);
+}
+
+/* ============================================================
+   5c. Presets de Tema do Admin (Accent Theme) — apps/web SOMENTE
+   Cada tema troca só a cor de destaque (--primary/--ring/--accent/
+   --sidebar-primary), nos dois modos (claro e `.dark`). As cores
+   semânticas de status (--status-success/warning/danger, --success,
+   --warning, --destructive) são fixas e NUNCA variam por tema — são
+   o semáforo fiscal, não identidade visual.
+
+   Aplicado via atributo `data-theme="<id>"` na raiz (ver
+   src/config/adminThemes.ts e AdminConfigContext). O tema "navy" é o
+   default e não precisa de bloco próprio — é o que já está definido
+   acima em :root/.dark.
+   ============================================================ */
+[data-theme="indigo"] {
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --ring: #6366f1;
+  --accent: #eef2ff;
+  --accent-foreground: #3730a3;
+  --sidebar-primary: #6366f1;
+  --sidebar-ring: #6366f1;
+}
+[data-theme="indigo"].dark {
+  --primary: #818cf8;
+  --primary-foreground: #1e1b4b;
+  --ring: #818cf8;
+  --accent: #1e1b4b;
+  --accent-foreground: #c7d2fe;
+  --sidebar-primary: #818cf8;
+  --sidebar-ring: #818cf8;
+}
+
+[data-theme="gov-blue"] {
+  --primary: #155bcb;
+  --primary-foreground: #ffffff;
+  --ring: #155bcb;
+  --accent: #eff6ff;
+  --accent-foreground: #1e3a8a;
+  --sidebar-primary: #155bcb;
+  --sidebar-ring: #155bcb;
+}
+[data-theme="gov-blue"].dark {
+  --primary: #3b82f6;
+  --primary-foreground: #0b1c39;
+  --ring: #3b82f6;
+  --accent: #17264a;
+  --accent-foreground: #bfdbfe;
+  --sidebar-primary: #3b82f6;
+  --sidebar-ring: #3b82f6;
+}
+
+[data-theme="cyan"] {
+  --primary: #0891b2;
+  --primary-foreground: #ffffff;
+  --ring: #0891b2;
+  --accent: #ecfeff;
+  --accent-foreground: #164e63;
+  --sidebar-primary: #0891b2;
+  --sidebar-ring: #0891b2;
+}
+[data-theme="cyan"].dark {
+  --primary: #22d3ee;
+  --primary-foreground: #083344;
+  --ring: #22d3ee;
+  --accent: #164e63;
+  --accent-foreground: #a5f3fc;
+  --sidebar-primary: #22d3ee;
+  --sidebar-ring: #22d3ee;
+}
+
+/* Pérola (Menu Claro) — o inverso dos temas acima: aqui é a SIDEBAR
+   que fica sempre clara (sobrescrevendo o grupo --sidebar-* que por
+   padrão é sempre Navy escuro), enquanto o conteúdo principal segue
+   normalmente o alternador claro/escuro. Não precisa de bloco
+   ".dark" separado pra --sidebar/--sidebar-foreground/--sidebar-border
+   porque este seletor sozinho (mesma especificidade de .dark, e
+   depois dele no arquivo) já vence nos dois modos. */
+[data-theme="pearl"] {
+  --primary: #8b5cf6;
+  --primary-foreground: #ffffff;
+  --ring: #8b5cf6;
+  --accent: #f5f3ff;
+  --accent-foreground: #5b21b6;
+
+  /* Fixos (não usar var(--text-primary)/var(--surface-hover) aqui: esses
+     tokens seguem o .dark global do CONTEÚDO, e inverteriam pra claro-sobre-
+     claro quando o conteúdo está em dark mode com a sidebar ainda clara). */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #8b5cf6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #8b5cf6;
+}
+[data-theme="pearl"].dark {
+  --primary: #a78bfa;
+  --primary-foreground: #2e1065;
+  --ring: #a78bfa;
+  --accent: #2e1065;
+  --accent-foreground: #ddd6fe;
+  --sidebar-primary: #a78bfa;
+  --sidebar-ring: #a78bfa;
 }
 
 /* ============================================================
