@@ -31,7 +31,7 @@ export function Field(props: BaseFieldProps & { value: string | number | boolean
           checked={value as boolean}
           onChange={onChange}
           required={required}
-          className="w-4 h-4 rounded border-border text-emerald-600 focus:ring-emerald-500"
+          className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
           {...rest as React.InputHTMLAttributes<HTMLInputElement>}
         />
         <label htmlFor={id} className="text-sm font-medium text-foreground cursor-pointer">

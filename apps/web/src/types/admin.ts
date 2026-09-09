@@ -142,6 +142,8 @@ export interface SystemBrandingConfig {
   faviconUrl?: string;
   primaryColor: string;
   secondaryColor: string;
+  /** Id de um tema em `ADMIN_THEMES` (src/config/adminThemes.ts). Default: 'navy'. */
+  themeId: string;
   enableDarkMode: boolean;
   showPoweredBy: boolean;
   supportEmail: string;

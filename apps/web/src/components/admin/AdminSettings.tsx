@@ -16,20 +16,12 @@ import {
 } from 'lucide-react';
 import { useAdminConfig } from '../../contexts/AdminConfigContext';
 import { SystemBrandingConfig } from '../../types/admin';
+import { ADMIN_THEMES } from '../../config/adminThemes';
 import { Card } from '@sysgov/ui';
 
 interface AdminSettingsProps {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
 }
-
-const COLOR_PRESETS = [
-  { name: 'Esmeralda (Padrão)', value: '#10b981' },
-  { name: 'Índigo Executivo', value: '#6366f1' },
-  { name: 'Azul Governamental', value: '#0c326f' },
-  { name: 'Ciano Tecnológico', value: '#06b6d4' },
-  { name: 'Âmbar Dourado', value: '#f59e0b' },
-  { name: 'Rose / Carmim', value: '#e11d48' },
-];
 
 export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
   const { config, updateConfig, resetConfig } = useAdminConfig();
@@ -100,7 +92,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
           <button
             type="button"
             onClick={handleSaveAll}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md hover:shadow-emerald-600/30"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-primary hover:opacity-90 text-primary-foreground transition-all shadow-md"
           >
             <Save className="w-3.5 h-3.5" />
             <span>Salvar Alterações</span>
@@ -114,7 +106,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
           onClick={() => setActiveTab('branding')}
           className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
             activeTab === 'branding'
-              ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+              ? 'border-primary text-primary'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
@@ -126,7 +118,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
           onClick={() => setActiveTab('security')}
           className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
             activeTab === 'security'
-              ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+              ? 'border-primary text-primary'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
@@ -138,7 +130,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
           onClick={() => setActiveTab('notifications')}
           className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
             activeTab === 'notifications'
-              ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+              ? 'border-primary text-primary'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
@@ -152,7 +144,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 p-6 space-y-4">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Layout className="w-4 h-4 text-emerald-500" />
+              <Layout className="w-4 h-4 text-primary" />
               Identidade Visual & Textos da Aplicação
             </h2>
 
@@ -165,7 +157,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                   type="text"
                   value={form.appName}
                   onChange={(e) => setForm({ ...form, appName: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
 
@@ -177,7 +169,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                   type="text"
                   value={form.appSubtitle}
                   onChange={(e) => setForm({ ...form, appSubtitle: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
             </div>
@@ -191,7 +183,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                   type="text"
                   value={form.companyName}
                   onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
 
@@ -203,7 +195,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                   type="email"
                   value={form.supportEmail}
                   onChange={(e) => setForm({ ...form, supportEmail: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
             </div>
@@ -217,32 +209,59 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                 value={form.logoUrl}
                 onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
                 placeholder="https://suaempresa.com/assets/logo.png"
-                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-primary focus:outline-none"
               />
             </div>
 
-            {/* Color Presets */}
+            {/* Theme Presets (Accent Theme) */}
             <div className="pt-2">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                Cor de Destaque Primário (Accent Theme)
+                Tema do Admin (Accent Theme)
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {COLOR_PRESETS.map((c) => (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2.5">
+                Escolha a cor de destaque do painel e o contraste do menu lateral em relação ao restante da
+                tela (primeira bolinha). Cada tema funciona tanto no modo claro quanto no escuro — o
+                alternador de tema (ícone de sol/lua no cabeçalho) continua controlando claro/escuro do
+                conteúdo, independentemente do tema escolhido aqui.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {ADMIN_THEMES.map((t) => (
                   <button
-                    key={c.value}
+                    key={t.id}
                     type="button"
-                    onClick={() => setForm({ ...form, primaryColor: c.value })}
-                    className={`flex items-center gap-2 p-2 rounded-lg border text-xs text-left transition-all ${
-                      form.primaryColor === c.value
-                        ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/30 font-bold text-slate-900 dark:text-white'
+                    onClick={() => setForm({ ...form, themeId: t.id, primaryColor: t.swatchLight })}
+                    className={`flex items-start gap-3 p-3 rounded-lg border text-xs text-left transition-all ${
+                      form.themeId === t.id
+                        ? 'border-primary bg-primary/5 font-bold text-slate-900 dark:text-white'
                         : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
                     }`}
                   >
-                    <span
-                      className="w-4 h-4 rounded-full border border-black/10 shrink-0"
-                      style={{ backgroundColor: c.value }}
-                    />
-                    <span className="truncate">{c.name}</span>
+                    <span className="flex shrink-0 -space-x-1.5 mt-0.5">
+                      <span
+                        className="w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shadow-sm"
+                        style={{ backgroundColor: t.sidebarSwatch }}
+                        title={t.sidebarSurface === 'dark' ? 'Menu lateral sempre escuro' : 'Menu lateral sempre claro'}
+                      />
+                      <span
+                        className="w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shadow-sm"
+                        style={{ backgroundColor: t.swatchLight }}
+                        title="Destaque no modo claro"
+                      />
+                      <span
+                        className="w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shadow-sm"
+                        style={{ backgroundColor: t.swatchDark }}
+                        title="Destaque no modo escuro"
+                      />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate">{t.name}</span>
+                      <span className="block text-[10px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                        {t.description}
+                      </span>
+                    </span>
+                    {form.themeId === t.id && (
+                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0 ml-auto" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -254,7 +273,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                   type="checkbox"
                   checked={form.showPoweredBy}
                   onChange={(e) => setForm({ ...form, showPoweredBy: e.target.checked })}
-                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  className="rounded border-slate-300 text-primary focus:ring-primary"
                 />
                 <span>Exibir assinatura "Powered by {form.companyName}" no rodapé do sistema</span>
               </label>
@@ -319,7 +338,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                 onChange={(e) =>
                   setSecuritySettings({ ...securitySettings, enforce2FA: e.target.checked })
                 }
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
               />
             </label>
 
@@ -337,7 +356,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                       sessionTimeoutMinutes: Number(e.target.value),
                     })
                   }
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
 
@@ -354,7 +373,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                       minPasswordLength: Number(e.target.value),
                     })
                   }
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
             </div>
@@ -386,7 +405,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                 onChange={(e) =>
                   setNotificationSettings({ ...notificationSettings, emailAlerts: e.target.checked })
                 }
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
               />
             </label>
 
@@ -408,7 +427,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                     weeklyReportDigest: e.target.checked,
                   })
                 }
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
               />
             </label>
           </div>
