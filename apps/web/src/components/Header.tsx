@@ -299,7 +299,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
 
-                <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-navy-800/60">
+                <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-slate-100 dark:divide-navy-800/60">
                   {prefeituras
                     .filter((p: any) =>
                       (p.cidade || '').toLowerCase().includes(citySearchTerm.toLowerCase()) ||
