@@ -1,0 +1,236 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { Card, Button, Select } from '@sysgov/ui';
+import { PageHeader, ScreenState } from '@/components/ui';
+import { Settings2, Plus, Trash2, GripVertical } from 'lucide-react';
+import { useCan } from '@/core/rbac/useCan';
+import { sysgovApi, type CampoConfig, type FaseLicita, type TipoCampoConfiguravel } from '@sysgov/sdk';
+
+const TIPO_DOCUMENTO_OPTIONS: { value: FaseLicita; label: string; disponivel: boolean }[] = [
+  { value: 'dfd', label: 'DFD', disponivel: true },
+  { value: 'etp', label: 'ETP', disponivel: false },
+  { value: 'mapa_riscos', label: 'Mapa de Riscos', disponivel: false },
+  { value: 'pesquisa_precos', label: 'Pesquisa de Preços', disponivel: false },
+  { value: 'tr', label: 'Termo de Referência', disponivel: false },
+  { value: 'edital', label: 'Edital', disponivel: false },
+];
+
+const TIPO_CAMPO_OPTIONS: { value: TipoCampoConfiguravel; label: string }[] = [
+  { value: 'texto', label: 'Texto curto' },
+  { value: 'texto_longo', label: 'Texto rico (editor)' },
+  { value: 'numero', label: 'Número' },
+  { value: 'data', label: 'Data' },
+  { value: 'booleano', label: 'Sim/Não' },
+  { value: 'selecao', label: 'Seleção (opções)' },
+];
+
+const novoCampo = (ordem: number): CampoConfig => ({
+  key: '',
+  label: '',
+  tipo: 'texto',
+  obrigatorio: false,
+  ordem,
+});
+
+/**
+ * Configuração, por órgão, dos campos extras exigidos em cada tipo de
+ * documento do Licita — reflete a realidade de múltiplas legislações
+ * locais (ex.: decreto municipal com exigências além da Lei 14.133/2021).
+ * Hoje só o DFD consome essa configuração; os demais tipos já aparecem
+ * no seletor para quando as respectivas fases forem implementadas.
+ */
+export const CamposConfiguracaoPage: React.FC = () => {
+  const { can } = useCan();
+  const podeGerenciar = can('licita.campos.manage');
+  const [tipoDocumento, setTipoDocumento] = useState<FaseLicita>('dfd');
+  const [campos, setCampos] = useState<CampoConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const disponivel = TIPO_DOCUMENTO_OPTIONS.find((o) => o.value === tipoDocumento)?.disponivel ?? false;
+
+  const load = useCallback(async (tipo: FaseLicita) => {
+    setLoading(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const config = await sysgovApi.licita.getCamposConfiguracao(tipo);
+      setCampos(config.campos ?? []);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || 'Erro ao carregar a configuração.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load(tipoDocumento);
+  }, [tipoDocumento, load]);
+
+  const updateCampo = (index: number, patch: Partial<CampoConfig>) => {
+    setCampos((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  };
+
+  const removeCampo = (index: number) => {
+    setCampos((prev) => prev.filter((_, i) => i !== index).map((c, i) => ({ ...c, ordem: i })));
+  };
+
+  const addCampo = () => {
+    setCampos((prev) => [...prev, novoCampo(prev.length)]);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError(null);
+    setSaved(false);
+    try {
+      const config = await sysgovApi.licita.salvarCamposConfiguracao(tipoDocumento, campos);
+      setCampos(config.campos ?? []);
+      setSaved(true);
+    } catch (err: any) {
+      setSaveError(err?.response?.data?.error || err?.message || 'Erro ao salvar a configuração.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        icon={<Settings2 className="h-6 w-6" />}
+        title="Campos Obrigatórios por Documento"
+        subtitle="Adicione campos extras exigidos pela legislação local em cada tipo de artefato."
+      />
+
+      <Card className="p-6 space-y-4">
+        <div className="max-w-xs">
+          <label className="block text-sm font-medium text-foreground mb-1">Tipo de Documento</label>
+          <Select
+            value={tipoDocumento}
+            onChange={(v) => setTipoDocumento(v as FaseLicita)}
+            options={TIPO_DOCUMENTO_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          />
+        </div>
+
+        {!disponivel && (
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            Disponível quando esta fase for implementada no Licita.
+          </div>
+        )}
+
+        {disponivel && loading && <ScreenState type="loading" title="Carregando configuração..." />}
+
+        {disponivel && !loading && error && (
+          <ScreenState type="error" title="Erro ao carregar" description={error} actionLabel="Tentar novamente" onAction={() => load(tipoDocumento)} />
+        )}
+
+        {disponivel && !loading && !error && (
+          <>
+            <div className="space-y-3">
+              {campos.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nenhum campo extra configurado para este documento.</p>
+              )}
+              {campos.map((campo, index) => (
+                <div key={index} className="rounded-lg border border-border p-3 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <GripVertical className="mt-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="grid flex-1 grid-cols-1 sm:grid-cols-[1fr_1fr_160px] gap-2">
+                      <input
+                        type="text"
+                        disabled={!podeGerenciar}
+                        placeholder="Chave (ex.: base_legal_municipal)"
+                        value={campo.key}
+                        onChange={(e) => updateCampo(index, { key: e.target.value })}
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <input
+                        type="text"
+                        disabled={!podeGerenciar}
+                        placeholder="Rótulo exibido ao usuário"
+                        value={campo.label}
+                        onChange={(e) => updateCampo(index, { label: e.target.value })}
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <Select
+                        value={campo.tipo}
+                        onChange={(v) => updateCampo(index, { tipo: v as TipoCampoConfiguravel })}
+                        options={TIPO_CAMPO_OPTIONS}
+                        disabled={!podeGerenciar}
+                      />
+                    </div>
+                    {podeGerenciar && (
+                      <Button size="icon-sm" variant="ghost" onClick={() => removeCampo(index)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {campo.tipo === 'selecao' && (
+                    <input
+                      type="text"
+                      disabled={!podeGerenciar}
+                      placeholder="Opções separadas por vírgula"
+                      value={(campo.opcoes ?? []).join(', ')}
+                      onChange={(e) => updateCampo(index, { opcoes: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  )}
+
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm text-foreground">
+                      <input
+                        type="checkbox"
+                        disabled={!podeGerenciar}
+                        checked={campo.obrigatorio}
+                        onChange={(e) => updateCampo(index, { obrigatorio: e.target.checked })}
+                        className="rounded border-input text-primary focus:ring-primary"
+                      />
+                      Obrigatório
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!podeGerenciar}
+                      placeholder="Texto de ajuda (opcional)"
+                      value={campo.ajuda ?? ''}
+                      onChange={(e) => updateCampo(index, { ajuda: e.target.value })}
+                      className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {podeGerenciar && (
+              <Button type="button" variant="outline" leftIcon={<Plus className="h-4 w-4" />} onClick={addCampo}>
+                Adicionar Campo
+              </Button>
+            )}
+
+            {saveError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {saveError}
+              </div>
+            )}
+            {saved && (
+              <div className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+                Configuração salva com sucesso.
+              </div>
+            )}
+
+            {podeGerenciar && (
+              <div className="flex justify-end pt-2">
+                <Button variant="primary" isLoading={saving} onClick={handleSave}>
+                  Salvar Configuração
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+export default CamposConfiguracaoPage;

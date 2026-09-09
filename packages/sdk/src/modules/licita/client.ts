@@ -1,12 +1,18 @@
 import type { ApiRequester, BaseModuleClient } from '../base';
 import type { Paginated } from '../../index';
 import type {
+  CampoConfig,
+  CampoConfiguracao,
   CreateDfdInput,
+  CreateLegalDocumentoInput,
   CreateProcessoInput,
   Dfd,
+  FaseLicita,
+  LegalDocumento,
   Processo,
   ProcessoFilters,
   UpdateDfdInput,
+  UpdateLegalDocumentoInput,
 } from './types';
 
 export class LicitaModuleClient implements BaseModuleClient {
@@ -59,5 +65,41 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async rejeitarDfd(id: number, motivo: string): Promise<Dfd> {
     return this.api.request(`/licita/dfds/${id}/rejeitar`, { method: 'POST', body: JSON.stringify({ motivo }) });
+  }
+
+  async listLegislacao(filters: { tipo?: string; search?: string } = {}): Promise<{ data: LegalDocumento[] }> {
+    const params = new URLSearchParams();
+    if (filters.tipo) params.set('tipo', filters.tipo);
+    if (filters.search) params.set('search', filters.search);
+    const query = params.toString();
+
+    return this.api.request(`/licita/legislacao${query ? `?${query}` : ''}`);
+  }
+
+  async getLegislacao(id: number): Promise<LegalDocumento> {
+    return this.api.request(`/licita/legislacao/${id}`);
+  }
+
+  async createLegislacao(input: CreateLegalDocumentoInput): Promise<LegalDocumento> {
+    return this.api.request('/licita/legislacao', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async updateLegislacao(id: number, input: UpdateLegalDocumentoInput): Promise<LegalDocumento> {
+    return this.api.request(`/licita/legislacao/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async deleteLegislacao(id: number): Promise<void> {
+    await this.api.request(`/licita/legislacao/${id}`, { method: 'DELETE' });
+  }
+
+  async getCamposConfiguracao(tipoDocumento: FaseLicita): Promise<CampoConfiguracao> {
+    return this.api.request(`/licita/campos-configuracao/${tipoDocumento}`);
+  }
+
+  async salvarCamposConfiguracao(tipoDocumento: FaseLicita, campos: CampoConfig[]): Promise<CampoConfiguracao> {
+    return this.api.request(`/licita/campos-configuracao/${tipoDocumento}`, {
+      method: 'PUT',
+      body: JSON.stringify({ campos }),
+    });
   }
 }

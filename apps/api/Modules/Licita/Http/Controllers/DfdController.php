@@ -126,6 +126,7 @@ final class DfdController extends Controller
             'equipe_planejamento.*.nome' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.cargo' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.matricula' => ['required_with:equipe_planejamento', 'string', 'max:50'],
+            'campos_extras' => ['sometimes', 'array'],
         ]);
     }
 }

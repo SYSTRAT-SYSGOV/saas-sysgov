@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Modal, Button } from '@sysgov/ui';
-import { FileText, CheckCircle2, XCircle, Send } from 'lucide-react';
-import { StatusChip } from '@/components/ui';
+import React, { useEffect, useState } from 'react';
+import { Card, Button } from '@sysgov/ui';
+import { StatusChip, PageHeader, ScreenState } from '@/components/ui';
+import { ArrowLeft, FileText, CheckCircle2, XCircle, Send } from 'lucide-react';
 import { useAuth } from '@/core/auth/useAuth';
-import { sysgovApi, type CreateDfdInput, type Dfd, type Processo, type StatusDfd } from '@sysgov/sdk';
-import { DfdForm } from './DfdForm';
+import { useCan } from '@/core/rbac/useCan';
+import { sysgovApi, type CampoConfig, type CreateDfdInput, type Dfd, type Processo, type StatusDfd } from '@sysgov/sdk';
+import { DfdForm } from '../components/DfdForm';
 
 const STATUS_LABEL: Record<StatusDfd, string> = {
   rascunho: 'Rascunho',
@@ -28,30 +29,69 @@ const ACAO_LABEL: Record<string, string> = {
   rejeitado: 'Rejeitado',
 };
 
-interface DfdWorkspaceModalProps {
-  processo: Processo;
-  open: boolean;
-  onClose: () => void;
+interface DfdDetailPageProps {
+  processoId: number;
+  onBack: () => void;
   onChanged: (processo: Processo) => void;
 }
 
-export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, open, onClose, onChanged }) => {
-  const { user, permissions } = useAuth();
-  const [dfd, setDfd] = useState<Dfd | null>(processo.dfd);
+/**
+ * Tela cheia de instrução do DFD — substitui a antiga DfdWorkspaceModal
+ * (@sysgov/ui Modal), inadequada quando o número de campos cresce com os
+ * campos extras configuráveis por órgão.
+ */
+export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack, onChanged }) => {
+  const { user } = useAuth();
+  const { can } = useCan();
+  const [processo, setProcesso] = useState<Processo | null>(null);
+  const [dfd, setDfd] = useState<Dfd | null>(null);
+  const [camposExtras, setCamposExtras] = useState<CampoConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   const [showRejeitar, setShowRejeitar] = useState(false);
 
-  const podeAprovar = permissions.includes('licita.aprovar') && dfd?.elaborado_por !== user?.id;
+  const podeAprovar = can('licita.aprovar') && dfd?.elaborado_por !== user?.id;
   const editavel = dfd ? ['rascunho', 'em_revisao', 'rejeitado'].includes(dfd.status) : true;
 
+  useEffect(() => {
+    let cancelado = false;
+
+    const carregar = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [processoCompleto, config] = await Promise.all([
+          sysgovApi.licita.getProcesso(processoId),
+          sysgovApi.licita.getCamposConfiguracao('dfd').catch(() => null),
+        ]);
+        if (cancelado) return;
+        setProcesso(processoCompleto);
+        setDfd(processoCompleto.dfd);
+        setCamposExtras(config?.campos ?? []);
+      } catch (err: any) {
+        if (!cancelado) setError(err?.response?.data?.error || err?.message || 'Erro ao carregar o processo.');
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
+
+    carregar();
+    return () => {
+      cancelado = true;
+    };
+  }, [processoId]);
+
   const refreshProcesso = async () => {
-    const atualizado = await sysgovApi.licita.getProcesso(processo.id);
+    const atualizado = await sysgovApi.licita.getProcesso(processoId);
+    setProcesso(atualizado);
     onChanged(atualizado);
   };
 
   const handleCreate = async (data: CreateDfdInput) => {
+    if (!processo) return;
     const novoDfd = await sysgovApi.licita.createDfd(processo.id, data);
     setDfd(novoDfd);
     await refreshProcesso();
@@ -78,15 +118,36 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
     }
   };
 
+  if (loading) {
+    return <ScreenState type="loading" title="Carregando processo..." />;
+  }
+
+  if (error || !processo) {
+    return (
+      <ScreenState
+        type="error"
+        title="Erro ao carregar"
+        description={error ?? 'Processo não encontrado.'}
+        actionLabel="Voltar"
+        onAction={onBack}
+      />
+    );
+  }
+
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={`Processo ${processo.numero}/${processo.ano} — DFD`}
-      icon={<FileText className="h-5 w-5" />}
-      size="xl"
-    >
-      <div className="space-y-5">
+    <div className="space-y-6">
+      <PageHeader
+        icon={<FileText className="h-6 w-6" />}
+        title={`Processo ${processo.numero}/${processo.ano} — DFD`}
+        subtitle={processo.objeto || undefined}
+        actions={
+          <Button variant="outline" leftIcon={<ArrowLeft className="h-4 w-4" />} onClick={onBack}>
+            Voltar
+          </Button>
+        }
+      />
+
+      <Card className="p-6 space-y-5">
         {dfd && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3">
             <div className="flex items-center gap-3">
@@ -182,16 +243,17 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
 
         <DfdForm
           key={dfd?.id ?? 'novo'}
-          initialValue={dfd ? { ...dfd, equipe_planejamento: dfd.equipe_planejamento ?? undefined } : undefined}
+          initialValue={dfd ? { ...dfd, equipe_planejamento: dfd.equipe_planejamento ?? undefined, campos_extras: dfd.campos_extras ?? undefined } : undefined}
           disabled={!editavel}
           submitLabel={dfd ? 'Salvar Alterações' : 'Criar DFD'}
           onSubmit={dfd ? handleUpdate : handleCreate}
+          camposExtras={camposExtras}
         />
 
         {dfd && (dfd.versoes?.length ?? 0) > 0 && (
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-2">Histórico de Versões</h3>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
               {[...dfd.versoes].reverse().map((v) => (
                 <div key={v.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-1.5 text-xs">
                   <span className="font-mono tabular-nums text-muted-foreground">v{v.versao}</span>
@@ -205,9 +267,9 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
             </div>
           </div>
         )}
-      </div>
-    </Modal>
+      </Card>
+    </div>
   );
 };
 
-export default DfdWorkspaceModal;
+export default DfdDetailPage;

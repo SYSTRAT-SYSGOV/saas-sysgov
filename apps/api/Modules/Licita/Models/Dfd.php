@@ -24,6 +24,7 @@ use Modules\Licita\Enums\StatusDfd;
  * @property string|null $numero_pca
  * @property string|null $area_requisitante
  * @property array<int, array{nome: string, cargo: string, matricula: string}>|null $equipe_planejamento
+ * @property array<string, mixed>|null $campos_extras
  * @property string $status
  * @property bool $gerado_por_ia
  * @property int $elaborado_por
@@ -55,6 +56,7 @@ final class Dfd extends Model
         'numero_pca',
         'area_requisitante',
         'equipe_planejamento',
+        'campos_extras',
         'status',
         'gerado_por_ia',
         'elaborado_por',
@@ -68,6 +70,7 @@ final class Dfd extends Model
         'data_previsao' => 'date',
         'previsao_pca' => 'boolean',
         'equipe_planejamento' => 'array',
+        'campos_extras' => 'array',
         'gerado_por_ia' => 'boolean',
         'elaborado_por' => 'integer',
         'aprovado_por' => 'integer',

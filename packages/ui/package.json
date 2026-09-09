@@ -7,11 +7,13 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@tinymce/tinymce-react": "^6.3.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
     "radix-ui": "^1.6.7",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "tinymce": "^7.9.3"
   },
   "peerDependencies": {
     "react": ">=18.0.0",

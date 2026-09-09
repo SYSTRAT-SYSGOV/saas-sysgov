@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Button, Select } from '@sysgov/ui';
+import { Button, Select, RichTextEditor } from '@sysgov/ui';
 import { Plus, Trash2 } from 'lucide-react';
-import type { CreateDfdInput, GrauPrioridade, MembroEquipePlanejamento } from '@sysgov/sdk';
+import type { CampoConfig, CreateDfdInput, GrauPrioridade, MembroEquipePlanejamento } from '@sysgov/sdk';
+import { CamposExtrasFields } from './CamposExtrasFields';
 
 const GRAU_PRIORIDADE_OPTIONS = [
   { value: 'baixa', label: 'Baixa' },
@@ -16,6 +17,8 @@ interface DfdFormProps {
   submitLabel: string;
   onSubmit: (data: CreateDfdInput) => Promise<void> | void;
   onCancel?: () => void;
+  /** Campos extras configurados pelo órgão para o DFD (ver CamposConfiguracaoPage). */
+  camposExtras?: CampoConfig[];
 }
 
 const emptyMembro: MembroEquipePlanejamento = { nome: '', cargo: '', matricula: '' };
@@ -24,7 +27,7 @@ const emptyMembro: MembroEquipePlanejamento = { nome: '', cargo: '', matricula: 
  * mas <input type="date"> só aceita o formato yyyy-MM-dd puro — sem isso o campo fica vazio. */
 const toDateInputValue = (value?: string | null): string => (value ? value.slice(0, 10) : '');
 
-export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submitLabel, onSubmit, onCancel }) => {
+export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submitLabel, onSubmit, onCancel, camposExtras = [] }) => {
   const [dataPrevisao, setDataPrevisao] = useState(toDateInputValue(initialValue?.data_previsao));
   const [grauPrioridade, setGrauPrioridade] = useState<GrauPrioridade>(initialValue?.grau_prioridade ?? 'media');
   const [justificativa, setJustificativa] = useState(initialValue?.justificativa ?? '');
@@ -36,6 +39,9 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
     initialValue?.equipe_planejamento && initialValue.equipe_planejamento.length > 0
       ? initialValue.equipe_planejamento
       : [{ ...emptyMembro }],
+  );
+  const [camposExtrasValores, setCamposExtrasValores] = useState<Record<string, unknown>>(
+    initialValue?.campos_extras ?? {},
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +64,7 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
         numero_pca: numeroPca || null,
         area_requisitante: areaRequisitante || null,
         equipe_planejamento: equipe.filter((m) => m.nome && m.cargo && m.matricula),
+        campos_extras: camposExtrasValores,
       });
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || 'Erro ao salvar o DFD.');
@@ -90,14 +97,11 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
 
       <div>
         <label className="block text-sm font-medium text-foreground mb-1">Justificativa *</label>
-        <textarea
-          required
-          disabled={disabled}
+        <RichTextEditor
           value={justificativa}
-          onChange={(e) => setJustificativa(e.target.value)}
-          rows={4}
-          maxLength={3000}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+          onChange={setJustificativa}
+          disabled={disabled}
+          minHeight={200}
           placeholder="Demonstre a necessidade e conveniência da contratação (art. 18, I da Lei 14.133/2021)."
         />
       </div>
@@ -215,6 +219,18 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
           ))}
         </div>
       </div>
+
+      {camposExtras.length > 0 && (
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <h3 className="text-sm font-semibold text-foreground">Campos adicionais do órgão</h3>
+          <CamposExtrasFields
+            campos={camposExtras}
+            valores={camposExtrasValores}
+            onChange={setCamposExtrasValores}
+            disabled={disabled}
+          />
+        </div>
+      )}
 
       {!disabled && (
         <div className="flex justify-end gap-2 pt-2">
