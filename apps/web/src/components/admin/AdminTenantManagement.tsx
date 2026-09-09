@@ -561,7 +561,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         </div>
         <button
           onClick={handleOpenCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white transition-all shadow-md"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-md"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Provisionar Novo Tenant</span>
@@ -629,7 +629,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
             <div className="flex items-center gap-2">
               <button
                 onClick={openBatchModal}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-all shadow-md"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-all shadow-md"
               >
                 <Zap className="w-3.5 h-3.5" />
                 Provisionar Módulo em Lote
@@ -682,7 +682,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         footer={
           <>
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" form="tenant-form" isLoading={saving} className="bg-amber-600 hover:bg-amber-500">
+            <Button type="submit" form="tenant-form" isLoading={saving}>
               {editingTenantId ? 'Salvar Configurações' : 'Provisionar Tenant'}
             </Button>
           </>
@@ -707,7 +707,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
                       onClick={handleLookupCnpj}
                       isLoading={cnpjLoading}
                       leftIcon={!cnpjLoading ? <Search className="w-3.5 h-3.5" /> : undefined}
-                      className="bg-blue-600 hover:bg-blue-500 shrink-0"
+                      className="shrink-0"
                     >
                       Consultar
                     </Button>
@@ -764,7 +764,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
                   {modules.filter((m) => m.alias !== 'dashboard').map((m) => {
                     const checked = formData.modules.includes(m.alias);
                     return (
-                      <label key={m.id} className={`flex items-start justify-between gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-amber-300'}`}>
+                      <label key={m.id} className={`flex items-start justify-between gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-primary bg-amber-50 dark:bg-amber-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-amber-300'}`}>
                         <span className="flex items-start gap-2">
                           <input type="checkbox" checked={checked} onChange={(e) => {
                             const next = e.target.checked
@@ -868,7 +868,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
 
             <div className="mb-4 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" /><span><strong>Escopo SYSTRAT:</strong> Visualização read-only. O CRUD é exclusivo do município.</span></div>
-              <button type="button" onClick={() => handleSeedTenantOrgChart(diagnosticTenant.id)} disabled={isSeedingOrgChart} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shrink-0 disabled:opacity-50">
+              <button type="button" onClick={() => handleSeedTenantOrgChart(diagnosticTenant.id)} disabled={isSeedingOrgChart} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all shrink-0 disabled:opacity-50">
                 <RefreshCw className={`w-3.5 h-3.5 ${isSeedingOrgChart ? 'animate-spin' : ''}`} />
                 {isSeedingOrgChart ? 'Semeando...' : 'Inicializar / Semear Organograma'}
               </button>
@@ -901,7 +901,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
                 <div className="py-16 text-center space-y-3">
                   <Landmark className="w-10 h-10 text-slate-400 mx-auto" />
                   <span className="block text-xs font-bold text-slate-700 dark:text-slate-300">Nenhuma unidade cadastrada.</span>
-                  <button type="button" onClick={() => handleSeedTenantOrgChart(diagnosticTenant.id)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition-all"><Plus className="w-4 h-4" />Inicializar Organograma Padrão</button>
+                  <button type="button" onClick={() => handleSeedTenantOrgChart(diagnosticTenant.id)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all"><Plus className="w-4 h-4" />Inicializar Organograma Padrão</button>
                 </div>
               )}
             </div>
@@ -919,7 +919,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         footer={
           <>
             <Button variant="outline" onClick={closeBatchModal}>Cancelar</Button>
-            <Button type="submit" form="batch-provision-form" isLoading={batchSaving} className="bg-amber-600 hover:bg-amber-500" leftIcon={!batchSaving ? <Zap className="w-3.5 h-3.5" /> : undefined}>
+            <Button type="submit" form="batch-provision-form" isLoading={batchSaving} leftIcon={!batchSaving ? <Zap className="w-3.5 h-3.5" /> : undefined}>
               Provisionar em Lote
             </Button>
           </>
@@ -1007,7 +1007,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         footer={
           <>
             <Button variant="outline" onClick={() => setOnboardingTenant(null)}>Cancelar</Button>
-            <Button type="submit" form="onboarding-form" isLoading={onboardingSaving} className="bg-amber-600 hover:bg-amber-500" leftIcon={!onboardingSaving ? <UserPlus className="w-3.5 h-3.5" /> : undefined}>
+            <Button type="submit" form="onboarding-form" isLoading={onboardingSaving} leftIcon={!onboardingSaving ? <UserPlus className="w-3.5 h-3.5" /> : undefined}>
               Criar Admin Inicial
             </Button>
           </>
@@ -1067,7 +1067,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         footer={
           <>
             <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancelar</Button>
-            <Button onClick={handleDeleteTenant} className="bg-rose-600 hover:bg-rose-500">Excluir Tenant</Button>
+            <Button onClick={handleDeleteTenant} variant="destructive">Excluir Tenant</Button>
           </>
         }
       >

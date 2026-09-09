@@ -118,7 +118,7 @@ Validação: ${hashValidacao}`;
             <button
               type="button"
               onClick={handlePrint}
-              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+              className="px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded flex items-center gap-1.5 transition cursor-pointer shadow-xs"
               title="Imprimir ou Salvar Dossiê em PDF"
             >
               <Printer className="w-4 h-4" />
@@ -469,7 +469,7 @@ Validação: ${hashValidacao}`;
             <button
               type="button"
               onClick={handlePrint}
-              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded flex items-center gap-1.5 transition cursor-pointer"
+              className="px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded flex items-center gap-1.5 transition cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Imprimir / Salvar PDF</span>

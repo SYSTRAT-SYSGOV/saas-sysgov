@@ -280,7 +280,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   value={searchQuery}
                   onChange={e => onSearchChange(e.target.value)}
                   placeholder="Conta, fonte, órgão..."
-                  className="w-full pl-3 pr-8 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
+                  className="w-full pl-3 pr-8 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-primary transition"
                 />
                 {searchQuery && (
                   <button
@@ -317,7 +317,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   onClick={() => setMode('anual')}
                   className={`px-2 py-1.5 rounded-sm text-[11px] font-mono font-bold uppercase transition cursor-pointer text-left border ${
                     activeMode === 'anual'
-                      ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                      ? 'bg-emerald-600 text-white border-primary shadow-xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
@@ -328,7 +328,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   onClick={() => setMode('trimestral')}
                   className={`px-2 py-1.5 rounded-sm text-[11px] font-mono font-bold uppercase transition cursor-pointer text-left border ${
                     activeMode === 'trimestral'
-                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
+                      ? 'bg-indigo-600 text-white border-primary shadow-xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
@@ -339,7 +339,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   onClick={() => setMode('mensal')}
                   className={`px-2 py-1.5 rounded-sm text-[11px] font-mono font-bold uppercase transition cursor-pointer text-left border ${
                     activeMode === 'mensal'
-                      ? 'bg-blue-600 text-white border-blue-500 shadow-xs'
+                      ? 'bg-blue-600 text-white border-primary shadow-xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
@@ -359,7 +359,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 <select
                   value={selectedQuarter}
                   onChange={e => onQuarterChange(parseInt(e.target.value, 10))}
-                  className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-800 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-indigo-500"
+                  className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-800 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-primary"
                 >
                   <option value={1}>1º Trimestre (Jan-Mar / Q1)</option>
                   <option value={2}>2º Trimestre (Abr-Jun / Q2)</option>
@@ -372,7 +372,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 <select
                   value={selectedMonth}
                   onChange={e => onMonthChange(parseInt(e.target.value, 10))}
-                  className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-800 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-blue-500"
+                  className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-800 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-primary"
                 >
                   <option value={8}>Agosto (Ago vs Jul)</option>
                   <option value={7}>Julho (Jul vs Jun)</option>
@@ -393,7 +393,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 <select
                   value={selectedPeriod}
                   onChange={e => onPeriodChange(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-800 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-emerald-500"
+                  className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-800 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-primary"
                 >
                   <option value="todos">Exercício Completo (Acumulado)</option>
                   <option value="b1">1º Bimestre (Jan-Fev)</option>
@@ -422,7 +422,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <select
                 value={selectedUnidade}
                 onChange={e => onUnidadeChange(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-800 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-emerald-500"
+                className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm text-slate-800 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-primary"
               >
                 <option value="todas">Consolidado Municipal (Todos os Órgãos)</option>
                 <option value="prefeitura">Prefeitura Municipal (Executivo)</option>
@@ -456,7 +456,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="px-4 py-1.5 rounded-sm text-xs font-mono font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition cursor-pointer"
+                className="px-4 py-1.5 rounded-sm text-xs font-mono font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition cursor-pointer"
               >
                 Aplicar e Fechar
               </button>

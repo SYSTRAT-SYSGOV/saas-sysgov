@@ -51,7 +51,7 @@ export function ScreenState({
         {errorAction && (
           <button
             onClick={errorAction.onClick}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition-colors"
           >
             {errorAction.label}
           </button>
@@ -68,7 +68,7 @@ export function ScreenState({
         {emptyAction && (
           <button
             onClick={emptyAction.onClick}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition-colors"
           >
             {emptyAction.label}
           </button>

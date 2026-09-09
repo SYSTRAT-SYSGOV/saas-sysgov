@@ -1106,7 +1106,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                         <>
                           <button
                             onClick={() => handleMarcarTomada(dec.id)}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xs text-xs font-mono font-bold transition cursor-pointer shadow-xs flex items-center gap-1"
+                            className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xs text-xs font-mono font-bold transition cursor-pointer shadow-xs flex items-center gap-1"
                             title="Registrar que o Prefeito tomou a decisão / assinou o ato"
                           >
                             <Check className="w-3.5 h-3.5" />
@@ -4177,7 +4177,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                           alert('Parametrização de alarmes e prazos legais salva com sucesso!');
                           setActiveModal(null);
                         }}
-                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xs transition cursor-pointer shadow-sm"
+                        className="px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xs transition cursor-pointer shadow-sm"
                       >
                         Salvar e Aplicar Parametrização
                       </button>
@@ -4213,7 +4213,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => window.print()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xs text-xs font-mono font-bold transition cursor-pointer shadow-xs"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xs text-xs font-mono font-bold transition cursor-pointer shadow-xs"
                       >
                         <Printer className="w-3.5 h-3.5" />
                         <span>Imprimir Livro Oficial (PDF)</span>
@@ -4274,7 +4274,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                       onClick={() => setLivroTab('pauta')}
                       className={`px-4 py-2 border-b-2 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                         livroTab === 'pauta'
-                          ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
+                          ? 'border-primary text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
                           : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
@@ -4289,7 +4289,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                       onClick={() => setLivroTab('livro')}
                       className={`px-4 py-2 border-b-2 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                         livroTab === 'livro'
-                          ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
+                          ? 'border-primary text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
                           : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
@@ -4301,7 +4301,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                       onClick={() => setLivroTab('indicadores')}
                       className={`px-4 py-2 border-b-2 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                         livroTab === 'indicadores'
-                          ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
+                          ? 'border-primary text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
                           : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
@@ -4313,7 +4313,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                       onClick={() => setLivroTab('arquivo')}
                       className={`px-4 py-2 border-b-2 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                         livroTab === 'arquivo'
-                          ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
+                          ? 'border-primary text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
                           : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
@@ -4476,7 +4476,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                                             setDespachoModalItem(dec);
                                             setCustomDespachoTexto(dec.acaoSugerida || 'Autorizo a realização das medidas cabíveis pelo órgão competente.');
                                           }}
-                                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xs text-xs font-mono font-bold transition cursor-pointer shadow-xs flex items-center gap-1"
+                                          className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xs text-xs font-mono font-bold transition cursor-pointer shadow-xs flex items-center gap-1"
                                         >
                                           <Check className="w-3.5 h-3.5" />
                                           <span>Despachar Pauta</span>
@@ -4577,7 +4577,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                                   <h5 className="text-xs font-bold text-slate-900 dark:text-white">{item.titulo}</h5>
                                 </div>
 
-                                <div className="p-3 bg-slate-50 dark:bg-slate-900/60 border-l-3 border-emerald-500 rounded-r-xs text-xs font-mono text-slate-800 dark:text-slate-200">
+                                <div className="p-3 bg-slate-50 dark:bg-slate-900/60 border-l-3 border-primary rounded-r-xs text-xs font-mono text-slate-800 dark:text-slate-200">
                                   <strong className="block text-emerald-700 dark:text-emerald-400 text-[10px] uppercase mb-1">
                                     Teor do Despacho do Prefeito:
                                   </strong>
@@ -4863,7 +4863,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                               setDecisoesList(updated);
                               setDespachoModalItem(null);
                             }}
-                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xs text-xs font-mono font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                            className="px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xs text-xs font-mono font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5"
                           >
                             <Check className="w-3.5 h-3.5" />
                             <span>Assinar & Homologar Despacho</span>
@@ -5146,7 +5146,7 @@ export const PainelDoPrefeito: React.FC<PainelDoPrefeitoProps> = ({
                 </button>
                 <button
                   onClick={() => setActiveModal(null)}
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xs transition cursor-pointer"
+                  className="px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xs transition cursor-pointer"
                 >
                   Fechar
                 </button>

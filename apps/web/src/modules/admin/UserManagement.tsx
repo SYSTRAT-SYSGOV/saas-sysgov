@@ -148,7 +148,7 @@ export const UserManagement: React.FC = () => {
             Equipe da plataforma: super_admin, admin_ops e suporte.
           </p>
         </div>
-        <Button onClick={() => { setEditingUser(null); setModalOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700" leftIcon={<Plus className="w-4 h-4" />}>
+        <Button onClick={() => { setEditingUser(null); setModalOpen(true); }} leftIcon={<Plus className="w-4 h-4" />}>
           Novo Usuário
         </Button>
       </div>
@@ -350,7 +350,7 @@ const UserFormModal: React.FC<{
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" form="user-form" isLoading={saving} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button type="submit" form="user-form" isLoading={saving}>
             {user ? 'Atualizar' : 'Criar'}
           </Button>
         </>
