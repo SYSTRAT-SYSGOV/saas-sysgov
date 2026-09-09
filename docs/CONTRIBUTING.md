@@ -10,6 +10,7 @@ Este documento descreve o fluxo oficial e padronizado para criação, registro, 
 - **Frontend (`apps/web-client`)**: App Shell React 19 + TypeScript + Tailwind CSS com roteamento dinâmico orientado a metadados via `MODULE_REGISTRY`.
 - **SDK Compartilhado (`packages/sdk`)**: Contratos modulares isolados em `packages/sdk/src/modules/{alias}` para evitar colisões com o núcleo.
 - **Padrão Visual Estrito**: Dados técnicos e numéricos (R$, %, CNPJ, CPF, datas, códigos) obrigatoriamente formatados com `JetBrains Mono` (`font-mono tabular-nums`). Cores e tokens extraídos unicamente de `DESIGN_SYSTEM.md`.
+- **Case de pastas PHP igual ao namespace**: em `apps/api`, o caminho de qualquer arquivo PHP (incluindo maiúsculas/minúsculas) deve bater exatamente com o namespace declarado nele — ex.: `Database\Seeders\FooSeeder` mora em `database/Seeders/FooSeeder.php`, nunca `database/seeders/`. Isso importa porque filesystems case-insensitive (Windows, macOS padrão) deixam passar uma pasta com case errado sem erro nenhum, mas o autoload do Composer quebra silenciosamente em produção/CI (Linux) — a classe some do autoload sem exception nenhuma até alguém tentar usá-la. **Não dependa só de revisão visual**: rode `composer dump-autoload --optimize --strict-psr` em `apps/api` (o CI já faz isso a cada push/PR) — ele falha o build se qualquer classe tiver esse tipo de divergência.
 
 ---
 

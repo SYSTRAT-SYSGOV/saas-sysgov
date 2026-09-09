@@ -189,6 +189,18 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Tailwind v4 não define mais um border-color padrão via preflight
+     (diferente do v3) — sem isso, qualquer classe "border"/"border-b"/
+     "border-t" sem cor explícita herda `currentColor` (a cor do texto
+     do elemento) em vez do token --color-border, deixando bordas
+     "genéricas" (como as do Dialog/Modal de @sysgov/ui) bem mais
+     claras/contrastadas do que deveriam. Regra padrão do setup
+     shadcn/Tailwind v4. */
+  *, ::before, ::after {
+    border-color: var(--color-border, currentColor);
+    outline-color: var(--color-ring, currentColor);
+  }
+
   /* ==========================================================================
      Títulos do Sistema: Cor Oficial #0c326f e BOLD (700) Obrigatório
      ========================================================================== */

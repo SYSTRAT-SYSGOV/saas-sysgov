@@ -21,3 +21,27 @@ Esta pasta concentra arquivos de configuração por ambiente e documentação de
 - `api`: aplicação Laravel (porta 8000), depende de `mysql` e `redis`.
 - `mysql`: MySQL 8.4 (porta 3306, volume `sysgov-mysql`).
 - `redis`: Redis 7 (porta 6379), usado para cache e filas quando `QUEUE_CONNECTION=redis`.
+
+## Atualizando o ambiente local a partir do git
+
+Depois de um `git pull` (schema novo, módulo novo no catálogo, etc.), o
+fluxo padrão é só subir o compose de novo — **não precisa rodar
+`migrate`/`db:seed` na mão**:
+
+```bash
+docker compose -f Docker-compose.yml up -d --build
+```
+
+O `docker-entrypoint.sh` do serviço `api` roda, nessa ordem, toda vez
+que o container inicia:
+1. Espera o MySQL aceitar conexões.
+2. `php artisan migrate --force`.
+3. `php artisan db:seed --force` (`DatabaseSeeder` chama `ModuleCatalogSeeder`
+   e `RbacSeeder`).
+
+Isso é seguro de repetir a cada subida porque os seeders usam
+`updateOrCreate` — não duplicam nem resetam dados existentes (ex.: os
+módulos que você já habilitou pra um tenant continuam como estavam).
+Se um `git pull` trouxe uma migration nova ou um módulo novo no
+catálogo, ele é aplicado automaticamente; se não trouxe, os comandos
+rodam e não fazem nada (`Nothing to migrate.`).

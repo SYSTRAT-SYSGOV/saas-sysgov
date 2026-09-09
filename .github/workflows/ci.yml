@@ -47,23 +47,15 @@ jobs:
     env:
       APP_ENV: testing
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-      DB_CONNECTION: mysql
-      DB_HOST: 127.0.0.1
-      DB_PORT: 3306
-      DB_DATABASE: sysgov_test
-      DB_USERNAME: sysgov
-      DB_PASSWORD: secret
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_DATABASE: sysgov_test
-          MYSQL_USER: sysgov
-          MYSQL_PASSWORD: secret
-          MYSQL_ROOT_PASSWORD: root
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping -h 127.0.0.1 -usysgov -psecret" --health-interval=10s --health-timeout=5s --health-retries=10
+      # Tests/Concerns/GuardAgainstRealDatabase.php bloqueia qualquer suíte que
+      # não esteja em sqlite/:memory: — não sobrescreva DB_CONNECTION/DB_HOST/etc
+      # aqui pro job inteiro. Isso já existiu com DB_CONNECTION=mysql apontando
+      # pro service container abaixo, sobrepondo o <env> sqlite do phpunit.xml
+      # (env real do processo vence o <env> do phpunit.xml) e derrubando os 176
+      # testes com 'BLOQUEADO: os testes estão apontando para o banco MYSQL' —
+      # só não tinha aparecido porque o PHPStan sempre falhava antes e barrava
+      # o job. Nada neste pipeline (composer, phpstan, phpunit em sqlite) precisa
+      # de um MySQL real, então o service container foi removido também.
     defaults:
       run:
         working-directory: apps/api
@@ -72,10 +64,17 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          extensions: mbstring, pdo_mysql
+          extensions: mbstring, pdo_mysql, pdo_sqlite
           coverage: none
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist
+      - name: Check PSR-4 autoload case consistency
+        # Pega divergências de case entre namespace e pasta (ex.: database/seeders
+        # vs Database\Seeders) que passam despercebidas em filesystem
+        # case-insensitive (Windows/macOS) mas quebram silenciosamente em
+        # produção/CI (Linux) — o composer aqui roda com --optimize e --strict-psr
+        # justamente pra falhar o build em vez de deixar a classe sumir do autoload.
+        run: composer dump-autoload --optimize --strict-psr
       - name: Check PHP syntax
         run: Get-ChildItem app,Modules -Recurse -Filter *.php | ForEach-Object { php -l $_.FullName }
         shell: pwsh

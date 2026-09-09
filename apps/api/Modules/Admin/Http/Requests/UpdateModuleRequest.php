@@ -15,6 +15,7 @@ final class UpdateModuleRequest extends FormRequest
         return Gate::allows('update', $this->route('module'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         $module = $this->route('module');

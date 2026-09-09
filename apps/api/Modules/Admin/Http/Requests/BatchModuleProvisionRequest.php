@@ -13,6 +13,7 @@ final class BatchModuleProvisionRequest extends FormRequest
         return (bool) $this->user()?->is_platform_admin;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

@@ -15,6 +15,7 @@ final class StoreModuleRequest extends FormRequest
         return Gate::allows('create', \Modules\Admin\Models\Module::class);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
