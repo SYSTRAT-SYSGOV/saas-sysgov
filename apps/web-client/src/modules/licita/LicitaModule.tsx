@@ -11,7 +11,7 @@ import { ProcessoFormModal } from './components/ProcessoFormModal';
 import { DfdDetailPage } from './pages/DfdDetailPage';
 import { LegislacaoPage } from './pages/LegislacaoPage';
 import { CamposConfiguracaoPage } from './pages/CamposConfiguracaoPage';
-import { gerarDfdPdf } from './utils/gerarDfdPdf';
+import { abrirJanelaPdf, gerarDfdPdf } from './utils/gerarDfdPdf';
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
@@ -59,6 +59,16 @@ const ProcessosTab: React.FC<{
 
   const handleGerarPdf = useCallback(
     async (processoId: number) => {
+      // Precisa abrir a janela AQUI, síncrono, ainda dentro do clique — se
+      // abrirmos só depois do await abaixo, o navegador já não reconhece
+      // como resposta direta a um gesto do usuário e bloqueia o popup
+      // silenciosamente (fica só uma aba em branco, sem aviso nenhum).
+      const janela = abrirJanelaPdf();
+      if (!janela) {
+        setPdfError('O navegador bloqueou a aba do PDF. Permita pop-ups para este site e tente novamente.');
+        return;
+      }
+
       setGerandoPdfId(processoId);
       setPdfError(null);
       try {
@@ -66,8 +76,9 @@ const ProcessosTab: React.FC<{
           sysgovApi.licita.getProcesso(processoId),
           sysgovApi.licita.getCamposConfiguracao('dfd').catch(() => null),
         ]);
-        gerarDfdPdf(processoCompleto, tenant?.name ?? '', config?.campos ?? []);
+        gerarDfdPdf(janela, processoCompleto, tenant?.name ?? '', config?.campos ?? []);
       } catch (err: any) {
+        janela.close();
         setPdfError(err?.response?.data?.error || err?.message || 'Erro ao gerar o PDF do DFD.');
       } finally {
         setGerandoPdfId(null);

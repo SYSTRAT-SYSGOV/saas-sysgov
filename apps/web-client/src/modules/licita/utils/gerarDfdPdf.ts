@@ -54,15 +54,30 @@ function formatarValorCampoExtra(campo: CampoConfig, valor: unknown): string {
 }
 
 /**
- * Monta o HTML de impressão de um DFD e abre a caixa de diálogo de
- * impressão do navegador (o usuário escolhe "Salvar como PDF") — mesma
- * estratégia já usada em outros relatórios do SYSGOV (ex.:
- * RelatorioConsolidadoModal no Admin Suite), sem exigir biblioteca de
- * geração de PDF no backend.
+ * Abre a aba de destino do PDF — precisa ser chamado de forma SÍNCRONA
+ * dentro do handler de clique (antes de qualquer await), senão o
+ * navegador não associa o `window.open` ao gesto do usuário e bloqueia o
+ * popup silenciosamente (fica só uma aba em branco). Os dados do DFD são
+ * buscados depois, de forma assíncrona, e escritos nessa janela já aberta
+ * por `gerarDfdPdf`.
  */
-export function gerarDfdPdf(processo: Processo, tenantNome: string, camposConfig: CampoConfig[] = []): void {
+export function abrirJanelaPdf(): Window | null {
+  return window.open('', '_blank', 'noopener,noreferrer');
+}
+
+/**
+ * Monta o HTML de impressão de um DFD e escreve na janela já aberta
+ * (ver `abrirJanelaPdf`), disparando a caixa de diálogo de impressão do
+ * navegador (o usuário escolhe "Salvar como PDF") — mesma estratégia já
+ * usada em outros relatórios do SYSGOV (ex.: RelatorioConsolidadoModal
+ * no Admin Suite), sem exigir biblioteca de geração de PDF no backend.
+ */
+export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: string, camposConfig: CampoConfig[] = []): void {
   const dfd = processo.dfd;
-  if (!dfd) return;
+  if (!dfd) {
+    janela.close();
+    return;
+  }
 
   const equipe = dfd.equipe_planejamento ?? [];
   const camposOrdenados = [...camposConfig].sort((a, b) => a.ordem - b.ordem);
@@ -166,9 +181,6 @@ export function gerarDfdPdf(processo: Processo, tenantNome: string, camposConfig
   </footer>
 </body>
 </html>`;
-
-  const janela = window.open('', '_blank', 'noopener,noreferrer');
-  if (!janela) return;
 
   janela.document.open();
   janela.document.write(html);
