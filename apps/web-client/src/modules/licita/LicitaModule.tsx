@@ -131,11 +131,13 @@ const ProcessosTab: React.FC<{
       {
         id: 'fase_atual',
         header: 'Fase Atual',
+        size: 130,
         cell: ({ row }) => <StatusChip label={FASE_LABEL[row.original.fase_atual]} variant="primary" />,
       },
       {
         id: 'dfd_status',
         header: 'Status do DFD',
+        size: 150,
         cell: ({ row }) => {
           const dfd = row.original.dfd;
           if (!dfd) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
@@ -145,6 +147,7 @@ const ProcessosTab: React.FC<{
       {
         id: 'created_at',
         header: 'Criado em',
+        size: 110,
         cell: ({ row }) => (
           <span className="font-mono text-xs tabular-nums text-muted-foreground">
             {new Date(row.original.created_at).toLocaleDateString('pt-BR')}
@@ -154,6 +157,7 @@ const ProcessosTab: React.FC<{
       {
         id: 'acoes',
         header: '',
+        size: 90,
         cell: ({ row }) => {
           const dfd = row.original.dfd;
           if (!dfd) return null;
@@ -218,6 +222,7 @@ const ProcessosTab: React.FC<{
               emptyText="Nenhum processo encontrado."
               pageSize={10}
               onRowClick={(row) => onOpenProcesso(row.id)}
+              fixedLayout
             />
           )}
         </div>

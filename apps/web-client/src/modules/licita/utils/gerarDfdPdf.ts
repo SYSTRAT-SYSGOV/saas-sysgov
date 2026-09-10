@@ -175,7 +175,6 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
 
   ${camposComValor.length > 0 ? `
   <section>
-    <h2>5. Campos Adicionais do Órgão</h2>
     ${camposComValor.map((c) => `
       <div class="campo">
         <span class="label">${escapeHtml(c.label)}</span>
