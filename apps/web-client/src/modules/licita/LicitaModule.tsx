@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useAuth } from '@/core/auth/useAuth';
-import { Plus, Gavel, Search, BookOpen, Settings2 } from 'lucide-react';
+import { Plus, Gavel, Search, BookOpen, Settings2, FileDown } from 'lucide-react';
 import { Button, Card } from '@sysgov/ui';
 import { PageHeader, DataTable, EmptyState, SearchInput, StatusChip, ScreenState } from '@/components/ui';
 import { sysgovApi, type FaseLicita, type Processo, type StatusDfd } from '@sysgov/sdk';
@@ -11,6 +11,7 @@ import { ProcessoFormModal } from './components/ProcessoFormModal';
 import { DfdDetailPage } from './pages/DfdDetailPage';
 import { LegislacaoPage } from './pages/LegislacaoPage';
 import { CamposConfiguracaoPage } from './pages/CamposConfiguracaoPage';
+import { gerarDfdPdf } from './utils/gerarDfdPdf';
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
@@ -53,6 +54,27 @@ const ProcessosTab: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [gerandoPdfId, setGerandoPdfId] = useState<number | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  const handleGerarPdf = useCallback(
+    async (processoId: number) => {
+      setGerandoPdfId(processoId);
+      setPdfError(null);
+      try {
+        const [processoCompleto, config] = await Promise.all([
+          sysgovApi.licita.getProcesso(processoId),
+          sysgovApi.licita.getCamposConfiguracao('dfd').catch(() => null),
+        ]);
+        gerarDfdPdf(processoCompleto, tenant?.name ?? '', config?.campos ?? []);
+      } catch (err: any) {
+        setPdfError(err?.response?.data?.error || err?.message || 'Erro ao gerar o PDF do DFD.');
+      } finally {
+        setGerandoPdfId(null);
+      }
+    },
+    [tenant?.name],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,8 +140,32 @@ const ProcessosTab: React.FC<{
           </span>
         ),
       },
+      {
+        id: 'acoes',
+        header: '',
+        cell: ({ row }) => {
+          const dfd = row.original.dfd;
+          if (!dfd) return null;
+          const gerando = gerandoPdfId === row.original.id;
+          return (
+            <Button
+              size="sm"
+              variant="outline"
+              title="Baixar PDF do DFD"
+              isLoading={gerando}
+              leftIcon={!gerando ? <FileDown className="h-3.5 w-3.5" /> : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleGerarPdf(row.original.id);
+              }}
+            >
+              PDF
+            </Button>
+          );
+        },
+      },
     ],
-    [],
+    [gerandoPdfId, handleGerarPdf],
   );
 
   if (loading) return <ScreenState type="loading" title="Carregando processos..." />;
@@ -134,6 +180,12 @@ const ProcessosTab: React.FC<{
           Novo Processo
         </Button>
       </div>
+
+      {pdfError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {pdfError}
+        </div>
+      )}
 
       <Card className="gap-0 py-0">
         <div className="p-3 border-b border-border">
