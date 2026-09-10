@@ -61,7 +61,15 @@ const RichTextEditorInner: React.FC<RichTextEditorProps> = ({
         init={{
           height: minHeight,
           menubar: false,
-          statusbar: false,
+          // A barra de status precisa ficar ligada — é ela que carrega a
+          // alcinha de redimensionar no canto inferior direito. `resize:
+          // true` (o padrão) limita o arrasto só à altura, igual a um
+          // <textarea> comum; `elementpath`/`branding` desligados porque
+          // não usamos e só ocupariam espaço nessa barra.
+          statusbar: true,
+          elementpath: false,
+          branding: false,
+          resize: true,
           placeholder,
           plugins: ['lists', 'link', 'table', 'code'],
           toolbar:
