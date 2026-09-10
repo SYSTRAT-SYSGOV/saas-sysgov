@@ -10,9 +10,6 @@ interface ProcessoFormModalProps {
 }
 
 export const ProcessoFormModal: React.FC<ProcessoFormModalProps> = ({ open, onClose, onCreated }) => {
-  const anoAtual = new Date().getFullYear();
-  const [numero, setNumero] = useState('');
-  const [ano, setAno] = useState(anoAtual);
   const [objeto, setObjeto] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,9 +19,10 @@ export const ProcessoFormModal: React.FC<ProcessoFormModalProps> = ({ open, onCl
     setError(null);
     setSaving(true);
     try {
-      const processo = await sysgovApi.licita.createProcesso({ numero, ano, objeto: objeto || null });
+      // Número e ano são gerados pelo backend (ano corrente, sequencial) —
+      // o usuário só informa o objeto preliminar.
+      const processo = await sysgovApi.licita.createProcesso({ objeto: objeto || null });
       onCreated(processo);
-      setNumero('');
       setObjeto('');
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || 'Erro ao criar processo.');
@@ -42,35 +40,14 @@ export const ProcessoFormModal: React.FC<ProcessoFormModalProps> = ({ open, onCl
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Número *</label>
-            <input
-              required
-              type="text"
-              value={numero}
-              onChange={(e) => setNumero(e.target.value)}
-              placeholder="Ex.: 01"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Ano *</label>
-            <input
-              required
-              type="number"
-              min={2000}
-              max={2100}
-              value={ano}
-              onChange={(e) => setAno(Number(e.target.value))}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          O número do processo e o ano são gerados automaticamente pelo sistema — só o objeto preliminar precisa ser informado aqui (pode ser refinado depois, no DFD).
+        </p>
 
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">Objeto (preliminar)</label>
           <textarea
+            autoFocus
             value={objeto}
             onChange={(e) => setObjeto(e.target.value)}
             rows={2}

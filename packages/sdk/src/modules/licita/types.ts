@@ -129,9 +129,11 @@ export interface Processo {
   updated_at: string;
 }
 
+/**
+ * Número e ano são gerados automaticamente pelo backend (ano corrente,
+ * número sequencial) — o usuário só informa o objeto preliminar.
+ */
 export interface CreateProcessoInput {
-  numero: string;
-  ano: number;
   objeto?: string | null;
 }
 

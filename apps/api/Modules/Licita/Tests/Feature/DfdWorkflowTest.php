@@ -23,7 +23,8 @@ final class DfdWorkflowTest extends TestCase
 
     private function criarProcesso(User $elaborador): Processo
     {
-        return app(ProcessoService::class)->criar(['numero' => '01', 'ano' => 2026, 'objeto' => null], $elaborador);
+        // Número e ano são gerados automaticamente pelo serviço.
+        return app(ProcessoService::class)->criar(['objeto' => null], $elaborador);
     }
 
     /**
