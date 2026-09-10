@@ -120,6 +120,49 @@ final class DfdWorkflowTest extends TestCase
         $dfdService->atualizar($dfd, ['objeto' => 'Tentativa de alteração pós-aprovação'], $elaborador);
     }
 
+    public function test_dfd_rejeitado_pode_ser_reaberto_editado_e_reenviado_ate_aprovar(): void
+    {
+        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        $dfdService = app(DfdService::class);
+        $dfd = $dfdService->criar($processo, $this->dadosDfd(), $elaborador);
+        $dfd = $dfdService->enviarParaRevisao($dfd, $elaborador);
+        $dfd = $dfdService->rejeitar($dfd, $aprovador, 'Faltou detalhar o valor estimado.');
+        self::assertSame(StatusDfd::Rejeitado, $dfd->statusEnum());
+
+        // Sem reabrir, não há como voltar direto pra revisão (RN-002).
+        try {
+            $dfdService->enviarParaRevisao($dfd, $elaborador);
+            self::fail('Deveria ter lançado DomainException ao tentar enviar direto de rejeitado para revisão.');
+        } catch (DomainException $e) {
+            self::assertStringContainsString('Transição inválida', $e->getMessage());
+        }
+
+        $dfd = $dfdService->reabrir($dfd, $elaborador);
+        self::assertSame(StatusDfd::Rascunho, $dfd->statusEnum());
+
+        $dfd = $dfdService->atualizar($dfd, ['objeto' => 'Objeto complementado após reabertura.'], $elaborador);
+        $dfd = $dfdService->enviarParaRevisao($dfd, $elaborador);
+        $dfd = $dfdService->aprovar($dfd, $aprovador);
+
+        self::assertSame(StatusDfd::Aprovado, $dfd->statusEnum());
+        self::assertSame('reaberto', $dfd->versoes()->orderBy('versao')->skip(3)->first()->acao);
+    }
+
+    public function test_reabrir_so_permitido_quando_status_e_rejeitado(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        $dfdService = app(DfdService::class);
+        $dfd = $dfdService->criar($processo, $this->dadosDfd(), $elaborador);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Transição inválida');
+        $dfdService->reabrir($dfd, $elaborador);
+    }
+
     public function test_versionamento_incrementa_a_cada_transicao(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();

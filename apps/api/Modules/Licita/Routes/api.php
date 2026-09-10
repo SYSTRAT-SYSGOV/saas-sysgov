@@ -16,6 +16,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::post('/processos/{processoId}/dfd', [DfdController::class, 'store']);
     Route::get('/dfds/{id}', [DfdController::class, 'show']);
     Route::put('/dfds/{id}', [DfdController::class, 'update']);
+    Route::post('/dfds/{id}/reabrir', [DfdController::class, 'reabrir']);
     Route::post('/dfds/{id}/enviar-revisao', [DfdController::class, 'enviarRevisao']);
     Route::post('/dfds/{id}/aprovar', [DfdController::class, 'aprovar']);
     Route::post('/dfds/{id}/rejeitar', [DfdController::class, 'rejeitar']);

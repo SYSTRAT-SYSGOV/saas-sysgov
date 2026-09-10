@@ -100,6 +100,28 @@ final class DfdService
         });
     }
 
+    /**
+     * Reabre um DFD rejeitado para edição (RN-002: rejeitado -> rascunho).
+     * Sem isso, um DFD rejeitado ficaria travado para sempre — editável em
+     * conteúdo (RN de atualizar já permite), mas sem caminho de volta para
+     * "Enviar para Revisão" (que só sai de rascunho).
+     */
+    public function reabrir(Dfd $dfd, User $user): Dfd
+    {
+        $this->validarTransicao($dfd, StatusDfd::Rascunho);
+
+        return DB::transaction(function () use ($dfd, $user): Dfd {
+            $dfd->update(['status' => StatusDfd::Rascunho->value]);
+            $dfd->refresh();
+
+            $this->registrarVersao($dfd, 'reaberto', $user);
+            $this->audit->record('licita', 'dfd.reaberto', "Dfd #{$dfd->id}", null, null);
+            $this->outbox->publish('licita.DfdReaberto', ['id' => $dfd->id]);
+
+            return $dfd->load(['elaborador', 'aprovador', 'versoes.usuario']);
+        });
+    }
+
     public function enviarParaRevisao(Dfd $dfd, User $user, ?string $mensagem = null): Dfd
     {
         $this->validarTransicao($dfd, StatusDfd::EmRevisao);

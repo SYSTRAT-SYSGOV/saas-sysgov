@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button } from '@sysgov/ui';
 import { StatusChip, PageHeader, ScreenState } from '@/components/ui';
-import { ArrowLeft, FileText, CheckCircle2, XCircle, Send } from 'lucide-react';
+import { ArrowLeft, FileText, CheckCircle2, XCircle, Send, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/core/auth/useAuth';
 import { useCan } from '@/core/rbac/useCan';
 import { sysgovApi, type CampoConfig, type CreateDfdInput, type Dfd, type Processo, type StatusDfd } from '@sysgov/sdk';
@@ -27,6 +27,7 @@ const ACAO_LABEL: Record<string, string> = {
   enviado_revisao: 'Enviado para revisão',
   aprovado: 'Aprovado',
   rejeitado: 'Rejeitado',
+  reaberto: 'Reaberto para edição',
 };
 
 interface DfdDetailPageProps {
@@ -199,6 +200,17 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
                 <span className="text-xs text-muted-foreground italic">
                   Aguardando aprovação de outro responsável (segregação de funções).
                 </span>
+              )}
+              {dfd.status === 'rejeitado' && can('licita.update') && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                  isLoading={actionLoading}
+                  onClick={() => runAction(() => sysgovApi.licita.reabrirDfd(dfd.id))}
+                >
+                  Reabrir para Edição
+                </Button>
               )}
             </div>
           </div>

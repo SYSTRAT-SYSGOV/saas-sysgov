@@ -75,6 +75,20 @@ final class DfdController extends Controller
         return response()->json($dfd);
     }
 
+    public function reabrir(Request $request, int $id): JsonResponse
+    {
+        $dfd = Dfd::findOrFail($id);
+        $this->authorize('reabrir', $dfd);
+
+        try {
+            $dfd = $this->dfds->reabrir($dfd, $request->user());
+        } catch (DomainException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        return response()->json($dfd);
+    }
+
     public function aprovar(Request $request, int $id): JsonResponse
     {
         $dfd = Dfd::findOrFail($id);

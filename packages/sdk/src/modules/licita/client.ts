@@ -52,6 +52,10 @@ export class LicitaModuleClient implements BaseModuleClient {
     return this.api.request(`/licita/dfds/${id}`, { method: 'PUT', body: JSON.stringify(input) });
   }
 
+  async reabrirDfd(id: number): Promise<Dfd> {
+    return this.api.request(`/licita/dfds/${id}/reabrir`, { method: 'POST' });
+  }
+
   async enviarDfdParaRevisao(id: number, mensagem?: string): Promise<Dfd> {
     return this.api.request(`/licita/dfds/${id}/enviar-revisao`, {
       method: 'POST',
