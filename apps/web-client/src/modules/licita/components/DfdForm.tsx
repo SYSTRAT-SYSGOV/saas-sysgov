@@ -221,15 +221,17 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
       </div>
 
       {camposExtras.length > 0 && (
-        <div className="space-y-4 rounded-lg border border-border p-4">
-          <h3 className="text-sm font-semibold text-foreground">Campos adicionais do órgão</h3>
-          <CamposExtrasFields
-            campos={camposExtras}
-            valores={camposExtrasValores}
-            onChange={setCamposExtrasValores}
-            disabled={disabled}
-          />
-        </div>
+        // Sem título de seção aqui de propósito: esses campos não são "extras
+        // do órgão" — são os campos que o próprio órgão define e nomeia em
+        // Campos por Tipo de Documento, então já aparecem com o rótulo que
+        // ele escolheu (ver CamposExtrasFields), como qualquer outro campo
+        // do formulário.
+        <CamposExtrasFields
+          campos={camposExtras}
+          valores={camposExtrasValores}
+          onChange={setCamposExtrasValores}
+          disabled={disabled}
+        />
       )}
 
       {!disabled && (
