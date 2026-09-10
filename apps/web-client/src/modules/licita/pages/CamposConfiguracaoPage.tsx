@@ -5,6 +5,7 @@ import { Settings2, Plus, Trash2, GripVertical, Sparkles } from 'lucide-react';
 import { useCan } from '@/core/rbac/useCan';
 import { sysgovApi, type CampoConfig, type FaseLicita, type TipoCampoConfiguravel } from '@sysgov/sdk';
 import { CAMPOS_SUGERIDOS } from '../constants/camposSugeridos';
+import { slugify } from '../utils/slugify';
 
 const TIPO_DOCUMENTO_OPTIONS: { value: FaseLicita; label: string; disponivel: boolean }[] = [
   { value: 'dfd', label: 'DFD', disponivel: true },
@@ -24,12 +25,23 @@ const TIPO_CAMPO_OPTIONS: { value: TipoCampoConfiguravel; label: string }[] = [
   { value: 'selecao', label: 'Seleção (opções)' },
 ];
 
-const novoCampo = (ordem: number): CampoConfig => ({
+/**
+ * `_auto` (só existe em memória, nunca é enviado ao backend): enquanto
+ * true, a "Chave" é derivada automaticamente do Rótulo a cada tecla —
+ * assim que o usuário edita a Chave diretamente, essa trava é
+ * desligada e a edição manual passa a valer. Campos já carregados do
+ * servidor nunca entram em modo automático (evita re-gerar a chave de
+ * um campo que documentos antigos já usam).
+ */
+type CampoEditavel = CampoConfig & { _auto?: boolean };
+
+const novoCampo = (ordem: number): CampoEditavel => ({
   key: '',
   label: '',
   tipo: 'texto',
   obrigatorio: false,
   ordem,
+  _auto: true,
 });
 
 /**
@@ -43,7 +55,7 @@ export const CamposConfiguracaoPage: React.FC = () => {
   const { can } = useCan();
   const podeGerenciar = can('licita.campos.manage');
   const [tipoDocumento, setTipoDocumento] = useState<FaseLicita>('dfd');
-  const [campos, setCampos] = useState<CampoConfig[]>([]);
+  const [campos, setCampos] = useState<CampoEditavel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -70,8 +82,22 @@ export const CamposConfiguracaoPage: React.FC = () => {
     load(tipoDocumento);
   }, [tipoDocumento, load]);
 
-  const updateCampo = (index: number, patch: Partial<CampoConfig>) => {
-    setCampos((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  const updateCampo = (index: number, patch: Partial<CampoEditavel>) => {
+    setCampos((prev) =>
+      prev.map((c, i) => {
+        if (i !== index) return c;
+        if ('key' in patch) {
+          // Usuário editou a chave com a própria mão — respeita e para de
+          // regerá-la a partir do rótulo daqui pra frente.
+          return { ...c, ...patch, _auto: false };
+        }
+        const atualizado = { ...c, ...patch };
+        if ('label' in patch && c._auto) {
+          atualizado.key = slugify(atualizado.label);
+        }
+        return atualizado;
+      }),
+    );
   };
 
   const removeCampo = (index: number) => {
@@ -93,7 +119,10 @@ export const CamposConfiguracaoPage: React.FC = () => {
   );
 
   const addSugestao = (sugestao: Omit<CampoConfig, 'ordem'>) => {
-    setCampos((prev) => [...prev, { ...sugestao, ordem: prev.length }]);
+    // _auto: false — a sugestão já vem com uma chave definida deliberadamente
+    // (ex.: "valor_estimado_referencia"), então editar o rótulo depois não a
+    // sobrescreve; só muda se o usuário editar a chave manualmente.
+    setCampos((prev) => [...prev, { ...sugestao, ordem: prev.length, _auto: false }]);
   };
 
   const handleSave = async () => {
@@ -101,7 +130,9 @@ export const CamposConfiguracaoPage: React.FC = () => {
     setSaveError(null);
     setSaved(false);
     try {
-      const config = await sysgovApi.licita.salvarCamposConfiguracao(tipoDocumento, campos);
+      // _auto é só controle local do formulário — não faz parte do schema salvo.
+      const payload = campos.map(({ _auto, ...campo }) => campo);
+      const config = await sysgovApi.licita.salvarCamposConfiguracao(tipoDocumento, payload);
       setCampos(config.campos ?? []);
       setSaved(true);
     } catch (err: any) {
@@ -181,19 +212,26 @@ export const CamposConfiguracaoPage: React.FC = () => {
                       <input
                         type="text"
                         disabled={!podeGerenciar}
-                        placeholder="Chave (ex.: base_legal_municipal)"
-                        value={campo.key}
-                        onChange={(e) => updateCampo(index, { key: e.target.value })}
-                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                      <input
-                        type="text"
-                        disabled={!podeGerenciar}
-                        placeholder="Rótulo exibido ao usuário"
+                        placeholder="Rótulo exibido ao usuário (ex.: Base Legal Municipal Aplicável)"
                         value={campo.label}
                         onChange={(e) => updateCampo(index, { label: e.target.value })}
                         className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
                       />
+                      <div>
+                        <input
+                          type="text"
+                          disabled={!podeGerenciar}
+                          placeholder="Chave — gerada automaticamente"
+                          value={campo.key}
+                          onChange={(e) => updateCampo(index, { key: e.target.value })}
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        {campo._auto && (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Gerada a partir do rótulo — edite aqui se quiser outra.
+                          </p>
+                        )}
+                      </div>
                       <Select
                         value={campo.tipo}
                         onChange={(v) => updateCampo(index, { tipo: v as TipoCampoConfiguravel })}
