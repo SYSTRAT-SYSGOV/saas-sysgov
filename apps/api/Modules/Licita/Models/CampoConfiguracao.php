@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $id
  * @property int $tenant_id
  * @property string $tipo_documento
- * @property array<int, array{key: string, label: string, tipo: string, opcoes?: array<int, string>, obrigatorio: bool, ordem: int, ajuda?: string}> $campos
+ * @property array<int, array{key: string, label: string, tipo: string, opcoes?: array<int, string>, obrigatorio: bool, ordem: int, ajuda?: string, aba?: string}> $campos
  * @property bool $ativo
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at

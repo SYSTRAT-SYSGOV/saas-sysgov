@@ -3,9 +3,13 @@ import { Card, Button, Select } from '@sysgov/ui';
 import { PageHeader, ScreenState } from '@/components/ui';
 import { Settings2, Plus, Trash2, GripVertical, Sparkles } from 'lucide-react';
 import { useCan } from '@/core/rbac/useCan';
+import { cn } from '@/lib/utils';
 import { sysgovApi, type CampoConfig, type FaseLicita, type TipoCampoConfiguravel } from '@sysgov/sdk';
 import { CAMPOS_SUGERIDOS } from '../constants/camposSugeridos';
 import { slugify } from '../utils/slugify';
+
+/** Nome da aba usada quando o campo não define uma — sempre a primeira. */
+const ABA_PADRAO = 'Geral';
 
 const TIPO_DOCUMENTO_OPTIONS: { value: FaseLicita; label: string; disponivel: boolean }[] = [
   { value: 'dfd', label: 'DFD', disponivel: true },
@@ -73,6 +77,8 @@ export const CamposConfiguracaoPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const disponivel = TIPO_DOCUMENTO_OPTIONS.find((o) => o.value === tipoDocumento)?.disponivel ?? false;
 
@@ -118,6 +124,24 @@ export const CamposConfiguracaoPage: React.FC = () => {
   const addCampo = () => {
     setCampos((prev) => [...prev, novoCampo(prev.length)]);
   };
+
+  // Reordenar por arrastar — define a ordem de impressão no PDF e a ordem
+  // dentro de cada aba do formulário do DFD. `ordem` é recalculada (0..n-1)
+  // pela posição final da lista inteira; a aba de cada campo não muda.
+  const moverCampo = (origem: number, destino: number) => {
+    if (origem === destino) return;
+    setCampos((prev) => {
+      const arr = [...prev];
+      const [movido] = arr.splice(origem, 1);
+      arr.splice(destino, 0, movido);
+      return arr.map((c, i) => ({ ...c, ordem: i }));
+    });
+  };
+
+  const abasExistentes = useMemo(
+    () => Array.from(new Set(campos.map((c) => c.aba?.trim()).filter((a): a is string => !!a))),
+    [campos],
+  );
 
   // Sugestões do sistema para o tipo de documento atual — só mostra as que
   // ainda não estão na configuração (comparando pela key), pra não duplicar.
@@ -211,14 +235,63 @@ export const CamposConfiguracaoPage: React.FC = () => {
               </div>
             )}
 
+            <datalist id="abas-existentes">
+              <option value={ABA_PADRAO} />
+              {abasExistentes.map((aba) => (
+                <option key={aba} value={aba} />
+              ))}
+            </datalist>
+
             <div className="space-y-3">
               {campos.length === 0 && (
                 <p className="text-sm text-muted-foreground">Nenhum campo extra configurado para este documento.</p>
               )}
+              {campos.length > 1 && podeGerenciar && (
+                <p className="text-xs text-muted-foreground">
+                  Arraste pelo ícone <GripVertical className="inline h-3 w-3 align-text-bottom" /> para reordenar — define a ordem de impressão no PDF.
+                </p>
+              )}
               {campos.map((campo, index) => (
-                <div key={index} className="rounded-lg border border-border p-3 space-y-3">
+                <div
+                  key={index}
+                  onDragOver={(e) => {
+                    if (dragIndex === null) return;
+                    e.preventDefault();
+                    if (dragOverIndex !== index) setDragOverIndex(index);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragIndex !== null) moverCampo(dragIndex, index);
+                    setDragIndex(null);
+                    setDragOverIndex(null);
+                  }}
+                  className={cn(
+                    'rounded-lg border p-3 space-y-3 transition-colors',
+                    dragOverIndex === index && dragIndex !== null && dragIndex !== index
+                      ? 'border-primary ring-2 ring-primary/30'
+                      : 'border-border',
+                  )}
+                >
                   <div className="flex items-start gap-2">
-                    <GripVertical className="mt-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div
+                      draggable={podeGerenciar && campos.length > 1}
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', String(index));
+                        setDragIndex(index);
+                      }}
+                      onDragEnd={() => {
+                        setDragIndex(null);
+                        setDragOverIndex(null);
+                      }}
+                      className={cn(
+                        'mt-2 shrink-0 text-muted-foreground',
+                        podeGerenciar && campos.length > 1 && 'cursor-grab active:cursor-grabbing',
+                      )}
+                      title="Arraste para reordenar"
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </div>
                     <div className="grid flex-1 grid-cols-1 sm:grid-cols-[1fr_160px] gap-2">
                       <input
                         type="text"
@@ -272,6 +345,21 @@ export const CamposConfiguracaoPage: React.FC = () => {
                       onChange={(e) => updateCampo(index, { ajuda: e.target.value })}
                       className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
                     />
+                  </div>
+
+                  <div>
+                    <input
+                      type="text"
+                      list="abas-existentes"
+                      disabled={!podeGerenciar}
+                      placeholder={`Aba do formulário (padrão: ${ABA_PADRAO})`}
+                      value={campo.aba ?? ''}
+                      onChange={(e) => updateCampo(index, { aba: e.target.value })}
+                      className="w-full max-w-xs rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Deixe em branco para a aba "{ABA_PADRAO}". Campos com o mesmo nome de aba ficam juntos numa aba própria no formulário do DFD.
+                    </p>
                   </div>
                 </div>
               ))}

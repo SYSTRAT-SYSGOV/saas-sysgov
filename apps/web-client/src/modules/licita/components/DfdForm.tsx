@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button, Select, RichTextEditor } from '@sysgov/ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CampoConfig, CreateDfdInput, GrauPrioridade, MembroEquipePlanejamento } from '@sysgov/sdk';
 import { CamposExtrasFields } from './CamposExtrasFields';
+
+/** Aba usada por campos sem `aba` definida — sempre a primeira, mesmo que
+ * o órgão só tenha criado abas nomeadas depois dela. */
+const ABA_PADRAO = 'Geral';
 
 const GRAU_PRIORIDADE_OPTIONS = [
   { value: 'baixa', label: 'Baixa' },
@@ -45,6 +49,29 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [abaAtiva, setAbaAtiva] = useState(0);
+
+  // Agrupa os campos extras por aba (definida pelo órgão em Campos por Tipo
+  // de Documento) — campos sem aba caem na aba padrão, que vem sempre
+  // primeiro. A ordem de impressão no PDF não muda: continua seguindo
+  // `ordem` normalmente, independente de em qual aba o campo está.
+  const gruposCamposExtras = useMemo(() => {
+    const ordenados = [...camposExtras].sort((a, b) => a.ordem - b.ordem);
+    const porAba = new Map<string, CampoConfig[]>();
+    for (const campo of ordenados) {
+      const aba = campo.aba?.trim() || ABA_PADRAO;
+      if (!porAba.has(aba)) porAba.set(aba, []);
+      porAba.get(aba)!.push(campo);
+    }
+    const nomes = Array.from(porAba.keys());
+    if (porAba.has(ABA_PADRAO)) {
+      nomes.splice(nomes.indexOf(ABA_PADRAO), 1);
+      nomes.unshift(ABA_PADRAO);
+    }
+    return nomes.map((aba) => ({ aba, campos: porAba.get(aba)! }));
+  }, [camposExtras]);
+
+  const abaAtivaSegura = Math.min(abaAtiva, gruposCamposExtras.length - 1);
 
   const updateMembro = (index: number, patch: Partial<MembroEquipePlanejamento>) => {
     setEquipe((prev) => prev.map((m, i) => (i === index ? { ...m, ...patch } : m)));
@@ -225,13 +252,35 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
         // do órgão" — são os campos que o próprio órgão define e nomeia em
         // Campos por Tipo de Documento, então já aparecem com o rótulo que
         // ele escolheu (ver CamposExtrasFields), como qualquer outro campo
-        // do formulário.
-        <CamposExtrasFields
-          campos={camposExtras}
-          valores={camposExtrasValores}
-          onChange={setCamposExtrasValores}
-          disabled={disabled}
-        />
+        // do formulário. Só mostra abas quando o órgão de fato criou mais de
+        // uma — com uma única aba (o caso mais comum), os campos aparecem
+        // direto, sem barra de abas.
+        <div className="space-y-4">
+          {gruposCamposExtras.length > 1 && (
+            <div className="flex gap-1 border-b border-border">
+              {gruposCamposExtras.map((grupo, index) => (
+                <button
+                  key={grupo.aba}
+                  type="button"
+                  onClick={() => setAbaAtiva(index)}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                    abaAtivaSegura === index
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {grupo.aba}
+                </button>
+              ))}
+            </div>
+          )}
+          <CamposExtrasFields
+            campos={gruposCamposExtras[abaAtivaSegura]?.campos ?? []}
+            valores={camposExtrasValores}
+            onChange={setCamposExtrasValores}
+            disabled={disabled}
+          />
+        </div>
       )}
 
       {!disabled && (

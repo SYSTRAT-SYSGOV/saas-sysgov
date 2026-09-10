@@ -42,6 +42,14 @@ export interface CampoConfig {
   obrigatorio: boolean;
   ordem: number;
   ajuda?: string;
+  /**
+   * Nome da aba do formulário em que este campo aparece — campos sem `aba`
+   * (ou com string vazia) caem na aba padrão (a primeira, sempre presente).
+   * Campos com o mesmo nome de aba ficam agrupados juntos; a ordem das
+   * abas segue a ordem dos campos (`ordem`), e a ordem de impressão no PDF
+   * segue `ordem` normalmente, independente da aba.
+   */
+  aba?: string;
 }
 
 export interface CampoConfiguracao {

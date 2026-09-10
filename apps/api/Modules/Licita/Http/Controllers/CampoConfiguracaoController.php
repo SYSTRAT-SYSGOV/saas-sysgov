@@ -40,6 +40,7 @@ final class CampoConfiguracaoController extends Controller
             'campos.*.obrigatorio' => ['required', 'boolean'],
             'campos.*.ordem' => ['required', 'integer'],
             'campos.*.ajuda' => ['nullable', 'string', 'max:500'],
+            'campos.*.aba' => ['nullable', 'string', 'max:80'],
         ]);
 
         if (!in_array($tipoDocumento, array_column(FaseLicita::cases(), 'value'), true)) {

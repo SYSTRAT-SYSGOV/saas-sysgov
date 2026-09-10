@@ -29,7 +29,7 @@ final class CampoConfiguracaoService
     }
 
     /**
-     * @param array<int, array{key: string, label: string, tipo: string, opcoes?: array<int, string>, obrigatorio: bool, ordem: int, ajuda?: string}> $campos
+     * @param array<int, array{key: string, label: string, tipo: string, opcoes?: array<int, string>, obrigatorio: bool, ordem: int, ajuda?: string, aba?: string}> $campos
      */
     public function salvar(string $tipoDocumento, array $campos): CampoConfiguracao
     {
