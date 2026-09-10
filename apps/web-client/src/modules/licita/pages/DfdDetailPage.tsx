@@ -4,8 +4,15 @@ import { StatusChip, PageHeader, ScreenState } from '@/components/ui';
 import { ArrowLeft, FileText, CheckCircle2, XCircle, Send, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/core/auth/useAuth';
 import { useCan } from '@/core/rbac/useCan';
+import { cn } from '@/lib/utils';
 import { sysgovApi, type CampoConfig, type CreateDfdInput, type Dfd, type Processo, type StatusDfd } from '@sysgov/sdk';
 import { DfdForm } from '../components/DfdForm';
+
+interface Toast {
+  type: 'success' | 'error';
+  title: string;
+  message: string;
+}
 
 const STATUS_LABEL: Record<StatusDfd, string> = {
   rascunho: 'Rascunho',
@@ -53,6 +60,12 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
   const [actionLoading, setActionLoading] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   const [showRejeitar, setShowRejeitar] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const notify = (t: Toast) => {
+    setToasts((prev) => [...prev, t]);
+    window.setTimeout(() => setToasts((prev) => prev.filter((x) => x !== t)), 5000);
+  };
 
   const podeAprovar = can('licita.aprovar') && dfd?.elaborado_por !== user?.id;
   const editavel = dfd ? ['rascunho', 'em_revisao', 'rejeitado'].includes(dfd.status) : true;
@@ -96,6 +109,7 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
     const novoDfd = await sysgovApi.licita.createDfd(processo.id, data);
     setDfd(novoDfd);
     await refreshProcesso();
+    notify({ type: 'success', title: 'DFD criado', message: 'O rascunho do DFD foi salvo com sucesso.' });
   };
 
   const handleUpdate = async (data: CreateDfdInput) => {
@@ -103,15 +117,17 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
     const atualizado = await sysgovApi.licita.updateDfd(dfd.id, data);
     setDfd(atualizado);
     await refreshProcesso();
+    notify({ type: 'success', title: 'DFD salvo', message: 'As alterações foram salvas com sucesso.' });
   };
 
-  const runAction = async (action: () => Promise<Dfd>) => {
+  const runAction = async (action: () => Promise<Dfd>, sucesso: { title: string; message: string }) => {
     setActionError(null);
     setActionLoading(true);
     try {
       const atualizado = await action();
       setDfd(atualizado);
       await refreshProcesso();
+      notify({ type: 'success', ...sucesso });
     } catch (err: any) {
       setActionError(err?.response?.data?.error || err?.message || 'Erro ao executar ação.');
     } finally {
@@ -170,7 +186,12 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
                   variant="secondary"
                   leftIcon={<Send className="h-3.5 w-3.5" />}
                   isLoading={actionLoading}
-                  onClick={() => runAction(() => sysgovApi.licita.enviarDfdParaRevisao(dfd.id))}
+                  onClick={() =>
+                    runAction(() => sysgovApi.licita.enviarDfdParaRevisao(dfd.id), {
+                      title: 'Enviado para revisão',
+                      message: 'O DFD foi enviado para revisão com sucesso.',
+                    })
+                  }
                 >
                   Enviar para Revisão
                 </Button>
@@ -182,7 +203,12 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
                     variant="primary"
                     leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
                     isLoading={actionLoading}
-                    onClick={() => runAction(() => sysgovApi.licita.aprovarDfd(dfd.id))}
+                    onClick={() =>
+                      runAction(() => sysgovApi.licita.aprovarDfd(dfd.id), {
+                        title: 'DFD aprovado',
+                        message: 'O DFD foi aprovado com sucesso.',
+                      })
+                    }
                   >
                     Aprovar
                   </Button>
@@ -207,7 +233,12 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
                   variant="secondary"
                   leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
                   isLoading={actionLoading}
-                  onClick={() => runAction(() => sysgovApi.licita.reabrirDfd(dfd.id))}
+                  onClick={() =>
+                    runAction(() => sysgovApi.licita.reabrirDfd(dfd.id), {
+                      title: 'DFD reaberto',
+                      message: 'O DFD voltou para rascunho e já pode ser editado.',
+                    })
+                  }
                 >
                   Reabrir para Edição
                 </Button>
@@ -235,7 +266,10 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
                 disabled={!motivoRejeicao.trim()}
                 isLoading={actionLoading}
                 onClick={() =>
-                  runAction(() => sysgovApi.licita.rejeitarDfd(dfd.id, motivoRejeicao)).then(() => {
+                  runAction(() => sysgovApi.licita.rejeitarDfd(dfd.id, motivoRejeicao), {
+                    title: 'DFD rejeitado',
+                    message: 'A rejeição foi registrada com sucesso.',
+                  }).then(() => {
                     setShowRejeitar(false);
                     setMotivoRejeicao('');
                   })
@@ -280,6 +314,22 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
           </div>
         )}
       </Card>
+
+      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+        {toasts.map((t, i) => (
+          <div
+            key={i}
+            className={cn(
+              'rounded-lg px-4 py-3 text-sm shadow-lg max-w-sm',
+              t.type === 'success' && 'bg-success text-success-foreground',
+              t.type === 'error' && 'bg-destructive text-destructive-foreground',
+            )}
+          >
+            <strong className="block text-xs font-bold uppercase">{t.title}</strong>
+            {t.message}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
