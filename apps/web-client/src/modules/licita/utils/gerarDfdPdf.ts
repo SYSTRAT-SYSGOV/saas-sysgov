@@ -116,6 +116,10 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
   .campo { margin-bottom: 8px; }
   .campo .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: #777; display: block; margin-bottom: 2px; }
   .campo .valor { white-space: pre-wrap; }
+  /* Campos extras do órgão: sem um <h2> de seção agrupando-os (cada campo
+     usa o próprio nome como título), então o nome de cada um leva o mesmo
+     azul e peso visual dos títulos numerados acima. */
+  .campo-extra .label { font-size: 13px; text-transform: none; letter-spacing: normal; color: #1351B4; font-weight: 600; margin-bottom: 4px; }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .rich { border-left: 3px solid #e0e0e0; padding-left: 10px; }
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
@@ -176,7 +180,7 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
   ${camposComValor.length > 0 ? `
   <section>
     ${camposComValor.map((c) => `
-      <div class="campo">
+      <div class="campo campo-extra">
         <span class="label">${escapeHtml(c.label)}</span>
         <span class="valor${c.tipo === 'texto_longo' ? ' rich' : ''}">${formatarValorCampoExtra(c, dfd.campos_extras?.[c.key])}</span>
       </div>
