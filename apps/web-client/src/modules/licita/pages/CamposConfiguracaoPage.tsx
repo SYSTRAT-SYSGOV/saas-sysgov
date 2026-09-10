@@ -26,23 +26,35 @@ const TIPO_CAMPO_OPTIONS: { value: TipoCampoConfiguravel; label: string }[] = [
 ];
 
 /**
- * `_auto` (só existe em memória, nunca é enviado ao backend): enquanto
- * true, a "Chave" é derivada automaticamente do Rótulo a cada tecla —
- * assim que o usuário edita a Chave diretamente, essa trava é
- * desligada e a edição manual passa a valer. Campos já carregados do
- * servidor nunca entram em modo automático (evita re-gerar a chave de
- * um campo que documentos antigos já usam).
+ * A "Chave" é um identificador técnico (snake_case) sem nenhum valor pro
+ * usuário do órgão — ele só lida com o Rótulo. O sistema deriva a chave
+ * do rótulo nos bastidores e nunca a expõe no formulário.
+ *
+ * `_auto` e `_sufixo` só existem em memória, nunca são enviados ao
+ * backend: enquanto `_auto` é true, a chave é recalculada a cada tecla
+ * como `slugify(rótulo) + '_' + _sufixo` — o sufixo (gerado uma vez, na
+ * criação do campo) garante que dois campos com o mesmo rótulo (ou o
+ * mesmo início dele) nunca colidam em chaves iguais, o que o backend
+ * rejeitaria ("Chave de campo duplicada"). Campos já carregados do
+ * servidor NUNCA entram em modo automático — evita reescrever
+ * silenciosamente a chave de um campo que documentos antigos já usam.
  */
-type CampoEditavel = CampoConfig & { _auto?: boolean };
+type CampoEditavel = CampoConfig & { _auto?: boolean; _sufixo?: string };
 
-const novoCampo = (ordem: number): CampoEditavel => ({
-  key: '',
-  label: '',
-  tipo: 'texto',
-  obrigatorio: false,
-  ordem,
-  _auto: true,
-});
+const gerarSufixo = () => Date.now().toString(36).slice(-4) + Math.floor(Math.random() * 36 ** 2).toString(36);
+
+const novoCampo = (ordem: number): CampoEditavel => {
+  const sufixo = gerarSufixo();
+  return {
+    key: `campo_${sufixo}`,
+    label: '',
+    tipo: 'texto',
+    obrigatorio: false,
+    ordem,
+    _auto: true,
+    _sufixo: sufixo,
+  };
+};
 
 /**
  * Configuração, por órgão, dos campos extras exigidos em cada tipo de
@@ -86,14 +98,13 @@ export const CamposConfiguracaoPage: React.FC = () => {
     setCampos((prev) =>
       prev.map((c, i) => {
         if (i !== index) return c;
-        if ('key' in patch) {
-          // Usuário editou a chave com a própria mão — respeita e para de
-          // regerá-la a partir do rótulo daqui pra frente.
-          return { ...c, ...patch, _auto: false };
-        }
         const atualizado = { ...c, ...patch };
         if ('label' in patch && c._auto) {
-          atualizado.key = slugify(atualizado.label);
+          // Chave nunca aparece pro usuário — recalculada nos bastidores a
+          // cada tecla no rótulo, com o sufixo fixo do campo pra nunca
+          // colidir com outro (mesmo que o rótulo seja igual/parecido).
+          const base = slugify(atualizado.label) || 'campo';
+          atualizado.key = `${base}_${c._sufixo}`;
         }
         return atualizado;
       }),
@@ -130,8 +141,8 @@ export const CamposConfiguracaoPage: React.FC = () => {
     setSaveError(null);
     setSaved(false);
     try {
-      // _auto é só controle local do formulário — não faz parte do schema salvo.
-      const payload = campos.map(({ _auto, ...campo }) => campo);
+      // _auto/_sufixo são só controle local do formulário — não fazem parte do schema salvo.
+      const payload = campos.map(({ _auto, _sufixo, ...campo }) => campo);
       const config = await sysgovApi.licita.salvarCamposConfiguracao(tipoDocumento, payload);
       setCampos(config.campos ?? []);
       setSaved(true);
@@ -208,7 +219,7 @@ export const CamposConfiguracaoPage: React.FC = () => {
                 <div key={index} className="rounded-lg border border-border p-3 space-y-3">
                   <div className="flex items-start gap-2">
                     <GripVertical className="mt-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div className="grid flex-1 grid-cols-1 sm:grid-cols-[1fr_1fr_160px] gap-2">
+                    <div className="grid flex-1 grid-cols-1 sm:grid-cols-[1fr_160px] gap-2">
                       <input
                         type="text"
                         disabled={!podeGerenciar}
@@ -217,21 +228,6 @@ export const CamposConfiguracaoPage: React.FC = () => {
                         onChange={(e) => updateCampo(index, { label: e.target.value })}
                         className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
                       />
-                      <div>
-                        <input
-                          type="text"
-                          disabled={!podeGerenciar}
-                          placeholder="Chave — gerada automaticamente"
-                          value={campo.key}
-                          onChange={(e) => updateCampo(index, { key: e.target.value })}
-                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                        {campo._auto && (
-                          <p className="mt-1 text-[11px] text-muted-foreground">
-                            Gerada a partir do rótulo — edite aqui se quiser outra.
-                          </p>
-                        )}
-                      </div>
                       <Select
                         value={campo.tipo}
                         onChange={(v) => updateCampo(index, { tipo: v as TipoCampoConfiguravel })}
