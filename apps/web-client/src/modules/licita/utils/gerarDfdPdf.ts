@@ -91,6 +91,15 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
   const camposOrdenados = [...camposConfig].sort((a, b) => a.ordem - b.ordem);
   const camposComValor = camposOrdenados.filter((c) => dfd.campos_extras && c.key in dfd.campos_extras);
 
+  // Numeração sequencial dos títulos azuis — calculada aqui, não fixa no
+  // HTML, porque "Equipe de Planejamento" e os campos extras são seções
+  // condicionais (só aparecem se houver conteúdo). Fixar "1.", "2." etc.
+  // direto no template deixava os campos extras sem número (paravam no 4,
+  // que era o último título fixo) e quebraria a sequência se alguma seção
+  // fixa sumisse (ex.: DFD sem equipe cadastrada).
+  let numeroSecao = 0;
+  const proximoNumero = () => ++numeroSecao;
+
   const html = `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -147,17 +156,17 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
   </div>
 
   <section>
-    <h2>1. Objeto</h2>
+    <h2>${proximoNumero()}. Objeto</h2>
     <div class="campo valor">${escapeHtml(dfd.objeto)}</div>
   </section>
 
   <section>
-    <h2>2. Justificativa</h2>
+    <h2>${proximoNumero()}. Justificativa</h2>
     <div class="rich">${dfd.justificativa}</div>
   </section>
 
   <section>
-    <h2>3. Dados do Planejamento</h2>
+    <h2>${proximoNumero()}. Dados do Planejamento</h2>
     <div class="grid-2">
       <div class="campo"><span class="label">Data Prevista da Contratação</span><span class="valor">${formatarData(dfd.data_previsao)}</span></div>
       <div class="campo"><span class="label">Grau de Prioridade</span><span class="valor">${GRAU_PRIORIDADE_LABEL[dfd.grau_prioridade]}</span></div>
@@ -168,7 +177,7 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
 
   ${equipe.length > 0 ? `
   <section>
-    <h2>4. Equipe de Planejamento</h2>
+    <h2>${proximoNumero()}. Equipe de Planejamento</h2>
     <table>
       <thead><tr><th>Nome</th><th>Cargo</th><th>Matrícula</th></tr></thead>
       <tbody>
@@ -181,7 +190,7 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
   <section>
     ${camposComValor.map((c) => `
       <div class="campo campo-extra">
-        <span class="label">${escapeHtml(c.label)}</span>
+        <span class="label">${proximoNumero()}. ${escapeHtml(c.label)}</span>
         <span class="valor${c.tipo === 'texto_longo' ? ' rich' : ''}">${formatarValorCampoExtra(c, dfd.campos_extras?.[c.key])}</span>
       </div>
     `).join('')}
