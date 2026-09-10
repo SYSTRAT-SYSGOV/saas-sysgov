@@ -60,9 +60,17 @@ function formatarValorCampoExtra(campo: CampoConfig, valor: unknown): string {
  * popup silenciosamente (fica só uma aba em branco). Os dados do DFD são
  * buscados depois, de forma assíncrona, e escritos nessa janela já aberta
  * por `gerarDfdPdf`.
+ *
+ * NÃO passar 'noopener'/'noreferrer' aqui: pedem ao navegador para não
+ * devolver a referência da janela (justamente para impedir que a página
+ * aberta acesse `window.opener` — proteção contra tabnabbing ao navegar
+ * para uma URL de terceiros). Como não navegamos a lugar nenhum — o
+ * conteúdo é gerado por nós via document.write — não há terceiro a se
+ * proteger, e com esses flags o Chrome chega a devolver `null` mesmo sem
+ * o usuário ter bloqueado nada, quebrando a escrita do conteúdo depois.
  */
 export function abrirJanelaPdf(): Window | null {
-  return window.open('', '_blank', 'noopener,noreferrer');
+  return window.open('', '_blank');
 }
 
 /**
