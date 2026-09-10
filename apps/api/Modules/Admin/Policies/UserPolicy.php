@@ -80,6 +80,11 @@ final class UserPolicy
         return $user->is_platform_admin || $this->can($user, ['users.tenant.create']);
     }
 
+    public function updateTenantAdmin(User $user): bool
+    {
+        return $user->is_platform_admin || $this->can($user, ['users.tenant.update']);
+    }
+
     public function viewTenantUsers(User $user): bool
     {
         return $user->is_platform_admin || $this->can($user, ['users.tenant.view']);

@@ -33,6 +33,7 @@ final class RbacSeeder extends Seeder
                 'users.systrat.delete' => 'Excluir Usuários SYSTRAT',
                 'users.tenant.view' => 'Visualizar Usuários de Tenants',
                 'users.tenant.create' => 'Criar Admin Inicial do Tenant',
+                'users.tenant.update' => 'Editar Admin do Tenant (nome/senha)',
                 'users.invite' => 'Convidar Usuários',
                 'users.deactivate' => 'Desativar Usuários',
                 'users.reset_password' => 'Resetar Senha de Usuários',
@@ -130,7 +131,7 @@ final class RbacSeeder extends Seeder
                 'description' => 'Opera o SaaS (gestão de tenants, contratos, suporte)',
                 'permissions' => $this->resolveIds($createdPermissions, [
                     'users.systrat.view', 'users.systrat.create', 'users.systrat.update',
-                    'users.tenant.view', 'users.tenant.create', 'users.invite', 'users.deactivate',
+                    'users.tenant.view', 'users.tenant.create', 'users.tenant.update', 'users.invite', 'users.deactivate',
                     'roles.view', 'roles.assign',
                     'analyst.manage',
                     'admin.tenants.view', 'admin.tenants.manage',

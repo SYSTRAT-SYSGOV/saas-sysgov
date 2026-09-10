@@ -30,7 +30,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { adminApi } from '../../modules/admin/api';
-import { Tenant, SaasModule, CnpjLookupResult, BatchProvisionResult } from '../../modules/admin/types';
+import { Tenant, SaasModule, CnpjLookupResult, BatchProvisionResult, User } from '../../modules/admin/types';
 import { StatusChip, Card, Modal, Button, Input, Select } from '@sysgov/ui';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field } from '../../components/ui/Field';
@@ -240,9 +240,11 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
   const [isLoadingOrgChart, setIsLoadingOrgChart] = useState(false);
   const [isSeedingOrgChart, setIsSeedingOrgChart] = useState(false);
 
-  // Onboarding do admin inicial (RN-USR-011)
+  // Onboarding do admin inicial (RN-USR-011) / edição do admin existente
   const [onboardingTenant, setOnboardingTenant] = useState<Tenant | null>(null);
   const [onboardingSaving, setOnboardingSaving] = useState(false);
+  const [onboardingChecking, setOnboardingChecking] = useState(false);
+  const [existingTenantAdmin, setExistingTenantAdmin] = useState<User | null>(null);
   const [onboardingForm, setOnboardingForm] = useState({ name: '', email: '', password: '', password_confirmation: '' });
 
   const load = useCallback(async () => {
@@ -493,9 +495,65 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
     }
   };
 
+  const handleOpenOnboarding = async (tenant: Tenant) => {
+    setOnboardingTenant(tenant);
+    setExistingTenantAdmin(null);
+    setOnboardingForm({ name: '', email: '', password: '', password_confirmation: '' });
+    setOnboardingChecking(true);
+    try {
+      const result = await adminApi.getTenantUsers(tenant.id);
+      const admin = result.data.find((u) =>
+        u.roles?.some((r) => r.slug === 'admin_tenant') &&
+        u.tenants?.some((t) => t.id === tenant.id && t.status === 'active')
+      );
+      if (admin) {
+        setExistingTenantAdmin(admin);
+        setOnboardingForm({ name: admin.name, email: admin.email, password: '', password_confirmation: '' });
+      }
+    } catch {
+      // Se a checagem falhar, seguimos no modo "criar" — o backend ainda protege contra duplicidade.
+    } finally {
+      setOnboardingChecking(false);
+    }
+  };
+
   const handleOnboarding = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!onboardingTenant) return;
+
+    if (existingTenantAdmin) {
+      // Modo edição: nome e/ou senha do admin já existente
+      if (!onboardingForm.name.trim()) {
+        onAddToast({ type: 'error', title: 'Campo Obrigatório', message: 'O nome não pode ficar em branco.' });
+        return;
+      }
+      if (onboardingForm.password && onboardingForm.password !== onboardingForm.password_confirmation) {
+        onAddToast({ type: 'error', title: 'Senhas diferentes', message: 'A confirmação de senha não confere.' });
+        return;
+      }
+      setOnboardingSaving(true);
+      try {
+        await adminApi.updateTenantAdmin(onboardingTenant.id, {
+          name: onboardingForm.name,
+          ...(onboardingForm.password ? { password: onboardingForm.password, password_confirmation: onboardingForm.password_confirmation } : {}),
+        });
+        onAddToast({
+          type: 'success',
+          title: 'Admin Atualizado',
+          message: `Dados do administrador de ${onboardingTenant.name} atualizados.`,
+        });
+        setOnboardingTenant(null);
+        setExistingTenantAdmin(null);
+        setOnboardingForm({ name: '', email: '', password: '', password_confirmation: '' });
+      } catch (error: any) {
+        onAddToast({ type: 'error', title: 'Falha ao atualizar', message: error.message || 'Não foi possível atualizar o admin.' });
+      } finally {
+        setOnboardingSaving(false);
+      }
+      return;
+    }
+
+    // Modo criação: onboarding do primeiro admin
     if (!onboardingForm.name.trim() || !onboardingForm.email.trim() || !onboardingForm.password) {
       onAddToast({ type: 'error', title: 'Campos Obrigatórios', message: 'Preencha nome, e-mail e senha do admin.' });
       return;
@@ -663,10 +721,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               onEdit={handleOpenEditModal}
               onDelete={(id) => setDeleteConfirmId(id)}
               onDiagnostic={handleOpenDiagnosticModal}
-              onOnboarding={(tenant) => {
-                setOnboardingTenant(tenant);
-                setOnboardingForm({ name: '', email: '', password: '', password_confirmation: '' });
-              }}
+              onOnboarding={handleOpenOnboarding}
             />
           ))}
         </div>
@@ -998,26 +1053,37 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
             </form>
       </Modal>
 
-      {/* Modal Onboarding Admin Inicial (RN-USR-011) */}
+      {/* Modal Onboarding Admin Inicial (RN-USR-011) / Editar Admin Existente */}
       <Modal
         open={!!onboardingTenant}
-        onClose={() => setOnboardingTenant(null)}
-        title="Criar Admin Inicial"
-        icon={<KeyRound className="w-4 h-4 text-amber-500" />}
+        onClose={() => { setOnboardingTenant(null); setExistingTenantAdmin(null); }}
+        title={existingTenantAdmin ? 'Editar Admin do Tenant' : 'Criar Admin Inicial'}
+        icon={existingTenantAdmin ? <Edit2 className="w-4 h-4 text-amber-500" /> : <KeyRound className="w-4 h-4 text-amber-500" />}
         footer={
           <>
-            <Button variant="outline" onClick={() => setOnboardingTenant(null)}>Cancelar</Button>
-            <Button type="submit" form="onboarding-form" isLoading={onboardingSaving} leftIcon={!onboardingSaving ? <UserPlus className="w-3.5 h-3.5" /> : undefined}>
-              Criar Admin Inicial
+            <Button variant="outline" onClick={() => { setOnboardingTenant(null); setExistingTenantAdmin(null); }}>Cancelar</Button>
+            <Button type="submit" form="onboarding-form" isLoading={onboardingSaving} disabled={onboardingChecking} leftIcon={!onboardingSaving ? (existingTenantAdmin ? <Edit2 className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />) : undefined}>
+              {existingTenantAdmin ? 'Salvar Alterações' : 'Criar Admin Inicial'}
             </Button>
           </>
         }
       >
-        {onboardingTenant && (
+        {onboardingTenant && onboardingChecking && (
+          <div className="flex items-center gap-2 py-6 justify-center text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" /> Verificando administrador existente…
+          </div>
+        )}
+        {onboardingTenant && !onboardingChecking && (
           <form id="onboarding-form" onSubmit={handleOnboarding} className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Criar o administrador de <strong>{onboardingTenant.name}</strong> ({onboardingTenant.slug}). Esse usuário terá a role <strong className="font-mono">admin_tenant</strong> e poderá logar no web-client.
-            </p>
+            {existingTenantAdmin ? (
+              <p className="text-xs text-muted-foreground">
+                <strong>{onboardingTenant.name}</strong> ({onboardingTenant.slug}) já possui um administrador ativo. Altere o nome e/ou defina uma nova senha abaixo — deixe a senha em branco para mantê-la.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Criar o administrador de <strong>{onboardingTenant.name}</strong> ({onboardingTenant.slug}). Esse usuário terá a role <strong className="font-mono">admin_tenant</strong> e poderá logar no web-client.
+              </p>
+            )}
             <Input
               label="Nome *"
               required
@@ -1028,26 +1094,29 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
             <Input
               label="E-mail *"
               type="email"
-              required
+              required={!existingTenantAdmin}
+              disabled={!!existingTenantAdmin}
               value={onboardingForm.email}
               onChange={(e) => setOnboardingForm({ ...onboardingForm, email: e.target.value })}
               placeholder="admin@araucaria.pr.gov.br"
               className="font-mono"
+              helperText={existingTenantAdmin ? 'E-mail não pode ser alterado por aqui.' : undefined}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Senha *"
+                label={existingTenantAdmin ? 'Nova senha' : 'Senha *'}
                 type="password"
-                required
+                required={!existingTenantAdmin}
                 minLength={8}
                 value={onboardingForm.password}
                 onChange={(e) => setOnboardingForm({ ...onboardingForm, password: e.target.value })}
                 helperText="Mín. 8 chars, maiúscula, minúscula, número e símbolo."
+                placeholder={existingTenantAdmin ? 'Deixe em branco para não alterar' : undefined}
               />
               <Input
-                label="Confirmar senha *"
+                label="Confirmar senha"
                 type="password"
-                required
+                required={!existingTenantAdmin && !!onboardingForm.password}
                 minLength={8}
                 value={onboardingForm.password_confirmation}
                 onChange={(e) => setOnboardingForm({ ...onboardingForm, password_confirmation: e.target.value })}
