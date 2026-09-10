@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Button, Select } from '@sysgov/ui';
 import { PageHeader, ScreenState } from '@/components/ui';
-import { Settings2, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Settings2, Plus, Trash2, GripVertical, Sparkles } from 'lucide-react';
 import { useCan } from '@/core/rbac/useCan';
 import { sysgovApi, type CampoConfig, type FaseLicita, type TipoCampoConfiguravel } from '@sysgov/sdk';
+import { CAMPOS_SUGERIDOS } from '../constants/camposSugeridos';
 
 const TIPO_DOCUMENTO_OPTIONS: { value: FaseLicita; label: string; disponivel: boolean }[] = [
   { value: 'dfd', label: 'DFD', disponivel: true },
@@ -81,6 +82,20 @@ export const CamposConfiguracaoPage: React.FC = () => {
     setCampos((prev) => [...prev, novoCampo(prev.length)]);
   };
 
+  // Sugestões do sistema para o tipo de documento atual — só mostra as que
+  // ainda não estão na configuração (comparando pela key), pra não duplicar.
+  // O órgão decide o que usar: uma sugestão só entra quando o usuário clica
+  // em "Adicionar", e a partir daí é um campo normal (renomeia, muda tipo,
+  // marca/desmarca obrigatório ou exclui como qualquer outro).
+  const sugestoesDisponiveis = useMemo(
+    () => (CAMPOS_SUGERIDOS[tipoDocumento] ?? []).filter((s) => !campos.some((c) => c.key === s.key)),
+    [tipoDocumento, campos],
+  );
+
+  const addSugestao = (sugestao: Omit<CampoConfig, 'ordem'>) => {
+    setCampos((prev) => [...prev, { ...sugestao, ordem: prev.length }]);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
@@ -128,6 +143,32 @@ export const CamposConfiguracaoPage: React.FC = () => {
 
         {disponivel && !loading && !error && (
           <>
+            {podeGerenciar && sugestoesDisponiveis.length > 0 && (
+              <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Sugestões do sistema
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Pontos de partida comuns para este tipo de documento — adicione só o que fizer sentido pro seu órgão.
+                  Depois de adicionado, o campo é seu: renomeie, mude o tipo ou marque como obrigatório à vontade.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {sugestoesDisponiveis.map((s) => (
+                    <button
+                      key={s.key}
+                      type="button"
+                      onClick={() => addSugestao(s)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-primary/10"
+                    >
+                      <Plus className="h-3 w-3 text-primary" />
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               {campos.length === 0 && (
                 <p className="text-sm text-muted-foreground">Nenhum campo extra configurado para este documento.</p>
