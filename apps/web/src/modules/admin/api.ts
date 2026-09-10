@@ -124,6 +124,13 @@ export const adminApi = {
     });
   },
 
+  async updateTenantAdmin(tenantId: number, payload: { name?: string; password?: string; password_confirmation?: string }): Promise<User> {
+    return request<User>(`/tenants/${tenantId}/users/admin`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
   async getTenantUsers(tenantId: number, params?: { search?: string; page?: number }): Promise<Paginated<User>> {
     const qs = new URLSearchParams();
     if (params?.search) qs.set('search', params.search);

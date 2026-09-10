@@ -14,6 +14,7 @@ use Modules\Admin\Http\Requests\CreateTenantAdminRequest;
 use Modules\Admin\Http\Requests\DeactivateUserRequest;
 use Modules\Admin\Http\Requests\StoreSystratUserRequest;
 use Modules\Admin\Http\Requests\UpdateSystratUserRequest;
+use Modules\Admin\Http\Requests\UpdateTenantAdminRequest;
 use Modules\Admin\Http\Resources\UserResource;
 
 final class UserAdminController
@@ -164,6 +165,38 @@ final class UserAdminController
     }
 
     /**
+     * Update the tenant's active admin (name and/or password)
+     * PUT /api/admin/tenants/{tenant}/users/admin
+     */
+    public function updateTenantAdmin(UpdateTenantAdminRequest $request): JsonResponse
+    {
+        $this->authorize('updateTenantAdmin', User::class);
+
+        $tenant = \App\Models\Tenant::findOrFail($request->route('tenant'));
+
+        $admin = User::whereHas('tenants', function ($q) use ($tenant) {
+            $q->where('tenants.id', $tenant->id)->where('tenant_user.status', 'active');
+        })->whereHas('roles', function ($q) {
+            $q->where('slug', 'admin_tenant');
+        })->first();
+
+        if (!$admin) {
+            return response()->json([
+                'message' => 'Este tenant ainda não possui um administrador ativo. Use o onboarding para criar o primeiro.',
+            ], 404);
+        }
+
+        $data = $request->validated();
+        if (($data['password'] ?? null) === '') {
+            unset($data['password']);
+        }
+
+        $user = $this->userService->update($admin, $data);
+
+        return (new UserResource($user->fresh(['roles', 'tenants'])))->response();
+    }
+
+    /**
      * List tenant users (read-only for support)
      */
     public function listTenantUsers(Request $request): JsonResponse
@@ -176,7 +209,7 @@ final class UserAdminController
 
         $users = $this->userService->listTenantUsers($tenant->id, $filters, $perPage);
 
-        return response()->json(UserResource::collection($users));
+        return UserResource::collection($users)->response();
     }
 
     /**
