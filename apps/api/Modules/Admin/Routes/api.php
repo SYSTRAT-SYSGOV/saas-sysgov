@@ -22,6 +22,7 @@ use Modules\Admin\Http\Controllers\MenuController;
 use Modules\Admin\Http\Controllers\MfaController;
 use Modules\Admin\Http\Controllers\OidcController;
 use Modules\Admin\Http\Controllers\AuthController;
+use Modules\Admin\Http\Controllers\AiSettingsController;
 
 // Rotas públicas (self-service e SSO) — fora do middleware platform-admin
 Route::prefix('api/admin')->middleware('bindings')->group(function (): void {
@@ -160,4 +161,9 @@ Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->g
     Route::post('/menus/items', [MenuController::class, 'storeItem']);
     Route::put('/menus/items/{item}', [MenuController::class, 'updateItem']);
     Route::delete('/menus/items/{item}', [MenuController::class, 'destroyItem']);
+
+    // IA — configuração única da plataforma, usada por todos os tenants
+    Route::get('/ai-settings', [AiSettingsController::class, 'show']);
+    Route::put('/ai-settings', [AiSettingsController::class, 'update']);
+    Route::post('/ai-settings/test', [AiSettingsController::class, 'testConnection']);
 });

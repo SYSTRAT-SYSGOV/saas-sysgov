@@ -16,6 +16,7 @@ import {
   Ticket,
   BookOpen,
   Database,
+  Sparkles,
 } from 'lucide-react';
 import { lazyWithNamedExport } from '@/lib/lazy';
 
@@ -157,6 +158,18 @@ export const ADMIN_MODULE_REGISTRY: Record<string, AdminModuleDefinition> = {
     badge: 'Custom',
     badgeColor: 'slate',
     description: 'Personalização visual, logotipo, parâmetros e segurança',
+    allowedRoles: ['SUPER_ADMIN'],
+  },
+  admin_ai: {
+    id: 'admin_ai',
+    name: 'Configurações de IA',
+    path: '/admin/ia',
+    component: lazyWithNamedExport(() => import('@/components/admin/AdminAiSettings'), 'AdminAiSettings'),
+    requiredPermission: 'admin.ai.manage',
+    icon: Sparkles,
+    badge: 'IA',
+    badgeColor: 'indigo',
+    description: 'Provedor, modelo e chave de IA usados por todos os tenants na elaboração de documentos',
     allowedRoles: ['SUPER_ADMIN'],
   },
   admin_profile: {

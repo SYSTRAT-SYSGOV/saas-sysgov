@@ -176,3 +176,36 @@ export interface BatchProvisionItem {
 export interface BatchProvisionResult {
   results: BatchProvisionItem[];
 }
+
+/**
+ * Configuração ÚNICA de IA da plataforma (Modules\Admin\Models\AiSettings
+ * no backend) — usada por TODOS os tenants, não existe config por tenant.
+ * A api_key nunca trafega em texto puro: só `apiKeyMasked` (últimos 4
+ * dígitos) e `apiKeyConfigured` (se já existe alguma salva).
+ */
+export interface AiSettings {
+  enabled: boolean;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  maxTokens: number;
+  apiKeyConfigured: boolean;
+  apiKeyMasked: string | null;
+  updatedAt: string | null;
+}
+
+export interface AiSettingsUpdatePayload {
+  enabled: boolean;
+  provider: string;
+  base_url: string;
+  model: string;
+  max_tokens: number;
+  /** Omitido ou vazio = mantém a chave já salva. */
+  api_key?: string;
+}
+
+export interface AiTestConnectionResult {
+  ok: boolean;
+  message: string;
+  model?: string;
+}
