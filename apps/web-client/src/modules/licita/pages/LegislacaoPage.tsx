@@ -1,32 +1,25 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Button, Badge, RichTextEditor, Select } from '@sysgov/ui';
-import { PageHeader, ScreenState, EmptyState, SearchInput } from '@/components/ui';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Card, Button, Badge } from '@sysgov/ui';
+import { PageHeader, ScreenState, EmptyState, SearchInput, DataTable } from '@/components/ui';
 import { Plus, BookOpen, Trash2, Pencil } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { useAuth } from '@/core/auth/useAuth';
 import { useCan } from '@/core/rbac/useCan';
-import { sysgovApi, type CreateLegalDocumentoInput, type LegalDocumento, type TipoLegalDocumento } from '@sysgov/sdk';
+import { sysgovApi, type LegalDocumento, type TipoLegalDocumento } from '@sysgov/sdk';
+import type { ColumnDef } from '@tanstack/react-table';
 
-const TIPO_OPTIONS: { value: TipoLegalDocumento; label: string }[] = [
-  { value: 'lei', label: 'Lei' },
-  { value: 'decreto', label: 'Decreto' },
-  { value: 'instrucao_normativa', label: 'Instrução Normativa' },
-  { value: 'jurisprudencia', label: 'Jurisprudência' },
-  { value: 'outro', label: 'Outro' },
-];
-
-const TIPO_LABEL: Record<TipoLegalDocumento, string> = Object.fromEntries(
-  TIPO_OPTIONS.map((o) => [o.value, o.label]),
-) as Record<TipoLegalDocumento, string>;
-
-const emptyForm: CreateLegalDocumentoInput = {
-  tipo: 'decreto',
-  numero: '',
-  titulo: '',
-  ementa: '',
-  texto_completo: '',
-  tags: [],
+const TIPO_LABEL: Record<TipoLegalDocumento, string> = {
+  lei: 'Lei',
+  decreto: 'Decreto',
+  instrucao_normativa: 'Instrução Normativa',
+  jurisprudencia: 'Jurisprudência',
+  outro: 'Outro',
 };
+
+interface LegislacaoPageProps {
+  onNovoDocumento: () => void;
+  onEditarDocumento: (documento: LegalDocumento) => void;
+}
 
 /**
  * Biblioteca de legislação do Licita — documentos GLOBAIS (mantidos pela
@@ -34,19 +27,17 @@ const emptyForm: CreateLegalDocumentoInput = {
  * (ex.: decreto municipal regulamentando a lei para o âmbito local).
  * Serve hoje como contexto de leitura para o usuário; na Fase 1.5 esse
  * mesmo conteúdo alimenta a IA na elaboração dos artefatos.
+ *
+ * Cadastro/edição abrem em tela cheia (LegislacaoDetailPage), mesmo padrão
+ * do DFD do Processo — não mais inline nesta mesma página.
  */
-export const LegislacaoPage: React.FC = () => {
+export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento, onEditarDocumento }) => {
   const { user } = useAuth();
   const { can } = useCan();
   const [documentos, setDocumentos] = useState<LegalDocumento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [editing, setEditing] = useState<LegalDocumento | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<CreateLegalDocumentoInput>(emptyForm);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const podeGerenciar = can('licita.legislacao.manage') || Boolean(user?.is_platform_admin);
 
@@ -67,54 +58,113 @@ export const LegislacaoPage: React.FC = () => {
     load();
   }, [load]);
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm(emptyForm);
-    setFormError(null);
-    setShowForm(true);
-  };
-
-  const openEdit = (documento: LegalDocumento) => {
-    setEditing(documento);
-    setForm({
-      tipo: documento.tipo,
-      numero: documento.numero ?? '',
-      titulo: documento.titulo,
-      ementa: documento.ementa ?? '',
-      texto_completo: documento.texto_completo,
-      tags: documento.tags ?? [],
-    });
-    setFormError(null);
-    setShowForm(true);
-  };
-
   const podeEditar = (documento: LegalDocumento) => (documento.tenant_id === null ? Boolean(user?.is_platform_admin) : podeGerenciar);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setFormError(null);
-    try {
-      if (editing) {
-        const atualizado = await sysgovApi.licita.updateLegislacao(editing.id, form);
-        setDocumentos((prev) => prev.map((d) => (d.id === atualizado.id ? atualizado : d)));
-      } else {
-        const criado = await sysgovApi.licita.createLegislacao(form);
-        setDocumentos((prev) => [criado, ...prev]);
-      }
-      setShowForm(false);
-    } catch (err: any) {
-      setFormError(err?.response?.data?.error || err?.message || 'Erro ao salvar o documento.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleDelete = async (documento: LegalDocumento) => {
     if (!confirm(`Excluir "${documento.titulo}"?`)) return;
     await sysgovApi.licita.deleteLegislacao(documento.id);
     setDocumentos((prev) => prev.filter((d) => d.id !== documento.id));
   };
+
+  const columns = useMemo<ColumnDef<LegalDocumento, any>[]>(
+    () => [
+      {
+        id: 'acoes',
+        header: '',
+        size: 90,
+        cell: ({ row }) => {
+          const documento = row.original;
+          if (!podeEditar(documento)) return null;
+          return (
+            <div className="flex justify-center gap-1">
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                title="Editar"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditarDocumento(documento);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                title="Excluir"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(documento);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'escopo',
+        header: 'Escopo',
+        size: 110,
+        meta: {
+          exportValue: (d) => (d.tenant_id === null ? 'Global' : 'Órgão'),
+        },
+        cell: ({ row }) => (
+          <Badge variant={row.original.tenant_id === null ? 'primary' : 'secondary'}>
+            {row.original.tenant_id === null ? 'GLOBAL' : 'ÓRGÃO'}
+          </Badge>
+        ),
+      },
+      {
+        id: 'tipo',
+        header: 'Tipo',
+        size: 160,
+        meta: {
+          exportValue: (d) => TIPO_LABEL[d.tipo],
+        },
+        cell: ({ row }) => <Badge variant="neutral">{TIPO_LABEL[row.original.tipo]}</Badge>,
+      },
+      {
+        id: 'numero',
+        header: 'Número',
+        size: 150,
+        meta: {
+          exportValue: (d) => d.numero ?? '',
+        },
+        cell: ({ row }) => (
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">{row.original.numero || '—'}</span>
+        ),
+      },
+      {
+        id: 'titulo',
+        header: 'Título',
+        size: 420,
+        meta: {
+          exportValue: (d) => d.titulo,
+        },
+        cell: ({ row }) => (
+          <span className="block truncate text-left font-medium text-foreground" title={row.original.titulo}>
+            {row.original.titulo}
+          </span>
+        ),
+      },
+      {
+        id: 'ementa',
+        header: 'Ementa',
+        size: 300,
+        meta: {
+          exportValue: (d) => d.ementa ?? '',
+        },
+        cell: ({ row }) => (
+          <span className="block truncate text-left text-muted-foreground" title={row.original.ementa ?? undefined}>
+            {row.original.ementa || '—'}
+          </span>
+        ),
+      },
+    ],
+    [podeGerenciar, user?.is_platform_admin, onEditarDocumento],
+  );
 
   if (loading) return <ScreenState type="loading" title="Carregando legislação..." />;
   if (error && documentos.length === 0) {
@@ -129,7 +179,7 @@ export const LegislacaoPage: React.FC = () => {
         subtitle="Leis, decretos e normas usados como contexto na elaboração dos artefatos do Licita."
         actions={
           podeGerenciar ? (
-            <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+            <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={onNovoDocumento}>
               Novo Documento
             </Button>
           ) : undefined
@@ -140,7 +190,7 @@ export const LegislacaoPage: React.FC = () => {
         <div className="p-3 border-b border-border">
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar por título..." />
         </div>
-        <div className="p-3 space-y-2">
+        <div className="p-3">
           {documentos.length === 0 ? (
             <EmptyState
               icon={<BookOpen className="h-10 w-10" />}
@@ -148,118 +198,22 @@ export const LegislacaoPage: React.FC = () => {
               description="Cadastre a legislação local para dar contexto à elaboração dos artefatos."
             />
           ) : (
-            documentos.map((documento) => (
-              <div key={documento.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant={documento.tenant_id === null ? 'primary' : 'secondary'}>
-                      {documento.tenant_id === null ? 'GLOBAL' : 'ÓRGÃO'}
-                    </Badge>
-                    <Badge variant="neutral">{TIPO_LABEL[documento.tipo]}</Badge>
-                    <span className="font-medium text-foreground">{documento.titulo}</span>
-                    {documento.numero && <span className="text-xs text-muted-foreground">({documento.numero})</span>}
-                  </div>
-                  {documento.ementa && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{documento.ementa}</p>}
-                </div>
-                {podeEditar(documento) && (
-                  <div className="flex shrink-0 gap-1">
-                    <Button size="icon-sm" variant="ghost" onClick={() => openEdit(documento)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => handleDelete(documento)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))
+            <DataTable
+              columns={columns}
+              data={documentos}
+              emptyText="Nenhum documento encontrado."
+              pageSize={10}
+              onRowClick={(documento) => podeEditar(documento) && onEditarDocumento(documento)}
+              fixedLayout
+              resizableColumns
+              pageSizeSelector
+              exportable
+              exportFileName="legislacao-licita"
+              exportTitle="Licita — Biblioteca de Legislação"
+            />
           )}
         </div>
       </Card>
-
-      {showForm && (
-        <Card className="p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">{editing ? 'Editar Documento' : 'Novo Documento'}</h2>
-          {formError && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {formError}
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Título *</label>
-                <input
-                  required
-                  type="text"
-                  value={form.titulo}
-                  onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Tipo *</label>
-                <Select
-                  value={form.tipo}
-                  onChange={(v) => setForm((f) => ({ ...f, tipo: v as TipoLegalDocumento }))}
-                  options={TIPO_OPTIONS}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Número</label>
-              <input
-                type="text"
-                value={form.numero ?? ''}
-                onChange={(e) => setForm((f) => ({ ...f, numero: e.target.value }))}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Ex.: Decreto 1.234/2024"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Ementa</label>
-              <textarea
-                value={form.ementa ?? ''}
-                onChange={(e) => setForm((f) => ({ ...f, ementa: e.target.value }))}
-                rows={2}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Texto Completo *</label>
-              <RichTextEditor
-                value={form.texto_completo}
-                onChange={(html) => setForm((f) => ({ ...f, texto_completo: html }))}
-                minHeight={320}
-              />
-            </div>
-
-            {!editing && user?.is_platform_admin && (
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  checked={Boolean(form.global)}
-                  onChange={(e) => setForm((f) => ({ ...f, global: e.target.checked }))}
-                  className="rounded border-input text-primary focus:ring-primary"
-                />
-                Documento GLOBAL (visível para todos os órgãos da plataforma)
-              </label>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" variant="primary" isLoading={saving}>
-                Salvar
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
     </div>
   );
 };

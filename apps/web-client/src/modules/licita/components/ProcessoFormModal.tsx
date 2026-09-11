@@ -40,10 +40,6 @@ export const ProcessoFormModal: React.FC<ProcessoFormModalProps> = ({ open, onCl
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground">
-          O número do processo e o ano são gerados automaticamente pelo sistema — só o objeto preliminar precisa ser informado aqui (pode ser refinado depois, no DFD).
-        </p>
-
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">Objeto (preliminar)</label>
           <textarea

@@ -2,14 +2,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useAuth } from '@/core/auth/useAuth';
-import { Plus, Gavel, Search, BookOpen, Settings2, FileDown } from 'lucide-react';
+import { Plus, Gavel, Search, BookOpen, Settings2, FileDown, Pencil } from 'lucide-react';
 import { Button, Card } from '@sysgov/ui';
 import { PageHeader, DataTable, EmptyState, SearchInput, StatusChip, ScreenState } from '@/components/ui';
-import { sysgovApi, type FaseLicita, type Processo, type StatusDfd } from '@sysgov/sdk';
+import { sysgovApi, type FaseLicita, type LegalDocumento, type Processo, type StatusDfd } from '@sysgov/sdk';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ProcessoFormModal } from './components/ProcessoFormModal';
 import { DfdDetailPage } from './pages/DfdDetailPage';
 import { LegislacaoPage } from './pages/LegislacaoPage';
+import { LegislacaoDetailPage } from './pages/LegislacaoDetailPage';
 import { CamposConfiguracaoPage } from './pages/CamposConfiguracaoPage';
 import { abrirJanelaPdf, gerarDfdPdf } from './utils/gerarDfdPdf';
 
@@ -115,29 +116,85 @@ const ProcessosTab: React.FC<{
   const columns = useMemo<ColumnDef<Processo, any>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 90,
+        cell: ({ row }) => {
+          const dfd = row.original.dfd;
+          const gerando = gerandoPdfId === row.original.id;
+          return (
+            <div className="flex justify-center gap-1">
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                title="Editar"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenProcesso(row.original.id);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              {dfd && (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  title="Baixar PDF do DFD"
+                  isLoading={gerando}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGerarPdf(row.original.id);
+                  }}
+                >
+                  {!gerando && <FileDown className="h-3.5 w-3.5" />}
+                </Button>
+              )}
+            </div>
+          );
+        },
+      },
+      {
         id: 'numero',
         header: 'Processo',
+        size: 140,
+        meta: {
+          exportValue: (p) => `${p.numero}/${p.ano}`,
+        },
         cell: ({ row }) => (
-          <div>
-            <span className="font-mono font-bold tabular-nums text-foreground">
-              {row.original.numero}/{row.original.ano}
-            </span>
-            <span className="block text-[11px] text-muted-foreground truncate max-w-[320px]">
-              {row.original.objeto || 'Objeto ainda não definido'}
-            </span>
-          </div>
+          <span className="font-mono font-bold tabular-nums text-foreground">
+            {row.original.numero}/{row.original.ano}
+          </span>
+        ),
+      },
+      {
+        id: 'objeto',
+        header: 'Objeto',
+        size: 420,
+        meta: {
+          exportValue: (p) => p.objeto ?? '',
+        },
+        cell: ({ row }) => (
+          <span className="block truncate text-left text-muted-foreground" title={row.original.objeto ?? undefined}>
+            {row.original.objeto || 'Objeto ainda não definido'}
+          </span>
         ),
       },
       {
         id: 'fase_atual',
         header: 'Fase Atual',
         size: 130,
+        meta: {
+          exportValue: (p) => FASE_LABEL[p.fase_atual],
+        },
         cell: ({ row }) => <StatusChip label={FASE_LABEL[row.original.fase_atual]} variant="primary" />,
       },
       {
         id: 'dfd_status',
         header: 'Status do DFD',
         size: 150,
+        meta: {
+          exportValue: (p) => (p.dfd ? DFD_STATUS_LABEL[p.dfd.status] : 'Não iniciado'),
+        },
         cell: ({ row }) => {
           const dfd = row.original.dfd;
           if (!dfd) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
@@ -148,39 +205,17 @@ const ProcessosTab: React.FC<{
         id: 'created_at',
         header: 'Criado em',
         size: 110,
+        meta: {
+          exportValue: (p) => new Date(p.created_at).toLocaleDateString('pt-BR'),
+        },
         cell: ({ row }) => (
           <span className="font-mono text-xs tabular-nums text-muted-foreground">
             {new Date(row.original.created_at).toLocaleDateString('pt-BR')}
           </span>
         ),
       },
-      {
-        id: 'acoes',
-        header: '',
-        size: 90,
-        cell: ({ row }) => {
-          const dfd = row.original.dfd;
-          if (!dfd) return null;
-          const gerando = gerandoPdfId === row.original.id;
-          return (
-            <Button
-              size="sm"
-              variant="outline"
-              title="Baixar PDF do DFD"
-              isLoading={gerando}
-              leftIcon={!gerando ? <FileDown className="h-3.5 w-3.5" /> : undefined}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleGerarPdf(row.original.id);
-              }}
-            >
-              PDF
-            </Button>
-          );
-        },
-      },
     ],
-    [gerandoPdfId, handleGerarPdf],
+    [gerandoPdfId, handleGerarPdf, onOpenProcesso],
   );
 
   if (loading) return <ScreenState type="loading" title="Carregando processos..." />;
@@ -223,6 +258,11 @@ const ProcessosTab: React.FC<{
               pageSize={10}
               onRowClick={(row) => onOpenProcesso(row.id)}
               fixedLayout
+              resizableColumns
+              pageSizeSelector
+              exportable
+              exportFileName="processos-licita"
+              exportTitle="Licita — Processos"
             />
           )}
         </div>
@@ -247,6 +287,7 @@ export const LicitaModule: React.FC = () => {
 
   const tab = (searchParams.get('tab') as Tab | null) ?? 'processos';
   const processoId = searchParams.get('processo');
+  const documentoId = searchParams.get('documento');
 
   const openProcesso = (id: number) => {
     setSearchParams({ tab: 'processos', processo: String(id) });
@@ -254,6 +295,18 @@ export const LicitaModule: React.FC = () => {
 
   const closeProcesso = () => {
     setSearchParams({ tab: 'processos' });
+  };
+
+  const openNovoDocumento = () => {
+    setSearchParams({ tab: 'legislacao', documento: 'novo' });
+  };
+
+  const openDocumento = (documento: LegalDocumento) => {
+    setSearchParams({ tab: 'legislacao', documento: String(documento.id) });
+  };
+
+  const closeDocumento = () => {
+    setSearchParams({ tab: 'legislacao' });
   };
 
   const changeTab = (next: Tab) => {
@@ -268,6 +321,16 @@ export const LicitaModule: React.FC = () => {
         onChanged={() => {
           /* a lista é recarregada ao voltar */
         }}
+      />
+    );
+  }
+
+  if (documentoId) {
+    return (
+      <LegislacaoDetailPage
+        documentoId={documentoId === 'novo' ? null : Number(documentoId)}
+        onBack={closeDocumento}
+        onSaved={closeDocumento}
       />
     );
   }
@@ -300,7 +363,7 @@ export const LicitaModule: React.FC = () => {
       </div>
 
       {tab === 'processos' && <ProcessosTab onOpenProcesso={openProcesso} />}
-      {tab === 'legislacao' && <LegislacaoPage />}
+      {tab === 'legislacao' && <LegislacaoPage onNovoDocumento={openNovoDocumento} onEditarDocumento={openDocumento} />}
       {tab === 'campos' && <CamposConfiguracaoPage />}
     </div>
   );
