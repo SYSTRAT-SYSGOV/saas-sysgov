@@ -49,7 +49,7 @@ export const CargosManagement: React.FC<{ notify: (t: any) => void }> = ({ notif
 
   const cargoColumns: ColumnDef<Cargo, any>[] = [
     { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
-    { id: 'description', header: 'Descrição', cell: ({ row }) => <span className="text-muted-foreground">{row.original.description ?? '—'}</span> },
+    { id: 'description', header: 'Descrição', accessorKey: 'description', cell: ({ row }) => <span className="text-muted-foreground">{row.original.description ?? '—'}</span> },
     {
       id: 'actions', header: 'Ações', enableSorting: false,
       cell: ({ row }) => (

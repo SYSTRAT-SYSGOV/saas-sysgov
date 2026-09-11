@@ -92,6 +92,7 @@ export const ContractsModule: React.FC = () => {
     {
       id: 'supplier',
       header: 'Contratada / CNPJ',
+      accessorKey: 'supplier_name',
       cell: ({ row }) => (
         <div>
           <span className="font-medium text-foreground">{row.original.supplier_name ?? '-'}</span>
@@ -104,6 +105,7 @@ export const ContractsModule: React.FC = () => {
     {
       id: 'amount',
       header: 'Valor Global',
+      accessorKey: 'amount_cents',
       cell: ({ row }) => (
         <span className="font-mono tabular-nums font-bold text-foreground text-right block">
           {formatCurrencyBRL(row.original.amount_cents / 100)}
@@ -113,6 +115,7 @@ export const ContractsModule: React.FC = () => {
     {
       id: 'executed',
       header: 'Executado',
+      accessorFn: (row) => row.amount_cents + row.total_addenda_amount_cents,
       cell: ({ row }) => (
         <span className="font-mono tabular-nums text-muted-foreground text-right block">
           {formatCurrencyBRL((row.original.amount_cents + row.original.total_addenda_amount_cents) / 100)}
@@ -122,6 +125,7 @@ export const ContractsModule: React.FC = () => {
     {
       id: 'ends_at',
       header: 'Término Vigência',
+      accessorKey: 'ends_at',
       cell: ({ row }) => (
         <span className="font-mono text-muted-foreground text-center block">
           {formatDate(row.original.ends_at)}
@@ -131,6 +135,7 @@ export const ContractsModule: React.FC = () => {
     {
       id: 'status',
       header: 'Status',
+      accessorKey: 'status',
       cell: ({ row }) => (
         <StatusChip
           label={statusLabelMap[row.original.status] ?? row.original.status}

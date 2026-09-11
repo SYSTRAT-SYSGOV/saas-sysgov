@@ -24,7 +24,7 @@ export const RhModule: React.FC = () => {
     { id: 'nome', header: 'Nome', accessorKey: 'nome', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.nome}</span> },
     { id: 'cargo', header: 'Cargo', accessorKey: 'cargo', cell: ({ row }) => <span className="text-muted-foreground">{row.original.cargo}</span> },
     { id: 'secretaria', header: 'Secretaria', accessorKey: 'secretaria', cell: ({ row }) => <Badge variant="info">{row.original.secretaria}</Badge> },
-    { id: 'vinculo', header: 'Vínculo', cell: ({ row }) => <StatusChip label={row.original.vinculo} variant={row.original.vinculo === 'Efetivo' ? 'success' : 'warning'} /> },
+    { id: 'vinculo', header: 'Vínculo', accessorKey: 'vinculo', cell: ({ row }) => <StatusChip label={row.original.vinculo} variant={row.original.vinculo === 'Efetivo' ? 'success' : 'warning'} /> },
   ];
 
   return (

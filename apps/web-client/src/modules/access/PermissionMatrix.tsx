@@ -61,9 +61,9 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = () => {
     { id: 'user_email', header: 'E-mail', accessorKey: 'user_email', cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.original.user_email}</span> },
     { id: 'module', header: 'Módulo', accessorKey: 'module', cell: ({ row }) => <span className="font-mono font-bold text-foreground">{row.original.module}</span> },
     { id: 'role', header: 'Papel', accessorKey: 'role', cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.original.role}</span> },
-    { id: 'scope', header: 'Secretarias', cell: ({ row }) => <span className="max-w-[160px] truncate block" title={scopeDisplay(row.original)}>{scopeDisplay(row.original)}</span> },
-    { id: 'can_manage_users', header: 'Admin', cell: ({ row }) => row.original.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground text-xs">Não</span> },
-    { id: 'status', header: 'Status', cell: ({ row }) => <AccessBadge status={row.original.status} expiring={row.original.expiring} validTo={row.original.valid_to} /> },
+    { id: 'scope', header: 'Secretarias', accessorFn: (row) => scopeDisplay(row), cell: ({ row }) => <span className="max-w-[160px] truncate block" title={scopeDisplay(row.original)}>{scopeDisplay(row.original)}</span> },
+    { id: 'can_manage_users', header: 'Admin', accessorKey: 'can_manage_users', cell: ({ row }) => row.original.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground text-xs">Não</span> },
+    { id: 'status', header: 'Status', accessorKey: 'status', cell: ({ row }) => <AccessBadge status={row.original.status} expiring={row.original.expiring} validTo={row.original.valid_to} /> },
     { id: 'valid_to', header: 'Vigência', accessorKey: 'valid_to', cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{formatDate(row.original.valid_to)}</span> },
     { id: 'granted_by', header: 'Concedido por', accessorKey: 'granted_by', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.granted_by ?? '—'}</span> },
   ], [flatUnits]);

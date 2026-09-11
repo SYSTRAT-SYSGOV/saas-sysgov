@@ -37,6 +37,7 @@ export const PedagogicoModule: React.FC = () => {
     {
       id: 'nome',
       header: 'Unidade Escolar / Região',
+      accessorKey: 'nome',
       cell: ({ row }) => (
         <div>
           <span className="font-bold text-foreground">{row.original.nome}</span>
@@ -47,21 +48,25 @@ export const PedagogicoModule: React.FC = () => {
     {
       id: 'tipo',
       header: 'Tipo',
+      accessorKey: 'tipo',
       cell: ({ row }) => <span className="text-muted-foreground text-xs">{row.original.tipo}</span>,
     },
     {
       id: 'alunos',
       header: 'Alunos',
+      accessorKey: 'alunos',
       cell: ({ row }) => <span className="font-mono tabular-nums font-bold text-foreground text-right block">{row.original.alunos}</span>,
     },
     {
       id: 'turmas',
       header: 'Turmas',
+      accessorKey: 'turmas',
       cell: ({ row }) => <span className="font-mono tabular-nums text-muted-foreground text-right block">{row.original.turmas}</span>,
     },
     {
       id: 'ideb',
       header: 'IDEB',
+      accessorKey: 'ideb',
       cell: ({ row }) => row.original.ideb
         ? <span className="font-mono tabular-nums font-bold text-success text-center block">{row.original.ideb}</span>
         : <span className="text-muted-foreground text-center block">—</span>,
@@ -69,6 +74,7 @@ export const PedagogicoModule: React.FC = () => {
     {
       id: 'situacao',
       header: 'Situação',
+      accessorKey: 'situacao',
       cell: ({ row }) => <StatusChip label={row.original.situacao} variant={situacaoVariant(row.original.situacao)} />,
     },
   ], []);

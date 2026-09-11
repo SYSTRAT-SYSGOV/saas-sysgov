@@ -70,9 +70,9 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
   const byModuleColumns: ColumnDef<AccessModuleGroup['users'][number], any>[] = [
     { id: 'user_name', header: 'Usuário', accessorKey: 'user_name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.user_name}</span> },
     { id: 'role', header: 'Papel', accessorKey: 'role', cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.role}</span> },
-    { id: 'scope', header: 'Escopo', cell: ({ row }) => row.original.all_org_units ? <Badge variant="success">Todas</Badge> : <Badge variant="neutral">Restrito</Badge> },
-    { id: 'can_manage_users', header: 'Admin do módulo', cell: ({ row }) => row.original.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
-    { id: 'status', header: 'Status', enableSorting: false, cell: ({ row }) => <AccessBadge status={row.original.status} validTo={row.original.valid_to} /> },
+    { id: 'scope', header: 'Escopo', accessorKey: 'all_org_units', cell: ({ row }) => row.original.all_org_units ? <Badge variant="success">Todas</Badge> : <Badge variant="neutral">Restrito</Badge> },
+    { id: 'can_manage_users', header: 'Admin do módulo', accessorKey: 'can_manage_users', cell: ({ row }) => row.original.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
+    { id: 'status', header: 'Status', accessorKey: 'status', cell: ({ row }) => <AccessBadge status={row.original.status} validTo={row.original.valid_to} /> },
   ];
 
   const expiringColumns: ColumnDef<ExpiringAccess, any>[] = [
@@ -156,9 +156,9 @@ const MatrixTable: React.FC<{
     { id: 'user_name', header: 'Usuário', accessorKey: 'user_name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.user_name}</span> },
     { id: 'module', header: 'Módulo', accessorKey: 'module', cell: ({ row }) => <span className="font-mono">{row.original.module}</span> },
     { id: 'role', header: 'Papel', accessorKey: 'role', cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.role}</span> },
-    { id: 'scope', header: 'Secretarias', cell: ({ row }) => <span className="max-w-[160px] truncate" title={scopeDisplay(row.original)}>{scopeDisplay(row.original)}</span> },
-    { id: 'can_manage_users', header: 'Admin', cell: ({ row }) => row.original.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
-    { id: 'status', header: 'Status', enableSorting: false, cell: ({ row }) => <AccessBadge status={row.original.status} expiring={row.original.expiring} validTo={row.original.valid_to} /> },
+    { id: 'scope', header: 'Secretarias', accessorFn: (row) => scopeDisplay(row), cell: ({ row }) => <span className="max-w-[160px] truncate" title={scopeDisplay(row.original)}>{scopeDisplay(row.original)}</span> },
+    { id: 'can_manage_users', header: 'Admin', accessorKey: 'can_manage_users', cell: ({ row }) => row.original.can_manage_users ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
+    { id: 'status', header: 'Status', accessorKey: 'status', cell: ({ row }) => <AccessBadge status={row.original.status} expiring={row.original.expiring} validTo={row.original.valid_to} /> },
     { id: 'valid_to', header: 'Vigência', accessorKey: 'valid_to', cell: ({ row }) => <span className="font-mono text-muted-foreground">{formatDate(row.original.valid_to)}</span> },
     { id: 'granted_by', header: 'Concedido por', accessorKey: 'granted_by', cell: ({ row }) => <span className="text-muted-foreground">{row.original.granted_by ?? '—'}</span> },
     {

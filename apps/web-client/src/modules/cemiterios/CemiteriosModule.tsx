@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useTenant } from '@/core/tenant/useTenant';
 import { Cross, MapPin, Search, Plus, Calendar } from 'lucide-react';
 import { PageHeader, Card, Button, KpiCard, StatusChip, DataTable, SearchInput } from '@/components/ui';
+import { paraDataOrdenavel } from '@/lib/utils';
 import type { ColumnDef } from '@tanstack/react-table';
 
 interface Registro {
@@ -35,6 +36,7 @@ export const CemiteriosModule: React.FC = () => {
     {
       id: 'cemiterio',
       header: 'Cemitério / Jazigo',
+      accessorKey: 'cemetery',
       cell: ({ row }) => (
         <div>
           <span className="font-bold text-foreground">{row.original.cemetery}</span>
@@ -45,21 +47,25 @@ export const CemiteriosModule: React.FC = () => {
     {
       id: 'falecido',
       header: 'Nome do Falecido',
+      accessorKey: 'falecido',
       cell: ({ row }) => <span className="font-medium text-foreground">{row.original.falecido}</span>,
     },
     {
       id: 'data',
       header: 'Data Sepultamento',
+      accessorFn: (row) => paraDataOrdenavel(row.dataSepultamento),
       cell: ({ row }) => <span className="font-mono text-muted-foreground text-center block">{row.original.dataSepultamento}</span>,
     },
     {
       id: 'responsavel',
       header: 'Concessionário / Responsável',
+      accessorKey: 'responsavel',
       cell: ({ row }) => <span className="text-muted-foreground text-xs">{row.original.responsavel}</span>,
     },
     {
       id: 'concessao',
       header: 'Status da Concessão',
+      accessorKey: 'concessao',
       cell: ({ row }) => <StatusChip label={row.original.concessao} variant={concessaoVariant(row.original.concessao)} />,
     },
   ], []);

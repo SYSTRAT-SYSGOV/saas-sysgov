@@ -166,6 +166,7 @@ export const AccessManagement: React.FC = () => {
     {
       id: 'secretaria',
       header: 'Secretaria',
+      accessorFn: (row) => (row.primary_org_unit_id ? orgUnitName(row.primary_org_unit_id) : ''),
       cell: ({ row }) =>
         row.original.primary_org_unit_id ? (
           <Badge variant="info">{orgUnitName(row.original.primary_org_unit_id)}</Badge>
@@ -176,6 +177,7 @@ export const AccessManagement: React.FC = () => {
     {
       id: 'acessos',
       header: 'Acessos (módulos)',
+      accessorFn: (row) => row.accesses.length,
       cell: ({ row }) => (
         <div className="flex flex-wrap justify-center gap-1">
           {row.original.accesses.length === 0 && <span className="text-xs text-muted-foreground">—</span>}

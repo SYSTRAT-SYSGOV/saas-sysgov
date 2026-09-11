@@ -92,6 +92,7 @@ export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento,
         id: 'acoes',
         header: '',
         size: 130,
+        enableSorting: false,
         cell: ({ row }) => {
           const documento = row.original;
           return (

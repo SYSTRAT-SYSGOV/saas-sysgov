@@ -79,7 +79,7 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
     },
     { id: 'slug', header: 'Slug', accessorKey: 'slug', cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.slug}</span> },
     {
-      id: 'permissions', header: 'Permissões',
+      id: 'permissions', header: 'Permissões', accessorFn: (row) => row.permissions.length,
       cell: ({ row }) => (
         <div className="flex max-w-xs flex-wrap justify-center gap-1">
           {row.original.permissions.slice(0, 4).map((p) => <Badge key={p.id} variant="primary"><span className="font-mono">{p.slug}</span></Badge>)}
@@ -88,7 +88,7 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
         </div>
       ),
     },
-    { id: 'is_system', header: 'Sistema', cell: ({ row }) => row.original.is_system ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
+    { id: 'is_system', header: 'Sistema', accessorKey: 'is_system', cell: ({ row }) => row.original.is_system ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
     {
       id: 'actions', header: 'Ações', enableSorting: false,
       cell: ({ row }) => (

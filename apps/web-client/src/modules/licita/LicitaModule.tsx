@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useAuth } from '@/core/auth/useAuth';
-import { Plus, Gavel, Search, BookOpen, Settings2, FileDown, Pencil } from 'lucide-react';
-import { Button, Card } from '@sysgov/ui';
+import { Plus, Gavel, Search, BookOpen, Settings2, FileDown, Pencil, SlidersHorizontal } from 'lucide-react';
+import { Accordion, Button, Card } from '@sysgov/ui';
 import { PageHeader, DataTable, EmptyState, SearchInput, StatusChip, ScreenState } from '@/components/ui';
 import { sysgovApi, type FaseLicita, type LegalDocumento, type Processo, type StatusDfd } from '@sysgov/sdk';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ProcessoFormModal } from './components/ProcessoFormModal';
+import { BuscaAvancadaProcessos, aplicarFiltrosAvancados, type FiltroAvancado } from './components/BuscaAvancadaProcessos';
 import { DfdDetailPage } from './pages/DfdDetailPage';
 import { LegislacaoPage } from './pages/LegislacaoPage';
 import { LegislacaoDetailPage } from './pages/LegislacaoDetailPage';
@@ -54,6 +55,7 @@ const ProcessosTab: React.FC<{
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [filtrosAvancados, setFiltrosAvancados] = useState<FiltroAvancado[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [gerandoPdfId, setGerandoPdfId] = useState<number | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -105,13 +107,14 @@ const ProcessosTab: React.FC<{
     load();
   }, [load]);
 
-  const filtered = useMemo(
-    () =>
-      processos.filter((p) =>
-        [p.numero, p.objeto].some((t) => t?.toLowerCase().includes(search.toLowerCase())),
-      ),
-    [processos, search],
-  );
+  const filtered = useMemo(() => {
+    const porBuscaSimples = processos.filter((p) =>
+      [p.numero, p.objeto].some((t) => t?.toLowerCase().includes(search.toLowerCase())),
+    );
+    return aplicarFiltrosAvancados(porBuscaSimples, filtrosAvancados);
+  }, [processos, search, filtrosAvancados]);
+
+  const filtrosAvancadosAtivos = filtrosAvancados.filter((f) => f.valor !== '').length;
 
   const columns = useMemo<ColumnDef<Processo, any>[]>(
     () => [
@@ -119,6 +122,7 @@ const ProcessosTab: React.FC<{
         id: 'acoes',
         header: '',
         size: 90,
+        enableSorting: false,
         cell: ({ row }) => {
           const dfd = row.original.dfd;
           const gerando = gerandoPdfId === row.original.id;
@@ -241,6 +245,26 @@ const ProcessosTab: React.FC<{
         <div className="p-3 border-b border-border">
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar por número ou objeto..." />
         </div>
+        <Accordion
+          className="border-b border-border"
+          icon={<SlidersHorizontal className="h-4 w-4 text-primary" />}
+          items={[
+            {
+              value: 'busca-avancada',
+              title: (
+                <span>
+                  Busca Avançada
+                  {filtrosAvancadosAtivos > 0 && (
+                    <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                      {filtrosAvancadosAtivos} ativo{filtrosAvancadosAtivos > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </span>
+              ),
+              children: <BuscaAvancadaProcessos filtros={filtrosAvancados} onChange={setFiltrosAvancados} />,
+            },
+          ]}
+        />
         <div className="p-3">
           {filtered.length === 0 ? (
             <EmptyState
