@@ -115,6 +115,31 @@ const ProcessosTab: React.FC<{
   const columns = useMemo<ColumnDef<Processo, any>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 90,
+        cell: ({ row }) => {
+          const dfd = row.original.dfd;
+          if (!dfd) return null;
+          const gerando = gerandoPdfId === row.original.id;
+          return (
+            <Button
+              size="sm"
+              variant="outline"
+              title="Baixar PDF do DFD"
+              isLoading={gerando}
+              leftIcon={!gerando ? <FileDown className="h-3.5 w-3.5" /> : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleGerarPdf(row.original.id);
+              }}
+            >
+              PDF
+            </Button>
+          );
+        },
+      },
+      {
         id: 'numero',
         header: 'Processo',
         size: 140,
@@ -174,31 +199,6 @@ const ProcessosTab: React.FC<{
             {new Date(row.original.created_at).toLocaleDateString('pt-BR')}
           </span>
         ),
-      },
-      {
-        id: 'acoes',
-        header: '',
-        size: 90,
-        cell: ({ row }) => {
-          const dfd = row.original.dfd;
-          if (!dfd) return null;
-          const gerando = gerandoPdfId === row.original.id;
-          return (
-            <Button
-              size="sm"
-              variant="outline"
-              title="Baixar PDF do DFD"
-              isLoading={gerando}
-              leftIcon={!gerando ? <FileDown className="h-3.5 w-3.5" /> : undefined}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleGerarPdf(row.original.id);
-              }}
-            >
-              PDF
-            </Button>
-          );
-        },
       },
     ],
     [gerandoPdfId, handleGerarPdf],

@@ -291,14 +291,6 @@ export function DataTable<TData, TValue>({
     <div className={cn('space-y-3', className)}>
       {(searchable || pageSizeSelector || exportable) && (
         <div className="flex flex-wrap items-center gap-3">
-          {exportable && (
-            <ExportMenu
-              rows={table.getFilteredRowModel().rows}
-              columns={table.getAllLeafColumns()}
-              filename={exportFileName}
-              title={exportTitle}
-            />
-          )}
           {searchable && (
             <div className="relative min-w-[200px] flex-1">
               <input
@@ -309,23 +301,33 @@ export function DataTable<TData, TValue>({
               />
             </div>
           )}
-          {pageSizeSelector && (
-            <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-              Exibir
-              <select
-                value={table.getState().pagination.pageSize}
-                onChange={(e) => table.setPageSize(Number(e.target.value))}
-                className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {pageSizeOptions.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-              por página
-            </label>
-          )}
+          <div className="ml-auto flex items-center gap-3">
+            {pageSizeSelector && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                Exibir
+                <select
+                  value={table.getState().pagination.pageSize}
+                  onChange={(e) => table.setPageSize(Number(e.target.value))}
+                  className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {pageSizeOptions.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+                por página
+              </label>
+            )}
+            {exportable && (
+              <ExportMenu
+                rows={table.getFilteredRowModel().rows}
+                columns={table.getAllLeafColumns()}
+                filename={exportFileName}
+                title={exportTitle}
+              />
+            )}
+          </div>
         </div>
       )}
 
