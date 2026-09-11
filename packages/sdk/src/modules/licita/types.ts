@@ -9,6 +9,20 @@ export type StatusDfd = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
 export type GrauPrioridade = 'baixa' | 'media' | 'alta' | 'critica';
 export type AcaoVersaoDfd = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado';
 
+export type TipoItemDfd = 'material' | 'servico';
+
+export interface ItemDfd {
+  tipo: TipoItemDfd;
+  /** CATMAT (material) ou CATSER (serviço) — o rótulo exibido muda conforme `tipo`. */
+  codigo: string;
+  descricao: string;
+  unidade_medida: string;
+  quantidade: number;
+  valor_unitario: number;
+  /** Campos extras configurados pelo órgão para este tipo de item (ver 'dfd_item_material'/'dfd_item_servico' em CampoConfiguracao). */
+  campos_extras?: Record<string, unknown>;
+}
+
 export interface MembroEquipePlanejamento {
   nome: string;
   cargo: string;
@@ -52,10 +66,19 @@ export interface CampoConfig {
   aba?: string;
 }
 
+/**
+ * Tipos de documento que aceitam campos extras configuráveis pelo órgão
+ * (ver CampoConfiguracaoPage): as fases do processo (FaseLicita) + os
+ * sub-tipos de item do DFD, que não são fases (não avançam o processo),
+ * são sub-entidades do DFD com campos exigidos próprios (material e
+ * serviço podem ter exigências diferentes).
+ */
+export type TipoDocumentoConfiguravel = FaseLicita | 'dfd_item_material' | 'dfd_item_servico';
+
 export interface CampoConfiguracao {
   id: number;
   tenant_id: number;
-  tipo_documento: FaseLicita;
+  tipo_documento: TipoDocumentoConfiguravel;
   campos: CampoConfig[];
   ativo: boolean;
 }
@@ -102,6 +125,7 @@ export interface Dfd {
   area_requisitante: string | null;
   equipe_planejamento: MembroEquipePlanejamento[] | null;
   campos_extras: Record<string, unknown> | null;
+  itens: ItemDfd[] | null;
   status: StatusDfd;
   gerado_por_ia: boolean;
   elaborado_por: number;
@@ -147,6 +171,7 @@ export interface CreateDfdInput {
   area_requisitante?: string | null;
   equipe_planejamento?: MembroEquipePlanejamento[];
   campos_extras?: Record<string, unknown>;
+  itens?: ItemDfd[];
 }
 
 export type UpdateDfdInput = Partial<CreateDfdInput>;

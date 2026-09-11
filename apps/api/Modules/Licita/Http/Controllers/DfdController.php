@@ -141,6 +141,14 @@ final class DfdController extends Controller
             'equipe_planejamento.*.cargo' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.matricula' => ['required_with:equipe_planejamento', 'string', 'max:50'],
             'campos_extras' => ['sometimes', 'array'],
+            'itens' => ['sometimes', 'array'],
+            'itens.*.tipo' => ['required_with:itens', 'in:material,servico'],
+            'itens.*.codigo' => ['required_with:itens', 'string', 'max:50'],
+            'itens.*.descricao' => ['required_with:itens', 'string', 'max:1000'],
+            'itens.*.unidade_medida' => ['required_with:itens', 'string', 'max:30'],
+            'itens.*.quantidade' => ['required_with:itens', 'numeric', 'min:0.01'],
+            'itens.*.valor_unitario' => ['required_with:itens', 'numeric', 'min:0'],
+            'itens.*.campos_extras' => ['sometimes', 'array'],
         ]);
     }
 }

@@ -28,6 +28,12 @@ final class DfdService
         'area_requisitante',
         'equipe_planejamento',
         'campos_extras',
+        'itens',
+    ];
+
+    private const TIPO_DOCUMENTO_ITEM = [
+        'material' => 'dfd_item_material',
+        'servico' => 'dfd_item_servico',
     ];
 
     public function __construct(
@@ -53,6 +59,7 @@ final class DfdService
         }
 
         $this->camposConfiguracao->validarRespostas('dfd', $data['campos_extras'] ?? []);
+        $this->validarItens($data['itens'] ?? []);
         $data = $this->sanitizarCamposRicos($data);
 
         return DB::transaction(function () use ($processo, $data, $user): Dfd {
@@ -82,6 +89,8 @@ final class DfdService
 
         $camposExtras = array_key_exists('campos_extras', $data) ? $data['campos_extras'] : ($dfd->campos_extras ?? []);
         $this->camposConfiguracao->validarRespostas('dfd', $camposExtras ?? []);
+        $itens = array_key_exists('itens', $data) ? $data['itens'] : ($dfd->itens ?? []);
+        $this->validarItens($itens ?? []);
         $data = $this->sanitizarCamposRicos($data);
 
         return DB::transaction(function () use ($dfd, $data, $user): Dfd {
@@ -180,10 +189,34 @@ final class DfdService
     }
 
     /**
+     * Valida o campos_extras de cada item (material/servico) contra a
+     * configuração ativa do tenant para o tipo daquele item — mesmo
+     * mecanismo já usado para o campos_extras do DFD em si, mas aplicado
+     * por item, já que material e serviço podem ter campos exigidos
+     * diferentes (ex.: "Marca de Referência" só faz sentido para material).
+     * Os campos fixos (código, descrição, unidade, quantidade, valor
+     * unitário) já são obrigatórios na validação do Request, antes de
+     * chegar aqui.
+     *
+     * @param array<int, array{tipo?: mixed, campos_extras?: mixed}> $itens
+     */
+    private function validarItens(array $itens): void
+    {
+        foreach ($itens as $item) {
+            $tipoDocumento = self::TIPO_DOCUMENTO_ITEM[$item['tipo'] ?? null] ?? null;
+            if ($tipoDocumento === null) {
+                continue;
+            }
+
+            $this->camposConfiguracao->validarRespostas($tipoDocumento, $item['campos_extras'] ?? []);
+        }
+    }
+
+    /**
      * Sanitiza os campos que aceitam HTML rico do TinyMCE antes de persistir
-     * (justificativa e campos_extras do tipo texto_longo) — defesa contra
-     * XSS armazenado, já que esse conteúdo é re-renderizado para outros
-     * usuários (ex.: quem aprova o DFD).
+     * (justificativa, campos_extras do tipo texto_longo do DFD e de cada
+     * item) — defesa contra XSS armazenado, já que esse conteúdo é
+     * re-renderizado para outros usuários (ex.: quem aprova o DFD).
      *
      * @param array<string, mixed> $data
      * @return array<string, mixed>
@@ -195,19 +228,39 @@ final class DfdService
         }
 
         if (array_key_exists('campos_extras', $data) && is_array($data['campos_extras'])) {
-            $config = $this->camposConfiguracao->getAtiva('dfd');
-            $textoLongoKeys = $config === null
-                ? []
-                : array_column(array_filter($config->campos, fn ($c) => $c['tipo'] === 'texto_longo'), 'key');
+            $data['campos_extras'] = $this->sanitizarCamposExtras('dfd', $data['campos_extras']);
+        }
 
-            foreach ($textoLongoKeys as $key) {
-                if (isset($data['campos_extras'][$key]) && is_string($data['campos_extras'][$key])) {
-                    $data['campos_extras'][$key] = $this->sanitizer->sanitize($data['campos_extras'][$key]);
+        if (array_key_exists('itens', $data) && is_array($data['itens'])) {
+            foreach ($data['itens'] as $index => $item) {
+                $tipoDocumento = self::TIPO_DOCUMENTO_ITEM[$item['tipo'] ?? null] ?? null;
+                if ($tipoDocumento !== null && isset($item['campos_extras']) && is_array($item['campos_extras'])) {
+                    $data['itens'][$index]['campos_extras'] = $this->sanitizarCamposExtras($tipoDocumento, $item['campos_extras']);
                 }
             }
         }
 
         return $data;
+    }
+
+    /**
+     * @param array<string, mixed> $camposExtras
+     * @return array<string, mixed>
+     */
+    private function sanitizarCamposExtras(string $tipoDocumento, array $camposExtras): array
+    {
+        $config = $this->camposConfiguracao->getAtiva($tipoDocumento);
+        $textoLongoKeys = $config === null
+            ? []
+            : array_column(array_filter($config->campos, fn ($c) => $c['tipo'] === 'texto_longo'), 'key');
+
+        foreach ($textoLongoKeys as $key) {
+            if (isset($camposExtras[$key]) && is_string($camposExtras[$key])) {
+                $camposExtras[$key] = $this->sanitizer->sanitize($camposExtras[$key]);
+            }
+        }
+
+        return $camposExtras;
     }
 
     private function validarTransicao(Dfd $dfd, StatusDfd $novo): void

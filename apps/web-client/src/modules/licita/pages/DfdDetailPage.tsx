@@ -54,6 +54,8 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
   const [processo, setProcesso] = useState<Processo | null>(null);
   const [dfd, setDfd] = useState<Dfd | null>(null);
   const [camposExtras, setCamposExtras] = useState<CampoConfig[]>([]);
+  const [camposExtrasItemMaterial, setCamposExtrasItemMaterial] = useState<CampoConfig[]>([]);
+  const [camposExtrasItemServico, setCamposExtrasItemServico] = useState<CampoConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -77,14 +79,18 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
       setLoading(true);
       setError(null);
       try {
-        const [processoCompleto, config] = await Promise.all([
+        const [processoCompleto, config, configMaterial, configServico] = await Promise.all([
           sysgovApi.licita.getProcesso(processoId),
           sysgovApi.licita.getCamposConfiguracao('dfd').catch(() => null),
+          sysgovApi.licita.getCamposConfiguracao('dfd_item_material').catch(() => null),
+          sysgovApi.licita.getCamposConfiguracao('dfd_item_servico').catch(() => null),
         ]);
         if (cancelado) return;
         setProcesso(processoCompleto);
         setDfd(processoCompleto.dfd);
         setCamposExtras(config?.campos ?? []);
+        setCamposExtrasItemMaterial(configMaterial?.campos ?? []);
+        setCamposExtrasItemServico(configServico?.campos ?? []);
       } catch (err: any) {
         if (!cancelado) setError(err?.response?.data?.error || err?.message || 'Erro ao carregar o processo.');
       } finally {
@@ -289,11 +295,22 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
 
         <DfdForm
           key={dfd?.id ?? 'novo'}
-          initialValue={dfd ? { ...dfd, equipe_planejamento: dfd.equipe_planejamento ?? undefined, campos_extras: dfd.campos_extras ?? undefined } : undefined}
+          initialValue={
+            dfd
+              ? {
+                  ...dfd,
+                  equipe_planejamento: dfd.equipe_planejamento ?? undefined,
+                  campos_extras: dfd.campos_extras ?? undefined,
+                  itens: dfd.itens ?? undefined,
+                }
+              : undefined
+          }
           disabled={!editavel}
           submitLabel={dfd ? 'Salvar Alterações' : 'Criar DFD'}
           onSubmit={dfd ? handleUpdate : handleCreate}
           camposExtras={camposExtras}
+          camposExtrasItemMaterial={camposExtrasItemMaterial}
+          camposExtrasItemServico={camposExtrasItemServico}
         />
 
         {dfd && (dfd.versoes?.length ?? 0) > 0 && (
