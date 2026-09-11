@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge, RichTextEditor, Select } from '@sysgov/ui';
-import { PageHeader, ScreenState, EmptyState, SearchInput } from '@/components/ui';
+import { PageHeader, ScreenState, EmptyState, SearchInput, DataTable } from '@/components/ui';
 import { Plus, BookOpen, Trash2, Pencil } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { useAuth } from '@/core/auth/useAuth';
 import { useCan } from '@/core/rbac/useCan';
 import { sysgovApi, type CreateLegalDocumentoInput, type LegalDocumento, type TipoLegalDocumento } from '@sysgov/sdk';
+import type { ColumnDef } from '@tanstack/react-table';
 
 const TIPO_OPTIONS: { value: TipoLegalDocumento; label: string }[] = [
   { value: 'lei', label: 'Lei' },
@@ -116,6 +117,106 @@ export const LegislacaoPage: React.FC = () => {
     setDocumentos((prev) => prev.filter((d) => d.id !== documento.id));
   };
 
+  const columns = useMemo<ColumnDef<LegalDocumento, any>[]>(
+    () => [
+      {
+        id: 'acoes',
+        header: '',
+        size: 90,
+        cell: ({ row }) => {
+          const documento = row.original;
+          if (!podeEditar(documento)) return null;
+          return (
+            <div className="flex justify-center gap-1">
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                title="Editar"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEdit(documento);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                title="Excluir"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(documento);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'escopo',
+        header: 'Escopo',
+        size: 110,
+        meta: {
+          exportValue: (d) => (d.tenant_id === null ? 'Global' : 'Órgão'),
+        },
+        cell: ({ row }) => (
+          <Badge variant={row.original.tenant_id === null ? 'primary' : 'secondary'}>
+            {row.original.tenant_id === null ? 'GLOBAL' : 'ÓRGÃO'}
+          </Badge>
+        ),
+      },
+      {
+        id: 'tipo',
+        header: 'Tipo',
+        size: 160,
+        meta: {
+          exportValue: (d) => TIPO_LABEL[d.tipo],
+        },
+        cell: ({ row }) => <Badge variant="neutral">{TIPO_LABEL[row.original.tipo]}</Badge>,
+      },
+      {
+        id: 'numero',
+        header: 'Número',
+        size: 150,
+        meta: {
+          exportValue: (d) => d.numero ?? '',
+        },
+        cell: ({ row }) => (
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">{row.original.numero || '—'}</span>
+        ),
+      },
+      {
+        id: 'titulo',
+        header: 'Título',
+        size: 420,
+        meta: {
+          exportValue: (d) => d.titulo,
+        },
+        cell: ({ row }) => (
+          <span className="block truncate text-left font-medium text-foreground" title={row.original.titulo}>
+            {row.original.titulo}
+          </span>
+        ),
+      },
+      {
+        id: 'ementa',
+        header: 'Ementa',
+        size: 300,
+        meta: {
+          exportValue: (d) => d.ementa ?? '',
+        },
+        cell: ({ row }) => (
+          <span className="block truncate text-left text-muted-foreground" title={row.original.ementa ?? undefined}>
+            {row.original.ementa || '—'}
+          </span>
+        ),
+      },
+    ],
+    [podeGerenciar, user?.is_platform_admin, openEdit, handleDelete],
+  );
+
   if (loading) return <ScreenState type="loading" title="Carregando legislação..." />;
   if (error && documentos.length === 0) {
     return <ScreenState type="error" title="Erro ao carregar" description={error} actionLabel="Tentar novamente" onAction={load} />;
@@ -140,7 +241,7 @@ export const LegislacaoPage: React.FC = () => {
         <div className="p-3 border-b border-border">
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar por título..." />
         </div>
-        <div className="p-3 space-y-2">
+        <div className="p-3">
           {documentos.length === 0 ? (
             <EmptyState
               icon={<BookOpen className="h-10 w-10" />}
@@ -148,31 +249,18 @@ export const LegislacaoPage: React.FC = () => {
               description="Cadastre a legislação local para dar contexto à elaboração dos artefatos."
             />
           ) : (
-            documentos.map((documento) => (
-              <div key={documento.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant={documento.tenant_id === null ? 'primary' : 'secondary'}>
-                      {documento.tenant_id === null ? 'GLOBAL' : 'ÓRGÃO'}
-                    </Badge>
-                    <Badge variant="neutral">{TIPO_LABEL[documento.tipo]}</Badge>
-                    <span className="font-medium text-foreground">{documento.titulo}</span>
-                    {documento.numero && <span className="text-xs text-muted-foreground">({documento.numero})</span>}
-                  </div>
-                  {documento.ementa && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{documento.ementa}</p>}
-                </div>
-                {podeEditar(documento) && (
-                  <div className="flex shrink-0 gap-1">
-                    <Button size="icon-sm" variant="ghost" onClick={() => openEdit(documento)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => handleDelete(documento)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))
+            <DataTable
+              columns={columns}
+              data={documentos}
+              emptyText="Nenhum documento encontrado."
+              pageSize={10}
+              fixedLayout
+              resizableColumns
+              pageSizeSelector
+              exportable
+              exportFileName="legislacao-licita"
+              exportTitle="Licita — Biblioteca de Legislação"
+            />
           )}
         </div>
       </Card>
