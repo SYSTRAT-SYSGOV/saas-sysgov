@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge } from '@sysgov/ui';
 import { PageHeader, ScreenState, EmptyState, SearchInput, DataTable } from '@/components/ui';
-import { Plus, BookOpen, Trash2, Pencil } from 'lucide-react';
+import { Plus, BookOpen, Trash2, Pencil, FileDown } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { useAuth } from '@/core/auth/useAuth';
 import { useCan } from '@/core/rbac/useCan';
+import { useTenant } from '@/core/tenant/useTenant';
 import { sysgovApi, type LegalDocumento, type TipoLegalDocumento } from '@sysgov/sdk';
 import type { ColumnDef } from '@tanstack/react-table';
+import { abrirJanelaPdf } from '../utils/gerarDfdPdf';
+import { gerarLegislacaoPdf } from '../utils/gerarLegislacaoPdf';
 
 const TIPO_LABEL: Record<TipoLegalDocumento, string> = {
   lei: 'Lei',
@@ -34,10 +37,12 @@ interface LegislacaoPageProps {
 export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento, onEditarDocumento }) => {
   const { user } = useAuth();
   const { can } = useCan();
+  const { tenant } = useTenant();
   const [documentos, setDocumentos] = useState<LegalDocumento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const podeGerenciar = can('licita.legislacao.manage') || Boolean(user?.is_platform_admin);
 
@@ -66,39 +71,68 @@ export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento,
     setDocumentos((prev) => prev.filter((d) => d.id !== documento.id));
   };
 
+  const handleGerarPdf = (documento: LegalDocumento) => {
+    // Precisa abrir a janela AQUI, síncrono, ainda dentro do clique — do
+    // contrário o navegador não reconhece como resposta direta a um gesto
+    // do usuário e bloqueia o popup silenciosamente (mesma observação do
+    // PDF do DFD, ver gerarDfdPdf.ts). Como o documento já está carregado
+    // na lista (sem precisar buscar de novo), não há nada assíncrono aqui.
+    const janela = abrirJanelaPdf();
+    if (!janela) {
+      setPdfError('O navegador bloqueou a aba do PDF. Permita pop-ups para este site e tente novamente.');
+      return;
+    }
+    setPdfError(null);
+    gerarLegislacaoPdf(janela, documento, tenant?.name ?? '');
+  };
+
   const columns = useMemo<ColumnDef<LegalDocumento, any>[]>(
     () => [
       {
         id: 'acoes',
         header: '',
-        size: 90,
+        size: 130,
         cell: ({ row }) => {
           const documento = row.original;
-          if (!podeEditar(documento)) return null;
           return (
             <div className="flex justify-center gap-1">
               <Button
                 size="icon-sm"
                 variant="ghost"
-                title="Editar"
+                title="Baixar PDF"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onEditarDocumento(documento);
+                  handleGerarPdf(documento);
                 }}
               >
-                <Pencil className="h-3.5 w-3.5" />
+                <FileDown className="h-3.5 w-3.5" />
               </Button>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Excluir"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(documento);
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-              </Button>
+              {podeEditar(documento) && (
+                <>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    title="Editar"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditarDocumento(documento);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    title="Excluir"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(documento);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </>
+              )}
             </div>
           );
         },
@@ -163,7 +197,7 @@ export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento,
         ),
       },
     ],
-    [podeGerenciar, user?.is_platform_admin, onEditarDocumento],
+    [podeGerenciar, user?.is_platform_admin, onEditarDocumento, handleGerarPdf],
   );
 
   if (loading) return <ScreenState type="loading" title="Carregando legislação..." />;
@@ -185,6 +219,12 @@ export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento,
           ) : undefined
         }
       />
+
+      {pdfError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {pdfError}
+        </div>
+      )}
 
       <Card className="gap-0 py-0">
         <div className="p-3 border-b border-border">
