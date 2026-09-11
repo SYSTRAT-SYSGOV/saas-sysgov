@@ -79,6 +79,19 @@ describe('DataTable', () => {
       const { container } = render(<DataTable columns={columns} data={data} pageSize={10} />);
       expect(container.querySelectorAll('[class*="cursor-col-resize"]').length).toBe(0);
     });
+
+    it('sets a min-width on the table equal to the sum of column sizes, so it scrolls horizontally on narrow screens instead of squeezing columns until content overlaps', () => {
+      const columnsComTamanho: ColumnDef<TestItem, any>[] = [
+        { id: 'id', header: 'ID', accessorKey: 'id', size: 90 },
+        { id: 'name', header: 'Nome', accessorKey: 'name', size: 420 },
+        { id: 'status', header: 'Status', accessorKey: 'status', size: 150 },
+      ];
+      const { container } = render(
+        <DataTable columns={columnsComTamanho} data={data} pageSize={10} resizableColumns />,
+      );
+      const table = container.querySelector('table') as HTMLTableElement;
+      expect(table.style.minWidth).toBe('660px');
+    });
   });
 
   describe('exportable', () => {
