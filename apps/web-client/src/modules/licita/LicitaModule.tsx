@@ -119,6 +119,7 @@ const ProcessosTab: React.FC<{
         id: 'acoes',
         header: '',
         size: 90,
+        enableSorting: false,
         cell: ({ row }) => {
           const dfd = row.original.dfd;
           const gerando = gerandoPdfId === row.original.id;

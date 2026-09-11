@@ -99,8 +99,8 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
 
   const categoryColumns: ColumnDef<AccessCategory, any>[] = [
     { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
-    { id: 'groups_count', header: 'Grupos', cell: ({ row }) => <span className="text-muted-foreground">{row.original.groups_count ?? 0} grupos</span> },
-    { id: 'description', header: 'Descrição', cell: ({ row }) => <span className="text-muted-foreground">{row.original.description ?? ''}</span> },
+    { id: 'groups_count', header: 'Grupos', accessorKey: 'groups_count', cell: ({ row }) => <span className="text-muted-foreground">{row.original.groups_count ?? 0} grupos</span> },
+    { id: 'description', header: 'Descrição', accessorKey: 'description', cell: ({ row }) => <span className="text-muted-foreground">{row.original.description ?? ''}</span> },
     {
       id: 'actions', header: 'Ações', enableSorting: false,
       cell: ({ row }) => (
@@ -114,7 +114,7 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
 
   const groupColumns: ColumnDef<AccessGroup, any>[] = [
     { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
-    { id: 'details', header: 'Detalhes', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.category?.name ?? 'sem categoria'} · {row.original.accesses?.length ?? 0} módulos · {row.original.users_count ?? 0} usuários</span> },
+    { id: 'details', header: 'Detalhes', accessorFn: (row) => row.category?.name ?? '', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.category?.name ?? 'sem categoria'} · {row.original.accesses?.length ?? 0} módulos · {row.original.users_count ?? 0} usuários</span> },
     {
       id: 'actions', header: 'Ações', enableSorting: false,
       cell: ({ row }) => (
