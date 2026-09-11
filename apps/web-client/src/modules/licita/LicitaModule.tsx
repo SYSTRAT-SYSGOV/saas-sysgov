@@ -125,17 +125,16 @@ const ProcessosTab: React.FC<{
           const gerando = gerandoPdfId === row.original.id;
           return (
             <Button
-              size="sm"
-              variant="outline"
+              size="icon-sm"
+              variant="ghost"
               title="Baixar PDF do DFD"
               isLoading={gerando}
-              leftIcon={!gerando ? <FileDown className="h-3.5 w-3.5" /> : undefined}
               onClick={(e) => {
                 e.stopPropagation();
                 handleGerarPdf(row.original.id);
               }}
             >
-              PDF
+              {!gerando && <FileDown className="h-3.5 w-3.5" />}
             </Button>
           );
         },
