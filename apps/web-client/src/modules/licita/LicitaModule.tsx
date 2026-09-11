@@ -5,11 +5,12 @@ import { useAuth } from '@/core/auth/useAuth';
 import { Plus, Gavel, Search, BookOpen, Settings2, FileDown } from 'lucide-react';
 import { Button, Card } from '@sysgov/ui';
 import { PageHeader, DataTable, EmptyState, SearchInput, StatusChip, ScreenState } from '@/components/ui';
-import { sysgovApi, type FaseLicita, type Processo, type StatusDfd } from '@sysgov/sdk';
+import { sysgovApi, type FaseLicita, type LegalDocumento, type Processo, type StatusDfd } from '@sysgov/sdk';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ProcessoFormModal } from './components/ProcessoFormModal';
 import { DfdDetailPage } from './pages/DfdDetailPage';
 import { LegislacaoPage } from './pages/LegislacaoPage';
+import { LegislacaoDetailPage } from './pages/LegislacaoDetailPage';
 import { CamposConfiguracaoPage } from './pages/CamposConfiguracaoPage';
 import { abrirJanelaPdf, gerarDfdPdf } from './utils/gerarDfdPdf';
 
@@ -273,6 +274,7 @@ export const LicitaModule: React.FC = () => {
 
   const tab = (searchParams.get('tab') as Tab | null) ?? 'processos';
   const processoId = searchParams.get('processo');
+  const documentoId = searchParams.get('documento');
 
   const openProcesso = (id: number) => {
     setSearchParams({ tab: 'processos', processo: String(id) });
@@ -280,6 +282,18 @@ export const LicitaModule: React.FC = () => {
 
   const closeProcesso = () => {
     setSearchParams({ tab: 'processos' });
+  };
+
+  const openNovoDocumento = () => {
+    setSearchParams({ tab: 'legislacao', documento: 'novo' });
+  };
+
+  const openDocumento = (documento: LegalDocumento) => {
+    setSearchParams({ tab: 'legislacao', documento: String(documento.id) });
+  };
+
+  const closeDocumento = () => {
+    setSearchParams({ tab: 'legislacao' });
   };
 
   const changeTab = (next: Tab) => {
@@ -294,6 +308,16 @@ export const LicitaModule: React.FC = () => {
         onChanged={() => {
           /* a lista é recarregada ao voltar */
         }}
+      />
+    );
+  }
+
+  if (documentoId) {
+    return (
+      <LegislacaoDetailPage
+        documentoId={documentoId === 'novo' ? null : Number(documentoId)}
+        onBack={closeDocumento}
+        onSaved={closeDocumento}
       />
     );
   }
@@ -326,7 +350,7 @@ export const LicitaModule: React.FC = () => {
       </div>
 
       {tab === 'processos' && <ProcessosTab onOpenProcesso={openProcesso} />}
-      {tab === 'legislacao' && <LegislacaoPage />}
+      {tab === 'legislacao' && <LegislacaoPage onNovoDocumento={openNovoDocumento} onEditarDocumento={openDocumento} />}
       {tab === 'campos' && <CamposConfiguracaoPage />}
     </div>
   );
