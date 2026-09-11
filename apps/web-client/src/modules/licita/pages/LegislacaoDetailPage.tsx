@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, RichTextEditor, Select } from '@sysgov/ui';
-import { PageHeader, ScreenState } from '@/components/ui';
+import { PageHeader, ScreenState, ValidationErrorModal } from '@/components/ui';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { useAuth } from '@/core/auth/useAuth';
+import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 import { sysgovApi, type CreateLegalDocumentoInput, type LegalDocumento, type TipoLegalDocumento } from '@sysgov/sdk';
 
 const TIPO_OPTIONS: { value: TipoLegalDocumento; label: string }[] = [
@@ -42,6 +43,7 @@ export const LegislacaoDetailPage: React.FC<LegislacaoDetailPageProps> = ({ docu
   const [form, setForm] = useState<CreateLegalDocumentoInput>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
 
   useEffect(() => {
     if (documentoId === null) return;
@@ -77,14 +79,20 @@ export const LegislacaoDetailPage: React.FC<LegislacaoDetailPageProps> = ({ docu
     e.preventDefault();
     setSaving(true);
     setFormError(null);
+    setValidationErrors(null);
     try {
       const documento =
         documentoId === null
           ? await sysgovApi.licita.createLegislacao(form)
           : await sysgovApi.licita.updateLegislacao(documentoId, form);
       onSaved(documento);
-    } catch (err: any) {
-      setFormError(err?.response?.data?.error || err?.message || 'Erro ao salvar o documento.');
+    } catch (err) {
+      const fieldErrors = getApiValidationErrors(err);
+      if (fieldErrors) {
+        setValidationErrors(fieldErrors);
+      } else {
+        setFormError(getApiErrorMessage(err, 'Erro ao salvar o documento.'));
+      }
     } finally {
       setSaving(false);
     }
@@ -108,6 +116,12 @@ export const LegislacaoDetailPage: React.FC<LegislacaoDetailPageProps> = ({ docu
         }
       />
 
+      <ValidationErrorModal
+        open={validationErrors !== null}
+        onClose={() => setValidationErrors(null)}
+        errors={validationErrors ?? []}
+      />
+
       <Card className="p-6 space-y-4">
         {formError && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -119,7 +133,9 @@ export const LegislacaoDetailPage: React.FC<LegislacaoDetailPageProps> = ({ docu
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">Título *</label>
               <input
-                required
+                // Sem `required` nativo — ver comentário equivalente em
+                // DfdForm.tsx: bloquearia o submit antes da
+                // ValidationErrorModal padrão poder aparecer.
                 type="text"
                 value={form.titulo}
                 onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))}

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button } from '@sysgov/ui';
-import { StatusChip, PageHeader, ScreenState } from '@/components/ui';
+import { StatusChip, PageHeader, ScreenState, ValidationErrorModal } from '@/components/ui';
 import { ArrowLeft, FileText, CheckCircle2, XCircle, Send, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/core/auth/useAuth';
 import { useCan } from '@/core/rbac/useCan';
 import { cn } from '@/lib/utils';
+import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 import { sysgovApi, type CampoConfig, type CreateDfdInput, type Dfd, type Processo, type StatusDfd } from '@sysgov/sdk';
 import { DfdForm } from '../components/DfdForm';
 
@@ -59,6 +60,7 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   const [showRejeitar, setShowRejeitar] = useState(false);
@@ -128,14 +130,20 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
 
   const runAction = async (action: () => Promise<Dfd>, sucesso: { title: string; message: string }) => {
     setActionError(null);
+    setValidationErrors(null);
     setActionLoading(true);
     try {
       const atualizado = await action();
       setDfd(atualizado);
       await refreshProcesso();
       notify({ type: 'success', ...sucesso });
-    } catch (err: any) {
-      setActionError(err?.response?.data?.error || err?.message || 'Erro ao executar ação.');
+    } catch (err) {
+      const fieldErrors = getApiValidationErrors(err);
+      if (fieldErrors) {
+        setValidationErrors(fieldErrors);
+      } else {
+        setActionError(getApiErrorMessage(err, 'Erro ao executar ação.'));
+      }
     } finally {
       setActionLoading(false);
     }
@@ -292,6 +300,12 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
             {actionError}
           </div>
         )}
+
+        <ValidationErrorModal
+          open={validationErrors !== null}
+          onClose={() => setValidationErrors(null)}
+          errors={validationErrors ?? []}
+        />
 
         <DfdForm
           key={dfd?.id ?? 'novo'}
