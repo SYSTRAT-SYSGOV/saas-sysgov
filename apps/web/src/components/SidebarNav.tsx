@@ -43,7 +43,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   LayoutDashboard, Users, Building2, Table, CreditCard, Plug, ShieldAlert,
   Settings, UserCheck, BarChart3, Layers, Landmark, Receipt, Scale, HandCoins,
   GraduationCap, Trophy, Award, BellRing, MapPin, Database, Sliders, FileText,
-  Ticket, BookOpen,
+  Ticket, BookOpen, Sparkles,
 };
 
 export interface NavItem {

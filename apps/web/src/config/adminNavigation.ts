@@ -50,7 +50,7 @@ function groupModulesByCategory(modules: AdminModuleDefinition[]): AdminNavGroup
       categoryMap.management.push(module);
     } else if (['admin_billing', 'admin_apis', 'admin_logs'].includes(module.id)) {
       categoryMap.finance_integrations.push(module);
-    } else if (['admin_settings', 'admin_profile'].includes(module.id)) {
+    } else if (['admin_settings', 'admin_ai', 'admin_profile'].includes(module.id)) {
       categoryMap.system_settings.push(module);
     } else if (['contratos', 'helpdesk', 'contabilidade'].includes(module.id)) {
       categoryMap.contratos_contabilidade.push(module);

@@ -14,6 +14,7 @@ describe('Admin Module Registry', () => {
       'admin_apis',
       'admin_logs',
       'admin_settings',
+      'admin_ai',
       'admin_profile',
       'contratos',
       'helpdesk',

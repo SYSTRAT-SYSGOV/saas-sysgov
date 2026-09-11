@@ -56,7 +56,8 @@ final class SeedMenusCommand extends Command
                 'order' => 4,
                 'items' => [
                     ['label' => 'Configurações & White-Label', 'route' => 'admin_settings', 'icon' => 'Settings', 'module_alias' => 'settings', 'order' => 1],
-                    ['label' => 'Meu Perfil & Segurança', 'route' => 'admin_profile', 'icon' => 'UserCheck', 'module_alias' => 'profile', 'order' => 2],
+                    ['label' => 'Configurações de IA', 'route' => 'admin_ai', 'icon' => 'Sparkles', 'module_alias' => 'ai', 'order' => 2],
+                    ['label' => 'Meu Perfil & Segurança', 'route' => 'admin_profile', 'icon' => 'UserCheck', 'module_alias' => 'profile', 'order' => 3],
                 ],
             ],
             [

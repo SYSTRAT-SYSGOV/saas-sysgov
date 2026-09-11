@@ -1,4 +1,4 @@
-import { Invitation, MenuGroup, User, Role, Permission, Paginated, Tenant, SaasModule, CnpjLookupResult, Analyst, AnalystTenantLink, BatchProvisionResult } from './types';
+import { Invitation, MenuGroup, User, Role, Permission, Paginated, Tenant, SaasModule, CnpjLookupResult, Analyst, AnalystTenantLink, BatchProvisionResult, AiSettings, AiSettingsUpdatePayload, AiTestConnectionResult } from './types';
 import { withApiBase } from '../../config/env';
 
 const BASE = withApiBase('/api/admin');
@@ -298,5 +298,18 @@ export const adminApi = {
 
   async seedTenantOrgChart(tenantId: string | number): Promise<{ message: string; total_units: number }> {
     return request<{ message: string; total_units: number }>(`/tenants/${tenantId}/org-units/seed`, { method: 'POST' });
+  },
+
+  // Configuração de IA (única para toda a plataforma — ver AiSettingsController)
+  async getAiSettings(): Promise<AiSettings> {
+    return request<AiSettings>('/ai-settings');
+  },
+
+  async updateAiSettings(payload: AiSettingsUpdatePayload): Promise<AiSettings> {
+    return request<AiSettings>('/ai-settings', { method: 'PUT', body: JSON.stringify(payload) });
+  },
+
+  async testAiSettings(payload: Partial<AiSettingsUpdatePayload>): Promise<AiTestConnectionResult> {
+    return request<AiTestConnectionResult>('/ai-settings/test', { method: 'POST', body: JSON.stringify(payload) });
   },
 };
