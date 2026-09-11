@@ -203,6 +203,7 @@ export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento,
               data={documentos}
               emptyText="Nenhum documento encontrado."
               pageSize={10}
+              onRowClick={(documento) => podeEditar(documento) && onEditarDocumento(documento)}
               fixedLayout
               resizableColumns
               pageSizeSelector

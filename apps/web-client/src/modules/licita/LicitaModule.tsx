@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useAuth } from '@/core/auth/useAuth';
-import { Plus, Gavel, Search, BookOpen, Settings2, FileDown } from 'lucide-react';
+import { Plus, Gavel, Search, BookOpen, Settings2, FileDown, Pencil } from 'lucide-react';
 import { Button, Card } from '@sysgov/ui';
 import { PageHeader, DataTable, EmptyState, SearchInput, StatusChip, ScreenState } from '@/components/ui';
 import { sysgovApi, type FaseLicita, type LegalDocumento, type Processo, type StatusDfd } from '@sysgov/sdk';
@@ -121,21 +121,35 @@ const ProcessosTab: React.FC<{
         size: 90,
         cell: ({ row }) => {
           const dfd = row.original.dfd;
-          if (!dfd) return null;
           const gerando = gerandoPdfId === row.original.id;
           return (
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              title="Baixar PDF do DFD"
-              isLoading={gerando}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleGerarPdf(row.original.id);
-              }}
-            >
-              {!gerando && <FileDown className="h-3.5 w-3.5" />}
-            </Button>
+            <div className="flex justify-center gap-1">
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                title="Editar"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenProcesso(row.original.id);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              {dfd && (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  title="Baixar PDF do DFD"
+                  isLoading={gerando}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGerarPdf(row.original.id);
+                  }}
+                >
+                  {!gerando && <FileDown className="h-3.5 w-3.5" />}
+                </Button>
+              )}
+            </div>
           );
         },
       },
@@ -201,7 +215,7 @@ const ProcessosTab: React.FC<{
         ),
       },
     ],
-    [gerandoPdfId, handleGerarPdf],
+    [gerandoPdfId, handleGerarPdf, onOpenProcesso],
   );
 
   if (loading) return <ScreenState type="loading" title="Carregando processos..." />;
