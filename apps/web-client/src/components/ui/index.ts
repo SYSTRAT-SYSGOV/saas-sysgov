@@ -29,6 +29,7 @@ export {
   Dialog,
   Accordion,
   Skeleton,
+  RichTextEditor,
 } from '@sysgov/ui';
 export type {
   ButtonProps,
@@ -41,6 +42,7 @@ export type {
   DialogProps,
   AccordionProps,
   AccordionItemProps,
+  RichTextEditorProps,
 } from '@sysgov/ui';
 
 export { AlertCard } from './AlertCard';

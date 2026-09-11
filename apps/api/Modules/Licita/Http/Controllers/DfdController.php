@@ -75,6 +75,20 @@ final class DfdController extends Controller
         return response()->json($dfd);
     }
 
+    public function reabrir(Request $request, int $id): JsonResponse
+    {
+        $dfd = Dfd::findOrFail($id);
+        $this->authorize('reabrir', $dfd);
+
+        try {
+            $dfd = $this->dfds->reabrir($dfd, $request->user());
+        } catch (DomainException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        return response()->json($dfd);
+    }
+
     public function aprovar(Request $request, int $id): JsonResponse
     {
         $dfd = Dfd::findOrFail($id);
@@ -126,6 +140,7 @@ final class DfdController extends Controller
             'equipe_planejamento.*.nome' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.cargo' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.matricula' => ['required_with:equipe_planejamento', 'string', 'max:50'],
+            'campos_extras' => ['sometimes', 'array'],
         ]);
     }
 }

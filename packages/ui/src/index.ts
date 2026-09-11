@@ -52,6 +52,9 @@ export type { DialogProps, ModalProps } from './components/Dialog';
 export { Select } from './components/Select';
 export type { SelectProps, SelectOption } from './components/Select';
 
+export { RichTextEditor } from './components/RichTextEditor';
+export type { RichTextEditorProps } from './components/RichTextEditor';
+
 // ============================================================
 // Componentes de domínio SYSGOV (sem equivalente no catálogo shadcn)
 // ============================================================

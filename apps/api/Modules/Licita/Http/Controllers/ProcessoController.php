@@ -44,9 +44,9 @@ final class ProcessoController extends Controller
     {
         $this->authorize('create', Processo::class);
 
+        // Número e ano são gerados pelo backend (ProcessoService::criar) —
+        // o usuário só informa o objeto preliminar.
         $data = $request->validate([
-            'numero' => ['required', 'string', 'max:50'],
-            'ano' => ['required', 'integer', 'min:2000', 'max:2100'],
             'objeto' => ['nullable', 'string', 'max:500'],
         ]);
 

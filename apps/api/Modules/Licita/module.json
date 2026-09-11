@@ -11,7 +11,9 @@
         "Admin"
     ],
     "permissions": {
-        "licita.aprovar": "Aprovar/Rejeitar DFD, ETP e demais fases (Licita)"
+        "licita.aprovar": "Aprovar/Rejeitar DFD, ETP e demais fases (Licita)",
+        "licita.legislacao.manage": "Gerenciar a biblioteca de legislação do órgão (Licita)",
+        "licita.campos.manage": "Configurar campos obrigatórios por tipo de documento (Licita)"
     },
     "menu": {
         "label": "Licita",

@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
-import { Modal, Button } from '@sysgov/ui';
-import { FileText, CheckCircle2, XCircle, Send } from 'lucide-react';
-import { StatusChip } from '@/components/ui';
+import React, { useEffect, useState } from 'react';
+import { Card, Button } from '@sysgov/ui';
+import { StatusChip, PageHeader, ScreenState } from '@/components/ui';
+import { ArrowLeft, FileText, CheckCircle2, XCircle, Send, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/core/auth/useAuth';
-import { sysgovApi, type CreateDfdInput, type Dfd, type Processo, type StatusDfd } from '@sysgov/sdk';
-import { DfdForm } from './DfdForm';
+import { useCan } from '@/core/rbac/useCan';
+import { cn } from '@/lib/utils';
+import { sysgovApi, type CampoConfig, type CreateDfdInput, type Dfd, type Processo, type StatusDfd } from '@sysgov/sdk';
+import { DfdForm } from '../components/DfdForm';
+
+interface Toast {
+  type: 'success' | 'error';
+  title: string;
+  message: string;
+}
 
 const STATUS_LABEL: Record<StatusDfd, string> = {
   rascunho: 'Rascunho',
@@ -26,35 +34,82 @@ const ACAO_LABEL: Record<string, string> = {
   enviado_revisao: 'Enviado para revisão',
   aprovado: 'Aprovado',
   rejeitado: 'Rejeitado',
+  reaberto: 'Reaberto para edição',
 };
 
-interface DfdWorkspaceModalProps {
-  processo: Processo;
-  open: boolean;
-  onClose: () => void;
+interface DfdDetailPageProps {
+  processoId: number;
+  onBack: () => void;
   onChanged: (processo: Processo) => void;
 }
 
-export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, open, onClose, onChanged }) => {
-  const { user, permissions } = useAuth();
-  const [dfd, setDfd] = useState<Dfd | null>(processo.dfd);
+/**
+ * Tela cheia de instrução do DFD — substitui a antiga DfdWorkspaceModal
+ * (@sysgov/ui Modal), inadequada quando o número de campos cresce com os
+ * campos extras configuráveis por órgão.
+ */
+export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack, onChanged }) => {
+  const { user } = useAuth();
+  const { can } = useCan();
+  const [processo, setProcesso] = useState<Processo | null>(null);
+  const [dfd, setDfd] = useState<Dfd | null>(null);
+  const [camposExtras, setCamposExtras] = useState<CampoConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   const [showRejeitar, setShowRejeitar] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const podeAprovar = permissions.includes('licita.aprovar') && dfd?.elaborado_por !== user?.id;
+  const notify = (t: Toast) => {
+    setToasts((prev) => [...prev, t]);
+    window.setTimeout(() => setToasts((prev) => prev.filter((x) => x !== t)), 5000);
+  };
+
+  const podeAprovar = can('licita.aprovar') && dfd?.elaborado_por !== user?.id;
   const editavel = dfd ? ['rascunho', 'em_revisao', 'rejeitado'].includes(dfd.status) : true;
 
+  useEffect(() => {
+    let cancelado = false;
+
+    const carregar = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [processoCompleto, config] = await Promise.all([
+          sysgovApi.licita.getProcesso(processoId),
+          sysgovApi.licita.getCamposConfiguracao('dfd').catch(() => null),
+        ]);
+        if (cancelado) return;
+        setProcesso(processoCompleto);
+        setDfd(processoCompleto.dfd);
+        setCamposExtras(config?.campos ?? []);
+      } catch (err: any) {
+        if (!cancelado) setError(err?.response?.data?.error || err?.message || 'Erro ao carregar o processo.');
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
+
+    carregar();
+    return () => {
+      cancelado = true;
+    };
+  }, [processoId]);
+
   const refreshProcesso = async () => {
-    const atualizado = await sysgovApi.licita.getProcesso(processo.id);
+    const atualizado = await sysgovApi.licita.getProcesso(processoId);
+    setProcesso(atualizado);
     onChanged(atualizado);
   };
 
   const handleCreate = async (data: CreateDfdInput) => {
+    if (!processo) return;
     const novoDfd = await sysgovApi.licita.createDfd(processo.id, data);
     setDfd(novoDfd);
     await refreshProcesso();
+    notify({ type: 'success', title: 'DFD criado', message: 'O rascunho do DFD foi salvo com sucesso.' });
   };
 
   const handleUpdate = async (data: CreateDfdInput) => {
@@ -62,15 +117,17 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
     const atualizado = await sysgovApi.licita.updateDfd(dfd.id, data);
     setDfd(atualizado);
     await refreshProcesso();
+    notify({ type: 'success', title: 'DFD salvo', message: 'As alterações foram salvas com sucesso.' });
   };
 
-  const runAction = async (action: () => Promise<Dfd>) => {
+  const runAction = async (action: () => Promise<Dfd>, sucesso: { title: string; message: string }) => {
     setActionError(null);
     setActionLoading(true);
     try {
       const atualizado = await action();
       setDfd(atualizado);
       await refreshProcesso();
+      notify({ type: 'success', ...sucesso });
     } catch (err: any) {
       setActionError(err?.response?.data?.error || err?.message || 'Erro ao executar ação.');
     } finally {
@@ -78,15 +135,36 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
     }
   };
 
+  if (loading) {
+    return <ScreenState type="loading" title="Carregando processo..." />;
+  }
+
+  if (error || !processo) {
+    return (
+      <ScreenState
+        type="error"
+        title="Erro ao carregar"
+        description={error ?? 'Processo não encontrado.'}
+        actionLabel="Voltar"
+        onAction={onBack}
+      />
+    );
+  }
+
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={`Processo ${processo.numero}/${processo.ano} — DFD`}
-      icon={<FileText className="h-5 w-5" />}
-      size="xl"
-    >
-      <div className="space-y-5">
+    <div className="space-y-6">
+      <PageHeader
+        icon={<FileText className="h-6 w-6" />}
+        title={`Processo ${processo.numero}/${processo.ano} — DFD`}
+        subtitle={processo.objeto || undefined}
+        actions={
+          <Button variant="outline" leftIcon={<ArrowLeft className="h-4 w-4" />} onClick={onBack}>
+            Voltar
+          </Button>
+        }
+      />
+
+      <Card className="p-6 space-y-5">
         {dfd && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3">
             <div className="flex items-center gap-3">
@@ -108,7 +186,12 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
                   variant="secondary"
                   leftIcon={<Send className="h-3.5 w-3.5" />}
                   isLoading={actionLoading}
-                  onClick={() => runAction(() => sysgovApi.licita.enviarDfdParaRevisao(dfd.id))}
+                  onClick={() =>
+                    runAction(() => sysgovApi.licita.enviarDfdParaRevisao(dfd.id), {
+                      title: 'Enviado para revisão',
+                      message: 'O DFD foi enviado para revisão com sucesso.',
+                    })
+                  }
                 >
                   Enviar para Revisão
                 </Button>
@@ -120,7 +203,12 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
                     variant="primary"
                     leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
                     isLoading={actionLoading}
-                    onClick={() => runAction(() => sysgovApi.licita.aprovarDfd(dfd.id))}
+                    onClick={() =>
+                      runAction(() => sysgovApi.licita.aprovarDfd(dfd.id), {
+                        title: 'DFD aprovado',
+                        message: 'O DFD foi aprovado com sucesso.',
+                      })
+                    }
                   >
                     Aprovar
                   </Button>
@@ -138,6 +226,22 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
                 <span className="text-xs text-muted-foreground italic">
                   Aguardando aprovação de outro responsável (segregação de funções).
                 </span>
+              )}
+              {dfd.status === 'rejeitado' && can('licita.update') && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                  isLoading={actionLoading}
+                  onClick={() =>
+                    runAction(() => sysgovApi.licita.reabrirDfd(dfd.id), {
+                      title: 'DFD reaberto',
+                      message: 'O DFD voltou para rascunho e já pode ser editado.',
+                    })
+                  }
+                >
+                  Reabrir para Edição
+                </Button>
               )}
             </div>
           </div>
@@ -162,7 +266,10 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
                 disabled={!motivoRejeicao.trim()}
                 isLoading={actionLoading}
                 onClick={() =>
-                  runAction(() => sysgovApi.licita.rejeitarDfd(dfd.id, motivoRejeicao)).then(() => {
+                  runAction(() => sysgovApi.licita.rejeitarDfd(dfd.id, motivoRejeicao), {
+                    title: 'DFD rejeitado',
+                    message: 'A rejeição foi registrada com sucesso.',
+                  }).then(() => {
                     setShowRejeitar(false);
                     setMotivoRejeicao('');
                   })
@@ -182,16 +289,17 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
 
         <DfdForm
           key={dfd?.id ?? 'novo'}
-          initialValue={dfd ? { ...dfd, equipe_planejamento: dfd.equipe_planejamento ?? undefined } : undefined}
+          initialValue={dfd ? { ...dfd, equipe_planejamento: dfd.equipe_planejamento ?? undefined, campos_extras: dfd.campos_extras ?? undefined } : undefined}
           disabled={!editavel}
           submitLabel={dfd ? 'Salvar Alterações' : 'Criar DFD'}
           onSubmit={dfd ? handleUpdate : handleCreate}
+          camposExtras={camposExtras}
         />
 
         {dfd && (dfd.versoes?.length ?? 0) > 0 && (
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-2">Histórico de Versões</h3>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
               {[...dfd.versoes].reverse().map((v) => (
                 <div key={v.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-1.5 text-xs">
                   <span className="font-mono tabular-nums text-muted-foreground">v{v.versao}</span>
@@ -205,9 +313,25 @@ export const DfdWorkspaceModal: React.FC<DfdWorkspaceModalProps> = ({ processo, 
             </div>
           </div>
         )}
+      </Card>
+
+      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+        {toasts.map((t, i) => (
+          <div
+            key={i}
+            className={cn(
+              'rounded-lg px-4 py-3 text-sm shadow-lg max-w-sm',
+              t.type === 'success' && 'bg-success text-success-foreground',
+              t.type === 'error' && 'bg-destructive text-destructive-foreground',
+            )}
+          >
+            <strong className="block text-xs font-bold uppercase">{t.title}</strong>
+            {t.message}
+          </div>
+        ))}
       </div>
-    </Modal>
+    </div>
   );
 };
 
-export default DfdWorkspaceModal;
+export default DfdDetailPage;

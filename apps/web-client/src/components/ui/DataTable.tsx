@@ -27,6 +27,15 @@ export interface DataTableProps<TData, TValue> {
   pagination?: boolean;
   pageSize?: number;
   className?: string;
+  /**
+   * Usa table-layout: fixed e respeita o `size` de cada ColumnDef — sem
+   * isso, o navegador redistribui o espaço sobrando entre TODAS as
+   * colunas (mesmo as que já cabem no conteúdo), deixando colunas curtas
+   * (status, data) com espaço em branco exagerado. Colunas sem `size`
+   * dividem o espaço restante entre si. Desligado por padrão para não
+   * mudar o layout de grids existentes que não definem `size`.
+   */
+  fixedLayout?: boolean;
 }
 
 /**
@@ -45,6 +54,7 @@ export function DataTable<TData, TValue>({
   pagination = true,
   pageSize = 10,
   className,
+  fixedLayout = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -81,15 +91,20 @@ export function DataTable<TData, TValue>({
       )}
 
       <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full text-sm">
+        <table className={cn('w-full text-sm', fixedLayout && 'table-fixed')}>
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="border-b border-border bg-muted/40">
                 {headerGroup.headers.map((header) => {
                   const sorted = header.column.getIsSorted();
+                  // Só aplica largura explícita quando a coluna define `size` —
+                  // do contrário mantém o auto-layout de sempre (não afeta
+                  // grids existentes que não passam `size`).
+                  const largura = header.column.columnDef.size;
                   return (
                     <th
                       key={header.id}
+                      style={largura ? { width: largura } : undefined}
                       className={cn(
                         'px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground',
                         header.column.getCanSort() ? 'cursor-pointer select-none' : '',
@@ -145,7 +160,11 @@ export function DataTable<TData, TValue>({
                   className={cn('transition-colors hover:bg-accent/40', onRowClick && 'cursor-pointer')}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className={cn('px-4 py-3', cell.column.id === 'actions' ? 'text-right' : 'text-center')}>
+                    <td
+                      key={cell.id}
+                      style={cell.column.columnDef.size ? { width: cell.column.columnDef.size } : undefined}
+                      className={cn('px-4 py-3', cell.column.id === 'actions' ? 'text-right' : 'text-center')}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

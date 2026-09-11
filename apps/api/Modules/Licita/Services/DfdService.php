@@ -14,6 +14,7 @@ use Modules\Licita\Enums\FaseLicita;
 use Modules\Licita\Models\Dfd;
 use Modules\Licita\Models\Processo;
 use Modules\Licita\Enums\StatusDfd;
+use Modules\Licita\Support\HtmlSanitizer;
 
 final class DfdService
 {
@@ -26,6 +27,7 @@ final class DfdService
         'numero_pca',
         'area_requisitante',
         'equipe_planejamento',
+        'campos_extras',
     ];
 
     public function __construct(
@@ -33,6 +35,8 @@ final class DfdService
         private readonly OutboxPublisher $outbox,
         private readonly TenantContext $tenantContext,
         private readonly ProcessoService $processos,
+        private readonly CampoConfiguracaoService $camposConfiguracao,
+        private readonly HtmlSanitizer $sanitizer,
     ) {}
 
     /**
@@ -47,6 +51,9 @@ final class DfdService
         if ($processo->dfd()->exists()) {
             throw new DomainException('Este processo já possui um DFD. Edite o existente em vez de criar outro.');
         }
+
+        $this->camposConfiguracao->validarRespostas('dfd', $data['campos_extras'] ?? []);
+        $data = $this->sanitizarCamposRicos($data);
 
         return DB::transaction(function () use ($processo, $data, $user): Dfd {
             $dfd = Dfd::create([
@@ -73,6 +80,10 @@ final class DfdService
             throw new DomainException('DFD aprovado é imutável. Apenas rascunhos, em revisão ou rejeitados podem ser editados.');
         }
 
+        $camposExtras = array_key_exists('campos_extras', $data) ? $data['campos_extras'] : ($dfd->campos_extras ?? []);
+        $this->camposConfiguracao->validarRespostas('dfd', $camposExtras ?? []);
+        $data = $this->sanitizarCamposRicos($data);
+
         return DB::transaction(function () use ($dfd, $data, $user): Dfd {
             $antes = $dfd->toArray();
             $dfd->update(array_intersect_key($data, array_flip(self::CAMPOS_DIFF)));
@@ -84,6 +95,28 @@ final class DfdService
                 $this->audit->record('licita', 'dfd.revisado', "Dfd #{$dfd->id}", $antes, $dfd->toArray());
                 $this->outbox->publish('licita.DfdRevisado', ['id' => $dfd->id, 'campos' => array_keys($diff)]);
             }
+
+            return $dfd->load(['elaborador', 'aprovador', 'versoes.usuario']);
+        });
+    }
+
+    /**
+     * Reabre um DFD rejeitado para edição (RN-002: rejeitado -> rascunho).
+     * Sem isso, um DFD rejeitado ficaria travado para sempre — editável em
+     * conteúdo (RN de atualizar já permite), mas sem caminho de volta para
+     * "Enviar para Revisão" (que só sai de rascunho).
+     */
+    public function reabrir(Dfd $dfd, User $user): Dfd
+    {
+        $this->validarTransicao($dfd, StatusDfd::Rascunho);
+
+        return DB::transaction(function () use ($dfd, $user): Dfd {
+            $dfd->update(['status' => StatusDfd::Rascunho->value]);
+            $dfd->refresh();
+
+            $this->registrarVersao($dfd, 'reaberto', $user);
+            $this->audit->record('licita', 'dfd.reaberto', "Dfd #{$dfd->id}", null, null);
+            $this->outbox->publish('licita.DfdReaberto', ['id' => $dfd->id]);
 
             return $dfd->load(['elaborador', 'aprovador', 'versoes.usuario']);
         });
@@ -144,6 +177,37 @@ final class DfdService
 
             return $dfd->load(['elaborador', 'aprovador', 'versoes.usuario']);
         });
+    }
+
+    /**
+     * Sanitiza os campos que aceitam HTML rico do TinyMCE antes de persistir
+     * (justificativa e campos_extras do tipo texto_longo) — defesa contra
+     * XSS armazenado, já que esse conteúdo é re-renderizado para outros
+     * usuários (ex.: quem aprova o DFD).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function sanitizarCamposRicos(array $data): array
+    {
+        if (array_key_exists('justificativa', $data) && is_string($data['justificativa'])) {
+            $data['justificativa'] = $this->sanitizer->sanitize($data['justificativa']);
+        }
+
+        if (array_key_exists('campos_extras', $data) && is_array($data['campos_extras'])) {
+            $config = $this->camposConfiguracao->getAtiva('dfd');
+            $textoLongoKeys = $config === null
+                ? []
+                : array_column(array_filter($config->campos, fn ($c) => $c['tipo'] === 'texto_longo'), 'key');
+
+            foreach ($textoLongoKeys as $key) {
+                if (isset($data['campos_extras'][$key]) && is_string($data['campos_extras'][$key])) {
+                    $data['campos_extras'][$key] = $this->sanitizer->sanitize($data['campos_extras'][$key]);
+                }
+            }
+        }
+
+        return $data;
     }
 
     private function validarTransicao(Dfd $dfd, StatusDfd $novo): void

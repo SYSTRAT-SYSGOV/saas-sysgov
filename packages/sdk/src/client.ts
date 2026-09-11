@@ -106,7 +106,18 @@ export class SysgovApi implements ApiRequester {
     const response = await fetch(fullUrl, { ...init, headers });
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({ message: `HTTP ${response.status}` }));
-      throw new Error(errorBody.message || `SYSGOV API respondeu ${response.status}`);
+      // O backend retorna a mensagem de erro de negócio em `error` (ex.:
+      // DomainException de módulos como Licita), não em `message` — checar
+      // só `message` fazia toda mensagem de validação virar um genérico
+      // "SYSGOV API respondeu 422". Também anexamos `.response.data` no
+      // erro lançado (formato axios) porque é esse o formato que os
+      // call-sites em toda a base (`err?.response?.data?.error`) esperam.
+      const error = new Error(errorBody.error || errorBody.message || `SYSGOV API respondeu ${response.status}`);
+      (error as Error & { response: { status: number; data: unknown } }).response = {
+        status: response.status,
+        data: errorBody,
+      };
+      throw error;
     }
     return response.json() as Promise<T>;
   }

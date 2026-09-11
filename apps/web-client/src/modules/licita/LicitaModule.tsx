@@ -1,12 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTenant } from '@/core/tenant/useTenant';
-import { Plus, Gavel, Search } from 'lucide-react';
+import { useAuth } from '@/core/auth/useAuth';
+import { Plus, Gavel, Search, BookOpen, Settings2, FileDown } from 'lucide-react';
 import { Button, Card } from '@sysgov/ui';
 import { PageHeader, DataTable, EmptyState, SearchInput, StatusChip, ScreenState } from '@/components/ui';
 import { sysgovApi, type FaseLicita, type Processo, type StatusDfd } from '@sysgov/sdk';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ProcessoFormModal } from './components/ProcessoFormModal';
-import { DfdWorkspaceModal } from './components/DfdWorkspaceModal';
+import { DfdDetailPage } from './pages/DfdDetailPage';
+import { LegislacaoPage } from './pages/LegislacaoPage';
+import { CamposConfiguracaoPage } from './pages/CamposConfiguracaoPage';
+import { abrirJanelaPdf, gerarDfdPdf } from './utils/gerarDfdPdf';
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
@@ -32,26 +37,55 @@ const DFD_STATUS_VARIANT: Record<StatusDfd, 'neutral' | 'warning' | 'success' | 
   rejeitado: 'danger',
 };
 
-export const LicitaModule: React.FC = () => {
+type Tab = 'processos' | 'legislacao' | 'campos';
+
+const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: 'processos', label: 'Processos', icon: <Gavel className="h-4 w-4" /> },
+  { id: 'legislacao', label: 'Legislação', icon: <BookOpen className="h-4 w-4" /> },
+  { id: 'campos', label: 'Campos por Tipo de Documento', icon: <Settings2 className="h-4 w-4" /> },
+];
+
+const ProcessosTab: React.FC<{
+  onOpenProcesso: (id: number) => void;
+}> = ({ onOpenProcesso }) => {
   const { tenant } = useTenant();
   const [processos, setProcessos] = useState<Processo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [selected, setSelected] = useState<Processo | null>(null);
+  const [gerandoPdfId, setGerandoPdfId] = useState<number | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
-  // A listagem só traz o DFD "raso" (sem versões/elaborador/aprovador) —
-  // busca o processo completo antes de abrir o workspace pra evitar
-  // renderizar o modal com relações undefined.
-  const openWorkspace = async (processoId: number) => {
-    try {
-      const completo = await sysgovApi.licita.getProcesso(processoId);
-      setSelected(completo);
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Erro ao carregar o processo.');
-    }
-  };
+  const handleGerarPdf = useCallback(
+    async (processoId: number) => {
+      // Precisa abrir a janela AQUI, síncrono, ainda dentro do clique — se
+      // abrirmos só depois do await abaixo, o navegador já não reconhece
+      // como resposta direta a um gesto do usuário e bloqueia o popup
+      // silenciosamente (fica só uma aba em branco, sem aviso nenhum).
+      const janela = abrirJanelaPdf();
+      if (!janela) {
+        setPdfError('O navegador bloqueou a aba do PDF. Permita pop-ups para este site e tente novamente.');
+        return;
+      }
+
+      setGerandoPdfId(processoId);
+      setPdfError(null);
+      try {
+        const [processoCompleto, config] = await Promise.all([
+          sysgovApi.licita.getProcesso(processoId),
+          sysgovApi.licita.getCamposConfiguracao('dfd').catch(() => null),
+        ]);
+        gerarDfdPdf(janela, processoCompleto, tenant?.name ?? '', config?.campos ?? []);
+      } catch (err: any) {
+        janela.close();
+        setPdfError(err?.response?.data?.error || err?.message || 'Erro ao gerar o PDF do DFD.');
+      } finally {
+        setGerandoPdfId(null);
+      }
+    },
+    [tenant?.name],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,11 +112,6 @@ export const LicitaModule: React.FC = () => {
     [processos, search],
   );
 
-  const handleProcessoChanged = (atualizado: Processo) => {
-    setProcessos((prev) => prev.map((p) => (p.id === atualizado.id ? atualizado : p)));
-    setSelected(atualizado);
-  };
-
   const columns = useMemo<ColumnDef<Processo, any>[]>(
     () => [
       {
@@ -102,11 +131,13 @@ export const LicitaModule: React.FC = () => {
       {
         id: 'fase_atual',
         header: 'Fase Atual',
+        size: 130,
         cell: ({ row }) => <StatusChip label={FASE_LABEL[row.original.fase_atual]} variant="primary" />,
       },
       {
         id: 'dfd_status',
         header: 'Status do DFD',
+        size: 150,
         cell: ({ row }) => {
           const dfd = row.original.dfd;
           if (!dfd) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
@@ -116,57 +147,60 @@ export const LicitaModule: React.FC = () => {
       {
         id: 'created_at',
         header: 'Criado em',
+        size: 110,
         cell: ({ row }) => (
           <span className="font-mono text-xs tabular-nums text-muted-foreground">
             {new Date(row.original.created_at).toLocaleDateString('pt-BR')}
           </span>
         ),
       },
+      {
+        id: 'acoes',
+        header: '',
+        size: 90,
+        cell: ({ row }) => {
+          const dfd = row.original.dfd;
+          if (!dfd) return null;
+          const gerando = gerandoPdfId === row.original.id;
+          return (
+            <Button
+              size="sm"
+              variant="outline"
+              title="Baixar PDF do DFD"
+              isLoading={gerando}
+              leftIcon={!gerando ? <FileDown className="h-3.5 w-3.5" /> : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleGerarPdf(row.original.id);
+              }}
+            >
+              PDF
+            </Button>
+          );
+        },
+      },
     ],
-    [],
+    [gerandoPdfId, handleGerarPdf],
   );
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          icon={<Gavel className="h-6 w-6" />}
-          title="Licita — Instrução Processual"
-          badge="Lei 14.133/2021"
-          subtitle={`${tenant?.name} — DFD, ETP, Mapa de Riscos, Pesquisa de Preços, TR e Edital`}
-        />
-        <ScreenState type="loading" title="Carregando processos..." />
-      </div>
-    );
-  }
-
+  if (loading) return <ScreenState type="loading" title="Carregando processos..." />;
   if (error && processos.length === 0) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          icon={<Gavel className="h-6 w-6" />}
-          title="Licita — Instrução Processual"
-          badge="Lei 14.133/2021"
-          subtitle={`${tenant?.name} — DFD, ETP, Mapa de Riscos, Pesquisa de Preços, TR e Edital`}
-        />
-        <ScreenState type="error" title="Erro ao carregar" description={error} actionLabel="Tentar novamente" onAction={load} />
-      </div>
-    );
+    return <ScreenState type="error" title="Erro ao carregar" description={error} actionLabel="Tentar novamente" onAction={load} />;
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={<Gavel className="h-6 w-6" />}
-        title="Licita — Instrução Processual"
-        badge="Lei 14.133/2021"
-        subtitle={`${tenant?.name} — DFD, ETP, Mapa de Riscos, Pesquisa de Preços, TR e Edital`}
-        actions={
-          <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowCreate(true)}>
-            Novo Processo
-          </Button>
-        }
-      />
+      <div className="flex justify-end">
+        <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowCreate(true)}>
+          Novo Processo
+        </Button>
+      </div>
+
+      {pdfError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {pdfError}
+        </div>
+      )}
 
       <Card className="gap-0 py-0">
         <div className="p-3 border-b border-border">
@@ -187,7 +221,8 @@ export const LicitaModule: React.FC = () => {
               data={filtered}
               emptyText="Nenhum processo encontrado."
               pageSize={10}
-              onRowClick={(row) => openWorkspace(row.id)}
+              onRowClick={(row) => onOpenProcesso(row.id)}
+              fixedLayout
             />
           )}
         </div>
@@ -199,18 +234,74 @@ export const LicitaModule: React.FC = () => {
         onCreated={(processo) => {
           setProcessos((prev) => [processo, ...prev]);
           setShowCreate(false);
-          setSelected(processo);
+          onOpenProcesso(processo.id);
         }}
       />
+    </div>
+  );
+};
 
-      {selected && (
-        <DfdWorkspaceModal
-          processo={selected}
-          open={!!selected}
-          onClose={() => setSelected(null)}
-          onChanged={handleProcessoChanged}
-        />
-      )}
+export const LicitaModule: React.FC = () => {
+  const { tenant } = useTenant();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tab = (searchParams.get('tab') as Tab | null) ?? 'processos';
+  const processoId = searchParams.get('processo');
+
+  const openProcesso = (id: number) => {
+    setSearchParams({ tab: 'processos', processo: String(id) });
+  };
+
+  const closeProcesso = () => {
+    setSearchParams({ tab: 'processos' });
+  };
+
+  const changeTab = (next: Tab) => {
+    setSearchParams(next === 'processos' ? {} : { tab: next });
+  };
+
+  if (processoId) {
+    return (
+      <DfdDetailPage
+        processoId={Number(processoId)}
+        onBack={closeProcesso}
+        onChanged={() => {
+          /* a lista é recarregada ao voltar */
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        icon={<Gavel className="h-6 w-6" />}
+        title="Licita — Instrução Processual"
+        badge="Lei 14.133/2021"
+        subtitle={`${tenant?.name} — DFD, ETP, Mapa de Riscos, Pesquisa de Preços, TR e Edital`}
+      />
+
+      <div className="flex gap-1 border-b border-border">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => changeTab(t.id)}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === t.id
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'processos' && <ProcessosTab onOpenProcesso={openProcesso} />}
+      {tab === 'legislacao' && <LegislacaoPage />}
+      {tab === 'campos' && <CamposConfiguracaoPage />}
     </div>
   );
 };

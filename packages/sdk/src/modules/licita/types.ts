@@ -32,6 +32,63 @@ export interface DfdVersao {
   created_at: string;
 }
 
+export type TipoCampoConfiguravel = 'texto' | 'texto_longo' | 'numero' | 'data' | 'booleano' | 'selecao';
+
+export interface CampoConfig {
+  key: string;
+  label: string;
+  tipo: TipoCampoConfiguravel;
+  opcoes?: string[];
+  obrigatorio: boolean;
+  ordem: number;
+  ajuda?: string;
+  /**
+   * Nome da aba do formulário em que este campo aparece — campos sem `aba`
+   * (ou com string vazia) caem na aba padrão (a primeira, sempre presente).
+   * Campos com o mesmo nome de aba ficam agrupados juntos; a ordem das
+   * abas segue a ordem dos campos (`ordem`), e a ordem de impressão no PDF
+   * segue `ordem` normalmente, independente da aba.
+   */
+  aba?: string;
+}
+
+export interface CampoConfiguracao {
+  id: number;
+  tenant_id: number;
+  tipo_documento: FaseLicita;
+  campos: CampoConfig[];
+  ativo: boolean;
+}
+
+export type TipoLegalDocumento = 'lei' | 'decreto' | 'instrucao_normativa' | 'jurisprudencia' | 'outro';
+
+export interface LegalDocumento {
+  id: number;
+  tenant_id: number | null;
+  tipo: TipoLegalDocumento;
+  numero: string | null;
+  titulo: string;
+  ementa: string | null;
+  texto_completo: string;
+  tags: string[] | null;
+  ativo: boolean;
+  criado_por: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateLegalDocumentoInput {
+  tipo: TipoLegalDocumento;
+  numero?: string | null;
+  titulo: string;
+  ementa?: string | null;
+  texto_completo: string;
+  tags?: string[];
+  global?: boolean;
+}
+
+export type UpdateLegalDocumentoInput = Partial<Omit<CreateLegalDocumentoInput, 'global'>>;
+
 export interface Dfd {
   id: number;
   tenant_id: number;
@@ -44,6 +101,7 @@ export interface Dfd {
   numero_pca: string | null;
   area_requisitante: string | null;
   equipe_planejamento: MembroEquipePlanejamento[] | null;
+  campos_extras: Record<string, unknown> | null;
   status: StatusDfd;
   gerado_por_ia: boolean;
   elaborado_por: number;
@@ -71,9 +129,11 @@ export interface Processo {
   updated_at: string;
 }
 
+/**
+ * Número e ano são gerados automaticamente pelo backend (ano corrente,
+ * número sequencial) — o usuário só informa o objeto preliminar.
+ */
 export interface CreateProcessoInput {
-  numero: string;
-  ano: number;
   objeto?: string | null;
 }
 
@@ -86,6 +146,7 @@ export interface CreateDfdInput {
   numero_pca?: string | null;
   area_requisitante?: string | null;
   equipe_planejamento?: MembroEquipePlanejamento[];
+  campos_extras?: Record<string, unknown>;
 }
 
 export type UpdateDfdInput = Partial<CreateDfdInput>;

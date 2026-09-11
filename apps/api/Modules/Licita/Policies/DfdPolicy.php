@@ -25,6 +25,11 @@ final class DfdPolicy
         return $this->hasPermission($user, 'licita.update') && $dfd->tenant_id === app(TenantContext::class)->id();
     }
 
+    public function reabrir(User $user, Dfd $dfd): bool
+    {
+        return $this->update($user, $dfd);
+    }
+
     public function aprovar(User $user, Dfd $dfd): bool
     {
         return $this->hasPermission($user, 'licita.aprovar') && $dfd->tenant_id === app(TenantContext::class)->id();
