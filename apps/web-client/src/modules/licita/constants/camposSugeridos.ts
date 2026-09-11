@@ -1,4 +1,4 @@
-import type { CampoConfig, FaseLicita } from '@sysgov/sdk';
+import type { CampoConfig, TipoDocumentoConfiguravel } from '@sysgov/sdk';
 
 /**
  * Catálogo de campos extras sugeridos pelo sistema, por tipo de documento —
@@ -12,7 +12,7 @@ import type { CampoConfig, FaseLicita } from '@sysgov/sdk';
  * `ordem` não é definido aqui — é calculado no momento em que a sugestão é
  * adicionada (fim da lista atual).
  */
-export const CAMPOS_SUGERIDOS: Partial<Record<FaseLicita, Omit<CampoConfig, 'ordem'>[]>> = {
+export const CAMPOS_SUGERIDOS: Partial<Record<TipoDocumentoConfiguravel, Omit<CampoConfig, 'ordem'>[]>> = {
   dfd: [
     {
       key: 'responsavel_tecnico',
@@ -58,6 +58,36 @@ export const CAMPOS_SUGERIDOS: Partial<Record<FaseLicita, Omit<CampoConfig, 'ord
       key: 'possui_recursos_orcamentarios',
       label: 'Possui Recursos Orçamentários Reservados?',
       tipo: 'booleano',
+      obrigatorio: false,
+    },
+  ],
+  dfd_item_material: [
+    {
+      key: 'marca_modelo_referencia',
+      label: 'Marca/Modelo de Referência',
+      tipo: 'texto',
+      obrigatorio: false,
+      ajuda: 'Apenas como parâmetro de pesquisa de preços — não vincula a marca na contratação.',
+    },
+    {
+      key: 'especificacao_tecnica',
+      label: 'Especificação Técnica Detalhada',
+      tipo: 'texto_longo',
+      obrigatorio: false,
+    },
+  ],
+  dfd_item_servico: [
+    {
+      key: 'local_prestacao',
+      label: 'Local de Prestação do Serviço',
+      tipo: 'texto',
+      obrigatorio: false,
+    },
+    {
+      key: 'periodicidade',
+      label: 'Periodicidade',
+      tipo: 'selecao',
+      opcoes: ['Única', 'Mensal', 'Trimestral', 'Semestral', 'Anual', 'Contínua'],
       obrigatorio: false,
     },
   ],

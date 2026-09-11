@@ -1,4 +1,13 @@
-import type { CampoConfig, Dfd, Processo } from '@sysgov/sdk';
+import type { CampoConfig, Dfd, ItemDfd, Processo } from '@sysgov/sdk';
+
+const TIPO_ITEM_LABEL: Record<ItemDfd['tipo'], string> = {
+  material: 'Material',
+  servico: 'Serviço',
+};
+
+function formatarMoeda(valor: number): string {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
 
 const STATUS_LABEL: Record<Dfd['status'], string> = {
   rascunho: 'Rascunho',
@@ -88,6 +97,8 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
   }
 
   const equipe = dfd.equipe_planejamento ?? [];
+  const itens = dfd.itens ?? [];
+  const valorTotalItens = itens.reduce((soma, item) => soma + item.quantidade * item.valor_unitario, 0);
   const camposOrdenados = [...camposConfig].sort((a, b) => a.ordem - b.ordem);
   const camposComValor = camposOrdenados.filter((c) => dfd.campos_extras && c.key in dfd.campos_extras);
 
@@ -183,6 +194,26 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
       <tbody>
         ${equipe.map((m) => `<tr><td>${escapeHtml(m.nome)}</td><td>${escapeHtml(m.cargo)}</td><td>${escapeHtml(m.matricula)}</td></tr>`).join('')}
       </tbody>
+    </table>
+  </section>` : ''}
+
+  ${itens.length > 0 ? `
+  <section>
+    <h2>${proximoNumero()}. Itens (Materiais e Serviços)</h2>
+    <table>
+      <thead><tr><th>Tipo</th><th>Código</th><th>Descrição</th><th>Unid.</th><th>Qtd.</th><th>Valor Unit.</th><th>Valor Total</th></tr></thead>
+      <tbody>
+        ${itens.map((item) => `<tr>
+          <td>${TIPO_ITEM_LABEL[item.tipo]}</td>
+          <td>${escapeHtml(item.codigo)}</td>
+          <td>${escapeHtml(item.descricao)}</td>
+          <td>${escapeHtml(item.unidade_medida)}</td>
+          <td>${item.quantidade.toLocaleString('pt-BR')}</td>
+          <td>${formatarMoeda(item.valor_unitario)}</td>
+          <td>${formatarMoeda(item.quantidade * item.valor_unitario)}</td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot><tr><td colspan="6" style="text-align:right"><strong>Valor Total Estimado</strong></td><td><strong>${formatarMoeda(valorTotalItens)}</strong></td></tr></tfoot>
     </table>
   </section>` : ''}
 

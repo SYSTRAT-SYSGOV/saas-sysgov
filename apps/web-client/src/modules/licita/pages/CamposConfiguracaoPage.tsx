@@ -4,15 +4,17 @@ import { PageHeader, ScreenState } from '@/components/ui';
 import { Settings2, Plus, Trash2, GripVertical, Sparkles } from 'lucide-react';
 import { useCan } from '@/core/rbac/useCan';
 import { cn } from '@/lib/utils';
-import { sysgovApi, type CampoConfig, type FaseLicita, type TipoCampoConfiguravel } from '@sysgov/sdk';
+import { sysgovApi, type CampoConfig, type TipoCampoConfiguravel, type TipoDocumentoConfiguravel } from '@sysgov/sdk';
 import { CAMPOS_SUGERIDOS } from '../constants/camposSugeridos';
 import { slugify } from '../utils/slugify';
 
 /** Nome da aba usada quando o campo não define uma — sempre a primeira. */
 const ABA_PADRAO = 'Geral';
 
-const TIPO_DOCUMENTO_OPTIONS: { value: FaseLicita; label: string; disponivel: boolean }[] = [
+const TIPO_DOCUMENTO_OPTIONS: { value: TipoDocumentoConfiguravel; label: string; disponivel: boolean }[] = [
   { value: 'dfd', label: 'DFD', disponivel: true },
+  { value: 'dfd_item_material', label: 'DFD — Item de Material', disponivel: true },
+  { value: 'dfd_item_servico', label: 'DFD — Item de Serviço', disponivel: true },
   { value: 'etp', label: 'ETP', disponivel: false },
   { value: 'mapa_riscos', label: 'Mapa de Riscos', disponivel: false },
   { value: 'pesquisa_precos', label: 'Pesquisa de Preços', disponivel: false },
@@ -70,7 +72,7 @@ const novoCampo = (ordem: number): CampoEditavel => {
 export const CamposConfiguracaoPage: React.FC = () => {
   const { can } = useCan();
   const podeGerenciar = can('licita.campos.manage');
-  const [tipoDocumento, setTipoDocumento] = useState<FaseLicita>('dfd');
+  const [tipoDocumento, setTipoDocumento] = useState<TipoDocumentoConfiguravel>('dfd');
   const [campos, setCampos] = useState<CampoEditavel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +84,7 @@ export const CamposConfiguracaoPage: React.FC = () => {
 
   const disponivel = TIPO_DOCUMENTO_OPTIONS.find((o) => o.value === tipoDocumento)?.disponivel ?? false;
 
-  const load = useCallback(async (tipo: FaseLicita) => {
+  const load = useCallback(async (tipo: TipoDocumentoConfiguravel) => {
     setLoading(true);
     setError(null);
     setSaved(false);
@@ -190,7 +192,7 @@ export const CamposConfiguracaoPage: React.FC = () => {
           <label className="block text-sm font-medium text-foreground mb-1">Tipo de Documento</label>
           <Select
             value={tipoDocumento}
-            onChange={(v) => setTipoDocumento(v as FaseLicita)}
+            onChange={(v) => setTipoDocumento(v as TipoDocumentoConfiguravel)}
             options={TIPO_DOCUMENTO_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
           />
         </div>

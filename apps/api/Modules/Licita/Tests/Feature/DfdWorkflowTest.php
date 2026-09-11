@@ -13,6 +13,7 @@ use Modules\Licita\Enums\FaseLicita;
 use Modules\Licita\Enums\GrauPrioridade;
 use Modules\Licita\Enums\StatusDfd;
 use Modules\Licita\Models\Processo;
+use Modules\Licita\Services\CampoConfiguracaoService;
 use Modules\Licita\Services\DfdService;
 use Modules\Licita\Services\ProcessoService;
 use Modules\Licita\Tests\TestCase;
@@ -162,6 +163,71 @@ final class DfdWorkflowTest extends TestCase
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Transição inválida');
         $dfdService->reabrir($dfd, $elaborador);
+    }
+
+    public function test_itens_de_material_e_servico_sao_persistidos_no_dfd(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        $dfdService = app(DfdService::class);
+        $dados = $this->dadosDfd();
+        $dados['itens'] = [
+            [
+                'tipo' => 'material',
+                'codigo' => '123456',
+                'descricao' => 'Papel A4 75g/m²',
+                'unidade_medida' => 'Resma',
+                'quantidade' => 100,
+                'valor_unitario' => 25.9,
+            ],
+            [
+                'tipo' => 'servico',
+                'codigo' => '654321',
+                'descricao' => 'Manutenção preventiva de ar-condicionado',
+                'unidade_medida' => 'Serviço',
+                'quantidade' => 12,
+                'valor_unitario' => 350,
+            ],
+        ];
+
+        $dfd = $dfdService->criar($processo, $dados, $elaborador);
+
+        self::assertCount(2, $dfd->itens);
+        self::assertSame('material', $dfd->itens[0]['tipo']);
+        self::assertSame('123456', $dfd->itens[0]['codigo']);
+        self::assertSame('servico', $dfd->itens[1]['tipo']);
+
+        $dfd->refresh();
+        self::assertCount(2, $dfd->itens);
+    }
+
+    public function test_campos_extras_de_item_sao_validados_contra_configuracao_do_proprio_tipo(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        app(CampoConfiguracaoService::class)->salvar('dfd_item_material', [
+            ['key' => 'marca_referencia', 'label' => 'Marca de Referência', 'tipo' => 'texto', 'obrigatorio' => true, 'ordem' => 0],
+        ]);
+
+        $dfdService = app(DfdService::class);
+        $dados = $this->dadosDfd();
+        $dados['itens'] = [
+            [
+                'tipo' => 'material',
+                'codigo' => '123456',
+                'descricao' => 'Papel A4 75g/m²',
+                'unidade_medida' => 'Resma',
+                'quantidade' => 100,
+                'valor_unitario' => 25.9,
+                // Falta o campo_extra "marca_referencia", obrigatório para material.
+            ],
+        ];
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Campos obrigatórios não preenchidos');
+        $dfdService->criar($processo, $dados, $elaborador);
     }
 
     public function test_versionamento_incrementa_a_cada_transicao(): void

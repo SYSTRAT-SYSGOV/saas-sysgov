@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Button, Select, RichTextEditor } from '@sysgov/ui';
 import { Plus, Trash2 } from 'lucide-react';
-import type { CampoConfig, CreateDfdInput, GrauPrioridade, MembroEquipePlanejamento } from '@sysgov/sdk';
+import type { CampoConfig, CreateDfdInput, GrauPrioridade, ItemDfd, MembroEquipePlanejamento, TipoItemDfd } from '@sysgov/sdk';
 import { CamposExtrasFields } from './CamposExtrasFields';
 
 /** Aba usada por campos sem `aba` definida — sempre a primeira, mesmo que
@@ -15,6 +15,28 @@ const GRAU_PRIORIDADE_OPTIONS = [
   { value: 'critica', label: 'Crítica' },
 ];
 
+const TIPO_ITEM_OPTIONS: { value: TipoItemDfd; label: string }[] = [
+  { value: 'material', label: 'Material' },
+  { value: 'servico', label: 'Serviço' },
+];
+
+/** CATMAT (material) ou CATSER (serviço) — o código do catálogo do governo muda de nome conforme o tipo do item. */
+const codigoLabel = (tipo: TipoItemDfd) => (tipo === 'material' ? 'CATMAT' : 'CATSER');
+
+const formatarMoeda = (valor: number) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/**
+ * Quantidade/valor unitário ficam como STRING enquanto o item está sendo
+ * editado (em vez de `number` direto, como em ItemDfd) — um <input
+ * type="number"> controlado por `Number(e.target.value)` a cada tecla
+ * reformata o valor a cada keystroke, e o navegador normaliza "25." de
+ * volta para "25" nesse meio-tempo (o valor intermediário com ponto
+ * decimal não é um `number` válido para guardar), apagando o "." que o
+ * usuário acabou de digitar antes de conseguir teclar a casa decimal.
+ * Convertidos para número só ao montar o payload em handleSubmit.
+ */
+type ItemDfdForm = Omit<ItemDfd, 'quantidade' | 'valor_unitario'> & { quantidade: string; valor_unitario: string };
+
 interface DfdFormProps {
   initialValue?: Partial<CreateDfdInput>;
   disabled?: boolean;
@@ -23,15 +45,38 @@ interface DfdFormProps {
   onCancel?: () => void;
   /** Campos extras configurados pelo órgão para o DFD (ver CamposConfiguracaoPage). */
   camposExtras?: CampoConfig[];
+  /** Campos extras configurados pelo órgão para itens de material (ver CamposConfiguracaoPage). */
+  camposExtrasItemMaterial?: CampoConfig[];
+  /** Campos extras configurados pelo órgão para itens de serviço (ver CamposConfiguracaoPage). */
+  camposExtrasItemServico?: CampoConfig[];
 }
 
 const emptyMembro: MembroEquipePlanejamento = { nome: '', cargo: '', matricula: '' };
+
+const criarItemVazio = (tipo: TipoItemDfd): ItemDfdForm => ({
+  tipo,
+  codigo: '',
+  descricao: '',
+  unidade_medida: '',
+  quantidade: '1',
+  valor_unitario: '0',
+  campos_extras: {},
+});
 
 /** O backend retorna data_previsao como datetime ISO (ex.: "2026-01-12T03:00:00.000000Z"),
  * mas <input type="date"> só aceita o formato yyyy-MM-dd puro — sem isso o campo fica vazio. */
 const toDateInputValue = (value?: string | null): string => (value ? value.slice(0, 10) : '');
 
-export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submitLabel, onSubmit, onCancel, camposExtras = [] }) => {
+export const DfdForm: React.FC<DfdFormProps> = ({
+  initialValue,
+  disabled,
+  submitLabel,
+  onSubmit,
+  onCancel,
+  camposExtras = [],
+  camposExtrasItemMaterial = [],
+  camposExtrasItemServico = [],
+}) => {
   const [dataPrevisao, setDataPrevisao] = useState(toDateInputValue(initialValue?.data_previsao));
   const [grauPrioridade, setGrauPrioridade] = useState<GrauPrioridade>(initialValue?.grau_prioridade ?? 'media');
   const [justificativa, setJustificativa] = useState(initialValue?.justificativa ?? '');
@@ -46,6 +91,13 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
   );
   const [camposExtrasValores, setCamposExtrasValores] = useState<Record<string, unknown>>(
     initialValue?.campos_extras ?? {},
+  );
+  const [itens, setItens] = useState<ItemDfdForm[]>(
+    (initialValue?.itens ?? []).map((it) => ({
+      ...it,
+      quantidade: String(it.quantidade),
+      valor_unitario: String(it.valor_unitario),
+    })),
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +131,10 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
     setEquipe((prev) => prev.map((m, i) => (i === index ? { ...m, ...patch } : m)));
   };
 
+  const updateItem = (index: number, patch: Partial<ItemDfdForm>) => {
+    setItens((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -94,6 +150,9 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
         area_requisitante: areaRequisitante || null,
         equipe_planejamento: equipe.filter((m) => m.nome && m.cargo && m.matricula),
         campos_extras: camposExtrasValores,
+        itens: itens
+          .map((it): ItemDfd => ({ ...it, quantidade: Number(it.quantidade) || 0, valor_unitario: Number(it.valor_unitario) || 0 }))
+          .filter((it) => it.codigo && it.descricao && it.unidade_medida && it.quantidade > 0),
       });
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || 'Erro ao salvar o DFD.');
@@ -272,6 +331,113 @@ export const DfdForm: React.FC<DfdFormProps> = ({ initialValue, disabled, submit
                 )}
               </div>
             ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-foreground">Itens (Materiais e Serviços)</label>
+            {!disabled && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                leftIcon={<Plus className="h-3.5 w-3.5" />}
+                onClick={() => setItens((prev) => [...prev, criarItemVazio('material')])}
+              >
+                Adicionar Item
+              </Button>
+            )}
+          </div>
+          <div className="space-y-3">
+            {itens.length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhum item cadastrado.</p>
+            )}
+            {itens.map((item, index) => {
+              const camposExtrasItem = item.tipo === 'material' ? camposExtrasItemMaterial : camposExtrasItemServico;
+              return (
+                <div key={index} className="rounded-lg border border-border p-3 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-2 items-start">
+                    <Select
+                      value={item.tipo}
+                      onChange={(v) => updateItem(index, { tipo: v as TipoItemDfd })}
+                      options={TIPO_ITEM_OPTIONS}
+                      disabled={disabled}
+                    />
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      placeholder={codigoLabel(item.tipo)}
+                      value={item.codigo}
+                      onChange={(e) => updateItem(index, { codigo: e.target.value })}
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {!disabled && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setItens((prev) => prev.filter((_, i) => i !== index))}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    disabled={disabled}
+                    placeholder="Descrição"
+                    value={item.descricao}
+                    onChange={(e) => updateItem(index, { descricao: e.target.value })}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      placeholder="Unidade de Medida"
+                      value={item.unidade_medida}
+                      onChange={(e) => updateItem(index, { unidade_medida: e.target.value })}
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <input
+                      type="number"
+                      disabled={disabled}
+                      placeholder="Quantidade"
+                      min={0}
+                      step="any"
+                      value={item.quantidade}
+                      onChange={(e) => updateItem(index, { quantidade: e.target.value })}
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono tabular-nums text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <input
+                      type="number"
+                      disabled={disabled}
+                      placeholder="Valor Unitário"
+                      min={0}
+                      step="any"
+                      value={item.valor_unitario}
+                      onChange={(e) => updateItem(index, { valor_unitario: e.target.value })}
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono tabular-nums text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <div className="flex items-center rounded-lg border border-dashed border-input bg-muted/30 px-3 py-2 text-sm font-mono tabular-nums text-muted-foreground">
+                      {formatarMoeda((Number(item.quantidade) || 0) * (Number(item.valor_unitario) || 0))}
+                    </div>
+                  </div>
+
+                  {camposExtrasItem.length > 0 && (
+                    <CamposExtrasFields
+                      campos={camposExtrasItem}
+                      valores={item.campos_extras ?? {}}
+                      onChange={(valores) => updateItem(index, { campos_extras: valores })}
+                      disabled={disabled}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
         </>

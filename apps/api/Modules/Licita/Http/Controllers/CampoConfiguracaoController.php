@@ -43,7 +43,12 @@ final class CampoConfiguracaoController extends Controller
             'campos.*.aba' => ['nullable', 'string', 'max:80'],
         ]);
 
-        if (!in_array($tipoDocumento, array_column(FaseLicita::cases(), 'value'), true)) {
+        // Além das fases do processo (FaseLicita), também aceita os
+        // sub-tipos de item do DFD — não são fases (não avançam o
+        // processo), são sub-entidades do DFD com campos configuráveis
+        // próprios, daí não entrarem no enum FaseLicita.
+        $tiposValidos = [...array_column(FaseLicita::cases(), 'value'), 'dfd_item_material', 'dfd_item_servico'];
+        if (!in_array($tipoDocumento, $tiposValidos, true)) {
             return response()->json(['error' => 'Tipo de documento inválido.'], 422);
         }
 

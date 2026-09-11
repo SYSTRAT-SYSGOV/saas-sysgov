@@ -7,10 +7,10 @@ import type {
   CreateLegalDocumentoInput,
   CreateProcessoInput,
   Dfd,
-  FaseLicita,
   LegalDocumento,
   Processo,
   ProcessoFilters,
+  TipoDocumentoConfiguravel,
   UpdateDfdInput,
   UpdateLegalDocumentoInput,
 } from './types';
@@ -96,11 +96,11 @@ export class LicitaModuleClient implements BaseModuleClient {
     await this.api.request(`/licita/legislacao/${id}`, { method: 'DELETE' });
   }
 
-  async getCamposConfiguracao(tipoDocumento: FaseLicita): Promise<CampoConfiguracao> {
+  async getCamposConfiguracao(tipoDocumento: TipoDocumentoConfiguravel): Promise<CampoConfiguracao> {
     return this.api.request(`/licita/campos-configuracao/${tipoDocumento}`);
   }
 
-  async salvarCamposConfiguracao(tipoDocumento: FaseLicita, campos: CampoConfig[]): Promise<CampoConfiguracao> {
+  async salvarCamposConfiguracao(tipoDocumento: TipoDocumentoConfiguravel, campos: CampoConfig[]): Promise<CampoConfiguracao> {
     return this.api.request(`/licita/campos-configuracao/${tipoDocumento}`, {
       method: 'PUT',
       body: JSON.stringify({ campos }),
