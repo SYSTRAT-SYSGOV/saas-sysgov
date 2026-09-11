@@ -128,6 +128,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = () => {
     {
       id: 'device',
       header: 'Dispositivo',
+      accessorKey: 'browser',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           {row.original.device.toLowerCase().includes('mobile') || row.original.device.toLowerCase().includes('phone')
@@ -144,6 +145,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = () => {
     {
       id: 'location',
       header: 'Localização',
+      accessorKey: 'location',
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
           <Globe className="h-3.5 w-3.5 text-muted-foreground" />
@@ -154,11 +156,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = () => {
     {
       id: 'ip',
       header: 'IP',
+      accessorKey: 'ip',
       cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.original.ip}</span>,
     },
     {
       id: 'last_active_at',
       header: 'Última atividade',
+      accessorKey: 'last_active_at',
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
           <Clock className="h-3.5 w-3.5 text-muted-foreground" />
@@ -171,6 +175,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = () => {
     {
       id: 'actions',
       header: '',
+      enableSorting: false,
       cell: ({ row }) => (
         <Button
           variant="ghost"

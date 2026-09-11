@@ -5,6 +5,7 @@ import { useExport } from '@/core/export';
 import { Plus, FileCheck, Building2, Download } from 'lucide-react';
 import { PageHeader, Card, Badge, Button, StatusChip, DataTable, EmptyState, SearchInput, Accordion } from '@/components/ui';
 import { formatCurrencyBRL } from '@/config/theme';
+import { paraDataOrdenavel } from '@/lib/utils';
 import type { ColumnDef } from '@tanstack/react-table';
 
 interface Licitacao {
@@ -39,8 +40,8 @@ export const ProcurementModule: React.FC = () => {
     { id: 'modalidade', header: 'Modalidade', accessorKey: 'modalidade', cell: ({ row }) => <span className="text-muted-foreground">{row.original.modalidade}</span> },
     { id: 'objeto', header: 'Objeto', accessorKey: 'objeto', cell: ({ row }) => <span className="max-w-xs truncate text-foreground">{row.original.objeto}</span> },
     { id: 'valor', header: 'Valor Estimado', accessorKey: 'valorEstimado', cell: ({ row }) => <span className="font-mono tabular-nums font-bold text-foreground">{formatCurrencyBRL(row.original.valorEstimado)}</span> },
-    { id: 'data', header: 'Abertura', accessorKey: 'dataAbertura', cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.dataAbertura}</span> },
-    { id: 'fase', header: 'Fase', cell: ({ row }) => <StatusChip label={row.original.fase} variant={faseVariant(row.original.fase)} /> },
+    { id: 'data', header: 'Abertura', accessorFn: (row) => paraDataOrdenavel(row.dataAbertura), cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.dataAbertura}</span> },
+    { id: 'fase', header: 'Fase', accessorKey: 'fase', cell: ({ row }) => <StatusChip label={row.original.fase} variant={faseVariant(row.original.fase)} /> },
   ], []);
 
   const filtered = useMemo(() => licitacoes.filter((l) =>

@@ -137,6 +137,66 @@ describe('DataTable', () => {
     });
   });
 
+  describe('sorting', () => {
+    // Fora de ordem alfabética de propósito — clicar no cabeçalho precisa
+    // de fato reordenar, não só já estar por acaso na ordem certa.
+    const dataDesordenada: TestItem[] = [
+      { id: 1, name: 'Charlie', status: 'Ativo' },
+      { id: 2, name: 'Alice', status: 'Inativo' },
+      { id: 3, name: 'Bravo', status: 'Ativo' },
+    ];
+
+    it('does not sort a column with neither accessor nor meta.exportValue/sortValue (só mostra a setinha, sem quebrar)', () => {
+      const semAccessor: ColumnDef<TestItem, any>[] = [
+        { id: 'name', header: 'Nome', cell: ({ row }) => <span>{row.original.name}</span> },
+      ];
+      render(<DataTable columns={semAccessor} data={dataDesordenada} pageSize={10} pagination={false} />);
+      const header = screen.getByText('Nome').closest('button')!;
+      fireEvent.click(header);
+      const cells = screen.getAllByRole('cell').map((c) => c.textContent);
+      // Sem accessor, react-table não tem de onde tirar o valor — a ordem
+      // original é preservada (comportamento anterior a esta função).
+      expect(cells).toEqual(['Charlie', 'Alice', 'Bravo']);
+    });
+
+    it('sorts using meta.exportValue when the column has no accessorKey/accessorFn', () => {
+      const comExportValue: ColumnDef<TestItem, any>[] = [
+        { id: 'name', header: 'Nome', meta: { exportValue: (row) => row.name }, cell: ({ row }) => <span>{row.original.name}</span> },
+      ];
+      render(<DataTable columns={comExportValue} data={dataDesordenada} pageSize={10} pagination={false} />);
+      const header = screen.getByText('Nome').closest('button')!;
+
+      fireEvent.click(header); // asc
+      expect(screen.getAllByRole('cell').map((c) => c.textContent)).toEqual(['Alice', 'Bravo', 'Charlie']);
+
+      fireEvent.click(header); // desc
+      expect(screen.getAllByRole('cell').map((c) => c.textContent)).toEqual(['Charlie', 'Bravo', 'Alice']);
+    });
+
+    it('sorts using meta.sortValue in preference to meta.exportValue', () => {
+      const comSortValue: ColumnDef<TestItem, any>[] = [
+        {
+          id: 'name',
+          header: 'Nome',
+          // sortValue (numérico, por id) devolve uma ordem diferente da que
+          // exportValue (string, por nome) daria — prova que é ele quem
+          // decide a ordenação quando os dois estão presentes. Números
+          // ordenam decrescente no primeiro clique (react-table detecta o
+          // tipo do valor); strings ordenam crescente — por isso o resultado
+          // esperado aqui é por id decrescente (3, 2, 1), não por nome.
+          meta: { exportValue: (row) => row.name, sortValue: (row) => row.id },
+          cell: ({ row }) => <span>{row.original.name}</span>,
+        },
+      ];
+      render(<DataTable columns={comSortValue} data={dataDesordenada} pageSize={10} pagination={false} />);
+      const header = screen.getByText('Nome').closest('button')!;
+
+      // dataDesordenada tem id 1=Charlie, 2=Alice, 3=Bravo — descendente por id vira Bravo, Alice, Charlie.
+      fireEvent.click(header);
+      expect(screen.getAllByRole('cell').map((c) => c.textContent)).toEqual(['Bravo', 'Alice', 'Charlie']);
+    });
+  });
+
   describe('exportOnly columns', () => {
     it('are omitted from the rendered header and body but still exist for export', () => {
       const withHidden: ColumnDef<TestItem, any>[] = [

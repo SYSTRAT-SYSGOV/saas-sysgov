@@ -72,6 +72,7 @@ export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento,
         id: 'acoes',
         header: '',
         size: 90,
+        enableSorting: false,
         cell: ({ row }) => {
           const documento = row.original;
           if (!podeEditar(documento)) return null;

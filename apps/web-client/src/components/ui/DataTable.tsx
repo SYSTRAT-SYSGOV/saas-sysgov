@@ -45,7 +45,36 @@ declare module '@tanstack/react-table' {
      * não é renderizada no `<thead>`/`<tbody>`, só entra no CSV/XLSX/PDF.
      */
     exportOnly?: boolean;
+    /**
+     * Valor usado para ORDENAR a coluna ao clicar no cabeçalho. Necessário
+     * sempre que a coluna não define `accessorKey`/`accessorFn` (o caso
+     * comum de colunas com `cell` customizado) — sem um dos três, o
+     * tanstack/react-table não tem de onde tirar o valor da linha e o
+     * clique no cabeçalho não ordena nada, mesmo mostrando a setinha.
+     * Quando omitido, o DataTable tenta usar `meta.exportValue` no lugar
+     * (o mesmo valor já usado para CSV/XLSX/PDF costuma servir).
+     */
+    sortValue?: (row: TData) => string | number | boolean | null | undefined;
   }
+}
+
+/**
+ * Colunas com `cell` customizado (a maioria das grids do app) não têm de
+ * onde tirar um valor pra ordenar, a menos que definam `accessorKey`,
+ * `accessorFn` ou `meta.sortValue`/`meta.exportValue` — sem isso, clicar no
+ * cabeçalho mostra a setinha mas não ordena nada (getValue() sempre
+ * undefined). Preenche `accessorFn` automaticamente a partir de
+ * `meta.sortValue`/`meta.exportValue` quando a coluna não define nenhum dos
+ * três, então basta a coluna já ter `meta.exportValue` (bem comum, com
+ * `exportable`) pra ordenar funcionar de graça.
+ */
+function comAccessorAutomatico<TData, TValue>(columns: ColumnDef<TData, TValue>[]): ColumnDef<TData, TValue>[] {
+  return columns.map((col) => {
+    if ('accessorFn' in col || 'accessorKey' in col) return col;
+    const getValor = col.meta?.sortValue ?? col.meta?.exportValue;
+    if (!getValor) return col;
+    return { ...col, accessorFn: (row: TData) => getValor(row) ?? undefined };
+  });
 }
 
 export interface DataTableProps<TData, TValue> {
@@ -265,9 +294,15 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = React.useState('');
 
+  // Memoizado por `columns` — sem isso, comAccessorAutomatico criaria um
+  // array (e objetos de coluna) novos a cada render, e o tanstack/react-table
+  // trata identidade de coluna trocada como esquema novo, resetando estado
+  // (ordenação, visibilidade) sem nenhuma mudança real ter acontecido.
+  const columnsComAccessor = React.useMemo(() => comAccessorAutomatico(columns), [columns]);
+
   const table = useReactTable<TData>({
     data,
-    columns,
+    columns: columnsComAccessor,
     state: { sorting, columnFilters, columnVisibility, globalFilter },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
