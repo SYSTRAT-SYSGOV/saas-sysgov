@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Button, Select } from '@sysgov/ui';
-import { PageHeader, ScreenState } from '@/components/ui';
+import { PageHeader, ScreenState, ValidationErrorModal } from '@/components/ui';
 import { Settings2, Plus, Trash2, GripVertical, Sparkles } from 'lucide-react';
 import { useCan } from '@/core/rbac/useCan';
 import { cn } from '@/lib/utils';
+import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 import { sysgovApi, type CampoConfig, type TipoCampoConfiguravel, type TipoDocumentoConfiguravel } from '@sysgov/sdk';
 import { CAMPOS_SUGERIDOS } from '../constants/camposSugeridos';
 import { slugify } from '../utils/slugify';
@@ -78,6 +79,7 @@ export const CamposConfiguracaoPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
   const [saved, setSaved] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -165,6 +167,7 @@ export const CamposConfiguracaoPage: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
+    setValidationErrors(null);
     setSaved(false);
     try {
       // _auto/_sufixo são só controle local do formulário — não fazem parte do schema salvo.
@@ -172,8 +175,17 @@ export const CamposConfiguracaoPage: React.FC = () => {
       const config = await sysgovApi.licita.salvarCamposConfiguracao(tipoDocumento, payload);
       setCampos(config.campos ?? []);
       setSaved(true);
-    } catch (err: any) {
-      setSaveError(err?.response?.data?.error || err?.message || 'Erro ao salvar a configuração.');
+    } catch (err) {
+      // 422 de validação (ex.: campo obrigatório vazio, tipo inválido) vira
+      // a modal padrão listando o(s) campo(s) — em vez da string crua do
+      // Laravel ("The selected campos.0.tipo is invalid.") num alerta
+      // inline, que não indicava qual dos campos da lista tinha o problema.
+      const fieldErrors = getApiValidationErrors(err);
+      if (fieldErrors) {
+        setValidationErrors(fieldErrors);
+      } else {
+        setSaveError(getApiErrorMessage(err, 'Erro ao salvar a configuração.'));
+      }
     } finally {
       setSaving(false);
     }
@@ -394,6 +406,12 @@ export const CamposConfiguracaoPage: React.FC = () => {
           </>
         )}
       </Card>
+
+      <ValidationErrorModal
+        open={validationErrors !== null}
+        onClose={() => setValidationErrors(null)}
+        errors={validationErrors ?? []}
+      />
     </div>
   );
 };

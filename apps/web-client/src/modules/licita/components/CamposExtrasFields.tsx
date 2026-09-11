@@ -41,11 +41,18 @@ export const CamposExtrasFields: React.FC<CamposExtrasFieldsProps> = ({ campos, 
               />
             )}
 
+            {/* Nenhum destes usa `required` nativo, mesmo quando
+                `campo.obrigatorio` é true (indicado só pelo "*" no label
+                acima) — o atributo HTML bloqueia o submit com um balão do
+                próprio navegador antes do handleSubmit rodar, então a
+                ValidationErrorModal padrão do sistema nunca chegava a
+                aparecer para um campo extra obrigatório vazio. A
+                obrigatoriedade é sempre validada no backend
+                (CampoConfiguracaoService::validarRespostas). */}
             {campo.tipo === 'texto' && (
               <input
                 type="text"
                 disabled={disabled}
-                required={campo.obrigatorio}
                 value={typeof valor === 'string' ? valor : ''}
                 onChange={(e) => setValor(campo.key, e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
@@ -56,7 +63,6 @@ export const CamposExtrasFields: React.FC<CamposExtrasFieldsProps> = ({ campos, 
               <input
                 type="number"
                 disabled={disabled}
-                required={campo.obrigatorio}
                 value={typeof valor === 'number' ? valor : ''}
                 onChange={(e) => setValor(campo.key, e.target.value === '' ? '' : Number(e.target.value))}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono tabular-nums text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
@@ -67,7 +73,6 @@ export const CamposExtrasFields: React.FC<CamposExtrasFieldsProps> = ({ campos, 
               <input
                 type="date"
                 disabled={disabled}
-                required={campo.obrigatorio}
                 value={typeof valor === 'string' ? valor : ''}
                 onChange={(e) => setValor(campo.key, e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono tabular-nums text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"

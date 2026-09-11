@@ -79,14 +79,17 @@ final class LegalDocumentoController extends Controller
      */
     private function validatedData(Request $request, bool $partial = false): array
     {
-        $required = $partial ? 'sometimes' : 'required';
+        // Ver o mesmo comentário em DfdController::validatedData() — "sometimes"
+        // sozinho não bloqueia um campo presente e vazio no update, só um
+        // campo ausente.
+        $required = $partial ? ['sometimes', 'required'] : ['required'];
 
         return $request->validate([
-            'tipo' => [$required, 'in:lei,decreto,instrucao_normativa,jurisprudencia,outro'],
+            'tipo' => [...$required, 'in:lei,decreto,instrucao_normativa,jurisprudencia,outro'],
             'numero' => ['nullable', 'string', 'max:255'],
-            'titulo' => [$required, 'string', 'max:500'],
+            'titulo' => [...$required, 'string', 'max:500'],
             'ementa' => ['nullable', 'string', 'max:2000'],
-            'texto_completo' => [$required, 'string'],
+            'texto_completo' => [...$required, 'string'],
             'tags' => ['sometimes', 'array'],
             'tags.*' => ['string', 'max:100'],
             'ativo' => ['sometimes', 'boolean'],

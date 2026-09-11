@@ -89,3 +89,6 @@ export type { ConfirmDialogProps } from './ConfirmDialog';
 
 export { ScreenState } from './ScreenState';
 export type { ScreenStateProps } from './ScreenState';
+
+export { ValidationErrorModal } from './ValidationErrorModal';
+export type { ValidationErrorModalProps } from './ValidationErrorModal';

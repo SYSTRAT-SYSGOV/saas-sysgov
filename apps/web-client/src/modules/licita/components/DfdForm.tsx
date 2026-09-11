@@ -3,6 +3,8 @@ import { Button, Select, RichTextEditor } from '@sysgov/ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CampoConfig, CreateDfdInput, GrauPrioridade, ItemDfd, MembroEquipePlanejamento, TipoItemDfd } from '@sysgov/sdk';
 import { CamposExtrasFields } from './CamposExtrasFields';
+import { ValidationErrorModal } from '@/components/ui';
+import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 
 /** Aba usada por campos sem `aba` definida — sempre a primeira, mesmo que
  * o órgão só tenha criado abas nomeadas depois dela. */
@@ -106,6 +108,7 @@ export const DfdForm: React.FC<DfdFormProps> = ({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
   const [abaAtiva, setAbaAtiva] = useState(ABA_PADRAO);
 
   // Agrupa os campos extras por aba (definida pelo órgão em Campos por Tipo
@@ -150,6 +153,7 @@ export const DfdForm: React.FC<DfdFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setValidationErrors(null);
     setSaving(true);
     try {
       await onSubmit({
@@ -166,8 +170,13 @@ export const DfdForm: React.FC<DfdFormProps> = ({
           .map((it): ItemDfd => ({ ...it, quantidade: Number(it.quantidade) || 0, valor_unitario: Number(it.valor_unitario) || 0 }))
           .filter((it) => it.codigo && it.descricao && it.unidade_medida && it.quantidade > 0),
       });
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Erro ao salvar o DFD.');
+    } catch (err) {
+      const fieldErrors = getApiValidationErrors(err);
+      if (fieldErrors) {
+        setValidationErrors(fieldErrors);
+      } else {
+        setError(getApiErrorMessage(err, 'Erro ao salvar o DFD.'));
+      }
     } finally {
       setSaving(false);
     }
@@ -175,6 +184,11 @@ export const DfdForm: React.FC<DfdFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <ValidationErrorModal
+        open={validationErrors !== null}
+        onClose={() => setValidationErrors(null)}
+        errors={validationErrors ?? []}
+      />
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
@@ -209,7 +223,12 @@ export const DfdForm: React.FC<DfdFormProps> = ({
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">Objeto *</label>
           <textarea
-            required
+            // Sem `required` nativo de propósito: o atributo HTML bloqueia o
+            // submit no navegador (um balão nativo, fora do nosso controle
+            // visual) ANTES do handleSubmit rodar — a ValidationErrorModal
+            // padrão do sistema nunca chegava a aparecer. A obrigatoriedade
+            // já é garantida pelo backend (DfdController::validatedData) e
+            // cai na mesma modal que qualquer outro erro de validação.
             disabled={disabled}
             value={objeto}
             onChange={(e) => setObjeto(e.target.value)}
@@ -235,7 +254,8 @@ export const DfdForm: React.FC<DfdFormProps> = ({
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">Data Prevista da Contratação *</label>
             <input
-              required
+              // Ver comentário no campo Objeto acima — sem `required` nativo,
+              // de propósito.
               type="date"
               disabled={disabled}
               value={dataPrevisao}

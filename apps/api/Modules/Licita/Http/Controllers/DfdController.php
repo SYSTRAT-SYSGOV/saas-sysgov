@@ -126,13 +126,21 @@ final class DfdController extends Controller
      */
     private function validatedData(Request $request, bool $partial = false): array
     {
-        $required = $partial ? 'sometimes' : 'required';
+        // No update (partial), o campo pode faltar do payload ("sometimes")
+        // — o formulário do front sempre manda todos os campos, mas outros
+        // clientes da API podem enviar só o que mudou. O que NÃO pode
+        // acontecer é o campo vir presente e vazio: só "sometimes" (sem
+        // "required" junto) deixava passar objeto/justificativa em branco
+        // no update, porque uma string vazia já satisfaz a regra "string"
+        // sozinha — "sometimes" só pula a validação quando o campo está
+        // AUSENTE, não quando está vazio.
+        $required = $partial ? ['sometimes', 'required'] : ['required'];
 
         return $request->validate([
-            'data_previsao' => [$required, 'date'],
-            'grau_prioridade' => [$required, 'in:' . implode(',', array_column(GrauPrioridade::cases(), 'value'))],
-            'justificativa' => [$required, 'string', 'max:3000'],
-            'objeto' => [$required, 'string', 'max:500'],
+            'data_previsao' => [...$required, 'date'],
+            'grau_prioridade' => [...$required, 'in:' . implode(',', array_column(GrauPrioridade::cases(), 'value'))],
+            'justificativa' => [...$required, 'string', 'max:3000'],
+            'objeto' => [...$required, 'string', 'max:500'],
             'previsao_pca' => ['sometimes', 'boolean'],
             'numero_pca' => ['nullable', 'string', 'max:50'],
             'area_requisitante' => ['nullable', 'string', 'max:255'],

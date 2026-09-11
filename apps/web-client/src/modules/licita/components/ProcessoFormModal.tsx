@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Modal, Button } from '@sysgov/ui';
 import { FolderPlus } from 'lucide-react';
 import { sysgovApi, type Processo } from '@sysgov/sdk';
+import { ValidationErrorModal } from '@/components/ui';
+import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 
 interface ProcessoFormModalProps {
   open: boolean;
@@ -13,10 +15,12 @@ export const ProcessoFormModal: React.FC<ProcessoFormModalProps> = ({ open, onCl
   const [objeto, setObjeto] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setValidationErrors(null);
     setSaving(true);
     try {
       // Número e ano são gerados pelo backend (ano corrente, sequencial) —
@@ -24,8 +28,13 @@ export const ProcessoFormModal: React.FC<ProcessoFormModalProps> = ({ open, onCl
       const processo = await sysgovApi.licita.createProcesso({ objeto: objeto || null });
       onCreated(processo);
       setObjeto('');
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Erro ao criar processo.');
+    } catch (err) {
+      const fieldErrors = getApiValidationErrors(err);
+      if (fieldErrors) {
+        setValidationErrors(fieldErrors);
+      } else {
+        setError(getApiErrorMessage(err, 'Erro ao criar processo.'));
+      }
     } finally {
       setSaving(false);
     }
@@ -34,6 +43,11 @@ export const ProcessoFormModal: React.FC<ProcessoFormModalProps> = ({ open, onCl
   return (
     <Modal open={open} onClose={onClose} title="Novo Processo Licitatório" icon={<FolderPlus className="h-5 w-5" />} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
+        <ValidationErrorModal
+          open={validationErrors !== null}
+          onClose={() => setValidationErrors(null)}
+          errors={validationErrors ?? []}
+        />
         {error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
