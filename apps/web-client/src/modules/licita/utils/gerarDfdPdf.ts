@@ -1,4 +1,5 @@
-import type { CampoConfig, Dfd, ItemDfd, Processo } from '@sysgov/sdk';
+import type { CampoConfig, Dfd, ItemDfd, Processo, Tenant } from '@sysgov/sdk';
+import { CSS_CABECALHO_ORGAO, escapeHtml, renderCabecalhoOrgao } from './pdfCabecalho';
 
 const TIPO_ITEM_LABEL: Record<ItemDfd['tipo'], string> = {
   material: 'Material',
@@ -22,15 +23,6 @@ const GRAU_PRIORIDADE_LABEL: Record<Dfd['grau_prioridade'], string> = {
   alta: 'Alta',
   critica: 'Crítica',
 };
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 function formatarData(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -89,7 +81,7 @@ export function abrirJanelaPdf(): Window | null {
  * usada em outros relatórios do SYSGOV (ex.: RelatorioConsolidadoModal
  * no Admin Suite), sem exigir biblioteca de geração de PDF no backend.
  */
-export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: string, camposConfig: CampoConfig[] = []): void {
+export function gerarDfdPdf(janela: Window, processo: Processo, tenant: Tenant, camposConfig: CampoConfig[] = []): void {
   const dfd = processo.dfd;
   if (!dfd) {
     janela.close();
@@ -121,7 +113,7 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
   * { box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; font-size: 12px; line-height: 1.5; margin: 0; }
   header { text-align: center; border-bottom: 2px solid #1351B4; padding-bottom: 12px; margin-bottom: 20px; }
-  header .orgao { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #444; }
+  ${CSS_CABECALHO_ORGAO}
   header h1 { font-size: 16px; margin: 6px 0 2px; color: #1351B4; }
   header .subtitulo { font-size: 12px; color: #555; }
   .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 8px; }
@@ -153,7 +145,7 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenantNome: stri
 </head>
 <body>
   <header>
-    <div class="orgao">${escapeHtml(tenantNome)}</div>
+    ${renderCabecalhoOrgao(tenant)}
     <h1>Documento de Formalização de Demanda (DFD)</h1>
     <div class="subtitulo">Processo ${escapeHtml(processo.numero)}/${processo.ano} — Lei nº 14.133/2021</div>
   </header>

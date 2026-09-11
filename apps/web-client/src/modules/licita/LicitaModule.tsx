@@ -72,6 +72,12 @@ const ProcessosTab: React.FC<{
         return;
       }
 
+      if (!tenant) {
+        janela.close();
+        setPdfError('Não foi possível identificar o órgão para gerar o PDF.');
+        return;
+      }
+
       setGerandoPdfId(processoId);
       setPdfError(null);
       try {
@@ -79,7 +85,7 @@ const ProcessosTab: React.FC<{
           sysgovApi.licita.getProcesso(processoId),
           sysgovApi.licita.getCamposConfiguracao('dfd').catch(() => null),
         ]);
-        gerarDfdPdf(janela, processoCompleto, tenant?.name ?? '', config?.campos ?? []);
+        gerarDfdPdf(janela, processoCompleto, tenant, config?.campos ?? []);
       } catch (err: any) {
         janela.close();
         setPdfError(err?.response?.data?.error || err?.message || 'Erro ao gerar o PDF do DFD.');
@@ -87,7 +93,7 @@ const ProcessosTab: React.FC<{
         setGerandoPdfId(null);
       }
     },
-    [tenant?.name],
+    [tenant],
   );
 
   const load = useCallback(async () => {

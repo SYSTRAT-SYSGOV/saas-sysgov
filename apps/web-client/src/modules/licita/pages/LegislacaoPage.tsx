@@ -82,8 +82,13 @@ export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento,
       setPdfError('O navegador bloqueou a aba do PDF. Permita pop-ups para este site e tente novamente.');
       return;
     }
+    if (!tenant) {
+      janela.close();
+      setPdfError('Não foi possível identificar o órgão para gerar o PDF.');
+      return;
+    }
     setPdfError(null);
-    gerarLegislacaoPdf(janela, documento, tenant?.name ?? '');
+    gerarLegislacaoPdf(janela, documento, tenant);
   };
 
   const columns = useMemo<ColumnDef<LegalDocumento, any>[]>(
