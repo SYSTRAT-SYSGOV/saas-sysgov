@@ -117,6 +117,10 @@ const ProcessosTab: React.FC<{
       {
         id: 'numero',
         header: 'Processo',
+        size: 260,
+        meta: {
+          exportValue: (p) => `${p.numero}/${p.ano}`,
+        },
         cell: ({ row }) => (
           <div>
             <span className="font-mono font-bold tabular-nums text-foreground">
@@ -129,15 +133,30 @@ const ProcessosTab: React.FC<{
         ),
       },
       {
+        id: 'objeto',
+        header: 'Objeto',
+        meta: {
+          exportOnly: true,
+          exportValue: (p) => p.objeto ?? '',
+        },
+        cell: () => null,
+      },
+      {
         id: 'fase_atual',
         header: 'Fase Atual',
         size: 130,
+        meta: {
+          exportValue: (p) => FASE_LABEL[p.fase_atual],
+        },
         cell: ({ row }) => <StatusChip label={FASE_LABEL[row.original.fase_atual]} variant="primary" />,
       },
       {
         id: 'dfd_status',
         header: 'Status do DFD',
         size: 150,
+        meta: {
+          exportValue: (p) => (p.dfd ? DFD_STATUS_LABEL[p.dfd.status] : 'Não iniciado'),
+        },
         cell: ({ row }) => {
           const dfd = row.original.dfd;
           if (!dfd) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
@@ -148,6 +167,9 @@ const ProcessosTab: React.FC<{
         id: 'created_at',
         header: 'Criado em',
         size: 110,
+        meta: {
+          exportValue: (p) => new Date(p.created_at).toLocaleDateString('pt-BR'),
+        },
         cell: ({ row }) => (
           <span className="font-mono text-xs tabular-nums text-muted-foreground">
             {new Date(row.original.created_at).toLocaleDateString('pt-BR')}
@@ -223,6 +245,11 @@ const ProcessosTab: React.FC<{
               pageSize={10}
               onRowClick={(row) => onOpenProcesso(row.id)}
               fixedLayout
+              resizableColumns
+              pageSizeSelector
+              exportable
+              exportFileName="processos-licita"
+              exportTitle="Licita — Processos"
             />
           )}
         </div>

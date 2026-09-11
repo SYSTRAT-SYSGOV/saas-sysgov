@@ -25,13 +25,16 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.15",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.475.0",
     "radix-ui": "^1.6.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^6.28.1",
     "tailwind-merge": "^2.6.0",
-    "tinymce": "^7.9.3"
+    "tinymce": "^7.9.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@axe-core/react": "^4.13.0",
