@@ -117,29 +117,28 @@ const ProcessosTab: React.FC<{
       {
         id: 'numero',
         header: 'Processo',
-        size: 260,
+        size: 140,
         meta: {
           exportValue: (p) => `${p.numero}/${p.ano}`,
         },
         cell: ({ row }) => (
-          <div>
-            <span className="font-mono font-bold tabular-nums text-foreground">
-              {row.original.numero}/{row.original.ano}
-            </span>
-            <span className="block text-[11px] text-muted-foreground truncate max-w-[320px]">
-              {row.original.objeto || 'Objeto ainda não definido'}
-            </span>
-          </div>
+          <span className="font-mono font-bold tabular-nums text-foreground">
+            {row.original.numero}/{row.original.ano}
+          </span>
         ),
       },
       {
         id: 'objeto',
         header: 'Objeto',
+        size: 420,
         meta: {
-          exportOnly: true,
           exportValue: (p) => p.objeto ?? '',
         },
-        cell: () => null,
+        cell: ({ row }) => (
+          <span className="block truncate text-left text-muted-foreground" title={row.original.objeto ?? undefined}>
+            {row.original.objeto || 'Objeto ainda não definido'}
+          </span>
+        ),
       },
       {
         id: 'fase_atual',
