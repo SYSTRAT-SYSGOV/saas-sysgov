@@ -1,4 +1,5 @@
-import type { LegalDocumento, TipoLegalDocumento } from '@sysgov/sdk';
+import type { LegalDocumento, Tenant, TipoLegalDocumento } from '@sysgov/sdk';
+import { CSS_CABECALHO_ORGAO, escapeHtml, renderCabecalhoOrgao } from './pdfCabecalho';
 
 const TIPO_LABEL: Record<TipoLegalDocumento, string> = {
   lei: 'Lei',
@@ -8,14 +9,16 @@ const TIPO_LABEL: Record<TipoLegalDocumento, string> = {
   outro: 'Outro',
 };
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+/** Documento GLOBAL (mantido pela SYSTRAT, ex.: a Lei 14.133/2021 em si)
+ * não pertence a nenhum órgão específico — mostra um cabeçalho genérico
+ * em vez da logo/dados institucionais do tenant de quem estiver
+ * imprimindo (que não tem relação com a autoria do documento). */
+const CABECALHO_GLOBAL: Tenant = {
+  id: 0,
+  name: 'SYSTRAT — Biblioteca de Legislação',
+  slug: '',
+  type: 'interno',
+};
 
 /**
  * Monta o HTML de impressão de um documento da Biblioteca de Legislação e
@@ -29,9 +32,9 @@ function escapeHtml(value: string): string {
  * confiança já dada à justificativa/campos_extras do DFD ao embutir HTML
  * rico direto no template.
  */
-export function gerarLegislacaoPdf(janela: Window, documento: LegalDocumento, tenantNome: string): void {
+export function gerarLegislacaoPdf(janela: Window, documento: LegalDocumento, tenant: Tenant): void {
   const escopoLabel = documento.tenant_id === null ? 'GLOBAL' : 'ÓRGÃO';
-  const orgaoExibido = documento.tenant_id === null ? 'SYSTRAT — Biblioteca de Legislação' : tenantNome;
+  const cabecalhoTenant = documento.tenant_id === null ? CABECALHO_GLOBAL : tenant;
 
   const html = `<!doctype html>
 <html lang="pt-BR">
@@ -43,7 +46,7 @@ export function gerarLegislacaoPdf(janela: Window, documento: LegalDocumento, te
   * { box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; font-size: 12px; line-height: 1.5; margin: 0; }
   header { text-align: center; border-bottom: 2px solid #1351B4; padding-bottom: 12px; margin-bottom: 20px; }
-  header .orgao { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #444; }
+  ${CSS_CABECALHO_ORGAO}
   header h1 { font-size: 16px; margin: 6px 0 2px; color: #1351B4; }
   header .subtitulo { font-size: 12px; color: #555; }
   .meta { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -64,7 +67,7 @@ export function gerarLegislacaoPdf(janela: Window, documento: LegalDocumento, te
 </head>
 <body>
   <header>
-    <div class="orgao">${escapeHtml(orgaoExibido)}</div>
+    ${renderCabecalhoOrgao(cabecalhoTenant)}
     <h1>${escapeHtml(documento.titulo)}</h1>
     ${documento.numero ? `<div class="subtitulo">${escapeHtml(documento.numero)}</div>` : ''}
   </header>

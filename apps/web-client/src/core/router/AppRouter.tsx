@@ -9,6 +9,7 @@ import { TenantSelectorPage } from '@/pages/TenantSelectorPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { ConfiguracoesPage } from '@/pages/ConfiguracoesPage';
 import { Loader2 } from 'lucide-react';
 
 // Protected Route Guard
@@ -121,6 +122,7 @@ export const AppRouter: React.FC = () => {
         })}
 
         <Route path="perfil" element={<ProfilePage />} />
+        <Route path="configuracoes" element={<ConfiguracoesPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 

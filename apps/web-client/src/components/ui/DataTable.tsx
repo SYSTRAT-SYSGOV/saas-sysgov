@@ -367,11 +367,34 @@ export function DataTable<TData, TValue>({
       )}
 
       <div className="overflow-x-auto rounded-xl border border-border">
-        <table className={cn('w-full text-sm', useFixedLayout && 'table-fixed')}>
+        <table
+          className={cn('w-full text-sm', useFixedLayout && 'table-fixed')}
+          style={
+            resizableColumns
+              ? {
+                  // Largura mínima = soma dos `size` das colunas visíveis.
+                  // Sem isso, o table-fixed + colgroup em % força a tabela a
+                  // sempre caber nos 100% do container (a div com
+                  // overflow-x-auto), então em telas estreitas (celular) as
+                  // colunas encolhiam além do conteúdo (botões, badges,
+                  // texto) e esse conteúdo passava a vazar por cima das
+                  // colunas vizinhas em vez de a tabela simplesmente rolar
+                  // na horizontal. Com o minWidth, a tabela mantém as
+                  // colunas na largura configurada e é a div externa que
+                  // ganha a barra de rolagem horizontal.
+                  minWidth: table
+                    .getVisibleLeafColumns()
+                    .filter((col) => !col.columnDef.meta?.exportOnly)
+                    .reduce((sum, col) => sum + col.getSize(), 0),
+                }
+              : undefined
+          }
+        >
           {resizableColumns && (
-            // Larguras em % (não em px) — assim a tabela sempre preenche 100%
-            // do espaço disponível, e arrastar uma coluna só redistribui a
-            // proporção entre elas em vez de encolher a tabela toda.
+            // Larguras em % (não em px) — assim, dado o minWidth acima, a
+            // tabela some proporcionalmente ao redimensionar (arrastar uma
+            // coluna só redistribui a proporção entre elas), mas nunca
+            // encolhe abaixo da soma dos tamanhos configurados.
             <colgroup>
               {(() => {
                 const visibleCols = table

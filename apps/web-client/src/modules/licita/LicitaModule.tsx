@@ -72,6 +72,12 @@ const ProcessosTab: React.FC<{
         return;
       }
 
+      if (!tenant) {
+        janela.close();
+        setPdfError('Não foi possível identificar o órgão para gerar o PDF.');
+        return;
+      }
+
       setGerandoPdfId(processoId);
       setPdfError(null);
       try {
@@ -79,7 +85,7 @@ const ProcessosTab: React.FC<{
           sysgovApi.licita.getProcesso(processoId),
           sysgovApi.licita.getCamposConfiguracao('dfd').catch(() => null),
         ]);
-        gerarDfdPdf(janela, processoCompleto, tenant?.name ?? '', config?.campos ?? []);
+        gerarDfdPdf(janela, processoCompleto, tenant, config?.campos ?? []);
       } catch (err: any) {
         janela.close();
         setPdfError(err?.response?.data?.error || err?.message || 'Erro ao gerar o PDF do DFD.');
@@ -87,7 +93,7 @@ const ProcessosTab: React.FC<{
         setGerandoPdfId(null);
       }
     },
-    [tenant?.name],
+    [tenant],
   );
 
   const load = useCallback(async () => {
@@ -368,13 +374,13 @@ export const LicitaModule: React.FC = () => {
         subtitle={`${tenant?.name} — DFD, ETP, Mapa de Riscos, Pesquisa de Preços, TR e Edital`}
       />
 
-      <div className="flex gap-1 border-b border-border">
+      <div className="flex gap-1 overflow-x-auto border-b border-border">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => changeTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`flex shrink-0 items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               tab === t.id
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'

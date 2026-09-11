@@ -24,4 +24,10 @@ php artisan db:seed --force
 # via module:register aparecem) até alguém rodar isso na mão.
 php artisan sysgov:seed-menus
 
+# Link storage/app/public -> public/storage — sem isso, arquivos enviados
+# via Storage::disk('public') (ex.: logo do tenant) ficam salvos mas
+# inacessíveis por URL (404). Idempotente: o comando já detecta e pula
+# se o link existir.
+php artisan storage:link || true
+
 exec "$@"

@@ -1,12 +1,25 @@
 export type TenantContext = { slug: string; name: string; settings: Record<string, unknown> };
 export type Paginated<T> = { data: T[]; current_page: number; last_page: number; total: number };
 
+/** Dados institucionais do órgão (CNPJ, endereço, telefone) usados no
+ * cabeçalho dos documentos gerados pelo sistema — ver ConfiguracoesPage
+ * e TenantSettingsController::documentInfo() no backend. */
+export interface TenantDocumentInfo {
+  cnpj?: string | null;
+  endereco?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  cep?: string | null;
+  telefone?: string | null;
+}
+
 export interface TenantSettings {
   customPrimaryColor?: string;
   customLogoUrl?: string;
   title?: string;
   subtitle?: string;
   hideProviderBranding?: boolean;
+  documentInfo?: TenantDocumentInfo;
   [key: string]: unknown;
 }
 
