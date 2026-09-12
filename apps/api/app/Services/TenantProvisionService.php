@@ -88,6 +88,17 @@ final readonly class TenantProvisionService
                 'modules' => $modules->pluck('alias')->all(),
             ], $tenant->id);
 
+            // Inicializa a estrutura do organograma municipal padrão (Gabinete + Secretarias)
+            if ($tenant->type === 'prefeitura' || in_array('org', $moduleAliases, true)) {
+                try {
+                    if (class_exists(\Modules\OrgChart\Services\OrgSeedService::class)) {
+                        app(\Modules\OrgChart\Services\OrgSeedService::class)->seedDefaultMunicipalStructure($tenant);
+                    }
+                } catch (Throwable $e) {
+                    report($e);
+                }
+            }
+
             return $tenant->load('modules');
         });
     }

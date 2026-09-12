@@ -35,6 +35,8 @@ final class AdminOrgChartController extends Controller
 
         Gate::authorize('adminSeed', OrgUnit::class);
 
+        $this->tenantContext->set($tenantInstance);
+
         if ($this->seedService->hasRoot()) {
             return response()->json([
                 'message' => 'O tenant já possui um organograma inicial cadastrado.',

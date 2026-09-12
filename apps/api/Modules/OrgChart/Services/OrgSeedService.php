@@ -36,11 +36,11 @@ final class OrgSeedService
      */
     public function seedDefaultMunicipalStructure(Tenant $tenant): array
     {
+        app(TenantContext::class)->set($tenant);
+
         if (OrgUnit::roots()->exists()) {
             throw new RuntimeException('O tenant já possui um organograma inicial cadastrado.');
         }
-
-        app(TenantContext::class)->set($tenant);
 
         $root = $this->treeService->createUnit([
             'name' => "Gabinete do Prefeito — {$tenant->name}",

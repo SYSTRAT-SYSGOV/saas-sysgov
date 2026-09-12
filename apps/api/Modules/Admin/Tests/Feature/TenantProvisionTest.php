@@ -56,6 +56,14 @@ final class TenantProvisionTest extends TestCase
 
         // MRR = org(149) + contracts(249) + users(99) + domínio custom(50) = 54700
         $this->assertEquals(54700, $tenant->monthlyMrrCents());
+
+        // Estrutura do organograma municipal inicial semeada automaticamente
+        $this->assertDatabaseHas('org_units', [
+            'tenant_id' => $tenant->id,
+            'code' => 'GAB',
+            'type' => 'raiz',
+        ]);
+        $this->assertEquals(3, \Modules\OrgChart\Models\OrgUnit::where('tenant_id', $tenant->id)->count());
     }
 
     public function test_provision_rejects_duplicate_slug(): void
