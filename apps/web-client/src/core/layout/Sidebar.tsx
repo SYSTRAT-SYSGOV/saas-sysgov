@@ -21,9 +21,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { unitList, activeUnit, setActiveUnitId, loading: loadingUnits, hasMultipleUnits } = useOrgUnit();
   const location = useLocation();
 
-  const [expandedGroups, setExpandedGroups] = useState<Set<number | string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<number | string>>(() => new Set([1, 2, 3, 99]));
   const [expandedItems, setExpandedItems] = useState<Set<number | string>>(new Set());
   const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (navigation && navigation.length > 0) {
+      setExpandedGroups(new Set(navigation.map((g) => g.id)));
+    }
+  }, [navigation]);
 
   const toggleGroup = (id: number | string) => setExpandedGroups((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleItem = (id: number | string) => setExpandedItems((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
