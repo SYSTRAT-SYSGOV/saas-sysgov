@@ -95,7 +95,10 @@ export const DfdForm: React.FC<DfdFormProps> = ({
   const [equipe, setEquipe] = useState<MembroEquipePlanejamento[]>(
     initialValue?.equipe_planejamento && initialValue.equipe_planejamento.length > 0
       ? initialValue.equipe_planejamento
-      : [{ ...emptyMembro }],
+      // Já começa com 2 linhas em branco (mínimo exigido pelo backend,
+      // ver DfdController) — começar com só 1 deixava o usuário
+      // descobrir a exigência apenas ao tentar salvar.
+      : [{ ...emptyMembro }, { ...emptyMembro }],
   );
   const [camposExtrasValores, setCamposExtrasValores] = useState<Record<string, unknown>>(
     initialValue?.campos_extras ?? {},
@@ -340,7 +343,9 @@ export const DfdForm: React.FC<DfdFormProps> = ({
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-foreground">Equipe de Planejamento *</label>
+            <label className="block text-sm font-medium text-foreground">
+              Equipe de Planejamento * <span className="font-normal text-muted-foreground">(mínimo 2 pessoas)</span>
+            </label>
             {!disabled && (
               <Button
                 type="button"
@@ -380,7 +385,8 @@ export const DfdForm: React.FC<DfdFormProps> = ({
                   onChange={(e) => updateMembro(index, { matricula: e.target.value })}
                   className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
                 />
-                {!disabled && equipe.length > 1 && (
+                {/* Nunca deixa remover abaixo de 2 — mínimo exigido pelo backend (ver DfdController). */}
+                {!disabled && equipe.length > 2 && (
                   <Button
                     type="button"
                     variant="ghost"

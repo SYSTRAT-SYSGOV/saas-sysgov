@@ -149,7 +149,10 @@ final class DfdController extends Controller
             'previsao_pca' => ['sometimes', 'boolean'],
             'numero_pca' => ['nullable', 'string', 'max:50'],
             'area_requisitante' => ['nullable', 'string', 'max:255'],
-            'equipe_planejamento' => ['sometimes', 'array'],
+            // min:2 — RN: a segregação de funções do planejamento da
+            // contratação (art. 7º da Lei 14.133/2021) exige pelo menos
+            // duas pessoas na equipe, nunca uma só.
+            'equipe_planejamento' => [...$required, 'array', 'min:2'],
             'equipe_planejamento.*.nome' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.cargo' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.matricula' => ['required_with:equipe_planejamento', 'string', 'max:50'],
