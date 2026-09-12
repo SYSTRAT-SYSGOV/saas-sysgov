@@ -29,6 +29,7 @@ final class DfdService
         'equipe_planejamento',
         'campos_extras',
         'itens',
+        'gerado_por_ia',
     ];
 
     private const TIPO_DOCUMENTO_ITEM = [

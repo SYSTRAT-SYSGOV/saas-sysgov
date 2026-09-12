@@ -7,6 +7,7 @@ namespace Modules\Licita\Services;
 use App\Support\AuditLogger;
 use App\Support\TenantContext;
 use DomainException;
+use Illuminate\Validation\ValidationException;
 use Modules\Licita\Models\CampoConfiguracao;
 
 final class CampoConfiguracaoService
@@ -47,11 +48,16 @@ final class CampoConfiguracaoService
 
     /**
      * Valida as respostas (campos_extras) de um documento contra a
-     * configuração ativa do tenant para aquele tipo — lança DomainException
-     * listando os campos obrigatórios faltando, no mesmo padrão usado para
-     * os campos fixos dos artefatos (ex.: DfdService).
+     * configuração ativa do tenant para aquele tipo.
      *
      * @param array<string, mixed> $respostas
+     *
+     * @throws ValidationException Um por campo obrigatório faltando, no MESMO formato (`errors: {campo:
+     *         [mensagens]}`) da validação padrão do Laravel — não uma DomainException com uma única
+     *         mensagem "achatada". Campo obrigatório vazio é erro de VALIDAÇÃO DE FORMULÁRIO (o mesmo
+     *         tipo de erro que Objeto/Justificativa vazios), não uma regra de negócio; usar o mesmo
+     *         formato é o que faz o front cair na ValidationErrorModal em vez de um alerta inline que
+     *         passa despercebido se a tela estiver rolada (ver `getApiValidationErrors`/`DfdForm`).
      */
     public function validarRespostas(string $tipoDocumento, array $respostas): void
     {
@@ -60,7 +66,7 @@ final class CampoConfiguracaoService
             return;
         }
 
-        $faltando = [];
+        $erros = [];
         foreach ($configuracao->campos as $campo) {
             if (!$campo['obrigatorio']) {
                 continue;
@@ -68,14 +74,12 @@ final class CampoConfiguracaoService
 
             $valor = $respostas[$campo['key']] ?? null;
             if ($valor === null || $valor === '') {
-                $faltando[] = $campo['label'];
+                $erros["campos_extras.{$campo['key']}"] = ["O campo \"{$campo['label']}\" é obrigatório."];
             }
         }
 
-        if ($faltando !== []) {
-            throw new DomainException(
-                'Campos obrigatórios não preenchidos: ' . implode(', ', $faltando) . '.'
-            );
+        if ($erros !== []) {
+            throw ValidationException::withMessages($erros);
         }
     }
 

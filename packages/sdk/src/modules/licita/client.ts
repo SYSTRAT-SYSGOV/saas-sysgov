@@ -10,6 +10,10 @@ import type {
   LegalDocumento,
   Processo,
   ProcessoFilters,
+  SugerirJustificativaDfdInput,
+  SugerirJustificativaDfdOutput,
+  SugerirTextoIaInput,
+  SugerirTextoIaOutput,
   TipoDocumentoConfiguravel,
   UpdateDfdInput,
   UpdateLegalDocumentoInput,
@@ -69,6 +73,15 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async rejeitarDfd(id: number, motivo: string): Promise<Dfd> {
     return this.api.request(`/licita/dfds/${id}/rejeitar`, { method: 'POST', body: JSON.stringify({ motivo }) });
+  }
+
+  async sugerirJustificativaDfd(input: SugerirJustificativaDfdInput): Promise<SugerirJustificativaDfdOutput> {
+    return this.api.request('/licita/dfds/ia/sugerir-justificativa', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  /** "Sugerir com IA" genérico — usado por qualquer campo de texto rico do Licita sem prompt dedicado. */
+  async sugerirTextoIa(input: SugerirTextoIaInput): Promise<SugerirTextoIaOutput> {
+    return this.api.request('/licita/ia/sugerir-texto', { method: 'POST', body: JSON.stringify(input) });
   }
 
   async listLegislacao(filters: { tipo?: string; search?: string } = {}): Promise<{ data: LegalDocumento[] }> {

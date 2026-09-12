@@ -1,6 +1,7 @@
 import React from 'react';
-import { Select, RichTextEditor } from '@sysgov/ui';
+import { Select } from '@sysgov/ui';
 import type { CampoConfig } from '@sysgov/sdk';
+import { RichTextEditorWithIa } from './RichTextEditorWithIa';
 
 interface CamposExtrasFieldsProps {
   campos: CampoConfig[];
@@ -28,16 +29,24 @@ export const CamposExtrasFields: React.FC<CamposExtrasFieldsProps> = ({ campos, 
 
         return (
           <div key={campo.key}>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              {campo.label} {campo.obrigatorio && '*'}
-            </label>
+            {/* O label de texto_longo já vem embutido no header do
+                RichTextEditorWithIa (junto do botão "Sugerir com IA") —
+                renderizá-lo aqui de novo duplicaria o texto. */}
+            {campo.tipo !== 'texto_longo' && (
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {campo.label} {campo.obrigatorio && '*'}
+              </label>
+            )}
 
             {campo.tipo === 'texto_longo' && (
-              <RichTextEditor
+              <RichTextEditorWithIa
+                label={`${campo.label}${campo.obrigatorio ? ' *' : ''}`}
                 value={typeof valor === 'string' ? valor : ''}
                 onChange={(html) => setValor(campo.key, html)}
                 disabled={disabled}
                 minHeight={160}
+                campo={campo.label}
+                contexto={campo.ajuda}
               />
             )}
 
