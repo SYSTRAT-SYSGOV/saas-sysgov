@@ -32,7 +32,6 @@ import {
   FileText,
   Ticket,
   BookOpen,
-  Gavel,
 } from 'lucide-react';
 import { ADMIN_NAV_GROUPS, AdminNavGroup, AdminNavItem } from '../config/adminNavigation';
 import { getAdminModuleById } from '../config/adminModuleRegistry';
@@ -44,7 +43,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   LayoutDashboard, Users, Building2, Table, CreditCard, Plug, ShieldAlert,
   Settings, UserCheck, BarChart3, Layers, Landmark, Receipt, Scale, HandCoins,
   GraduationCap, Trophy, Award, BellRing, MapPin, Database, Sliders, FileText,
-  Ticket, BookOpen, Sparkles, Gavel,
+  Ticket, BookOpen, Sparkles,
 };
 
 export interface NavItem {
@@ -311,18 +310,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
             badgeColor: 'indigo' as const,
             desc: 'Ciclo de vida contratual, aditivos e fiscalização',
             shortcut: 'C',
-          },
-          {
-            id: 'licita',
-            number: '10B',
-            emoji: '⚖️',
-            label: 'Instrução Processual (Licita)',
-            shortLabel: 'Licita',
-            icon: Gavel,
-            badge: '14.133',
-            badgeColor: 'indigo' as const,
-            desc: 'DFD, ETP, Mapa de Riscos e Termo de Referência',
-            shortcut: 'L',
           },
           {
             id: 'helpdesk',

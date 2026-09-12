@@ -97,11 +97,11 @@ final class RbacSeeder extends Seeder
                 'rh.view' => 'Visualizar Recursos Humanos',
                 'cemiterios.view' => 'Visualizar Gestão de Cemitérios',
                 'licita.view' => 'Visualizar Módulo Licita',
-                'licita.criar' => 'Criar Processos Licita',
-                'licita.editar' => 'Editar Processos Licita',
-                'licita.excluir' => 'Excluir Processos Licita',
-                'licita.aprovar' => 'Aprovar Artefatos Licita',
-                'licita.exportar' => 'Exportar Documentos Licita',
+                'licita.create' => 'Criar Processos e DFDs (Licita)',
+                'licita.update' => 'Editar Processos e DFDs (Licita)',
+                'licita.aprovar' => 'Aprovar/Rejeitar DFD, ETP e demais fases (Licita)',
+                'licita.legislacao.manage' => 'Gerenciar a biblioteca de legislação do órgão (Licita)',
+                'licita.campos.manage' => 'Configurar campos obrigatórios por tipo de documento (Licita)',
             ],
         ];
 

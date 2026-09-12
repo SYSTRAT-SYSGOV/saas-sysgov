@@ -258,7 +258,6 @@ export function AppRouter() {
                 <Route path="/admin/ia" element={<ModuleRoute path="/admin/ia" />} />
                 <Route path="/admin/profile" element={<ModuleRoute path="/admin/profile" />} />
                 <Route path="/admin/contratos" element={<ModuleRoute path="/admin/contratos" />} />
-                <Route path="/admin/licita" element={<ModuleRoute path="/admin/licita" />} />
                 <Route path="/admin/helpdesk" element={<ModuleRoute path="/admin/helpdesk" />} />
                 <Route path="/admin/contabilidade" element={<ModuleRoute path="/admin/contabilidade" />} />
                 <Route path="/admin/module-catalog" element={<ModuleRoute path="/admin/module-catalog" />} />

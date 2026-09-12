@@ -17,7 +17,6 @@ import {
   BookOpen,
   Database,
   Sparkles,
-  Gavel,
 } from 'lucide-react';
 import { lazyWithNamedExport } from '@/lib/lazy';
 
@@ -230,18 +229,6 @@ export const ADMIN_MODULE_REGISTRY: Record<string, AdminModuleDefinition> = {
     badgeColor: 'indigo',
     description: 'Catálogo de módulos disponíveis para provisionamento',
     allowedRoles: ['SUPER_ADMIN'],
-  },
-  licita: {
-    id: 'licita',
-    name: 'Instrução Processual (Licita)',
-    path: '/admin/licita',
-    component: lazyWithNamedExport(() => import('@/components/ModuleLicita'), 'ModuleLicita'),
-    requiredPermission: 'admin.licita.view',
-    icon: Gavel,
-    badge: '14.133',
-    badgeColor: 'indigo',
-    description: 'Instrução processual sob a Lei 14.133/2021 — DFD, ETP, Mapa de Riscos e Termo de Referência',
-    allowedRoles: ['SUPER_ADMIN', 'ADMIN'],
   },
 };
 

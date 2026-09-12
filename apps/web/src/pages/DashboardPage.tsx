@@ -18,7 +18,6 @@ import { AlertasPrazosCriticos } from '../components/AlertasPrazosCriticos';
 import { SimuladorCenariosLoa } from '../components/SimuladorCenariosLoa';
 import { PainelGestaoPage } from '../components/PainelGestao/PainelGestaoPage';
 import { ModuleContratos } from '../components/ModuleContratos';
-import { ModuleLicita } from '../components/ModuleLicita';
 import { ModuleHelpdesk } from '../components/ModuleHelpdesk';
 import { ModuleContabilidade } from '../components/ModuleContabilidade';
 import { MenuUsersAdminPage } from '../modules/admin/MenuUsersAdminPage';
@@ -410,7 +409,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         )}
 
         {activeTab === 'contratos' && <ModuleContratos />}
-        {activeTab === 'licita' && <ModuleLicita />}
+
         {activeTab === 'helpdesk' && <ModuleHelpdesk />}
 
         {activeTab === 'contabilidade' && <ModuleContabilidade />}
