@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Button, Select, RichTextEditor } from '@sysgov/ui';
+import { Button, Select } from '@sysgov/ui';
 import { Plus, Trash2 } from 'lucide-react';
-import type { CampoConfig, CreateDfdInput, GrauPrioridade, ItemDfd, MembroEquipePlanejamento, TipoItemDfd } from '@sysgov/sdk';
+import { sysgovApi, type CampoConfig, type CreateDfdInput, type GrauPrioridade, type ItemDfd, type MembroEquipePlanejamento, type TipoItemDfd } from '@sysgov/sdk';
 import { CamposExtrasFields } from './CamposExtrasFields';
+import { RichTextEditorWithIa } from './RichTextEditorWithIa';
 import { ValidationErrorModal } from '@/components/ui';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 
@@ -94,7 +95,10 @@ export const DfdForm: React.FC<DfdFormProps> = ({
   const [equipe, setEquipe] = useState<MembroEquipePlanejamento[]>(
     initialValue?.equipe_planejamento && initialValue.equipe_planejamento.length > 0
       ? initialValue.equipe_planejamento
-      : [{ ...emptyMembro }],
+      // Já começa com 2 linhas em branco (mínimo exigido pelo backend,
+      // ver DfdController) — começar com só 1 deixava o usuário
+      // descobrir a exigência apenas ao tentar salvar.
+      : [{ ...emptyMembro }, { ...emptyMembro }],
   );
   const [camposExtrasValores, setCamposExtrasValores] = useState<Record<string, unknown>>(
     initialValue?.campos_extras ?? {},
@@ -110,6 +114,16 @@ export const DfdForm: React.FC<DfdFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
   const [abaAtiva, setAbaAtiva] = useState(ABA_PADRAO);
+  // true só entre o momento em que a sugestão de IA é aceita e a primeira
+  // edição manual da justificativa depois disso — vira `gerado_por_ia` no
+  // payload, então precisa cair para false assim que o usuário mexer no
+  // texto (deixou de ser o que a IA gerou).
+  const [justificativaGeradaPorIa, setJustificativaGeradaPorIa] = useState(initialValue?.gerado_por_ia ?? false);
+
+  const handleJustificativaChange = (value: string) => {
+    setJustificativa(value);
+    setJustificativaGeradaPorIa(false);
+  };
 
   // Agrupa os campos extras por aba (definida pelo órgão em Campos por Tipo
   // de Documento) — campos sem aba caem na aba padrão. A ordem de impressão
@@ -150,6 +164,21 @@ export const DfdForm: React.FC<DfdFormProps> = ({
     setItens((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   };
 
+  const handleSugerirJustificativa = async () => {
+    // Justificativa já tem conteúdo: pede para MELHORAR (expandir) o texto
+    // atual em vez de reescrever do zero — ver comentário equivalente em
+    // RichTextEditorWithIa/DfdIaService.
+    const temConteudo = justificativa.replace(/<[^>]*>/g, '').trim().length > 0;
+    const resultado = await sysgovApi.licita.sugerirJustificativaDfd({
+      objeto,
+      area_requisitante: areaRequisitante || null,
+      itens: itens.map((it) => ({ descricao: it.descricao })).filter((it) => it.descricao),
+      texto_atual: temConteudo ? justificativa : null,
+    });
+    setJustificativaGeradaPorIa(true);
+    return { texto: resultado.justificativa, legislacaoUtilizada: resultado.legislacao_utilizada };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -166,6 +195,7 @@ export const DfdForm: React.FC<DfdFormProps> = ({
         area_requisitante: areaRequisitante || null,
         equipe_planejamento: equipe.filter((m) => m.nome && m.cargo && m.matricula),
         campos_extras: camposExtrasValores,
+        gerado_por_ia: justificativaGeradaPorIa,
         itens: itens
           .map((it): ItemDfd => ({ ...it, quantidade: Number(it.quantidade) || 0, valor_unitario: Number(it.valor_unitario) || 0 }))
           .filter((it) => it.codigo && it.descricao && it.unidade_medida && it.quantidade > 0),
@@ -240,13 +270,16 @@ export const DfdForm: React.FC<DfdFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Justificativa *</label>
-          <RichTextEditor
+          <RichTextEditorWithIa
+            label="Justificativa *"
             value={justificativa}
-            onChange={setJustificativa}
+            onChange={handleJustificativaChange}
             disabled={disabled}
             minHeight={200}
             placeholder="Demonstre a necessidade e conveniência da contratação (art. 18, I da Lei 14.133/2021)."
+            onSugerir={handleSugerirJustificativa}
+            sugerirDesabilitado={!objeto.trim()}
+            sugerirDesabilitadoTitulo="Preencha o Objeto para gerar a sugestão."
           />
         </div>
 
@@ -310,7 +343,9 @@ export const DfdForm: React.FC<DfdFormProps> = ({
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-foreground">Equipe de Planejamento *</label>
+            <label className="block text-sm font-medium text-foreground">
+              Equipe de Planejamento * <span className="font-normal text-muted-foreground">(mínimo 2 pessoas)</span>
+            </label>
             {!disabled && (
               <Button
                 type="button"
@@ -350,7 +385,8 @@ export const DfdForm: React.FC<DfdFormProps> = ({
                   onChange={(e) => updateMembro(index, { matricula: e.target.value })}
                   className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
                 />
-                {!disabled && equipe.length > 1 && (
+                {/* Nunca deixa remover abaixo de 2 — mínimo exigido pelo backend (ver DfdController). */}
+                {!disabled && equipe.length > 2 && (
                   <Button
                     type="button"
                     variant="ghost"

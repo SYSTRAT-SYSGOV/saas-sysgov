@@ -139,12 +139,20 @@ final class DfdController extends Controller
         return $request->validate([
             'data_previsao' => [...$required, 'date'],
             'grau_prioridade' => [...$required, 'in:' . implode(',', array_column(GrauPrioridade::cases(), 'value'))],
-            'justificativa' => [...$required, 'string', 'max:3000'],
+            // 8000, não 3000: o campo é HTML rico (RichTextEditor/TinyMCE),
+            // não texto puro — tags de parágrafo/negrito/lista e a citação
+            // de dispositivos legais (comum no texto sugerido por IA, ver
+            // DfdIaService) inflam a contagem de caracteres bem além do que
+            // um limite pensado para texto puro comportaria.
+            'justificativa' => [...$required, 'string', 'max:8000'],
             'objeto' => [...$required, 'string', 'max:500'],
             'previsao_pca' => ['sometimes', 'boolean'],
             'numero_pca' => ['nullable', 'string', 'max:50'],
             'area_requisitante' => ['nullable', 'string', 'max:255'],
-            'equipe_planejamento' => ['sometimes', 'array'],
+            // min:2 — RN: a segregação de funções do planejamento da
+            // contratação (art. 7º da Lei 14.133/2021) exige pelo menos
+            // duas pessoas na equipe, nunca uma só.
+            'equipe_planejamento' => [...$required, 'array', 'min:2'],
             'equipe_planejamento.*.nome' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.cargo' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.matricula' => ['required_with:equipe_planejamento', 'string', 'max:50'],
@@ -157,6 +165,9 @@ final class DfdController extends Controller
             'itens.*.quantidade' => ['required_with:itens', 'numeric', 'min:0.01'],
             'itens.*.valor_unitario' => ['required_with:itens', 'numeric', 'min:0'],
             'itens.*.campos_extras' => ['sometimes', 'array'],
+            // Marcado pelo front quando a justificativa (ou outro campo) veio
+            // de uma sugestão de IA aceita sem edição — ver DfdIaController.
+            'gerado_por_ia' => ['sometimes', 'boolean'],
         ]);
     }
 }

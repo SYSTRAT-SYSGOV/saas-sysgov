@@ -205,6 +205,7 @@ return [
         'data_previsao' => 'data de previsão',
         'grau_prioridade' => 'grau de prioridade',
         'area_requisitante' => 'área requisitante',
+        'equipe_planejamento' => 'equipe de planejamento',
         'itens' => 'itens',
         'itens.*.codigo' => 'código do item',
         'itens.*.descricao' => 'descrição do item',
