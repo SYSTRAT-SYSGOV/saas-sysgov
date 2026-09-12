@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Modules\Licita\Enums\FaseLicita;
 use Modules\Licita\Enums\GrauPrioridade;
 use Modules\Licita\Enums\StatusDfd;
@@ -225,9 +226,16 @@ final class DfdWorkflowTest extends TestCase
             ],
         ];
 
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('Campos obrigatórios não preenchidos');
-        $dfdService->criar($processo, $dados, $elaborador);
+        // ValidationException (não DomainException): campo extra obrigatório
+        // vazio é erro de VALIDAÇÃO DE FORMULÁRIO, no mesmo formato usado
+        // pelos campos fixos — ver comentário em
+        // CampoConfiguracaoService::validarRespostas.
+        try {
+            $dfdService->criar($processo, $dados, $elaborador);
+            self::fail('Deveria ter lançado ValidationException por falta do campo extra obrigatório.');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('campos_extras.marca_referencia', $e->errors());
+        }
     }
 
     public function test_versionamento_incrementa_a_cada_transicao(): void

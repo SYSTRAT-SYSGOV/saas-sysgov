@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button } from '@sysgov/ui';
-import { StatusChip, PageHeader, ScreenState, ValidationErrorModal } from '@/components/ui';
+import { StatusChip, PageHeader, ScreenState, ValidationErrorModal, ConfirmDialog } from '@/components/ui';
 import { ArrowLeft, FileText, CheckCircle2, XCircle, Send, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/core/auth/useAuth';
 import { useCan } from '@/core/rbac/useCan';
@@ -62,8 +62,11 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
   const [actionError, setActionError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [motivoRejeicao, setMotivoRejeicao] = useState('');
-  const [showRejeitar, setShowRejeitar] = useState(false);
+  // Confirmação em modal antes de aprovar/rejeitar — ações irreversíveis
+  // (aprovar trava o DFD para edição e avança o processo; rejeitar
+  // devolve para o elaborador) que não devem disparar direto do clique.
+  const [confirmAprovar, setConfirmAprovar] = useState(false);
+  const [confirmRejeitar, setConfirmRejeitar] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const notify = (t: Toast) => {
@@ -217,12 +220,7 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
                     variant="primary"
                     leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
                     isLoading={actionLoading}
-                    onClick={() =>
-                      runAction(() => sysgovApi.licita.aprovarDfd(dfd.id), {
-                        title: 'DFD aprovado',
-                        message: 'O DFD foi aprovado com sucesso.',
-                      })
-                    }
+                    onClick={() => setConfirmAprovar(true)}
                   >
                     Aprovar
                   </Button>
@@ -230,7 +228,7 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
                     size="sm"
                     variant="destructive"
                     leftIcon={<XCircle className="h-3.5 w-3.5" />}
-                    onClick={() => setShowRejeitar((v) => !v)}
+                    onClick={() => setConfirmRejeitar(true)}
                   >
                     Rejeitar
                   </Button>
@@ -261,38 +259,43 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
           </div>
         )}
 
-        {showRejeitar && dfd && (
-          <div className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-            <label className="block text-sm font-medium text-foreground">Motivo da rejeição *</label>
-            <textarea
-              value={motivoRejeicao}
-              onChange={(e) => setMotivoRejeicao(e.target.value)}
-              rows={2}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        {dfd && (
+          <>
+            <ConfirmDialog
+              open={confirmAprovar}
+              onClose={() => setConfirmAprovar(false)}
+              destructive={false}
+              requireReason={false}
+              confirmLabel="Aprovar"
+              title="Aprovar DFD"
+              description="Confirma a aprovação deste DFD? Depois de aprovado, o documento fica imutável e o processo avança para a próxima fase (ETP)."
+              onConfirm={() => {
+                setConfirmAprovar(false);
+                runAction(() => sysgovApi.licita.aprovarDfd(dfd.id), {
+                  title: 'DFD aprovado',
+                  message: 'O DFD foi aprovado com sucesso.',
+                });
+              }}
             />
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="outline" onClick={() => setShowRejeitar(false)}>
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={!motivoRejeicao.trim()}
-                isLoading={actionLoading}
-                onClick={() =>
-                  runAction(() => sysgovApi.licita.rejeitarDfd(dfd.id, motivoRejeicao), {
-                    title: 'DFD rejeitado',
-                    message: 'A rejeição foi registrada com sucesso.',
-                  }).then(() => {
-                    setShowRejeitar(false);
-                    setMotivoRejeicao('');
-                  })
-                }
-              >
-                Confirmar Rejeição
-              </Button>
-            </div>
-          </div>
+
+            <ConfirmDialog
+              open={confirmRejeitar}
+              onClose={() => setConfirmRejeitar(false)}
+              destructive
+              requireReason
+              reasonPlaceholder="Motivo da rejeição..."
+              confirmLabel="Rejeitar"
+              title="Rejeitar DFD"
+              description="Confirma a rejeição deste DFD? Ele voltará para rascunho, o elaborador poderá editá-lo e reenviar para revisão."
+              onConfirm={(motivo) => {
+                setConfirmRejeitar(false);
+                runAction(() => sysgovApi.licita.rejeitarDfd(dfd.id, motivo), {
+                  title: 'DFD rejeitado',
+                  message: 'A rejeição foi registrada com sucesso.',
+                });
+              }}
+            />
+          </>
         )}
 
         {actionError && (

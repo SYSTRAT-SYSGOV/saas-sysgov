@@ -174,6 +174,10 @@ export const LegislacaoDetailPage: React.FC<LegislacaoDetailPageProps> = ({ docu
           </div>
 
           <div>
+            {/* Sem "Sugerir com IA" de propósito: a legislação é a fonte da
+                verdade que EMBASA a IA em outros lugares do Licita (DFD,
+                ETP, TR...) — o texto aqui já vem pronto (a norma real, tal
+                como publicada), nunca deve ser gerado. */}
             <label className="block text-sm font-medium text-foreground mb-1">Texto Completo *</label>
             <RichTextEditor
               value={form.texto_completo}

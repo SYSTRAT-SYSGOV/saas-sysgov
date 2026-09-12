@@ -172,9 +172,52 @@ export interface CreateDfdInput {
   equipe_planejamento?: MembroEquipePlanejamento[];
   campos_extras?: Record<string, unknown>;
   itens?: ItemDfd[];
+  /** true quando algum campo (ex.: justificativa) foi salvo a partir de uma sugestão de IA aceita sem edição — ver `sugerirJustificativaDfd`. */
+  gerado_por_ia?: boolean;
 }
 
 export type UpdateDfdInput = Partial<CreateDfdInput>;
+
+export interface SugerirJustificativaDfdInput {
+  objeto: string;
+  area_requisitante?: string | null;
+  itens?: { descricao: string }[];
+  /** Justificativa já escrita (HTML do editor) — quando informado, a IA MELHORA esse texto em vez de escrever do zero. */
+  texto_atual?: string | null;
+}
+
+/** Legislação cadastrada na plataforma (global ou do tenant) usada como base para o texto sugerido — ver LegalDocumento. */
+export interface LegislacaoUtilizadaIa {
+  id: number;
+  tipo: TipoLegalDocumento;
+  numero: string | null;
+  titulo: string;
+}
+
+export interface SugerirJustificativaDfdOutput {
+  justificativa: string;
+  legislacao_utilizada: LegislacaoUtilizadaIa[];
+}
+
+/**
+ * "Sugerir com IA" genérico — usado por qualquer campo de texto rico
+ * (TinyMCE) do Licita que não tenha um prompt dedicado (ver
+ * `RichTextEditorWithIa` no front, e `SugerirJustificativaDfdInput` para o
+ * caso dedicado da Justificativa do DFD).
+ */
+export interface SugerirTextoIaInput {
+  /** Descrição do campo para a IA entender o que redigir (ex.: "Justificativa técnica do item", label do campo extra). */
+  campo: string;
+  /** Texto livre com dados já preenchidos em outros campos do mesmo documento — ajuda a IA e a busca de legislação relevante. */
+  contexto?: string;
+  /** Conteúdo já escrito no campo (HTML do editor) — quando informado, a IA MELHORA esse texto em vez de escrever do zero. */
+  texto_atual?: string | null;
+}
+
+export interface SugerirTextoIaOutput {
+  texto: string;
+  legislacao_utilizada: LegislacaoUtilizadaIa[];
+}
 
 export interface ProcessoFilters {
   fase_atual?: FaseLicita | '';
