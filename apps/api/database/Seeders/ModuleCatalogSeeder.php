@@ -25,6 +25,7 @@ final class ModuleCatalogSeeder extends Seeder
             ['name' => 'Módulo Pedagógico', 'alias' => 'pedagogico', 'monthly_fee_cents' => 19900, 'description' => 'Gestão escolar e pedagógica.'],
             ['name' => 'Recursos Humanos / Folha', 'alias' => 'rh', 'monthly_fee_cents' => 24900, 'description' => 'RH, folha de pagamento e frequência.'],
             ['name' => 'Gestão de Cemitérios', 'alias' => 'cemiterios', 'monthly_fee_cents' => 14900, 'description' => 'Administração de cemitérios e sepultamentos.'],
+            ['name' => 'Licita — Instrução Processual', 'alias' => 'licita', 'monthly_fee_cents' => 29900, 'description' => 'Instrução processual de licitações (Lei 14.133/2021) — DFD, ETP, Mapa de Riscos, Pesquisa de Preços, TR e Edital.'],
         ];
 
         foreach ($catalog as $data) {
