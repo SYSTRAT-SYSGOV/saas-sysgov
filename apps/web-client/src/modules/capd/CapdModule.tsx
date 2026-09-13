@@ -56,9 +56,21 @@ import {
   Code,
   AlertCircle,
   Network,
+  BarChart3,
+  FileQuestion,
+  Sliders,
+  Trophy,
+  TrendingUp,
 } from 'lucide-react';
 import { HierarquiaConfigPanel } from './HierarquiaConfigPanel';
 import { PendenciasHierarquiaPanel } from './PendenciasHierarquiaPanel';
+import { PainelGerencialPanel } from './PainelGerencialPanel';
+import { GestaoCiclosPanel } from './GestaoCiclosPanel';
+import { CadastroPerguntasPanel } from './CadastroPerguntasPanel';
+import { EscalaGraficaPanel } from './EscalaGraficaPanel';
+import { FatoresPesosPanel } from './FatoresPesosPanel';
+import { PmdPanel } from './PmdPanel';
+import { ConsolidacaoPanel } from './ConsolidacaoPanel';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiAvaliacao,
@@ -77,6 +89,13 @@ import type {
 const api = new SysgovApi();
 
 type CapdTab =
+  | 'painel-gerencial'
+  | 'ciclos'
+  | 'perguntas'
+  | 'escala-grafica'
+  | 'fatores-pesos'
+  | 'consolidacao'
+  | 'pmd'
   | 'dashboard'
   | 'servidores'
   | 'diario'
@@ -374,6 +393,13 @@ export const CapdModule: React.FC = () => {
   );
 
   const tabItems: TabsItem<CapdTab>[] = [
+    { key: 'painel-gerencial', label: 'Painel Gerencial', icon: <BarChart3 className="h-4 w-4" /> },
+    { key: 'ciclos', label: 'Ciclos Anuais', icon: <Calendar className="h-4 w-4" /> },
+    { key: 'perguntas', label: 'Perguntas & Fatores', icon: <FileQuestion className="h-4 w-4" /> },
+    { key: 'escala-grafica', label: 'Escalas Gráficas', icon: <BarChart3 className="h-4 w-4" /> },
+    { key: 'fatores-pesos', label: 'Pesos dos Fatores', icon: <Sliders className="h-4 w-4" /> },
+    { key: 'consolidacao', label: 'Consolidação NFC', icon: <Trophy className="h-4 w-4" /> },
+    { key: 'pmd', label: 'PMD', icon: <TrendingUp className="h-4 w-4" /> },
     { key: 'servidores', label: 'Servidores', icon: <Users className="h-4 w-4" />, badge: totalServidores },
     { key: 'estagio', label: 'Estágio Probatório', icon: <Clock className="h-4 w-4" />, badge: servidoresEstagio.length },
     { key: 'dashboard', label: 'Dashboard & BI', icon: <Award className="h-4 w-4" /> },
@@ -1443,6 +1469,43 @@ export const CapdModule: React.FC = () => {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* ── ABA: PAINEL GERENCIAL ───────────────────────────────────────── */}
+      {activeTab === 'painel-gerencial' && <PainelGerencialPanel cicloId={cicloId} />}
+
+      {/* ── ABA: GESTÃO DE CICLOS 12 MESES ──────────────────────────────── */}
+      {activeTab === 'ciclos' && <GestaoCiclosPanel />}
+
+      {/* ── ABA: CADASTRO DE PERGUNTAS & FATORES ────────────────────────── */}
+      {activeTab === 'perguntas' && <CadastroPerguntasPanel />}
+
+      {/* ── ABA: ESCALAS GRÁFICAS (RF-03) ───────────────────────────────── */}
+      {activeTab === 'escala-grafica' && (
+        <div className="space-y-4 p-1">
+          <EscalaGraficaPanel />
+        </div>
+      )}
+
+      {/* ── ABA: PESOS DOS FATORES (RF-02) ──────────────────────────────── */}
+      {activeTab === 'fatores-pesos' && (
+        <div className="space-y-4 p-1">
+          <FatoresPesosPanel />
+        </div>
+      )}
+
+      {/* ── ABA: CONSOLIDAÇÃO NFC / RANKING / PMD (RN-02, RN-04, RN-05, RF-12) */}
+      {activeTab === 'consolidacao' && (
+        <div className="space-y-4 p-1">
+          <ConsolidacaoPanel />
+        </div>
+      )}
+
+      {/* ── ABA: PMD — PLANOS DE MELHORIA DE DESEMPENHO (RF-09) ─────────── */}
+      {activeTab === 'pmd' && (
+        <div className="space-y-4 p-1">
+          <PmdPanel />
+        </div>
       )}
 
       {/* ── ABA: CONFIGURAÇÃO DE HIERARQUIA ────────────────────────────── */}

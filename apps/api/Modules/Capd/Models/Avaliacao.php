@@ -40,6 +40,8 @@ final class Avaliacao extends Model
         'tipo_avaliacao',
         'status_avaliacao',
         'respostas_fatores',
+        'modelo_formulario_id',
+        'respostas_perguntas',
         'nota_final',
         'elegivel_progressao',
         'data_conclusao',
@@ -61,6 +63,8 @@ final class Avaliacao extends Model
         'tipo_avaliacao'           => 'string',
         'status_avaliacao'         => 'string',
         'respostas_fatores'        => 'array',
+        'modelo_formulario_id'     => 'integer',
+        'respostas_perguntas'      => 'array',
         // DECIMAL(5,2) — NUNCA float
         'nota_final'           => 'string',
         'elegivel_progressao'  => 'boolean',
@@ -96,6 +100,11 @@ final class Avaliacao extends Model
     public function ciclo(): BelongsTo
     {
         return $this->belongsTo(CicloAvaliacao::class, 'ciclo_id');
+    }
+
+    public function modeloFormulario(): BelongsTo
+    {
+        return $this->belongsTo(ModeloFormulario::class, 'modelo_formulario_id');
     }
 
     public function servidor(): BelongsTo

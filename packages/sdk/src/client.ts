@@ -120,9 +120,38 @@ export class SysgovApi implements ApiRequester {
         status: response.status,
         data: errorBody,
       };
-      throw error;
     }
     return response.json() as Promise<T>;
+  }
+
+  public async get<T>(path: string, init: RequestInit = {}): Promise<{ data: T }> {
+    const data = await this.request<T>(path, { ...init, method: 'GET' });
+    return { data };
+  }
+
+  public async post<T>(path: string, body?: unknown, init: RequestInit = {}): Promise<{ data: T }> {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const data = await this.request<T>(path, {
+      ...init,
+      method: 'POST',
+      body: isFormData ? (body as any) : (body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined),
+    });
+    return { data };
+  }
+
+  public async put<T>(path: string, body?: unknown, init: RequestInit = {}): Promise<{ data: T }> {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const data = await this.request<T>(path, {
+      ...init,
+      method: 'PUT',
+      body: isFormData ? (body as any) : (body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined),
+    });
+    return { data };
+  }
+
+  public async delete<T>(path: string, init: RequestInit = {}): Promise<{ data: T }> {
+    const data = await this.request<T>(path, { ...init, method: 'DELETE' });
+    return { data };
   }
 
   async health(): Promise<{ status: string; service: string }> { return this.request('/health'); }

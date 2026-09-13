@@ -158,13 +158,13 @@ final class Servidor extends Model
     /** @return HasMany<Avaliacao, $this> */
     public function avaliacoes(): HasMany
     {
-        return $this->hasMany(Avaliacao::class, 'servidor_id');
+        return $this->hasMany(Avaliacao::class, 'servidor_id', 'user_id');
     }
 
     /** @return HasMany<DiarioBordo, $this> */
     public function incidentes(): HasMany
     {
-        return $this->hasMany(DiarioBordo::class, 'servidor_id');
+        return $this->hasMany(DiarioBordo::class, 'servidor_id', 'user_id');
     }
 
     /**

@@ -2,15 +2,22 @@ export type ApiCiclo = {
   id: number;
   tenant_id: number;
   ano_referencia: number;
+  ano_competencia?: number;
   nome: string;
+  data_inicio?: string;
+  data_fim?: string;
   data_inicio_avaliacao: string;
   data_fim_avaliacao: string;
+  data_limite_preenchimento?: string;
   data_limite_recurso: string;
-  status: 'planejamento' | 'em_avaliacao' | 'recursivo' | 'deliberacao' | 'homologado' | 'encerrado';
-  modo_f1: 'manual' | 'api';
-  modo_f2: 'manual' | 'api';
-  tipo_assinatura_ata: 'sha256' | 'icp_brasil';
+  status: 'planejamento' | 'planejado' | 'aberto' | 'em_avaliacao' | 'recursivo' | 'em_recurso' | 'deliberacao' | 'homologado' | 'encerrado';
+  cadencia_automatica?: boolean;
+  etapa_cadencia?: number;
+  modo_f1?: 'manual' | 'api';
+  modo_f2?: 'manual' | 'api';
+  tipo_assinatura_ata?: 'sha256' | 'icp_brasil';
   metadata?: Record<string, unknown>;
+  regras_config?: ApiRegrasCicloConfig;
 };
 
 export type ApiFator = {
@@ -324,4 +331,102 @@ export type ApiEmbedContext = {
     peso: number;
   }>;
 };
+
+export type ApiRegrasCicloConfig = {
+  dias_preenchimento?: number;
+  dias_ciencia?: number;
+  dias_recurso?: number;
+  dias_relatoria?: number;
+  intersticio_meses?: number;
+  limite_faltas_injustificadas?: number;
+  limite_dias_afastamento?: number;
+  nota_corte_progressao?: string;
+  percentual_amostragem_auditoria?: number;
+  trava_graus_evidencia?: number[];
+  excluir_estagiarios?: boolean;
+  excluir_comissionados?: boolean;
+};
+
+export type TipoPergunta =
+  | 'escala_grafica'
+  | 'escolha_simples'
+  | 'escolha_multipla'
+  | 'texto_livre'
+  | 'nota_0_10'
+  | 'sim_nao'
+  | 'condicional';
+
+export type ApiPerguntaOpcao = {
+  valor: number | string;
+  rotulo: string;
+  descricao?: string;
+};
+
+export type ApiPergunta = {
+  id: number;
+  tenant_id: number;
+  modelo_id: number;
+  codigo: string;
+  enunciado: string;
+  tipo: TipoPergunta;
+  opcoes?: ApiPerguntaOpcao[] | null;
+  peso: number;
+  grupo_key: string;
+  ordem: number;
+  obrigatoria: boolean;
+  exige_evidencia: boolean;
+  regras_condicionais?: { depende_de: string; valor_esperado: any } | null;
+  cargos_permitidos?: string[] | null;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ApiModeloFormulario = {
+  id: number;
+  tenant_id: number;
+  codigo: string;
+  nome: string;
+  descricao?: string | null;
+  plano_carreira_id?: number | null;
+  cargo?: string | null;
+  versao: number;
+  vigencia_inicio: string;
+  vigencia_fim?: string | null;
+  grupos?: Record<string, { nome: string; peso: number; ordem: number }> | null;
+  ativo: boolean;
+  perguntas_ativas?: ApiPergunta[];
+  perguntas?: ApiPergunta[];
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ApiPainelKpis = {
+  total_servidores: number;
+  percentual_concluidas: number;
+  pendencias: number;
+  recursos_abertos: number;
+  notas_extremas_auditoria: number;
+  prazos_vencendo: number;
+};
+
+export type ApiPainelFiltros = {
+  org_unit_id?: number | string;
+  secretaria?: string;
+  cargo?: string;
+  plano_carreira?: string;
+  ciclo_id?: number | string;
+  ano_competencia?: number | string;
+  status_avaliacao?: 'pendente' | 'rascunho' | 'submetida' | 'em_recurso' | 'homologada';
+  faixa_nota?: 'abaixo_6' | '6_a_7' | '7_a_8_5' | 'acima_8_5' | 'acima_9_5';
+  nota_min?: number;
+  nota_max?: number;
+  avaliador_id?: number | string;
+  servidor_id?: number | string;
+  busca?: string;
+  situacao_prazo?: 'ciencia_pendente' | 'recurso_vencido' | 'vencendo_7_dias';
+  per_page?: number;
+  page?: number;
+};
+
 

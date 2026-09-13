@@ -49,6 +49,18 @@ final class HomologacaoLoteService
             );
         }
 
+        // ── Valida que não existem avaliações pendentes de conclusão ─
+        $avaliacoesPendentes = Avaliacao::query()
+            ->where('ciclo_id', $ciclo->id)
+            ->whereNull('data_conclusao')
+            ->count();
+
+        if ($avaliacoesPendentes > 0) {
+            throw new \DomainException(
+                "Não é possível homologar o ciclo. Existem {$avaliacoesPendentes} avaliação(ões) pendente(s) de conclusão."
+            );
+        }
+
         return DB::transaction(function () use ($ciclo, $homologadoPorUserId, $tenantId): array {
             $agora = now();
 

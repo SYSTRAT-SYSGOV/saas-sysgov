@@ -1,11 +1,16 @@
 import type { ApiRequester } from '../base';
 import type {
   ApiAvaliacao,
+  ApiCiclo,
   ApiComissao,
   ApiDashboardMetricas,
   ApiDiarioBordo,
+  ApiModeloFormulario,
   ApiNivelHierarquia,
+  ApiPainelFiltros,
+  ApiPainelKpis,
   ApiPendenciaHierarquia,
+  ApiPergunta,
   ApiRecurso,
   ApiServidorAfastamento,
   ApiSessao,
@@ -274,5 +279,103 @@ export class CapdModuleClient {
 
   async getEmbedContext(token: string): Promise<any> {
     return this.api.request(`/capd/embed/context?token=${encodeURIComponent(token)}`);
+  }
+
+  // ── Painel Gerencial com Filtros Avançados & KPIs ───────────────────
+
+  async getPainelServidores(filtros?: ApiPainelFiltros): Promise<{ data: any[]; total: number; current_page: number; per_page: number }> {
+    return this.api.request(`/capd/painel/servidores${buildQueryString(filtros as Record<string, unknown>)}`);
+  }
+
+  async getPainelKpis(cicloId?: number): Promise<ApiPainelKpis> {
+    const query = cicloId ? `?ciclo_id=${cicloId}` : '';
+    return this.api.request(`/capd/painel/kpis${query}`);
+  }
+
+  async getPainelVisaoPerfil(perfil: 'comissao' | 'drh' | 'gestor', cicloId?: number): Promise<any> {
+    const query = cicloId ? `?ciclo_id=${cicloId}` : '';
+    return this.api.request(`/capd/painel/visao/${perfil}${query}`);
+  }
+
+  // ── Ciclos de Avaliação de 12 Meses ─────────────────────────────────
+
+  async listCiclos(): Promise<ApiCiclo[]> {
+    return this.api.request('/capd/ciclos');
+  }
+
+  async getCiclo(id: number): Promise<ApiCiclo> {
+    return this.api.request(`/capd/ciclos/${id}`);
+  }
+
+  async createCiclo(dados: Partial<ApiCiclo>): Promise<ApiCiclo> {
+    return this.api.request('/capd/ciclos', {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async updateCiclo(id: number, dados: Partial<ApiCiclo>): Promise<ApiCiclo> {
+    return this.api.request(`/capd/ciclos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async encerrarCiclo(id: number, abrirProximo = false): Promise<{ message: string; ciclo: ApiCiclo }> {
+    return this.api.request(`/capd/ciclos/${id}/encerrar`, {
+      method: 'POST',
+      body: JSON.stringify({ abrir_proximo: abrirProximo }),
+    });
+  }
+
+  async proximoCiclo(id: number): Promise<{ message: string; ciclo: ApiCiclo }> {
+    return this.api.request(`/capd/ciclos/${id}/proximo`, {
+      method: 'POST',
+    });
+  }
+
+  async getElegibilidadeCiclo(cicloId: number, servidorId?: number): Promise<any> {
+    const query = servidorId ? `?servidor_id=${servidorId}` : '';
+    return this.api.request(`/capd/ciclos/${cicloId}/elegibilidade${query}`);
+  }
+
+  // ── Modelos de Formulário e Cadastro de Perguntas ───────────────────
+
+  async listModelosFormulario(planoId?: number, cargo?: string): Promise<ApiModeloFormulario[]> {
+    return this.api.request(`/capd/modelos-formulario${buildQueryString({ plano_carreira_id: planoId, cargo })}`);
+  }
+
+  async getModeloFormularioVigente(planoId?: number, cargo?: string): Promise<ApiModeloFormulario> {
+    return this.api.request(`/capd/modelos-formulario/vigente${buildQueryString({ plano_carreira_id: planoId, cargo })}`);
+  }
+
+  async saveModeloFormulario(dados: Partial<ApiModeloFormulario>): Promise<ApiModeloFormulario> {
+    return this.api.request('/capd/modelos-formulario', {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async getModeloFormulario(id: number): Promise<ApiModeloFormulario> {
+    return this.api.request(`/capd/modelos-formulario/${id}`);
+  }
+
+  async savePergunta(modeloId: number, dados: Partial<ApiPergunta>): Promise<ApiPergunta> {
+    return this.api.request(`/capd/modelos-formulario/${modeloId}/perguntas`, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async destroyPergunta(id: number): Promise<{ message: string }> {
+    return this.api.request(`/capd/perguntas/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async seedPerguntasPadrao(): Promise<{ message: string }> {
+    return this.api.request('/capd/modelos-formulario/seed-padrao', {
+      method: 'POST',
+    });
   }
 }

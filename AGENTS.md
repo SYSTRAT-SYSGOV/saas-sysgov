@@ -16,7 +16,7 @@ Este documento é a referência primária e obrigatória para qualquer Agente de
 1. **Isolamento Lógico Obrigatório**: Todas as tabelas de negócio possuem `tenant_id` e índices compostos `(tenant_id, ...)`.
 2. **Models**: Todo model Eloquent de negócio deve usar a trait `App\Models\Concerns\TenantAware`.
 3. **TenantContext**: Resolvido no backend pelo middleware `ResolveTenant`, nunca confiado do cliente.
-4. **Padrão Outbox**: Chamadas externas (PNCP, bancos, Siconfi) ocorrem via eventos na tabela `outbox_messages`, nunca síncronas em controllers.
+4. **Padrão Outbox**: Chamadas externas (PNCP, bancos, Siconfi, webhooks) ocorrem via eventos na tabela `outbox_events` (via `App\Support\OutboxPublisher`), nunca síncronas em controllers.
 5. **Representação Monetária**: Sempre use a classe `App\Support\Money` com centavos inteiros (`int $cents`), NUNCA `float`.
 6. **Auditoria**: Toda mutação deve ser registrada via `AuditLogger` na tabela `audit_logs`.
 
@@ -80,4 +80,16 @@ do pacote compartilhado `@sysgov/ui` (`packages/ui`). Isso vale para
 Como múltiplos desenvolvedores trabalham simultaneamente no repositório:
 1. **Consultar sempre o remoto no início**: Antes de iniciar qualquer tarefa ou alteração de código, o agente DEVE consultar atualizações remotas (`git fetch origin`) e verificar se há novos commits (`git status`, `git log main..origin/main`).
 2. **Sincronização prévia**: Havendo atualizações no remoto, integrar antes de desenvolver para prevenir conflitos e divergências (`git pull --ff-only` ou rebase seguro).
-3. **Qualidade antes do push**: Garantir testes verdes (`npm run test`) antes de comitar e enviar (`git push origin <branch>`), sempre utilizando *Conventional Commits*.
+3. **Qualidade antes do push**: Garantir testes verdes (`npm test` e `composer test`) antes de comitar e enviar (`git push origin <branch>`), sempre utilizando *Conventional Commits*.
+
+---
+
+## 📊 6. Módulo CAPD — Avaliação de Desempenho (SAPDS)
+Ao implementar ou manter funcionalidades no módulo CAPD (`Modules/Capd` e `web-client/src/modules/capd`):
+1. **Metodologia Canônica**: Utilizar exclusivamente a **Escala Gráfica para Avaliação de Desempenho (Chiavenato, Graus 1 a 5)** combinada com a **Técnica do Incidente Crítico (CIT)** (Diário de Bordo).
+2. **Restrição Terminológica Estrita**: **NUNCA** utilizar os termos BARS, "escala ancorada", "ancoragem comportamental" ou "âncoras comportamentais".
+3. **Trava Anti-Leniência**: Atribuir notas extremas (Grau 1 ou Grau 5) exige obrigatoriamente lançamento de apontamento prévio no Diário de Bordo (`DiarioBordo`), validado pelo `PerguntaService`.
+4. **Cadência de 12 Meses**: A avaliação de estágio probatório segue a cadência de 3 avaliações em 3 anos (interstício mínimo de 12 meses entre ciclos), com roll-over automático $N \to N+1$ via `CicloService::abrirProximoCicloAutomatico()`.
+5. **Parametrização Dinâmica**: Os instrumentos são versionados nas tabelas `capd_modelos_formulario` e `capd_perguntas` com validação de soma de pesos dos grupos em 100%.
+6. **Interface e Modais**: Usar exclusivamente componentes de `@sysgov/ui` (`Modal`, `Button`, `Badge`, `KpiCard`). Nunca usar `alert()` ou `window.confirm()` nativos do navegador.
+

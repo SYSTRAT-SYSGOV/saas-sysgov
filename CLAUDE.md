@@ -82,8 +82,8 @@ Pool model with strong logical isolation, enforced at every layer:
 
 ### Money, external calls, audit
 - Monetary values always use `App\Support\Money` with integer cents — **never `float`**.
-- No direct external calls (PNCP, banks, Siconfi, TCE) from controllers — always async via the Outbox
-  pattern (`outbox_messages` table / Integration Hub).
+- No direct external calls (PNCP, banks, Siconfi, TCE, webhooks) from controllers — always async via the Outbox
+  pattern (`outbox_events` table / `App\Support\OutboxPublisher`).
 - Every mutation is recorded via `AuditLogger` into `audit_logs` (tenant_id, user_id, module, action,
   resource, before/after, IP, user_agent, timestamp).
 
@@ -121,3 +121,11 @@ both copies by hand. `.claude/skills/` is the source of truth if they ever diver
 Multiple developers work on this repo concurrently. Before starting work, fetch/check the remote
 (`git fetch origin`, `git log main..origin/main`) and sync (`git pull --ff-only` or a safe rebase) before
 making changes. Ensure tests pass (`npm test`) before committing/pushing, using Conventional Commits.
+
+### CAPD Module (SAPDS) Guidelines
+When modifying or adding features to the CAPD module (`apps/api/Modules/Capd`, `apps/web-client/src/modules/capd`):
+- **Methodology**: Use exclusively "Escala Gráfica para Avaliação de Desempenho" (Chiavenato, Grades 1-5) combined with the "Técnica do Incidente Crítico (CIT)" (Diário de Bordo). **NEVER use BARS or behavioral anchor terminology**.
+- **Anti-Leniency Lock**: Extreme grades (Grade 1 and Grade 5) strictly require a registered critical incident in the Diário de Bordo (`DiarioBordo`), validated in `PerguntaService`.
+- **12-Month Cadence**: Probationary evaluations occur annually across 3 years with a minimum 12-month interstice, automatic $N \to N+1$ cycle roll-over via `CicloService`, and strict homologation guards against open appeals or pending evaluations.
+- **Dynamic Parametrization**: Forms and factors are configured dynamically in `capd_modelos_formulario` and `capd_perguntas` with 100% group weight validation.
+- **UI Standards**: Use `@sysgov/ui` primitives exclusively (`Modal`, `Button`, `Badge`, `KpiCard`). Never use native `alert()` or `window.confirm()`.

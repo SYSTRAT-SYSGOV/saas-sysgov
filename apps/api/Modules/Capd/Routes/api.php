@@ -5,13 +5,20 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Capd\Http\Controllers\AvaliacaoController;
 use Modules\Capd\Http\Controllers\CapdController;
+use Modules\Capd\Http\Controllers\CicloController;
 use Modules\Capd\Http\Controllers\ComissaoController;
+use Modules\Capd\Http\Controllers\ConsolidacaoController;
 use Modules\Capd\Http\Controllers\DashboardController;
 use Modules\Capd\Http\Controllers\DeliberacaoController;
 use Modules\Capd\Http\Controllers\DiarioBordoController;
+use Modules\Capd\Http\Controllers\EscalaGraficaController;
 use Modules\Capd\Http\Controllers\HomologacaoController;
+use Modules\Capd\Http\Controllers\ModeloFatorPesoController;
 use Modules\Capd\Http\Controllers\NivelHierarquiaController;
+use Modules\Capd\Http\Controllers\PainelGerencialController;
 use Modules\Capd\Http\Controllers\PendenciaHierarquiaController;
+use Modules\Capd\Http\Controllers\PerguntaController;
+use Modules\Capd\Http\Controllers\PmdController;
 use Modules\Capd\Http\Controllers\RecursoController;
 use Modules\Capd\Http\Controllers\SessaoController;
 
@@ -128,3 +135,64 @@ Route::prefix('integracoes-rh')->group(function (): void {
     Route::put('/{integracao}', [\Modules\Capd\Http\Controllers\RhIntegrationController::class, 'update'])->name('capd.integracoes-rh.update');
     Route::post('/{integracao}/regenerate-key', [\Modules\Capd\Http\Controllers\RhIntegrationController::class, 'regenerateKey'])->name('capd.integracoes-rh.regenerate-key');
 });
+
+// ── Painel Gerencial da Comissão (Filtros Avançados & KPIs) ────────────
+Route::prefix('painel')->group(function (): void {
+    Route::get('/servidores', [PainelGerencialController::class, 'servidores'])->name('capd.painel.servidores');
+    Route::get('/kpis', [PainelGerencialController::class, 'kpis'])->name('capd.painel.kpis');
+    Route::get('/visao/{perfil}', [PainelGerencialController::class, 'visaoPerfil'])->name('capd.painel.visao');
+    Route::get('/export', [PainelGerencialController::class, 'exportar'])->name('capd.painel.export');
+});
+
+// ── Ciclos de Avaliação de 12 Meses (Cadência Anual de 3 Anos) ────────
+Route::prefix('ciclos')->group(function (): void {
+    Route::get('/', [CicloController::class, 'index'])->name('capd.ciclos.index');
+    Route::post('/', [CicloController::class, 'store'])->name('capd.ciclos.store');
+    Route::get('/{id}', [CicloController::class, 'show'])->name('capd.ciclos.show');
+    Route::put('/{id}', [CicloController::class, 'update'])->name('capd.ciclos.update');
+    Route::post('/{id}/encerrar', [CicloController::class, 'encerrar'])->name('capd.ciclos.encerrar');
+    Route::post('/{id}/proximo', [CicloController::class, 'proximoCiclo'])->name('capd.ciclos.proximo');
+    Route::get('/{id}/elegibilidade', [CicloController::class, 'elegibilidade'])->name('capd.ciclos.elegibilidade');
+});
+
+// ── Modelos de Formulário e Cadastro de Perguntas (Escala Gráfica) ────
+Route::prefix('modelos-formulario')->group(function (): void {
+    Route::get('/', [PerguntaController::class, 'indexModelos'])->name('capd.modelos.index');
+    Route::get('/vigente', [PerguntaController::class, 'modeloVigente'])->name('capd.modelos.vigente');
+    Route::post('/', [PerguntaController::class, 'storeModelo'])->name('capd.modelos.store');
+    Route::get('/{id}', [PerguntaController::class, 'showModelo'])->name('capd.modelos.show');
+    Route::post('/{id}/perguntas', [PerguntaController::class, 'storePergunta'])->name('capd.modelos.perguntas.store');
+    Route::post('/seed-padrao', [PerguntaController::class, 'seedPadrao'])->name('capd.modelos.seed-padrao');
+
+    // RF-02: pesos por formulário
+    Route::get('/{modeloId}/fatores-pesos', [ModeloFatorPesoController::class, 'index'])->name('capd.modelos.fatores-pesos.index');
+    Route::post('/{modeloId}/fatores-pesos/sync', [ModeloFatorPesoController::class, 'sync'])->name('capd.modelos.fatores-pesos.sync');
+    Route::get('/{modeloId}/fatores-pesos/disponiveis', [ModeloFatorPesoController::class, 'fatoresDisponiveis'])->name('capd.modelos.fatores-pesos.disponiveis');
+
+    // RF-03: escalas gráficas
+    Route::get('/{modeloId}/escalas-graficas', [EscalaGraficaController::class, 'index'])->name('capd.modelos.escalas.index');
+    Route::post('/{modeloId}/escalas-graficas', [EscalaGraficaController::class, 'store'])->name('capd.modelos.escalas.store');
+    Route::get('/{modeloId}/escalas-graficas/{escalaId}', [EscalaGraficaController::class, 'show'])->name('capd.modelos.escalas.show');
+    Route::put('/{modeloId}/escalas-graficas/{escalaId}', [EscalaGraficaController::class, 'update'])->name('capd.modelos.escalas.update');
+    Route::delete('/{modeloId}/escalas-graficas/{escalaId}', [EscalaGraficaController::class, 'destroy'])->name('capd.modelos.escalas.destroy');
+});
+
+Route::post('perguntas/seed-padrao', [PerguntaController::class, 'seedPadrao'])->name('capd.perguntas.seed-padrao');
+Route::delete('perguntas/{id}', [PerguntaController::class, 'destroyPergunta'])->name('capd.perguntas.destroy');
+
+// ── PMD — Planos de Melhoria de Desempenho (RF-09) ───────────────────
+Route::prefix('pmd')->group(function (): void {
+    Route::get('/', [PmdController::class, 'index'])->name('capd.pmd.index');
+    Route::post('/', [PmdController::class, 'store'])->name('capd.pmd.store');
+    Route::get('/{id}', [PmdController::class, 'show'])->name('capd.pmd.show');
+    Route::put('/{id}', [PmdController::class, 'update'])->name('capd.pmd.update');
+    Route::post('/{id}/verificacao', [PmdController::class, 'registrarVerificacao'])->name('capd.pmd.verificacao');
+});
+
+// ── Consolidação NFC Trienal e Ranking de Progressão (RN-02, RN-04, RN-05, RF-12) ──
+Route::prefix('consolidacao')->group(function (): void {
+    Route::get('/{cicloId}/nfc', [ConsolidacaoController::class, 'nfc'])->name('capd.consolidacao.nfc');
+    Route::get('/{cicloId}/ranking', [ConsolidacaoController::class, 'rankingProgressao'])->name('capd.consolidacao.ranking');
+    Route::get('/{cicloId}/exportar-pdf', [ConsolidacaoController::class, 'exportarPdf'])->name('capd.consolidacao.pdf');
+    Route::post('/{cicloId}/processar', [ConsolidacaoController::class, 'processar'])->name('capd.consolidacao.processar');
+});

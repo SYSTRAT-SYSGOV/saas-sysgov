@@ -14,4 +14,9 @@ final readonly class OutboxPublisher
     {
         return OutboxEvent::create(['event_type' => $type, 'event_version' => 1, 'tenant_id' => $tenantId ?? ($this->tenantContext->hasTenant() ? $this->tenantContext->id() : null), 'payload' => $payload, 'status' => 'pending', 'available_at' => now()]);
     }
+
+    public static function dispatch(string $type, array $payload, ?int $tenantId = null): OutboxEvent
+    {
+        return app(self::class)->publish($type, $payload, $tenantId);
+    }
 }
