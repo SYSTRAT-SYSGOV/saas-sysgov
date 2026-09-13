@@ -1,31 +1,29 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
   Button,
-  Badge,
   Input,
   Select,
   Modal,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
 } from '@sysgov/ui';
 import {
+  PageHeader,
+  DataTable,
+  EmptyState,
+  SearchInput,
+  StatusChip,
+  ScreenState,
+} from '@/components/ui';
+import type { ColumnDef } from '@tanstack/react-table';
+import {
   TrendingUp,
-  Plus,
   Eye,
   Edit2,
   CheckCircle,
   AlertTriangle,
   ClipboardList,
   ArrowUpRight,
+  RefreshCw,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 
@@ -47,34 +45,43 @@ interface PlanoMelhoria {
   ciclo_verificacao?: { id: number; nome: string; ano_competencia: number };
 }
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pendente:      { label: 'Pendente',      color: 'default' },
-  em_andamento:  { label: 'Em Andamento',  color: 'secondary' },
-  concluido:     { label: 'Concluído',     color: 'default' },
-  cancelado:     { label: 'Outline',       color: 'outline' },
+const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'primary' | 'neutral'> = {
+  concluido: 'success',
+  em_andamento: 'warning',
+  pendente: 'primary',
+  cancelado: 'neutral',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  concluido: 'Concluído',
+  em_andamento: 'Em Andamento',
+  pendente: 'Pendente',
+  cancelado: 'Cancelado',
 };
 
 const STATUS_OPTIONS = [
-  { value: '',           label: 'Todos os status' },
-  { value: 'pendente',   label: 'Pendente' },
+  { value: '', label: 'Todos os status' },
+  { value: 'pendente', label: 'Pendente' },
   { value: 'em_andamento', label: 'Em Andamento' },
-  { value: 'concluido',  label: 'Concluído' },
-  { value: 'cancelado',  label: 'Cancelado' },
+  { value: 'concluido', label: 'Concluído' },
+  { value: 'cancelado', label: 'Cancelado' },
 ];
 
 export const PmdPanel: React.FC = () => {
-  const [pmds, setPmds]         = useState<PlanoMelhoria[]>([]);
-  const [loading, setLoading]   = useState(false);
+  const [pmds, setPmds]                 = useState<PlanoMelhoria[]>([]);
+  const [loading, setLoading]           = useState(false);
   const [filtroStatus, setFiltroStatus] = useState('');
-  const [erro, setErro]         = useState<string | null>(null);
-  const [detalhePmd, setDetalhePmd] = useState<PlanoMelhoria | null>(null);
+  const [search, setSearch]             = useState('');
+  const [erro, setErro]                 = useState<string | null>(null);
+  const [sucesso, setSucesso]           = useState<string | null>(null);
+  const [detalhePmd, setDetalhePmd]     = useState<PlanoMelhoria | null>(null);
 
   // Form verificação
-  const [verModal, setVerModal]   = useState(false);
-  const [nfcNova, setNfcNova]     = useState('');
-  const [obsVerif, setObsVerif]   = useState('');
-  const [pmdVerif, setPmdVerif]   = useState<PlanoMelhoria | null>(null);
-  const [savingVerif, setSavingVerif] = useState(false);
+  const [verModal, setVerModal]         = useState(false);
+  const [nfcNova, setNfcNova]           = useState('');
+  const [obsVerif, setObsVerif]         = useState('');
+  const [pmdVerif, setPmdVerif]         = useState<PlanoMelhoria | null>(null);
+  const [savingVerif, setSavingVerif]   = useState(false);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -84,13 +91,15 @@ export const PmdPanel: React.FC = () => {
       const resp = await api.get<PlanoMelhoria[]>(`/capd/pmd${params}`);
       setPmds(resp.data ?? []);
     } catch {
-      setErro('Não foi possível carregar os PMDs.');
+      setErro('Não foi possível carregar os Planos de Melhoria de Desempenho.');
     } finally {
       setLoading(false);
     }
   }, [filtroStatus]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
   const abrirVerificacao = (pmd: PlanoMelhoria) => {
     setPmdVerif(pmd);
@@ -107,6 +116,7 @@ export const PmdPanel: React.FC = () => {
         nfc_novo_ciclo: parseFloat(nfcNova),
         observacoes: obsVerif,
       });
+      setSucesso('Verificação de evolução registrada com sucesso!');
       setVerModal(false);
       carregar();
     } catch (e: any) {
@@ -116,200 +126,335 @@ export const PmdPanel: React.FC = () => {
     }
   };
 
-  const badgeVariant = (status: string) => {
-    if (status === 'concluido') return 'default';
-    if (status === 'pendente') return 'secondary';
-    if (status === 'cancelado') return 'outline';
-    return 'secondary';
-  };
+  // Filtragem simples combinada
+  const filteredPmds = useMemo(() => {
+    if (!search.trim()) return pmds;
+    const term = search.toLowerCase();
+    return pmds.filter(p =>
+      p.objetivos.toLowerCase().includes(term) ||
+      String(p.servidor_id).includes(term) ||
+      (p.ciclo?.nome ?? '').toLowerCase().includes(term)
+    );
+  }, [pmds, search]);
+
+  const columns = useMemo<ColumnDef<PlanoMelhoria, any>[]>(() => [
+    {
+      id: 'id',
+      header: 'ID',
+      size: 70,
+      meta: {
+        sortValue: p => p.id,
+        exportValue: p => `#${p.id}`,
+      },
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground font-semibold">
+          #{row.original.id}
+        </span>
+      ),
+    },
+    {
+      id: 'ciclo',
+      header: 'Ciclo de Origem',
+      size: 200,
+      meta: {
+        sortValue: p => p.ciclo?.nome ?? '',
+        exportValue: p => p.ciclo?.nome ?? `Ciclo #${p.ciclo_id}`,
+      },
+      cell: ({ row }) => (
+        <span className="text-sm font-medium text-foreground">
+          {row.original.ciclo?.nome ?? `Ciclo #${row.original.ciclo_id}`}
+        </span>
+      ),
+    },
+    {
+      id: 'nfc_gatilho',
+      header: 'NFC Gatilho',
+      size: 130,
+      meta: {
+        sortValue: p => parseFloat(p.nfc_gatilho),
+        exportValue: p => p.nfc_gatilho,
+      },
+      cell: ({ row }) => (
+        <span className="font-mono font-bold text-sm tabular-nums text-destructive">
+          {row.original.nfc_gatilho} pts
+        </span>
+      ),
+    },
+    {
+      id: 'objetivos',
+      header: 'Objetivos / Meta de Recuperação',
+      size: 320,
+      meta: {
+        exportValue: p => p.objetivos,
+      },
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground line-clamp-2" title={row.original.objetivos}>
+          {row.original.objetivos}
+        </span>
+      ),
+    },
+    {
+      id: 'prazo',
+      header: 'Prazo',
+      size: 120,
+      meta: {
+        sortValue: p => p.prazo,
+        exportValue: p => new Date(p.prazo).toLocaleDateString('pt-BR'),
+      },
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+          {new Date(row.original.prazo).toLocaleDateString('pt-BR')}
+        </span>
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      size: 140,
+      meta: {
+        sortValue: p => p.status,
+        exportValue: p => STATUS_LABEL[p.status] ?? p.status,
+      },
+      cell: ({ row }) => {
+        const s = row.original.status;
+        return (
+          <StatusChip
+            label={STATUS_LABEL[s] ?? s}
+            variant={STATUS_VARIANT[s] ?? 'neutral'}
+          />
+        );
+      },
+    },
+    {
+      id: 'acoes',
+      header: '',
+      size: 140,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const pmd = row.original;
+        return (
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title="Ver Detalhes do Plano"
+              onClick={() => setDetalhePmd(pmd)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            {pmd.status !== 'concluido' && pmd.status !== 'cancelado' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 px-2"
+                onClick={() => abrirVerificacao(pmd)}
+              >
+                <ArrowUpRight className="h-3 w-3 mr-1" />
+                Evolução
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
+  ], []);
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-white flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-amber-400" />
-            Planos de Melhoria de Desempenho (PMD)
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Gerados automaticamente quando NFC está abaixo da nota de corte do ciclo (RF-09)
-          </p>
-        </div>
-        <Select
-          options={STATUS_OPTIONS}
-          value={filtroStatus}
-          onChange={v => setFiltroStatus(v as string)}
-          placeholder="Filtrar status"
-          className="w-44 text-xs"
-        />
-      </div>
+    <div className="space-y-6">
+      {/* PageHeader Canônico */}
+      <PageHeader
+        icon={<TrendingUp className="h-6 w-6" />}
+        title="Planos de Melhoria de Desempenho (PMD)"
+        subtitle="Instrumento de apoio funcional gerado automaticamente para servidores com NFC abaixo da nota de corte (RF-09)"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={carregar}
+            disabled={loading}
+            title="Recarregar"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        }
+      />
 
+      {/* Alertas */}
       {erro && (
-        <div className="flex items-start gap-2 bg-rose-950/50 border border-rose-500/30 rounded-lg p-3 text-rose-300 text-xs">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>{erro}</span>
+        </div>
+      )}
+      {sucesso && (
+        <div className="rounded-lg border border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 shrink-0" />
+          <span>{sucesso}</span>
         </div>
       )}
 
       {loading ? (
-        <div className="text-slate-400 text-sm text-center py-8">Carregando...</div>
-      ) : pmds.length === 0 ? (
-        <div className="text-center py-10 bg-[#152244] rounded-xl border border-[#1a2a52]">
-          <ClipboardList className="w-10 h-10 mx-auto mb-3 text-slate-500" />
-          <p className="text-slate-400 text-sm">Nenhum PMD {filtroStatus ? `com status "${filtroStatus}"` : 'cadastrado'}.</p>
-        </div>
+        <ScreenState type="loading" title="Carregando Planos de Melhoria..." />
       ) : (
-        <Card className="bg-[#152244] border-[#1a2a52]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Servidor</TableHead>
-                <TableHead className="text-xs">Ciclo</TableHead>
-                <TableHead className="text-xs text-center">NFC Gatilho</TableHead>
-                <TableHead className="text-xs">Prazo</TableHead>
-                <TableHead className="text-xs text-center">Status</TableHead>
-                <TableHead className="text-xs">Verificação</TableHead>
-                <TableHead className="text-xs"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pmds.map(pmd => (
-                <TableRow key={pmd.id}>
-                  <TableCell>
-                    <span className="font-mono text-xs text-slate-400">#{pmd.servidor_id}</span>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {pmd.ciclo?.nome ?? `Ciclo #${pmd.ciclo_id}`}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="font-mono text-xs text-rose-400 font-bold">{pmd.nfc_gatilho}</span>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {new Date(pmd.prazo).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant={badgeVariant(pmd.status)} className="text-[10px]">
-                      {STATUS_LABEL[pmd.status]?.label ?? pmd.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-400">
-                    {pmd.ciclo_verificacao?.nome ?? '—'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        title="Detalhes"
-                        onClick={() => setDetalhePmd(pmd)}
-                      >
-                        <Eye className="w-3 h-3" />
-                      </Button>
-                      {(pmd.status === 'pendente' || pmd.status === 'em_andamento') && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          title="Registrar verificação de evolução"
-                          onClick={() => abrirVerificacao(pmd)}
-                        >
-                          <ArrowUpRight className="w-3 h-3 text-emerald-400" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <Card className="gap-0 py-0">
+          {/* Barra de Filtros e Busca */}
+          <div className="p-3 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="w-full sm:w-80">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Buscar por objetivos ou ciclo..."
+              />
+            </div>
+            <div className="w-full sm:w-52">
+              <Select
+                value={filtroStatus}
+                onChange={v => setFiltroStatus(v)}
+                options={STATUS_OPTIONS}
+                placeholder="Todos os status"
+              />
+            </div>
+          </div>
+
+          <div className="p-3">
+            {filteredPmds.length === 0 ? (
+              <EmptyState
+                icon={<ClipboardList className="h-10 w-10" />}
+                title="Nenhum PMD encontrado"
+                description={
+                  filtroStatus
+                    ? `Não há planos de melhoria com o status "${STATUS_LABEL[filtroStatus]}".`
+                    : 'Servidores com NFC inferior à nota de corte do ciclo trienal geram PMDs automaticamente no processamento da consolidação.'
+                }
+              />
+            ) : (
+              <DataTable
+                columns={columns}
+                data={filteredPmds}
+                emptyText="Nenhum plano encontrado."
+                pageSize={10}
+                fixedLayout
+              />
+            )}
+          </div>
         </Card>
       )}
 
-      {/* Modal Detalhe */}
+      {/* Modal: Detalhes do PMD */}
       <Modal
-        open={!!detalhePmd}
+        open={Boolean(detalhePmd)}
         onClose={() => setDetalhePmd(null)}
-        title={`PMD #${detalhePmd?.id} — Servidor #${detalhePmd?.servidor_id}`}
-        size="md"
+        title={`Plano de Melhoria de Desempenho #${detalhePmd?.id}`}
+        size="lg"
       >
         {detalhePmd && (
-          <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-sm bg-muted/40 p-3 rounded-lg border border-border">
               <div>
-                <span className="text-xs text-slate-400 block">NFC Gatilho</span>
-                <span className="font-mono text-rose-400 font-bold">{detalhePmd.nfc_gatilho} pts</span>
+                <span className="text-xs text-muted-foreground block">Ciclo Origem:</span>
+                <span className="font-semibold text-foreground">{detalhePmd.ciclo?.nome ?? `#${detalhePmd.ciclo_id}`}</span>
               </div>
               <div>
-                <span className="text-xs text-slate-400 block">Prazo</span>
-                <span className="font-mono text-xs">{new Date(detalhePmd.prazo).toLocaleDateString('pt-BR')}</span>
+                <span className="text-xs text-muted-foreground block">NFC Gatilho:</span>
+                <span className="font-mono font-bold text-destructive">{detalhePmd.nfc_gatilho} pts</span>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground block">Prazo:</span>
+                <span className="font-mono text-foreground">{new Date(detalhePmd.prazo).toLocaleDateString('pt-BR')}</span>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground block">Status:</span>
+                <StatusChip
+                  label={STATUS_LABEL[detalhePmd.status] ?? detalhePmd.status}
+                  variant={STATUS_VARIANT[detalhePmd.status] ?? 'neutral'}
+                />
               </div>
             </div>
+
             <div>
-              <span className="text-xs text-slate-400 block mb-1">Objetivos</span>
-              <p className="text-xs bg-[#101a3a] rounded p-2 text-slate-300">{detalhePmd.objetivos}</p>
+              <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">
+                Objetivos Institucionais
+              </h4>
+              <p className="text-sm text-muted-foreground bg-background p-3 rounded-lg border border-border">
+                {detalhePmd.objetivos}
+              </p>
             </div>
+
             {detalhePmd.acoes && detalhePmd.acoes.length > 0 && (
               <div>
-                <span className="text-xs text-slate-400 block mb-1">Ações planejadas</span>
-                <ul className="space-y-1">
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">
+                  Plano de Ações Acordadas
+                </h4>
+                <div className="space-y-2">
                   {detalhePmd.acoes.map((acao, i) => (
-                    <li key={i} className="text-xs bg-[#101a3a] rounded p-2 text-slate-300">
-                      {acao.descricao}
-                    </li>
+                    <div key={i} className="flex items-start justify-between bg-background p-2.5 rounded-lg border border-border text-xs">
+                      <span className="text-foreground">{acao.descricao}</span>
+                      {acao.prazo && <span className="font-mono text-muted-foreground">{acao.prazo}</span>}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
+
             {detalhePmd.observacoes_verificacao && (
               <div>
-                <span className="text-xs text-slate-400 block mb-1">Observações de verificação</span>
-                <p className="text-xs bg-[#101a3a] rounded p-2 text-slate-300">{detalhePmd.observacoes_verificacao}</p>
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">
+                  Parecer da Verificação de Evolução
+                </h4>
+                <p className="text-sm text-muted-foreground bg-muted/40 p-3 rounded-lg border border-border">
+                  {detalhePmd.observacoes_verificacao}
+                </p>
               </div>
             )}
           </div>
         )}
       </Modal>
 
-      {/* Modal Verificação */}
+      {/* Modal: Registrar Evolução */}
       <Modal
         open={verModal}
         onClose={() => setVerModal(false)}
         title="Registrar Verificação de Evolução"
+        size="md"
       >
-        <div className="space-y-3">
-          <p className="text-xs text-slate-400">PMD #{pmdVerif?.id} — NFC gatilho: {pmdVerif?.nfc_gatilho} pts</p>
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Lançamento da nova nota avaliativa para conferir se o servidor superou o índice gatilho ({pmdVerif?.nfc_gatilho} pts).
+          </p>
           <div>
-            <label className="text-xs text-slate-400 mb-1 block">NFC do novo ciclo (0–100) *</label>
+            <label className="text-xs font-medium text-foreground block mb-1">Nova NFC Apurada *</label>
             <Input
               type="number"
-              min={0}
-              max={100}
-              step={0.01}
+              step="0.01"
+              min="0"
+              max="100"
               value={nfcNova}
               onChange={e => setNfcNova(e.target.value)}
-              placeholder="Ex.: 75.50"
-              className="font-mono"
+              placeholder="Ex: 75.50"
             />
           </div>
           <div>
-            <label className="text-xs text-slate-400 mb-1 block">Observações da Comissão *</label>
+            <label className="text-xs font-medium text-foreground block mb-1">Parecer / Observações *</label>
             <textarea
+              className="w-full text-xs rounded-lg border border-input bg-background p-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              rows={3}
               value={obsVerif}
               onChange={e => setObsVerif(e.target.value)}
-              rows={3}
-              placeholder="Descreva a evolução do servidor no período..."
-              className="w-full bg-[#101a3a] border border-[#1a2a52] rounded-lg p-2 text-sm text-white resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              placeholder="Descreva o acompanhamento da chefia imediata e as evidências de evolução..."
             />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setVerModal(false)}>Cancelar</Button>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" size="sm" onClick={() => setVerModal(false)}>
+              Cancelar
+            </Button>
             <Button
-              variant="default"
+              variant="primary"
+              size="sm"
               onClick={registrarVerificacao}
               disabled={savingVerif || !nfcNova || !obsVerif}
             >
-              <CheckCircle className="w-3 h-3 mr-1" />
-              {savingVerif ? 'Registrando...' : 'Confirmar Verificação'}
+              {savingVerif ? 'Salvando...' : 'Concluir Verificação'}
             </Button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -18,16 +18,18 @@ import {
   TableCell,
 } from '@sysgov/ui';
 import {
+  PageHeader,
+  EmptyState,
+  StatusChip,
+  ScreenState,
+} from '@/components/ui';
+import {
   BarChart2,
   Plus,
-  Trash2,
-  Edit2,
   CheckCircle,
   AlertTriangle,
-  Sliders,
   ChevronDown,
   ChevronUp,
-  Save,
   RotateCw,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
@@ -67,21 +69,21 @@ interface Props {
 }
 
 export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) => {
-  const [modelos, setModelos]               = useState<ApiModeloFormulario[]>([]);
+  const [modelos, setModelos]                   = useState<ApiModeloFormulario[]>([]);
   const [selectedModeloId, setSelectedModeloId] = useState<number | null>(propModeloId ?? null);
-  const [escalas, setEscalas]               = useState<EscalaGrafica[]>([]);
-  const [loading, setLoading]               = useState(false);
-  const [loadingModelos, setLoadingModelos] = useState(false);
-  const [modalOpen, setModalOpen]           = useState(false);
-  const [expandida, setExpandida]           = useState<number | null>(null);
-  const [erro, setErro]                     = useState<string | null>(null);
-  const [sucesso, setSucesso]               = useState<string | null>(null);
+  const [escalas, setEscalas]                   = useState<EscalaGrafica[]>([]);
+  const [loading, setLoading]                   = useState(false);
+  const [loadingModelos, setLoadingModelos]     = useState(false);
+  const [modalOpen, setModalOpen]               = useState(false);
+  const [expandida, setExpandida]               = useState<number | null>(null);
+  const [erro, setErro]                         = useState<string | null>(null);
+  const [sucesso, setSucesso]                   = useState<string | null>(null);
 
   // Form
-  const [nome, setNome]                     = useState('');
-  const [descricao, setDescricao]           = useState('');
-  const [niveis, setNiveis]                 = useState<EscalaNivel[]>(NIVEIS_PADRAO);
-  const [saving, setSaving]                 = useState(false);
+  const [nome, setNome]                         = useState('');
+  const [descricao, setDescricao]               = useState('');
+  const [niveis, setNiveis]                     = useState<EscalaNivel[]>(NIVEIS_PADRAO);
+  const [saving, setSaving]                     = useState(false);
 
   // 1. Carrega a lista de modelos de formulário do tenant
   const carregarModelos = useCallback(async () => {
@@ -90,11 +92,9 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
       const data = await api.capd.listModelosFormulario();
       setModelos(data);
       if (data.length > 0) {
-        // Se propModeloId foi passado e existe na lista, prioriza
         if (propModeloId && data.some(m => m.id === propModeloId)) {
           setSelectedModeloId(propModeloId);
         } else if (!selectedModeloId || !data.some(m => m.id === selectedModeloId)) {
-          // Prioriza o modelo ativo ou mais recente
           const prioritario = data.find(m => m.ativo) ?? data[0];
           setSelectedModeloId(prioritario.id);
         }
@@ -116,14 +116,18 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
     setErro(null);
     try {
       const resp = await api.get<EscalaGrafica[]>(`/capd/modelos-formulario/${id}/escalas-graficas`);
-      setEscalas(resp.data ?? []);
+      const list = resp.data ?? [];
+      setEscalas(list);
+      if (list.length > 0 && !expandida) {
+        setExpandida(list[0].id);
+      }
     } catch {
       setErro('Não foi possível carregar as escalas gráficas para este modelo.');
       setEscalas([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [expandida]);
 
   useEffect(() => {
     if (selectedModeloId) {
@@ -132,8 +136,8 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
   }, [selectedModeloId, carregarEscalas]);
 
   const abrirModal = () => {
-    setNome('Escala Padrão de Desempenho');
-    setDescricao('');
+    setNome('Escala Padrão de Desempenho (5 Graus)');
+    setDescricao('Régua gráfica contínua de 0 a 100 pontos para cômputo dos graus de Chiavenato');
     setNiveis(NIVEIS_PADRAO);
     setModalOpen(true);
   };
@@ -176,95 +180,88 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
     }
   };
 
+  const modeloSelecionado = modelos.find(m => m.id === selectedModeloId);
+
   return (
-    <div className="space-y-4">
-      {/* Header com Seletor de Modelo */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#101a3a] border border-[#1a2a52] rounded-xl p-4">
-        <div>
-          <h3 className="text-base font-semibold text-white flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-emerald-400" />
-            Escalas Gráficas de Avaliação
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Configure os graus de desempenho (3 a 5 níveis) e faixas de pontuação por formulário
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {modelos.length > 0 && (
-            <div className="min-w-[280px]">
-              <Select
-                value={selectedModeloId ? String(selectedModeloId) : ''}
-                onChange={(val) => setSelectedModeloId(Number(val))}
-                options={modelos.map(m => ({
-                  value: String(m.id),
-                  label: `${m.nome} (${m.codigo})`,
-                }))}
-                placeholder="Selecione o Modelo..."
-                disabled={loadingModelos}
-              />
-            </div>
-          )}
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => selectedModeloId && carregarEscalas(selectedModeloId)}
-            disabled={loading || !selectedModeloId}
-            title="Recarregar"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-
-          <Button variant="default" size="sm" onClick={abrirModal} disabled={!selectedModeloId}>
-            <Plus className="w-3 h-3 mr-1" /> Nova Escala
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* PageHeader Canônico */}
+      <PageHeader
+        icon={<BarChart2 className="h-6 w-6" />}
+        title="Escalas Gráficas de Avaliação"
+        subtitle="Parametrização dinâmica dos graus de desempenho (3 a 5 níveis) e réguas contínuas de 0 a 100 pontos (RF-03)"
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {modelos.length > 0 && (
+              <div className="w-72">
+                <Select
+                  value={selectedModeloId ? String(selectedModeloId) : ''}
+                  onChange={(val) => setSelectedModeloId(Number(val))}
+                  options={modelos.map(m => ({
+                    value: String(m.id),
+                    label: `${m.nome} (${m.codigo})`,
+                  }))}
+                  placeholder="Selecione o Modelo..."
+                  disabled={loadingModelos}
+                />
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => selectedModeloId && carregarEscalas(selectedModeloId)}
+              disabled={loading || !selectedModeloId}
+              title="Recarregar"
+            >
+              <RotateCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button variant="primary" size="sm" onClick={abrirModal} disabled={!selectedModeloId}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Nova Escala
+            </Button>
+          </div>
+        }
+      />
 
       {/* Alertas */}
       {erro && (
-        <div className="flex items-start gap-2 bg-rose-950/50 border border-rose-500/30 rounded-lg p-3 text-rose-300 text-xs">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>{erro}</span>
         </div>
       )}
       {sucesso && (
-        <div className="flex items-start gap-2 bg-emerald-950/50 border border-emerald-500/30 rounded-lg p-3 text-emerald-300 text-xs">
-          <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+        <div className="rounded-lg border border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 shrink-0" />
           <span>{sucesso}</span>
         </div>
       )}
 
-      {/* Lista de escalas */}
       {loading ? (
-        <div className="text-slate-400 text-sm text-center py-8">Carregando...</div>
+        <ScreenState type="loading" title="Carregando Escalas Gráficas..." />
       ) : escalas.length === 0 ? (
-        <div className="text-center py-10 bg-[#152244] rounded-xl border border-[#1a2a52] space-y-3">
-          <BarChart2 className="w-10 h-10 mx-auto text-slate-500" />
-          <p className="text-slate-300 text-sm font-medium">Nenhuma escala cadastrada para este formulário.</p>
-          <p className="text-slate-400 text-xs max-w-md mx-auto">
-            Defina uma escala gráfica contínua de 0 a 100 pontos para parametrizar os graus de desempenho deste instrumento.
-          </p>
-          <div className="pt-2">
-            <Button variant="default" size="sm" onClick={abrirModal} disabled={!selectedModeloId}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Criar Escala para este Modelo
-            </Button>
-          </div>
-        </div>
+        <Card className="gap-0 py-0">
+          <EmptyState
+            icon={<BarChart2 className="h-10 w-10" />}
+            title="Nenhuma escala cadastrada para este formulário"
+            description={`O modelo "${modeloSelecionado?.nome ?? ''}" ainda não possui uma régua de escala gráfica configurada.`}
+            actionLabel="Criar Escala para este Modelo"
+            onAction={abrirModal}
+          />
+        </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {escalas.map(escala => (
-            <Card key={escala.id} className="bg-[#152244] border-[#1a2a52]">
-              <CardHeader className="pb-2">
+            <Card key={escala.id} className="gap-0 py-0 overflow-hidden">
+              <CardHeader className="p-4 border-b border-border bg-muted/20">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-sm text-white">{escala.nome}</CardTitle>
-                    <Badge variant={escala.ativa ? 'default' : 'secondary'} className="text-[10px]">
-                      {escala.ativa ? 'Ativa' : 'Inativa'}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px] font-mono">
-                      {escala.qtd_niveis} níveis
+                  <div className="flex items-center gap-2.5">
+                    <CardTitle className="text-base font-bold text-foreground">{escala.nome}</CardTitle>
+                    <StatusChip
+                      label={escala.ativa ? 'Ativa' : 'Inativa'}
+                      variant={escala.ativa ? 'success' : 'neutral'}
+                    />
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {escala.qtd_niveis} níveis de pontuação
                     </Badge>
                   </div>
                   <Button
@@ -273,36 +270,46 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
                     onClick={() => setExpandida(expandida === escala.id ? null : escala.id)}
                   >
                     {expandida === escala.id
-                      ? <ChevronUp className="w-4 h-4" />
-                      : <ChevronDown className="w-4 h-4" />
+                      ? <ChevronUp className="h-4 w-4" />
+                      : <ChevronDown className="h-4 w-4" />
                     }
                   </Button>
                 </div>
                 {escala.descricao && (
-                  <CardDescription className="text-xs">{escala.descricao}</CardDescription>
+                  <CardDescription className="text-xs text-muted-foreground mt-1">
+                    {escala.descricao}
+                  </CardDescription>
                 )}
               </CardHeader>
 
               {expandida === escala.id && (
-                <CardContent>
+                <CardContent className="p-0">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Grau</TableHead>
-                        <TableHead className="text-xs">Rótulo</TableHead>
-                        <TableHead className="text-xs">Faixa</TableHead>
-                        <TableHead className="text-xs">Descrição Comportamental</TableHead>
+                      <TableRow className="bg-muted/10">
+                        <TableHead className="w-16 text-xs text-center font-bold">Grau</TableHead>
+                        <TableHead className="w-48 text-xs font-bold">Rótulo Conceitual</TableHead>
+                        <TableHead className="w-36 text-xs font-bold">Faixa de Pontuação</TableHead>
+                        <TableHead className="text-xs font-bold">Descrição Comportamental do Grau</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {escala.niveis.map(nivel => (
                         <TableRow key={nivel.grau}>
-                          <TableCell className="font-mono text-xs text-center w-12">{nivel.grau}</TableCell>
-                          <TableCell className="text-xs font-medium">{nivel.rotulo}</TableCell>
-                          <TableCell className="font-mono text-xs text-emerald-400">
-                            {nivel.valor_min} – {nivel.valor_max}
+                          <TableCell className="font-mono text-xs font-bold text-center">
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                              {nivel.grau}
+                            </span>
                           </TableCell>
-                          <TableCell className="text-xs text-slate-400 max-w-xs">
+                          <TableCell className="text-sm font-semibold text-foreground">
+                            {nivel.rotulo}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs tabular-nums text-foreground font-semibold">
+                            <span className="px-2 py-0.5 rounded bg-muted border border-border">
+                              {nivel.valor_min} – {nivel.valor_max} pts
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
                             {nivel.descricao_comportamental ?? '—'}
                           </TableCell>
                         </TableRow>
@@ -320,94 +327,88 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Nova Escala Gráfica"
+        title={`Nova Escala Gráfica — ${modeloSelecionado?.nome ?? ''}`}
         size="lg"
       >
         <div className="space-y-4">
-          <p className="text-xs text-slate-400">Configure os graus e faixas de pontuação (0–100 pontos)</p>
+          <p className="text-xs text-muted-foreground">
+            Defina os 3 a 5 graus da escala gráfica contínua de 0 a 100 pontos (Metodologia Chiavenato).
+          </p>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-xs text-slate-400 mb-1 block">Nome da Escala *</label>
+              <label className="text-xs font-semibold text-foreground block mb-1">Nome da Escala *</label>
               <Input
                 value={nome}
                 onChange={e => setNome(e.target.value)}
-                placeholder="Ex.: Escala Padrão 2026"
+                placeholder="Ex: Escala Padrão Chiavenato (5 Graus)"
+                required
               />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-slate-400 mb-1 block">Descrição (opcional)</label>
+              <label className="text-xs font-semibold text-foreground block mb-1">Descrição</label>
               <Input
                 value={descricao}
                 onChange={e => setDescricao(e.target.value)}
-                placeholder="Descreva o propósito desta escala"
+                placeholder="Ex: Escala contínua de 0 a 100 pontos com 5 graus de desempenho."
               />
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-slate-300">Níveis de Desempenho</label>
-              <span className="text-[10px] text-slate-500 font-mono">
-                Faixa 0–100 pontos · {niveis.length} níveis
-              </span>
-            </div>
+          <div className="space-y-3 pt-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-foreground block">
+              Graus de Desempenho (3 a 5 Níveis)
+            </label>
 
-            <div className="space-y-2">
-              {niveis.map((nivel, idx) => (
-                <div key={idx} className="bg-[#101a3a] border border-[#1a2a52] rounded-lg p-3 grid grid-cols-12 gap-2 items-start">
-                  <div className="col-span-1">
-                    <label className="text-[10px] text-slate-500 block mb-1">Grau</label>
-                    <span className="font-mono text-sm text-emerald-400 block text-center">{nivel.grau}</span>
-                  </div>
-                  <div className="col-span-3">
-                    <label className="text-[10px] text-slate-500 block mb-1">Rótulo *</label>
-                    <Input
-                      value={nivel.rotulo}
-                      onChange={e => atualizarNivel(idx, 'rotulo', e.target.value)}
-                      className="text-xs"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-[10px] text-slate-500 block mb-1">Mín</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={nivel.valor_min}
-                      onChange={e => atualizarNivel(idx, 'valor_min', parseFloat(e.target.value))}
-                      className="text-xs font-mono"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-[10px] text-slate-500 block mb-1">Máx</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={nivel.valor_max}
-                      onChange={e => atualizarNivel(idx, 'valor_max', parseFloat(e.target.value))}
-                      className="text-xs font-mono"
-                    />
-                  </div>
-                  <div className="col-span-4">
-                    <label className="text-[10px] text-slate-500 block mb-1">Descrição comportamental</label>
-                    <Input
-                      value={nivel.descricao_comportamental ?? ''}
-                      onChange={e => atualizarNivel(idx, 'descricao_comportamental', e.target.value)}
-                      className="text-xs"
-                      placeholder="Opcional"
-                    />
-                  </div>
+            {niveis.map((nivel, idx) => (
+              <div key={nivel.grau} className="grid grid-cols-12 gap-2 items-center bg-muted/20 p-2.5 rounded-lg border border-border">
+                <span className="col-span-1 font-mono font-bold text-center text-xs text-foreground">
+                  G{nivel.grau}
+                </span>
+                <div className="col-span-3">
+                  <Input
+                    value={nivel.rotulo}
+                    onChange={e => atualizarNivel(idx, 'rotulo', e.target.value)}
+                    placeholder="Rótulo"
+                    className="text-xs h-8"
+                  />
                 </div>
-              ))}
-            </div>
+                <div className="col-span-2">
+                  <Input
+                    type="number"
+                    value={nivel.valor_min}
+                    onChange={e => atualizarNivel(idx, 'valor_min', parseFloat(e.target.value) || 0)}
+                    placeholder="Mín"
+                    className="text-xs h-8 font-mono"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Input
+                    type="number"
+                    value={nivel.valor_max}
+                    onChange={e => atualizarNivel(idx, 'valor_max', parseFloat(e.target.value) || 0)}
+                    placeholder="Máx"
+                    className="text-xs h-8 font-mono"
+                  />
+                </div>
+                <div className="col-span-4">
+                  <Input
+                    value={nivel.descricao_comportamental ?? ''}
+                    onChange={e => atualizarNivel(idx, 'descricao_comportamental', e.target.value)}
+                    placeholder="Descrição comportamental..."
+                    className="text-xs h-8"
+                  />
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button variant="default" onClick={salvar} disabled={saving}>
-              <Save className="w-3 h-3 mr-1" />
-              {saving ? 'Salvando...' : 'Criar Escala'}
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" size="sm" onClick={salvar} disabled={saving}>
+              {saving ? 'Salvando...' : 'Salvar Escala Gráfica'}
             </Button>
           </div>
         </div>

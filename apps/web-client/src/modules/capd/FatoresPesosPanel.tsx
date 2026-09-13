@@ -1,10 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
   Button,
   Badge,
   Input,
@@ -18,11 +14,15 @@ import {
   TableCell,
 } from '@sysgov/ui';
 import {
+  PageHeader,
+  EmptyState,
+  ScreenState,
+} from '@/components/ui';
+import {
   Percent,
   Save,
   AlertTriangle,
   CheckCircle,
-  RefreshCw,
   Sliders,
   RotateCw,
 } from 'lucide-react';
@@ -170,104 +170,118 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
     }
   };
 
+  const modeloSelecionado = modelos.find(m => m.id === selectedModeloId);
+
   return (
-    <div className="space-y-4">
-      {/* Header com Seletor de Modelo */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#101a3a] border border-[#1a2a52] rounded-xl p-4">
-        <div>
-          <h3 className="text-base font-semibold text-white flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-indigo-400" />
-            Fatores e Pesos do Formulário
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Configure o peso percentual de cada fator de avaliação (soma = 100%)
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* PageHeader Canônico */}
+      <PageHeader
+        icon={<Sliders className="h-6 w-6" />}
+        title="Fatores e Pesos do Formulário"
+        subtitle="Parametrização ponderada dos fatores canônicos (soma = 100%) e regra de redistribuição do Fator H (RF-02/RF-06)"
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {modelos.length > 0 && (
+              <div className="w-72">
+                <Select
+                  value={selectedModeloId ? String(selectedModeloId) : ''}
+                  onChange={(val) => setSelectedModeloId(Number(val))}
+                  options={modelos.map(m => ({
+                    value: String(m.id),
+                    label: `${m.nome} (${m.codigo})`,
+                  }))}
+                  placeholder="Selecione o Modelo..."
+                  disabled={loadingModelos}
+                />
+              </div>
+            )}
 
-        <div className="flex flex-wrap items-center gap-3">
-          {modelos.length > 0 && (
-            <div className="min-w-[280px]">
-              <Select
-                value={selectedModeloId ? String(selectedModeloId) : ''}
-                onChange={(val) => setSelectedModeloId(Number(val))}
-                options={modelos.map(m => ({
-                  value: String(m.id),
-                  label: `${m.nome} (${m.codigo})`,
-                }))}
-                placeholder="Selecione o Modelo..."
-                disabled={loadingModelos}
-              />
-            </div>
-          )}
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => selectedModeloId && carregarPesos(selectedModeloId)}
-            disabled={loading || !selectedModeloId}
-            title="Recarregar"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-
-          {alterado && (
-            <Button variant="default" size="sm" onClick={salvar} disabled={saving || !somaValida}>
-              <Save className="w-3 h-3 mr-1" />
-              {saving ? 'Salvando...' : 'Salvar Pesos'}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => selectedModeloId && carregarPesos(selectedModeloId)}
+              disabled={loading || !selectedModeloId}
+              title="Recarregar"
+            >
+              <RotateCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-          )}
-        </div>
-      </div>
 
-      {/* Indicador de soma */}
-      <div className={`flex items-center gap-3 rounded-lg p-3 border ${somaValida
-        ? 'bg-emerald-950/30 border-emerald-500/30'
-        : 'bg-amber-950/30 border-amber-500/30'
-      }`}>
-        <Percent className={`w-4 h-4 ${somaValida ? 'text-emerald-400' : 'text-amber-400'}`} />
-        <span className={`text-sm font-mono ${somaValida ? 'text-emerald-300' : 'text-amber-300'}`}>
-          Soma atual: <strong>{somaAtual.toFixed(2)}%</strong>
-        </span>
-        {somaValida
-          ? <CheckCircle className="w-4 h-4 text-emerald-400 ml-auto" />
-          : <AlertTriangle className="w-4 h-4 text-amber-400 ml-auto" />
+            {alterado && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={salvar}
+                disabled={saving || !somaValida}
+              >
+                <Save className="h-4 w-4 mr-1.5" />
+                {saving ? 'Salvando...' : 'Salvar Pesos'}
+              </Button>
+            )}
+          </div>
         }
+      />
+
+      {/* Indicador de soma com cores semânticas */}
+      <div
+        className={`flex items-center gap-3 rounded-lg p-3.5 border transition-all ${
+          somaValida
+            ? 'border-status-success-border bg-status-success-bg text-status-success'
+            : 'border-status-warning-border bg-status-warning-bg text-status-warning'
+        }`}
+      >
+        <Percent className="w-5 h-5 shrink-0" />
+        <span className="text-sm font-medium">
+          Soma atual dos pesos dos fatores: <strong className="font-mono tabular-nums text-base">{somaAtual.toFixed(2)}%</strong>
+          {!somaValida && (
+            <span className="ml-2 text-xs opacity-80">
+              (Diferença de {(100 - somaAtual).toFixed(2)}% para atingir os 100% obrigatórios)
+            </span>
+          )}
+        </span>
+        {somaValida ? (
+          <CheckCircle className="w-5 h-5 ml-auto text-status-success shrink-0" />
+        ) : (
+          <AlertTriangle className="w-5 h-5 ml-auto text-status-warning shrink-0" />
+        )}
       </div>
 
       {/* Alertas */}
       {erro && (
-        <div className="flex items-start gap-2 bg-rose-950/50 border border-rose-500/30 rounded-lg p-3 text-rose-300 text-xs">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>{erro}</span>
         </div>
       )}
       {sucesso && (
-        <div className="flex items-start gap-2 bg-emerald-950/50 border border-emerald-500/30 rounded-lg p-3 text-emerald-300 text-xs">
-          <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+        <div className="rounded-lg border border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 shrink-0" />
           <span>{sucesso}</span>
         </div>
       )}
 
       {/* Tabela de fatores */}
       {loading ? (
-        <div className="text-slate-400 text-sm text-center py-8">Carregando...</div>
+        <ScreenState type="loading" title="Carregando Pesos dos Fatores..." />
       ) : editados.length === 0 ? (
-        <div className="text-center py-10 bg-[#152244] rounded-xl border border-[#1a2a52]">
-          <Sliders className="w-10 h-10 mx-auto mb-3 text-slate-500" />
-          <p className="text-slate-400 text-sm">Nenhum fator configurado neste formulário.</p>
-        </div>
+        <Card className="gap-0 py-0">
+          <EmptyState
+            icon={<Sliders className="h-10 w-10" />}
+            title="Nenhum fator configurado neste formulário"
+            description={`O modelo "${modeloSelecionado?.nome ?? ''}" ainda não possui fatores de avaliação vinculados.`}
+          />
+        </Card>
       ) : (
-        <Card className="bg-[#152244] border-[#1a2a52]">
+        <Card className="gap-0 py-0 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">#</TableHead>
-                <TableHead className="text-xs">Código</TableHead>
-                <TableHead className="text-xs">Fator</TableHead>
-                <TableHead className="text-xs text-center">Peso (%)</TableHead>
-                <TableHead className="text-xs text-center">
-                  <span title="Peso redistribuível para cargos sem atendimento ao público (RF-06)">
-                    Redistribuível
+              <TableRow className="bg-muted/20">
+                <TableHead className="w-12 text-xs text-center font-bold">#</TableHead>
+                <TableHead className="w-24 text-xs font-bold">Código</TableHead>
+                <TableHead className="text-xs font-bold">Fator de Avaliação</TableHead>
+                <TableHead className="w-36 text-xs text-center font-bold">Peso Ponderado</TableHead>
+                <TableHead className="w-36 text-xs text-center font-bold">
+                  <span title="Redistribuível proporcionalmente para cargos sem atendimento ao público (RF-06)">
+                    Fator H Redistr.
                   </span>
                 </TableHead>
               </TableRow>
@@ -275,22 +289,24 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
             <TableBody>
               {editados.map((fator, idx) => (
                 <TableRow key={fator.fator_id}>
-                  <TableCell className="font-mono text-xs text-slate-500 w-8">{idx + 1}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground text-center font-semibold">
+                    {idx + 1}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="font-mono text-[10px]">
+                    <Badge variant="outline" className="font-mono text-xs font-bold">
                       {fator.fator?.codigo ?? `#${fator.fator_id}`}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <span className="text-xs text-white">{fator.fator?.nome ?? '—'}</span>
+                      <span className="text-sm font-semibold text-foreground">{fator.fator?.nome ?? '—'}</span>
                       {fator.fator?.descricao && (
-                        <p className="text-[10px] text-slate-500 mt-0.5">{fator.fator.descricao}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{fator.fator.descricao}</p>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="w-32">
-                    <div className="flex items-center gap-1">
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-1.5">
                       <Input
                         type="number"
                         min={0}
@@ -298,16 +314,18 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
                         step={0.01}
                         value={fator.peso}
                         onChange={e => atualizarPeso(idx, e.target.value)}
-                        className="text-xs font-mono text-center w-24"
+                        className="text-xs font-mono font-bold text-center w-20 h-8"
                       />
-                      <span className="text-slate-500 text-xs">%</span>
+                      <span className="text-muted-foreground text-xs font-mono">%</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch
-                      checked={fator.redistribuivel}
-                      onCheckedChange={v => atualizarRedistribuivel(idx, v)}
-                    />
+                    <div className="flex justify-center">
+                      <Switch
+                        checked={fator.redistribuivel}
+                        onCheckedChange={v => atualizarRedistribuivel(idx, v)}
+                      />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -316,9 +334,8 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
         </Card>
       )}
 
-      <p className="text-[10px] text-slate-500">
-        * <strong>Redistribuível</strong>: quando ativado, o peso deste fator é redistribuído
-        proporcionalmente para os demais em avaliações de cargos sem atendimento direto ao público (RF-06).
+      <p className="text-xs text-muted-foreground">
+        * <strong>Fator H Redistribuível</strong>: quando ativado (previsto na alínea 'h' da Lei 1.704/2006), o percentual deste fator é automaticamente recalculado e redistribuído proporcionalmente entre os demais fatores para servidores lotados em cargos sem contato direto com o cidadão (RF-06).
       </p>
     </div>
   );
