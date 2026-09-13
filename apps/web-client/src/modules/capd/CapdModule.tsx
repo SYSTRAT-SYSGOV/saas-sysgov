@@ -17,6 +17,7 @@ import {
   TableHead,
   TableCell,
 } from '@sysgov/ui';
+import type { ColumnDef } from '@tanstack/react-table';
 import {
   PageHeader,
   Tabs,
@@ -24,6 +25,7 @@ import {
   Field,
   StatusChip,
   EmptyState,
+  DataTable,
   type TabsItem,
 } from '@/components/ui';
 import {
@@ -392,6 +394,245 @@ export const CapdModule: React.FC = () => {
     [servidores]
   );
 
+  // Colunas TanStack do DataTable de Servidores
+  const columnsServidores = useMemo<ColumnDef<ApiServidor>[]>(
+    () => [
+      {
+        accessorKey: 'matricula',
+        header: 'Matrícula',
+        size: 110,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs font-bold text-primary">
+            {row.original.matricula}
+          </span>
+        ),
+        meta: {
+          exportHeader: 'Matrícula',
+          exportValue: (r) => r.matricula,
+          sortValue: (r) => r.matricula,
+        },
+      },
+      {
+        accessorKey: 'nome_completo',
+        header: 'Servidor / CPF',
+        cell: ({ row }) => (
+          <div>
+            <div className="font-semibold text-xs text-foreground">{row.original.nome_completo}</div>
+            <div className="font-mono text-[11px] text-muted-foreground tabular-nums">{row.original.cpf}</div>
+          </div>
+        ),
+        meta: {
+          exportHeader: 'Servidor',
+          exportValue: (r) => `${r.nome_completo} (CPF: ${r.cpf})`,
+          sortValue: (r) => r.nome_completo,
+        },
+      },
+      {
+        accessorKey: 'cargo_efetivo',
+        header: 'Cargo Efetivo & Lotação',
+        cell: ({ row }) => (
+          <div>
+            <div className="text-xs font-medium text-foreground">{row.original.cargo_efetivo}</div>
+            <div className="text-[11px] text-muted-foreground">{row.original.orgao_lotacao}</div>
+          </div>
+        ),
+        meta: {
+          exportHeader: 'Cargo / Lotação',
+          exportValue: (r) => `${r.cargo_efetivo} - ${r.orgao_lotacao}`,
+          sortValue: (r) => r.cargo_efetivo,
+        },
+      },
+      {
+        accessorKey: 'regime_juridico',
+        header: 'Regime',
+        size: 120,
+        cell: ({ row }) => (
+          <Badge variant="outline" className="uppercase text-[10px] font-mono">
+            {row.original.regime_juridico}
+          </Badge>
+        ),
+        meta: {
+          exportHeader: 'Regime',
+          exportValue: (r) => r.regime_juridico,
+          sortValue: (r) => r.regime_juridico,
+        },
+      },
+      {
+        accessorKey: 'situacao_funcional',
+        header: 'Situação Funcional',
+        size: 150,
+        cell: ({ row }) => (
+          <StatusChip
+            label={row.original.situacao_funcional.replace('_', ' ')}
+            variant={row.original.situacao_funcional === 'ativo' ? 'success' : 'warning'}
+          />
+        ),
+        meta: {
+          exportHeader: 'Situação Funcional',
+          exportValue: (r) => r.situacao_funcional,
+          sortValue: (r) => r.situacao_funcional,
+        },
+      },
+      {
+        accessorKey: 'estagio_probatorio',
+        header: 'Estágio Probatório',
+        size: 160,
+        cell: ({ row }) => (
+          row.original.estagio_probatorio ? (
+            <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/40">
+              Fase {row.original.estagio_fase_atual || 1}/6 (Em Curso)
+            </Badge>
+          ) : (
+            <span className="text-[11px] text-muted-foreground font-mono">Estável (Art. 41)</span>
+          )
+        ),
+        meta: {
+          exportHeader: 'Estágio Probatório',
+          exportValue: (r) => (r.estagio_probatorio ? `Fase ${r.estagio_fase_atual || 1}/6` : 'Estável'),
+          sortValue: (r) => (r.estagio_probatorio ? 1 : 0),
+        },
+      },
+      {
+        accessorKey: 'origem_sistema',
+        header: 'Origem',
+        size: 90,
+        cell: ({ row }) => (
+          <span className="text-[10px] font-mono text-muted-foreground uppercase">
+            {row.original.origem_sistema || 'manual'}
+          </span>
+        ),
+        meta: {
+          exportHeader: 'Origem',
+          exportValue: (r) => r.origem_sistema || 'manual',
+          sortValue: (r) => r.origem_sistema || 'manual',
+        },
+      },
+    ],
+    []
+  );
+
+  // Colunas TanStack do DataTable de Estágio Probatório
+  const columnsEstagio = useMemo<ColumnDef<ApiServidor>[]>(
+    () => [
+      {
+        accessorKey: 'matricula',
+        header: 'Matrícula',
+        size: 110,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs font-bold text-primary">
+            {row.original.matricula}
+          </span>
+        ),
+        meta: {
+          exportHeader: 'Matrícula',
+          exportValue: (r) => r.matricula,
+          sortValue: (r) => r.matricula,
+        },
+      },
+      {
+        accessorKey: 'nome_completo',
+        header: 'Servidor / Lotação',
+        cell: ({ row }) => (
+          <div>
+            <div className="font-semibold text-xs text-foreground">{row.original.nome_completo}</div>
+            <div className="text-[11px] text-muted-foreground">{row.original.orgao_lotacao}</div>
+          </div>
+        ),
+        meta: {
+          exportHeader: 'Servidor',
+          exportValue: (r) => `${r.nome_completo} (${r.orgao_lotacao})`,
+          sortValue: (r) => r.nome_completo,
+        },
+      },
+      {
+        accessorKey: 'cargo_efetivo',
+        header: 'Cargo Efetivo',
+        cell: ({ row }) => (
+          <span className="text-xs font-medium text-foreground">{row.original.cargo_efetivo}</span>
+        ),
+        meta: {
+          exportHeader: 'Cargo Efetivo',
+          exportValue: (r) => r.cargo_efetivo,
+          sortValue: (r) => r.cargo_efetivo,
+        },
+      },
+      {
+        accessorKey: 'estagio_fase_atual',
+        header: 'Fase Atual',
+        size: 160,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold">{row.original.estagio_fase_atual || 1}ª Fase / 6</span>
+            <div className="w-16 bg-muted rounded-full h-1.5">
+              <div
+                className="bg-primary h-1.5 rounded-full"
+                style={{ width: `${((row.original.estagio_fase_atual || 1) / 6) * 100}%` }}
+              />
+            </div>
+          </div>
+        ),
+        meta: {
+          exportHeader: 'Fase',
+          exportValue: (r) => `${r.estagio_fase_atual || 1}ª Fase`,
+          sortValue: (r) => r.estagio_fase_atual || 1,
+        },
+      },
+      {
+        accessorKey: 'estagio_data_fim',
+        header: 'Previsão Conclusão',
+        size: 140,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs tabular-nums text-foreground">
+            {row.original.estagio_data_fim || 'A calcular'}
+          </span>
+        ),
+        meta: {
+          exportHeader: 'Previsão Conclusão',
+          exportValue: (r) => r.estagio_data_fim || '',
+          sortValue: (r) => r.estagio_data_fim || '',
+        },
+      },
+      {
+        accessorKey: 'estagio_status',
+        header: 'Status Estágio',
+        size: 140,
+        cell: ({ row }) => (
+          <StatusChip
+            label={row.original.estagio_status || 'em andamento'}
+            variant={row.original.estagio_status === 'aprovado' ? 'success' : 'info'}
+          />
+        ),
+        meta: {
+          exportHeader: 'Status',
+          exportValue: (r) => r.estagio_status || 'em andamento',
+          sortValue: (r) => r.estagio_status || 'em andamento',
+        },
+      },
+      {
+        id: 'acoes',
+        header: '',
+        size: 140,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => {
+                setEmbedIdentificador(row.original.matricula);
+                setActiveTab('integracao');
+              }}
+            >
+              Injetar Avaliação
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
+
   const tabItems: TabsItem<CapdTab>[] = [
     { key: 'painel-gerencial', label: 'Painel Gerencial', icon: <BarChart3 className="h-4 w-4" /> },
     { key: 'ciclos', label: 'Ciclos Anuais', icon: <Calendar className="h-4 w-4" /> },
@@ -444,117 +685,70 @@ export const CapdModule: React.FC = () => {
       {/* ── ABA 1: GESTÃO DE SERVIDORES (RH UNIVERSAL) ────────────────── */}
       {activeTab === 'servidores' && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 max-w-xl">
-              <SearchInput
-                value={buscaServidor}
-                onChange={setBuscaServidor}
-                placeholder="Buscar por nome, matrícula, CPF ou órgão..."
-                className="flex-1"
-              />
-              <Select
-                value={filtroSituacao}
-                onChange={setFiltroSituacao}
-                options={[
-                  { value: '', label: 'Todas as Situações' },
-                  { value: 'ativo', label: 'Ativo' },
-                  { value: 'afastado_saude', label: 'Afastado Saúde' },
-                  { value: 'licenca_premio', label: 'Licença Prêmio' },
-                  { value: 'cedido', label: 'Cedido' },
-                  { value: 'exonerado', label: 'Exonerado' },
-                ]}
-                className="w-48"
-              />
+          <Card className="gap-0 py-0">
+            <div className="p-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 max-w-xl">
+                <SearchInput
+                  value={buscaServidor}
+                  onChange={setBuscaServidor}
+                  placeholder="Buscar por nome, matrícula, CPF ou órgão..."
+                  className="flex-1"
+                />
+                <Select
+                  value={filtroSituacao}
+                  onChange={setFiltroSituacao}
+                  options={[
+                    { value: '', label: 'Todas as Situações' },
+                    { value: 'ativo', label: 'Ativo' },
+                    { value: 'afastado_saude', label: 'Afastado Saúde' },
+                    { value: 'licenca_premio', label: 'Licença Prêmio' },
+                    { value: 'cedido', label: 'Cedido' },
+                    { value: 'exonerado', label: 'Exonerado' },
+                  ]}
+                  className="w-48"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setModalImportarAberto(true)}>
+                  <Upload className="h-4 w-4 mr-1.5" />
+                  Importar CSV Universal
+                </Button>
+                <Button size="sm" onClick={() => setModalServidorAberto(true)}>
+                  <UserPlus className="h-4 w-4 mr-1.5" />
+                  Novo Servidor
+                </Button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setModalImportarAberto(true)}>
-                <Upload className="h-4 w-4 mr-1.5" />
-                Importar CSV Universal
-              </Button>
-              <Button size="sm" onClick={() => setModalServidorAberto(true)}>
-                <UserPlus className="h-4 w-4 mr-1.5" />
-                Novo Servidor
-              </Button>
+            <div className="p-3">
+              {servidores.length === 0 && !loading ? (
+                <EmptyState
+                  icon={<Users className="h-10 w-10 text-muted-foreground" />}
+                  title="Nenhum servidor encontrado"
+                  description={
+                    buscaServidor
+                      ? `Nenhum resultado para "${buscaServidor}". Tente outro termo.`
+                      : "Nenhum servidor público cadastrado neste município ainda."
+                  }
+                  actionLabel="Cadastrar Primeiro Servidor"
+                  onAction={() => setModalServidorAberto(true)}
+                />
+              ) : (
+                <DataTable
+                  columns={columnsServidores}
+                  data={servidores}
+                  loading={loading}
+                  emptyText="Nenhum servidor encontrado."
+                  pageSize={10}
+                  pageSizeSelector
+                  fixedLayout
+                  exportable
+                  exportFileName="servidores-capd"
+                  exportTitle="CAPD — Servidores"
+                />
+              )}
             </div>
-          </div>
-
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-mono text-xs">Matrícula</TableHead>
-                    <TableHead>Servidor / CPF</TableHead>
-                    <TableHead>Cargo Efetivo & Lotação</TableHead>
-                    <TableHead>Regime</TableHead>
-                    <TableHead>Situação Funcional</TableHead>
-                    <TableHead>Estágio Probatório</TableHead>
-                    <TableHead className="text-right">Origem</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {servidores.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-12">
-                        <EmptyState
-                          icon={<Users className="h-8 w-8 text-muted-foreground" />}
-                          title="Nenhum servidor encontrado"
-                          description={
-                            buscaServidor
-                              ? `Nenhum resultado para "${buscaServidor}". Tente outro termo.`
-                              : "Nenhum servidor público cadastrado neste município ainda."
-                          }
-                          actionLabel="Cadastrar Primeiro Servidor"
-                          onAction={() => setModalServidorAberto(true)}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    servidores.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="font-mono text-xs font-bold text-primary">
-                          {s.matricula}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-semibold text-xs text-foreground">{s.nome_completo}</div>
-                          <div className="font-mono text-[11px] text-muted-foreground tabular-nums">{s.cpf}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs font-medium text-foreground">{s.cargo_efetivo}</div>
-                          <div className="text-[11px] text-muted-foreground">{s.orgao_lotacao}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="uppercase text-[10px] font-mono">
-                            {s.regime_juridico}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <StatusChip
-                            label={s.situacao_funcional.replace('_', ' ')}
-                            variant={s.situacao_funcional === 'ativo' ? 'success' : 'warning'}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {s.estagio_probatorio ? (
-                            <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/40">
-                              Fase {s.estagio_fase_atual || 1}/6 (Em Curso)
-                            </Badge>
-                          ) : (
-                            <span className="text-[11px] text-muted-foreground font-mono">Estável (Art. 41)</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="text-[10px] font-mono text-muted-foreground uppercase">
-                            {s.origem_sistema || 'manual'}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
           </Card>
         </div>
       )}
@@ -574,81 +768,29 @@ export const CapdModule: React.FC = () => {
             </CardHeader>
           </Card>
 
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-mono text-xs">Matrícula</TableHead>
-                    <TableHead>Servidor / Lotação</TableHead>
-                    <TableHead>Cargo Efetivo</TableHead>
-                    <TableHead>Fase Atual</TableHead>
-                    <TableHead>Previsão Conclusão</TableHead>
-                    <TableHead>Status Estágio</TableHead>
-                    <TableHead className="text-right">Ação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {servidoresEstagio.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-12">
-                        <EmptyState
-                          icon={<Clock className="h-8 w-8 text-muted-foreground" />}
-                          title="Nenhum servidor em estágio probatório"
-                          description="Servidores marcados com estágio probatório ativo aparecerão aqui."
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    servidoresEstagio.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="font-mono text-xs font-bold text-primary">
-                          {s.matricula}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-semibold text-xs text-foreground">{s.nome_completo}</div>
-                          <div className="text-[11px] text-muted-foreground">{s.orgao_lotacao}</div>
-                        </TableCell>
-                        <TableCell className="text-xs font-medium">{s.cargo_efetivo}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold">{s.estagio_fase_atual || 1}ª Fase / 6</span>
-                            <div className="w-16 bg-muted rounded-full h-1.5">
-                              <div
-                                className="bg-primary h-1.5 rounded-full"
-                                style={{ width: `${((s.estagio_fase_atual || 1) / 6) * 100}%` }}
-                              />
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs tabular-nums">
-                          {s.estagio_data_fim || 'A calcular'}
-                        </TableCell>
-                        <TableCell>
-                          <StatusChip
-                            label={s.estagio_status || 'em andamento'}
-                            variant={s.estagio_status === 'aprovado' ? 'success' : 'info'}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs"
-                            onClick={() => {
-                              setEmbedIdentificador(s.matricula);
-                              setActiveTab('integracao');
-                            }}
-                          >
-                            Injetar Avaliação
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
+          <Card className="gap-0 py-0">
+            <div className="p-3">
+              {servidoresEstagio.length === 0 && !loading ? (
+                <EmptyState
+                  icon={<Clock className="h-10 w-10 text-muted-foreground" />}
+                  title="Nenhum servidor em estágio probatório"
+                  description="Servidores marcados com estágio probatório ativo aparecerão aqui."
+                />
+              ) : (
+                <DataTable
+                  columns={columnsEstagio}
+                  data={servidoresEstagio}
+                  loading={loading}
+                  emptyText="Nenhum servidor em estágio probatório."
+                  pageSize={10}
+                  pageSizeSelector
+                  fixedLayout
+                  exportable
+                  exportFileName="servidores-estagio-probatorio"
+                  exportTitle="CAPD — Estágio Probatório"
+                />
+              )}
+            </div>
           </Card>
         </div>
       )}
