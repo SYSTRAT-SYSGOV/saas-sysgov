@@ -27,6 +27,15 @@ final class AvaliacaoPolicy
     {
     }
 
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->is_platform_admin || collect(['admin_tenant', 'admin', 'gestor_rh', 'root'])->some(fn ($r) => $user->hasRole($r))) {
+            return true;
+        }
+
+        return null;
+    }
+
     public function view(User $user, Avaliacao $avaliacao): bool
     {
         // Servidor pode ver a própria avaliação

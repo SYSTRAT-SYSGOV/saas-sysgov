@@ -35,7 +35,7 @@ final class ServidorService
             ->when(!empty($filters['situacao']), fn ($q) => $q->where('situacao_funcional', $filters['situacao']))
             ->when(isset($filters['estagio_probatorio']), fn ($q) => $q->where('estagio_probatorio', (bool) $filters['estagio_probatorio']))
             ->when(!empty($filters['orgao_lotacao']), fn ($q) => $q->where('orgao_lotacao', $filters['orgao_lotacao']))
-            ->with(['chefiaImediata:id,nome_completo,matricula', 'user:id,name,email'])
+            ->with(['chefiaImediata:id,nome_completo,matricula', 'user:id,name,email', 'orgUnit.parent'])
             ->orderBy('nome_completo')
             ->paginate($perPage);
     }

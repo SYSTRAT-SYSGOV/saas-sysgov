@@ -123,6 +123,11 @@ final class Avaliacao extends Model
         return $this->belongsTo(\App\Models\User::class, 'servidor_id');
     }
 
+    public function servidorData(): BelongsTo
+    {
+        return $this->belongsTo(Servidor::class, 'servidor_id', 'user_id');
+    }
+
     public function avaliador(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'avaliador_id');

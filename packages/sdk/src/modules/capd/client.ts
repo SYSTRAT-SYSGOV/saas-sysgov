@@ -72,7 +72,7 @@ export class CapdModuleClient {
 
   // ── Avaliações ──────────────────────────────────────────────────────
 
-  async listAvaliacoes(params?: { ciclo_id?: number; status?: string }): Promise<{ data: ApiAvaliacao[] }> {
+  async listAvaliacoes(params?: { ciclo_id?: number; status?: string; avaliador_id?: number; per_page?: number }): Promise<{ data: ApiAvaliacao[] }> {
     return this.api.request(`/capd/avaliacoes${buildQueryString(params)}`);
   }
 

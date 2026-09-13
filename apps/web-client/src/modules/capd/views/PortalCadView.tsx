@@ -25,7 +25,18 @@ import {
   RotateCcw,
   Sparkles,
   Search,
+  Calendar,
+  FileQuestion,
+  BarChart3,
+  Sliders,
+  Trophy,
+  Lock,
 } from 'lucide-react';
+import { GestaoCiclosPanel } from '../GestaoCiclosPanel';
+import { CadastroPerguntasPanel } from '../CadastroPerguntasPanel';
+import { EscalaGraficaPanel } from '../EscalaGraficaPanel';
+import { FatoresPesosPanel } from '../FatoresPesosPanel';
+import { ConsolidacaoPanel } from '../ConsolidacaoPanel';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiRecurso,
@@ -44,7 +55,16 @@ import type { ColumnDef } from '@tanstack/react-table';
 
 const api = new SysgovApi();
 
-type CadSubTab = 'julgamento' | 'sessoes' | 'comissao' | 'fatores';
+type CadSubTab =
+  | 'julgamento'
+  | 'sessoes'
+  | 'comissao'
+  | 'ciclos'
+  | 'perguntas'
+  | 'escalas'
+  | 'pesos'
+  | 'consolidacao'
+  | 'homologacao';
 
 export const PortalCadView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CadSubTab>('julgamento');
@@ -280,6 +300,36 @@ export const PortalCadView: React.FC = () => {
       icon: <ShieldCheck className="h-4 w-4" />,
       badge: comissoes.length,
     },
+    {
+      key: 'ciclos',
+      label: 'Ciclos Anuais',
+      icon: <Calendar className="h-4 w-4" />,
+    },
+    {
+      key: 'perguntas',
+      label: 'Perguntas & Fatores',
+      icon: <FileQuestion className="h-4 w-4" />,
+    },
+    {
+      key: 'escalas',
+      label: 'Escalas Gráficas (Chiavenato)',
+      icon: <BarChart3 className="h-4 w-4" />,
+    },
+    {
+      key: 'pesos',
+      label: 'Pesos dos Fatores (100%)',
+      icon: <Sliders className="h-4 w-4" />,
+    },
+    {
+      key: 'consolidacao',
+      label: 'Consolidação NFC Trienal',
+      icon: <Trophy className="h-4 w-4" />,
+    },
+    {
+      key: 'homologacao',
+      label: 'Homologação Final',
+      icon: <Lock className="h-4 w-4" />,
+    },
   ];
 
   return (
@@ -460,6 +510,77 @@ export const PortalCadView: React.FC = () => {
             ))}
           </div>
         </div>
+      )}
+
+      {/* ── SUB-ABA 4: GESTÃO DE CICLOS 12 MESES ─────────────────────── */}
+      {activeTab === 'ciclos' && <GestaoCiclosPanel />}
+
+      {/* ── SUB-ABA 5: CADASTRO DE PERGUNTAS & FATORES ─────────────────── */}
+      {activeTab === 'perguntas' && <CadastroPerguntasPanel />}
+
+      {/* ── SUB-ABA 6: ESCALAS GRÁFICAS (CHIAVENATO) ────────────────────── */}
+      {activeTab === 'escalas' && (
+        <div className="space-y-4 p-1">
+          <EscalaGraficaPanel />
+        </div>
+      )}
+
+      {/* ── SUB-ABA 7: PESOS DOS FATORES (100%) ─────────────────────────── */}
+      {activeTab === 'pesos' && (
+        <div className="space-y-4 p-1">
+          <FatoresPesosPanel />
+        </div>
+      )}
+
+      {/* ── SUB-ABA 8: CONSOLIDAÇÃO NFC TRIENAL ─────────────────────────── */}
+      {activeTab === 'consolidacao' && (
+        <div className="space-y-4 p-1">
+          <ConsolidacaoPanel />
+        </div>
+      )}
+
+      {/* ── SUB-ABA 9: HOMOLOGAÇÃO FINAL DO CICLO ───────────────────────── */}
+      {activeTab === 'homologacao' && (
+        <Card className="border-primary/30 p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <Lock className="h-5 w-5 text-primary" />
+            <div>
+              <h3 className="text-base font-bold text-foreground">Homologação Final em Lote & Despacho Outbox (RN-C07 a RN-C09)</h3>
+              <p className="text-xs text-muted-foreground">
+                Encerramento oficial do ciclo com assinatura irrevogável da comissão e publicação para folha de pagamento.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg bg-muted/50 border border-border text-xs space-y-2">
+            <div className="font-semibold text-foreground flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Critérios Obrigatórios para Homologação:
+            </div>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1">
+              <li>Todas as avaliações do ciclo devem estar concluídas pelas chefias imediatas.</li>
+              <li>Nenhum recurso administrativo pode estar com status pendente de deliberação pela CAD.</li>
+              <li>A homologação tornará todas as notas definitivas e imutáveis, selando a ata final com SHA-256.</li>
+            </ul>
+          </div>
+
+          <Button
+            size="md"
+            className="font-bold"
+            onClick={async () => {
+              if (confirm('Deseja homologar em lote todas as avaliações deste ciclo? Todas as notas se tornarão imutáveis.')) {
+                try {
+                  const res = await api.capd.homologarCiclo(1);
+                  alert(res.message || 'Ciclo homologado com sucesso! Evento Outbox gerado.');
+                } catch (e: any) {
+                  alert(e?.response?.data?.message || e?.message || 'Falha ao homologar ciclo.');
+                }
+              }
+            }}
+          >
+            Homologar Ciclo e Selar Atas da Comissão
+          </Button>
+        </Card>
       )}
 
       {/* ── MODAL DE JULGAMENTO COMPARATIVO EM 3 COLUNAS ─────────────── */}

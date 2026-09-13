@@ -90,6 +90,9 @@ export type ApiAvaliacao = {
   homologada_em?: string | null;
   ciclo?: ApiCiclo;
   servidor?: ApiServidor;
+  servidorData?: ApiServidor;
+  servidor_data?: ApiServidor;
+  avaliador?: { id: number; name: string; email: string };
   periodo_inicio?: string | null;
   periodo_fim?: string | null;
   dias_exercicio?: number | null;
@@ -211,10 +214,12 @@ export type VotarRecursoInput = {
 export type ApiServidor = {
   id: number;
   tenant_id: number;
+  user_id?: number | null;
   matricula: string;
   cpf: string;
   pis_pasep?: string | null;
   nome_completo: string;
+  name?: string | null;
   nome_social?: string | null;
   email?: string | null;
   telefone?: string | null;

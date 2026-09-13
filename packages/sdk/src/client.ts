@@ -120,6 +120,7 @@ export class SysgovApi implements ApiRequester {
         status: response.status,
         data: errorBody,
       };
+      throw error;
     }
     return response.json() as Promise<T>;
   }

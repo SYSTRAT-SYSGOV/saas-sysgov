@@ -47,8 +47,30 @@ final class AvaliacaoController extends Controller
         $tenantId  = (int) app(TenantContext::class)->id();
         $avaliador = $request->user();
 
-        $query = Avaliacao::with(['ciclo:id,nome,ano_referencia', 'recursos'])
-            ->where('avaliador_id', $avaliador->id);
+        $query = Avaliacao::with([
+            'ciclo:id,nome,ano_referencia',
+            'recursos',
+            'servidor:id,name,email',
+            'servidorData',
+            'avaliador:id,name,email',
+        ]);
+
+        if ($request->filled('avaliador_id')) {
+            $query->where('avaliador_id', (int) $request->query('avaliador_id'));
+        } else {
+            $isAdminOrGestor = $avaliador && (
+                $avaliador->is_platform_admin ||
+                collect(['admin_tenant', 'admin', 'gestor_rh', 'root', 'comissao_capd'])->some(fn ($r) => $avaliador->hasRole($r))
+            );
+
+            if (! $isAdminOrGestor) {
+                // Se for avaliador com atribuições, filtra as dele; se não tiver nenhuma, não trava query vazia
+                $temAvaliacoes = Avaliacao::where('avaliador_id', $avaliador->id)->exists();
+                if ($temAvaliacoes) {
+                    $query->where('avaliador_id', $avaliador->id);
+                }
+            }
+        }
 
         if ($cicloId = $request->query('ciclo_id')) {
             $query->where('ciclo_id', (int) $cicloId);

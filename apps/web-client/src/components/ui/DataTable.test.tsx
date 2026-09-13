@@ -54,8 +54,13 @@ describe('DataTable', () => {
   });
 
   describe('pageSizeSelector', () => {
-    it('is hidden by default', () => {
+    it('is visible by default when pagination is active', () => {
       render(<DataTable columns={columns} data={data} pageSize={10} />);
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    it('can be hidden with pageSizeSelector={false}', () => {
+      render(<DataTable columns={columns} data={data} pageSize={10} pageSizeSelector={false} />);
       expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     });
 

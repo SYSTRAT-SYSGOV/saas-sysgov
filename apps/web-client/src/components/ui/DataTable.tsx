@@ -19,6 +19,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -283,8 +285,8 @@ export function DataTable<TData, TValue>({
   className,
   fixedLayout = false,
   resizableColumns = false,
-  pageSizeSelector = false,
-  pageSizeOptions = [10, 20, 30, 50, 100],
+  pageSizeSelector = true,
+  pageSizeOptions = [10, 20, 50, 100],
   exportable = false,
   exportFileName = 'export',
   exportTitle,
@@ -324,7 +326,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className={cn('space-y-3', className)}>
-      {(searchable || pageSizeSelector || exportable) && (
+      {(searchable || exportable) && (
         <div className="flex flex-wrap items-center gap-3">
           {searchable && (
             <div className="relative min-w-[200px] flex-1">
@@ -336,33 +338,16 @@ export function DataTable<TData, TValue>({
               />
             </div>
           )}
-          <div className="ml-auto flex items-center gap-3">
-            {pageSizeSelector && (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                Exibir
-                <select
-                  value={table.getState().pagination.pageSize}
-                  onChange={(e) => table.setPageSize(Number(e.target.value))}
-                  className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {pageSizeOptions.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-                por página
-              </label>
-            )}
-            {exportable && (
+          {exportable && (
+            <div className="ml-auto flex items-center gap-3">
               <ExportMenu
                 rows={table.getFilteredRowModel().rows}
                 columns={table.getAllLeafColumns()}
                 filename={exportFileName}
                 title={exportTitle}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -370,22 +355,16 @@ export function DataTable<TData, TValue>({
         <table
           className={cn('w-full text-sm', useFixedLayout && 'table-fixed')}
           style={
-            resizableColumns
+            useFixedLayout
               ? {
                   // Largura mínima = soma dos `size` das colunas visíveis.
-                  // Sem isso, o table-fixed + colgroup em % força a tabela a
-                  // sempre caber nos 100% do container (a div com
-                  // overflow-x-auto), então em telas estreitas (celular) as
-                  // colunas encolhiam além do conteúdo (botões, badges,
-                  // texto) e esse conteúdo passava a vazar por cima das
-                  // colunas vizinhas em vez de a tabela simplesmente rolar
-                  // na horizontal. Com o minWidth, a tabela mantém as
-                  // colunas na largura configurada e é a div externa que
-                  // ganha a barra de rolagem horizontal.
+                  // Sem isso, o table-fixed força a tabela a caber nos 100%
+                  // do container esmagando as colunas e fazendo textos e badges
+                  // vazarem por cima das colunas vizinhas.
                   minWidth: table
                     .getVisibleLeafColumns()
                     .filter((col) => !col.columnDef.meta?.exportOnly)
-                    .reduce((sum, col) => sum + col.getSize(), 0),
+                    .reduce((sum, col) => sum + (col.columnDef.size || col.getSize() || 130), 0),
                 }
               : undefined
           }
@@ -513,30 +492,85 @@ export function DataTable<TData, TValue>({
         </table>
       </div>
 
-      {pagination && !loading && table.getRowModel().rows.length > 0 && (
-        <div className="flex items-center justify-between px-2">
-          <span className="text-xs text-muted-foreground">
-            Página <span className="font-bold text-foreground">{table.getState().pagination.pageIndex + 1}</span> de{' '}
-            <span className="font-bold text-foreground">{table.getPageCount()}</span> ({data.length} registros)
-          </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" /> Anterior
-            </button>
-            <button
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Próxima <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+      {pagination && !loading && data.length > 0 && (() => {
+        const pageIndex = table.getState().pagination.pageIndex;
+        const currentPageSize = table.getState().pagination.pageSize;
+        const totalRows = table.getFilteredRowModel().rows.length;
+        const startRow = totalRows === 0 ? 0 : pageIndex * currentPageSize + 1;
+        const endRow = Math.min((pageIndex + 1) * currentPageSize, totalRows);
+        const pageCount = table.getPageCount() || 1;
+
+        return (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-1 text-xs">
+            <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+              {pageSizeSelector && (
+                <label className="flex items-center gap-1.5">
+                  <span>Exibir</span>
+                  <select
+                    value={currentPageSize}
+                    onChange={(e) => table.setPageSize(Number(e.target.value))}
+                    className="rounded-lg border border-input bg-background px-2 py-1 text-xs font-mono tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+                  >
+                    {pageSizeOptions.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                  <span>por página</span>
+                </label>
+              )}
+
+              <span className="font-mono tabular-nums text-muted-foreground">
+                Mostrando <strong className="text-foreground">{startRow}</strong> a{' '}
+                <strong className="text-foreground">{endRow}</strong> ({totalRows} registros)
+                {data.length !== totalRows && (
+                  <span className="opacity-75"> (filtrados de {data.length})</span>
+                )}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => table.setPageIndex(0)}
+                disabled={!table.getCanPreviousPage()}
+                title="Primeira página"
+                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+              >
+                <ChevronsLeft className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 h-8 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+              </button>
+
+              <span className="px-2 font-mono tabular-nums text-xs text-muted-foreground">
+                Página <strong className="text-foreground">{pageIndex + 1}</strong> de{' '}
+                <strong className="text-foreground">{pageCount}</strong>
+              </span>
+
+              <button
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 h-8 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Próxima <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => table.setPageIndex(pageCount - 1)}
+                disabled={!table.getCanNextPage()}
+                title="Última página"
+                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+              >
+                <ChevronsRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

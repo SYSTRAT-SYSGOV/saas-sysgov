@@ -21,6 +21,17 @@ final class DiarioBordoPolicy
 {
     use HandlesAuthorization;
 
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->is_platform_admin) {
+            if ($ability !== 'create') {
+                return true;
+            }
+        }
+
+        return null;
+    }
+
     public function create(User $user, int $servidorId): bool
     {
         // Avaliador não pode registrar CIT para si mesmo
@@ -28,8 +39,19 @@ final class DiarioBordoPolicy
             return false;
         }
 
-        return $user->hasPermissionTo('capd.diario_bordo.criar')
-            || $user->hasRole(['admin_tenant', 'gestor_rh', 'avaliador_capd']);
+        if ($user->is_platform_admin) {
+            return true;
+        }
+
+        try {
+            if ($user->hasRole(['admin_tenant', 'admin', 'gestor_rh', 'avaliador_capd', 'avaliador', 'chefia', 'membro_comissao'])) {
+                return true;
+            }
+
+            return $user->hasPermissionTo('capd.diario_bordo.criar');
+        } catch (\Throwable) {
+            return (bool) ($user->is_platform_admin || $user->roles()->whereIn('name', ['admin_tenant', 'admin', 'gestor_rh', 'avaliador_capd', 'avaliador', 'chefia'])->exists());
+        }
     }
 
     public function view(User $user, DiarioBordo $diarioBordo): bool

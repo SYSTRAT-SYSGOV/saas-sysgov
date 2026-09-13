@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Http\Controllers;
 
+use App\Models\User;
 use App\Http\Controllers\Controller;
 use App\Support\AuditLogger;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Modules\Capd\Models\CicloAvaliacao;
 use Modules\Capd\Models\DiarioBordo;
 use Modules\Capd\Models\Evidencia;
 use Modules\Capd\Models\FatorAvaliacao;
+use Modules\Capd\Models\Servidor;
 use Modules\Capd\Policies\DiarioBordoPolicy;
 
 /**
@@ -40,33 +43,31 @@ final class DiarioBordoController extends Controller
         $avaliador = $request->user();
 
         $query = DiarioBordo::with(['fator:id,codigo,nome', 'evidencias'])
-            ->where('avaliador_id', $avaliador->id);
+            ->where('tenant_id', $tenantId);
 
-        // Filtro opcional por servidor
-        if ($servidorId = $request->query('servidor_id')) {
-            $query->where('servidor_id', (int) $servidorId);
+        // Filtro por servidor avaliado
+        if ($request->filled('servidor_id')) {
+            $query->where('servidor_id', $request->input('servidor_id'));
         }
 
-        // Filtro opcional por ciclo (padrão: ciclo mais recente não encerrado)
-        if ($cicloId = $request->query('ciclo_id')) {
-            $query->where('ciclo_id', (int) $cicloId);
-        } else {
-            $cicloAtivo = CicloAvaliacao::where('status', CicloAvaliacao::STATUS_EM_AVALIACAO)
-                ->latest()
-                ->value('id');
-            if ($cicloAtivo) {
-                $query->where('ciclo_id', $cicloAtivo);
-            }
+        // Filtro por ciclo
+        if ($request->filled('ciclo_id')) {
+            $query->where('ciclo_id', $request->input('ciclo_id'));
         }
 
-        if ($tipo = $request->query('tipo')) {
-            $query->where('tipo', $tipo);
+        // Filtro por tipo (positivo/negativo)
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->input('tipo'));
         }
 
-        $registros = $query->latest('data_ocorrencia')
-            ->paginate((int) $request->query('per_page', 25));
+        // Servidor comum só enxerga seus próprios registros
+        if ($avaliador && ! $avaliador->hasRole(['admin_tenant', 'gestor_rh', 'avaliador_capd', 'membro_comissao'])) {
+            $query->where('servidor_id', $avaliador->id);
+        }
 
-        return response()->json($registros);
+        $incidentes = $query->latest('data_ocorrencia')->paginate(20);
+
+        return response()->json($incidentes);
     }
 
     // ── POST /diario-bordo ────────────────────────────────────────────
@@ -76,6 +77,52 @@ final class DiarioBordoController extends Controller
         $tenantId  = (int) app(TenantContext::class)->id();
         $avaliador = $request->user();
 
+        // ── 1. Resolução flexível de servidor_id (suporta capd_servidores.id e users.id)
+        $inputServidorId = (int) $request->input('servidor_id');
+        $servidorRecord = Servidor::withoutGlobalScope('tenant')
+            ->where('tenant_id', $tenantId)
+            ->where(function ($q) use ($inputServidorId) {
+                $q->where('id', $inputServidorId)
+                  ->orWhere('user_id', $inputServidorId);
+            })->first();
+
+        $resolvedUserId = $servidorRecord?->user_id ?? $inputServidorId;
+
+        if ($servidorRecord && ! $servidorRecord->user_id) {
+            $user = User::firstOrCreate(
+                ['email' => $servidorRecord->email ?: "servidor.{$servidorRecord->matricula}@{$tenantId}.gov.br"],
+                ['name' => $servidorRecord->nome_completo, 'password' => Hash::make('sysgov@2026')]
+            );
+            $user->tenants()->syncWithoutDetaching([$tenantId => ['status' => 'active', 'is_primary' => true]]);
+            $servidorRecord->update(['user_id' => $user->id]);
+            $resolvedUserId = (int) $user->id;
+        }
+
+        // ── 2. Resolução de ciclo_id ativo caso omitido ou homologado
+        $inputCicloId = (int) $request->input('ciclo_id');
+        $ciclo = CicloAvaliacao::where('tenant_id', $tenantId)->find($inputCicloId);
+
+        if (! $ciclo || in_array($ciclo->status, [CicloAvaliacao::STATUS_HOMOLOGADO, CicloAvaliacao::STATUS_ENCERRADO], true)) {
+            $cicloAtivo = CicloAvaliacao::where('tenant_id', $tenantId)
+                ->whereIn('status', [CicloAvaliacao::STATUS_EM_AVALIACAO, CicloAvaliacao::STATUS_ABERTO, CicloAvaliacao::STATUS_PLANEJAMENTO, CicloAvaliacao::STATUS_PLANEJADO])
+                ->latest('id')
+                ->first();
+
+            if ($cicloAtivo) {
+                $ciclo = $cicloAtivo;
+            }
+        }
+
+        if (! $ciclo) {
+            $ciclo = CicloAvaliacao::where('tenant_id', $tenantId)->latest('id')->first();
+        }
+
+        // Merge dos valores resolvidos para validação consistente
+        if ($ciclo) {
+            $request->merge(['ciclo_id' => $ciclo->id]);
+        }
+        $request->merge(['servidor_id' => $resolvedUserId]);
+
         $validated = $request->validate([
             'ciclo_id'       => ['required', 'integer', 'exists:capd_ciclos,id'],
             'servidor_id'    => ['required', 'integer', 'exists:users,id'],
@@ -83,17 +130,24 @@ final class DiarioBordoController extends Controller
             'tipo'           => ['required', 'string', 'in:positivo,negativo'],
             'data_ocorrencia'=> ['required', 'date', 'before_or_equal:today'],
             'descricao_fato' => ['required', 'string', 'min:30', 'max:5000'],
+        ], [
+            'descricao_fato.min' => 'A descrição circunstanciada do fato deve conter no mínimo 30 caracteres para fundamentar a avaliação.',
+            'data_ocorrencia.before_or_equal' => 'A data da ocorrência não pode ser superior à data de hoje.',
+            'servidor_id.exists' => 'O servidor selecionado não possui conta de usuário válida no sistema.',
         ]);
 
-        // ── Política: avaliador deve ser superior imediato do servidor ─
-        $this->authorize('create', [DiarioBordo::class, $validated['servidor_id']]);
+        // ── Política: avaliador deve ter permissão ou ser superior imediato
+        abort_unless(
+            $avaliador && $avaliador->can('create', [DiarioBordo::class, $validated['servidor_id']]),
+            403,
+            'Você não possui permissão para registrar incidentes no Diário de Bordo para este servidor.'
+        );
 
-        // ── Garante que o ciclo está em avaliação ─────────────────────
-        $ciclo = CicloAvaliacao::findOrFail($validated['ciclo_id']);
+        // ── Garante que o ciclo não está arquivado ou encerrado
         abort_if(
-            $ciclo->status !== CicloAvaliacao::STATUS_EM_AVALIACAO,
+            in_array($ciclo->status, [CicloAvaliacao::STATUS_HOMOLOGADO, CicloAvaliacao::STATUS_ENCERRADO], true),
             422,
-            'O ciclo não está em período de avaliação. Não é possível registrar incidentes.'
+            'O ciclo de avaliação selecionado já foi homologado ou encerrado. Não é possível registrar novos incidentes.'
         );
 
         // ── Garante que o fator aceita CIT (não automatizado) ─────────

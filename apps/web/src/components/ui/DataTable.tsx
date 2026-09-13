@@ -13,7 +13,17 @@ import type {
   SortingState,
   VisibilityState,
 } from '@tanstack/react-table';
-import { ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Loader2,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface DataTableProps<TData, TValue> {
@@ -26,6 +36,8 @@ export interface DataTableProps<TData, TValue> {
   onRowClick?: (row: TData) => void;
   pagination?: boolean;
   pageSize?: number;
+  pageSizeSelector?: boolean;
+  pageSizeOptions?: number[];
   className?: string;
   paginationState?: {
     currentPage: number;
@@ -33,6 +45,7 @@ export interface DataTableProps<TData, TValue> {
     onPageChange: (page: number) => void;
     total: number;
     perPage: number;
+    onPerPageChange?: (perPage: number) => void;
   };
   search?: {
     value: string;
@@ -51,6 +64,8 @@ export function DataTable<TData, TValue>({
   onRowClick,
   pagination = true,
   pageSize = 10,
+  pageSizeSelector = true,
+  pageSizeOptions = [10, 20, 50, 100],
   className,
   paginationState,
   search,
@@ -181,30 +196,101 @@ export function DataTable<TData, TValue>({
         </table>
       </div>
 
-      {pagination && paginationState && !loading && table.getRowModel().rows.length > 0 && (
-        <div className="flex items-center justify-between px-2">
-          <span className="text-xs text-muted-foreground">
-            Página <span className="font-bold text-foreground">{paginationState.currentPage}</span> de{' '}
-            <span className="font-bold text-foreground">{paginationState.totalPages}</span> ({paginationState.total} registros)
-          </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => handlePageChange(paginationState.currentPage - 1)}
-              disabled={paginationState.currentPage <= 1}
-              className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" /> Anterior
-            </button>
-            <button
-              onClick={() => handlePageChange(paginationState.currentPage + 1)}
-              disabled={paginationState.currentPage >= paginationState.totalPages}
-              className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Próxima <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+      {pagination && !loading && (paginationState ? paginationState.total > 0 : data.length > 0) && (() => {
+        const isRemote = Boolean(paginationState);
+        const currentPage = isRemote ? paginationState!.currentPage : table.getState().pagination.pageIndex + 1;
+        const totalPages = isRemote ? paginationState!.totalPages : (table.getPageCount() || 1);
+        const currentPerPage = isRemote ? paginationState!.perPage : table.getState().pagination.pageSize;
+        const totalRows = isRemote ? paginationState!.total : table.getFilteredRowModel().rows.length;
+        const startRow = totalRows === 0 ? 0 : (currentPage - 1) * currentPerPage + 1;
+        const endRow = Math.min(currentPage * currentPerPage, totalRows);
+
+        const canPrev = isRemote ? currentPage > 1 : table.getCanPreviousPage();
+        const canNext = isRemote ? currentPage < totalPages : table.getCanNextPage();
+
+        const goToPage = (p: number) => {
+          if (isRemote) {
+            paginationState!.onPageChange(p);
+          } else {
+            table.setPageIndex(p - 1);
+          }
+        };
+
+        const changePageSize = (size: number) => {
+          if (paginationState?.onPerPageChange) {
+            paginationState.onPerPageChange(size);
+          }
+          table.setPageSize(size);
+        };
+
+        return (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-1 text-xs">
+            <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+              {pageSizeSelector && (
+                <label className="flex items-center gap-1.5">
+                  <span>Exibir</span>
+                  <select
+                    value={currentPerPage}
+                    onChange={(e) => changePageSize(Number(e.target.value))}
+                    className="rounded-lg border border-input bg-background px-2 py-1 text-xs font-mono tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+                  >
+                    {pageSizeOptions.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                  <span>por página</span>
+                </label>
+              )}
+
+              <span className="font-mono tabular-nums text-muted-foreground">
+                Mostrando <strong className="text-foreground">{startRow}</strong> a{' '}
+                <strong className="text-foreground">{endRow}</strong> ({totalRows} registros)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => goToPage(1)}
+                disabled={!canPrev}
+                title="Primeira página"
+                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+              >
+                <ChevronsLeft className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={!canPrev}
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 h-8 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+              </button>
+
+              <span className="px-2 font-mono tabular-nums text-xs text-muted-foreground">
+                Página <strong className="text-foreground">{currentPage}</strong> de{' '}
+                <strong className="text-foreground">{totalPages}</strong>
+              </span>
+
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={!canNext}
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 h-8 text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Próxima <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => goToPage(totalPages)}
+                disabled={!canNext}
+                title="Última página"
+                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border text-xs disabled:opacity-40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+              >
+                <ChevronsRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

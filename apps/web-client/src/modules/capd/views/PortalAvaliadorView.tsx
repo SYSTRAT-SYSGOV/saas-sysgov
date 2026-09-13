@@ -24,7 +24,6 @@ import {
   MessageSquare,
   Sparkles,
   ShieldAlert,
-  ChevronRight,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
@@ -38,6 +37,8 @@ import { Tabs, type TabsItem } from '@/components/ui/Tabs';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ScreenState } from '@/components/ui/ScreenState';
+import { DataTable } from '@/components/ui/DataTable';
+import type { ColumnDef } from '@tanstack/react-table';
 
 const api = new SysgovApi();
 
@@ -50,6 +51,7 @@ export const PortalAvaliadorView: React.FC = () => {
   const [incidentes, setIncidentes] = useState<ApiDiarioBordo[]>([]);
   const [recursos, setRecursos] = useState<ApiRecurso[]>([]);
   const [servidores, setServidores] = useState<ApiServidor[]>([]);
+  const [selectedAvaliadorId, setSelectedAvaliadorId] = useState<string>('todos');
 
   // Modal Novo Incidente CIT
   const [modalCitOpen, setModalCitOpen] = useState<boolean>(false);
@@ -84,11 +86,17 @@ export const PortalAvaliadorView: React.FC = () => {
     type: 'success' | 'warning' | 'error';
   } | null>(null);
 
-  const carregarDadosAvaliador = useCallback(async () => {
+  const carregarDadosAvaliador = useCallback(async (avaliadorId?: string) => {
     setLoading(true);
     try {
+      const activeAvaliadorId = avaliadorId !== undefined ? avaliadorId : selectedAvaliadorId;
+      const params: { per_page: number; avaliador_id?: number } = { per_page: 100 };
+      if (activeAvaliadorId && activeAvaliadorId !== 'todos') {
+        params.avaliador_id = Number(activeAvaliadorId);
+      }
+
       const [resAv, resCit, resRec, resServ] = await Promise.all([
-        api.capd.listAvaliacoes().catch(() => ({ data: [] })),
+        api.capd.listAvaliacoes(params).catch(() => ({ data: [] })),
         api.capd.listDiarioBordo().catch(() => ({ data: [] })),
         api.capd.listRecursos().catch(() => ({ data: [] })),
         api.capd.listServidores().catch(() => ({ data: [] })),
@@ -97,34 +105,78 @@ export const PortalAvaliadorView: React.FC = () => {
       setAvaliacoes(resAv.data || []);
       setIncidentes(resCit.data || []);
       setRecursos(resRec.data || []);
-      setServidores(Array.isArray(resServ) ? resServ : (resServ.data || []));
+      const servList = Array.isArray(resServ) ? resServ : (resServ.data || []);
+      setServidores(servList);
 
-      if (resServ.data?.[0]) {
-        setCitServidorId(String(resServ.data[0].id));
+      if (servList[0] && !citServidorId) {
+        setCitServidorId(String(servList[0].user_id || servList[0].id));
       }
     } catch (e) {
       console.error('Erro ao carregar dados do avaliador:', e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedAvaliadorId, citServidorId]);
 
   useEffect(() => {
     carregarDadosAvaliador();
   }, [carregarDadosAvaliador]);
 
+  const chefiasOptions = React.useMemo(() => {
+    const map = new Map<number, string>();
+    avaliacoes.forEach((av) => {
+      if (av.avaliador_id && av.avaliador?.name) {
+        map.set(av.avaliador_id, av.avaliador.name);
+      }
+    });
+    servidores.forEach((s) => {
+      if (s.chefia_imediata_id && !map.has(s.chefia_imediata_id)) {
+        const lotacao = s.lotacao_fisica || s.orgao_lotacao;
+        map.set(s.chefia_imediata_id, lotacao ? `Chefia: ${lotacao}` : `Chefia #${s.chefia_imediata_id}`);
+      }
+    });
+
+    const opts = [{ value: 'todos', label: 'Todas as Chefias / Departamentos' }];
+    map.forEach((label, id) => {
+      opts.push({ value: String(id), label });
+    });
+    return opts;
+  }, [avaliacoes, servidores]);
+
+  const handleAvaliadorChange = (val: string) => {
+    setSelectedAvaliadorId(val);
+    carregarDadosAvaliador(val);
+  };
+
   const handleSalvarCit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!citServidorId) return;
+
+    if (citDescricao.trim().length < 30) {
+      setFeedback({
+        open: true,
+        type: 'warning',
+        title: 'Descrição Insuficiente',
+        message: 'A descrição circunstanciada do fato deve conter no mínimo 30 caracteres para fundamentar a avaliação conforme o art. 24 da Lei nº 1.704/2006.',
+      });
+      return;
+    }
+
     setSalvandoCit(true);
     try {
+      const servidorSelecionado = servidores.find(
+        (s) => String(s.user_id) === citServidorId || String(s.id) === citServidorId
+      );
+      const targetServidorId = servidorSelecionado?.user_id || servidorSelecionado?.id || Number(citServidorId);
+      const cicloAtivoId = avaliacoes[0]?.ciclo_id || 3;
+
       await api.capd.createDiarioBordo({
-        ciclo_id: 1,
-        servidor_id: Number(citServidorId),
-        fator_id: citFatorId,
+        ciclo_id: cicloAtivoId,
+        servidor_id: Number(targetServidorId),
+        fator_id: Number(citFatorId),
         tipo: citTipo,
         data_ocorrencia: citDataOcorrencia,
-        descricao_fato: citDescricao,
+        descricao_fato: citDescricao.trim(),
       });
 
       setModalCitOpen(false);
@@ -142,7 +194,7 @@ export const PortalAvaliadorView: React.FC = () => {
         open: true,
         type: 'error',
         title: 'Erro ao Gravar Apontamento',
-        message: err?.response?.data?.message || err?.message || 'Falha ao salvar incidente.',
+        message: err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Falha ao salvar incidente.',
       });
     } finally {
       setSalvandoCit(false);
@@ -214,6 +266,271 @@ export const PortalAvaliadorView: React.FC = () => {
     }
   };
 
+  const columnsAvaliacoes: ColumnDef<ApiAvaliacao>[] = React.useMemo(
+    () => [
+      {
+        id: 'matricula',
+        header: 'Matrícula',
+        size: 110,
+        accessorFn: (row) => row.servidorData?.matricula || (row.servidor as any)?.matricula || `#${row.servidor_id}`,
+        cell: ({ row }) => {
+          const mat = row.original.servidorData?.matricula || (row.original.servidor as any)?.matricula;
+          return (
+            <span className="font-mono text-xs font-bold text-primary tabular-nums px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
+              {mat ? `Matr. ${mat}` : `#${row.original.servidor_id}`}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'servidor',
+        header: 'Servidor Público',
+        size: 220,
+        accessorFn: (row) =>
+          row.servidorData?.nome_completo ||
+          (row.servidor as any)?.nome_completo ||
+          (row.servidor as any)?.name ||
+          `Servidor #${row.servidor_id}`,
+        cell: ({ row }) => {
+          const srvData = row.original.servidorData || (row.original.servidor as any);
+          const nome =
+            srvData?.nome_completo ||
+            (row.original.servidor as any)?.name ||
+            `Servidor #${row.original.servidor_id}`;
+          const email = srvData?.email || (row.original.servidor as any)?.email;
+          return (
+            <div className="text-left space-y-0.5">
+              <div className="font-semibold text-xs text-foreground truncate" title={nome}>
+                {nome}
+              </div>
+              {email && (
+                <div className="text-[11px] text-muted-foreground truncate" title={email}>
+                  {email}
+                </div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'cargo',
+        header: 'Cargo Efetivo',
+        size: 180,
+        accessorFn: (row) => row.servidorData?.cargo_efetivo || '—',
+        cell: ({ row }) => {
+          const cargo = row.original.servidorData?.cargo_efetivo || '—';
+          return (
+            <div className="text-xs text-foreground/90 truncate text-left" title={cargo}>
+              {cargo}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'lotacao',
+        header: 'Lotação / Departamento',
+        size: 210,
+        accessorFn: (row) => row.servidorData?.lotacao_fisica || row.servidorData?.orgao_lotacao || '—',
+        cell: ({ row }) => {
+          const lotacao = row.original.servidorData?.lotacao_fisica || row.original.servidorData?.orgao_lotacao || '—';
+          const orgao = row.original.servidorData?.orgao_lotacao;
+          return (
+            <div className="text-left space-y-0.5">
+              <div className="text-xs text-foreground truncate" title={lotacao}>
+                {lotacao}
+              </div>
+              {orgao && orgao !== lotacao && (
+                <div className="text-[10px] text-muted-foreground truncate" title={orgao}>
+                  {orgao}
+                </div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'chefia',
+        header: 'Chefia Imediata',
+        size: 170,
+        accessorFn: (row) => row.avaliador?.name || '—',
+        cell: ({ row }) => {
+          const chefia = row.original.avaliador?.name || '—';
+          return (
+            <div className="text-xs text-muted-foreground truncate text-left" title={chefia}>
+              {chefia}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'ciclo',
+        header: 'Ciclo',
+        size: 110,
+        accessorFn: (row) => row.ciclo?.ano_referencia || row.ciclo_id,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            Ciclo #{row.original.ciclo_id} {row.original.ciclo?.ano_referencia ? `(${row.original.ciclo.ano_referencia})` : ''}
+          </span>
+        ),
+      },
+      {
+        id: 'nota_final',
+        header: 'Nota Nc',
+        size: 110,
+        accessorFn: (row) => (row.nota_final ? Number(row.nota_final) : 0),
+        cell: ({ row }) => {
+          const nota = row.original.nota_final;
+          if (!nota) return <span className="text-muted-foreground text-xs font-mono">—</span>;
+          const num = Number(nota);
+          const isAprovado = num >= 70;
+          return (
+            <span
+              className={`font-mono text-xs font-bold tabular-nums px-2 py-0.5 rounded ${
+                isAprovado
+                  ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10'
+                  : 'text-rose-600 dark:text-rose-400 bg-rose-500/10'
+              }`}
+            >
+              {num.toFixed(2)}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'status',
+        header: 'Situação',
+        size: 140,
+        accessorFn: (row) => (row.homologada ? 'Homologada' : row.data_conclusao ? 'Concluída' : 'Rascunho'),
+        cell: ({ row }) => {
+          const av = row.original;
+          if (av.homologada) {
+            return (
+              <Badge variant="success" className="text-[10px] whitespace-nowrap">
+                Homologada
+              </Badge>
+            );
+          }
+          if (av.data_conclusao) {
+            return <StatusChip label="Concluída" variant="success" />;
+          }
+          return <StatusChip label="Rascunho" variant="neutral" />;
+        },
+      },
+      {
+        id: 'devolutiva',
+        header: 'Devolutiva',
+        size: 130,
+        cell: ({ row }) => {
+          const av = row.original;
+          if (av.devolutiva_realizada) {
+            return (
+              <Badge variant="success" className="text-[10px] whitespace-nowrap">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Devolutiva OK
+              </Badge>
+            );
+          }
+          return <span className="text-[11px] text-muted-foreground font-medium">Pendente</span>;
+        },
+      },
+      {
+        id: 'actions',
+        header: 'Ações',
+        size: 150,
+        cell: ({ row }) => {
+          const av = row.original;
+          return (
+            <div className="flex items-center justify-end gap-1.5">
+              {!av.devolutiva_realizada && av.data_conclusao && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAvaliacaoId(av.id);
+                    setModalDevolutivaOpen(true);
+                  }}
+                >
+                  <Calendar className="h-3 w-3 mr-1 text-primary" />
+                  Devolutiva
+                </Button>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  const columnsCit: ColumnDef<ApiDiarioBordo>[] = React.useMemo(
+    () => [
+      {
+        id: 'data_ocorrencia',
+        header: 'Data Ocorrência',
+        size: 130,
+        accessorFn: (row) => row.data_ocorrencia,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            {new Date(row.original.data_ocorrencia).toLocaleDateString('pt-BR')}
+          </span>
+        ),
+      },
+      {
+        id: 'servidor',
+        header: 'Servidor',
+        size: 220,
+        accessorFn: (row) => row.servidor?.nome_completo || `Servidor #${row.servidor_id}`,
+        cell: ({ row }) => (
+          <span className="font-semibold text-xs text-foreground">
+            {row.original.servidor?.nome_completo || `Servidor #${row.original.servidor_id}`}
+          </span>
+        ),
+      },
+      {
+        id: 'tipo',
+        header: 'Tipo',
+        size: 130,
+        accessorFn: (row) => row.tipo,
+        cell: ({ row }) => (
+          <Badge
+            variant={row.original.tipo === 'positivo' ? 'success' : 'outline'}
+            className="text-[10px] uppercase font-bold"
+          >
+            {row.original.tipo === 'positivo' ? 'Positivo' : 'A Desenvolver'}
+          </Badge>
+        ),
+      },
+      {
+        id: 'fator',
+        header: 'Fator',
+        size: 160,
+        accessorFn: (row) => row.fator?.nome || `Fator #${row.fator_id}`,
+        cell: ({ row }) => (
+          <span className="text-xs text-foreground/80">
+            {row.original.fator?.nome || `Fator #${row.original.fator_id}`}
+          </span>
+        ),
+      },
+      {
+        id: 'descricao_fato',
+        header: 'Descrição do Fato Observado',
+        size: 360,
+        accessorFn: (row) => row.descricao_fato,
+        cell: ({ row }) => (
+          <span
+            className="text-xs text-muted-foreground leading-relaxed line-clamp-2 block text-left"
+            title={row.original.descricao_fato}
+          >
+            {row.original.descricao_fato}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
   const subTabItems: TabsItem<AvaliadorSubTab>[] = [
     { key: 'avaliacoes', label: 'Avaliações de Subordinados', icon: <UserCheck className="h-4 w-4" />, badge: avaliacoes.length },
     { key: 'cit', label: 'Diário de Bordo (CIT)', icon: <BookOpen className="h-4 w-4" />, badge: incidentes.length },
@@ -253,84 +570,45 @@ export const PortalAvaliadorView: React.FC = () => {
       {activeTab === 'avaliacoes' && (
         <div className="space-y-4">
           <Card className="gap-0 py-0 overflow-hidden">
-            <div className="p-4 border-b border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="p-4 border-b border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-foreground">Equipe Funcional para Avaliação Periódica</h3>
                 <p className="text-xs text-muted-foreground">
                   Notas extremas (&lt; 60 ou &gt; 90 pontos / Graus 1 e 5) são bloqueadas pela Trava Anti-Leniência se não houver CIT prévio.
                 </p>
               </div>
-              <Badge variant="outline" className="font-mono text-xs">
-                Nota de Corte: 70,00 pts
-              </Badge>
+              <div className="flex flex-wrap items-center gap-3">
+                {chefiasOptions.length > 1 && (
+                  <div className="w-72">
+                    <Select
+                      value={selectedAvaliadorId}
+                      onChange={handleAvaliadorChange}
+                      options={chefiasOptions}
+                      placeholder="Filtrar por Chefia..."
+                    />
+                  </div>
+                )}
+                <Badge variant="outline" className="font-mono text-xs whitespace-nowrap">
+                  Nota de Corte: 70,00 pts
+                </Badge>
+              </div>
             </div>
 
-            <div className="divide-y divide-border">
-              {avaliacoes.length === 0 ? (
-                <div className="p-12 text-center">
-                  <EmptyState
-                    icon={<UserCheck className="h-10 w-10 text-muted-foreground" />}
-                    title="Nenhuma avaliação pendente na sua chefia"
-                    description="Não constam servidores subordinados atribuídos para avaliação neste ciclo vigente."
-                  />
-                </div>
-              ) : (
-                avaliacoes.map((av) => (
-                  <div key={av.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-muted/10 transition-colors">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-primary">
-                          #{av.servidor_id}
-                        </span>
-                        <span className="font-semibold text-sm text-foreground">
-                          {av.servidor?.nome_completo || `Servidor #${av.servidor_id}`}
-                        </span>
-                        <StatusChip
-                          label={av.data_conclusao ? 'Concluída' : 'Rascunho'}
-                          variant={av.data_conclusao ? 'success' : 'neutral'}
-                        />
-                      </div>
-                      <div className="text-xs text-muted-foreground font-mono">
-                        Ciclo #{av.ciclo_id} {av.data_conclusao ? `| Concluída em: ${new Date(av.data_conclusao).toLocaleDateString('pt-BR')}` : ''}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      {av.nota_final && (
-                        <div className="text-right">
-                          <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Nota Nc</span>
-                          <span className="font-mono text-lg font-black text-primary tabular-nums">
-                            {Number(av.nota_final).toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        {!av.devolutiva_realizada && av.data_conclusao && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedAvaliacaoId(av.id);
-                              setModalDevolutivaOpen(true);
-                            }}
-                          >
-                            <Calendar className="h-3.5 w-3.5 mr-1.5 text-primary" />
-                            Registrar Devolutiva
-                          </Button>
-                        )}
-
-                        {av.devolutiva_realizada && (
-                          <Badge variant="success" className="text-xs">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Devolutiva OK
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+            <div className="p-4">
+              <DataTable
+                columns={columnsAvaliacoes}
+                data={avaliacoes}
+                loading={loading}
+                emptyText="Nenhuma avaliação pendente para a chefia selecionada."
+                searchable
+                searchPlaceholder="Buscar por matrícula, servidor, cargo, departamento..."
+                pageSize={10}
+                pageSizeSelector
+                fixedLayout
+                exportable
+                exportFileName="avaliacoes-equipe-chefia"
+                exportTitle="CAPD — Avaliações de Desempenho da Equipe Funcional"
+              />
             </div>
           </Card>
         </div>
@@ -339,44 +617,37 @@ export const PortalAvaliadorView: React.FC = () => {
       {/* ── Sub-Aba 2: Diário de Bordo Contínuo (CIT) ──────────────────── */}
       {activeTab === 'cit' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-muted/20 p-3 rounded-lg border border-border">
-            <div>
-              <h4 className="text-xs font-bold text-foreground">Fatos Observáveis Lançados</h4>
-              <p className="text-[11px] text-muted-foreground">
-                Mantenha apontamentos fáticos atualizados durante o ano para permitir a avaliação fidedigna da equipe.
-              </p>
-            </div>
-            <Button size="sm" onClick={() => setModalCitOpen(true)}>
-              <Plus className="h-4 w-4 mr-1.5" />
-              Novo Lançamento CIT
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {incidentes.map((inc) => (
-              <Card key={inc.id} className="p-4 border-border space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <Badge
-                      variant={inc.tipo === 'positivo' ? 'success' : 'outline'}
-                      className="text-[10px] uppercase"
-                    >
-                      {inc.tipo === 'positivo' ? 'Positivo' : 'A Desenvolver'}
-                    </Badge>
-                    <span className="font-semibold text-xs text-foreground ml-2">
-                      Servidor #{inc.servidor_id}
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                    {new Date(inc.data_ocorrencia).toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {inc.descricao_fato}
+          <Card className="gap-0 py-0 overflow-hidden">
+            <div className="p-4 border-b border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-bold text-foreground">Diário de Bordo — Fatos Observáveis (CIT)</h4>
+                <p className="text-xs text-muted-foreground">
+                  Mantenha apontamentos fáticos atualizados durante o ano para permitir a avaliação fidedigna da equipe.
                 </p>
-              </Card>
-            ))}
-          </div>
+              </div>
+              <Button size="sm" onClick={() => setModalCitOpen(true)}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Novo Lançamento CIT
+              </Button>
+            </div>
+
+            <div className="p-4">
+              <DataTable
+                columns={columnsCit}
+                data={incidentes}
+                loading={loading}
+                emptyText="Nenhum apontamento no Diário de Bordo registrado para esta equipe."
+                searchable
+                searchPlaceholder="Buscar por servidor, tipo, fator ou descrição..."
+                pageSize={10}
+                pageSizeSelector
+                fixedLayout
+                exportable
+                exportFileName="diario-de-bordo-cit"
+                exportTitle="CAPD — Diário de Bordo (Técnica do Incidente Crítico)"
+              />
+            </div>
+          </Card>
         </div>
       )}
 
@@ -502,55 +773,88 @@ export const PortalAvaliadorView: React.FC = () => {
               value={citServidorId}
               onChange={setCitServidorId}
               options={servidores.map((s) => ({
-                value: String(s.id),
-                label: `${s.nome_completo} (${s.matricula})`,
+                value: String(s.user_id || s.id),
+                label: `${s.nome_completo} (${s.cargo_efetivo || 'Servidor'}) — Mat: ${s.matricula}`,
               }))}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-foreground mb-1">Tipo de Incidente:</label>
               <Select
                 value={citTipo}
                 onChange={(val) => setCitTipo(val as 'positivo' | 'negativo')}
                 options={[
-                  { value: 'positivo', label: 'Fato Observável Positivo' },
-                  { value: 'negativo', label: 'Ponto a Desenvolver / Deficiência' },
+                  { value: 'positivo', label: '+ Positivo (Desempenho Notável)' },
+                  { value: 'negativo', label: '- Negativo (Ponto a Desenvolver)' },
                 ]}
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-foreground mb-1">Data da Ocorrência:</label>
-              <Input
-                type="date"
-                value={citDataOcorrencia}
-                onChange={(e) => setCitDataOcorrencia(e.target.value)}
-                required
+              <label className="block font-semibold text-foreground mb-1">Fator de Avaliação Qualitativo:</label>
+              <Select
+                value={String(citFatorId)}
+                onChange={(v) => setCitFatorId(Number(v))}
+                options={[
+                  { value: '3', label: 'F3 — Eficiência e Produtividade' },
+                  { value: '4', label: 'F4 — Comprometimento e Urbanidade' },
+                  { value: '5', label: 'F5 — Relacionamento Interpessoal' },
+                  { value: '6', label: 'F6 — Iniciativa e Resolução de Problemas' },
+                  { value: '7', label: 'F7 — Organização, Método e Cooperação' },
+                  { value: '8', label: 'F8 — Zelo Patrimonial' },
+                ]}
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-foreground mb-1">
-              Descrição Circunstanciada do Fato:
-            </label>
+            <label className="block font-semibold text-foreground mb-1">Data da Ocorrência do Fato:</label>
+            <Input
+              type="date"
+              max={new Date().toISOString().split('T')[0]}
+              value={citDataOcorrencia}
+              onChange={(e) => setCitDataOcorrencia(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="font-semibold text-foreground">
+                Descrição Circunstanciada do Fato (mínimo 30 caracteres):
+              </label>
+              <span className={`text-[11px] font-mono font-medium ${citDescricao.trim().length >= 30 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                {citDescricao.trim().length}/30 caracteres
+              </span>
+            </div>
             <textarea
               rows={4}
               value={citDescricao}
               onChange={(e) => setCitDescricao(e.target.value)}
-              placeholder="Descreva com clareza a conduta observável, contexto funcional e reflexos nas entregas do setor..."
+              placeholder="Descreva minuciosamente a conduta observável do servidor, o contexto funcional da ocorrência e o impacto concreto nas rotinas e entregas do setor público..."
               required
+              minLength={30}
               className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-primary focus:outline-hidden"
             />
+            {citDescricao.trim().length > 0 && citDescricao.trim().length < 30 && (
+              <p className="text-[11px] text-amber-500 mt-1">
+                Faltam {30 - citDescricao.trim().length} caracteres para atingir o mínimo legal exigido pelo art. 24 da Lei nº 1.704/2006.
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-3 border-t border-border">
             <Button variant="outline" size="sm" type="button" onClick={() => setModalCitOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="default" size="sm" type="submit" disabled={salvandoCit}>
+            <Button
+              variant="default"
+              size="sm"
+              type="submit"
+              disabled={salvandoCit || citDescricao.trim().length < 30}
+            >
               {salvandoCit ? 'Salvando...' : 'Gravar Apontamento CIT'}
             </Button>
           </div>
