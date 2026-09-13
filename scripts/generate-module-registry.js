@@ -117,6 +117,15 @@ const CORE_MODULE_MAP = {
     isAdminOnly: true,
     icon: 'Shield',
   },
+  capd: {
+    id: 'capd',
+    name: 'Comissão de Avaliação Periódica de Desempenho (CAPD)',
+    componentPath: '@/modules/capd/CapdModule',
+    routePath: 'capd',
+    routes: ['capd', 'capd/*'],
+    requiredPermission: 'capd.view',
+    icon: 'ClipboardCheck',
+  },
 };
 
 function capitalizeFirst(str) {

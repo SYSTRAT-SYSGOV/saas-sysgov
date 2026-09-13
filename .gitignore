@@ -31,4 +31,5 @@ apps/api/Modules/Procurement/app/
 
 # Editor / IDE
 .kilo/
+apps/api/public/storage
 

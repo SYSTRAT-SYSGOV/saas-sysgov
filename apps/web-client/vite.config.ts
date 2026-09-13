@@ -18,6 +18,9 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
     host: true,
+    watch: {
+      usePolling: true,
+    },
     proxy: {
       // Em Docker, aponte VITE_API_PROXY_TARGET para o serviço da API
       // (ex.: http://api:8000), já que 'localhost' dentro do container

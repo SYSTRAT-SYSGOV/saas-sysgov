@@ -14,6 +14,7 @@ use App\Console\Commands\ProcessOutbox;
 use App\Console\Commands\ExpireAccess;
 use App\Console\Commands\NotifyExpiringAccess;
 use Modules\Admin\Providers\AdminServiceProvider;
+use Modules\Capd\Providers\CapdServiceProvider;
 use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withProviders([
         AdminServiceProvider::class,
+        CapdServiceProvider::class,
         ContractsServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
@@ -44,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->alias([
             'tenant' => ResolveTenant::class,
+            'resolve.tenant' => ResolveTenant::class,
             'platform-admin' => EnsurePlatformAdmin::class,
             'module-access' => EnsureModuleAccess::class,
             'admin-tenant' => EnsureAdminTenant::class,

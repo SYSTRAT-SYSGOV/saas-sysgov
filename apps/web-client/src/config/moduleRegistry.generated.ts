@@ -15,6 +15,7 @@ const UsersComponent = lazy(() => import('@/modules/access/AccessManagement'));
 const MenuManagerComponent = lazy(() => import('@/modules/access/MenuManager'));
 const ModuleGranularityComponent = lazy(() => import('@/modules/access/ModuleGranularityManager'));
 const PermissionMatrixComponent = lazy(() => import('@/modules/access/PermissionMatrix'));
+const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
 const TestmoduleComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "TestModule", alias: "testmodule", description: "Módulo de negócio TestModule para a plataforma SYSGOV" }) }));
@@ -141,6 +142,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     requiredPermission: '',
     isAdminOnly: true,
     icon: 'Shield',
+  },
+  capd: {
+    id: 'capd',
+    name: "Comissão de Avaliação Periódica de Desempenho (CAPD)",
+    component: CapdComponent,
+    routePath: 'capd',
+    routes: ["capd","capd/*"],
+    requiredPermission: 'capd.view',
+    icon: 'ClipboardCheck',
   },
   client: {
     id: 'client',

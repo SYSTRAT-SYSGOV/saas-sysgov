@@ -12,6 +12,8 @@ import { ProfilePage } from '@/pages/ProfilePage';
 import { ConfiguracoesPage } from '@/pages/ConfiguracoesPage';
 import { Loader2 } from 'lucide-react';
 
+const CapdEmbedPage = React.lazy(() => import('@/modules/capd/CapdEmbedPage'));
+
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -72,6 +74,16 @@ export const AppRouter: React.FC = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/selecionar-tenant" element={<TenantSelectorPage />} />
       <Route path="/selecionar-orgao" element={<TenantSelectorPage />} />
+
+      {/* Standalone Headless Embed Route for Third-Party Systems */}
+      <Route
+        path="/capd/embed"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando módulo CAPD...</div>}>
+            <CapdEmbedPage />
+          </React.Suspense>
+        }
+      />
 
       {/* Protected AppShell Routes */}
       <Route

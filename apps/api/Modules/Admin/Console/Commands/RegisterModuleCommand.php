@@ -14,6 +14,8 @@ use Illuminate\Support\Str;
 use Modules\Admin\Models\MenuGroup;
 use Modules\Admin\Models\MenuItem;
 use Modules\Admin\Models\Module as PlatformModule;
+use Modules\Client\Models\ClientMenuGroup;
+use Modules\Client\Models\ClientMenuItem;
 
 final class RegisterModuleCommand extends Command
 {
@@ -63,17 +65,21 @@ final class RegisterModuleCommand extends Command
                 $platformModule->permissions()->sync($permissionIds);
             }
 
-            // 3. Criar/Atualizar grupos e itens de menu e associar
+            // 3. Criar/Atualizar grupos e itens de menu e associar (Painel Admin da Plataforma)
             $menuGroup = $this->registerModuleMenu($moduleConfig, $force, $dryRun);
             if (!$dryRun && $menuGroup !== null) {
                 $platformModule->menuGroup()->associate($menuGroup);
                 $platformModule->save();
             }
 
+            // 4. Criar/Atualizar itens no menu do cliente (Painel do Tenant / client_menu_items)
+            $this->registerClientMenu($moduleConfig, $dryRun);
+
             $this->info("✓ Módulo '{$moduleName}' registrado com sucesso!");
             $this->info("  - Catálogo: {$platformModule->name} (alias: {$platformModule->alias})");
             $this->info("  - Permissões: criadas/atualizadas e vinculadas");
-            $this->info("  - Menu: grupo ({$menuGroup?->name}) e itens vinculados");
+            $this->info("  - Menu Admin: grupo ({$menuGroup?->name}) e itens vinculados");
+            $this->info("  - Menu Cliente: atualizado em client_menu_items");
 
             return self::SUCCESS;
         });
@@ -210,5 +216,73 @@ final class RegisterModuleCommand extends Command
         }
 
         return $group;
+    }
+
+    /** @param array<string, mixed> $config */
+    private function registerClientMenu(array $config, bool $dryRun): void
+    {
+        $alias = $config['alias'] ?? '';
+        if (!$alias) {
+            return;
+        }
+
+        $menuConfig = $config['menu'] ?? [];
+        $label = $menuConfig['label'] ?? $config['name'] ?? Str::headline($alias);
+        $icon = $menuConfig['icon'] ?? 'Layers';
+        $permission = $menuConfig['permission'] ?? "{$alias}.view";
+        $route = '/' . ltrim($alias, '/');
+        $groupName = $menuConfig['group'] ?? 'GESTÃO SETORIAL';
+
+        if ($dryRun) {
+            $this->info("  [DRY-RUN] Menu Cliente: {$label} ({$route}) no grupo {$groupName}");
+            return;
+        }
+
+        // Procura grupo padrão de cliente por slug ou nome
+        $groupSlug = Str::slug($groupName);
+        $clientGroup = ClientMenuGroup::query()
+            ->whereNull('tenant_id')
+            ->where(function ($q) use ($groupSlug, $groupName) {
+                $q->where('slug', $groupSlug)->orWhere('name', $groupName);
+            })
+            ->first();
+
+        // Se não encontrar, tenta o grupo gestao-setorial
+        if (!$clientGroup) {
+            $clientGroup = ClientMenuGroup::query()
+                ->whereNull('tenant_id')
+                ->where('slug', 'gestao-setorial')
+                ->first();
+        }
+
+        // Se nenhum existir, cria o grupo padrão
+        if (!$clientGroup) {
+            $clientGroup = ClientMenuGroup::create([
+                'name' => $groupName,
+                'slug' => $groupSlug,
+                'icon' => 'Building2',
+                'order' => 20,
+                'is_active' => true,
+                'tenant_id' => null,
+            ]);
+        }
+
+        $maxOrder = (int) ClientMenuItem::where('menu_group_id', $clientGroup->id)->max('order');
+
+        ClientMenuItem::updateOrCreate(
+            ['route' => $route],
+            [
+                'menu_group_id' => $clientGroup->id,
+                'label' => $label,
+                'icon' => $icon,
+                'permission' => $permission,
+                'module_alias' => $alias,
+                'shortcut' => Str::upper(Str::substr($alias, 0, 1)),
+                'order' => $maxOrder + 1,
+                'is_active' => true,
+            ]
+        );
+
+        $this->info("  ✓ Menu Cliente: {$label} ({$route}) no grupo {$clientGroup->name}");
     }
 }

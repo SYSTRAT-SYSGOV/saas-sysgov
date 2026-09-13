@@ -35,6 +35,7 @@ final class ClientMenuSeeder extends Seeder
                     ['label' => 'Organograma Municipal', 'route' => '/organograma', 'icon' => 'Network', 'permission' => 'org.view', 'module_alias' => 'org'],
                     ['label' => 'Módulo Pedagógico', 'route' => '/pedagogico', 'icon' => 'GraduationCap', 'permission' => 'pedagogico.view', 'module_alias' => 'pedagogico'],
                     ['label' => 'Recursos Humanos / Folha', 'route' => '/rh', 'icon' => 'Users', 'permission' => 'rh.view', 'module_alias' => 'rh'],
+                    ['label' => 'Avaliação de Desempenho (CAPD)', 'route' => '/capd', 'icon' => 'ClipboardCheck', 'permission' => 'capd.view', 'module_alias' => 'capd'],
                     ['label' => 'Gestão de Cemitérios', 'route' => '/cemiterios', 'icon' => 'Cross', 'permission' => 'cemiterios.view', 'module_alias' => 'cemiterios'],
                 ],
             ],

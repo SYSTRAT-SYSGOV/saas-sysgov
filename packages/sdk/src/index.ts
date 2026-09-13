@@ -224,5 +224,7 @@ export * as CatalogSdk from './modules/catalog';
 export * from './modules/catalog';
 export * as LicitaSdk from './modules/licita';
 export * from './modules/licita';
+export * as CapdSdk from './modules/capd';
+export * from './modules/capd';
 export * as ExampleSdk from './modules/template';
 

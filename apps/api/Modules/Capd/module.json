@@ -1,0 +1,48 @@
+{
+    "name": "Capd",
+    "alias": "capd",
+    "description": "Comissão de Avaliação Periódica de Desempenho — SAPDS/CAPD. Avaliação de servidores públicos por Escala Gráfica com Técnica do Incidente Crítico (CIT) e gestão de comissão colegiada.",
+    "priority": 30,
+    "providers": [
+        "Modules\\Capd\\Providers\\CapdServiceProvider",
+        "Modules\\Capd\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin"
+    ],
+    "menu": {
+        "group": "GESTÃO DE PESSOAS",
+        "label": "Avaliação de Desempenho",
+        "icon": "ClipboardCheck",
+        "order": 10,
+        "permission": "capd.view",
+        "children": [
+            { "label": "Dashboard CAPD",      "route": "capd.dashboard",     "permission": "capd.view",         "icon": "LayoutDashboard" },
+            { "label": "Ciclos Avaliativos",   "route": "capd.ciclos",        "permission": "capd.ciclos.view",  "icon": "CalendarRange" },
+            { "label": "Diário de Bordo",      "route": "capd.diario-bordo",  "permission": "capd.cit.create",   "icon": "BookOpen" },
+            { "label": "Minhas Avaliações",    "route": "capd.minha-avaliacao","permission": "capd.view",        "icon": "UserCheck" },
+            { "label": "Interpor Recurso",     "route": "capd.recurso.novo",  "permission": "capd.recurso.create","icon": "FileQuestion" },
+            { "label": "Sessões CAPD",         "route": "capd.sessao",        "permission": "capd.sessao.view",  "icon": "Users" },
+            { "label": "Gestão da Comissão",   "route": "capd.comissao",      "permission": "capd.comissao.manage","icon": "ShieldCheck" },
+            { "label": "Atas Digitais",        "route": "capd.atas",          "permission": "capd.view",         "icon": "FileText" }
+        ]
+    },
+    "permissions": [
+        "capd.view",
+        "capd.ciclos.view",
+        "capd.ciclos.manage",
+        "capd.cit.create",
+        "capd.cit.view",
+        "capd.avaliacao.create",
+        "capd.avaliacao.view",
+        "capd.recurso.create",
+        "capd.recurso.view",
+        "capd.recurso.julgar",
+        "capd.sessao.view",
+        "capd.sessao.manage",
+        "capd.comissao.manage",
+        "capd.homologacao.executar",
+        "capd.dashboard.view",
+        "capd.admin.parametrizar"
+    ]
+}
