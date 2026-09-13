@@ -76,6 +76,12 @@ export type ApiAvaliacao = {
   homologada_em?: string | null;
   ciclo?: ApiCiclo;
   servidor?: ApiServidor;
+  periodo_inicio?: string | null;
+  periodo_fim?: string | null;
+  dias_exercicio?: number | null;
+  avaliacao_consolidada_id?: number | null;
+  tipo_avaliacao?: 'integral' | 'parcial' | 'consolidada';
+  status_avaliacao?: 'ativa' | 'suspensa_licenca';
 };
 
 export type ApiComissao = {
@@ -210,6 +216,7 @@ export type ApiServidor = {
   nivel_padrao?: string | null;
   orgao_lotacao: string;
   lotacao_fisica?: string | null;
+  org_unit_id?: number | null;
   chefia_imediata_id?: number | null;
   chefia_imediata?: { id: number; nome_completo: string; matricula: string; cargo_efetivo?: string };
   situacao_funcional: 'ativo' | 'afastado_saude' | 'licenca_premio' | 'licenca_maternidade' | 'cedido' | 'exonerado' | 'aposentado';
@@ -228,8 +235,36 @@ export type ApiServidorAfastamento = {
   data_inicio: string;
   data_fim?: string | null;
   dias_afastado?: number | null;
+  substituto_id?: number | null;
   suspende_avaliacao: boolean;
   observacoes?: string | null;
+};
+
+export type ApiNivelHierarquia = {
+  id: number;
+  nivel: number;
+  nome: string;
+  cargo_referencia?: string | null;
+  regra_substituicao: 'substituto_legal' | 'superior_hierarquico';
+  is_topo: boolean;
+  avaliador_topo_user_id?: number | null;
+  avaliador_topo_role?: string | null;
+  ativo: boolean;
+};
+
+export type ApiPendenciaHierarquia = {
+  id: number;
+  servidor_id: number;
+  ciclo_id?: number | null;
+  tipo_pendencia: 'sem_superior' | 'afastamento_sem_substituto' | 'topo_sem_config';
+  motivo: string;
+  status: 'aberta' | 'resolvida';
+  avaliador_designado_id?: number | null;
+  resolvido_por?: number | null;
+  resolvido_em?: string | null;
+  servidor?: { id: number; nome_completo: string; matricula: string };
+  ciclo?: { id: number; nome: string; ano_referencia: number };
+  created_at: string;
 };
 
 export type ApiRhIntegracao = {

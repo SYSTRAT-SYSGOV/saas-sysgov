@@ -8,7 +8,8 @@
         "Modules\\Capd\\Providers\\RouteServiceProvider"
     ],
     "requires": [
-        "Admin"
+        "Admin",
+        "OrgChart"
     ],
     "menu": {
         "group": "GESTÃO DE PESSOAS",
@@ -24,7 +25,9 @@
             { "label": "Interpor Recurso",     "route": "capd.recurso.novo",  "permission": "capd.recurso.create","icon": "FileQuestion" },
             { "label": "Sessões CAPD",         "route": "capd.sessao",        "permission": "capd.sessao.view",  "icon": "Users" },
             { "label": "Gestão da Comissão",   "route": "capd.comissao",      "permission": "capd.comissao.manage","icon": "ShieldCheck" },
-            { "label": "Atas Digitais",        "route": "capd.atas",          "permission": "capd.view",         "icon": "FileText" }
+            { "label": "Atas Digitais",        "route": "capd.atas",          "permission": "capd.view",         "icon": "FileText" },
+            { "label": "Configuração de Hierarquia", "route": "capd.hierarquia", "permission": "capd.hierarquia.manage", "icon": "Network" },
+            { "label": "Pendências de Hierarquia (DRH)", "route": "capd.pendencias", "permission": "capd.pendencias.view", "icon": "AlertTriangle" }
         ]
     },
     "permissions": [
@@ -43,6 +46,10 @@
         "capd.comissao.manage",
         "capd.homologacao.executar",
         "capd.dashboard.view",
-        "capd.admin.parametrizar"
+        "capd.admin.parametrizar",
+        "capd.hierarquia.view",
+        "capd.hierarquia.manage",
+        "capd.pendencias.view",
+        "capd.pendencias.resolver"
     ]
 }

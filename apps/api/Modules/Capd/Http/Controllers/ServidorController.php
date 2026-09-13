@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Http\Controllers;
 
-use App\Models\TenantContext;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Modules\Capd\Models\Servidor;
+use Modules\Capd\Models\ServidorAfastamento;
+use Modules\Capd\Services\HierarquiaService;
 use Modules\Capd\Services\ServidorService;
 
 final class ServidorController extends Controller
 {
     public function __construct(
         private readonly ServidorService $servidorService,
+        private readonly HierarquiaService $hierarquia,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -45,6 +49,7 @@ final class ServidorController extends Controller
             'nivel_padrao'          => ['nullable', 'string', 'max:30'],
             'orgao_lotacao'         => ['required', 'string', 'max:150'],
             'lotacao_fisica'        => ['nullable', 'string', 'max:150'],
+            'org_unit_id'           => ['nullable', 'integer', 'exists:org_units,id'],
             'chefia_imediata_id'    => ['nullable', 'integer', 'exists:capd_servidores,id'],
             'situacao_funcional'    => ['nullable', 'string'],
             'estagio_probatorio'    => ['nullable', 'boolean'],
@@ -79,6 +84,7 @@ final class ServidorController extends Controller
             'cargo_efetivo'         => ['sometimes', 'string', 'max:120'],
             'funcao_gratificada'    => ['nullable', 'string', 'max:120'],
             'orgao_lotacao'         => ['sometimes', 'string', 'max:150'],
+            'org_unit_id'           => ['nullable', 'integer', 'exists:org_units,id'],
             'chefia_imediata_id'    => ['nullable', 'integer', 'exists:capd_servidores,id'],
             'situacao_funcional'    => ['sometimes', 'string'],
             'estagio_probatorio'    => ['nullable', 'boolean'],
@@ -94,6 +100,50 @@ final class ServidorController extends Controller
         $servidor->delete();
 
         return response()->json(['message' => 'Servidor removido com sucesso.']);
+    }
+
+    // ── Afastamentos (RN de substituição/suspensão de avaliação) ──────
+
+    public function storeAfastamento(Request $request, Servidor $servidor): JsonResponse
+    {
+        $validated = $request->validate([
+            'tipo_afastamento'   => ['required', 'string', 'max:50'],
+            'data_inicio'        => ['required', 'date'],
+            'data_fim'           => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'substituto_id'      => ['nullable', 'integer', 'exists:capd_servidores,id'],
+            'suspende_avaliacao' => ['nullable', 'boolean'],
+            'observacoes'        => ['nullable', 'string'],
+        ]);
+
+        $afastamento = ServidorAfastamento::query()->create([
+            ...$validated,
+            'tenant_id'   => $this->tenantContext->id(),
+            'servidor_id' => $servidor->id,
+        ]);
+
+        $this->hierarquia->resolverSubstituicao($afastamento);
+
+        return response()->json($afastamento, 201);
+    }
+
+    public function updateAfastamento(Request $request, Servidor $servidor, ServidorAfastamento $afastamento): JsonResponse
+    {
+        abort_if($afastamento->servidor_id !== $servidor->id, 404);
+
+        $validated = $request->validate([
+            'tipo_afastamento'   => ['sometimes', 'string', 'max:50'],
+            'data_inicio'        => ['sometimes', 'date'],
+            'data_fim'           => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'substituto_id'      => ['nullable', 'integer', 'exists:capd_servidores,id'],
+            'suspende_avaliacao' => ['nullable', 'boolean'],
+            'observacoes'        => ['nullable', 'string'],
+        ]);
+
+        $afastamento->update($validated);
+
+        $this->hierarquia->resolverSubstituicao($afastamento->fresh());
+
+        return response()->json($afastamento->fresh());
     }
 
     public function importCsv(Request $request): JsonResponse

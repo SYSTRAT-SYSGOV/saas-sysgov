@@ -21,6 +21,7 @@ final class ServidorAfastamento extends Model
         'data_inicio',
         'data_fim',
         'dias_afastado',
+        'substituto_id',
         'suspende_avaliacao',
         'observacoes',
     ];
@@ -31,6 +32,7 @@ final class ServidorAfastamento extends Model
         'data_inicio'        => 'date',
         'data_fim'           => 'date',
         'dias_afastado'      => 'integer',
+        'substituto_id'      => 'integer',
         'suspende_avaliacao' => 'boolean',
     ];
 
@@ -38,5 +40,11 @@ final class ServidorAfastamento extends Model
     public function servidor(): BelongsTo
     {
         return $this->belongsTo(Servidor::class, 'servidor_id');
+    }
+
+    /** @return BelongsTo<Servidor, $this> */
+    public function substituto(): BelongsTo
+    {
+        return $this->belongsTo(Servidor::class, 'substituto_id');
     }
 }

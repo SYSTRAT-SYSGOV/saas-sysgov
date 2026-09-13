@@ -55,7 +55,10 @@ import {
   Database,
   Code,
   AlertCircle,
+  Network,
 } from 'lucide-react';
+import { HierarquiaConfigPanel } from './HierarquiaConfigPanel';
+import { PendenciasHierarquiaPanel } from './PendenciasHierarquiaPanel';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiAvaliacao,
@@ -83,7 +86,9 @@ type CapdTab =
   | 'recursos'
   | 'comissao'
   | 'integracao'
-  | 'homologacao';
+  | 'homologacao'
+  | 'hierarquia'
+  | 'pendencias-hierarquia';
 
 export const CapdModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CapdTab>('servidores');
@@ -379,6 +384,8 @@ export const CapdModule: React.FC = () => {
     { key: 'comissao', label: 'Colegiado & Sessões', icon: <Gavel className="h-4 w-4" /> },
     { key: 'integracao', label: 'Integrações RH & Embed', icon: <Database className="h-4 w-4" /> },
     { key: 'homologacao', label: 'Homologação Final', icon: <Lock className="h-4 w-4" /> },
+    { key: 'hierarquia', label: 'Configuração de Hierarquia', icon: <Network className="h-4 w-4" /> },
+    { key: 'pendencias-hierarquia', label: 'Pendências de Hierarquia', icon: <AlertTriangle className="h-4 w-4" /> },
   ];
 
   return (
@@ -1437,6 +1444,12 @@ export const CapdModule: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* ── ABA: CONFIGURAÇÃO DE HIERARQUIA ────────────────────────────── */}
+      {activeTab === 'hierarquia' && <HierarquiaConfigPanel />}
+
+      {/* ── ABA: PENDÊNCIAS DE HIERARQUIA (DRH) ────────────────────────── */}
+      {activeTab === 'pendencias-hierarquia' && <PendenciasHierarquiaPanel />}
 
       {/* ── MODAL: CADASTRAR NOVO SERVIDOR ─────────────────────────────── */}
       {modalServidorAberto && (

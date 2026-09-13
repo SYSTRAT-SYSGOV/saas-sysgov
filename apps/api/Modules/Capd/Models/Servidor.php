@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\OrgChart\Models\OrgUnit;
 
 final class Servidor extends Model
 {
@@ -40,6 +41,7 @@ final class Servidor extends Model
         'plano_carreira_id',
         'orgao_lotacao',
         'lotacao_fisica',
+        'org_unit_id',
         'chefia_imediata_id',
         'situacao_funcional',
         'estagio_probatorio',
@@ -54,6 +56,7 @@ final class Servidor extends Model
         'tenant_id'             => 'integer',
         'user_id'               => 'integer',
         'plano_carreira_id'     => 'integer',
+        'org_unit_id'           => 'integer',
         'chefia_imediata_id'    => 'integer',
         'carga_horaria_semanal' => 'integer',
         'data_nascimento'       => 'date',
@@ -66,6 +69,44 @@ final class Servidor extends Model
         'metadata'              => 'array',
     ];
 
+    protected static function booted(): void
+    {
+        static::updating(function (self $servidor): void {
+            if (! $servidor->isDirty('org_unit_id')) {
+                return;
+            }
+
+            $hoje = now()->toDateString();
+
+            ServidorUnitHistory::query()
+                ->where('servidor_id', $servidor->id)
+                ->aberto()
+                ->update(['valido_ate' => $hoje]);
+
+            if ($servidor->org_unit_id !== null) {
+                ServidorUnitHistory::query()->create([
+                    'tenant_id'   => $servidor->tenant_id,
+                    'servidor_id' => $servidor->id,
+                    'org_unit_id' => $servidor->org_unit_id,
+                    'valido_de'   => $hoje,
+                    'valido_ate'  => null,
+                ]);
+            }
+        });
+
+        static::created(function (self $servidor): void {
+            if ($servidor->org_unit_id !== null) {
+                ServidorUnitHistory::query()->create([
+                    'tenant_id'   => $servidor->tenant_id,
+                    'servidor_id' => $servidor->id,
+                    'org_unit_id' => $servidor->org_unit_id,
+                    'valido_de'   => $servidor->data_exercicio?->toDateString() ?? now()->toDateString(),
+                    'valido_ate'  => null,
+                ]);
+            }
+        });
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
@@ -76,6 +117,24 @@ final class Servidor extends Model
     public function planoCarreira(): BelongsTo
     {
         return $this->belongsTo(PlanoCarreira::class, 'plano_carreira_id');
+    }
+
+    /** @return BelongsTo<OrgUnit, $this> */
+    public function orgUnit(): BelongsTo
+    {
+        return $this->belongsTo(OrgUnit::class, 'org_unit_id');
+    }
+
+    /** @return HasMany<ServidorUnitHistory, $this> */
+    public function unitHistory(): HasMany
+    {
+        return $this->hasMany(ServidorUnitHistory::class, 'servidor_id');
+    }
+
+    /** @return HasMany<PendenciaHierarquia, $this> */
+    public function pendenciasHierarquia(): HasMany
+    {
+        return $this->hasMany(PendenciaHierarquia::class, 'servidor_id');
     }
 
     /** @return BelongsTo<Servidor, $this> */

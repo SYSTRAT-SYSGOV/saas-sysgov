@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 use Modules\Capd\Models\Avaliacao;
 use Modules\Capd\Models\ComissaoMembro;
+use Modules\Capd\Models\Servidor;
+use Modules\Capd\Services\HierarquiaService;
 
 /**
  * Policy de Avaliação de Desempenho.
@@ -20,6 +22,10 @@ use Modules\Capd\Models\ComissaoMembro;
 final class AvaliacaoPolicy
 {
     use HandlesAuthorization;
+
+    public function __construct(private readonly HierarquiaService $hierarquia)
+    {
+    }
 
     public function view(User $user, Avaliacao $avaliacao): bool
     {
@@ -49,6 +55,28 @@ final class AvaliacaoPolicy
         // Somente o avaliador original pode editar (enquanto não homologada)
         return $avaliacao->avaliador_id === $user->id
             && ! $avaliacao->homologada;
+    }
+
+    /**
+     * Autoriza a submissão/edição de uma avaliação, recalculando quem é o
+     * superior imediato resolvido pela hierarquia real (nunca confia apenas
+     * no avaliador_id gravado no registro — RN de resolução hierárquica).
+     */
+    public function avaliar(User $user, Avaliacao $avaliacao): bool
+    {
+        if ($avaliacao->homologada) {
+            return false;
+        }
+
+        $servidor = Servidor::query()->where('user_id', $avaliacao->servidor_id)->first();
+
+        if ($servidor === null) {
+            return false;
+        }
+
+        $resolvido = $this->hierarquia->resolverAvaliador($servidor, now());
+
+        return ! $resolvido->pendente && $resolvido->userId === $user->id;
     }
 
     public function homologar(User $user): bool

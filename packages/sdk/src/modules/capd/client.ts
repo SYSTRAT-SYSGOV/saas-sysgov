@@ -4,7 +4,10 @@ import type {
   ApiComissao,
   ApiDashboardMetricas,
   ApiDiarioBordo,
+  ApiNivelHierarquia,
+  ApiPendenciaHierarquia,
   ApiRecurso,
+  ApiServidorAfastamento,
   ApiSessao,
   CreateDiarioBordoInput,
   CreateRecursoInput,
@@ -189,6 +192,57 @@ export class CapdModuleClient {
     return this.api.request('/capd/servidores/importar-csv', {
       method: 'POST',
       body: JSON.stringify({ csv_content: csvContent }),
+    });
+  }
+
+  async createAfastamento(servidorId: number, data: Record<string, unknown>): Promise<ApiServidorAfastamento> {
+    return this.api.request(`/capd/servidores/${servidorId}/afastamentos`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAfastamento(servidorId: number, afastamentoId: number, data: Record<string, unknown>): Promise<ApiServidorAfastamento> {
+    return this.api.request(`/capd/servidores/${servidorId}/afastamentos/${afastamentoId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ── Hierarquia de Avaliação (resolução do superior imediato) ────────
+
+  async listNiveisHierarquia(): Promise<ApiNivelHierarquia[]> {
+    return this.api.request('/capd/niveis-hierarquia');
+  }
+
+  async createNivelHierarquia(data: Partial<ApiNivelHierarquia>): Promise<ApiNivelHierarquia> {
+    return this.api.request('/capd/niveis-hierarquia', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateNivelHierarquia(id: number, data: Partial<ApiNivelHierarquia>): Promise<ApiNivelHierarquia> {
+    return this.api.request(`/capd/niveis-hierarquia/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteNivelHierarquia(id: number): Promise<{ message: string }> {
+    return this.api.request(`/capd/niveis-hierarquia/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async listPendenciasHierarquia(params?: { status?: string; per_page?: number }): Promise<{ data: ApiPendenciaHierarquia[]; total: number }> {
+    return this.api.request(`/capd/pendencias-hierarquia${buildQueryString(params)}`);
+  }
+
+  async resolverPendenciaHierarquia(id: number, avaliadorDesignadoId: number): Promise<ApiPendenciaHierarquia> {
+    return this.api.request(`/capd/pendencias-hierarquia/${id}/resolver`, {
+      method: 'POST',
+      body: JSON.stringify({ avaliador_designado_id: avaliadorDesignadoId }),
     });
   }
 

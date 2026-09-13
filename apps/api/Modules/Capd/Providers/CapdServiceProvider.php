@@ -14,6 +14,11 @@ final class CapdServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Gate::policy(\Modules\Capd\Models\DiarioBordo::class, \Modules\Capd\Policies\DiarioBordoPolicy::class);
         \Illuminate\Support\Facades\Gate::policy(\Modules\Capd\Models\Recurso::class, \Modules\Capd\Policies\RecursoPolicy::class);
 
+        \Illuminate\Support\Facades\Event::listen(
+            \Modules\Capd\Events\AvaliacaoHomologada::class,
+            \Modules\Capd\Listeners\RecalcularNotaConsolidada::class,
+        );
+
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
     }
 

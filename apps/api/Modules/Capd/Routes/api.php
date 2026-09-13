@@ -10,6 +10,8 @@ use Modules\Capd\Http\Controllers\DashboardController;
 use Modules\Capd\Http\Controllers\DeliberacaoController;
 use Modules\Capd\Http\Controllers\DiarioBordoController;
 use Modules\Capd\Http\Controllers\HomologacaoController;
+use Modules\Capd\Http\Controllers\NivelHierarquiaController;
+use Modules\Capd\Http\Controllers\PendenciaHierarquiaController;
 use Modules\Capd\Http\Controllers\RecursoController;
 use Modules\Capd\Http\Controllers\SessaoController;
 
@@ -101,6 +103,21 @@ Route::prefix('servidores')->group(function (): void {
     Route::get('/{servidor}', [\Modules\Capd\Http\Controllers\ServidorController::class, 'show'])->name('capd.servidores.show');
     Route::put('/{servidor}', [\Modules\Capd\Http\Controllers\ServidorController::class, 'update'])->name('capd.servidores.update');
     Route::delete('/{servidor}', [\Modules\Capd\Http\Controllers\ServidorController::class, 'destroy'])->name('capd.servidores.destroy');
+    Route::post('/{servidor}/afastamentos', [\Modules\Capd\Http\Controllers\ServidorController::class, 'storeAfastamento'])->name('capd.servidores.afastamentos.store');
+    Route::put('/{servidor}/afastamentos/{afastamento}', [\Modules\Capd\Http\Controllers\ServidorController::class, 'updateAfastamento'])->name('capd.servidores.afastamentos.update');
+});
+
+// ── Hierarquia de Avaliação (resolução do superior imediato) ──────────
+Route::prefix('niveis-hierarquia')->group(function (): void {
+    Route::get('/', [NivelHierarquiaController::class, 'index'])->name('capd.niveis-hierarquia.index');
+    Route::post('/', [NivelHierarquiaController::class, 'store'])->name('capd.niveis-hierarquia.store');
+    Route::put('/{id}', [NivelHierarquiaController::class, 'update'])->name('capd.niveis-hierarquia.update');
+    Route::delete('/{id}', [NivelHierarquiaController::class, 'destroy'])->name('capd.niveis-hierarquia.destroy');
+});
+
+Route::prefix('pendencias-hierarquia')->group(function (): void {
+    Route::get('/', [PendenciaHierarquiaController::class, 'index'])->name('capd.pendencias-hierarquia.index');
+    Route::post('/{id}/resolver', [PendenciaHierarquiaController::class, 'resolver'])->name('capd.pendencias-hierarquia.resolver');
 });
 
 // ── Painel de Configurações de Integração de RH ───────────────────────

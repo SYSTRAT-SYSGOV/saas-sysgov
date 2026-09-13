@@ -13,7 +13,9 @@ use Modules\Capd\Exceptions\TravaIncidenteCriticoException;
 use Modules\Capd\Models\Avaliacao;
 use Modules\Capd\Models\CicloAvaliacao;
 use Modules\Capd\Models\FatorAvaliacao;
+use Modules\Capd\Models\Servidor;
 use Modules\Capd\Services\CalculadoraNotaService;
+use Modules\Capd\Services\HierarquiaService;
 use Modules\Capd\Services\IngestaoAutomaticaService;
 
 /**
@@ -35,6 +37,7 @@ final class AvaliacaoController extends Controller
         private readonly CalculadoraNotaService    $calculadora,
         private readonly IngestaoAutomaticaService $ingestao,
         private readonly AuditLogger               $audit,
+        private readonly HierarquiaService         $hierarquia,
     ) {}
 
     // ── GET /avaliacoes ───────────────────────────────────────────────
@@ -80,8 +83,9 @@ final class AvaliacaoController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $tenantId  = (int) app(TenantContext::class)->id();
-        $avaliador = $request->user();
+        $this->authorize('create', Avaliacao::class);
+
+        $tenantId = (int) app(TenantContext::class)->id();
 
         $validated = $request->validate([
             'ciclo_id'    => ['required', 'integer', 'exists:capd_ciclos,id'],
@@ -96,11 +100,12 @@ final class AvaliacaoController extends Controller
             'O ciclo não está em período de avaliação.'
         );
 
-        // Previne duplicata (1 avaliação por servidor/ciclo)
+        // Previne duplicata (1 avaliação integral por servidor/ciclo)
         $existente = Avaliacao::where([
-            'tenant_id'   => $tenantId,
-            'ciclo_id'    => $validated['ciclo_id'],
-            'servidor_id' => $validated['servidor_id'],
+            'tenant_id'      => $tenantId,
+            'ciclo_id'       => $validated['ciclo_id'],
+            'servidor_id'    => $validated['servidor_id'],
+            'tipo_avaliacao' => Avaliacao::TIPO_INTEGRAL,
         ])->first();
 
         if ($existente) {
@@ -108,11 +113,38 @@ final class AvaliacaoController extends Controller
             return response()->json($existente, 200);
         }
 
+        $servidor = Servidor::query()->where('user_id', $validated['servidor_id'])->first();
+
+        abort_if($servidor === null, 422, 'Servidor não possui cadastro no módulo CAPD.');
+
+        // Transferência de unidade no meio do ciclo: divide em avaliações parciais + consolidada.
+        $this->hierarquia->dividirPorTransferencia($servidor, $ciclo);
+
+        $consolidada = Avaliacao::where([
+            'tenant_id'      => $tenantId,
+            'ciclo_id'       => $validated['ciclo_id'],
+            'servidor_id'    => $validated['servidor_id'],
+            'tipo_avaliacao' => Avaliacao::TIPO_CONSOLIDADA,
+        ])->first();
+
+        if ($consolidada !== null) {
+            return response()->json($consolidada, 201);
+        }
+
+        $resolvido = $this->hierarquia->resolverAvaliador($servidor, now());
+
+        abort_if(
+            $resolvido->pendente,
+            422,
+            'Não foi possível resolver o superior imediato do servidor. Pendência encaminhada ao DRH.'
+        );
+
         $avaliacao = Avaliacao::create([
             'tenant_id'           => $tenantId,
             'ciclo_id'            => $validated['ciclo_id'],
             'servidor_id'         => $validated['servidor_id'],
-            'avaliador_id'        => $avaliador->id,
+            'avaliador_id'        => $resolvido->userId,
+            'tipo_avaliacao'      => Avaliacao::TIPO_INTEGRAL,
             'respostas_fatores'   => [],
             'nota_final'          => '0.00',
             'elegivel_progressao' => false,
@@ -132,7 +164,7 @@ final class AvaliacaoController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $avaliacao = Avaliacao::findOrFail($id);
-        $this->authorize('update', $avaliacao);
+        $this->authorize('avaliar', $avaliacao);
 
         abort_if($avaliacao->homologada, 422, 'Avaliação homologada é imutável (RN-C07).');
 
@@ -158,7 +190,7 @@ final class AvaliacaoController extends Controller
     public function submeter(Request $request, int $id): JsonResponse
     {
         $avaliacao = Avaliacao::with('ciclo')->findOrFail($id);
-        $this->authorize('update', $avaliacao);
+        $this->authorize('avaliar', $avaliacao);
 
         abort_if($avaliacao->homologada, 422, 'Avaliação já homologada não pode ser re-submetida.');
 
