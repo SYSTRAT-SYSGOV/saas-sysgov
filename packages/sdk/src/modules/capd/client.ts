@@ -14,6 +14,9 @@ import type {
   ApiRecurso,
   ApiServidorAfastamento,
   ApiSessao,
+  ApiEspelhoAvaliacao,
+  ApiSimulacaoProgressao,
+  ApiImpedimentoAuditoria,
   CreateDiarioBordoInput,
   CreateRecursoInput,
   RespostaFator,
@@ -96,11 +99,6 @@ export class CapdModuleClient {
     });
   }
 
-  async registrarCiencia(id: number): Promise<{ message: string; ciencia_servidor_em: string }> {
-    return this.api.request(`/capd/avaliacoes/${id}/ciencia`, {
-      method: 'POST',
-    });
-  }
 
   async homologarAvaliacao(id: number): Promise<{ message: string; avaliacao: ApiAvaliacao }> {
     return this.api.request(`/capd/avaliacoes/${id}/homologar`, {
@@ -376,6 +374,65 @@ export class CapdModuleClient {
   async seedPerguntasPadrao(): Promise<{ message: string }> {
     return this.api.request('/capd/modelos-formulario/seed-padrao', {
       method: 'POST',
+    });
+  }
+
+  // ── Portais Funcionais por Papel (Espelho, Devolutiva, Simulação e Auditoria) ──
+
+  async obterEspelhoAvaliacao(avaliacaoId: number): Promise<ApiEspelhoAvaliacao> {
+    return this.api.request(`/capd/avaliacoes/${avaliacaoId}/espelho`);
+  }
+
+  async registrarDevolutiva(
+    avaliacaoId: number,
+    dados: { data_devolutiva: string; resumo_entrevista?: string; acordos_desenvolvimento?: string }
+  ): Promise<{ message: string; avaliacao: any }> {
+    return this.api.request(`/capd/avaliacoes/${avaliacaoId}/devolutiva`, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async registrarCiencia(
+    avaliacaoId: number,
+    dados?: { tipo?: 'concordancia' | 'discordancia_recurso'; observacoes?: string }
+  ): Promise<{ message: string; ciencia_servidor_em: string; ciencia_tipo: string; hash_sha256: string }> {
+    return this.api.request(`/capd/avaliacoes/${avaliacaoId}/ciencia`, {
+      method: 'POST',
+      body: JSON.stringify(dados ?? {}),
+    });
+  }
+
+  async contestarRecursoChefia(
+    recursoId: number,
+    dados: { contestacao_chefia: string }
+  ): Promise<ApiRecurso> {
+    return this.api.request(`/capd/recursos/${recursoId}/contestar-chefia`, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async listPmds(params?: Record<string, unknown>): Promise<{ data: any[]; total: number }> {
+    return this.api.request(`/capd/pmd${buildQueryString(params as Record<string, unknown>)}`);
+  }
+
+  async simularProgressao(servidorId: number): Promise<ApiSimulacaoProgressao> {
+    return this.api.request(`/capd/servidores/${servidorId}/simular-progressao`);
+  }
+
+  async listarImpedimentosAuditoria(): Promise<ApiImpedimentoAuditoria[]> {
+    return this.api.request('/capd/auditoria/impedimentos');
+  }
+
+  async declararImpedimentoParentesco(dados: {
+    servidor_alvo_id: number;
+    tipo_impedimento: string;
+    motivo: string;
+  }): Promise<any> {
+    return this.api.request('/capd/impedimentos', {
+      method: 'POST',
+      body: JSON.stringify(dados),
     });
   }
 }

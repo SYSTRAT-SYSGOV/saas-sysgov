@@ -79,6 +79,13 @@ export type ApiAvaliacao = {
   elegivel_progressao: boolean;
   data_conclusao?: string | null;
   ciencia_servidor_em?: string | null;
+  ciencia_tipo?: string | null;
+  ciencia_ip?: string | null;
+  devolutiva_realizada?: boolean;
+  devolutiva_em?: string | null;
+  devolutiva_resumo?: string | null;
+  devolutiva_acordos?: string | null;
+  devolutiva_por?: number | null;
   homologada: boolean;
   homologada_em?: string | null;
   ciclo?: ApiCiclo;
@@ -429,4 +436,72 @@ export type ApiPainelFiltros = {
   page?: number;
 };
 
+export type ApiEspelhoAvaliacao = {
+  avaliacao_id: number;
+  ciclo: { id?: number; nome?: string; ano_referencia?: number };
+  servidor: { id?: number; nome?: string; matricula?: string };
+  avaliador: { id?: number; nome?: string };
+  nota_final: string;
+  elegivel_progressao: boolean;
+  data_conclusao?: string | null;
+  ciencia_servidor_em?: string | null;
+  ciencia_tipo?: 'concordancia' | 'discordancia_recurso' | null;
+  devolutiva_realizada?: boolean;
+  devolutiva_em?: string | null;
+  devolutiva_resumo?: string | null;
+  parecer_avaliador?: string | null;
+  fatores: Array<{
+    codigo: string;
+    nome: string;
+    descricao?: string | null;
+    grau?: number | null;
+    nota: number | string;
+    peso: number;
+    justificativa?: string | null;
+  }>;
+  pode_recorrer: boolean;
+};
 
+export type ApiSimulacaoProgressao = {
+  servidor: {
+    id: number;
+    nome: string;
+    matricula: string;
+    cargo: string;
+    data_admissao?: string | null;
+  };
+  nfc_projetada: string;
+  elegivel_progressao: boolean;
+  nota_corte: string;
+  historico_ciclos: Array<{
+    ciclo_id: number;
+    ano?: number;
+    nota: string;
+  }>;
+  quinquenios: {
+    qtd_quinquenios: number;
+    percentual_total: number;
+    proximo_em?: string | null;
+  };
+  percentual_progressao: number;
+  percentual_total_aumento: number;
+  regras_legais: {
+    lei: string;
+    progressao_horizontal: string;
+    quinquenio: string;
+    corte_minimo: string;
+  };
+};
+
+export type ApiImpedimentoAuditoria = {
+  id: number;
+  tipo?: string;
+  tipo_impedimento: string;
+  motivo: string;
+  declarado_em?: string | null;
+  servidor_alvo: string | { id: number; nome_completo: string; matricula: string };
+  servidor_alvo_id?: number;
+  declarado_por: string;
+  substituto_designado?: { id: number; nome_completo: string; matricula: string } | null;
+  status: 'ativo' | 'revogado' | 'resolvido';
+};

@@ -60,9 +60,30 @@ Route::prefix('avaliacoes')->group(function (): void {
     Route::put('/{id}', [AvaliacaoController::class, 'update'])->name('capd.avaliacoes.update');
     Route::post('/{id}/submeter', [AvaliacaoController::class, 'submeter'])->name('capd.avaliacoes.submeter');
     Route::post('/{id}/ciencia', [AvaliacaoController::class, 'registrarCiencia'])->name('capd.avaliacoes.ciencia');
+    Route::post('/{id}/devolutiva', [AvaliacaoController::class, 'registrarDevolutiva'])->name('capd.avaliacoes.devolutiva');
+    Route::get('/{id}/espelho', [AvaliacaoController::class, 'obterEspelho'])->name('capd.avaliacoes.espelho');
     Route::post('/{id}/homologar', [AvaliacaoController::class, 'homologar'])->name('capd.avaliacoes.homologar');
     Route::get('/{id}/preview-nota', [AvaliacaoController::class, 'previewNota'])->name('capd.avaliacoes.preview-nota');
 });
+
+Route::get('/servidores/{id}/simular-progressao', [AvaliacaoController::class, 'simularProgressao'])->name('capd.servidores.simular-progressao');
+Route::get('/auditoria/impedimentos', function (\Modules\Capd\Services\ParentescoService $parentesco) {
+    return response()->json($parentesco->listarImpedimentosAuditoria());
+})->name('capd.auditoria.impedimentos');
+Route::post('/impedimentos', function (\Illuminate\Http\Request $request, \Modules\Capd\Services\ParentescoService $parentesco) {
+    $dados = $request->validate([
+        'servidor_alvo_id' => ['required', 'integer'],
+        'tipo_impedimento' => ['required', 'string'],
+        'motivo'           => ['required', 'string', 'max:255'],
+    ]);
+    $imp = $parentesco->registrarImpedimento(
+        $dados['servidor_alvo_id'],
+        $dados['tipo_impedimento'],
+        $dados['motivo'],
+        $request->user()->id
+    );
+    return response()->json($imp, 201);
+})->name('capd.impedimentos.store');
 
 // ── Comissões CAPD (Colegiado) ────────────────────────────────────────
 Route::prefix('comissoes')->group(function (): void {

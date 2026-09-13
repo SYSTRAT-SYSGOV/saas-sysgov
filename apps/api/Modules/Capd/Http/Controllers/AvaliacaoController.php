@@ -259,7 +259,7 @@ final class AvaliacaoController extends Controller
     // ── POST /avaliacoes/{id}/ciencia ─────────────────────────────────
 
     /**
-     * Registra ciência do servidor avaliado (via token de acesso único ou login).
+     * Registra ciência do servidor avaliado com data/hora UTC-3, IP e tipo (concordância ou inconformidade para recurso).
      */
     public function registrarCiencia(Request $request, int $id): JsonResponse
     {
@@ -284,13 +284,199 @@ final class AvaliacaoController extends Controller
             'Ciência já registrada em ' . $avaliacao->ciencia_servidor_em->format('d/m/Y H:i') . '.'
         );
 
-        $avaliacao->update(['ciencia_servidor_em' => now()]);
+        $dados = $request->validate([
+            'tipo'        => ['nullable', 'string', 'in:concordancia,discordancia_recurso'],
+            'observacoes' => ['nullable', 'string', 'max:1000'],
+        ]);
 
-        $this->audit->record('capd', 'avaliacao.ciencia', "Avaliacao #{$id} — ciência do servidor", null, ['em' => now()->toIso8601String()]);
+        $ip = $request->ip();
+        $tipo = $dados['tipo'] ?? 'concordancia';
+
+        $avaliacao->update([
+            'ciencia_servidor_em' => now(),
+            'ciencia_ip'          => $ip,
+            'ciencia_tipo'        => $tipo,
+        ]);
+
+        $hashAcao = hash('sha256', "ciencia:{$id}:{$request->user()->id}:{$tipo}:" . now()->toIso8601String());
+
+        $this->audit->record(
+            'capd',
+            'avaliacao.ciencia',
+            "Avaliação #{$id} — ciência do servidor ({$tipo})",
+            null,
+            [
+                'avaliacao_id' => $id,
+                'servidor_id'  => $request->user()->id,
+                'tipo'         => $tipo,
+                'ip'           => $ip,
+                'hash_sha256'  => $hashAcao,
+                'timestamp'    => now()->toIso8601String(),
+            ]
+        );
 
         return response()->json([
-            'message'              => 'Ciência registrada com sucesso.',
-            'ciencia_servidor_em'  => $avaliacao->ciencia_servidor_em,
+            'message'             => 'Ciência registrada com sucesso.',
+            'ciencia_servidor_em' => $avaliacao->ciencia_servidor_em,
+            'ciencia_tipo'        => $tipo,
+            'ciencia_ip'          => $ip,
+            'hash_sha256'         => $hashAcao,
+        ]);
+    }
+
+    /**
+     * Registra formalmente a realização de Devolutiva Presencial (Art. 27).
+     */
+    public function registrarDevolutiva(Request $request, int $id): JsonResponse
+    {
+        $avaliacao = Avaliacao::findOrFail($id);
+        $this->authorize('update', $avaliacao);
+
+        $dados = $request->validate([
+            'data_devolutiva'         => ['required', 'date'],
+            'resumo_entrevista'       => ['nullable', 'string', 'max:1000'],
+            'acordos_desenvolvimento' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $ip = $request->ip();
+
+        $avaliacao->update([
+            'devolutiva_realizada' => true,
+            'devolutiva_em'        => $dados['data_devolutiva'],
+            'devolutiva_resumo'    => $dados['resumo_entrevista'] ?? null,
+            'devolutiva_acordos'   => $dados['acordos_desenvolvimento'] ?? null,
+            'devolutiva_por'       => $request->user()->id,
+        ]);
+
+        $hashAcao = hash('sha256', "devolutiva:{$id}:{$request->user()->id}:" . now()->toIso8601String());
+
+        $this->audit->record(
+            'capd',
+            'avaliacao.devolutiva',
+            "Devolutiva presencial registrada para Avaliação #{$id}",
+            null,
+            [
+                'avaliacao_id'   => $id,
+                'devolutiva_em'  => $dados['data_devolutiva'],
+                'registrado_por' => $request->user()->id,
+                'ip'             => $ip,
+                'hash_sha256'    => $hashAcao,
+                'timestamp'      => now()->toIso8601String(),
+            ]
+        );
+
+        return response()->json([
+            'message'   => 'Devolutiva presencial registrada com sucesso.',
+            'avaliacao' => $avaliacao->fresh(),
+        ]);
+    }
+
+    /**
+     * Espelho individual da avaliação para o Portal do Servidor Avaliado.
+     */
+    public function obterEspelho(Request $request, int $id): JsonResponse
+    {
+        $avaliacao = Avaliacao::with(['ciclo', 'servidor', 'avaliador'])->findOrFail($id);
+
+        $fatoresDetalhados = [];
+        $respostas = $avaliacao->respostas_fatores ?? [];
+
+        foreach ($respostas as $cod => $info) {
+            $fator = FatorAvaliacao::where('codigo', $cod)->first();
+            $fatoresDetalhados[] = [
+                'codigo'       => $cod,
+                'nome'         => $fator?->nome ?? $cod,
+                'descricao'    => $fator?->descricao,
+                'grau'         => is_array($info) ? ($info['grau'] ?? null) : null,
+                'nota'         => is_array($info) ? ($info['nota'] ?? $info) : $info,
+                'peso'         => $fator?->peso_padrao ?? 1.0,
+                'justificativa'=> is_array($info) ? ($info['justificativa'] ?? null) : null,
+            ];
+        }
+
+        return response()->json([
+            'avaliacao_id'        => $avaliacao->id,
+            'ciclo'               => [
+                'id'             => $avaliacao->ciclo?->id,
+                'nome'           => $avaliacao->ciclo?->nome,
+                'ano_referencia' => $avaliacao->ciclo?->ano_referencia,
+            ],
+            'servidor'            => [
+                'id'             => $avaliacao->servidor?->id,
+                'nome'           => $avaliacao->servidor?->name,
+                'matricula'      => $avaliacao->servidor?->matricula ?? "SERV-{$avaliacao->servidor_id}",
+            ],
+            'avaliador'           => [
+                'id'             => $avaliacao->avaliador?->id,
+                'nome'           => $avaliacao->avaliador?->name,
+            ],
+            'nota_final'          => $avaliacao->nota_final,
+            'elegivel_progressao' => $avaliacao->elegivel_progressao,
+            'data_conclusao'      => $avaliacao->data_conclusao?->toIso8601String(),
+            'ciencia_servidor_em' => $avaliacao->ciencia_servidor_em?->toIso8601String(),
+            'ciencia_tipo'        => $avaliacao->ciencia_tipo,
+            'devolutiva_realizada'=> $avaliacao->devolutiva_realizada,
+            'devolutiva_em'       => $avaliacao->devolutiva_em?->toIso8601String(),
+            'devolutiva_resumo'   => $avaliacao->devolutiva_resumo,
+            'parecer_avaliador'   => $avaliacao->parecer_avaliador,
+            'fatores'             => $fatoresDetalhados,
+            'pode_recorrer'       => $avaliacao->data_conclusao !== null && $avaliacao->ciencia_servidor_em !== null,
+        ]);
+    }
+
+    /**
+     * Simulação de progressão funcional trienal (+10% da referência e quinquênios Art. 17).
+     */
+    public function simularProgressao(Request $request, int $servidorId): JsonResponse
+    {
+        $servidor = Servidor::find($servidorId);
+        $ciclo = CicloAvaliacao::latest('ano_referencia')->first();
+
+        // Notas históricas dos últimos 3 ciclos
+        $avaliacoes = Avaliacao::query()
+            ->where('servidor_id', $servidorId)
+            ->whereNotNull('data_conclusao')
+            ->orderByDesc('ciclo_id')
+            ->limit(3)
+            ->get();
+
+        $notasCiclos = $avaliacoes->pluck('nota_final')->filter()->map(fn ($n) => (string) $n)->values()->all();
+        $calcService = new \Modules\Capd\Services\NotaCalculoService();
+        $nfcProjetada = !empty($notasCiclos) ? $calcService->calcularNfc($notasCiclos) : '0.00';
+        $elegivel = (float) $nfcProjetada >= 70.0;
+
+        $quinquenios = $servidor 
+            ? $calcService->calcularQuinquenios($servidor, $ciclo ?? (object)['data_fim' => now()])
+            : ['qtd_quinquenios' => 0, 'percentual_total' => 0.0, 'proximo_em' => null];
+
+        $percentualProgressao = $elegivel ? 10.0 : 0.0;
+        $percentualTotalAumento = $percentualProgressao + $quinquenios['percentual_total'];
+
+        return response()->json([
+            'servidor' => [
+                'id'            => $servidor?->id ?? $servidorId,
+                'nome'          => $servidor?->nome_completo ?? "Servidor #{$servidorId}",
+                'matricula'     => $servidor?->matricula ?? "SERV-{$servidorId}",
+                'cargo'         => $servidor?->cargo_efetivo ?? 'Geral',
+                'data_admissao' => $servidor?->data_admissao,
+            ],
+            'nfc_projetada'            => $nfcProjetada,
+            'elegivel_progressao'      => $elegivel,
+            'nota_corte'               => '70.00',
+            'historico_ciclos'         => $avaliacoes->map(fn ($a) => [
+                'ciclo_id' => $a->ciclo_id,
+                'ano'      => $a->ciclo?->ano_referencia,
+                'nota'     => $a->nota_final,
+            ]),
+            'quinquenios'              => $quinquenios,
+            'percentual_progressao'    => $percentualProgressao,
+            'percentual_total_aumento' => $percentualTotalAumento,
+            'regras_legais'            => [
+                'lei'                   => 'Lei Municipal nº 1.704/2006 de Araucária',
+                'progressao_horizontal' => '+10% sobre o vencimento básico por triênio',
+                'quinquenio'            => '+5% por quinquênio de efetivo exercício (Art. 17)',
+                'corte_minimo'          => '70,00 pontos para aptidão',
+            ],
         ]);
     }
 

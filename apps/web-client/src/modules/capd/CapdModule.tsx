@@ -73,6 +73,12 @@ import { EscalaGraficaPanel } from './EscalaGraficaPanel';
 import { FatoresPesosPanel } from './FatoresPesosPanel';
 import { PmdPanel } from './PmdPanel';
 import { ConsolidacaoPanel } from './ConsolidacaoPanel';
+import { PortalServidorView } from './views/PortalServidorView';
+import { PortalAvaliadorView } from './views/PortalAvaliadorView';
+import { PortalCadView } from './views/PortalCadView';
+import { PortalRhView } from './views/PortalRhView';
+import { PortalAuditoriaView } from './views/PortalAuditoriaView';
+import { User, Briefcase, Scale, Building2, ShieldAlert } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiAvaliacao,
@@ -91,6 +97,11 @@ import type {
 const api = new SysgovApi();
 
 type CapdTab =
+  | 'portal-servidor'
+  | 'portal-avaliador'
+  | 'portal-cad'
+  | 'portal-rh'
+  | 'portal-auditoria'
   | 'painel-gerencial'
   | 'ciclos'
   | 'perguntas'
@@ -634,6 +645,11 @@ export const CapdModule: React.FC = () => {
   );
 
   const tabItems: TabsItem<CapdTab>[] = [
+    { key: 'portal-servidor', label: 'Portal do Servidor', icon: <User className="h-4 w-4 text-primary" /> },
+    { key: 'portal-avaliador', label: 'Portal do Avaliador', icon: <Briefcase className="h-4 w-4 text-amber-500" /> },
+    { key: 'portal-cad', label: 'Portal da CAD (Comissão)', icon: <Scale className="h-4 w-4 text-indigo-500" /> },
+    { key: 'portal-rh', label: 'Portal de RH / SMGP', icon: <Building2 className="h-4 w-4 text-emerald-500" /> },
+    { key: 'portal-auditoria', label: 'Portal de Auditoria', icon: <ShieldAlert className="h-4 w-4 text-rose-500" /> },
     { key: 'painel-gerencial', label: 'Painel Gerencial', icon: <BarChart3 className="h-4 w-4" /> },
     { key: 'ciclos', label: 'Ciclos Anuais', icon: <Calendar className="h-4 w-4" /> },
     { key: 'perguntas', label: 'Perguntas & Fatores', icon: <FileQuestion className="h-4 w-4" /> },
@@ -681,6 +697,13 @@ export const CapdModule: React.FC = () => {
       <div className="overflow-x-auto pb-1">
         <Tabs items={tabItems} value={activeTab} onChange={setActiveTab} />
       </div>
+
+      {/* ── PORTAIS FUNCIONAIS POR PAPEL (LEI Nº 1.704/2006) ───────────── */}
+      {activeTab === 'portal-servidor' && <PortalServidorView />}
+      {activeTab === 'portal-avaliador' && <PortalAvaliadorView />}
+      {activeTab === 'portal-cad' && <PortalCadView />}
+      {activeTab === 'portal-rh' && <PortalRhView />}
+      {activeTab === 'portal-auditoria' && <PortalAuditoriaView />}
 
       {/* ── ABA 1: GESTÃO DE SERVIDORES (RH UNIVERSAL) ────────────────── */}
       {activeTab === 'servidores' && (
