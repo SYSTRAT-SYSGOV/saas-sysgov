@@ -62,6 +62,8 @@ export type ApiDiarioBordo = {
 export type RespostaFator = {
   grau: number;
   automatizado?: boolean;
+  justificativa?: string;
+  diario_bordo_id?: number;
 };
 
 export type ApiAvaliacao = {
