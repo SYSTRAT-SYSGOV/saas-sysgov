@@ -198,8 +198,9 @@ final class AvaliacaoController extends Controller
         abort_if($avaliacao->homologada, 422, 'Avaliação homologada é imutável (RN-C07).');
 
         $request->validate([
-            'respostas_fatores'       => ['required', 'array'],
-            'respostas_fatores.*.grau'=> ['required', 'integer', 'between:1,5'],
+            'respostas_fatores'                  => ['required', 'array'],
+            'respostas_fatores.*.grau'            => ['required', 'integer', 'between:1,5'],
+            'respostas_fatores.*.diario_bordo_id' => ['nullable', 'integer', 'exists:capd_diario_bordo,id'],
         ]);
 
         $before = $avaliacao->respostas_fatores;
