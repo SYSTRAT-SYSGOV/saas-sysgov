@@ -6,10 +6,12 @@ import type {
   CreateDfdInput,
   CreateEtpInput,
   CreateLegalDocumentoInput,
+  CreateMapaRiscoInput,
   CreateProcessoInput,
   Dfd,
   Etp,
   LegalDocumento,
+  MapaRisco,
   MembroEquipePlanejamento,
   Processo,
   ProcessoFilters,
@@ -20,6 +22,7 @@ import type {
   TipoDocumentoConfiguravel,
   UpdateDfdInput,
   UpdateEtpInput,
+  UpdateMapaRiscoInput,
   UpdateLegalDocumentoInput,
 } from './types';
 
@@ -116,6 +119,37 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async rejeitarEtp(id: number, motivo: string): Promise<Etp> {
     return this.api.request(`/licita/etps/${id}/rejeitar`, { method: 'POST', body: JSON.stringify({ motivo }) });
+  }
+
+  async createMapaRisco(processoId: number, input: CreateMapaRiscoInput): Promise<MapaRisco> {
+    return this.api.request(`/licita/processos/${processoId}/mapa-riscos`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async getMapaRisco(id: number): Promise<MapaRisco> {
+    return this.api.request(`/licita/mapas-riscos/${id}`);
+  }
+
+  async updateMapaRisco(id: number, input: UpdateMapaRiscoInput): Promise<MapaRisco> {
+    return this.api.request(`/licita/mapas-riscos/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async reabrirMapaRisco(id: number): Promise<MapaRisco> {
+    return this.api.request(`/licita/mapas-riscos/${id}/reabrir`, { method: 'POST' });
+  }
+
+  async enviarMapaRiscoParaRevisao(id: number, mensagem?: string): Promise<MapaRisco> {
+    return this.api.request(`/licita/mapas-riscos/${id}/enviar-revisao`, {
+      method: 'POST',
+      body: JSON.stringify({ mensagem }),
+    });
+  }
+
+  async aprovarMapaRisco(id: number, parecer?: string): Promise<MapaRisco> {
+    return this.api.request(`/licita/mapas-riscos/${id}/aprovar`, { method: 'POST', body: JSON.stringify({ parecer }) });
+  }
+
+  async rejeitarMapaRisco(id: number, motivo: string): Promise<MapaRisco> {
+    return this.api.request(`/licita/mapas-riscos/${id}/rejeitar`, { method: 'POST', body: JSON.stringify({ motivo }) });
   }
 
   async sugerirJustificativaDfd(input: SugerirJustificativaDfdInput): Promise<SugerirJustificativaDfdOutput> {

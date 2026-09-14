@@ -7,6 +7,7 @@ export type FaseLicita = 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'tr
 export type StatusProcesso = 'em_andamento' | 'concluido' | 'cancelado';
 export type StatusDfd = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
 export type StatusEtp = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
+export type StatusMapaRisco = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
 export type GrauPrioridade = 'baixa' | 'media' | 'alta' | 'critica';
 export type AcaoVersaoDfd =
   | 'criado'
@@ -17,6 +18,10 @@ export type AcaoVersaoDfd =
   | 'reaberto'
   | 'equipe_alterada_pelo_aprovador';
 export type AcaoVersaoEtp = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado' | 'reaberto';
+export type AcaoVersaoMapaRisco = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado' | 'reaberto';
+
+export type FaseRisco = 'planejamento' | 'selecao_fornecedor' | 'gestao_contratual';
+export type AlocacaoRisco = 'contratante' | 'contratada' | 'compartilhado';
 
 export type TipoItemDfd = 'material' | 'servico';
 
@@ -184,6 +189,56 @@ export interface Etp {
   updated_at: string;
 }
 
+export interface MapaRiscoVersao {
+  id: number;
+  mapa_risco_id: number;
+  versao: number;
+  acao: AcaoVersaoMapaRisco;
+  campos_alterados: Record<string, { de: unknown; para: unknown }> | null;
+  dados: Record<string, unknown> | null;
+  user_id: number;
+  usuario: UsuarioResumo | null;
+  created_at: string;
+}
+
+export interface Risco {
+  descricao: string;
+  fase: FaseRisco;
+  /** Escala 1-5 — ver classificacaoRisco.ts para nível/classificação (Probabilidade x Impacto). */
+  probabilidade: number;
+  impacto: number;
+  causa?: string | null;
+  dano?: string | null;
+  alocacao: AlocacaoRisco;
+  acao_preventiva?: string | null;
+  responsavel_prevencao?: string | null;
+  acao_contingencia?: string | null;
+  responsavel_contingencia?: string | null;
+}
+
+/**
+ * Mapa de Riscos (art. 22 da Lei 14.133/2021) — matriz de riscos da
+ * contratação. Só pode ser criado com o ETP do mesmo processo aprovado.
+ */
+export interface MapaRisco {
+  id: number;
+  tenant_id: number;
+  processo_id: number;
+  /** Nasce como cópia da equipe do ETP (ver MapaRiscoService::criar), mas é editável independentemente dali em diante. */
+  equipe_planejamento: MembroEquipePlanejamento[] | null;
+  riscos: Risco[] | null;
+  campos_extras: Record<string, unknown> | null;
+  status: StatusMapaRisco;
+  elaborado_por: number;
+  aprovado_por: number | null;
+  aprovado_em: string | null;
+  elaborador: UsuarioResumo | null;
+  aprovador: UsuarioResumo | null;
+  versoes: MapaRiscoVersao[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Processo {
   id: number;
   tenant_id: number;
@@ -196,6 +251,9 @@ export interface Processo {
   criado_por: number | null;
   dfd: Dfd | null;
   etp: Etp | null;
+  // snake_case (não mapaRisco): Eloquent serializa relações com Str::snake()
+  // no toArray()/toJson() — mapaRisco() no model vira "mapa_risco" no JSON.
+  mapa_risco: MapaRisco | null;
   created_at: string;
   updated_at: string;
 }
@@ -234,6 +292,15 @@ export interface CreateEtpInput {
 }
 
 export type UpdateEtpInput = Partial<CreateEtpInput>;
+
+export interface CreateMapaRiscoInput {
+  riscos: Risco[];
+  /** Se omitido na criação, o backend copia a equipe do ETP do processo (ver MapaRiscoService::criar). */
+  equipe_planejamento?: MembroEquipePlanejamento[];
+  campos_extras?: Record<string, unknown>;
+}
+
+export type UpdateMapaRiscoInput = Partial<CreateMapaRiscoInput>;
 
 export interface SugerirJustificativaDfdInput {
   objeto: string;

@@ -9,6 +9,7 @@ use Modules\Licita\Http\Controllers\DfdIaController;
 use Modules\Licita\Http\Controllers\EtpController;
 use Modules\Licita\Http\Controllers\LegalDocumentoController;
 use Modules\Licita\Http\Controllers\LicitaIaController;
+use Modules\Licita\Http\Controllers\MapaRiscoController;
 use Modules\Licita\Http\Controllers\ProcessoController;
 
 Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita'])->prefix('api/licita')->group(function (): void {
@@ -38,6 +39,14 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::post('/etps/{id}/enviar-revisao', [EtpController::class, 'enviarRevisao']);
     Route::post('/etps/{id}/aprovar', [EtpController::class, 'aprovar']);
     Route::post('/etps/{id}/rejeitar', [EtpController::class, 'rejeitar']);
+
+    Route::post('/processos/{processoId}/mapa-riscos', [MapaRiscoController::class, 'store']);
+    Route::get('/mapas-riscos/{id}', [MapaRiscoController::class, 'show']);
+    Route::put('/mapas-riscos/{id}', [MapaRiscoController::class, 'update']);
+    Route::post('/mapas-riscos/{id}/reabrir', [MapaRiscoController::class, 'reabrir']);
+    Route::post('/mapas-riscos/{id}/enviar-revisao', [MapaRiscoController::class, 'enviarRevisao']);
+    Route::post('/mapas-riscos/{id}/aprovar', [MapaRiscoController::class, 'aprovar']);
+    Route::post('/mapas-riscos/{id}/rejeitar', [MapaRiscoController::class, 'rejeitar']);
 
     Route::get('/legislacao', [LegalDocumentoController::class, 'index']);
     Route::post('/legislacao', [LegalDocumentoController::class, 'store']);

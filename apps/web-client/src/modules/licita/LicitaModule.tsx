@@ -11,11 +11,14 @@ import { ProcessoFormModal } from './components/ProcessoFormModal';
 import { BuscaAvancadaProcessos, aplicarFiltrosAvancados, type FiltroAvancado } from './components/BuscaAvancadaProcessos';
 import { DfdDetailPage } from './pages/DfdDetailPage';
 import { EtpDetailPage } from './pages/EtpDetailPage';
+import { MapaRiscoDetailPage } from './pages/MapaRiscoDetailPage';
+import { FasesLicitaStepper, type FaseLicitaImplementada } from './components/FasesLicitaStepper';
 import { LegislacaoPage } from './pages/LegislacaoPage';
 import { LegislacaoDetailPage } from './pages/LegislacaoDetailPage';
 import { CamposConfiguracaoPage } from './pages/CamposConfiguracaoPage';
 import { abrirJanelaPdf, gerarDfdPdf } from './utils/gerarDfdPdf';
 import { gerarEtpPdf } from './utils/gerarEtpPdf';
+import { gerarMapaRiscoPdf } from './utils/gerarMapaRiscoPdf';
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
@@ -66,7 +69,7 @@ const ProcessosTab: React.FC<{
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   const handleGerarPdf = useCallback(
-    async (processoId: number, tipo: 'dfd' | 'etp') => {
+    async (processoId: number, tipo: 'dfd' | 'etp' | 'mapa_riscos') => {
       // Precisa abrir a janela AQUI, síncrono, ainda dentro do clique — se
       // abrirmos só depois do await abaixo, o navegador já não reconhece
       // como resposta direta a um gesto do usuário e bloqueia o popup
@@ -92,8 +95,10 @@ const ProcessosTab: React.FC<{
         ]);
         if (tipo === 'dfd') {
           gerarDfdPdf(janela, processoCompleto, tenant, config?.campos ?? []);
-        } else {
+        } else if (tipo === 'etp') {
           gerarEtpPdf(janela, processoCompleto, tenant, config?.campos ?? []);
+        } else {
+          gerarMapaRiscoPdf(janela, processoCompleto, tenant, config?.campos ?? []);
         }
       } catch (err: any) {
         janela.close();
@@ -141,8 +146,10 @@ const ProcessosTab: React.FC<{
         cell: ({ row }) => {
           const dfd = row.original.dfd;
           const etp = row.original.etp;
+          const mapaRisco = row.original.mapa_risco;
           const gerandoDfd = gerandoPdfId === `${row.original.id}:dfd`;
           const gerandoEtp = gerandoPdfId === `${row.original.id}:etp`;
+          const gerandoMapaRisco = gerandoPdfId === `${row.original.id}:mapa_riscos`;
           return (
             <div className="flex justify-center gap-1">
               <Button
@@ -182,6 +189,20 @@ const ProcessosTab: React.FC<{
                   }}
                 >
                   {!gerandoEtp && <FileDown className="h-3.5 w-3.5" />}
+                </Button>
+              )}
+              {mapaRisco && (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  title="Baixar PDF do Mapa de Riscos"
+                  isLoading={gerandoMapaRisco}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGerarPdf(row.original.id, 'mapa_riscos');
+                  }}
+                >
+                  {!gerandoMapaRisco && <FileDown className="h-3.5 w-3.5" />}
                 </Button>
               )}
             </div>
@@ -249,6 +270,20 @@ const ProcessosTab: React.FC<{
           const etp = row.original.etp;
           if (!etp) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
           return <StatusChip label={DFD_STATUS_LABEL[etp.status]} variant={DFD_STATUS_VARIANT[etp.status]} />;
+        },
+      },
+      {
+        id: 'mapa_riscos_status',
+        header: 'Status do Mapa de Riscos',
+        size: 170,
+        meta: {
+          // StatusMapaRisco usa os mesmos 4 valores do StatusDfd — reaproveita os mesmos mapas de label/variant.
+          exportValue: (p) => (p.mapa_risco ? DFD_STATUS_LABEL[p.mapa_risco.status] : 'Não iniciado'),
+        },
+        cell: ({ row }) => {
+          const mapaRisco = row.original.mapa_risco;
+          if (!mapaRisco) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
+          return <StatusChip label={DFD_STATUS_LABEL[mapaRisco.status]} variant={DFD_STATUS_VARIANT[mapaRisco.status]} />;
         },
       },
       {
@@ -357,27 +392,42 @@ interface ProcessoDocumentoPageProps {
   onChanged: (processo: Processo) => void;
 }
 
+type DocumentoAtivo = FaseLicitaImplementada;
+
 /**
- * Decide se abre a tela do DFD ou do ETP ao clicar num processo — sem DFD
- * aprovado ainda, mostra o DFD (fase corrente); DFD aprovado, mostra o ETP
- * (o DfdDetailPage do DFD aprovado continua acessível a partir daqui: quem
- * quiser conferir/baixar o PDF do DFD já aprovado usa o botão da grid de
- * Processos, que sempre gera o PDF do DFD independente da fase atual).
- * Faz uma busca leve própria só para decidir — DfdDetailPage/EtpDetailPage
- * buscam os dados completos de novo ao montar, igual ao padrão já usado no
- * resto do módulo (sem cache client-side de Processo).
+ * Decide qual tela abrir ao clicar num processo: DFD enquanto ele não
+ * estiver aprovado; ETP a partir daí, enquanto ele não estiver aprovado;
+ * Mapa de Riscos a partir do ETP aprovado (as telas de fases já aprovadas
+ * continuam acessíveis a partir daqui, só ficam com o formulário desabilitado
+ * — quem quiser conferir/baixar o PDF de um documento já aprovado usa os
+ * botões da grid de Processos). Faz uma busca leve própria só para decidir
+ * — DfdDetailPage/EtpDetailPage/MapaRiscoDetailPage buscam os dados
+ * completos de novo ao montar, igual ao padrão já usado no resto do módulo
+ * (sem cache client-side de Processo).
  */
+const documentoPorFase = (processo: Processo): DocumentoAtivo => {
+  if (processo.etp?.status === 'aprovado') return 'mapa_riscos';
+  if (processo.dfd?.status === 'aprovado') return 'etp';
+  return 'dfd';
+};
+
 const ProcessoDocumentoPage: React.FC<ProcessoDocumentoPageProps> = ({ processoId, onBack, onChanged }) => {
   const [loading, setLoading] = useState(true);
-  const [dfdAprovado, setDfdAprovado] = useState(false);
+  const [processo, setProcesso] = useState<Processo | null>(null);
+  // Fase cuja tela está aberta — inicializada a partir do processo carregado,
+  // mas o usuário pode navegar pra uma fase anterior já aprovada pelo passo
+  // a passo (FasesLicitaStepper) sem isso mudar a fase_atual real dele.
+  const [documento, setDocumento] = useState<DocumentoAtivo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
     sysgovApi.licita
       .getProcesso(processoId)
-      .then((processo) => {
-        if (!cancelado) setDfdAprovado(processo.dfd?.status === 'aprovado');
+      .then((res) => {
+        if (cancelado) return;
+        setProcesso(res);
+        setDocumento(documentoPorFase(res));
       })
       .catch((err: any) => {
         if (!cancelado) setError(err?.response?.data?.error || err?.message || 'Erro ao carregar o processo.');
@@ -390,15 +440,26 @@ const ProcessoDocumentoPage: React.FC<ProcessoDocumentoPageProps> = ({ processoI
     };
   }, [processoId]);
 
-  if (loading) return <ScreenState type="loading" title="Carregando processo..." />;
+  // Mantém o `processo` local (usado pelo stepper) em dia sempre que uma
+  // ação em qualquer tela de documento muda seu status — sem isso o passo a
+  // passo só refletiria uma aprovação depois de reabrir a tela.
+  const handleChanged = (atualizado: Processo) => {
+    setProcesso(atualizado);
+    onChanged(atualizado);
+  };
+
+  if (loading || !processo || !documento) return <ScreenState type="loading" title="Carregando processo..." />;
   if (error) {
     return <ScreenState type="error" title="Erro ao carregar" description={error} actionLabel="Voltar" onAction={onBack} />;
   }
 
-  return dfdAprovado ? (
-    <EtpDetailPage processoId={processoId} onBack={onBack} onChanged={onChanged} />
-  ) : (
-    <DfdDetailPage processoId={processoId} onBack={onBack} onChanged={onChanged} />
+  return (
+    <div className="space-y-4">
+      <FasesLicitaStepper processo={processo} faseAtiva={documento} onSelecionar={setDocumento} />
+      {documento === 'mapa_riscos' && <MapaRiscoDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
+      {documento === 'etp' && <EtpDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
+      {documento === 'dfd' && <DfdDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
+    </div>
   );
 };
 
