@@ -24,7 +24,11 @@ import {
   MessageSquare,
   Sparkles,
   ShieldAlert,
+  ClipboardEdit,
+  Eye,
 } from 'lucide-react';
+import { AvaliacaoFormModal } from '../AvaliacaoFormModal';
+import { EspelhoAvaliacaoModal } from '../EspelhoAvaliacaoModal';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiAvaliacao,
@@ -52,6 +56,11 @@ export const PortalAvaliadorView: React.FC = () => {
   const [recursos, setRecursos] = useState<ApiRecurso[]>([]);
   const [servidores, setServidores] = useState<ApiServidor[]>([]);
   const [selectedAvaliadorId, setSelectedAvaliadorId] = useState<string>('todos');
+
+  // Modal de Preenchimento/Visualização da Avaliação
+  const [modalAvaliarOpen, setModalAvaliarOpen] = useState<boolean>(false);
+  const [modalEspelhoOpen, setModalEspelhoOpen] = useState<boolean>(false);
+  const [avaliacaoEmFocoId, setAvaliacaoEmFocoId] = useState<number | null>(null);
 
   // Modal Novo Incidente CIT
   const [modalCitOpen, setModalCitOpen] = useState<boolean>(false);
@@ -441,6 +450,36 @@ export const PortalAvaliadorView: React.FC = () => {
           const av = row.original;
           return (
             <div className="flex items-center justify-end gap-1.5">
+              {!av.homologada && !av.data_conclusao && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAvaliacaoEmFocoId(av.id);
+                    setModalAvaliarOpen(true);
+                  }}
+                >
+                  <ClipboardEdit className="h-3 w-3 mr-1" />
+                  Avaliar
+                </Button>
+              )}
+              {av.data_conclusao && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAvaliacaoEmFocoId(av.id);
+                    setModalEspelhoOpen(true);
+                  }}
+                >
+                  <Eye className="h-3 w-3 mr-1 text-primary" />
+                  Ver Avaliação
+                </Button>
+              )}
               {!av.devolutiva_realizada && av.data_conclusao && (
                 <Button
                   variant="outline"
@@ -758,6 +797,21 @@ export const PortalAvaliadorView: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* ── Modal: Preenchimento da Avaliação (Escala Gráfica) ─────────── */}
+      <AvaliacaoFormModal
+        avaliacaoId={avaliacaoEmFocoId}
+        open={modalAvaliarOpen}
+        onClose={() => setModalAvaliarOpen(false)}
+        onSubmitted={() => carregarDadosAvaliador()}
+      />
+
+      {/* ── Modal: Visualização do Espelho da Avaliação ────────────────── */}
+      <EspelhoAvaliacaoModal
+        avaliacaoId={avaliacaoEmFocoId}
+        open={modalEspelhoOpen}
+        onClose={() => setModalEspelhoOpen(false)}
+      />
 
       {/* ── Modal: Novo Apontamento no CIT (Diário de Bordo) ───────────── */}
       <Modal

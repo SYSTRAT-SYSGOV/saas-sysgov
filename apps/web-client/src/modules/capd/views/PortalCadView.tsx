@@ -31,12 +31,14 @@ import {
   Sliders,
   Trophy,
   Lock,
+  Eye,
 } from 'lucide-react';
 import { GestaoCiclosPanel } from '../GestaoCiclosPanel';
 import { CadastroPerguntasPanel } from '../CadastroPerguntasPanel';
 import { EscalaGraficaPanel } from '../EscalaGraficaPanel';
 import { FatoresPesosPanel } from '../FatoresPesosPanel';
 import { ConsolidacaoPanel } from '../ConsolidacaoPanel';
+import { EspelhoAvaliacaoModal } from '../EspelhoAvaliacaoModal';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiRecurso,
@@ -81,6 +83,8 @@ export const PortalCadView: React.FC = () => {
   // Modal de Julgamento Comparativo (3 Colunas: Razões x Contrarrazões x CIT)
   const [modalJulgamentoOpen, setModalJulgamentoOpen] = useState<boolean>(false);
   const [recursoSelecionado, setRecursoSelecionado] = useState<ApiRecurso | null>(null);
+  const [modalEspelhoOpen, setModalEspelhoOpen] = useState<boolean>(false);
+  const [avaliacaoEmFocoId, setAvaliacaoEmFocoId] = useState<number | null>(null);
   const [sessaoAtivaId, setSessaoAtivaId] = useState<number>(1);
   const [votoFavoravel, setVotoFavoravel] = useState<boolean>(false);
   const [novoGrauProposto, setNovoGrauProposto] = useState<number>(3);
@@ -263,18 +267,32 @@ export const PortalCadView: React.FC = () => {
         header: 'Ação',
         size: 140,
         cell: ({ row }) => (
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs"
-            onClick={() => {
-              setRecursoSelecionado(row.original);
-              setModalJulgamentoOpen(true);
-            }}
-          >
-            <Scale className="h-3.5 w-3.5 mr-1 text-primary" />
-            Julgar no Painel
-          </Button>
+          <div className="flex items-center justify-end gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              onClick={() => {
+                setAvaliacaoEmFocoId(row.original.avaliacao_id);
+                setModalEspelhoOpen(true);
+              }}
+            >
+              <Eye className="h-3.5 w-3.5 mr-1 text-primary" />
+              Ver Avaliação
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              onClick={() => {
+                setRecursoSelecionado(row.original);
+                setModalJulgamentoOpen(true);
+              }}
+            >
+              <Scale className="h-3.5 w-3.5 mr-1 text-primary" />
+              Julgar no Painel
+            </Button>
+          </div>
         ),
       },
     ],
@@ -721,6 +739,13 @@ export const PortalCadView: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* ── Modal: Visualização do Espelho da Avaliação Contestada ─────── */}
+      <EspelhoAvaliacaoModal
+        avaliacaoId={avaliacaoEmFocoId}
+        open={modalEspelhoOpen}
+        onClose={() => setModalEspelhoOpen(false)}
+      />
 
       {/* FEEDBACK MODAL */}
       {feedback && (

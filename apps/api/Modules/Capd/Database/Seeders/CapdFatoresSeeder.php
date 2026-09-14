@@ -141,6 +141,6 @@ class CapdFatoresSeeder extends Seeder
             }
         }
 
-        $this->command->info('✓ CAPD: Planos de carreira e 8 fatores de avaliação cadastrados para ' . $tenantIds->count() . ' tenant(s).');
+        $this->command?->info('✓ CAPD: Planos de carreira e 8 fatores de avaliação cadastrados para ' . $tenantIds->count() . ' tenant(s).');
     }
 }

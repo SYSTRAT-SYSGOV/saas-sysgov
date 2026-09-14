@@ -411,7 +411,7 @@ final class AvaliacaoController extends Controller
                 'nome'         => $fator?->nome ?? $cod,
                 'descricao'    => $fator?->descricao,
                 'grau'         => is_array($info) ? ($info['grau'] ?? null) : null,
-                'nota'         => is_array($info) ? ($info['nota'] ?? $info) : $info,
+                'nota'         => is_array($info) ? ($info['nota'] ?? $info['pontos'] ?? null) : $info,
                 'peso'         => $fator?->peso_padrao ?? 1.0,
                 'justificativa'=> is_array($info) ? ($info['justificativa'] ?? null) : null,
             ];
@@ -650,9 +650,9 @@ final class AvaliacaoController extends Controller
 
     private function resolverPlano(int $servidorId): string
     {
-        // Determina plano pela matrícula/vínculo do servidor
-        // TODO: integrar com tabela de servidores quando disponível
-        $planoId = \DB::table('users')->where('id', $servidorId)->value('plano_carreira_id');
+        // Determina plano pelo vínculo do servidor (Avaliacao.servidor_id
+        // referencia User.id; capd_servidores.user_id é a FK correspondente).
+        $planoId = \DB::table('capd_servidores')->where('user_id', $servidorId)->value('plano_carreira_id');
         $plano   = \DB::table('capd_planos_carreira')->where('id', $planoId)->value('codigo');
 
         return match ($plano) {

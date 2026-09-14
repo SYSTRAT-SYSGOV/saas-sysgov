@@ -24,7 +24,9 @@ import {
   CheckCircle2,
   Calendar,
   Layers,
+  Eye,
 } from 'lucide-react';
+import { EspelhoAvaliacaoModal } from '../EspelhoAvaliacaoModal';
 import {
   ResponsiveContainer,
   ScatterChart,
@@ -344,6 +346,8 @@ export const PortalRhView: React.FC = () => {
   const [cicloId, setCicloId] = useState<number>(1);
   const [metricas, setMetricas] = useState<ApiDashboardMetricas | null>(null);
   const [avaliacoes, setAvaliacoes] = useState<ApiAvaliacao[]>([]);
+  const [modalEspelhoOpen, setModalEspelhoOpen] = useState<boolean>(false);
+  const [avaliacaoEmFocoId, setAvaliacaoEmFocoId] = useState<number | null>(null);
   const [servidores, setServidores] = useState<ApiServidor[]>([]);
 
   const [filtroSecDistribuicao, setFiltroSecDistribuicao] = useState<string>('todas');
@@ -572,6 +576,18 @@ export const PortalRhView: React.FC = () => {
     []
   );
 
+  // Última avaliação (por data de conclusão) de cada servidor, para o botão "Ver Avaliação"
+  const ultimaAvaliacaoPorServidor = useMemo(() => {
+    const mapa = new Map<number, ApiAvaliacao>();
+    for (const av of avaliacoes) {
+      const atual = mapa.get(av.servidor_id);
+      if (!atual || (av.data_conclusao && (!atual.data_conclusao || av.data_conclusao > atual.data_conclusao))) {
+        mapa.set(av.servidor_id, av);
+      }
+    }
+    return mapa;
+  }, [avaliacoes]);
+
   // Colunas TanStack dedicadas ao Quadro Geral de Servidores com foco na distribuição institucional
   const columnsServidoresGeral = useMemo<ColumnDef<ApiServidor>[]>(
     () => [
@@ -701,8 +717,32 @@ export const PortalRhView: React.FC = () => {
           </div>
         ),
       },
+      {
+        id: 'acoes',
+        header: 'Ação',
+        size: 130,
+        cell: ({ row }) => {
+          const userId = row.original.user_id || row.original.id;
+          const av = ultimaAvaliacaoPorServidor.get(userId);
+          if (!av) return <span className="text-[11px] text-muted-foreground">—</span>;
+          return (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              onClick={() => {
+                setAvaliacaoEmFocoId(av.id);
+                setModalEspelhoOpen(true);
+              }}
+            >
+              <Eye className="h-3.5 w-3.5 mr-1 text-primary" />
+              Ver Avaliação
+            </Button>
+          );
+        },
+      },
     ],
-    []
+    [ultimaAvaliacaoPorServidor]
   );
 
   // Mapeamento dos servidores agrupados por Secretaria e Departamento
@@ -1553,6 +1593,13 @@ export const PortalRhView: React.FC = () => {
           </div>
         </Card>
       )}
+
+      {/* ── Modal: Visualização do Espelho da Avaliação ────────────────── */}
+      <EspelhoAvaliacaoModal
+        avaliacaoId={avaliacaoEmFocoId}
+        open={modalEspelhoOpen}
+        onClose={() => setModalEspelhoOpen(false)}
+      />
     </div>
   );
 };
