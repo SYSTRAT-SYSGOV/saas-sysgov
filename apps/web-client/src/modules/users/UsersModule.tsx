@@ -33,6 +33,11 @@ const TENANT_ROLES = [
   'parecerista',
   'fiscal',
   'membro',
+  'membro_capd',
+  'gestor_rh',
+  'avaliador',
+  'servidor',
+  'auditoria_capd',
 ];
 
 interface FormState {
