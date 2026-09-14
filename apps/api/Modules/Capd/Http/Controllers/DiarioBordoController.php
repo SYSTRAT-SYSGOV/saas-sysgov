@@ -61,7 +61,10 @@ final class DiarioBordoController extends Controller
         }
 
         // Servidor comum só enxerga seus próprios registros
-        if ($avaliador && ! $avaliador->hasRole(['admin_tenant', 'gestor_rh', 'avaliador_capd', 'membro_comissao'])) {
+        $temPapelPrivilegiado = $avaliador && collect(['admin_tenant', 'gestor_rh', 'avaliador_capd', 'membro_comissao'])
+            ->contains(fn (string $papel) => $avaliador->hasRole($papel));
+
+        if ($avaliador && ! $temPapelPrivilegiado) {
             $query->where('servidor_id', $avaliador->id);
         }
 
