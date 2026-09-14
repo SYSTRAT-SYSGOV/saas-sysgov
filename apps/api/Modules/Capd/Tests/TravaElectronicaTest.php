@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests;
 
+use Illuminate\Support\Collection;
 use Modules\Capd\Exceptions\TravaIncidenteCriticoException;
 use Modules\Capd\Services\CalculadoraNotaService;
 use Modules\Capd\Services\TravaElectronicaService;
@@ -18,22 +19,45 @@ use PHPUnit\Framework\TestCase;
  */
 final class TravaElectronicaTest extends TestCase
 {
-    private array $fatores;
+    private Collection $fatoresPesos;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->fatores = [
-            'F1' => ['id' => 1, 'peso_geral' => 1.5, 'peso_magisterio' => 1.5, 'automatizado' => true],
-            'F2' => ['id' => 2, 'peso_geral' => 1.5, 'peso_magisterio' => 1.0, 'automatizado' => true],
-            'F3' => ['id' => 3, 'peso_geral' => 1.0, 'peso_magisterio' => 1.0, 'automatizado' => false],
-            'F4' => ['id' => 4, 'peso_geral' => 1.5, 'peso_magisterio' => 1.5, 'automatizado' => false],
-            'F5' => ['id' => 5, 'peso_geral' => 1.0, 'peso_magisterio' => 1.0, 'automatizado' => false],
-            'F6' => ['id' => 6, 'peso_geral' => 1.5, 'peso_magisterio' => 2.0, 'automatizado' => false],
-            'F7' => ['id' => 7, 'peso_geral' => 1.0, 'peso_magisterio' => 1.5, 'automatizado' => false],
-            'F8' => ['id' => 8, 'peso_geral' => 1.0, 'peso_magisterio' => 0.5, 'automatizado' => false],
-        ];
+        $this->fatoresPesos = $this->criarFatoresPesos([
+            'F1' => ['id' => 1, 'peso' => 1.5, 'automatizado' => true],
+            'F2' => ['id' => 2, 'peso' => 1.5, 'automatizado' => true],
+            'F3' => ['id' => 3, 'peso' => 1.0],
+            'F4' => ['id' => 4, 'peso' => 1.5],
+            'F5' => ['id' => 5, 'peso' => 1.0],
+            'F6' => ['id' => 6, 'peso' => 1.5],
+            'F7' => ['id' => 7, 'peso' => 1.0],
+            'F8' => ['id' => 8, 'peso' => 1.0],
+        ]);
+    }
+
+    /**
+     * Constrói uma Collection de pesos "tipo ModeloFatorPeso" usando stdClass —
+     * este é um teste PHPUnit\Framework\TestCase puro (sem bootstrap Laravel) e
+     * instanciar Eloquent Model aqui quebra quando roda junto de testes Feature
+     * no mesmo processo (ciclo de boot do Eloquent). CalculadoraNotaService só
+     * lê ->fator_id, ->peso e ->fator->{codigo,automatizado} via propriedade.
+     *
+     * @param  array<string, array{id: int, peso: float, automatizado?: bool}>  $definicoes  Keyed by código do fator
+     */
+    private function criarFatoresPesos(array $definicoes): Collection
+    {
+        return collect($definicoes)->map(function (array $def, string $codigo): object {
+            return (object) [
+                'fator_id' => $def['id'],
+                'peso'     => $def['peso'],
+                'fator'    => (object) [
+                    'codigo'       => $codigo,
+                    'automatizado' => $def['automatizado'] ?? false,
+                ],
+            ];
+        })->values();
     }
 
     /**
@@ -56,7 +80,7 @@ final class TravaElectronicaTest extends TestCase
         ];
 
         $this->expectException(TravaIncidenteCriticoException::class);
-        $calculadora->calcular($respostas, $this->fatores, 'GERAL', 1, 10);
+        $calculadora->calcular($respostas, $this->fatoresPesos, 1, 10);
     }
 
     /**
@@ -79,7 +103,7 @@ final class TravaElectronicaTest extends TestCase
         ];
 
         $this->expectException(TravaIncidenteCriticoException::class);
-        $calculadora->calcular($respostas, $this->fatores, 'GERAL', 1, 10);
+        $calculadora->calcular($respostas, $this->fatoresPesos, 1, 10);
     }
 
     /**
@@ -102,7 +126,7 @@ final class TravaElectronicaTest extends TestCase
         ];
 
         $this->expectException(TravaIncidenteCriticoException::class);
-        $calculadora->calcular($respostas, $this->fatores, 'GERAL', 1, 10);
+        $calculadora->calcular($respostas, $this->fatoresPesos, 1, 10);
     }
 
     /**
@@ -126,7 +150,7 @@ final class TravaElectronicaTest extends TestCase
             'F8' => ['grau' => 4, 'automatizado' => false],
         ];
 
-        $resultado = $calculadora->calcular($respostas, $this->fatores, 'GERAL', 1, 10);
+        $resultado = $calculadora->calcular($respostas, $this->fatoresPesos, 1, 10);
         self::assertNotEmpty($resultado['nota_final']);
     }
 
@@ -146,7 +170,7 @@ final class TravaElectronicaTest extends TestCase
             'F3' => ['grau' => 3, 'automatizado' => false],
         ];
 
-        $resultado = $calculadora->calcular($respostas, $this->fatores, 'GERAL', 1, 10);
+        $resultado = $calculadora->calcular($respostas, $this->fatoresPesos, 1, 10);
         self::assertNotEmpty($resultado['nota_final']);
     }
 
@@ -168,7 +192,7 @@ final class TravaElectronicaTest extends TestCase
             'F6' => ['grau' => 5, 'automatizado' => false],
         ];
 
-        $resultado = $calculadora->calcular($respostas, $this->fatores, 'GERAL', 1, 10);
+        $resultado = $calculadora->calcular($respostas, $this->fatoresPesos, 1, 10);
         self::assertNotEmpty($resultado['nota_final']);
         self::assertSame(5, $resultado['detalhamento']['F6']['grau']);
     }

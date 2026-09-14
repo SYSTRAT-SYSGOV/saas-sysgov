@@ -43,6 +43,8 @@ final class ConsolidacaoController extends Controller
      */
     public function nfc(int $cicloId): JsonResponse
     {
+        abort_unless(request()->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $ciclo = CicloAvaliacao::findOrFail($cicloId);
 
         $servidores = Servidor::query()
@@ -70,7 +72,10 @@ final class ConsolidacaoController extends Controller
                     ->first();
 
                 if ($av) {
-                    $notasCiclos[$c->ano_competencia] = (string) $av->nota_final;
+                    // nota_final é produzida por CalculadoraNotaService em escala 0-10 (spec §11.2);
+                    // a NFC (RN-02) e a nota de corte do ciclo (RN-04) são expressas em escala 0-100,
+                    // então convertemos aqui — nunca alterar a escala nativa de CalculadoraNotaService.
+                    $notasCiclos[$c->ano_competencia] = bcmul((string) $av->nota_final, '10', 2);
                 }
             }
 
@@ -83,6 +88,7 @@ final class ConsolidacaoController extends Controller
                     'nfc'          => null,
                     'conceito'     => null,
                     'elegivel'     => false,
+                    'pdi_pendente' => false,
                 ];
             }
 
@@ -94,6 +100,13 @@ final class ConsolidacaoController extends Controller
                 $nfc = null; $elegivel = false; $conceito = null;
             }
 
+            // RF-09: PMD vinculado a este ciclo como ciclo de verificação de evolução —
+            // enquanto não for verificado (pendente/em andamento), bloqueia a progressão.
+            $pdiPendente = $this->pmdService->possuiPmdPendenteNoCiclo($servidor->id, $ciclo->id);
+            if ($pdiPendente) {
+                $elegivel = false;
+            }
+
             return [
                 'servidor_id'  => $servidor->id,
                 'nome'         => $servidor->nome_completo,
@@ -102,6 +115,7 @@ final class ConsolidacaoController extends Controller
                 'nfc'          => $nfc,
                 'conceito'     => $conceito,
                 'elegivel'     => $elegivel,
+                'pdi_pendente' => $pdiPendente,
             ];
         });
 
@@ -122,6 +136,8 @@ final class ConsolidacaoController extends Controller
      */
     public function rankingProgressao(int $cicloId): JsonResponse
     {
+        abort_unless(request()->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $ciclo = CicloAvaliacao::findOrFail($cicloId);
 
         // Monta candidatos elegíveis
@@ -160,6 +176,8 @@ final class ConsolidacaoController extends Controller
      */
     public function exportarPdf(int $cicloId): Response
     {
+        abort_unless(request()->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $ciclo = CicloAvaliacao::findOrFail($cicloId);
 
         // Gera dados do ranking
@@ -209,8 +227,10 @@ final class ConsolidacaoController extends Controller
                     'elegivel'     => $dado['elegivel'],
                 ]);
 
-                if (! $dado['elegivel']) {
-                    $this->pmdService->criarParaServidor($servidor, $ciclo, $dado['nfc']);
+                // RF-09: PMD é criado quando o conceito atingido é Regular ou Insuficiente
+                // (faixas configuráveis pela Comissão), não pelo corte único de elegibilidade.
+                if (in_array($dado['conceito'], ['Regular', 'Insuficiente'], true)) {
+                    $this->pmdService->criarParaServidor($servidor, $ciclo, $dado['nfc'], $dado['conceito']);
                     $pmdsGerados++;
                 }
             } catch (\Throwable $e) {
@@ -234,6 +254,8 @@ final class ConsolidacaoController extends Controller
      */
     public function historico(int $cicloId): JsonResponse
     {
+        abort_unless(request()->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $ciclo   = CicloAvaliacao::findOrFail($cicloId);
         $trienio = $ciclo->ano_competencia - ($ciclo->etapa_cadencia - 1);
 

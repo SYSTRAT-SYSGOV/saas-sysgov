@@ -23,8 +23,10 @@ final class QuinquenioController extends Controller
         private readonly QuinquenioService $service,
     ) {}
 
-    public function index(int $servidorId): JsonResponse
+    public function index(Request $request, int $servidorId): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $quinquenios = $this->service->listarPorServidor($servidorId);
 
         return response()->json([

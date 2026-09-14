@@ -506,7 +506,7 @@ export const PainelGerencialPanel: React.FC<Props> = ({ cicloId: initialCicloId 
 
           {/* Painel sanfona de filtros adicionais */}
           {showFiltrosAvancados && (
-            <div className="p-3 border-b border-border bg-muted/20 grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="p-3 border-b border-border bg-muted/20 grid grid-cols-1 sm:grid-cols-5 gap-3">
               <div>
                 <label className="text-xs font-medium text-foreground block mb-1">Status da Avaliação</label>
                 <Select
@@ -569,6 +569,24 @@ export const PainelGerencialPanel: React.FC<Props> = ({ cicloId: initialCicloId 
                   }}
                   placeholder="Ex: Médico, Professor..."
                   className="h-9 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Prazo de Recurso</label>
+                <Select
+                  value={situacaoPrazo}
+                  onChange={(val) => {
+                    setSituacaoPrazo(val);
+                    updateUrlParams({ situacao_prazo: val });
+                  }}
+                  options={[
+                    { value: '', label: 'Todos os Prazos' },
+                    { value: 'ciencia_pendente', label: 'Ciência Pendente' },
+                    { value: 'vencendo_7_dias', label: 'Recurso Vencendo em 7 Dias' },
+                    { value: 'recurso_vencido', label: 'Recurso Vencido' },
+                  ]}
+                  placeholder="Prazo de Recurso..."
                 />
               </div>
             </div>

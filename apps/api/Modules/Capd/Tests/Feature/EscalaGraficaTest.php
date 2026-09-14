@@ -37,9 +37,10 @@ final class EscalaGraficaTest extends TestCase
         app(TenantContext::class)->set($this->tenant);
 
         $this->user = User::create([
-            'name'     => 'Admin Escalas',
-            'email'    => 'admin.escalas@araucaria.pr.gov.br',
-            'password' => bcrypt('secret'),
+            'name'              => 'Admin Escalas',
+            'email'             => 'admin.escalas@araucaria.pr.gov.br',
+            'password'          => bcrypt('secret'),
+            'is_platform_admin' => true,
         ]);
         $this->user->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
 
@@ -120,6 +121,31 @@ final class EscalaGraficaTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJson(['message' => 'O grau 1 deve iniciar em 0.']);
+    }
+
+    public function test_usuario_sem_permissao_recebe_403_ao_criar_escala(): void
+    {
+        $semPermissao = User::create([
+            'name'     => 'Servidor Comum',
+            'email'    => 'servidor.escalas@araucaria.pr.gov.br',
+            'password' => bcrypt('secret'),
+        ]);
+        $semPermissao->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
+
+        $payload = [
+            'nome'   => 'Escala Não Autorizada',
+            'niveis' => [
+                ['grau' => 1, 'rotulo' => 'Abaixo', 'valor_min' => 0,  'valor_max' => 50],
+                ['grau' => 2, 'rotulo' => 'Médio',  'valor_min' => 50, 'valor_max' => 80],
+                ['grau' => 3, 'rotulo' => 'Acima',  'valor_min' => 80, 'valor_max' => 100],
+            ],
+        ];
+
+        $response = $this->actingAs($semPermissao)
+            ->withHeader('X-Tenant-ID', (string) $this->tenant->id)
+            ->postJson("/api/capd/modelos-formulario/{$this->modelo->id}/escalas-graficas", $payload);
+
+        $response->assertStatus(403);
     }
 
     public function test_listar_escalas_do_modelo(): void

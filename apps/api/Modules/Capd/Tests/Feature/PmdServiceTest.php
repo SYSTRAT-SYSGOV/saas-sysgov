@@ -85,6 +85,7 @@ final class PmdServiceTest extends TestCase
             $this->servidor,
             $this->ciclo,
             '65.50',
+            'Insuficiente',
             null,
             ['objetivos' => 'Capacitação em redação oficial e gestão de processos.']
         );
@@ -93,11 +94,12 @@ final class PmdServiceTest extends TestCase
         $this->assertEquals($this->servidor->id, $pmd->servidor_id);
         $this->assertEquals($this->ciclo->id, $pmd->ciclo_id);
         $this->assertEquals('65.50', (string) $pmd->nfc_gatilho);
-        $this->assertEquals(PlanoMelhoria::STATUS_PENDENTE, $pmd->status);
+        $this->assertEquals('Insuficiente', $pmd->conceito_atingido);
+        $this->assertEquals(PlanoMelhoria::STATUS_ABERTO, $pmd->status);
         $this->assertTrue($pmd->estaAtivo());
     }
 
-    public function test_verificacao_de_evolucao_com_nfc_superior_conclui_pmd(): void
+    public function test_verificacao_de_evolucao_registra_resultado_evoluiu(): void
     {
         $pmd = $this->pmdService->criarParaServidor(
             $this->servidor,
@@ -112,11 +114,11 @@ final class PmdServiceTest extends TestCase
         );
 
         $this->assertTrue($resultado['evoluiu']);
-        $this->assertEquals(PlanoMelhoria::STATUS_CONCLUIDO, $pmd->fresh()->status);
-        $this->assertNotNull($pmd->fresh()->concluido_em);
+        $this->assertEquals(PlanoMelhoria::STATUS_VERIFICADO, $pmd->fresh()->status);
+        $this->assertNotNull($pmd->fresh()->verificado_em);
     }
 
-    public function test_verificacao_de_evolucao_com_nfc_igual_ou_menor_mantem_em_andamento(): void
+    public function test_verificacao_de_evolucao_registra_resultado_nao_evoluiu(): void
     {
         $pmd = $this->pmdService->criarParaServidor(
             $this->servidor,
@@ -131,7 +133,71 @@ final class PmdServiceTest extends TestCase
         );
 
         $this->assertFalse($resultado['evoluiu']);
-        $this->assertEquals(PlanoMelhoria::STATUS_EM_ANDAMENTO, $pmd->fresh()->status);
-        $this->assertNull($pmd->fresh()->concluido_em);
+        $this->assertEquals(PlanoMelhoria::STATUS_VERIFICADO, $pmd->fresh()->status);
+        $this->assertNotNull($pmd->fresh()->verificado_em);
+    }
+
+    public function test_concluir_acoes_move_status_de_aberto_para_concluido(): void
+    {
+        $pmd = $this->pmdService->criarParaServidor($this->servidor, $this->ciclo, '60.00');
+
+        $atualizado = $this->pmdService->concluirAcoes($pmd);
+
+        $this->assertEquals(PlanoMelhoria::STATUS_CONCLUIDO, $atualizado->status);
+        $this->assertNotNull($atualizado->concluido_em);
+        $this->assertNull($atualizado->verificado_em);
+    }
+
+    public function test_concluir_acoes_falha_se_ja_verificado(): void
+    {
+        $pmd = $this->pmdService->criarParaServidor($this->servidor, $this->ciclo, '60.00');
+        $this->pmdService->verificarEvolucao($pmd, '80.00', 'Evoluiu.');
+
+        $this->expectException(\DomainException::class);
+        $this->pmdService->concluirAcoes($pmd->fresh());
+    }
+
+    public function test_possui_pmd_pendente_no_ciclo_de_verificacao(): void
+    {
+        $cicloVerificacao = CicloAvaliacao::create([
+            'tenant_id'       => $this->tenant->id,
+            'nome'            => 'Ciclo Anual 2027 (Etapa 2)',
+            'ano_competencia' => 2027,
+            'data_inicio'     => '2027-01-01',
+            'data_fim'        => '2027-12-31',
+            'status'          => CicloAvaliacao::STATUS_ABERTO,
+            'etapa_cadencia'  => 2,
+            'nota_corte_nfc'  => '70.00',
+        ]);
+
+        $this->pmdService->criarParaServidor($this->servidor, $this->ciclo, '60.00');
+
+        $this->assertTrue(
+            $this->pmdService->possuiPmdPendenteNoCiclo($this->servidor->id, $cicloVerificacao->id)
+        );
+        $this->assertFalse(
+            $this->pmdService->possuiPmdPendenteNoCiclo($this->servidor->id, $this->ciclo->id)
+        );
+    }
+
+    public function test_pmd_verificado_nao_conta_como_pendente_no_ciclo(): void
+    {
+        $cicloVerificacao = CicloAvaliacao::create([
+            'tenant_id'       => $this->tenant->id,
+            'nome'            => 'Ciclo Anual 2027 (Etapa 2)',
+            'ano_competencia' => 2027,
+            'data_inicio'     => '2027-01-01',
+            'data_fim'        => '2027-12-31',
+            'status'          => CicloAvaliacao::STATUS_ABERTO,
+            'etapa_cadencia'  => 2,
+            'nota_corte_nfc'  => '70.00',
+        ]);
+
+        $pmd = $this->pmdService->criarParaServidor($this->servidor, $this->ciclo, '60.00');
+        $this->pmdService->verificarEvolucao($pmd, '80.00', 'Evoluiu.');
+
+        $this->assertFalse(
+            $this->pmdService->possuiPmdPendenteNoCiclo($this->servidor->id, $cicloVerificacao->id)
+        );
     }
 }

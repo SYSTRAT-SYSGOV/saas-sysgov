@@ -112,4 +112,20 @@ final class QuinquenioTest extends TestCase
         $this->assertSame(2, $data['total']);
         $this->assertSame('10.00', $data['percentual_total']);
     }
+
+    public function test_usuario_sem_permissao_recebe_403_ao_listar_quinquenios(): void
+    {
+        $semPermissao = User::create([
+            'name'     => 'Servidor Comum Quinquenio',
+            'email'    => 'servidor.comum.quinquenio@araucaria.pr.gov.br',
+            'password' => bcrypt('secret'),
+        ]);
+        $semPermissao->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
+
+        $response = $this->actingAs($semPermissao)
+            ->withHeaders($this->headers())
+            ->getJson("/api/capd/servidores/{$this->servidor->id}/quinquenios");
+
+        $response->assertStatus(403);
+    }
 }

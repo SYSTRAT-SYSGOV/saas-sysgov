@@ -52,6 +52,8 @@ final class ModeloFatorPesoController extends Controller
      */
     public function sync(Request $request, int $modeloId): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $modelo = ModeloFormulario::findOrFail($modeloId);
 
         $validated = $request->validate([

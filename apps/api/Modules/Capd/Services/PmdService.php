@@ -18,8 +18,9 @@ use Modules\Capd\Models\Servidor;
 /**
  * Gestão dos Planos de Melhoria de Desempenho (PMD) — RF-09.
  *
- * Um PMD é criado quando o servidor atinge NFC inferior à nota_corte_nfc do ciclo.
- * É vinculado ao próximo ciclo avaliativo como fator de verificação de evolução.
+ * Um PMD é criado quando o servidor atinge conceito Regular ou Insuficiente
+ * (faixas configuráveis) no ciclo. É vinculado ao próximo ciclo avaliativo
+ * como fator de verificação de evolução.
  */
 final class PmdService
 {
@@ -31,15 +32,17 @@ final class PmdService
     /**
      * Cria ou atualiza o PMD de um servidor.
      *
-     * Chamado automaticamente por CicloService::consolidarNfcTrienal()
-     * quando NFC < nota_corte_nfc. Vincula ao próximo ciclo da cadência.
+     * Chamado automaticamente por ConsolidacaoController::processar() quando
+     * o conceito do ciclo é Regular ou Insuficiente. Vincula ao próximo ciclo
+     * da cadência.
      *
-     * @param array<string, mixed> $dados — objetivos, acoes, prazo
+     * @param array<string, mixed> $dados — objetivos, acoes, prazo, responsavel_id
      */
     public function criarParaServidor(
         Servidor       $servidor,
         CicloAvaliacao $ciclo,
         string         $nfc,
+        ?string        $conceito = null,
         ?Avaliacao     $avaliacao = null,
         array          $dados = [],
     ): PlanoMelhoria {
@@ -50,13 +53,13 @@ final class PmdService
             ->orderBy('ano_competencia')
             ->first();
 
-        return DB::transaction(function () use ($servidor, $ciclo, $nfc, $avaliacao, $dados, $proximoCiclo): PlanoMelhoria {
-            // Cancela PMDs anteriores pendentes do mesmo servidor no mesmo ciclo
+        return DB::transaction(function () use ($servidor, $ciclo, $nfc, $conceito, $avaliacao, $dados, $proximoCiclo): PlanoMelhoria {
+            // Supersede PMDs anteriores ainda não verificados do mesmo servidor+ciclo
             PlanoMelhoria::query()
                 ->where('tenant_id', $ciclo->tenant_id)
                 ->where('servidor_id', $servidor->id)
                 ->where('ciclo_id', $ciclo->id)
-                ->whereIn('status', [PlanoMelhoria::STATUS_PENDENTE, PlanoMelhoria::STATUS_EM_ANDAMENTO])
+                ->whereIn('status', [PlanoMelhoria::STATUS_ABERTO, PlanoMelhoria::STATUS_EM_ANDAMENTO, PlanoMelhoria::STATUS_CONCLUIDO])
                 ->update(['status' => PlanoMelhoria::STATUS_CANCELADO]);
 
             $prazo = $dados['prazo'] ?? ($proximoCiclo?->data_inicio ?? now()->addYear()->toDateString());
@@ -65,13 +68,15 @@ final class PmdService
                 'tenant_id'            => $ciclo->tenant_id,
                 'avaliacao_id'         => $avaliacao?->id,
                 'servidor_id'          => $servidor->id,
+                'responsavel_id'       => $dados['responsavel_id'] ?? $servidor->chefia_imediata_id ?? null,
                 'ciclo_id'             => $ciclo->id,
                 'ciclo_verificacao_id' => $proximoCiclo?->id,
                 'nfc_gatilho'          => $nfc,
+                'conceito_atingido'    => $conceito,
                 'objetivos'            => $dados['objetivos'] ?? 'Melhoria de desempenho funcional conforme identificado na avaliação periódica.',
                 'acoes'                => $dados['acoes'] ?? null,
                 'prazo'                => $prazo,
-                'status'               => PlanoMelhoria::STATUS_PENDENTE,
+                'status'               => PlanoMelhoria::STATUS_ABERTO,
             ]);
 
             // Evento para integração assíncrona (notifica RH)
@@ -81,14 +86,15 @@ final class PmdService
                 'servidor_id' => $servidor->id,
                 'ciclo_id'    => $ciclo->id,
                 'nfc'         => $nfc,
+                'conceito'    => $conceito,
             ]);
 
             $this->audit->record(
                 'capd',
                 'pmd.criado',
-                "PMD criado para servidor #{$servidor->id}: NFC={$nfc} abaixo da nota de corte {$ciclo->nota_corte_nfc}",
+                "PMD criado para servidor #{$servidor->id}: conceito={$conceito} (NFC={$nfc})",
                 null,
-                ['pmd_id' => $pmd->id, 'nfc' => $nfc]
+                ['pmd_id' => $pmd->id, 'nfc' => $nfc, 'conceito' => $conceito]
             );
 
             return $pmd;
@@ -112,6 +118,7 @@ final class PmdService
             'acoes',
             'prazo',
             'status',
+            'responsavel_id',
             'ciclo_verificacao_id',
             'observacoes_verificacao',
         ])));
@@ -128,23 +135,46 @@ final class PmdService
     }
 
     /**
+     * Marca as ações do plano como executadas pelo responsável — ainda não é
+     * a verificação de evolução (isso só acontece no ciclo de verificação,
+     * via verificarEvolucao()).
+     */
+    public function concluirAcoes(PlanoMelhoria $pmd): PlanoMelhoria
+    {
+        if (! in_array($pmd->status, [PlanoMelhoria::STATUS_ABERTO, PlanoMelhoria::STATUS_EM_ANDAMENTO], true)) {
+            throw new DomainException("PMD #{$pmd->id} não pode ter as ações concluídas (status: {$pmd->status}).");
+        }
+
+        $before = $pmd->toArray();
+        $pmd->update([
+            'status'       => PlanoMelhoria::STATUS_CONCLUIDO,
+            'concluido_em' => now(),
+        ]);
+
+        $this->audit->record('capd', 'pmd.acoes_concluidas', "PMD #{$pmd->id} — ações concluídas pelo responsável", $before, $pmd->fresh()->toArray());
+
+        return $pmd->fresh();
+    }
+
+    /**
      * Registra a verificação de evolução do PMD no ciclo de verificação.
+     * Sempre move o status para "verificado" — o booleano `evoluiu` no
+     * retorno é o resultado informativo da reavaliação, não um novo status.
      *
      * @return array{evoluiu: bool, observacoes: string}
      */
-    public function verificarEvolucao(PlanoMelhoria $pmd, string $nfcNovoCiclo, string $observacoes): array
+    public function verificarEvolucao(PlanoMelhoria $pmd, string $nfcNovoCiclo, string $observacoes, ?int $verificadoPor = null): array
     {
         $nfcAnterior = (float) $pmd->nfc_gatilho;
         $nfcNova     = (float) $nfcNovoCiclo;
         $evoluiu     = $nfcNova > $nfcAnterior;
 
-        $novoStatus = $evoluiu ? PlanoMelhoria::STATUS_CONCLUIDO : PlanoMelhoria::STATUS_EM_ANDAMENTO;
-
         $before = $pmd->toArray();
         $pmd->update([
-            'status'                  => $novoStatus,
+            'status'                  => PlanoMelhoria::STATUS_VERIFICADO,
             'observacoes_verificacao' => $observacoes,
-            'concluido_em'            => $evoluiu ? now() : null,
+            'verificado_em'           => now(),
+            'verificado_por'          => $verificadoPor,
         ]);
 
         $this->audit->record(
@@ -159,6 +189,24 @@ final class PmdService
             'evoluiu'     => $evoluiu,
             'observacoes' => $observacoes,
         ];
+    }
+
+    /**
+     * RF-09 — verifica se o servidor tem um PMD pendente de verificação de
+     * evolução vinculado ao ciclo informado (ciclo_verificacao_id).
+     *
+     * Usado como fator de bloqueio da elegibilidade de progressão: um PMD
+     * ainda não verificado (aberto, em andamento ou com ações já concluídas,
+     * mas sem a reavaliação registrada) no ciclo em que deveria ser
+     * verificado impede a progressão até que a evolução seja registrada.
+     */
+    public function possuiPmdPendenteNoCiclo(int $servidorId, int $cicloId): bool
+    {
+        return PlanoMelhoria::query()
+            ->where('servidor_id', $servidorId)
+            ->where('ciclo_verificacao_id', $cicloId)
+            ->whereIn('status', [PlanoMelhoria::STATUS_ABERTO, PlanoMelhoria::STATUS_EM_ANDAMENTO, PlanoMelhoria::STATUS_CONCLUIDO])
+            ->exists();
     }
 
     /**
