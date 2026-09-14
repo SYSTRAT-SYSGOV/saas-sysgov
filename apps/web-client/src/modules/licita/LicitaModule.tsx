@@ -10,10 +10,12 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { ProcessoFormModal } from './components/ProcessoFormModal';
 import { BuscaAvancadaProcessos, aplicarFiltrosAvancados, type FiltroAvancado } from './components/BuscaAvancadaProcessos';
 import { DfdDetailPage } from './pages/DfdDetailPage';
+import { EtpDetailPage } from './pages/EtpDetailPage';
 import { LegislacaoPage } from './pages/LegislacaoPage';
 import { LegislacaoDetailPage } from './pages/LegislacaoDetailPage';
 import { CamposConfiguracaoPage } from './pages/CamposConfiguracaoPage';
 import { abrirJanelaPdf, gerarDfdPdf } from './utils/gerarDfdPdf';
+import { gerarEtpPdf } from './utils/gerarEtpPdf';
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
@@ -57,11 +59,14 @@ const ProcessosTab: React.FC<{
   const [search, setSearch] = useState('');
   const [filtrosAvancados, setFiltrosAvancados] = useState<FiltroAvancado[]>([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [gerandoPdfId, setGerandoPdfId] = useState<number | null>(null);
+  // Guarda "processoId:tipo" — dois botões (DFD/ETP) podem existir na mesma
+  // linha, então só o id do processo não bastaria para saber qual está
+  // carregando.
+  const [gerandoPdfId, setGerandoPdfId] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   const handleGerarPdf = useCallback(
-    async (processoId: number) => {
+    async (processoId: number, tipo: 'dfd' | 'etp') => {
       // Precisa abrir a janela AQUI, síncrono, ainda dentro do clique — se
       // abrirmos só depois do await abaixo, o navegador já não reconhece
       // como resposta direta a um gesto do usuário e bloqueia o popup
@@ -78,17 +83,21 @@ const ProcessosTab: React.FC<{
         return;
       }
 
-      setGerandoPdfId(processoId);
+      setGerandoPdfId(`${processoId}:${tipo}`);
       setPdfError(null);
       try {
         const [processoCompleto, config] = await Promise.all([
           sysgovApi.licita.getProcesso(processoId),
-          sysgovApi.licita.getCamposConfiguracao('dfd').catch(() => null),
+          sysgovApi.licita.getCamposConfiguracao(tipo).catch(() => null),
         ]);
-        gerarDfdPdf(janela, processoCompleto, tenant, config?.campos ?? []);
+        if (tipo === 'dfd') {
+          gerarDfdPdf(janela, processoCompleto, tenant, config?.campos ?? []);
+        } else {
+          gerarEtpPdf(janela, processoCompleto, tenant, config?.campos ?? []);
+        }
       } catch (err: any) {
         janela.close();
-        setPdfError(err?.response?.data?.error || err?.message || 'Erro ao gerar o PDF do DFD.');
+        setPdfError(err?.response?.data?.error || err?.message || `Erro ao gerar o PDF do ${tipo.toUpperCase()}.`);
       } finally {
         setGerandoPdfId(null);
       }
@@ -131,7 +140,9 @@ const ProcessosTab: React.FC<{
         enableSorting: false,
         cell: ({ row }) => {
           const dfd = row.original.dfd;
-          const gerando = gerandoPdfId === row.original.id;
+          const etp = row.original.etp;
+          const gerandoDfd = gerandoPdfId === `${row.original.id}:dfd`;
+          const gerandoEtp = gerandoPdfId === `${row.original.id}:etp`;
           return (
             <div className="flex justify-center gap-1">
               <Button
@@ -150,13 +161,27 @@ const ProcessosTab: React.FC<{
                   size="icon-sm"
                   variant="ghost"
                   title="Baixar PDF do DFD"
-                  isLoading={gerando}
+                  isLoading={gerandoDfd}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleGerarPdf(row.original.id);
+                    handleGerarPdf(row.original.id, 'dfd');
                   }}
                 >
-                  {!gerando && <FileDown className="h-3.5 w-3.5" />}
+                  {!gerandoDfd && <FileDown className="h-3.5 w-3.5" />}
+                </Button>
+              )}
+              {etp && (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  title="Baixar PDF do ETP"
+                  isLoading={gerandoEtp}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGerarPdf(row.original.id, 'etp');
+                  }}
+                >
+                  {!gerandoEtp && <FileDown className="h-3.5 w-3.5" />}
                 </Button>
               )}
             </div>
@@ -209,6 +234,21 @@ const ProcessosTab: React.FC<{
           const dfd = row.original.dfd;
           if (!dfd) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
           return <StatusChip label={DFD_STATUS_LABEL[dfd.status]} variant={DFD_STATUS_VARIANT[dfd.status]} />;
+        },
+      },
+      {
+        id: 'etp_status',
+        header: 'Status do ETP',
+        size: 150,
+        meta: {
+          // StatusEtp usa os mesmos 4 valores do StatusDfd — reaproveita os
+          // mesmos mapas de label/variant em vez de duplicá-los.
+          exportValue: (p) => (p.etp ? DFD_STATUS_LABEL[p.etp.status] : 'Não iniciado'),
+        },
+        cell: ({ row }) => {
+          const etp = row.original.etp;
+          if (!etp) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
+          return <StatusChip label={DFD_STATUS_LABEL[etp.status]} variant={DFD_STATUS_VARIANT[etp.status]} />;
         },
       },
       {
@@ -311,6 +351,57 @@ const ProcessosTab: React.FC<{
   );
 };
 
+interface ProcessoDocumentoPageProps {
+  processoId: number;
+  onBack: () => void;
+  onChanged: (processo: Processo) => void;
+}
+
+/**
+ * Decide se abre a tela do DFD ou do ETP ao clicar num processo — sem DFD
+ * aprovado ainda, mostra o DFD (fase corrente); DFD aprovado, mostra o ETP
+ * (o DfdDetailPage do DFD aprovado continua acessível a partir daqui: quem
+ * quiser conferir/baixar o PDF do DFD já aprovado usa o botão da grid de
+ * Processos, que sempre gera o PDF do DFD independente da fase atual).
+ * Faz uma busca leve própria só para decidir — DfdDetailPage/EtpDetailPage
+ * buscam os dados completos de novo ao montar, igual ao padrão já usado no
+ * resto do módulo (sem cache client-side de Processo).
+ */
+const ProcessoDocumentoPage: React.FC<ProcessoDocumentoPageProps> = ({ processoId, onBack, onChanged }) => {
+  const [loading, setLoading] = useState(true);
+  const [dfdAprovado, setDfdAprovado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    sysgovApi.licita
+      .getProcesso(processoId)
+      .then((processo) => {
+        if (!cancelado) setDfdAprovado(processo.dfd?.status === 'aprovado');
+      })
+      .catch((err: any) => {
+        if (!cancelado) setError(err?.response?.data?.error || err?.message || 'Erro ao carregar o processo.');
+      })
+      .finally(() => {
+        if (!cancelado) setLoading(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [processoId]);
+
+  if (loading) return <ScreenState type="loading" title="Carregando processo..." />;
+  if (error) {
+    return <ScreenState type="error" title="Erro ao carregar" description={error} actionLabel="Voltar" onAction={onBack} />;
+  }
+
+  return dfdAprovado ? (
+    <EtpDetailPage processoId={processoId} onBack={onBack} onChanged={onChanged} />
+  ) : (
+    <DfdDetailPage processoId={processoId} onBack={onBack} onChanged={onChanged} />
+  );
+};
+
 export const LicitaModule: React.FC = () => {
   const { tenant } = useTenant();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -345,7 +436,7 @@ export const LicitaModule: React.FC = () => {
 
   if (processoId) {
     return (
-      <DfdDetailPage
+      <ProcessoDocumentoPage
         processoId={Number(processoId)}
         onBack={closeProcesso}
         onChanged={() => {

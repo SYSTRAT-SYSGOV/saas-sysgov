@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Licita\Http\Controllers\CampoConfiguracaoController;
 use Modules\Licita\Http\Controllers\DfdController;
 use Modules\Licita\Http\Controllers\DfdIaController;
+use Modules\Licita\Http\Controllers\EtpController;
 use Modules\Licita\Http\Controllers\LegalDocumentoController;
 use Modules\Licita\Http\Controllers\LicitaIaController;
 use Modules\Licita\Http\Controllers\ProcessoController;
@@ -29,6 +30,14 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::post('/dfds/{id}/aprovar', [DfdController::class, 'aprovar']);
     Route::post('/dfds/{id}/rejeitar', [DfdController::class, 'rejeitar']);
     Route::put('/dfds/{id}/equipe-planejamento', [DfdController::class, 'alterarEquipePlanejamento']);
+
+    Route::post('/processos/{processoId}/etp', [EtpController::class, 'store']);
+    Route::get('/etps/{id}', [EtpController::class, 'show']);
+    Route::put('/etps/{id}', [EtpController::class, 'update']);
+    Route::post('/etps/{id}/reabrir', [EtpController::class, 'reabrir']);
+    Route::post('/etps/{id}/enviar-revisao', [EtpController::class, 'enviarRevisao']);
+    Route::post('/etps/{id}/aprovar', [EtpController::class, 'aprovar']);
+    Route::post('/etps/{id}/rejeitar', [EtpController::class, 'rejeitar']);
 
     Route::get('/legislacao', [LegalDocumentoController::class, 'index']);
     Route::post('/legislacao', [LegalDocumentoController::class, 'store']);

@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
  * @property-read Dfd|null $dfd
+ * @property-read Etp|null $etp
  * @property-read User|null $criador
  */
 final class Processo extends Model
@@ -58,6 +59,14 @@ final class Processo extends Model
     public function dfd(): HasOne
     {
         return $this->hasOne(Dfd::class, 'processo_id');
+    }
+
+    /**
+     * @return HasOne<Etp, $this>
+     */
+    public function etp(): HasOne
+    {
+        return $this->hasOne(Etp::class, 'processo_id');
     }
 
     /**

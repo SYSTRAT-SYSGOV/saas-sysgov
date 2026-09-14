@@ -20,7 +20,7 @@ final class ProcessoController extends Controller
     {
         $this->authorize('viewAny', Processo::class);
 
-        $query = Processo::query()->with('dfd')->latest();
+        $query = Processo::query()->with(['dfd', 'etp'])->latest();
 
         if ($fase = $request->query('fase_atual')) {
             $query->where('fase_atual', $fase);
@@ -57,7 +57,11 @@ final class ProcessoController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $processo = Processo::with(['dfd.elaborador', 'dfd.aprovador', 'dfd.versoes.usuario', 'criador'])->findOrFail($id);
+        $processo = Processo::with([
+            'dfd.elaborador', 'dfd.aprovador', 'dfd.versoes.usuario',
+            'etp.elaborador', 'etp.aprovador', 'etp.versoes.usuario',
+            'criador',
+        ])->findOrFail($id);
         $this->authorize('view', $processo);
 
         return response()->json($processo);
