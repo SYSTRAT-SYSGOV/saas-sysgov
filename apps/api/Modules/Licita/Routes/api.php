@@ -28,6 +28,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::post('/dfds/{id}/enviar-revisao', [DfdController::class, 'enviarRevisao']);
     Route::post('/dfds/{id}/aprovar', [DfdController::class, 'aprovar']);
     Route::post('/dfds/{id}/rejeitar', [DfdController::class, 'rejeitar']);
+    Route::put('/dfds/{id}/equipe-planejamento', [DfdController::class, 'alterarEquipePlanejamento']);
 
     Route::get('/legislacao', [LegalDocumentoController::class, 'index']);
     Route::post('/legislacao', [LegalDocumentoController::class, 'store']);

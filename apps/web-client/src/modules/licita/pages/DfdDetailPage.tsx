@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button } from '@sysgov/ui';
 import { StatusChip, PageHeader, ScreenState, ValidationErrorModal, ConfirmDialog } from '@/components/ui';
-import { ArrowLeft, FileText, CheckCircle2, XCircle, Send, RotateCcw } from 'lucide-react';
+import { ArrowLeft, FileText, CheckCircle2, XCircle, Send, RotateCcw, Users } from 'lucide-react';
 import { useAuth } from '@/core/auth/useAuth';
 import { useCan } from '@/core/rbac/useCan';
 import { cn } from '@/lib/utils';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
-import { sysgovApi, type CampoConfig, type CreateDfdInput, type Dfd, type Processo, type StatusDfd } from '@sysgov/sdk';
+import { sysgovApi, type CampoConfig, type CreateDfdInput, type Dfd, type MembroEquipePlanejamento, type Processo, type StatusDfd } from '@sysgov/sdk';
 import { DfdForm } from '../components/DfdForm';
+import { AlterarEquipePlanejamentoModal } from '../components/AlterarEquipePlanejamentoModal';
 
 interface Toast {
   type: 'success' | 'error';
@@ -36,6 +37,7 @@ const ACAO_LABEL: Record<string, string> = {
   aprovado: 'Aprovado',
   rejeitado: 'Rejeitado',
   reaberto: 'Reaberto para edição',
+  equipe_alterada_pelo_aprovador: 'Equipe de planejamento alterada pelo aprovador',
 };
 
 interface DfdDetailPageProps {
@@ -67,6 +69,7 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
   // devolve para o elaborador) que não devem disparar direto do clique.
   const [confirmAprovar, setConfirmAprovar] = useState(false);
   const [confirmRejeitar, setConfirmRejeitar] = useState(false);
+  const [alterarEquipeAberto, setAlterarEquipeAberto] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const notify = (t: Toast) => {
@@ -217,6 +220,14 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
                 <>
                   <Button
                     size="sm"
+                    variant="outline"
+                    leftIcon={<Users className="h-3.5 w-3.5" />}
+                    onClick={() => setAlterarEquipeAberto(true)}
+                  >
+                    Alterar Equipe
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="primary"
                     leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
                     isLoading={actionLoading}
@@ -295,6 +306,22 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
                 });
               }}
             />
+
+            <AlterarEquipePlanejamentoModal
+              open={alterarEquipeAberto}
+              equipeAtual={dfd.equipe_planejamento ?? []}
+              onClose={() => setAlterarEquipeAberto(false)}
+              onSalvar={async (equipe: MembroEquipePlanejamento[]) => {
+                const atualizado = await sysgovApi.licita.alterarEquipePlanejamentoDfd(dfd.id, equipe);
+                setDfd(atualizado);
+                setAlterarEquipeAberto(false);
+                notify({
+                  title: 'Equipe alterada',
+                  type: 'success',
+                  message: 'A equipe de planejamento foi atualizada com sucesso.',
+                });
+              }}
+            />
           </>
         )}
 
@@ -311,7 +338,12 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
         />
 
         <DfdForm
-          key={dfd?.id ?? 'novo'}
+          // updated_at no key: o DfdForm guarda estado próprio (equipe,
+          // itens etc.) e não é controlado por `initialValue` após montado
+          // — sem isso, alterar a equipe pelo modal do aprovador (que não
+          // passa pelo DfdForm) deixava o formulário mostrando o valor
+          // antigo até a página ser recarregada, mesmo já salvo no banco.
+          key={dfd ? `${dfd.id}-${dfd.updated_at}` : 'novo'}
           initialValue={
             dfd
               ? {

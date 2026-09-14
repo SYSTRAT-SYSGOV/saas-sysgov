@@ -121,6 +121,30 @@ final class DfdController extends Controller
         return response()->json($dfd);
     }
 
+    public function alterarEquipePlanejamento(Request $request, int $id): JsonResponse
+    {
+        $dfd = Dfd::findOrFail($id);
+        $this->authorize('alterarEquipe', $dfd);
+
+        $data = $request->validate([
+            // Mesmas regras da equipe_planejamento em validatedData() —
+            // RN: segregação de funções do art. 7º da Lei 14.133/2021
+            // continua valendo mesmo quando é o aprovador quem edita.
+            'equipe_planejamento' => ['required', 'array', 'min:2'],
+            'equipe_planejamento.*.nome' => ['required', 'string', 'max:255'],
+            'equipe_planejamento.*.cargo' => ['required', 'string', 'max:255'],
+            'equipe_planejamento.*.matricula' => ['required', 'string', 'max:50'],
+        ]);
+
+        try {
+            $dfd = $this->dfds->alterarEquipePlanejamento($dfd, $request->user(), $data['equipe_planejamento']);
+        } catch (DomainException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        return response()->json($dfd);
+    }
+
     /**
      * @return array<string, mixed>
      */

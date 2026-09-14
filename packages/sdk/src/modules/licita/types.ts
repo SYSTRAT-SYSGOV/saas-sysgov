@@ -7,7 +7,14 @@ export type FaseLicita = 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'tr
 export type StatusProcesso = 'em_andamento' | 'concluido' | 'cancelado';
 export type StatusDfd = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
 export type GrauPrioridade = 'baixa' | 'media' | 'alta' | 'critica';
-export type AcaoVersaoDfd = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado';
+export type AcaoVersaoDfd =
+  | 'criado'
+  | 'revisado'
+  | 'enviado_revisao'
+  | 'aprovado'
+  | 'rejeitado'
+  | 'reaberto'
+  | 'equipe_alterada_pelo_aprovador';
 
 export type TipoItemDfd = 'material' | 'servico';
 

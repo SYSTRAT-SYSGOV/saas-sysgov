@@ -8,6 +8,7 @@ import type {
   CreateProcessoInput,
   Dfd,
   LegalDocumento,
+  MembroEquipePlanejamento,
   Processo,
   ProcessoFilters,
   SugerirJustificativaDfdInput,
@@ -73,6 +74,14 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async rejeitarDfd(id: number, motivo: string): Promise<Dfd> {
     return this.api.request(`/licita/dfds/${id}/rejeitar`, { method: 'POST', body: JSON.stringify({ motivo }) });
+  }
+
+  /** Só o aprovador pode chamar (mesma permissão de aprovar/rejeitar) e só enquanto o DFD está em revisão — ver DfdPolicy::alterarEquipe. */
+  async alterarEquipePlanejamentoDfd(id: number, equipe: MembroEquipePlanejamento[]): Promise<Dfd> {
+    return this.api.request(`/licita/dfds/${id}/equipe-planejamento`, {
+      method: 'PUT',
+      body: JSON.stringify({ equipe_planejamento: equipe }),
+    });
   }
 
   async sugerirJustificativaDfd(input: SugerirJustificativaDfdInput): Promise<SugerirJustificativaDfdOutput> {
