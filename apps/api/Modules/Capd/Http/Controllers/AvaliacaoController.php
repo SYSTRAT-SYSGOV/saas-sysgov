@@ -96,6 +96,68 @@ final class AvaliacaoController extends Controller
         );
     }
 
+    // ── GET /avaliacoes/kpis-equipe ────────────────────────────────────
+
+    /**
+     * KPIs consolidados da equipe do avaliador autenticado (ou de toda a
+     * organização, se admin/gestor). Mesmo escopo de index().
+     */
+    public function kpisEquipe(Request $request): JsonResponse
+    {
+        $avaliador = $request->user();
+
+        $cicloId = $request->query('ciclo_id') ? (int) $request->query('ciclo_id') : null;
+        $ciclo = $cicloId
+            ? CicloAvaliacao::find($cicloId)
+            : CicloAvaliacao::query()->ativo()->latest('id')->first();
+
+        $distribuicaoVazia = ['1' => 0, '2' => 0, '3' => 0, '4' => 0, '5' => 0];
+
+        if (! $ciclo) {
+            return response()->json([
+                'total_equipe'       => 0,
+                'pendentes'          => 0,
+                'concluidas'         => 0,
+                'nota_media'         => '0.00',
+                'distribuicao_graus' => $distribuicaoVazia,
+            ]);
+        }
+
+        $query = Avaliacao::where('ciclo_id', $ciclo->id);
+
+        $isAdminOrGestor = $avaliador && (
+            $avaliador->is_platform_admin ||
+            collect(['admin_tenant', 'admin', 'gestor_rh', 'root', 'comissao_capd'])->some(fn ($r) => $avaliador->hasRole($r))
+        );
+
+        if (! $isAdminOrGestor) {
+            $query->where('avaliador_id', $avaliador->id);
+        }
+
+        $avaliacoes = $query->get(['id', 'servidor_id', 'data_conclusao', 'nota_final', 'respostas_fatores']);
+        $concluidas = $avaliacoes->whereNotNull('data_conclusao');
+
+        $distribuicao = $distribuicaoVazia;
+        foreach ($concluidas as $av) {
+            foreach ((array) $av->respostas_fatores as $resposta) {
+                $grau = $resposta['grau'] ?? null;
+                if ($grau && isset($distribuicao[(string) $grau])) {
+                    $distribuicao[(string) $grau]++;
+                }
+            }
+        }
+
+        return response()->json([
+            'total_equipe'       => $avaliacoes->pluck('servidor_id')->unique()->count(),
+            'pendentes'          => $avaliacoes->count() - $concluidas->count(),
+            'concluidas'         => $concluidas->count(),
+            'nota_media'         => $concluidas->count() > 0
+                ? number_format((float) $concluidas->avg('nota_final'), 2, '.', '')
+                : '0.00',
+            'distribuicao_graus' => $distribuicao,
+        ]);
+    }
+
     // ── GET /avaliacoes/{id} ──────────────────────────────────────────
 
     public function show(int $id): JsonResponse

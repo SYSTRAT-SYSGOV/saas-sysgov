@@ -59,6 +59,7 @@ Route::prefix('diario-bordo')->group(function (): void {
 Route::prefix('avaliacoes')->group(function (): void {
     Route::get('/', [AvaliacaoController::class, 'index'])->name('capd.avaliacoes.index');
     Route::post('/', [AvaliacaoController::class, 'store'])->name('capd.avaliacoes.store');
+    Route::get('/kpis-equipe', [AvaliacaoController::class, 'kpisEquipe'])->name('capd.avaliacoes.kpis-equipe');
     Route::get('/{id}', [AvaliacaoController::class, 'show'])->name('capd.avaliacoes.show');
     Route::put('/{id}', [AvaliacaoController::class, 'update'])->name('capd.avaliacoes.update');
     Route::post('/{id}/submeter', [AvaliacaoController::class, 'submeter'])->name('capd.avaliacoes.submeter');
