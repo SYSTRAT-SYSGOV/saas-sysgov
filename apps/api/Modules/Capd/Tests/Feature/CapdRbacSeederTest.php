@@ -29,6 +29,7 @@ final class CapdRbacSeederTest extends TestCase
             $role = Role::where('slug', $slug)->first();
             $this->assertNotNull($role, "Role '{$slug}' deveria ter sido criada.");
             $this->assertSame('tenant', $role->scope);
+            $this->assertSame('capd', $role->module);
             $this->assertTrue($role->is_system);
         }
 

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 final class Role extends Model
 {
-    protected $fillable = ['name', 'slug', 'scope', 'description', 'guard_name', 'tenant_id', 'is_system'];
+    protected $fillable = ['name', 'slug', 'scope', 'module', 'description', 'guard_name', 'tenant_id', 'is_system'];
 
     protected $casts = [
         'is_system' => 'boolean',

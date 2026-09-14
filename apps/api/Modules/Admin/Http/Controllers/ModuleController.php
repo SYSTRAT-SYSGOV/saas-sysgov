@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Admin\Http\Controllers;
 
 use App\Models\Tenant;
+use App\Services\ModuleRoleProvisioner;
 use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -20,7 +21,7 @@ final class ModuleController
 
     public function index(): JsonResponse { return response()->json(Module::query()->with('tenants:id,name,slug')->orderBy('name')->paginate(50)); }
 
-    public function toggle(ToggleModuleRequest $request, Tenant $tenant, Module $module, AuditLogger $audit): JsonResponse
+    public function toggle(ToggleModuleRequest $request, Tenant $tenant, Module $module, AuditLogger $audit, ModuleRoleProvisioner $roleProvisioner): JsonResponse
     {
         $this->authorize('toggle', $module);
         $payload = $request->validated();
@@ -34,13 +35,20 @@ final class ModuleController
         DB::transaction(fn () => $module->tenants()->syncWithoutDetaching([$tenant->getKey() => ['enabled' => $enabled, 'settings' => json_encode($payload['settings'] ?? [])]]));
         $after = $module->tenants()->whereKey($tenant->getKey())->first()?->pivot?->toArray();
         $audit->record('admin', 'module.toggled', 'tenant:'.$tenant->getKey().'/module:'.$module->getKey(), $before, $after);
+
+        // Ao habilitar, provisiona automaticamente as roles/permissions
+        // específicas deste módulo (se houver) para o tenant.
+        if ($enabled) {
+            $roleProvisioner->provisionForTenant($tenant, $module->alias);
+        }
+
         return response()->json(['tenant_id' => $tenant->getKey(), 'module_id' => $module->getKey(), 'enabled' => $enabled, 'settings' => $payload['settings'] ?? []]);
     }
 
     /**
      * Provisiona um módulo em lote para múltiplos tenants.
      */
-    public function batchProvision(BatchModuleProvisionRequest $request, AuditLogger $audit, OutboxPublisher $outbox): JsonResponse
+    public function batchProvision(BatchModuleProvisionRequest $request, AuditLogger $audit, OutboxPublisher $outbox, ModuleRoleProvisioner $roleProvisioner): JsonResponse
     {
         $this->authorize('batchProvision', Module::class);
 
@@ -55,7 +63,7 @@ final class ModuleController
 
         $module = Module::query()->where('alias', $moduleAlias)->firstOrFail();
 
-        $results = DB::transaction(function () use ($tenantIds, $module, $enabled, $monthlyFeeCents, $trialEndsAt, $settings, $audit, $outbox): array {
+        $results = DB::transaction(function () use ($tenantIds, $module, $enabled, $monthlyFeeCents, $trialEndsAt, $settings, $audit, $outbox, $roleProvisioner): array {
             $results = [];
             $tenants = Tenant::query()->whereIn('id', $tenantIds)->get()->keyBy('id');
 
@@ -80,6 +88,10 @@ final class ModuleController
                 $after = $module->tenants()->whereKey($tenant->getKey())->first()?->pivot?->toArray();
 
                 $audit->record('admin', 'module.batch_provisioned', "tenant:{$tenant->getKey()}/module:{$module->getKey()}", $before, $after);
+
+                if ($enabled) {
+                    $roleProvisioner->provisionForTenant($tenant, $module->alias);
+                }
 
                 $outbox->publish('module.batch_provisioned', [
                     'tenant_id' => $tenant->getKey(),

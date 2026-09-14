@@ -121,6 +121,7 @@ final class CapdRbacSeeder extends Seeder
                 [
                     'name'        => $roleData['name'],
                     'scope'       => 'tenant',
+                    'module'      => 'capd',
                     'is_system'   => true,
                     'description' => $roleData['description'],
                     'guard_name'  => 'web',
