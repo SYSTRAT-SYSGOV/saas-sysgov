@@ -11,6 +11,7 @@ final class CapdDatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            CapdRbacSeeder::class,
             CapdDadosDemonstracaoSeeder::class,
         ]);
     }
