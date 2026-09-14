@@ -37,6 +37,17 @@ trait HasPermissions
         return false;
     }
 
+    /**
+     * Alias de hasPermission() — vários pontos do código (controllers e
+     * policies de módulos) chamam hasPermissionTo() por convenção do
+     * pacote spatie/laravel-permission, mas este projeto usa sua própria
+     * implementação de permissões via hasPermission().
+     */
+    public function hasPermissionTo(string $permission, ?int $tenantId = null): bool
+    {
+        return $this->hasPermission($permission, $tenantId);
+    }
+
     public function hasRole(string $roleSlug, ?int $tenantId = null): bool
     {
         if ($this->is_platform_admin) {

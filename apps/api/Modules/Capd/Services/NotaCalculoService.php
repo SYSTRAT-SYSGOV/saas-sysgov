@@ -36,7 +36,11 @@ final class NotaCalculoService
      *   Wi = peso percentual do fator i (soma = 100)
      *
      * @param array<string, float> $respostas  — ['fator_codigo' => pontuacao, ...]
-     * @param Collection<int, ModeloFatorPeso> $fatoresPesos — pesos efetivos (após redistribuição)
+     * @param Collection<int, ModeloFatorPeso> $fatoresPesos — pesos configurados (soma = 100%)
+     * @param bool $atendePublico — RF-06: quando false, o peso de fatores marcados
+     *   como `redistribuivel` (ex.: Avaliação pelo Usuário) é redistribuído
+     *   proporcionalmente entre os demais fatores, pois o servidor não tem
+     *   atendimento direto ao público para ser avaliado nesse quesito.
      * @return string — DECIMAL(5,2) como string, ex.: "89.25"
      *
      * @throws DomainException se pesos não somam 100 ± 0.01
@@ -44,12 +48,17 @@ final class NotaCalculoService
     public function calcularNotaCiclo(
         array      $respostas,
         Collection $fatoresPesos,
+        bool       $atendePublico = true,
     ): string {
         $this->validarSomaPesos($fatoresPesos);
 
+        $fatoresEfetivos = $atendePublico
+            ? $fatoresPesos
+            : $this->redistribuirPesoFatorH($fatoresPesos);
+
         $nc = '0.00';
 
-        foreach ($fatoresPesos as $mfp) {
+        foreach ($fatoresEfetivos as $mfp) {
             $codigo = $mfp->fator?->codigo ?? (string) $mfp->fator_id;
             $pi     = (float) ($respostas[$codigo] ?? $respostas[(string) $mfp->fator_id] ?? 0.0);
             $wi     = $mfp->peso / 100.0; // converte % para decimal
@@ -224,6 +233,39 @@ final class NotaCalculoService
     }
 
     // ── Privados ───────────────────────────────────────────────────────
+
+    /**
+     * RF-06 — Remove os fatores marcados como `redistribuivel` (ex.: Fator H)
+     * e redistribui seu peso proporcionalmente entre os demais fatores, com
+     * base no peso relativo de cada um. Não altera os pesos configurados em
+     * ModeloFatorPeso — o cálculo é feito apenas sobre clones em memória.
+     *
+     * @param Collection<int, ModeloFatorPeso> $fatoresPesos
+     * @return Collection<int, ModeloFatorPeso>
+     */
+    private function redistribuirPesoFatorH(Collection $fatoresPesos): Collection
+    {
+        $redistribuiveis = $fatoresPesos->filter(fn (ModeloFatorPeso $mfp) => $mfp->redistribuivel);
+
+        if ($redistribuiveis->isEmpty()) {
+            return $fatoresPesos;
+        }
+
+        $pesoARedistribuir = $redistribuiveis->sum('peso');
+        $restantes         = $fatoresPesos->reject(fn (ModeloFatorPeso $mfp) => $mfp->redistribuivel);
+        $somaRestantes     = $restantes->sum('peso');
+
+        if ($somaRestantes <= 0.0) {
+            return $fatoresPesos;
+        }
+
+        return $restantes->map(function (ModeloFatorPeso $mfp) use ($pesoARedistribuir, $somaRestantes): ModeloFatorPeso {
+            $clone       = clone $mfp;
+            $proporcao   = $mfp->peso / $somaRestantes;
+            $clone->peso = $mfp->peso + ($pesoARedistribuir * $proporcao);
+            return $clone;
+        })->values();
+    }
 
     /**
      * Valida que a soma dos pesos seja 100% ± 0.01.

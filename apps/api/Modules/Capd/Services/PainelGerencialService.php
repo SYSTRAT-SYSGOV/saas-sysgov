@@ -271,6 +271,68 @@ final class PainelGerencialService
     }
 
     /**
+     * RF-12 — Relatório de Aderência do Ciclo: evolução do preenchimento por
+     * secretaria/departamento (orgao_lotacao), destacando os gestores com
+     * subordinados pendentes de avaliação.
+     *
+     * @return array{ciclo_id: int, por_secretaria: array<int, array<string, mixed>>, gestores_pendentes: array<int, array<string, mixed>>}
+     */
+    public function relatorioAderencia(int $cicloId): array
+    {
+        $ciclo = CicloAvaliacao::findOrFail($cicloId);
+
+        $servidores = Servidor::query()->get();
+
+        // Avaliacao.servidor_id referencia o User (não o Servidor) — mesmo
+        // padrão de fallback já usado em ConsolidacaoController::nfc().
+        $concluidosPorUserId = Avaliacao::where('ciclo_id', $ciclo->id)
+            ->whereNotNull('data_conclusao')
+            ->pluck('servidor_id')
+            ->all();
+
+        $porSecretaria      = [];
+        $pendentesPorGestor = [];
+
+        foreach ($servidores->groupBy(fn (Servidor $s) => $s->orgao_lotacao ?? 'Não informado') as $secretaria => $grupo) {
+            $total      = $grupo->count();
+            $concluidas = $grupo->filter(
+                fn (Servidor $s) => in_array($s->user_id ?? $s->id, $concluidosPorUserId, true)
+            )->count();
+
+            $porSecretaria[] = [
+                'secretaria'             => $secretaria,
+                'total'                  => $total,
+                'concluidas'             => $concluidas,
+                'pendentes'              => $total - $concluidas,
+                'percentual_concluidas'  => $total > 0 ? round(($concluidas / $total) * 100, 1) : 0.0,
+            ];
+
+            foreach ($grupo as $servidor) {
+                $concluida = in_array($servidor->user_id ?? $servidor->id, $concluidosPorUserId, true);
+                if (! $concluida && $servidor->chefia_imediata_id) {
+                    $pendentesPorGestor[$servidor->chefia_imediata_id] = ($pendentesPorGestor[$servidor->chefia_imediata_id] ?? 0) + 1;
+                }
+            }
+        }
+
+        $gestoresPendentes = [];
+        foreach ($pendentesPorGestor as $gestorId => $qtd) {
+            $gestor              = Servidor::find($gestorId);
+            $gestoresPendentes[] = [
+                'avaliador_id' => $gestorId,
+                'nome'         => $gestor?->nome_completo ?? "Servidor #{$gestorId}",
+                'pendentes'    => $qtd,
+            ];
+        }
+
+        return [
+            'ciclo_id'           => $ciclo->id,
+            'por_secretaria'     => array_values($porSecretaria),
+            'gestores_pendentes' => $gestoresPendentes,
+        ];
+    }
+
+    /**
      * Retorna dados consolidados para cada perfil de acesso.
      *
      * @return array<string, mixed>

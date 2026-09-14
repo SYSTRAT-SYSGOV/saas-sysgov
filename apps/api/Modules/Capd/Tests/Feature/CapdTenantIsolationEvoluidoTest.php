@@ -5,11 +5,20 @@ declare(strict_types=1);
 namespace Modules\Capd\Tests\Feature;
 
 use App\Models\Tenant;
+use App\Models\User;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Capd\Models\CicloAvaliacao;
+use Modules\Capd\Models\AvaliacaoUsuario;
+use Modules\Capd\Models\ConsolidacaoTrienal;
+use Modules\Capd\Models\FatorAvaliacao;
 use Modules\Capd\Models\ModeloFormulario;
 use Modules\Capd\Models\Pergunta;
+use Modules\Capd\Models\Quinquenio;
+use Modules\Capd\Models\Servidor;
+use Modules\Capd\Services\AvaliacaoUsuarioService;
+use Modules\Capd\Services\ConsolidacaoTrienalService;
+use Modules\Capd\Services\QuinquenioService;
 use Tests\TestCase;
 
 final class CapdTenantIsolationEvoluidoTest extends TestCase
@@ -85,6 +94,129 @@ final class CapdTenantIsolationEvoluidoTest extends TestCase
         self::assertSame(1, CicloAvaliacao::count());
         self::assertSame('Ciclo Alpha 2026', CicloAvaliacao::firstOrFail()->nome);
         self::assertSame('Instrumento de Avaliação Alpha', ModeloFormulario::firstOrFail()->nome);
+
+        app(TenantContext::class)->clear();
+    }
+
+    public function test_isolamento_de_tenant_em_consolidacoes_trienais(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Prefeitura Alpha Consolidacao', 'slug' => 'tenant-alpha-consolidacao', 'type' => 'prefeitura', 'status' => 'active']);
+        $tenantB = Tenant::create(['name' => 'Prefeitura Beta Consolidacao', 'slug' => 'tenant-beta-consolidacao', 'type' => 'prefeitura', 'status' => 'active']);
+
+        $criarServidorEConsolidacao = function (Tenant $tenant, string $email): ConsolidacaoTrienal {
+            app(TenantContext::class)->set($tenant);
+
+            $user = User::create(['name' => 'Servidor', 'email' => $email, 'password' => bcrypt('secret')]);
+            $user->tenants()->attach($tenant->id, ['status' => 'active', 'is_primary' => true]);
+
+            $servidor = Servidor::create([
+                'tenant_id'             => $tenant->id,
+                'user_id'               => $user->id,
+                'matricula'             => 'MAT-ISO',
+                'cpf'                   => '00011122233',
+                'nome_completo'         => 'Servidor Isolamento',
+                'data_nascimento'       => '1980-05-15',
+                'data_admissao'         => '2015-02-01',
+                'regime_juridico'       => 'estatutario',
+                'regime_previdenciario' => 'rpps',
+                'cargo_efetivo'         => 'Contador',
+                'orgao_lotacao'         => 'Secretaria de Finanças',
+                'situacao_funcional'    => 'ativo',
+                'estagio_probatorio'    => false,
+                'carga_horaria_semanal' => 40,
+            ]);
+
+            $ciclo = CicloAvaliacao::create([
+                'tenant_id'       => $tenant->id,
+                'nome'            => 'Ciclo Isolamento 2026',
+                'ano_competencia' => 2026,
+                'data_inicio'     => '2026-01-01',
+                'data_fim'        => '2026-12-31',
+                'etapa_cadencia'  => 3,
+                'nota_corte_nfc'  => '70.00',
+            ]);
+
+            return app(ConsolidacaoTrienalService::class)->persistir($servidor, $ciclo, [
+                'notas_ciclos' => ['2024' => '80.00'],
+                'nfc'          => '80.00',
+                'conceito'     => 'Bom',
+                'elegivel'     => true,
+            ]);
+        };
+
+        $criarServidorEConsolidacao($tenantA, 'servidor.alpha@araucaria.pr.gov.br');
+
+        app(TenantContext::class)->set($tenantB);
+        self::assertSame(0, ConsolidacaoTrienal::count());
+
+        $criarServidorEConsolidacao($tenantB, 'servidor.beta@araucaria.pr.gov.br');
+        self::assertSame(1, ConsolidacaoTrienal::count());
+
+        app(TenantContext::class)->set($tenantA);
+        self::assertSame(1, ConsolidacaoTrienal::count());
+
+        app(TenantContext::class)->clear();
+    }
+
+    public function test_isolamento_de_tenant_em_fatores_customizados_e_avaliacao_usuario(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Prefeitura Alpha Fatores', 'slug' => 'tenant-alpha-fatores', 'type' => 'prefeitura', 'status' => 'active']);
+        $tenantB = Tenant::create(['name' => 'Prefeitura Beta Fatores', 'slug' => 'tenant-beta-fatores', 'type' => 'prefeitura', 'status' => 'active']);
+
+        app(TenantContext::class)->set($tenantA);
+
+        $fatorA = FatorAvaliacao::create([
+            'codigo' => 'F9', 'nome' => 'Fator Alpha', 'descricao' => 'Fator customizado do tenant Alpha.',
+            'peso_geral' => 10.00, 'peso_magisterio' => 10.00,
+        ]);
+
+        $userA = User::create(['name' => 'Servidor Alpha', 'email' => 'servidor.alpha.fatores@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
+        $servidorA = Servidor::create([
+            'tenant_id' => $tenantA->id, 'user_id' => $userA->id, 'matricula' => 'MAT-F1', 'cpf' => '10020030044',
+            'nome_completo' => 'Servidor Alpha', 'data_nascimento' => '1980-05-15', 'data_admissao' => '2015-02-01',
+            'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps', 'cargo_efetivo' => 'Atendente',
+            'orgao_lotacao' => 'Secretaria', 'situacao_funcional' => 'ativo', 'estagio_probatorio' => false, 'carga_horaria_semanal' => 40,
+        ]);
+        $cicloA = CicloAvaliacao::create([
+            'tenant_id' => $tenantA->id, 'nome' => 'Ciclo Alpha', 'ano_competencia' => 2026,
+            'data_inicio' => '2026-01-01', 'data_fim' => '2026-12-31',
+        ]);
+        app(AvaliacaoUsuarioService::class)->registrar($servidorA->id, $cicloA->id, 90.0);
+
+        app(TenantContext::class)->set($tenantB);
+        self::assertSame(0, FatorAvaliacao::count());
+        self::assertSame(0, AvaliacaoUsuario::count());
+
+        app(TenantContext::class)->set($tenantA);
+        self::assertSame(1, FatorAvaliacao::count());
+        self::assertSame($fatorA->id, FatorAvaliacao::firstOrFail()->id);
+        self::assertSame(1, AvaliacaoUsuario::count());
+
+        app(TenantContext::class)->clear();
+    }
+
+    public function test_isolamento_de_tenant_em_quinquenios(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Prefeitura Alpha Quinquenio', 'slug' => 'tenant-alpha-quinquenio', 'type' => 'prefeitura', 'status' => 'active']);
+        $tenantB = Tenant::create(['name' => 'Prefeitura Beta Quinquenio', 'slug' => 'tenant-beta-quinquenio', 'type' => 'prefeitura', 'status' => 'active']);
+
+        app(TenantContext::class)->set($tenantA);
+
+        $userA = User::create(['name' => 'Servidor Alpha Quinquenio', 'email' => 'servidor.alpha.quinquenio@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
+        $servidorA = Servidor::create([
+            'tenant_id' => $tenantA->id, 'user_id' => $userA->id, 'matricula' => 'MAT-Q1', 'cpf' => '77788899900',
+            'nome_completo' => 'Servidor Alpha Quinquenio', 'data_nascimento' => '1980-05-15',
+            'data_admissao' => now()->subYears(11)->toDateString(),
+            'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps', 'cargo_efetivo' => 'Contador',
+            'orgao_lotacao' => 'Secretaria', 'situacao_funcional' => 'ativo', 'estagio_probatorio' => false, 'carga_horaria_semanal' => 40,
+        ]);
+        app(QuinquenioService::class)->gerarPendentes($servidorA);
+
+        app(TenantContext::class)->set($tenantB);
+        self::assertSame(0, Quinquenio::count());
+
+        app(TenantContext::class)->set($tenantA);
+        self::assertSame(2, Quinquenio::count());
 
         app(TenantContext::class)->clear();
     }

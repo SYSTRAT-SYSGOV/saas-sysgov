@@ -17,8 +17,17 @@ import type {
   ApiEspelhoAvaliacao,
   ApiSimulacaoProgressao,
   ApiImpedimentoAuditoria,
+  ApiFator,
+  ApiHistoricoConsolidacao,
+  ApiQuinquenioResumo,
+  ApiAvaliacaoUsuario,
+  ApiMediaAvaliacaoUsuario,
+  ApiRelatorioAderencia,
   CreateDiarioBordoInput,
   CreateRecursoInput,
+  CreateFatorInput,
+  UpdateFatorInput,
+  CreateAvaliacaoUsuarioInput,
   RespostaFator,
   VotarRecursoInput,
 } from './types';
@@ -434,5 +443,68 @@ export class CapdModuleClient {
       method: 'POST',
       body: JSON.stringify(dados),
     });
+  }
+
+  // ── Consolidação Trienal (RN-02, RN-04, RN-05) ─────────────────────
+
+  async listarHistoricoConsolidacao(cicloId: number): Promise<ApiHistoricoConsolidacao> {
+    return this.api.request(`/capd/consolidacao/${cicloId}/historico`);
+  }
+
+  // ── Fatores de Avaliação — CRUD dinâmico (RF-02) ───────────────────
+
+  async listFatores(): Promise<ApiFator[]> {
+    return this.api.request('/capd/fatores');
+  }
+
+  async createFator(dados: CreateFatorInput): Promise<ApiFator> {
+    return this.api.request('/capd/fatores', {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async updateFator(id: number, dados: UpdateFatorInput): Promise<ApiFator> {
+    return this.api.request(`/capd/fatores/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async desativarFator(id: number): Promise<{ message: string; fator: ApiFator }> {
+    return this.api.request(`/capd/fatores/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ── Quinquênios (RN-08, art. 17) ────────────────────────────────────
+
+  async listarQuinquenios(servidorId: number): Promise<ApiQuinquenioResumo> {
+    return this.api.request(`/capd/servidores/${servidorId}/quinquenios`);
+  }
+
+  async gerarQuinquenios(servidorId: number): Promise<ApiQuinquenioResumo & { message: string }> {
+    return this.api.request(`/capd/servidores/${servidorId}/quinquenios/gerar`, {
+      method: 'POST',
+    });
+  }
+
+  // ── Avaliação pelo Usuário Externo (art. 25, RF-06) ────────────────
+
+  async registrarAvaliacaoUsuario(dados: CreateAvaliacaoUsuarioInput): Promise<ApiAvaliacaoUsuario> {
+    return this.api.request('/capd/avaliacao-usuario', {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async obterMediaAvaliacaoUsuario(servidorId: number, cicloId: number): Promise<ApiMediaAvaliacaoUsuario> {
+    return this.api.request(`/capd/avaliacao-usuario/media?servidor_id=${servidorId}&ciclo_id=${cicloId}`);
+  }
+
+  // ── Relatório de Aderência do Ciclo (RF-12) ─────────────────────────
+
+  async obterRelatorioAderencia(cicloId: number): Promise<ApiRelatorioAderencia> {
+    return this.api.request(`/capd/relatorios/aderencia?ciclo_id=${cicloId}`);
   }
 }

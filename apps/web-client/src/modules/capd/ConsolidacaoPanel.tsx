@@ -26,6 +26,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Award,
+  History,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 
@@ -70,6 +71,24 @@ interface CicloOpcao {
   status: string;
 }
 
+interface ConsolidacaoHistoricoItem {
+  id: number;
+  servidor_id: number;
+  trienio: number;
+  notas_ciclos: Record<string, string>;
+  nfc: string;
+  conceito: string;
+  elegivel_progressao: boolean;
+  versao: number;
+  created_at: string;
+}
+
+interface HistoricoResponse {
+  trienio: number;
+  total: number;
+  consolidacoes: ConsolidacaoHistoricoItem[];
+}
+
 const CONCEITO_VARIANT: Record<string, 'success' | 'primary' | 'warning' | 'danger' | 'neutral'> = {
   Excelente: 'success',
   Bom: 'primary',
@@ -82,7 +101,8 @@ export const ConsolidacaoPanel: React.FC = () => {
   const [cicloId, setCicloId]           = useState<number | null>(null);
   const [nfcData, setNfcData]           = useState<NfcResponse | null>(null);
   const [rankingData, setRankingData]   = useState<RankingResponse | null>(null);
-  const [aba, setAba]                   = useState<'nfc' | 'ranking'>('nfc');
+  const [historicoData, setHistoricoData] = useState<HistoricoResponse | null>(null);
+  const [aba, setAba]                   = useState<'nfc' | 'ranking' | 'historico'>('nfc');
   const [loading, setLoading]           = useState(false);
   const [loadingCiclos, setLoadingCiclos] = useState(false);
   const [processando, setProcessando]   = useState(false);
@@ -117,13 +137,16 @@ export const ConsolidacaoPanel: React.FC = () => {
     setErro(null);
     setNfcData(null);
     setRankingData(null);
+    setHistoricoData(null);
     try {
-      const [nfcResp, rkResp] = await Promise.all([
+      const [nfcResp, rkResp, histResp] = await Promise.all([
         api.get<NfcResponse>(`/capd/consolidacao/${cicloId}/nfc`),
         api.get<RankingResponse>(`/capd/consolidacao/${cicloId}/ranking`),
+        api.get<HistoricoResponse>(`/capd/consolidacao/${cicloId}/historico`),
       ]);
       setNfcData(nfcResp.data);
       setRankingData(rkResp.data);
+      setHistoricoData(histResp.data);
     } catch {
       setErro('Não foi possível calcular as NFCs. Verifique se o ciclo possui avaliações concluídas.');
     } finally {
@@ -163,6 +186,22 @@ export const ConsolidacaoPanel: React.FC = () => {
       s => s.nome.toLowerCase().includes(term) || s.matricula.toLowerCase().includes(term)
     );
   }, [nfcData?.servidores, search]);
+
+  const servidorPorId = useMemo(() => {
+    const mapa = new Map<number, ServidorNfc>();
+    for (const s of nfcData?.servidores ?? []) mapa.set(s.servidor_id, s);
+    return mapa;
+  }, [nfcData?.servidores]);
+
+  const filteredHistorico = useMemo(() => {
+    if (!historicoData?.consolidacoes) return [];
+    if (!search.trim()) return historicoData.consolidacoes;
+    const term = search.toLowerCase();
+    return historicoData.consolidacoes.filter(h => {
+      const s = servidorPorId.get(h.servidor_id);
+      return s ? (s.nome.toLowerCase().includes(term) || s.matricula.toLowerCase().includes(term)) : false;
+    });
+  }, [historicoData?.consolidacoes, search, servidorPorId]);
 
   const filteredRanking = useMemo(() => {
     if (!rankingData?.ranking) return [];
@@ -392,9 +431,79 @@ export const ConsolidacaoPanel: React.FC = () => {
     },
   ], []);
 
-  const tabItems: TabsItem<'nfc' | 'ranking'>[] = [
+  const columnsHistorico = useMemo<ColumnDef<ConsolidacaoHistoricoItem, any>[]>(() => [
+    {
+      id: 'matricula',
+      header: 'Matrícula',
+      size: 120,
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground font-semibold">
+          {servidorPorId.get(row.original.servidor_id)?.matricula ?? '—'}
+        </span>
+      ),
+    },
+    {
+      id: 'nome',
+      header: 'Servidor Público',
+      size: 240,
+      cell: ({ row }) => (
+        <span className="font-medium text-foreground text-sm">
+          {servidorPorId.get(row.original.servidor_id)?.nome ?? `#${row.original.servidor_id}`}
+        </span>
+      ),
+    },
+    {
+      id: 'versao',
+      header: 'Versão',
+      size: 90,
+      meta: { sortValue: h => h.versao, exportValue: h => `v${h.versao}` },
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">v{row.original.versao}</span>
+      ),
+    },
+    {
+      id: 'nfc',
+      header: 'NFC',
+      size: 100,
+      meta: { sortValue: h => parseFloat(h.nfc), exportValue: h => h.nfc },
+      cell: ({ row }) => <span className="font-mono font-bold text-sm tabular-nums">{row.original.nfc}</span>,
+    },
+    {
+      id: 'conceito',
+      header: 'Conceito',
+      size: 130,
+      meta: { sortValue: h => h.conceito, exportValue: h => h.conceito },
+      cell: ({ row }) => <StatusChip label={row.original.conceito} variant={CONCEITO_VARIANT[row.original.conceito] ?? 'neutral'} />,
+    },
+    {
+      id: 'elegivel_progressao',
+      header: 'Situação',
+      size: 110,
+      meta: { sortValue: h => (h.elegivel_progressao ? 1 : 0), exportValue: h => (h.elegivel_progressao ? 'Apto' : 'Inapto') },
+      cell: ({ row }) => (
+        <StatusChip
+          label={row.original.elegivel_progressao ? 'Apto' : 'Inapto'}
+          variant={row.original.elegivel_progressao ? 'success' : 'danger'}
+        />
+      ),
+    },
+    {
+      id: 'created_at',
+      header: 'Persistido em',
+      size: 160,
+      meta: { sortValue: h => h.created_at, exportValue: h => new Date(h.created_at).toLocaleString('pt-BR') },
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+          {new Date(row.original.created_at).toLocaleString('pt-BR')}
+        </span>
+      ),
+    },
+  ], [servidorPorId]);
+
+  const tabItems: TabsItem<'nfc' | 'ranking' | 'historico'>[] = [
     { key: 'nfc', label: 'Notas por Servidor (NFC)', icon: <FileText className="w-3.5 h-3.5" /> },
     { key: 'ranking', label: 'Ranking de Progressão', icon: <Trophy className="w-3.5 h-3.5" /> },
+    { key: 'historico', label: 'Histórico de Consolidações', icon: <History className="w-3.5 h-3.5" /> },
   ];
 
   return (
@@ -553,6 +662,21 @@ export const ConsolidacaoPanel: React.FC = () => {
                     columns={columnsRanking}
                     data={filteredRanking}
                     emptyText="Nenhum servidor classificado no ranking."
+                    pageSize={10}
+                    fixedLayout
+                  />
+                </div>
+              )}
+
+              {aba === 'historico' && (
+                <div className="space-y-3">
+                  <div className="px-1 py-1 text-xs text-muted-foreground">
+                    Registros imutáveis: cada processamento gera uma nova versão, preservando o histórico anterior para auditoria.
+                  </div>
+                  <DataTable
+                    columns={columnsHistorico}
+                    data={filteredHistorico}
+                    emptyText="Nenhuma consolidação persistida ainda para este triênio. Use 'Processar Consolidação' para gerar a primeira versão."
                     pageSize={10}
                     fixedLayout
                   />

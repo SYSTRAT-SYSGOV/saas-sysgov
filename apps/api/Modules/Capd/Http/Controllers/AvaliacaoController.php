@@ -9,6 +9,7 @@ use App\Support\AuditLogger;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Modules\Capd\Exceptions\TravaIncidenteCriticoException;
 use Modules\Capd\Models\Avaliacao;
 use Modules\Capd\Models\CicloAvaliacao;
@@ -444,6 +445,74 @@ final class AvaliacaoController extends Controller
             'fatores'             => $fatoresDetalhados,
             'pode_recorrer'       => $avaliacao->data_conclusao !== null && $avaliacao->ciencia_servidor_em !== null,
         ]);
+    }
+
+    /**
+     * RF-12 — Exporta o Espelho Funcional Individual em PDF.
+     * Reaproveita os mesmos dados de obterEspelho() e o padrão Dompdf já
+     * usado em ConsolidacaoController::exportarPdf.
+     */
+    public function exportarEspelhoPdf(Request $request, int $id): Response
+    {
+        $espelho = json_decode($this->obterEspelho($request, $id)->getContent(), true);
+
+        $html = $this->gerarHtmlEspelho($espelho);
+
+        if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4', 'portrait');
+            return $pdf->download("espelho-funcional-avaliacao-{$id}.pdf");
+        }
+
+        return response($html, 200, [
+            'Content-Type'        => 'text/html; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"espelho-funcional-avaliacao-{$id}.html\"",
+        ]);
+    }
+
+    private function gerarHtmlEspelho(array $espelho): string
+    {
+        $dataGeracao = now()->format('d/m/Y H:i');
+        $linhasFatores = '';
+
+        foreach ($espelho['fatores'] as $fator) {
+            $nota = is_scalar($fator['nota'] ?? null) ? $fator['nota'] : ($fator['nota']['pontos'] ?? '—');
+            $linhasFatores .= "<tr>
+                <td>{$fator['codigo']}</td>
+                <td>{$fator['nome']}</td>
+                <td style='text-align:center'>{$fator['grau']}</td>
+                <td style='text-align:center;font-family:monospace'>{$nota}</td>
+            </tr>";
+        }
+
+        return "<!DOCTYPE html>
+<html lang='pt-BR'>
+<head>
+<meta charset='UTF-8'>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 10pt; }
+  h1 { font-size: 13pt; text-align: center; }
+  h2 { font-size: 10pt; text-align: center; font-weight: normal; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  th { background: #1a2a52; color: white; padding: 6px 4px; font-size: 9pt; }
+  td { border: 1px solid #ccc; padding: 4px; font-size: 9pt; }
+  .rodape { margin-top: 24px; font-size: 8pt; color: #555; text-align: center; }
+</style>
+</head>
+<body>
+<h1>PREFEITURA MUNICIPAL DE ARAUCÁRIA — SYSGOV / CAPD</h1>
+<h2>Espelho Funcional Individual — {$espelho['servidor']['nome']} ({$espelho['servidor']['matricula']})</h2>
+<h2>Ciclo: {$espelho['ciclo']['nome']} — Nota Final: {$espelho['nota_final']}</h2>
+<table>
+  <thead>
+    <tr><th>Fator</th><th>Descrição</th><th>Grau</th><th>Nota</th></tr>
+  </thead>
+  <tbody>{$linhasFatores}</tbody>
+</table>
+<p class='rodape'>
+  Avaliador: {$espelho['avaliador']['nome']} | Gerado em: {$dataGeracao} | SYSGOV — Módulo CAPD
+</p>
+</body>
+</html>";
     }
 
     /**

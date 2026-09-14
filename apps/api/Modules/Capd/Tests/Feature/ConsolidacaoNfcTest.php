@@ -43,6 +43,7 @@ final class ConsolidacaoNfcTest extends TestCase
             'name'     => 'Avaliador Admin',
             'email'    => 'admin.consolidacao@araucaria.pr.gov.br',
             'password' => bcrypt('secret'),
+            'is_platform_admin' => true,
         ]);
         $this->user->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
 
@@ -181,5 +182,59 @@ final class ConsolidacaoNfcTest extends TestCase
 
         $this->assertArrayHasKey('pmds_gerados', $data);
         $this->assertEquals(1, $data['pmds_gerados']); // Mariana (62.00 < 70.00 nota de corte)
+    }
+
+    public function test_processamento_persiste_consolidacao_trienal_por_servidor(): void
+    {
+        $this->actingAs($this->user)
+            ->withHeader('X-Tenant-ID', (string) $this->tenant->id)
+            ->postJson("/api/capd/consolidacao/{$this->ciclo->id}/processar")
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('capd_consolidacoes', [
+            'tenant_id'           => $this->tenant->id,
+            'servidor_id'         => $this->servidorA->id,
+            'trienio'             => 2024,
+            'nfc'                 => '85.50',
+            'conceito'            => 'Bom',
+            'elegivel_progressao' => true,
+            'versao'              => 1,
+        ]);
+
+        $this->assertDatabaseHas('capd_consolidacoes', [
+            'tenant_id'           => $this->tenant->id,
+            'servidor_id'         => $this->servidorB->id,
+            'trienio'             => 2024,
+            'nfc'                 => '62.00',
+            'elegivel_progressao' => false,
+            'versao'              => 1,
+        ]);
+    }
+
+    public function test_reprocessar_consolidacao_cria_nova_versao_e_historico_lista_ambas(): void
+    {
+        $this->actingAs($this->user)
+            ->withHeader('X-Tenant-ID', (string) $this->tenant->id)
+            ->postJson("/api/capd/consolidacao/{$this->ciclo->id}/processar")
+            ->assertStatus(200);
+
+        $this->actingAs($this->user)
+            ->withHeader('X-Tenant-ID', (string) $this->tenant->id)
+            ->postJson("/api/capd/consolidacao/{$this->ciclo->id}/processar")
+            ->assertStatus(200);
+
+        $response = $this->actingAs($this->user)
+            ->withHeader('X-Tenant-ID', (string) $this->tenant->id)
+            ->getJson("/api/capd/consolidacao/{$this->ciclo->id}/historico");
+
+        $response->assertStatus(200);
+        $data = $response->json();
+
+        $doServidorA = collect($data['consolidacoes'])
+            ->where('servidor_id', $this->servidorA->id)
+            ->values();
+
+        $this->assertCount(2, $doServidorA);
+        $this->assertEqualsCanonicalizing([1, 2], $doServidorA->pluck('versao')->all());
     }
 }

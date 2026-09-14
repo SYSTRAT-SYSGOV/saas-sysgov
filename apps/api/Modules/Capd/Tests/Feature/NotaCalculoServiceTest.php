@@ -95,6 +95,29 @@ class NotaCalculoServiceTest extends TestCase
         $this->assertEquals('75.00', $nc);
     }
 
+    // ── RF-06: Redistribuição do Fator H ─────────────────────────────
+
+    public function test_atende_publico_true_nao_redistribui_por_padrao(): void
+    {
+        $pesos = $this->criarPesosMock(['A' => 45.00, 'B' => 45.00, 'H' => 10.00], redistribuivel: 'H');
+
+        $nc = $this->service->calcularNotaCiclo(['A' => 80.0, 'B' => 60.0, 'H' => 100.0], $pesos);
+
+        // Sem redistribuição: 80*0.45 + 60*0.45 + 100*0.10 = 36 + 27 + 10 = 73.00
+        $this->assertEquals('73.00', $nc);
+    }
+
+    public function test_redistribui_peso_do_fator_h_quando_servidor_nao_atende_publico(): void
+    {
+        $pesos = $this->criarPesosMock(['A' => 45.00, 'B' => 45.00, 'H' => 10.00], redistribuivel: 'H');
+
+        $nc = $this->service->calcularNotaCiclo(['A' => 80.0, 'B' => 60.0, 'H' => 100.0], $pesos, atendePublico: false);
+
+        // H (10%) redistribuído proporcionalmente entre A e B (45:45) => A=50%, B=50%
+        // 80*0.50 + 60*0.50 = 40 + 30 = 70.00 — H ignorado mesmo com resposta preenchida
+        $this->assertEquals('70.00', $nc);
+    }
+
     // ── RN-02: NFC Trienal ────────────────────────────────────────────
 
     public function test_calcula_nfc_trienal_correto(): void
@@ -242,14 +265,14 @@ class NotaCalculoServiceTest extends TestCase
 
     // ── Helpers ──────────────────────────────────────────────────────
 
-    private function criarPesosMock(array $pesosPorCodigo): Collection
+    private function criarPesosMock(array $pesosPorCodigo, ?string $redistribuivel = null): Collection
     {
         return collect(array_map(
-            function (string $codigo, float $peso): ModeloFatorPeso {
+            function (string $codigo, float $peso) use ($redistribuivel): ModeloFatorPeso {
                 $mfp               = new ModeloFatorPeso();
                 $mfp->fator_id     = crc32($codigo);
                 $mfp->peso         = $peso;
-                $mfp->redistribuivel = false;
+                $mfp->redistribuivel = $codigo === $redistribuivel;
                 // Simula relacionamento fator com código
                 $mfp->setRelation('fator', (object) ['codigo' => $codigo, 'id' => crc32($codigo)]);
                 return $mfp;

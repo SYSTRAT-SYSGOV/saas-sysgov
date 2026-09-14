@@ -11,8 +11,10 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Modules\Capd\Models\Avaliacao;
 use Modules\Capd\Models\CicloAvaliacao;
+use Modules\Capd\Models\ConsolidacaoTrienal;
 use Modules\Capd\Models\Servidor;
 use Modules\Capd\Services\CicloService;
+use Modules\Capd\Services\ConsolidacaoTrienalService;
 use Modules\Capd\Services\NotaCalculoService;
 use Modules\Capd\Services\PmdService;
 
@@ -23,14 +25,16 @@ use Modules\Capd\Services\PmdService;
  *   GET /capd/consolidacao/{cicloId}/nfc          — calcula NFC de todos os servidores
  *   GET /capd/consolidacao/{cicloId}/ranking       — ranking com desempate (RN-05)
  *   GET /capd/consolidacao/{cicloId}/exportar-pdf  — PDF do Relatório de Classificação
- *   POST /capd/consolidacao/{cicloId}/processar    — consolida NFC e cria PMDs automaticamente
+ *   POST /capd/consolidacao/{cicloId}/processar    — persiste a Consolidação Trienal e cria PMDs
+ *   GET /capd/consolidacao/{cicloId}/historico      — lista as consolidações persistidas do triênio
  */
 final class ConsolidacaoController extends Controller
 {
     public function __construct(
-        private readonly CicloService       $cicloService,
-        private readonly NotaCalculoService $notaCalculo,
-        private readonly PmdService         $pmdService,
+        private readonly CicloService              $cicloService,
+        private readonly NotaCalculoService         $notaCalculo,
+        private readonly PmdService                 $pmdService,
+        private readonly ConsolidacaoTrienalService $consolidacaoTrienal,
     ) {}
 
     /**
@@ -177,11 +181,15 @@ final class ConsolidacaoController extends Controller
     }
 
     /**
-     * Consolida NFC de todos os servidores e cria PMDs automaticamente para os inaptos.
-     * Operação idempotente — pode ser re-executada.
+     * Consolida NFC de todos os servidores, persiste a Consolidação Trienal
+     * (RN-02, nova versão a cada execução — imutável) e cria PMDs para os inaptos.
+     * Operação idempotente do ponto de vista de negócio — pode ser re-executada,
+     * mas cada execução grava uma nova versão do histórico (nunca sobrescreve).
      */
     public function processar(Request $request, int $cicloId): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $ciclo = CicloAvaliacao::findOrFail($cicloId);
 
         $nfcData     = json_decode($this->nfc($cicloId)->getContent(), true);
@@ -191,14 +199,22 @@ final class ConsolidacaoController extends Controller
         $erros       = [];
 
         foreach ($servidores as $dado) {
-            if (! $dado['elegivel']) {
-                try {
-                    $servidor = Servidor::findOrFail($dado['servidor_id']);
+            try {
+                $servidor = Servidor::findOrFail($dado['servidor_id']);
+
+                $this->consolidacaoTrienal->persistir($servidor, $ciclo, [
+                    'notas_ciclos' => $dado['notas_ciclos'],
+                    'nfc'          => $dado['nfc'],
+                    'conceito'     => $dado['conceito'],
+                    'elegivel'     => $dado['elegivel'],
+                ]);
+
+                if (! $dado['elegivel']) {
                     $this->pmdService->criarParaServidor($servidor, $ciclo, $dado['nfc']);
                     $pmdsGerados++;
-                } catch (\Throwable $e) {
-                    $erros[] = "Servidor #{$dado['servidor_id']}: {$e->getMessage()}";
                 }
+            } catch (\Throwable $e) {
+                $erros[] = "Servidor #{$dado['servidor_id']}: {$e->getMessage()}";
             }
         }
 
@@ -209,6 +225,28 @@ final class ConsolidacaoController extends Controller
             'inaptos'       => $servidores->where('elegivel', false)->count(),
             'pmds_gerados'  => $pmdsGerados,
             'erros'         => $erros,
+        ]);
+    }
+
+    /**
+     * Lista as Consolidações Trienais persistidas (todas as versões) do triênio
+     * correspondente ao ciclo informado.
+     */
+    public function historico(int $cicloId): JsonResponse
+    {
+        $ciclo   = CicloAvaliacao::findOrFail($cicloId);
+        $trienio = $ciclo->ano_competencia - ($ciclo->etapa_cadencia - 1);
+
+        $consolidacoes = ConsolidacaoTrienal::query()
+            ->where('trienio', $trienio)
+            ->orderBy('servidor_id')
+            ->orderByDesc('versao')
+            ->get();
+
+        return response()->json([
+            'trienio'        => $trienio,
+            'total'          => $consolidacoes->count(),
+            'consolidacoes'  => $consolidacoes,
         ]);
     }
 

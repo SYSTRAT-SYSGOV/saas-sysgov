@@ -66,6 +66,13 @@ final class PainelGerencialController extends Controller
         return response()->json($dados);
     }
 
+    public function relatorioAderencia(Request $request): JsonResponse
+    {
+        $cicloId = (int) $request->query('ciclo_id');
+
+        return response()->json($this->painelService->relatorioAderencia($cicloId));
+    }
+
     public function exportar(Request $request): Response
     {
         $filtros = $request->only([

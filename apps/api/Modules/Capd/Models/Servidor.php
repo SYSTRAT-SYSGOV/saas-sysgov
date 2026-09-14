@@ -36,6 +36,7 @@ final class Servidor extends Model
         'data_exercicio',
         'carga_horaria_semanal',
         'cargo_efetivo',
+        'atende_publico',
         'funcao_gratificada',
         'nivel_padrao',
         'plano_carreira_id',
@@ -65,6 +66,7 @@ final class Servidor extends Model
         'data_exercicio'        => 'date',
         'estagio_data_fim'      => 'date',
         'estagio_probatorio'    => 'boolean',
+        'atende_publico'        => 'boolean',
         'estagio_fase_atual'    => 'integer',
         'metadata'              => 'array',
     ];

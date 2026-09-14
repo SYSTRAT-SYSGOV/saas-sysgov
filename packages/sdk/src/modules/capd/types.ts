@@ -510,3 +510,102 @@ export type ApiImpedimentoAuditoria = {
   substituto_designado?: { id: number; nome_completo: string; matricula: string } | null;
   status: 'ativo' | 'revogado' | 'resolvido';
 };
+
+// ── Consolidação Trienal (RN-02, RN-04, RN-05) ─────────────────────────
+
+export type ApiConsolidacaoTrienal = {
+  id: number;
+  tenant_id: number;
+  servidor_id: number;
+  ciclo_id: number;
+  trienio: number;
+  notas_ciclos: Record<string, string>;
+  nfc: string;
+  conceito: string;
+  elegivel_progressao: boolean;
+  parametros: { nota_corte_nfc: string; faixas_conceito: unknown };
+  versao: number;
+  created_at: string;
+};
+
+export type ApiHistoricoConsolidacao = {
+  trienio: number;
+  total: number;
+  consolidacoes: ApiConsolidacaoTrienal[];
+};
+
+// ── Fatores de Avaliação — CRUD dinâmico (RF-02) ───────────────────────
+
+export type CreateFatorInput = {
+  codigo: string;
+  nome: string;
+  descricao: string;
+  automatizado?: boolean;
+  peso_geral: number;
+  peso_magisterio: number;
+  ordem?: number;
+};
+
+export type UpdateFatorInput = Partial<CreateFatorInput> & { ativo?: boolean };
+
+// ── Quinquênios (RN-08, art. 17) ───────────────────────────────────────
+
+export type ApiQuinquenio = {
+  id: number;
+  tenant_id: number;
+  servidor_id: number;
+  data_quinquenio: string;
+  percentual: string;
+};
+
+export type ApiQuinquenioResumo = {
+  total: number;
+  percentual_total: string;
+  quinquenios: ApiQuinquenio[];
+};
+
+// ── Avaliação pelo Usuário Externo (art. 25, RF-06) ────────────────────
+
+export type ApiAvaliacaoUsuario = {
+  id: number;
+  tenant_id: number;
+  servidor_id: number;
+  ciclo_id: number;
+  nota_atendimento: string;
+  comentario?: string | null;
+  avaliador_identificador?: string | null;
+};
+
+export type CreateAvaliacaoUsuarioInput = {
+  servidor_id: number;
+  ciclo_id: number;
+  nota_atendimento: number;
+  comentario?: string;
+};
+
+export type ApiMediaAvaliacaoUsuario = {
+  media: string | null;
+  total_avaliacoes: number;
+};
+
+// ── Relatório de Aderência do Ciclo (RF-12) ────────────────────────────
+
+export type ApiAderenciaSecretaria = {
+  secretaria: string;
+  total: number;
+  concluidas: number;
+  pendentes: number;
+  percentual_concluidas: number;
+};
+
+export type ApiGestorPendente = {
+  avaliador_id: number;
+  nome: string;
+  pendentes: number;
+};
+
+export type ApiRelatorioAderencia = {
+  ciclo_id: number;
+  por_secretaria: ApiAderenciaSecretaria[];
+  gestores_pendentes: ApiGestorPendente[];
+};

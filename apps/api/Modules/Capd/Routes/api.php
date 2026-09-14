@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Capd\Http\Controllers\AvaliacaoController;
+use Modules\Capd\Http\Controllers\AvaliacaoUsuarioController;
 use Modules\Capd\Http\Controllers\CapdController;
 use Modules\Capd\Http\Controllers\CicloController;
 use Modules\Capd\Http\Controllers\ComissaoController;
@@ -12,6 +13,7 @@ use Modules\Capd\Http\Controllers\DashboardController;
 use Modules\Capd\Http\Controllers\DeliberacaoController;
 use Modules\Capd\Http\Controllers\DiarioBordoController;
 use Modules\Capd\Http\Controllers\EscalaGraficaController;
+use Modules\Capd\Http\Controllers\FatorController;
 use Modules\Capd\Http\Controllers\HomologacaoController;
 use Modules\Capd\Http\Controllers\ModeloFatorPesoController;
 use Modules\Capd\Http\Controllers\NivelHierarquiaController;
@@ -19,6 +21,7 @@ use Modules\Capd\Http\Controllers\PainelGerencialController;
 use Modules\Capd\Http\Controllers\PendenciaHierarquiaController;
 use Modules\Capd\Http\Controllers\PerguntaController;
 use Modules\Capd\Http\Controllers\PmdController;
+use Modules\Capd\Http\Controllers\QuinquenioController;
 use Modules\Capd\Http\Controllers\RecursoController;
 use Modules\Capd\Http\Controllers\SessaoController;
 
@@ -62,6 +65,7 @@ Route::prefix('avaliacoes')->group(function (): void {
     Route::post('/{id}/ciencia', [AvaliacaoController::class, 'registrarCiencia'])->name('capd.avaliacoes.ciencia');
     Route::post('/{id}/devolutiva', [AvaliacaoController::class, 'registrarDevolutiva'])->name('capd.avaliacoes.devolutiva');
     Route::get('/{id}/espelho', [AvaliacaoController::class, 'obterEspelho'])->name('capd.avaliacoes.espelho');
+    Route::get('/{id}/espelho/exportar-pdf', [AvaliacaoController::class, 'exportarEspelhoPdf'])->name('capd.avaliacoes.espelho.pdf');
     Route::post('/{id}/homologar', [AvaliacaoController::class, 'homologar'])->name('capd.avaliacoes.homologar');
     Route::get('/{id}/preview-nota', [AvaliacaoController::class, 'previewNota'])->name('capd.avaliacoes.preview-nota');
 });
@@ -133,6 +137,8 @@ Route::prefix('servidores')->group(function (): void {
     Route::delete('/{servidor}', [\Modules\Capd\Http\Controllers\ServidorController::class, 'destroy'])->name('capd.servidores.destroy');
     Route::post('/{servidor}/afastamentos', [\Modules\Capd\Http\Controllers\ServidorController::class, 'storeAfastamento'])->name('capd.servidores.afastamentos.store');
     Route::put('/{servidor}/afastamentos/{afastamento}', [\Modules\Capd\Http\Controllers\ServidorController::class, 'updateAfastamento'])->name('capd.servidores.afastamentos.update');
+    Route::get('/{servidor}/quinquenios', [QuinquenioController::class, 'index'])->name('capd.servidores.quinquenios.index');
+    Route::post('/{servidor}/quinquenios/gerar', [QuinquenioController::class, 'gerar'])->name('capd.servidores.quinquenios.gerar');
 });
 
 // ── Hierarquia de Avaliação (resolução do superior imediato) ──────────
@@ -163,6 +169,11 @@ Route::prefix('painel')->group(function (): void {
     Route::get('/kpis', [PainelGerencialController::class, 'kpis'])->name('capd.painel.kpis');
     Route::get('/visao/{perfil}', [PainelGerencialController::class, 'visaoPerfil'])->name('capd.painel.visao');
     Route::get('/export', [PainelGerencialController::class, 'exportar'])->name('capd.painel.export');
+});
+
+// ── Relatórios (RF-12) ────────────────────────────────────────────────
+Route::prefix('relatorios')->group(function (): void {
+    Route::get('/aderencia', [PainelGerencialController::class, 'relatorioAderencia'])->name('capd.relatorios.aderencia');
 });
 
 // ── Ciclos de Avaliação de 12 Meses (Cadência Anual de 3 Anos) ────────
@@ -216,4 +227,19 @@ Route::prefix('consolidacao')->group(function (): void {
     Route::get('/{cicloId}/ranking', [ConsolidacaoController::class, 'rankingProgressao'])->name('capd.consolidacao.ranking');
     Route::get('/{cicloId}/exportar-pdf', [ConsolidacaoController::class, 'exportarPdf'])->name('capd.consolidacao.pdf');
     Route::post('/{cicloId}/processar', [ConsolidacaoController::class, 'processar'])->name('capd.consolidacao.processar');
+    Route::get('/{cicloId}/historico', [ConsolidacaoController::class, 'historico'])->name('capd.consolidacao.historico');
+});
+
+// ── CRUD dinâmico de Fatores de Avaliação (RF-02) ────────────────────
+Route::prefix('fatores')->group(function (): void {
+    Route::get('/', [FatorController::class, 'index'])->name('capd.fatores.index');
+    Route::post('/', [FatorController::class, 'store'])->name('capd.fatores.store');
+    Route::put('/{id}', [FatorController::class, 'update'])->name('capd.fatores.update');
+    Route::delete('/{id}', [FatorController::class, 'destroy'])->name('capd.fatores.destroy');
+});
+
+// ── Avaliação pelo Usuário Externo (art. 25, RF-06) ──────────────────
+Route::prefix('avaliacao-usuario')->group(function (): void {
+    Route::get('/media', [AvaliacaoUsuarioController::class, 'media'])->name('capd.avaliacao-usuario.media');
+    Route::post('/', [AvaliacaoUsuarioController::class, 'store'])->name('capd.avaliacao-usuario.store');
 });
