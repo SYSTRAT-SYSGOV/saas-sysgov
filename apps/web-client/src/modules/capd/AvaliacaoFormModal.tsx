@@ -49,9 +49,17 @@ export const AvaliacaoFormModal: React.FC<Props> = ({ avaliacaoId, open, onClose
   const [respostas, setRespostas] = useState<Record<string, RespostaFator>>({});
   const [anotacoesCit, setAnotacoesCit] = useState<ApiDiarioBordo[]>([]);
   const [citExpandido, setCitExpandido] = useState<Record<string, boolean>>({});
+  const [anexandoEvidencia, setAnexandoEvidencia] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [submetendo, setSubmetendo] = useState(false);
   const [sucesso, setSucesso] = useState<string | null>(null);
+
+  const recarregarCit = (cicloId: number, servidorId: number) => {
+    api.capd
+      .listDiarioBordo({ ciclo_id: cicloId, servidor_id: servidorId })
+      .then((res) => setAnotacoesCit(res.data || []))
+      .catch(() => setAnotacoesCit([]));
+  };
 
   useEffect(() => {
     if (!open || !avaliacaoId) {
@@ -74,11 +82,7 @@ export const AvaliacaoFormModal: React.FC<Props> = ({ avaliacaoId, open, onClose
         setAvaliacao(av);
         setRespostas(av.respostas_fatores || {});
         setFatores(todosFatores.filter((f) => f.ativo && !f.automatizado));
-
-        api.capd
-          .listDiarioBordo({ ciclo_id: av.ciclo_id, servidor_id: av.servidor_id })
-          .then((res) => setAnotacoesCit(res.data || []))
-          .catch(() => setAnotacoesCit([]));
+        recarregarCit(av.ciclo_id, av.servidor_id);
       })
       .catch(() => setErro('Não foi possível carregar os dados desta avaliação.'))
       .finally(() => setLoading(false));
@@ -138,6 +142,19 @@ export const AvaliacaoFormModal: React.FC<Props> = ({ avaliacaoId, open, onClose
       };
     });
     setSucesso(null);
+  };
+
+  const anexarEvidencia = async (incidente: ApiDiarioBordo, file: File) => {
+    if (!avaliacao) return;
+    setAnexandoEvidencia(incidente.id);
+    try {
+      await api.capd.uploadEvidencia(incidente.id, file);
+      recarregarCit(avaliacao.ciclo_id, avaliacao.servidor_id);
+    } catch (e: any) {
+      setErro(e?.response?.data?.message || 'Erro ao anexar evidência ao incidente CIT.');
+    } finally {
+      setAnexandoEvidencia(null);
+    }
   };
 
   const toggleCit = (codigo: string) => {
@@ -323,6 +340,22 @@ export const AvaliacaoFormModal: React.FC<Props> = ({ avaliacaoId, open, onClose
                                 >
                                   {vinculado ? 'Vinculado ✓' : 'Vincular'}
                                 </button>
+                              )}
+                              {(a.evidencias?.length ?? 0) === 0 && (
+                                <label className="shrink-0 rounded-md border border-border px-2 py-1 text-[10px] font-mono font-semibold text-muted-foreground hover:bg-muted/40 cursor-pointer transition-colors">
+                                  {anexandoEvidencia === a.id ? 'Enviando...' : 'Anexar evidência'}
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.png,.jpg,.jpeg"
+                                    className="hidden"
+                                    disabled={anexandoEvidencia === a.id}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) anexarEvidencia(a, file);
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                </label>
                               )}
                             </div>
                           );
