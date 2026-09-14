@@ -6,6 +6,7 @@
     "packages/*"
   ],
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "node scripts/start-dev.js",
     "dev:admin": "npm --workspace apps/web run dev",
     "dev:client": "npm --workspace apps/web-client run dev",

@@ -1,0 +1,48 @@
+#!/bin/sh
+# Roda `composer static` (phpstan/larastan) antes do push, quando o push
+# toca em código PHP de apps/api. Evita o cenário do PR #23: um módulo
+# novo (CAPD) foi mergeado sem ninguém rodar isso, e o `phpstan-baseline.neon`
+# ficou defasado — CI vermelho no main por vários commits seguidos, sem
+# ninguém perceber a tempo.
+#
+# Instalado automaticamente por `npm install` na raiz (script "prepare"
+# do package.json, que roda `git config core.hooksPath .githooks`).
+# Pode ser pulado pontualmente com `git push --no-verify`.
+
+remote="$1"
+range_arg="@{push}..HEAD"
+# Sem upstream configurado ainda (primeiro push do branch): compara com main.
+git rev-parse --verify "@{push}" > /dev/null 2>&1 || range_arg="origin/main..HEAD"
+
+changed_php=$(git diff --name-only "$range_arg" -- 'apps/api/**/*.php' 2>/dev/null)
+if [ -z "$changed_php" ]; then
+  exit 0
+fi
+
+echo "pre-push: mudanças em apps/api/*.php detectadas — rodando phpstan (composer static)..."
+
+run_phpstan() {
+  if docker compose -f Docker-compose.yml ps api 2>/dev/null | grep -q "Up"; then
+    docker compose -f Docker-compose.yml exec -T api php -d memory_limit=1G vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+    return $?
+  fi
+  if [ -f apps/api/vendor/bin/phpstan ]; then
+    (cd apps/api && php -d memory_limit=1G vendor/bin/phpstan analyse --no-progress --memory-limit=1G)
+    return $?
+  fi
+  echo "pre-push: aviso — não achei o container 'api' rodando nem apps/api/vendor/bin/phpstan local."
+  echo "pre-push: não foi possível validar o phpstan antes do push. Rode 'composer static' em apps/api manualmente."
+  return 0
+}
+
+if ! run_phpstan; then
+  echo ""
+  echo "pre-push: phpstan encontrou erros não cobertos pelo baseline. Push bloqueado."
+  echo "pre-push: se os erros são de código novo, corrija-os ou rode:"
+  echo "pre-push:   cd apps/api && vendor/bin/phpstan analyse --generate-baseline"
+  echo "pre-push: e inclua o phpstan-baseline.neon atualizado no commit."
+  echo "pre-push: (para pular esta checagem uma vez: git push --no-verify)"
+  exit 1
+fi
+
+exit 0
