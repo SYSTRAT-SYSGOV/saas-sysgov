@@ -13,6 +13,7 @@ const processoBase: Processo = {
   licitacao_id: null,
   criado_por: null,
   dfd: null,
+  etp: null,
   created_at: '2026-01-15T10:00:00.000000Z',
   updated_at: '2026-01-15T10:00:00.000000Z',
 };

@@ -6,6 +6,7 @@
 export type FaseLicita = 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'tr' | 'edital' | 'concluido';
 export type StatusProcesso = 'em_andamento' | 'concluido' | 'cancelado';
 export type StatusDfd = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
+export type StatusEtp = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
 export type GrauPrioridade = 'baixa' | 'media' | 'alta' | 'critica';
 export type AcaoVersaoDfd =
   | 'criado'
@@ -15,6 +16,7 @@ export type AcaoVersaoDfd =
   | 'rejeitado'
   | 'reaberto'
   | 'equipe_alterada_pelo_aprovador';
+export type AcaoVersaoEtp = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado' | 'reaberto';
 
 export type TipoItemDfd = 'material' | 'servico';
 
@@ -145,6 +147,43 @@ export interface Dfd {
   updated_at: string;
 }
 
+export interface EtpVersao {
+  id: number;
+  etp_id: number;
+  versao: number;
+  acao: AcaoVersaoEtp;
+  campos_alterados: Record<string, { de: unknown; para: unknown }> | null;
+  dados: Record<string, unknown> | null;
+  user_id: number;
+  usuario: UsuarioResumo | null;
+  created_at: string;
+}
+
+/**
+ * Estudo Técnico Preliminar (art. 18, §1º da Lei 14.133/2021) — conteúdo em
+ * texto único estruturado (rich text com apoio de IA), não em campos fixos
+ * por inciso. Só pode ser criado depois do DFD do mesmo processo aprovado.
+ */
+export interface Etp {
+  id: number;
+  tenant_id: number;
+  processo_id: number;
+  conteudo: string;
+  /** Nasce como cópia da equipe do DFD (ver EtpService::criar), mas é editável independentemente dali em diante. */
+  equipe_planejamento: MembroEquipePlanejamento[] | null;
+  campos_extras: Record<string, unknown> | null;
+  status: StatusEtp;
+  gerado_por_ia: boolean;
+  elaborado_por: number;
+  aprovado_por: number | null;
+  aprovado_em: string | null;
+  elaborador: UsuarioResumo | null;
+  aprovador: UsuarioResumo | null;
+  versoes: EtpVersao[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Processo {
   id: number;
   tenant_id: number;
@@ -156,6 +195,7 @@ export interface Processo {
   licitacao_id: number | null;
   criado_por: number | null;
   dfd: Dfd | null;
+  etp: Etp | null;
   created_at: string;
   updated_at: string;
 }
@@ -184,6 +224,16 @@ export interface CreateDfdInput {
 }
 
 export type UpdateDfdInput = Partial<CreateDfdInput>;
+
+export interface CreateEtpInput {
+  conteudo: string;
+  /** Se omitido na criação, o backend copia a equipe do DFD do processo (ver EtpService::criar). */
+  equipe_planejamento?: MembroEquipePlanejamento[];
+  campos_extras?: Record<string, unknown>;
+  gerado_por_ia?: boolean;
+}
+
+export type UpdateEtpInput = Partial<CreateEtpInput>;
 
 export interface SugerirJustificativaDfdInput {
   objeto: string;

@@ -4,9 +4,11 @@ import type {
   CampoConfig,
   CampoConfiguracao,
   CreateDfdInput,
+  CreateEtpInput,
   CreateLegalDocumentoInput,
   CreateProcessoInput,
   Dfd,
+  Etp,
   LegalDocumento,
   MembroEquipePlanejamento,
   Processo,
@@ -17,6 +19,7 @@ import type {
   SugerirTextoIaOutput,
   TipoDocumentoConfiguravel,
   UpdateDfdInput,
+  UpdateEtpInput,
   UpdateLegalDocumentoInput,
 } from './types';
 
@@ -82,6 +85,37 @@ export class LicitaModuleClient implements BaseModuleClient {
       method: 'PUT',
       body: JSON.stringify({ equipe_planejamento: equipe }),
     });
+  }
+
+  async createEtp(processoId: number, input: CreateEtpInput): Promise<Etp> {
+    return this.api.request(`/licita/processos/${processoId}/etp`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async getEtp(id: number): Promise<Etp> {
+    return this.api.request(`/licita/etps/${id}`);
+  }
+
+  async updateEtp(id: number, input: UpdateEtpInput): Promise<Etp> {
+    return this.api.request(`/licita/etps/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async reabrirEtp(id: number): Promise<Etp> {
+    return this.api.request(`/licita/etps/${id}/reabrir`, { method: 'POST' });
+  }
+
+  async enviarEtpParaRevisao(id: number, mensagem?: string): Promise<Etp> {
+    return this.api.request(`/licita/etps/${id}/enviar-revisao`, {
+      method: 'POST',
+      body: JSON.stringify({ mensagem }),
+    });
+  }
+
+  async aprovarEtp(id: number, parecer?: string): Promise<Etp> {
+    return this.api.request(`/licita/etps/${id}/aprovar`, { method: 'POST', body: JSON.stringify({ parecer }) });
+  }
+
+  async rejeitarEtp(id: number, motivo: string): Promise<Etp> {
+    return this.api.request(`/licita/etps/${id}/rejeitar`, { method: 'POST', body: JSON.stringify({ motivo }) });
   }
 
   async sugerirJustificativaDfd(input: SugerirJustificativaDfdInput): Promise<SugerirJustificativaDfdOutput> {
