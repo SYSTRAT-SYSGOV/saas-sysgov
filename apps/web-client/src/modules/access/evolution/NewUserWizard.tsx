@@ -210,6 +210,11 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
                 <option value="gestor">Gestor</option>
                 <option value="fiscal">Fiscal</option>
                 <option value="admin_tenant">Administrador do tenant</option>
+                <option value="membro_capd">Comissão de Avaliação (CAPD)</option>
+                <option value="gestor_rh">RH — Gestão de Desempenho (CAPD)</option>
+                <option value="avaliador">Chefia Imediata / Avaliador (CAPD)</option>
+                <option value="servidor">Servidor Avaliado (CAPD)</option>
+                <option value="auditoria_capd">Auditoria e Controle Interno (CAPD)</option>
               </select>
               <p className="text-[11px] text-gov-text-muted mt-1">O papel define a autoridade global; os acessos por módulo são definidos na próxima etapa.</p>
             </Field>
