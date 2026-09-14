@@ -238,6 +238,63 @@ final class DfdWorkflowTest extends TestCase
         }
     }
 
+    public function test_aprovador_pode_alterar_equipe_de_planejamento_do_dfd_em_revisao(): void
+    {
+        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        $dfdService = app(DfdService::class);
+        $dfd = $dfdService->criar($processo, $this->dadosDfd(), $elaborador);
+        $dfd = $dfdService->enviarParaRevisao($dfd, $elaborador);
+
+        $novaEquipe = [
+            ['nome' => 'Beltrano', 'cargo' => 'Gestor', 'matricula' => '999'],
+            ['nome' => 'Ciclana', 'cargo' => 'Fiscal Técnico', 'matricula' => '998'],
+        ];
+        $dfd = $dfdService->alterarEquipePlanejamento($dfd, $aprovador, $novaEquipe);
+
+        self::assertSame($novaEquipe, $dfd->equipe_planejamento);
+        // Ação própria no histórico — não deve se confundir com uma edição
+        // comum do elaborador ("revisado").
+        // versoes() já vem com orderBy('versao') embutido no relacionamento
+        // (ver Dfd::versoes()) — reorder() troca em vez de empilhar, senão
+        // o ORDER BY duplicado (asc + desc) faz o banco priorizar o primeiro.
+        self::assertSame('equipe_alterada_pelo_aprovador', $dfd->versoes()->reorder('versao', 'desc')->first()->acao);
+    }
+
+    public function test_elaborador_nao_pode_alterar_equipe_de_planejamento_via_metodo_do_aprovador(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        $dfdService = app(DfdService::class);
+        $dfd = $dfdService->criar($processo, $this->dadosDfd(), $elaborador);
+        $dfd = $dfdService->enviarParaRevisao($dfd, $elaborador);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('RN-005');
+        $dfdService->alterarEquipePlanejamento($dfd, $elaborador, [
+            ['nome' => 'Beltrano', 'cargo' => 'Gestor', 'matricula' => '999'],
+            ['nome' => 'Ciclana', 'cargo' => 'Fiscal Técnico', 'matricula' => '998'],
+        ]);
+    }
+
+    public function test_nao_permite_alterar_equipe_de_planejamento_fora_da_revisao(): void
+    {
+        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        $dfdService = app(DfdService::class);
+        $dfd = $dfdService->criar($processo, $this->dadosDfd(), $elaborador);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('em revisão');
+        $dfdService->alterarEquipePlanejamento($dfd, $aprovador, [
+            ['nome' => 'Beltrano', 'cargo' => 'Gestor', 'matricula' => '999'],
+            ['nome' => 'Ciclana', 'cargo' => 'Fiscal Técnico', 'matricula' => '998'],
+        ]);
+    }
+
     public function test_versionamento_incrementa_a_cada_transicao(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();

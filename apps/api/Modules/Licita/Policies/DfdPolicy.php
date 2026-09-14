@@ -40,6 +40,18 @@ final class DfdPolicy
         return $this->aprovar($user, $dfd);
     }
 
+    /**
+     * Alterar a equipe de planejamento é uma prerrogativa do aprovador
+     * (mesma permissão de aprovar/rejeitar), não do `licita.update` —
+     * quem só tem permissão de editar o DFD (o elaborador) não deve poder
+     * usar essa via paralela para mexer no documento enquanto ele está em
+     * revisão.
+     */
+    public function alterarEquipe(User $user, Dfd $dfd): bool
+    {
+        return $this->aprovar($user, $dfd);
+    }
+
     private function hasPermission(User $user, string $permission): bool
     {
         return $user->is_platform_admin || $user->hasPermission($permission);

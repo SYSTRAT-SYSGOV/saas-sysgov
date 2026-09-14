@@ -190,6 +190,38 @@ final class DfdService
     }
 
     /**
+     * Permite ao aprovador corrigir a equipe de planejamento indicada pelo
+     * requisitante enquanto o DFD está em revisão (aguardando a decisão
+     * dele) — evita ter que rejeitar o DFD só para o elaborador trocar um
+     * nome/cargo e reenviar. Só mexe em `equipe_planejamento`: os demais
+     * campos continuam sob responsabilidade do elaborador.
+     *
+     * @param array<int, array{nome: string, cargo: string, matricula: string}> $equipe
+     */
+    public function alterarEquipePlanejamento(Dfd $dfd, User $aprovador, array $equipe): Dfd
+    {
+        if (!$dfd->statusEnum()->is(StatusDfd::EmRevisao)) {
+            throw new DomainException('A equipe de planejamento só pode ser alterada pelo aprovador enquanto o DFD está em revisão.');
+        }
+        $this->validarSegregacaoFuncoes($dfd, $aprovador, 'alterar a equipe de planejamento');
+
+        return DB::transaction(function () use ($dfd, $aprovador, $equipe): Dfd {
+            $antes = $dfd->toArray();
+            $dfd->update(['equipe_planejamento' => $equipe]);
+            $dfd->refresh();
+            $diff = $this->calcularDiff($antes, $dfd->toArray());
+
+            if ($diff !== []) {
+                $this->registrarVersao($dfd, 'equipe_alterada_pelo_aprovador', $aprovador, $diff);
+                $this->audit->record('licita', 'dfd.equipe_alterada_pelo_aprovador', "Dfd #{$dfd->id}", $antes, $dfd->toArray());
+                $this->outbox->publish('licita.DfdEquipePlanejamentoAlterada', ['id' => $dfd->id]);
+            }
+
+            return $dfd->load(['elaborador', 'aprovador', 'versoes.usuario']);
+        });
+    }
+
+    /**
      * Valida o campos_extras de cada item (material/servico) contra a
      * configuração ativa do tenant para o tipo daquele item — mesmo
      * mecanismo já usado para o campos_extras do DFD em si, mas aplicado
