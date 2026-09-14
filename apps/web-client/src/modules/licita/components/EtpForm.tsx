@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@sysgov/ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CampoConfig, CreateEtpInput, MembroEquipePlanejamento } from '@sysgov/sdk';
@@ -6,6 +6,9 @@ import { CamposExtrasFields } from './CamposExtrasFields';
 import { RichTextEditorWithIa } from './RichTextEditorWithIa';
 import { ValidationErrorModal } from '@/components/ui';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
+
+/** Aba usada por campos sem `aba` definida — sempre a primeira, mesmo que o órgão só tenha criado abas nomeadas depois dela (ver DfdForm, mesmo padrão). */
+const ABA_PADRAO = 'Geral';
 
 const emptyMembro: MembroEquipePlanejamento = { nome: '', cargo: '', matricula: '' };
 
@@ -21,10 +24,10 @@ interface EtpFormProps {
 }
 
 /**
- * Formulário do ETP — mais simples que o DfdForm: o conteúdo é um único
- * texto rico estruturado (art. 18, §1º da Lei 14.133/2021), não campos
- * fixos por inciso; só a equipe de planejamento e os campos extras
- * configuráveis têm estrutura própria, igual ao DFD.
+ * Formulário do ETP — mais simples que o DfdForm (sem itens), mas com o
+ * mesmo sistema de abas: campos extras com `aba` definida (Campos por Tipo
+ * de Documento) ganham sua própria aba ao lado de "Geral", em vez de serem
+ * só empilhados no fim do formulário.
  */
 export const EtpForm: React.FC<EtpFormProps> = ({
   initialValue,
@@ -46,6 +49,7 @@ export const EtpForm: React.FC<EtpFormProps> = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
+  const [abaAtiva, setAbaAtiva] = useState(ABA_PADRAO);
   // Mesma lógica do DfdForm: vira false assim que o usuário mexe manualmente
   // no conteúdo depois de aceitar uma sugestão de IA.
   const [conteudoGeradoPorIa, setConteudoGeradoPorIa] = useState(initialValue?.gerado_por_ia ?? false);
@@ -58,6 +62,33 @@ export const EtpForm: React.FC<EtpFormProps> = ({
   const updateMembro = (index: number, patch: Partial<MembroEquipePlanejamento>) => {
     setEquipe((prev) => prev.map((m, i) => (i === index ? { ...m, ...patch } : m)));
   };
+
+  // Agrupa os campos extras por aba (ver comentário equivalente no
+  // DfdForm) — campos sem aba caem na aba padrão, junto do conteúdo e da
+  // equipe.
+  const camposExtrasPorAba = useMemo(() => {
+    const ordenados = [...camposExtras].sort((a, b) => a.ordem - b.ordem);
+    const porAba = new Map<string, CampoConfig[]>();
+    for (const campo of ordenados) {
+      const aba = campo.aba?.trim() || ABA_PADRAO;
+      if (!porAba.has(aba)) porAba.set(aba, []);
+      porAba.get(aba)!.push(campo);
+    }
+    return porAba;
+  }, [camposExtras]);
+
+  const nomesAbas = useMemo(() => {
+    const nomes = [ABA_PADRAO];
+    for (const aba of camposExtrasPorAba.keys()) {
+      if (!nomes.includes(aba)) nomes.push(aba);
+    }
+    return nomes;
+  }, [camposExtrasPorAba]);
+
+  // Protege contra abaAtiva apontando pra uma aba custom que deixou de
+  // existir (ex.: o órgão removeu os campos daquela aba desde a última vez
+  // que este formulário foi aberto).
+  const abaAtivaSegura = nomesAbas.includes(abaAtiva) ? abaAtiva : ABA_PADRAO;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,81 +127,109 @@ export const EtpForm: React.FC<EtpFormProps> = ({
         </div>
       )}
 
-      <div>
-        <RichTextEditorWithIa
-          label="Estudo Técnico Preliminar *"
-          value={conteudo}
-          onChange={handleConteudoChange}
-          disabled={disabled}
-          minHeight={400}
-          placeholder="Descreva a necessidade, os requisitos da contratação, o levantamento de mercado, a solução escolhida, a estimativa de quantidades e valor, o alinhamento com o PCA e os demais elementos do art. 18, §1º da Lei 14.133/2021."
-          campo="Estudo Técnico Preliminar (ETP)"
-          contexto={objetoProcesso ? `Objeto do processo: ${objetoProcesso}` : undefined}
-        />
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-medium text-foreground">
-            Equipe de Planejamento <span className="font-normal text-muted-foreground">(mínimo 2 pessoas)</span>
-          </label>
-          {!disabled && (
-            <Button
+      {/* Só mostra abas quando existe mais de uma — o órgão pode nunca ter
+          criado nenhum campo extra com aba nomeada, e nesse caso o formulário
+          fica sem essa barra, igual ao comportamento anterior. */}
+      {nomesAbas.length > 1 && (
+        <div className="flex gap-1 border-b border-border">
+          {nomesAbas.map((aba) => (
+            <button
+              key={aba}
               type="button"
-              variant="ghost"
-              size="sm"
-              leftIcon={<Plus className="h-3.5 w-3.5" />}
-              onClick={() => setEquipe((prev) => [...prev, { ...emptyMembro }])}
+              onClick={() => setAbaAtiva(aba)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                abaAtivaSegura === aba
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
             >
-              Adicionar
-            </Button>
-          )}
+              {aba}
+            </button>
+          ))}
         </div>
-        <div className="space-y-2">
-          {equipe.map((membro, index) => (
-            <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_120px_auto] gap-2 items-center">
-              <input
-                type="text"
-                disabled={disabled}
-                placeholder="Nome"
-                value={membro.nome}
-                onChange={(e) => updateMembro(index, { nome: e.target.value })}
-                className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <input
-                type="text"
-                disabled={disabled}
-                placeholder="Cargo/Função"
-                value={membro.cargo}
-                onChange={(e) => updateMembro(index, { cargo: e.target.value })}
-                className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <input
-                type="text"
-                disabled={disabled}
-                placeholder="Matrícula"
-                value={membro.matricula}
-                onChange={(e) => updateMembro(index, { matricula: e.target.value })}
-                className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              {!disabled && equipe.length > 2 && (
+      )}
+
+      {abaAtivaSegura === ABA_PADRAO && (
+        <>
+          <div>
+            <RichTextEditorWithIa
+              label="Estudo Técnico Preliminar *"
+              value={conteudo}
+              onChange={handleConteudoChange}
+              disabled={disabled}
+              minHeight={400}
+              placeholder="Descreva a necessidade, os requisitos da contratação, o levantamento de mercado, a solução escolhida, a estimativa de quantidades e valor, o alinhamento com o PCA e os demais elementos do art. 18, §1º da Lei 14.133/2021."
+              campo="Estudo Técnico Preliminar (ETP)"
+              contexto={objetoProcesso ? `Objeto do processo: ${objetoProcesso}` : undefined}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-foreground">
+                Equipe de Planejamento <span className="font-normal text-muted-foreground">(mínimo 2 pessoas)</span>
+              </label>
+              {!disabled && (
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setEquipe((prev) => prev.filter((_, i) => i !== index))}
+                  size="sm"
+                  leftIcon={<Plus className="h-3.5 w-3.5" />}
+                  onClick={() => setEquipe((prev) => [...prev, { ...emptyMembro }])}
                 >
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  Adicionar
                 </Button>
               )}
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="space-y-2">
+              {equipe.map((membro, index) => (
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_120px_auto] gap-2 items-center">
+                  <input
+                    type="text"
+                    disabled={disabled}
+                    placeholder="Nome"
+                    value={membro.nome}
+                    onChange={(e) => updateMembro(index, { nome: e.target.value })}
+                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <input
+                    type="text"
+                    disabled={disabled}
+                    placeholder="Cargo/Função"
+                    value={membro.cargo}
+                    onChange={(e) => updateMembro(index, { cargo: e.target.value })}
+                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <input
+                    type="text"
+                    disabled={disabled}
+                    placeholder="Matrícula"
+                    value={membro.matricula}
+                    onChange={(e) => updateMembro(index, { matricula: e.target.value })}
+                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  {!disabled && equipe.length > 2 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => setEquipe((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
-      {camposExtras.length > 0 && (
+      {/* Campos extras da aba ativa — na aba "Geral" ficam junto do conteúdo
+          e da equipe; nas demais abas aparecem sozinhos, iguais ao DfdForm. */}
+      {(camposExtrasPorAba.get(abaAtivaSegura)?.length ?? 0) > 0 && (
         <CamposExtrasFields
-          campos={camposExtras}
+          campos={camposExtrasPorAba.get(abaAtivaSegura) ?? []}
           valores={camposExtrasValores}
           onChange={setCamposExtrasValores}
           disabled={disabled}
