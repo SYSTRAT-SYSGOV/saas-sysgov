@@ -338,7 +338,12 @@ export const DfdDetailPage: React.FC<DfdDetailPageProps> = ({ processoId, onBack
         />
 
         <DfdForm
-          key={dfd?.id ?? 'novo'}
+          // updated_at no key: o DfdForm guarda estado próprio (equipe,
+          // itens etc.) e não é controlado por `initialValue` após montado
+          // — sem isso, alterar a equipe pelo modal do aprovador (que não
+          // passa pelo DfdForm) deixava o formulário mostrando o valor
+          // antigo até a página ser recarregada, mesmo já salvo no banco.
+          key={dfd ? `${dfd.id}-${dfd.updated_at}` : 'novo'}
           initialValue={
             dfd
               ? {

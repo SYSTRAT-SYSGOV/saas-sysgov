@@ -69,7 +69,7 @@ export const AlterarEquipePlanejamentoModal: React.FC<AlterarEquipePlanejamentoM
       open={open}
       onClose={onClose}
       title="Alterar Equipe de Planejamento"
-      size="lg"
+      size="xl"
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={saving}>
