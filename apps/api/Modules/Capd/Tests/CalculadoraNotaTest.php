@@ -2,6 +2,7 @@
 
 namespace Modules\Capd\Tests;
 
+use Illuminate\Support\Collection;
 use Modules\Capd\Services\CalculadoraNotaService;
 use Modules\Capd\Services\TravaElectronicaService;
 use Modules\Capd\Exceptions\TravaIncidenteCriticoException;
@@ -15,6 +16,10 @@ use PHPUnit\Framework\TestCase;
  *   - Magistério    (Lei 1.835/2008): NFD = 9,08
  *
  * Também cobre TC-01 e TC-02 da matriz de testes (spec §12).
+ *
+ * Os pesos vêm de ModeloFatorPeso (RF-02) — usamos aqui as mesmas proporções
+ * legais (peso_geral/peso_magisterio) da spec, provando que a fórmula é
+ * invariante de escala (o resultado não muda se os pesos somam 10 ou 100).
  */
 class CalculadoraNotaTest extends TestCase
 {
@@ -36,20 +41,61 @@ class CalculadoraNotaTest extends TestCase
         $this->calculadora = new CalculadoraNotaService($travaPermissiva);
     }
 
-    // ── Fatores para Quadro Geral ─────────────────────────────────────
-
-    private function fatoresGeral(): array
+    /**
+     * Constrói uma Collection de pesos "tipo ModeloFatorPeso" a partir de
+     * definições simples, usando stdClass em vez de instanciar Eloquent —
+     * este é um teste PHPUnit\Framework\TestCase puro (sem bootstrap Laravel)
+     * e instanciar Model reais aqui quebra quando roda junto de testes Feature
+     * no mesmo processo (ciclo de boot do Eloquent). CalculadoraNotaService só
+     * lê ->fator_id, ->peso e ->fator->{codigo,automatizado} via acesso a
+     * propriedade, então stdClass é suficiente e mais seguro aqui.
+     *
+     * @param  array<string, array{id: int, peso: float, automatizado?: bool}>  $definicoes  Keyed by código do fator
+     */
+    private function criarFatoresPesos(array $definicoes): Collection
     {
-        return [
-            'F1' => ['id' => 1, 'peso_geral' => 1.5, 'peso_magisterio' => 1.5, 'automatizado' => true],
-            'F2' => ['id' => 2, 'peso_geral' => 1.5, 'peso_magisterio' => 1.0, 'automatizado' => true],
-            'F3' => ['id' => 3, 'peso_geral' => 1.0, 'peso_magisterio' => 1.0, 'automatizado' => false],
-            'F4' => ['id' => 4, 'peso_geral' => 1.5, 'peso_magisterio' => 1.5, 'automatizado' => false],
-            'F5' => ['id' => 5, 'peso_geral' => 1.0, 'peso_magisterio' => 1.0, 'automatizado' => false],
-            'F6' => ['id' => 6, 'peso_geral' => 1.5, 'peso_magisterio' => 2.0, 'automatizado' => false],
-            'F7' => ['id' => 7, 'peso_geral' => 1.0, 'peso_magisterio' => 1.5, 'automatizado' => false],
-            'F8' => ['id' => 8, 'peso_geral' => 1.0, 'peso_magisterio' => 0.5, 'automatizado' => false],
-        ];
+        return collect($definicoes)->map(function (array $def, string $codigo): object {
+            return (object) [
+                'fator_id' => $def['id'],
+                'peso'     => $def['peso'],
+                'fator'    => (object) [
+                    'codigo'       => $codigo,
+                    'automatizado' => $def['automatizado'] ?? false,
+                ],
+            ];
+        })->values();
+    }
+
+    // ── Pesos para Quadro Geral ────────────────────────────────────────
+
+    private function pesosGeral(): Collection
+    {
+        return $this->criarFatoresPesos([
+            'F1' => ['id' => 1, 'peso' => 1.5, 'automatizado' => true],
+            'F2' => ['id' => 2, 'peso' => 1.5, 'automatizado' => true],
+            'F3' => ['id' => 3, 'peso' => 1.0],
+            'F4' => ['id' => 4, 'peso' => 1.5],
+            'F5' => ['id' => 5, 'peso' => 1.0],
+            'F6' => ['id' => 6, 'peso' => 1.5],
+            'F7' => ['id' => 7, 'peso' => 1.0],
+            'F8' => ['id' => 8, 'peso' => 1.0],
+        ]);
+    }
+
+    // ── Pesos para Magistério ───────────────────────────────────────────
+
+    private function pesosMagisterio(): Collection
+    {
+        return $this->criarFatoresPesos([
+            'F1' => ['id' => 1, 'peso' => 1.5, 'automatizado' => true],
+            'F2' => ['id' => 2, 'peso' => 1.0, 'automatizado' => true],
+            'F3' => ['id' => 3, 'peso' => 1.0],
+            'F4' => ['id' => 4, 'peso' => 1.5],
+            'F5' => ['id' => 5, 'peso' => 1.0],
+            'F6' => ['id' => 6, 'peso' => 2.0],
+            'F7' => ['id' => 7, 'peso' => 1.5],
+            'F8' => ['id' => 8, 'peso' => 0.5],
+        ]);
     }
 
     /**
@@ -74,11 +120,10 @@ class CalculadoraNotaTest extends TestCase
         ];
 
         $resultado = $this->calculadora->calcular(
-            respostas:  $respostas,
-            fatores:    $this->fatoresGeral(),
-            plano:      'GERAL',
-            cicloId:    1,
-            servidorId: 1,
+            respostas:    $respostas,
+            fatoresPesos: $this->pesosGeral(),
+            cicloId:      1,
+            servidorId:   1,
         );
 
         $this->assertEquals('7.38', $resultado['nota_final']);
@@ -111,11 +156,10 @@ class CalculadoraNotaTest extends TestCase
         ];
 
         $resultado = $this->calculadora->calcular(
-            respostas:  $respostas,
-            fatores:    $this->fatoresGeral(),
-            plano:      'MAGISTERIO',
-            cicloId:    1,
-            servidorId: 1,
+            respostas:    $respostas,
+            fatoresPesos: $this->pesosMagisterio(),
+            cicloId:      1,
+            servidorId:   1,
         );
 
         // Verifica que a nota é >= 9.00 e elegível para progressão
@@ -145,11 +189,10 @@ class CalculadoraNotaTest extends TestCase
         $this->expectException(TravaIncidenteCriticoException::class);
 
         $calculadoraComTrava->calcular(
-            respostas: ['F3' => ['grau' => 5]],
-            fatores: ['F3' => ['id' => 3, 'peso_geral' => 1.0, 'peso_magisterio' => 1.0, 'automatizado' => false]],
-            plano: 'GERAL',
-            cicloId: 1,
-            servidorId: 1,
+            respostas:    ['F3' => ['grau' => 5]],
+            fatoresPesos: $this->criarFatoresPesos(['F3' => ['id' => 3, 'peso' => 1.0]]),
+            cicloId:      1,
+            servidorId:   1,
         );
     }
 
@@ -157,11 +200,10 @@ class CalculadoraNotaTest extends TestCase
     public function test_grau_1_retorna_nota_zero(): void
     {
         $resultado = $this->calculadora->calcular(
-            respostas: ['F1' => ['grau' => 1]],
-            fatores: ['F1' => ['id' => 1, 'peso_geral' => 1.5, 'peso_magisterio' => 1.5, 'automatizado' => true]],
-            plano: 'GERAL',
-            cicloId: 1,
-            servidorId: 1,
+            respostas:    ['F1' => ['grau' => 1]],
+            fatoresPesos: $this->criarFatoresPesos(['F1' => ['id' => 1, 'peso' => 1.5, 'automatizado' => true]]),
+            cicloId:      1,
+            servidorId:   1,
         );
 
         $this->assertEquals('0.00', $resultado['nota_final']);
@@ -171,11 +213,10 @@ class CalculadoraNotaTest extends TestCase
     public function test_grau_5_automatizado_nao_exige_cit(): void
     {
         $resultado = $this->calculadora->calcular(
-            respostas: ['F1' => ['grau' => 5]],
-            fatores: ['F1' => ['id' => 1, 'peso_geral' => 1.5, 'peso_magisterio' => 1.5, 'automatizado' => true]],
-            plano: 'GERAL',
-            cicloId: 1,
-            servidorId: 1,
+            respostas:    ['F1' => ['grau' => 5]],
+            fatoresPesos: $this->criarFatoresPesos(['F1' => ['id' => 1, 'peso' => 1.5, 'automatizado' => true]]),
+            cicloId:      1,
+            servidorId:   1,
         );
 
         $this->assertEquals('10.00', $resultado['nota_final']);
@@ -187,13 +228,25 @@ class CalculadoraNotaTest extends TestCase
         $respostas = array_fill_keys(['F1','F2','F3','F4','F5','F6','F7','F8'], ['grau' => 2]);
 
         $resultado = $this->calculadora->calcular(
-            respostas:  $respostas,
-            fatores:    $this->fatoresGeral(),
-            plano:      'GERAL',
-            cicloId:    1,
-            servidorId: 1,
+            respostas:    $respostas,
+            fatoresPesos: $this->pesosGeral(),
+            cicloId:      1,
+            servidorId:   1,
         );
 
         $this->assertFalse($resultado['elegivel_progressao']);
+    }
+
+    /** RF-02: modelo sem pesos configurados lança DomainException. */
+    public function test_lanca_excecao_quando_nao_ha_pesos_configurados(): void
+    {
+        $this->expectException(\DomainException::class);
+
+        $this->calculadora->calcular(
+            respostas:    ['F1' => ['grau' => 4]],
+            fatoresPesos: new Collection(),
+            cicloId:      1,
+            servidorId:   1,
+        );
     }
 }

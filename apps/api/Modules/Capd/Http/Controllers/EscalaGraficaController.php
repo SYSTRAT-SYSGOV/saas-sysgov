@@ -35,6 +35,8 @@ final class EscalaGraficaController extends Controller
     /** Cria escala gráfica com seus níveis num único request. */
     public function store(Request $request, int $modeloId): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $modelo = ModeloFormulario::findOrFail($modeloId);
 
         $validated = $request->validate([
@@ -102,6 +104,8 @@ final class EscalaGraficaController extends Controller
     /** Atualiza escala e recria níveis. */
     public function update(Request $request, int $modeloId, int $escalaId): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         ModeloFormulario::findOrFail($modeloId);
 
         $escala = EscalaGrafica::where('modelo_id', $modeloId)->findOrFail($escalaId);
@@ -149,8 +153,10 @@ final class EscalaGraficaController extends Controller
     }
 
     /** Remove escala (soft delete). */
-    public function destroy(int $modeloId, int $escalaId): JsonResponse
+    public function destroy(Request $request, int $modeloId, int $escalaId): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         ModeloFormulario::findOrFail($modeloId);
         $escala = EscalaGrafica::where('modelo_id', $modeloId)->findOrFail($escalaId);
         $escala->delete();

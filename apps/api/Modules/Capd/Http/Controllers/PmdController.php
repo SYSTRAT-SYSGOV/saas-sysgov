@@ -33,10 +33,14 @@ final class PmdController extends Controller
     /** Cria PMD manualmente (quando a Comissão inicia o plano). */
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $validated = $request->validate([
             'servidor_id'          => ['required', 'integer', 'exists:capd_servidores,id'],
             'ciclo_id'             => ['required', 'integer', 'exists:capd_ciclos,id'],
             'nfc_gatilho'          => ['required', 'numeric', 'min:0', 'max:100'],
+            'conceito_atingido'    => ['nullable', 'string', 'max:30'],
+            'responsavel_id'       => ['nullable', 'integer', 'exists:users,id'],
             'objetivos'            => ['required', 'string'],
             'acoes'                => ['nullable', 'array'],
             'prazo'                => ['required', 'date'],
@@ -50,6 +54,7 @@ final class PmdController extends Controller
             $servidor,
             $ciclo,
             number_format((float) $validated['nfc_gatilho'], 2, '.', ''),
+            $validated['conceito_atingido'] ?? null,
             null,
             $validated,
         );
@@ -68,6 +73,8 @@ final class PmdController extends Controller
     /** Atualiza PMD (objetivos, ações, prazo, status). */
     public function update(Request $request, int $id): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $pmd = PlanoMelhoria::findOrFail($id);
 
         $validated = $request->validate([
@@ -84,9 +91,27 @@ final class PmdController extends Controller
         return response()->json($pmd->load(['ciclo', 'cicloVerificacao']));
     }
 
+    /** Marca as ações do plano como executadas pelo responsável. */
+    public function concluirAcoes(Request $request, int $id): JsonResponse
+    {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
+        $pmd = PlanoMelhoria::findOrFail($id);
+
+        try {
+            $pmd = $this->pmdService->concluirAcoes($pmd);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($pmd->load(['ciclo', 'cicloVerificacao']));
+    }
+
     /** Registra verificação de evolução no ciclo de verificação. */
     public function registrarVerificacao(Request $request, int $id): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $pmd = PlanoMelhoria::findOrFail($id);
 
         $validated = $request->validate([
@@ -98,6 +123,7 @@ final class PmdController extends Controller
             $pmd,
             number_format((float) $validated['nfc_novo_ciclo'], 2, '.', ''),
             $validated['observacoes'],
+            $request->user()->id,
         );
 
         return response()->json([

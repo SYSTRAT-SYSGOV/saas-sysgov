@@ -27,31 +27,12 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
-import type { ApiModeloFormulario } from '@sysgov/sdk';
+import type { ApiModeloFormulario, ApiModeloFatorPeso, ApiFatoresPesosResponse } from '@sysgov/sdk';
 
 const api = new SysgovApi();
 
-interface FatorPeso {
-  id?: number;
-  fator_id: number;
-  peso: number;
-  redistribuivel: boolean;
-  ordem: number;
-  ativo: boolean;
-  fator?: {
-    id: number;
-    codigo: string;
-    nome: string;
-    descricao?: string;
-  };
-}
-
-interface PesosResponse {
-  modelo_id: number;
-  soma_pesos: number;
-  valido: boolean;
-  fatores: FatorPeso[];
-}
+type FatorPeso = ApiModeloFatorPeso;
+type PesosResponse = ApiFatoresPesosResponse;
 
 interface Props {
   modeloId?: number;
@@ -99,9 +80,9 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
     setLoading(true);
     setErro(null);
     try {
-      const resp = await api.get<PesosResponse>(`/capd/modelos-formulario/${id}/fatores-pesos`);
-      setDados(resp.data);
-      setEditados(resp.data?.fatores ?? []);
+      const resp = await api.capd.listFatoresPesos(id);
+      setDados(resp);
+      setEditados(resp?.fatores ?? []);
       setAlterado(false);
     } catch {
       setErro('Não foi possível carregar os pesos dos fatores para este modelo.');
@@ -152,14 +133,15 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
     setSaving(true);
     setErro(null);
     try {
-      await api.post(`/capd/modelos-formulario/${selectedModeloId}/fatores-pesos/sync`, {
-        fatores: editados.map((f, idx) => ({
+      await api.capd.syncFatoresPesos(
+        selectedModeloId,
+        editados.map((f, idx) => ({
           fator_id:       f.fator_id,
           peso:           f.peso,
           redistribuivel: f.redistribuivel,
           ordem:          idx,
         })),
-      });
+      );
       setSucesso('Pesos sincronizados com sucesso!');
       setAlterado(false);
       carregarPesos(selectedModeloId);

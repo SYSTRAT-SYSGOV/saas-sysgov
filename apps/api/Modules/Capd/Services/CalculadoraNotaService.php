@@ -2,10 +2,11 @@
 
 namespace Modules\Capd\Services;
 
+use DomainException;
+use Illuminate\Support\Collection;
 use Modules\Capd\Exceptions\TravaIncidenteCriticoException;
 use Modules\Capd\Models\Avaliacao;
-use Modules\Capd\Models\DiarioBordo;
-use Modules\Capd\Models\FatorAvaliacao;
+use Modules\Capd\Models\ModeloFatorPeso;
 
 /**
  * Motor de cálculo da Nota Final de Desempenho (NFD).
@@ -13,6 +14,10 @@ use Modules\Capd\Models\FatorAvaliacao;
  * FÓRMULA (spec §3.4):
  *   Nf  = (grau - 1) × 2,5
  *   NFD = Σ(Nf × peso) / Σ(pesos)
+ *
+ * Os pesos vêm de ModeloFatorPeso (RF-02, configuráveis por modelo de formulário
+ * pela Comissão) — a soma dos pesos não precisa ser 10 nem 100: a média ponderada
+ * é invariante de escala, então qualquer proporção consistente produz o mesmo NFD.
  *
  * Usa bcmath para garantir precisão decimal exata.
  * NUNCA usa float para aritmética monetária ou de notas.
@@ -34,43 +39,46 @@ final class CalculadoraNotaService
     /**
      * Calcula a NFD para uma avaliação ainda não submetida.
      *
-     * @param  array<string, array{grau: int, automatizado: bool}>  $respostas  Keyed by fator_codigo
-     * @param  array<string, array{peso_geral: float, peso_magisterio: float, automatizado: bool}>  $fatores
-     * @param  string  $plano   'GERAL' | 'MAGISTERIO'
-     * @param  int     $cicloId
-     * @param  int     $servidorId
+     * @param  array<string, array{grau: int, automatizado?: bool}>  $respostas  Keyed by fator_codigo
+     * @param  Collection<int, ModeloFatorPeso>  $fatoresPesos  Pesos do modelo de formulário vigente (com ->fator carregado)
+     * @param  int  $cicloId
+     * @param  int  $servidorId
      * @return array{nota_final: string, elegivel_progressao: bool, detalhamento: array}
      *
      * @throws TravaIncidenteCriticoException
+     * @throws DomainException se o modelo não tem pesos configurados ou nenhum fator respondido casa com o modelo
      */
     public function calcular(
         array $respostas,
-        array $fatores,
-        string $plano,
+        Collection $fatoresPesos,
         int $cicloId,
         int $servidorId,
     ): array {
-        $camposPeso = $plano === 'MAGISTERIO' ? 'peso_magisterio' : 'peso_geral';
+        if ($fatoresPesos->isEmpty()) {
+            throw new DomainException('RF-02: o modelo de formulário não tem pesos de fatores configurados.');
+        }
 
         // bcmath: precisão decimal exata — sem erros de ponto flutuante.
-        // Notas de desempenho NÃO são monetárias, mas usamos bcmath
-        // para garantir que Soma Ponderada / Soma Pesos seja idêntica
-        // entre servidores, ciclos e planos (auditabilidade plena).
+        // Notas de desempenho NÃO são monetárias, mas usamos bcmath para garantir
+        // que Soma Ponderada / Soma Pesos seja idêntica entre servidores, ciclos e
+        // planos (auditabilidade plena).
         $somaPonderada = '0';
         $somaPesos     = '0';
         $detalhamento  = [];
 
-        foreach ($fatores as $codigo => $fator) {
-            if (! isset($respostas[$codigo])) {
+        foreach ($fatoresPesos as $mfp) {
+            $codigo = $mfp->fator?->codigo;
+
+            if ($codigo === null || ! isset($respostas[$codigo])) {
                 continue;
             }
 
             $grau         = (int) $respostas[$codigo]['grau'];
-            $automatizado = (bool) ($fator['automatizado'] ?? false);
+            $automatizado = (bool) ($mfp->fator?->automatizado ?? false);
 
             // ── Trava antileniência/antiprecipitação (spec §3.7) ─────
             if (in_array($grau, [1, 2, 5], true) && ! $automatizado) {
-                $this->trava->validar($codigo, $cicloId, $servidorId, $fator['id']);
+                $this->trava->validar($codigo, $cicloId, $servidorId, $mfp->fator_id);
             }
 
             // ── Conversão grau → nota (0–10): Nf = (grau - 1) × 2,5 ─
@@ -80,7 +88,7 @@ final class CalculadoraNotaService
                 self::PRECISAO,
             );
 
-            $peso = number_format((float) $fator[$camposPeso], self::PRECISAO, '.', '');
+            $peso = number_format((float) $mfp->peso, self::PRECISAO, '.', '');
 
             $somaPonderada = bcadd(
                 $somaPonderada,
@@ -97,6 +105,10 @@ final class CalculadoraNotaService
             ];
         }
 
+        if (bccomp($somaPesos, '0', self::PRECISAO) === 0) {
+            throw new DomainException('RF-02: nenhuma resposta corresponde aos fatores configurados no modelo de formulário.');
+        }
+
         // ── NFD arredondada para 2 casas (spec §11.1) ─────────────────
         $notaFinal         = bcdiv($somaPonderada, $somaPesos, self::PRECISAO);
         $notaFinalArred    = number_format((float) $notaFinal, 2, '.', '');
@@ -109,21 +121,20 @@ final class CalculadoraNotaService
     }
 
     /**
-     * Recalcula e persiste a nota na avaliação existente.
-     * Usado internamente após ajuste pós-recurso.
+     * Recalcula e persiste a nota na avaliação existente, usando o modelo de
+     * formulário vinculado à avaliação (CA-03: mesmo modelo da submissão original).
      */
-    public function recalcularEPersistir(Avaliacao $avaliacao, string $plano): void
+    public function recalcularEPersistir(Avaliacao $avaliacao): void
     {
-        $fatores = FatorAvaliacao::forTenant($avaliacao->tenant_id)
-            ->get()
-            ->keyBy('codigo')
-            ->map(fn ($f) => $f->toArray())
-            ->toArray();
+        $modelo = $avaliacao->modeloFormulario;
+
+        if ($modelo === null) {
+            throw new DomainException("Avaliação #{$avaliacao->id} não tem modelo de formulário vinculado — não é possível recalcular.");
+        }
 
         $resultado = $this->calcular(
             $avaliacao->respostas_fatores,
-            $fatores,
-            $plano,
+            $modelo->fatoresComPesosEfetivos(),
             $avaliacao->ciclo_id,
             $avaliacao->servidor_id,
         );

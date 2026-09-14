@@ -103,7 +103,7 @@ final class DeliberacaoController extends Controller
                     $respostas[$fatorCod]['grau'] = (int) $validated['novo_grau_proposto'];
                     $avaliacao->update(['respostas_fatores' => $respostas]);
 
-                    $this->calculadora->recalcularEPersistir($avaliacao, 'GERAL');
+                    $this->calculadora->recalcularEPersistir($avaliacao);
                 }
 
                 $resultadoFinal = 'julgado_provido';

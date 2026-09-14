@@ -22,6 +22,7 @@ final class AvaliacaoUsuarioTest extends TestCase
 
     private Tenant $tenant;
     private User $user;
+    private User $admin;
     private CicloAvaliacao $ciclo;
     private Servidor $servidor;
 
@@ -44,6 +45,14 @@ final class AvaliacaoUsuarioTest extends TestCase
             'password' => bcrypt('secret'),
         ]);
         $this->user->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
+
+        $this->admin = User::create([
+            'name'              => 'Admin Avaliacao Usuario',
+            'email'             => 'admin.avaliacao.usuario@araucaria.pr.gov.br',
+            'password'          => bcrypt('secret'),
+            'is_platform_admin' => true,
+        ]);
+        $this->admin->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
 
         $servidorUser = User::create(['name' => 'Servidor Atendimento', 'email' => 'atendimento@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
 
@@ -130,7 +139,7 @@ final class AvaliacaoUsuarioTest extends TestCase
             'servidor_id' => $this->servidor->id, 'ciclo_id' => $this->ciclo->id, 'nota_atendimento' => 100.0,
         ])->assertStatus(201);
 
-        $response = $this->actingAs($this->user)
+        $response = $this->actingAs($this->admin)
             ->withHeaders($this->headers())
             ->getJson("/api/capd/avaliacao-usuario/media?servidor_id={$this->servidor->id}&ciclo_id={$this->ciclo->id}");
 
@@ -143,7 +152,7 @@ final class AvaliacaoUsuarioTest extends TestCase
 
     public function test_media_e_null_quando_nao_ha_avaliacoes(): void
     {
-        $response = $this->actingAs($this->user)
+        $response = $this->actingAs($this->admin)
             ->withHeaders($this->headers())
             ->getJson("/api/capd/avaliacao-usuario/media?servidor_id={$this->servidor->id}&ciclo_id={$this->ciclo->id}");
 
@@ -152,5 +161,14 @@ final class AvaliacaoUsuarioTest extends TestCase
 
         $this->assertEquals(0, $data['total_avaliacoes']);
         $this->assertNull($data['media']);
+    }
+
+    public function test_usuario_sem_permissao_recebe_403_ao_consultar_media(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->withHeaders($this->headers())
+            ->getJson("/api/capd/avaliacao-usuario/media?servidor_id={$this->servidor->id}&ciclo_id={$this->ciclo->id}");
+
+        $response->assertStatus(403);
     }
 }
