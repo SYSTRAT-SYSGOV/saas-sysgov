@@ -10,6 +10,7 @@ import {
   Input,
   Select,
   Modal,
+  KpiCard,
 } from '@sysgov/ui';
 import {
   UserCheck,
@@ -29,10 +30,12 @@ import {
 } from 'lucide-react';
 import { AvaliacaoFormModal } from '../AvaliacaoFormModal';
 import { EspelhoAvaliacaoModal } from '../EspelhoAvaliacaoModal';
+import { GRAU_TONE } from '../graduTone';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiAvaliacao,
   ApiDiarioBordo,
+  ApiKpisEquipe,
   ApiRecurso,
   ApiServidor,
 } from '@sysgov/sdk';
@@ -55,6 +58,7 @@ export const PortalAvaliadorView: React.FC = () => {
   const [incidentes, setIncidentes] = useState<ApiDiarioBordo[]>([]);
   const [recursos, setRecursos] = useState<ApiRecurso[]>([]);
   const [servidores, setServidores] = useState<ApiServidor[]>([]);
+  const [kpisEquipe, setKpisEquipe] = useState<ApiKpisEquipe | null>(null);
   const [selectedAvaliadorId, setSelectedAvaliadorId] = useState<string>('todos');
 
   // Modal de Preenchimento/Visualização da Avaliação
@@ -104,16 +108,18 @@ export const PortalAvaliadorView: React.FC = () => {
         params.avaliador_id = Number(activeAvaliadorId);
       }
 
-      const [resAv, resCit, resRec, resServ] = await Promise.all([
+      const [resAv, resCit, resRec, resServ, resKpis] = await Promise.all([
         api.capd.listAvaliacoes(params).catch(() => ({ data: [] })),
         api.capd.listDiarioBordo().catch(() => ({ data: [] })),
         api.capd.listRecursos().catch(() => ({ data: [] })),
         api.capd.listServidores().catch(() => ({ data: [] })),
+        api.capd.getKpisEquipe().catch(() => null),
       ]);
 
       setAvaliacoes(resAv.data || []);
       setIncidentes(resCit.data || []);
       setRecursos(resRec.data || []);
+      setKpisEquipe(resKpis);
       const servList = Array.isArray(resServ) ? resServ : (resServ.data || []);
       setServidores(servList);
 
@@ -601,6 +607,42 @@ export const PortalAvaliadorView: React.FC = () => {
           </div>
         }
       />
+
+      {/* ── KPIs da Equipe ───────────────────────────────────────────── */}
+      {kpisEquipe && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KpiCard title="Total da Equipe" value={kpisEquipe.total_equipe} />
+            <KpiCard title="Pendentes" value={kpisEquipe.pendentes} />
+            <KpiCard title="Concluídas" value={kpisEquipe.concluidas} />
+            <KpiCard title="Nota Média" value={kpisEquipe.nota_media} />
+          </div>
+          {kpisEquipe.concluidas > 0 && (
+            <div className="rounded-lg border border-border bg-muted/10 p-3">
+              <p className="text-[11px] font-mono font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Distribuição de Graus (avaliações concluídas)
+              </p>
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
+                {([5, 4, 3, 2, 1] as const).map((grau) => {
+                  const qtd = kpisEquipe.distribuicao_graus[String(grau) as '1' | '2' | '3' | '4' | '5'];
+                  const pct = kpisEquipe.concluidas > 0 ? (qtd / kpisEquipe.concluidas) * 100 : 0;
+                  if (pct === 0) return null;
+                  const tone = GRAU_TONE[grau];
+                  const bg = tone === 'success' ? 'bg-status-success' : tone === 'warning' ? 'bg-status-warning' : 'bg-status-danger';
+                  return (
+                    <div
+                      key={grau}
+                      className={`h-full ${bg}`}
+                      style={{ width: `${pct}%` }}
+                      title={`Grau ${grau}: ${qtd}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Sub-abas de Navegação ──────────────────────────────────────── */}
       <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />

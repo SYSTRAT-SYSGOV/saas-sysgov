@@ -4,15 +4,16 @@ import { AlertTriangle, CheckCircle2, Send, Save, ShieldAlert, ChevronDown, Chev
 import { SysgovApi } from '@sysgov/sdk';
 import type { ApiAvaliacao, ApiDiarioBordo, ApiFator, RespostaFator } from '@sysgov/sdk';
 import { ScreenState } from '@/components/ui/ScreenState';
+import { GRAU_TONE } from './graduTone';
 
 const api = new SysgovApi();
 
 const GRAUS = [
-  { valor: 5, label: '5 — Excelente', tone: 'success' as const },
-  { valor: 4, label: '4 — Bom', tone: 'success' as const },
-  { valor: 3, label: '3 — Regular', tone: 'warning' as const },
-  { valor: 2, label: '2 — Insuficiente', tone: 'danger' as const },
-  { valor: 1, label: '1 — Crítico', tone: 'danger' as const },
+  { valor: 5, label: '5 — Excelente', tone: GRAU_TONE[5] },
+  { valor: 4, label: '4 — Bom', tone: GRAU_TONE[4] },
+  { valor: 3, label: '3 — Regular', tone: GRAU_TONE[3] },
+  { valor: 2, label: '2 — Insuficiente', tone: GRAU_TONE[2] },
+  { valor: 1, label: '1 — Crítico', tone: GRAU_TONE[1] },
 ];
 
 const GRAUS_EXTREMOS = [1, 2, 5];
