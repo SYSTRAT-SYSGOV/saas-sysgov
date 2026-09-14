@@ -17,6 +17,20 @@ echo "Banco de dados disponível."
 php artisan migrate --force
 php artisan db:seed --force
 
+# module:register lê o module.json de cada módulo (Modules/{Nome}/module.json)
+# e grava/atualiza catálogo de plataforma, permissões e menus (updateOrCreate,
+# idempotente). Sem isso, um módulo novo (ex.: Capd) roda normalmente por trás
+# (migrations, rotas, controllers) mas não aparece pra habilitar por tenant no
+# Admin Suite, porque a tela lê a tabela `modules` — não o filesystem. Rodar
+# pra todo módulo a cada boot evita depender de alguém lembrar do passo manual
+# sempre que um módulo novo entrar no repositório.
+for module_json in Modules/*/module.json; do
+  [ -f "$module_json" ] || continue
+  module_name=$(basename "$(dirname "$module_json")")
+  echo "Registrando módulo: ${module_name}..."
+  php artisan module:register "$module_name" || echo "  aviso: falha ao registrar ${module_name} (seguindo o boot)"
+done
+
 # sysgov:seed-menus é um comando artisan avulso (não um Seeder de
 # database/Seeders), então não entra no db:seed acima — precisa ser
 # chamado à parte. Também idempotente (updateOrCreate por slug/route).
