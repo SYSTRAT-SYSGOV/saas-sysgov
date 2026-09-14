@@ -30,6 +30,8 @@ final class CicloController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.ciclos.manage'), 403);
+
         $validated = $request->validate([
             'nome'                      => ['required', 'string', 'max:150'],
             'ano_competencia'           => ['required', 'integer', 'min:2020', 'max:2100'],
@@ -41,6 +43,8 @@ final class CicloController extends Controller
             'cadencia_automatica'       => ['nullable', 'boolean'],
             'etapa_cadencia'            => ['nullable', 'integer', 'min:1', 'max:3'],
             'regras_config'             => ['nullable', 'array'],
+            // RN-04: corte de elegibilidade para progressão (0-100), parametrizável pela Comissão.
+            'nota_corte_nfc'            => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $ciclo = $this->cicloService->criarCiclo($validated);
@@ -57,6 +61,8 @@ final class CicloController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.ciclos.manage'), 403);
+
         $ciclo = CicloAvaliacao::findOrFail($id);
 
         $validated = $request->validate([
@@ -70,6 +76,8 @@ final class CicloController extends Controller
             'cadencia_automatica'       => ['sometimes', 'boolean'],
             'etapa_cadencia'            => ['sometimes', 'integer'],
             'regras_config'             => ['nullable', 'array'],
+            // RN-04: corte de elegibilidade para progressão (0-100), parametrizável pela Comissão.
+            'nota_corte_nfc'            => ['sometimes', 'numeric', 'min:0', 'max:100'],
         ]);
 
         try {
@@ -83,6 +91,8 @@ final class CicloController extends Controller
 
     public function encerrar(Request $request, int $id): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.ciclos.manage'), 403);
+
         $ciclo = CicloAvaliacao::findOrFail($id);
         $abrirProximo = (bool) $request->input('abrir_proximo', false);
 
@@ -98,8 +108,10 @@ final class CicloController extends Controller
         ]);
     }
 
-    public function proximoCiclo(int $id): JsonResponse
+    public function proximoCiclo(Request $request, int $id): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.ciclos.manage'), 403);
+
         $ciclo = CicloAvaliacao::findOrFail($id);
         $proximo = $this->cicloService->abrirProximoCiclo($ciclo);
 

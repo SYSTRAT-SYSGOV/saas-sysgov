@@ -17,6 +17,15 @@ use Modules\Capd\Models\FatorAvaliacao;
  * F1-F8 padrão. A desativação nunca apaga o registro (DELETE seta
  * ativo=false), pois o fator pode estar referenciado por ModeloFatorPeso
  * e DiarioBordo — apagar quebraria o histórico e as chaves estrangeiras.
+ *
+ * IMPORTANTE: `peso_geral`/`peso_magisterio` NÃO alimentam mais o cálculo da
+ * nota real — desde a migração para pesos por modelo de formulário (RF-02),
+ * CalculadoraNotaService lê os pesos de ModeloFatorPeso (ver
+ * ModeloFatorPesoController), não destes campos. Aqui eles servem apenas como
+ * valor de referência sugerido ao criar um fator (usado por
+ * CapdPerguntasPadraoSeeder como baseline inicial ao popular ModeloFatorPeso).
+ * Para alterar o peso que efetivamente entra na NFD, use
+ * POST /modelos-formulario/{id}/fatores-pesos/sync.
  */
 final class FatorController extends Controller
 {
@@ -48,7 +57,11 @@ final class FatorController extends Controller
             'ativo' => true,
         ]);
 
-        return response()->json($fator, 201);
+        // Mantém o fator no nível raiz da resposta (compatibilidade com consumidores
+        // existentes), acrescentando só um aviso informativo sobre o peso real.
+        return response()->json(array_merge($fator->toArray(), [
+            '_aviso_peso' => 'peso_geral/peso_magisterio não afetam a nota real — configure o peso efetivo em POST /modelos-formulario/{id}/fatores-pesos/sync.',
+        ]), 201);
     }
 
     public function update(Request $request, int $id): JsonResponse

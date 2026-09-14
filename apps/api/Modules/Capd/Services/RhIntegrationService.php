@@ -6,7 +6,6 @@ namespace Modules\Capd\Services;
 
 use App\Models\TenantContext;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Support\OutboxPublisher;
 use Modules\Capd\Models\Avaliacao;
@@ -21,7 +20,7 @@ use Modules\Capd\Models\ServidorAfastamento;
 final class RhIntegrationService
 {
     public function __construct(
-        private readonly ?OutboxPublisher $outbox = null,
+        private readonly OutboxPublisher $outbox,
     ) {}
     /**
      * Sincronização Inbound de Servidores a partir de payload JSON do ERP de RH.
@@ -354,28 +353,17 @@ final class RhIntegrationService
             $secret = $int->webhook_secret ?? 'secret';
             $signature = hash_hmac('sha256', json_encode($payload), $secret);
 
-            if ($this->outbox !== null) {
-                $this->outbox->publish(
-                    'capd.webhook_homologacao',
-                    [
-                        'webhook_url' => $int->webhook_url,
-                        'signature'   => $signature,
-                        'payload'     => $payload,
-                    ],
-                    $tenantId
-                );
-            } else {
-                try {
-                    Http::timeout(5)
-                        ->withHeaders([
-                            'X-SYSGOV-Signature' => $signature,
-                            'Content-Type'       => 'application/json',
-                        ])
-                        ->post($int->webhook_url, $payload);
-                } catch (\Throwable $e) {
-                    Log::warning("Falha ao entregar webhook para {$int->webhook_url}: " . $e->getMessage());
-                }
-            }
+            // Chamadas externas nunca partem daqui — sempre via Outbox (padrão obrigatório
+            // do CLAUDE.md), entregue de forma assíncrona por um consumidor dedicado.
+            $this->outbox->publish(
+                'capd.webhook_homologacao',
+                [
+                    'webhook_url' => $int->webhook_url,
+                    'signature'   => $signature,
+                    'payload'     => $payload,
+                ],
+                $tenantId
+            );
         }
     }
 }

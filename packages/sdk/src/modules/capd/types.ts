@@ -413,6 +413,48 @@ export type ApiModeloFormulario = {
   updated_at?: string;
 };
 
+export type ApiModeloFatorPeso = {
+  id?: number;
+  tenant_id?: number;
+  modelo_id: number;
+  fator_id: number;
+  peso: number;
+  redistribuivel: boolean;
+  ordem: number;
+  ativo?: boolean;
+  fator?: ApiFator;
+};
+
+export type ApiFatoresPesosResponse = {
+  modelo_id: number;
+  soma_pesos: number;
+  valido: boolean;
+  fatores: ApiModeloFatorPeso[];
+};
+
+export type ApiEscalaNivel = {
+  id?: number;
+  escala_id?: number;
+  grau: number;
+  rotulo: string;
+  valor_min: number;
+  valor_max: number;
+  descricao_comportamental?: string | null;
+};
+
+export type ApiEscalaGrafica = {
+  id: number;
+  tenant_id: number;
+  modelo_id: number;
+  nome: string;
+  descricao?: string | null;
+  qtd_niveis: number;
+  ativa: boolean;
+  niveis: ApiEscalaNivel[];
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type ApiPainelKpis = {
   total_servidores: number;
   percentual_concluidas: number;

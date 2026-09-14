@@ -21,6 +21,8 @@ final class PainelGerencialController extends Controller
 
     public function servidores(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.dashboard.view'), 403);
+
         $perPage = (int) $request->query('per_page', 25);
         $filtros = $request->only([
             'org_unit_id',
@@ -46,6 +48,8 @@ final class PainelGerencialController extends Controller
 
     public function kpis(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.dashboard.view'), 403);
+
         $cicloId = $request->query('ciclo_id') ? (int) $request->query('ciclo_id') : null;
         $kpis = $this->painelService->calcularKpis($cicloId);
 
@@ -54,6 +58,8 @@ final class PainelGerencialController extends Controller
 
     public function visaoPerfil(Request $request, string $perfil): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.dashboard.view'), 403);
+
         $cicloId = $request->query('ciclo_id') ? (int) $request->query('ciclo_id') : null;
         $userId = (int) $request->user()?->id;
 
@@ -68,6 +74,8 @@ final class PainelGerencialController extends Controller
 
     public function relatorioAderencia(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.dashboard.view'), 403);
+
         $cicloId = (int) $request->query('ciclo_id');
 
         return response()->json($this->painelService->relatorioAderencia($cicloId));
@@ -75,6 +83,8 @@ final class PainelGerencialController extends Controller
 
     public function exportar(Request $request): Response
     {
+        abort_unless($request->user()->hasPermissionTo('capd.dashboard.view'), 403);
+
         $filtros = $request->only([
             'org_unit_id',
             'secretaria',

@@ -6,6 +6,8 @@ namespace Modules\Capd\Database\Seeders;
 
 use App\Models\Tenant;
 use Illuminate\Database\Seeder;
+use Modules\Capd\Models\FatorAvaliacao;
+use Modules\Capd\Models\ModeloFatorPeso;
 use Modules\Capd\Models\ModeloFormulario;
 use Modules\Capd\Models\Pergunta;
 use Modules\Capd\Models\PlanoCarreira;
@@ -78,6 +80,7 @@ final class CapdPerguntasPadraoSeeder extends Seeder
             );
 
             $this->criarPerguntas($tenantId, $modeloGeral->id, isMagisterio: false);
+            $this->criarPesosFatores($tenantId, $modeloGeral->id, isMagisterio: false);
 
             // 2. Modelo Magistério (se houver plano)
             if ($planoMagisterio) {
@@ -102,6 +105,7 @@ final class CapdPerguntasPadraoSeeder extends Seeder
                 );
 
                 $this->criarPerguntas($tenantId, $modeloMagisterio->id, isMagisterio: true);
+                $this->criarPesosFatores($tenantId, $modeloMagisterio->id, isMagisterio: true);
             }
         } finally {
             if ($previousTenant) {
@@ -200,6 +204,40 @@ final class CapdPerguntasPadraoSeeder extends Seeder
                     'regras_condicionais' => null,
                     'cargos_permitidos'   => null,
                     'ativo'               => true,
+                ]
+            );
+        }
+    }
+
+    /**
+     * RF-02 — Popula ModeloFatorPeso a partir de FatorAvaliacao.peso_geral/peso_magisterio,
+     * escalado para somar 100% (a média ponderada é invariante de escala, então o NFD
+     * final não muda: só troca a fonte de onde CalculadoraNotaService lê os pesos).
+     *
+     * F8 (Atendimento ao Usuário / Cidadão) é o "Fator H" redistribuível (RF-06) para
+     * cargos sem atendimento direto ao público.
+     */
+    private function criarPesosFatores(int $tenantId, int $modeloId, bool $isMagisterio): void
+    {
+        $fatores = FatorAvaliacao::withoutGlobalScope('tenant')
+            ->where('tenant_id', $tenantId)
+            ->orderBy('ordem')
+            ->get();
+
+        foreach ($fatores as $fator) {
+            $pesoOriginal = $isMagisterio ? $fator->peso_magisterio : $fator->peso_geral;
+
+            ModeloFatorPeso::withoutGlobalScope('tenant')->updateOrCreate(
+                [
+                    'tenant_id' => $tenantId,
+                    'modelo_id' => $modeloId,
+                    'fator_id'  => $fator->id,
+                ],
+                [
+                    'peso'           => round(((float) $pesoOriginal) * 10, 2),
+                    'redistribuivel' => $fator->codigo === 'F8',
+                    'ordem'          => $fator->ordem,
+                    'ativo'          => true,
                 ]
             );
         }

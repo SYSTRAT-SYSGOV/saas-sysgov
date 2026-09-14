@@ -18,6 +18,9 @@ import type {
   ApiSimulacaoProgressao,
   ApiImpedimentoAuditoria,
   ApiFator,
+  ApiModeloFatorPeso,
+  ApiFatoresPesosResponse,
+  ApiEscalaGrafica,
   ApiHistoricoConsolidacao,
   ApiQuinquenioResumo,
   ApiAvaliacaoUsuario,
@@ -473,6 +476,59 @@ export class CapdModuleClient {
 
   async desativarFator(id: number): Promise<{ message: string; fator: ApiFator }> {
     return this.api.request(`/capd/fatores/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ── Pesos por Fator por Modelo de Formulário (RF-02) ────────────────
+
+  async listFatoresPesos(modeloId: number): Promise<ApiFatoresPesosResponse> {
+    return this.api.request(`/capd/modelos-formulario/${modeloId}/fatores-pesos`);
+  }
+
+  async syncFatoresPesos(
+    modeloId: number,
+    fatores: Array<Pick<ApiModeloFatorPeso, 'fator_id' | 'peso' | 'redistribuivel' | 'ordem'>>,
+  ): Promise<{ message: string; soma_pesos: number; fatores: ApiModeloFatorPeso[] }> {
+    return this.api.request(`/capd/modelos-formulario/${modeloId}/fatores-pesos/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ fatores }),
+    });
+  }
+
+  async fatoresDisponiveis(modeloId: number): Promise<ApiFator[]> {
+    return this.api.request(`/capd/modelos-formulario/${modeloId}/fatores-pesos/disponiveis`);
+  }
+
+  // ── Escalas Gráficas por Modelo de Formulário (RF-03) ───────────────
+
+  async listEscalasGraficas(modeloId: number): Promise<ApiEscalaGrafica[]> {
+    return this.api.request(`/capd/modelos-formulario/${modeloId}/escalas-graficas`);
+  }
+
+  async createEscalaGrafica(
+    modeloId: number,
+    dados: Pick<ApiEscalaGrafica, 'nome' | 'descricao' | 'niveis'>,
+  ): Promise<ApiEscalaGrafica> {
+    return this.api.request(`/capd/modelos-formulario/${modeloId}/escalas-graficas`, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async updateEscalaGrafica(
+    modeloId: number,
+    escalaId: number,
+    dados: Partial<Pick<ApiEscalaGrafica, 'nome' | 'descricao' | 'ativa' | 'niveis'>>,
+  ): Promise<ApiEscalaGrafica> {
+    return this.api.request(`/capd/modelos-formulario/${modeloId}/escalas-graficas/${escalaId}`, {
+      method: 'PUT',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async deleteEscalaGrafica(modeloId: number, escalaId: number): Promise<void> {
+    await this.api.request(`/capd/modelos-formulario/${modeloId}/escalas-graficas/${escalaId}`, {
       method: 'DELETE',
     });
   }

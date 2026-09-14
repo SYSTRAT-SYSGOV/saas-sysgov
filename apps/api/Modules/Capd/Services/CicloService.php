@@ -74,6 +74,8 @@ final class CicloService
                 'etapa_cadencia'            => (int) ($dados['etapa_cadencia'] ?? 1),
                 'regras_config'             => $dados['regras_config'] ?? null,
                 'metadata'                  => $dados['metadata'] ?? [],
+                // RN-04: corte de elegibilidade para progressão, parametrizável pela Comissão.
+                'nota_corte_nfc'            => $dados['nota_corte_nfc'] ?? '70.00',
             ]);
 
             $this->audit->record(

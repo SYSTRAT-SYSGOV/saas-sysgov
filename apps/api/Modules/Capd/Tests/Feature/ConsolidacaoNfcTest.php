@@ -104,7 +104,9 @@ final class ConsolidacaoNfcTest extends TestCase
             'tipo_avaliacao'    => Avaliacao::TIPO_INTEGRAL,
             'status_avaliacao'  => Avaliacao::STATUS_ATIVA,
             'respostas_fatores' => ['F1' => ['grau' => 4, 'pontos' => 85.50]],
-            'nota_final'        => '85.50',
+            // nota_final é produzida por CalculadoraNotaService em escala 0-10 (spec §11.2);
+            // a conversão para NFC (0-100) é responsabilidade de ConsolidacaoController::nfc().
+            'nota_final'        => '8.55',
             'homologada'        => true,
             'data_conclusao'    => now(),
         ]);
@@ -117,7 +119,7 @@ final class ConsolidacaoNfcTest extends TestCase
             'tipo_avaliacao'    => Avaliacao::TIPO_INTEGRAL,
             'status_avaliacao'  => Avaliacao::STATUS_ATIVA,
             'respostas_fatores' => ['F1' => ['grau' => 2, 'pontos' => 62.00]],
-            'nota_final'        => '62.00',
+            'nota_final'        => '6.20',
             'homologada'        => true,
             'data_conclusao'    => now(),
         ]);
@@ -127,6 +129,47 @@ final class ConsolidacaoNfcTest extends TestCase
     {
         app(TenantContext::class)->clear();
         parent::tearDown();
+    }
+
+    public function test_usuario_sem_permissao_recebe_403_ao_consultar_nfc(): void
+    {
+        $semPermissao = User::create([
+            'name'     => 'Servidor Comum',
+            'email'    => 'servidor.consolidacao@araucaria.pr.gov.br',
+            'password' => bcrypt('secret'),
+        ]);
+        $semPermissao->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
+
+        $response = $this->actingAs($semPermissao)
+            ->withHeader('X-Tenant-ID', (string) $this->tenant->id)
+            ->getJson("/api/capd/consolidacao/{$this->ciclo->id}/nfc");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_pdi_pendente_no_ciclo_de_verificacao_bloqueia_elegibilidade_mesmo_com_nfc_alta(): void
+    {
+        \Modules\Capd\Models\PlanoMelhoria::create([
+            'tenant_id'            => $this->tenant->id,
+            'servidor_id'          => $this->servidorA->id,
+            'ciclo_id'             => $this->ciclo->id,
+            'ciclo_verificacao_id' => $this->ciclo->id,
+            'nfc_gatilho'          => '60.00',
+            'objetivos'            => 'Capacitação em redação oficial.',
+            'prazo'                => '2026-12-31',
+            'status'               => \Modules\Capd\Models\PlanoMelhoria::STATUS_ABERTO,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->withHeader('X-Tenant-ID', (string) $this->tenant->id)
+            ->getJson("/api/capd/consolidacao/{$this->ciclo->id}/nfc");
+
+        $response->assertStatus(200);
+        $carlos = collect($response->json('servidores'))->firstWhere('matricula', 'MAT-001');
+
+        $this->assertEquals('85.50', $carlos['nfc']);
+        $this->assertTrue($carlos['pdi_pendente']);
+        $this->assertFalse($carlos['elegivel']);
     }
 
     public function test_calcula_nfc_dos_servidores_do_ciclo(): void

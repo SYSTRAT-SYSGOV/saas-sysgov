@@ -218,6 +218,7 @@ Route::prefix('pmd')->group(function (): void {
     Route::post('/', [PmdController::class, 'store'])->name('capd.pmd.store');
     Route::get('/{id}', [PmdController::class, 'show'])->name('capd.pmd.show');
     Route::put('/{id}', [PmdController::class, 'update'])->name('capd.pmd.update');
+    Route::post('/{id}/concluir-acoes', [PmdController::class, 'concluirAcoes'])->name('capd.pmd.concluir-acoes');
     Route::post('/{id}/verificacao', [PmdController::class, 'registrarVerificacao'])->name('capd.pmd.verificacao');
 });
 

@@ -34,7 +34,7 @@ final class RelatorioAderenciaTest extends TestCase
         ]);
         app(TenantContext::class)->set($this->tenant);
 
-        $this->user = User::create(['name' => 'Comissao Aderencia', 'email' => 'comissao.aderencia@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
+        $this->user = User::create(['name' => 'Comissao Aderencia', 'email' => 'comissao.aderencia@araucaria.pr.gov.br', 'password' => bcrypt('secret'), 'is_platform_admin' => true]);
         $this->user->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
 
         $this->ciclo = CicloAvaliacao::create([

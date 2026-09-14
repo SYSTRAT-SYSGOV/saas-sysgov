@@ -44,6 +44,8 @@ final class AvaliacaoUsuarioController extends Controller
 
     public function media(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('capd.admin.parametrizar'), 403);
+
         $validated = $request->validate([
             'servidor_id' => ['required', 'integer'],
             'ciclo_id'    => ['required', 'integer'],

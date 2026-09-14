@@ -38,32 +38,39 @@ interface PlanoMelhoria {
   objetivos: string;
   acoes?: Array<{ descricao: string; prazo?: string; status?: string }>;
   prazo: string;
-  status: 'pendente' | 'em_andamento' | 'concluido' | 'cancelado';
+  status: 'aberto' | 'em_andamento' | 'concluido' | 'verificado' | 'cancelado';
+  conceito_atingido?: string;
+  responsavel_id?: number;
   concluido_em?: string;
+  verificado_em?: string;
+  verificado_por?: number;
   observacoes_verificacao?: string;
   ciclo?: { id: number; nome: string; ano_competencia: number };
   ciclo_verificacao?: { id: number; nome: string; ano_competencia: number };
 }
 
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'primary' | 'neutral'> = {
-  concluido: 'success',
+  verificado: 'success',
+  concluido: 'primary',
   em_andamento: 'warning',
-  pendente: 'primary',
+  aberto: 'primary',
   cancelado: 'neutral',
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  concluido: 'Concluído',
+  verificado: 'Verificado',
+  concluido: 'Ações Concluídas',
   em_andamento: 'Em Andamento',
-  pendente: 'Pendente',
+  aberto: 'Aberto',
   cancelado: 'Cancelado',
 };
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Todos os status' },
-  { value: 'pendente', label: 'Pendente' },
+  { value: 'aberto', label: 'Aberto' },
   { value: 'em_andamento', label: 'Em Andamento' },
-  { value: 'concluido', label: 'Concluído' },
+  { value: 'concluido', label: 'Ações Concluídas' },
+  { value: 'verificado', label: 'Verificado' },
   { value: 'cancelado', label: 'Cancelado' },
 ];
 
@@ -242,7 +249,7 @@ export const PmdPanel: React.FC = () => {
             >
               <Eye className="h-4 w-4" />
             </Button>
-            {pmd.status !== 'concluido' && pmd.status !== 'cancelado' && (
+            {pmd.status !== 'verificado' && pmd.status !== 'cancelado' && (
               <Button
                 variant="outline"
                 size="sm"

@@ -11,13 +11,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Modules\Capd\Exceptions\TravaIncidenteCriticoException;
+use App\Models\AuditLog;
 use Modules\Capd\Models\Avaliacao;
 use Modules\Capd\Models\CicloAvaliacao;
+use Modules\Capd\Models\DiarioBordo;
 use Modules\Capd\Models\FatorAvaliacao;
 use Modules\Capd\Models\Servidor;
 use Modules\Capd\Services\CalculadoraNotaService;
 use Modules\Capd\Services\HierarquiaService;
 use Modules\Capd\Services\IngestaoAutomaticaService;
+use Modules\Capd\Services\PerguntaService;
+use Modules\Capd\Services\QuinquenioService;
 
 /**
  * Avaliação de Desempenho — CAPD.
@@ -39,6 +43,8 @@ final class AvaliacaoController extends Controller
         private readonly IngestaoAutomaticaService $ingestao,
         private readonly AuditLogger               $audit,
         private readonly HierarquiaService         $hierarquia,
+        private readonly QuinquenioService         $quinquenioService,
+        private readonly PerguntaService           $perguntaService,
     ) {}
 
     // ── GET /avaliacoes ───────────────────────────────────────────────
@@ -218,12 +224,12 @@ final class AvaliacaoController extends Controller
         abort_if($avaliacao->homologada, 422, 'Avaliação já homologada não pode ser re-submetida.');
 
         // ── Ingestão automática de F1 e F2 ───────────────────────────
-        $servidor = \DB::table('users')->where('id', $avaliacao->servidor_id)->first();
+        $servidorUser = \DB::table('users')->where('id', $avaliacao->servidor_id)->first();
 
         $f1f2 = $this->ingestao->calcularF1F2(
             $avaliacao->ciclo,
             $avaliacao->servidor_id,
-            $servidor->cpf ?? '',
+            $servidorUser->cpf ?? '',
         );
 
         // Mescla graus automáticos (F1/F2) nas respostas do avaliador
@@ -232,22 +238,26 @@ final class AvaliacaoController extends Controller
             'F2' => ['grau' => $f1f2['F2']['grau'], 'automatizado' => true],
         ]);
 
-        // ── Busca fatores do tenant ───────────────────────────────────
-        $fatores = FatorAvaliacao::get()->keyBy('codigo')
-            ->map(fn ($f) => $f->toArray())
-            ->toArray();
+        // ── Resolve o modelo de formulário vigente do servidor (RF-02) ────
+        $servidor = Servidor::where('user_id', $avaliacao->servidor_id)->first();
+        $modelo   = $this->perguntaService->getModeloVigente($servidor?->plano_carreira_id);
 
-        // Determina plano do servidor (GERAL ou MAGISTERIO)
-        $plano = $this->resolverPlano($avaliacao->servidor_id);
+        if ($modelo === null) {
+            return response()->json([
+                'message' => 'Nenhum modelo de formulário vigente configurado para este servidor.',
+                'error'   => 'modelo_nao_encontrado',
+            ], 422);
+        }
+
+        $fatoresPesos = $modelo->fatoresComPesosEfetivos($servidor?->atende_publico ?? true);
 
         // ── Cálculo com travas (pode lançar TravaIncidenteCriticoException) ─
         try {
             $resultado = $this->calculadora->calcular(
-                respostas:  $respostas,
-                fatores:    $fatores,
-                plano:      $plano,
-                cicloId:    $avaliacao->ciclo_id,
-                servidorId: $avaliacao->servidor_id,
+                respostas:    $respostas,
+                fatoresPesos: $fatoresPesos,
+                cicloId:      $avaliacao->ciclo_id,
+                servidorId:   $avaliacao->servidor_id,
             );
         } catch (TravaIncidenteCriticoException $e) {
             return response()->json([
@@ -255,13 +265,16 @@ final class AvaliacaoController extends Controller
                 'fator'   => $e->fator,
                 'error'   => 'trava_cit',
             ], 422);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage(), 'error' => 'modelo_sem_pesos'], 422);
         }
 
         $avaliacao->update([
-            'respostas_fatores'   => $respostas,
-            'nota_final'          => $resultado['nota_final'],
-            'elegivel_progressao' => $resultado['elegivel_progressao'],
-            'data_conclusao'      => now(),
+            'respostas_fatores'    => $respostas,
+            'modelo_formulario_id' => $modelo->id,
+            'nota_final'           => $resultado['nota_final'],
+            'elegivel_progressao'  => $resultado['elegivel_progressao'],
+            'data_conclusao'       => now(),
         ]);
 
         $this->audit->record(
@@ -301,11 +314,9 @@ final class AvaliacaoController extends Controller
             'A avaliação ainda não foi submetida pelo avaliador.'
         );
 
-        abort_if(
-            $avaliacao->ciencia_servidor_em !== null,
-            422,
-            'Ciência já registrada em ' . $avaliacao->ciencia_servidor_em->format('d/m/Y H:i') . '.'
-        );
+        if ($avaliacao->ciencia_servidor_em !== null) {
+            abort(422, 'Ciência já registrada em ' . $avaliacao->ciencia_servidor_em->format('d/m/Y H:i') . '.');
+        }
 
         $dados = $request->validate([
             'tipo'        => ['nullable', 'string', 'in:concordancia,discordancia_recurso'],
@@ -400,6 +411,7 @@ final class AvaliacaoController extends Controller
     public function obterEspelho(Request $request, int $id): JsonResponse
     {
         $avaliacao = Avaliacao::with(['ciclo', 'servidor', 'avaliador'])->findOrFail($id);
+        $this->authorize('view', $avaliacao);
 
         $fatoresDetalhados = [];
         $respostas = $avaliacao->respostas_fatores ?? [];
@@ -416,6 +428,55 @@ final class AvaliacaoController extends Controller
                 'justificativa'=> is_array($info) ? ($info['justificativa'] ?? null) : null,
             ];
         }
+
+        // ── RF-12: registros do Diário de Bordo (CIT) do servidor neste ciclo ──
+        $registrosCit = DiarioBordo::with('evidencias')
+            ->where('servidor_id', $avaliacao->servidor_id)
+            ->where('ciclo_id', $avaliacao->ciclo_id)
+            ->orderBy('data_ocorrencia')
+            ->get()
+            ->map(fn (DiarioBordo $d) => [
+                'id'                => $d->id,
+                'fator_codigo'      => $d->fator?->codigo,
+                'tipo'              => $d->tipo,
+                'data_ocorrencia'   => $d->data_ocorrencia,
+                'descricao_fato'    => $d->descricao_fato,
+                'evidencias_hashes' => $d->evidencias->pluck('hash_sha256')->filter()->values(),
+            ]);
+
+        // ── RF-12: assinatura digital da ciência do servidor (hash do log de auditoria) ──
+        $assinaturaCiencia = null;
+        if ($avaliacao->ciencia_servidor_em !== null) {
+            $logCiencia = AuditLog::where('module', 'capd')
+                ->where('action', 'avaliacao.ciencia')
+                ->whereJsonContains('after->avaliacao_id', $avaliacao->id)
+                ->latest('id')
+                ->first();
+
+            $assinaturaCiencia = [
+                'tipo'        => $avaliacao->ciencia_tipo,
+                'assinado_em' => $avaliacao->ciencia_servidor_em->toIso8601String(),
+                'ip'          => $avaliacao->ciencia_ip,
+                'hash_sha256' => $logCiencia?->hash,
+            ];
+        }
+
+        // ── RF-12: histórico consolidado de avaliações anteriores do servidor ──
+        $historicoAnterior = Avaliacao::with('ciclo')
+            ->where('servidor_id', $avaliacao->servidor_id)
+            ->where('id', '!=', $avaliacao->id)
+            ->whereNotNull('data_conclusao')
+            ->orderByDesc('data_conclusao')
+            ->limit(10)
+            ->get()
+            ->map(fn (Avaliacao $a) => [
+                'avaliacao_id'        => $a->id,
+                'ciclo'               => $a->ciclo?->nome,
+                'ano_referencia'      => $a->ciclo?->ano_referencia,
+                'nota_final'          => $a->nota_final,
+                'elegivel_progressao' => $a->elegivel_progressao,
+                'homologada'          => $a->homologada,
+            ]);
 
         return response()->json([
             'avaliacao_id'        => $avaliacao->id,
@@ -444,6 +505,9 @@ final class AvaliacaoController extends Controller
             'parecer_avaliador'   => $avaliacao->parecer_avaliador,
             'fatores'             => $fatoresDetalhados,
             'pode_recorrer'       => $avaliacao->data_conclusao !== null && $avaliacao->ciencia_servidor_em !== null,
+            'registros_cit'       => $registrosCit,
+            'assinatura_ciencia'  => $assinaturaCiencia,
+            'historico_anterior'  => $historicoAnterior,
         ]);
     }
 
@@ -536,9 +600,27 @@ final class AvaliacaoController extends Controller
         $nfcProjetada = !empty($notasCiclos) ? $calcService->calcularNfc($notasCiclos) : '0.00';
         $elegivel = (float) $nfcProjetada >= 70.0;
 
-        $quinquenios = $servidor 
-            ? $calcService->calcularQuinquenios($servidor, $ciclo ?? (object)['data_fim' => now()])
-            : ['qtd_quinquenios' => 0, 'percentual_total' => 0.0, 'proximo_em' => null];
+        // RN-08: usa os registros persistidos de capd_quinquenios (idempotentes, via
+        // QuinquenioService) em vez de recalcular em memória — evita divergência entre
+        // a simulação e os quinquênios efetivamente gerados/consultados alhures.
+        $quinquenios = ['qtd_quinquenios' => 0, 'percentual_total' => 0.0, 'proximo_em' => null];
+        if ($servidor) {
+            $this->quinquenioService->gerarPendentes($servidor);
+            $registrados = $this->quinquenioService->listarPorServidor($servidor->id);
+
+            $proximoEm = null;
+            if ($servidor->data_admissao) {
+                $dataAdmissao = \Carbon\Carbon::parse($servidor->data_admissao);
+                $proximoAniversario = $dataAdmissao->copy()->addYears(($registrados->count() + 1) * 5);
+                $proximoEm = $proximoAniversario->isFuture() ? $proximoAniversario->toDateString() : null;
+            }
+
+            $quinquenios = [
+                'qtd_quinquenios'  => $registrados->count(),
+                'percentual_total' => (float) $this->quinquenioService->totalPercentual($servidor->id),
+                'proximo_em'       => $proximoEm,
+            ];
+        }
 
         $percentualProgressao = $elegivel ? 10.0 : 0.0;
         $percentualTotalAumento = $percentualProgressao + $quinquenios['percentual_total'];
@@ -594,7 +676,7 @@ final class AvaliacaoController extends Controller
             'homologada_por'=> $request->user()->id,
         ]);
 
-        $this->audit->record('capd', 'avaliacao.homologada', "Avaliacao #{$id} — NFD {$avaliacao->nota_final}", null, ['por' => $request->user()->id]);
+        $this->audit->record('capd', 'avaliacao.homologada', "Avaliacao #{$id} — NFD {$avaliacao->nota_final}", null, ['por' => $request->user()->id, 'avaliacao_id' => $id]);
 
         return response()->json([
             'message'       => 'Avaliação homologada com sucesso.',
@@ -618,11 +700,14 @@ final class AvaliacaoController extends Controller
             'respostas_fatores.*.grau'=> ['required', 'integer', 'between:1,5'],
         ]);
 
-        $fatores = FatorAvaliacao::get()->keyBy('codigo')
-            ->map(fn ($f) => $f->toArray())
-            ->toArray();
+        $servidor = Servidor::where('user_id', $avaliacao->servidor_id)->first();
+        $modelo   = $this->perguntaService->getModeloVigente($servidor?->plano_carreira_id);
 
-        $plano = $this->resolverPlano($avaliacao->servidor_id);
+        if ($modelo === null) {
+            return response()->json(['message' => 'Nenhum modelo de formulário vigente configurado para este servidor.'], 422);
+        }
+
+        $fatoresPesos = $modelo->fatoresComPesosEfetivos($servidor?->atende_publico ?? true);
 
         // Preview sem travas — usa stub permissivo
         $calculadoraSemTrava = new \Modules\Capd\Services\CalculadoraNotaService(
@@ -637,7 +722,7 @@ final class AvaliacaoController extends Controller
             'F2' => ['grau' => 3, 'automatizado' => true],
         ]);
 
-        $resultado = $calculadoraSemTrava->calcular($respostas, $fatores, $plano, $avaliacao->ciclo_id, $avaliacao->servidor_id);
+        $resultado = $calculadoraSemTrava->calcular($respostas, $fatoresPesos, $avaliacao->ciclo_id, $avaliacao->servidor_id);
 
         return response()->json([
             'preview'   => true,
@@ -646,18 +731,4 @@ final class AvaliacaoController extends Controller
         ]);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────
-
-    private function resolverPlano(int $servidorId): string
-    {
-        // Determina plano pelo vínculo do servidor (Avaliacao.servidor_id
-        // referencia User.id; capd_servidores.user_id é a FK correspondente).
-        $planoId = \DB::table('capd_servidores')->where('user_id', $servidorId)->value('plano_carreira_id');
-        $plano   = \DB::table('capd_planos_carreira')->where('id', $planoId)->value('codigo');
-
-        return match ($plano) {
-            'MAGISTERIO' => 'MAGISTERIO',
-            default      => 'GERAL',
-        };
-    }
 }

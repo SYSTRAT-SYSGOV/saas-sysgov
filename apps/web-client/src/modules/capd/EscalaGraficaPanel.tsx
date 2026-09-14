@@ -33,28 +33,12 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
-import type { ApiModeloFormulario } from '@sysgov/sdk';
+import type { ApiModeloFormulario, ApiEscalaGrafica, ApiEscalaNivel } from '@sysgov/sdk';
 
 const api = new SysgovApi();
 
-interface EscalaNivel {
-  id?: number;
-  grau: number;
-  rotulo: string;
-  valor_min: number;
-  valor_max: number;
-  descricao_comportamental?: string;
-}
-
-interface EscalaGrafica {
-  id: number;
-  modelo_id: number;
-  nome: string;
-  descricao?: string;
-  qtd_niveis: number;
-  ativa: boolean;
-  niveis: EscalaNivel[];
-}
+type EscalaNivel = ApiEscalaNivel;
+type EscalaGrafica = ApiEscalaGrafica;
 
 const NIVEIS_PADRAO: EscalaNivel[] = [
   { grau: 1, rotulo: 'Insuficiente', valor_min: 0,   valor_max: 39.99, descricao_comportamental: 'Desempenho muito abaixo do esperado.' },
@@ -115,8 +99,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
     setLoading(true);
     setErro(null);
     try {
-      const resp = await api.get<EscalaGrafica[]>(`/capd/modelos-formulario/${id}/escalas-graficas`);
-      const list = resp.data ?? [];
+      const list = await api.capd.listEscalasGraficas(id);
       setEscalas(list);
       if (list.length > 0 && !expandida) {
         setExpandida(list[0].id);
@@ -165,7 +148,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
     setSaving(true);
     setErro(null);
     try {
-      await api.post(`/capd/modelos-formulario/${selectedModeloId}/escalas-graficas`, {
+      await api.capd.createEscalaGrafica(selectedModeloId, {
         nome,
         descricao: descricao || undefined,
         niveis: niveis.map(n => ({ ...n, valor_max: Number(n.valor_max) })),
