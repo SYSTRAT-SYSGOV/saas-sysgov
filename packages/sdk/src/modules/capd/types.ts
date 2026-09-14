@@ -190,6 +190,14 @@ export type ApiDashboardMetricas = {
   }>;
 };
 
+export type ApiKpisEquipe = {
+  total_equipe: number;
+  pendentes: number;
+  concluidas: number;
+  nota_media: string;
+  distribuicao_graus: { '1': number; '2': number; '3': number; '4': number; '5': number };
+};
+
 export type CreateDiarioBordoInput = {
   ciclo_id: number;
   servidor_id: number;

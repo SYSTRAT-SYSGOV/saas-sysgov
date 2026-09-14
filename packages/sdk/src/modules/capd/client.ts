@@ -4,6 +4,7 @@ import type {
   ApiCiclo,
   ApiComissao,
   ApiDashboardMetricas,
+  ApiKpisEquipe,
   ApiDiarioBordo,
   ApiModeloFormulario,
   ApiNivelHierarquia,
@@ -57,6 +58,10 @@ export class CapdModuleClient {
   async getMetricas(cicloId?: number): Promise<ApiDashboardMetricas> {
     const query = cicloId ? `?ciclo_id=${cicloId}` : '';
     return this.api.request(`/capd/dashboard/metricas${query}`);
+  }
+
+  async getKpisEquipe(params?: { ciclo_id?: number }): Promise<ApiKpisEquipe> {
+    return this.api.request(`/capd/avaliacoes/kpis-equipe${buildQueryString(params)}`);
   }
 
   // ── Diário de Bordo (CIT) ───────────────────────────────────────────
