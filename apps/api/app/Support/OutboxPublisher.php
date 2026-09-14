@@ -20,4 +20,3 @@ final readonly class OutboxPublisher
         return app(self::class)->publish($type, $payload, $tenantId);
     }
 }
-<?php // test touch
