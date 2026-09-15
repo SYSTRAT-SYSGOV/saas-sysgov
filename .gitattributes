@@ -1,0 +1,4 @@
+# Garante que scripts shell sempre tenham terminação de linha LF no Linux/Docker,
+# mesmo se editados ou clonados no Windows.
+*.sh text eol=lf
+graphify-out/graph.json merge=graphify
