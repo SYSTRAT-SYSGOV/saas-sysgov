@@ -31,10 +31,10 @@ const FASE_LABEL: Record<FaseLicita, string> = {
 const PASSOS_EXIBIDOS: FaseLicita[] = ['dfd', 'etp', 'mapa_riscos', 'pesquisa_precos', 'tr', 'edital', 'aprovacao_ordenador'];
 
 /** Fases com tela própria implementada hoje. */
-export type FaseLicitaImplementada = 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'aprovacao_ordenador';
+export type FaseLicitaImplementada = 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'tr' | 'aprovacao_ordenador';
 
 /** As demais fases aparecem no passo a passo como "em breve", sem link. */
-const FASES_IMPLEMENTADAS: FaseLicita[] = ['dfd', 'etp', 'mapa_riscos', 'pesquisa_precos', 'aprovacao_ordenador'];
+const FASES_IMPLEMENTADAS: FaseLicita[] = ['dfd', 'etp', 'mapa_riscos', 'pesquisa_precos', 'tr', 'aprovacao_ordenador'];
 
 interface FasesLicitaStepperProps {
   processo: Processo;
@@ -70,9 +70,13 @@ export const FasesLicitaStepper: React.FC<FasesLicitaStepperProps> = ({ processo
       return { fase, label: FASE_LABEL[fase], estado: dfdAprovado ? 'atual' : 'bloqueado' };
     }
 
-    // ETP / Mapa de Riscos / Pesquisa de Preços: liberados juntos assim que
-    // o DFD está aprovado, sem depender do status um do outro.
-    const status = fase === 'etp' ? processo.etp?.status : fase === 'mapa_riscos' ? processo.mapa_risco?.status : processo.pesquisa_preco?.status;
+    // ETP / Mapa de Riscos / Pesquisa de Preços / TR: liberados juntos
+    // assim que o DFD está aprovado, sem depender do status um do outro.
+    const status =
+      fase === 'etp' ? processo.etp?.status
+      : fase === 'mapa_riscos' ? processo.mapa_risco?.status
+      : fase === 'pesquisa_precos' ? processo.pesquisa_preco?.status
+      : processo.tr?.status;
     if (status === 'aprovado') return { fase, label: FASE_LABEL[fase], estado: 'aprovado' };
     return { fase, label: FASE_LABEL[fase], estado: dfdAprovado ? 'atual' : 'bloqueado' };
   });

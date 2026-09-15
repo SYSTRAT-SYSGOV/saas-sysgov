@@ -14,6 +14,7 @@ use Modules\Licita\Enums\StatusAprovacaoFinal;
 use Modules\Licita\Enums\StatusEtp;
 use Modules\Licita\Enums\StatusMapaRisco;
 use Modules\Licita\Enums\StatusPesquisaPreco;
+use Modules\Licita\Enums\StatusTr;
 use Modules\Licita\Models\AprovacaoFinal;
 use Modules\Licita\Models\Processo;
 
@@ -40,9 +41,10 @@ final class AprovacaoFinalService
         $etp = $processo->etp;
         $mapaRisco = $processo->mapaRisco;
         $pesquisaPreco = $processo->pesquisaPreco;
+        $tr = $processo->tr;
 
-        if ($etp === null || $mapaRisco === null || $pesquisaPreco === null) {
-            throw new DomainException('Cadastre o ETP, o Mapa de Riscos e a Pesquisa de Preços deste processo antes de solicitar a aprovação final.');
+        if ($etp === null || $mapaRisco === null || $pesquisaPreco === null || $tr === null) {
+            throw new DomainException('Cadastre o ETP, o Mapa de Riscos, a Pesquisa de Preços e o Termo de Referência deste processo antes de solicitar a aprovação final.');
         }
 
         // RN-006 migrou pra cá: antes era checado no "enviar para revisão"
@@ -92,6 +94,7 @@ final class AprovacaoFinalService
                 [$processo->etp, StatusEtp::Aprovado->value, 'etp.aprovado', 'licita.EtpAprovado'],
                 [$processo->mapaRisco, StatusMapaRisco::Aprovado->value, 'mapa_riscos.aprovado', 'licita.MapaRiscoAprovado'],
                 [$processo->pesquisaPreco, StatusPesquisaPreco::Aprovado->value, 'pesquisa_precos.aprovado', 'licita.PesquisaPrecoAprovado'],
+                [$processo->tr, StatusTr::Aprovado->value, 'tr.aprovado', 'licita.TrAprovado'],
             ] as [$documento, $statusAprovado, $eventoAudit, $eventoOutbox]) {
                 $documento->update([
                     'status' => $statusAprovado,

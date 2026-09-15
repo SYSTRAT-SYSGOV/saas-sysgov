@@ -10,6 +10,7 @@ import type {
   CreateMapaRiscoInput,
   CreatePesquisaPrecoInput,
   CreateProcessoInput,
+  CreateTrInput,
   Dfd,
   Etp,
   LegalDocumento,
@@ -24,10 +25,12 @@ import type {
   SugerirTextoIaInput,
   SugerirTextoIaOutput,
   TipoDocumentoConfiguravel,
+  Tr,
   UpdateDfdInput,
   UpdateEtpInput,
   UpdateMapaRiscoInput,
   UpdatePesquisaPrecoInput,
+  UpdateTrInput,
   UpdateLegalDocumentoInput,
 } from './types';
 
@@ -134,6 +137,18 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async updatePesquisaPreco(id: number, input: UpdatePesquisaPrecoInput): Promise<PesquisaPreco> {
     return this.api.request(`/licita/pesquisas-precos/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async createTr(processoId: number, input: CreateTrInput): Promise<Tr> {
+    return this.api.request(`/licita/processos/${processoId}/tr`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async getTr(id: number): Promise<Tr> {
+    return this.api.request(`/licita/trs/${id}`);
+  }
+
+  async updateTr(id: number, input: UpdateTrInput): Promise<Tr> {
+    return this.api.request(`/licita/trs/${id}`, { method: 'PUT', body: JSON.stringify(input) });
   }
 
   async solicitarAprovacaoFinal(processoId: number): Promise<AprovacaoFinal> {

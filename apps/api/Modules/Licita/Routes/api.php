@@ -14,6 +14,7 @@ use Modules\Licita\Http\Controllers\MapaRiscoController;
 use Modules\Licita\Http\Controllers\MapaRiscoIaController;
 use Modules\Licita\Http\Controllers\PesquisaPrecoController;
 use Modules\Licita\Http\Controllers\ProcessoController;
+use Modules\Licita\Http\Controllers\TrController;
 
 Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita'])->prefix('api/licita')->group(function (): void {
     Route::get('/processos', [ProcessoController::class, 'index']);
@@ -50,6 +51,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::post('/processos/{processoId}/pesquisas-precos', [PesquisaPrecoController::class, 'store']);
     Route::get('/pesquisas-precos/{id}', [PesquisaPrecoController::class, 'show']);
     Route::put('/pesquisas-precos/{id}', [PesquisaPrecoController::class, 'update']);
+
+    Route::post('/processos/{processoId}/tr', [TrController::class, 'store']);
+    Route::get('/trs/{id}', [TrController::class, 'show']);
+    Route::put('/trs/{id}', [TrController::class, 'update']);
 
     Route::post('/processos/{id}/aprovacao-final/solicitar', [AprovacaoFinalController::class, 'solicitar']);
     Route::post('/processos/{id}/aprovacao-final/aprovar', [AprovacaoFinalController::class, 'aprovar']);

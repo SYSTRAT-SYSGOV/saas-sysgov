@@ -15,6 +15,7 @@ use Modules\Licita\Enums\StatusAprovacaoFinal;
 use Modules\Licita\Enums\StatusEtp;
 use Modules\Licita\Enums\StatusMapaRisco;
 use Modules\Licita\Enums\StatusPesquisaPreco;
+use Modules\Licita\Enums\StatusTr;
 use Modules\Licita\Models\Processo;
 use Modules\Licita\Services\AprovacaoFinalService;
 use Modules\Licita\Services\DfdService;
@@ -22,6 +23,7 @@ use Modules\Licita\Services\EtpService;
 use Modules\Licita\Services\MapaRiscoService;
 use Modules\Licita\Services\PesquisaPrecoService;
 use Modules\Licita\Services\ProcessoService;
+use Modules\Licita\Services\TrService;
 use Modules\Licita\Tests\TestCase;
 
 final class AprovacaoFinalWorkflowTest extends TestCase
@@ -117,6 +119,7 @@ final class AprovacaoFinalWorkflowTest extends TestCase
         $itens = $pesquisaPreco->itens;
         $itens[0]['cotacoes'] = $this->cotacoes(5200);
         app(PesquisaPrecoService::class)->atualizar($pesquisaPreco, ['itens' => $itens], $planejador);
+        app(TrService::class)->criar($processo->fresh(), ['criterio_julgamento' => 'menor_preco'], $planejador);
 
         return $processo->fresh();
     }
@@ -136,7 +139,7 @@ final class AprovacaoFinalWorkflowTest extends TestCase
         $dfdService->aprovar($dfd, $this->aprovadorDfdDeApoio());
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('Cadastre o ETP, o Mapa de Riscos e a Pesquisa de Preços');
+        $this->expectExceptionMessage('Cadastre o ETP, o Mapa de Riscos, a Pesquisa de Preços e o Termo de Referência');
         app(AprovacaoFinalService::class)->solicitar($processo->fresh(), $planejador);
     }
 
@@ -152,6 +155,7 @@ final class AprovacaoFinalWorkflowTest extends TestCase
         app(MapaRiscoService::class)->criar($processo->fresh(), ['riscos' => $this->dadosRiscos()], $planejador);
         // Pesquisa de Preços criada mas sem cotações — RN-006 deve bloquear.
         app(PesquisaPrecoService::class)->criar($processo->fresh(), ['metodo_referencia' => 'mediana'], $planejador);
+        app(TrService::class)->criar($processo->fresh(), [], $planejador);
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('RN-006');
@@ -182,7 +186,7 @@ final class AprovacaoFinalWorkflowTest extends TestCase
         $service->aprovar($processo->fresh(), $planejador);
     }
 
-    public function test_aprovar_trava_os_tres_artefatos_de_uma_vez_e_conclui_o_processo(): void
+    public function test_aprovar_trava_os_quatro_artefatos_de_uma_vez_e_conclui_o_processo(): void
     {
         [, $planejador, $ordenador] = $this->setUpTenantEUsuarios();
         $processo = $this->processoPronto($planejador);
@@ -199,7 +203,9 @@ final class AprovacaoFinalWorkflowTest extends TestCase
         self::assertSame(StatusEtp::Aprovado->value, $processoFresco->etp->status);
         self::assertSame(StatusMapaRisco::Aprovado->value, $processoFresco->mapaRisco->status);
         self::assertSame(StatusPesquisaPreco::Aprovado->value, $processoFresco->pesquisaPreco->status);
+        self::assertSame(StatusTr::Aprovado->value, $processoFresco->tr->status);
         self::assertSame($ordenador->id, $processoFresco->etp->aprovado_por);
+        self::assertSame($ordenador->id, $processoFresco->tr->aprovado_por);
     }
 
     public function test_etp_fica_imutavel_depois_da_aprovacao_final(): void
@@ -230,6 +236,7 @@ final class AprovacaoFinalWorkflowTest extends TestCase
         $processoFresco = $processo->fresh();
         self::assertSame(FaseLicita::EmElaboracao->value, $processoFresco->fase_atual);
         self::assertSame(StatusEtp::Rascunho->value, $processoFresco->etp->status);
+        self::assertSame(StatusTr::Rascunho->value, $processoFresco->tr->status);
 
         // Equipe de planejamento continua podendo editar normalmente.
         $etpAtualizado = app(EtpService::class)->atualizar($processoFresco->etp, ['conteudo' => 'ETP corrigido após rejeição.'], $planejador);

@@ -31,6 +31,7 @@ export type StatusDfd = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
 export type StatusEtp = 'rascunho' | 'aprovado';
 export type StatusMapaRisco = 'rascunho' | 'aprovado';
 export type StatusPesquisaPreco = 'rascunho' | 'aprovado';
+export type StatusTr = 'rascunho' | 'aprovado';
 export type StatusAprovacaoFinal = 'pendente' | 'aprovada' | 'rejeitada';
 export type MetodoReferenciaPreco = 'media' | 'mediana' | 'menor_valor';
 export type GrauPrioridade = 'baixa' | 'media' | 'alta' | 'critica';
@@ -45,6 +46,10 @@ export type AcaoVersaoDfd =
 export type AcaoVersaoEtp = 'criado' | 'revisado' | 'aprovado';
 export type AcaoVersaoMapaRisco = 'criado' | 'revisado' | 'aprovado';
 export type AcaoVersaoPesquisaPreco = 'criado' | 'revisado' | 'aprovado';
+export type AcaoVersaoTr = 'criado' | 'revisado' | 'aprovado';
+
+/** Critérios de julgamento das propostas (art. 33 da Lei 14.133/2021). */
+export type CriterioJulgamentoTr = 'menor_preco' | 'maior_desconto' | 'melhor_tecnica' | 'tecnica_e_preco' | 'maior_lance';
 
 export type FaseRisco = 'planejamento' | 'selecao_fornecedor' | 'gestao_contratual';
 export type AlocacaoRisco = 'contratante' | 'contratada' | 'compartilhado';
@@ -333,6 +338,55 @@ export interface PesquisaPreco {
   updated_at: string;
 }
 
+export interface TrVersao {
+  id: number;
+  tr_id: number;
+  versao: number;
+  acao: AcaoVersaoTr;
+  campos_alterados: Record<string, { de: unknown; para: unknown }> | null;
+  dados: Record<string, unknown> | null;
+  user_id: number;
+  usuario: UsuarioResumo | null;
+  created_at: string;
+}
+
+/**
+ * Termo de Referência (art. 6º, XXIII da Lei 14.133/2021) — consolida a
+ * instrução processual em seções estruturadas (diferente do ETP, que é um
+ * texto único). Nasce vazio e a equipe de planejamento preenche as seções
+ * progressivamente; nenhuma é obrigatória para criar ou salvar. Só pode ser
+ * criado depois de existir uma Pesquisa de Preços no mesmo processo (não
+ * precisa estar aprovada).
+ */
+export interface Tr {
+  id: number;
+  tenant_id: number;
+  processo_id: number;
+  /** Nasce como cópia da equipe da Pesquisa de Preços (ver TrService::criar), mas é editável independentemente dali em diante. */
+  equipe_planejamento: MembroEquipePlanejamento[] | null;
+  fundamentacao_contratacao: string | null;
+  descricao_solucao: string | null;
+  requisitos_contratacao: string | null;
+  modelo_execucao: string | null;
+  modelo_gestao_contrato: string | null;
+  criterio_julgamento: CriterioJulgamentoTr | null;
+  obrigacoes_contratante: string | null;
+  obrigacoes_contratada: string | null;
+  sancoes_administrativas: string | null;
+  vigencia_contrato: string | null;
+  adequacao_orcamentaria: string | null;
+  campos_extras: Record<string, unknown> | null;
+  status: StatusTr;
+  elaborado_por: number;
+  aprovado_por: number | null;
+  aprovado_em: string | null;
+  elaborador: UsuarioResumo | null;
+  aprovador: UsuarioResumo | null;
+  versoes: TrVersao[];
+  created_at: string;
+  updated_at: string;
+}
+
 /**
  * Aprovação final do Ordenador de Despesas sobre o pacote inteiro de
  * artefatos do processo (ETP, Mapa de Riscos, Pesquisa de Preços — e TR/
@@ -375,6 +429,7 @@ export interface Processo {
   // snake_case (não pesquisaPreco): Eloquent serializa relações com Str::snake()
   // no toArray()/toJson() — pesquisaPreco() no model vira "pesquisa_preco" no JSON.
   pesquisa_preco: PesquisaPreco | null;
+  tr: Tr | null;
   // snake_case (não aprovacaoFinal): Eloquent serializa relações com
   // Str::snake() no toArray()/toJson() — aprovacaoFinal() no model vira
   // "aprovacao_final" no JSON.
@@ -438,6 +493,26 @@ export interface CreatePesquisaPrecoInput {
 }
 
 export type UpdatePesquisaPrecoInput = Partial<CreatePesquisaPrecoInput>;
+
+/** Todas as seções são opcionais — o TR nasce vazio e é preenchido progressivamente (ver TrController::validatedData). */
+export interface CreateTrInput {
+  fundamentacao_contratacao?: string | null;
+  descricao_solucao?: string | null;
+  requisitos_contratacao?: string | null;
+  modelo_execucao?: string | null;
+  modelo_gestao_contrato?: string | null;
+  criterio_julgamento?: CriterioJulgamentoTr | null;
+  obrigacoes_contratante?: string | null;
+  obrigacoes_contratada?: string | null;
+  sancoes_administrativas?: string | null;
+  vigencia_contrato?: string | null;
+  adequacao_orcamentaria?: string | null;
+  /** Se omitido na criação, o backend copia a equipe da Pesquisa de Preços do processo (ver TrService::criar). */
+  equipe_planejamento?: MembroEquipePlanejamento[];
+  campos_extras?: Record<string, unknown>;
+}
+
+export type UpdateTrInput = Partial<CreateTrInput>;
 
 export interface SugerirJustificativaDfdInput {
   objeto: string;
