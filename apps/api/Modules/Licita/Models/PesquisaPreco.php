@@ -17,7 +17,7 @@ use Modules\Licita\Enums\StatusPesquisaPreco;
  * @property int $tenant_id
  * @property int $processo_id
  * @property array<int, array{nome: string, cargo: string, matricula: string}>|null $equipe_planejamento
- * @property array<int, array{codigo: string, descricao: string, unidade_medida: string, quantidade: float, cotacoes: array<int, array{fonte: string, fornecedor: string, valor_unitario: float, data_cotacao: string|null, referencia: string|null}>}>|null $itens
+ * @property array<int, array{codigo: string, descricao: string, unidade_medida: string, quantidade: float, tipo?: string|null, cotacoes: array<int, array{fonte: string, fornecedor: string, valor_unitario: float, data_cotacao: string|null, referencia: string|null}>}>|null $itens
  * @property string $metodo_referencia
  * @property string|null $justificativa_metodo
  * @property array<string, mixed>|null $campos_extras

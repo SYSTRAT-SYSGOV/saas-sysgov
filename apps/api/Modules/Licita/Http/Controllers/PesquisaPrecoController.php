@@ -72,6 +72,7 @@ final class PesquisaPrecoController extends Controller
             'itens.*.descricao' => ['required_with:itens', 'string', 'max:1000'],
             'itens.*.unidade_medida' => ['required_with:itens', 'string', 'max:30'],
             'itens.*.quantidade' => ['required_with:itens', 'numeric', 'min:0.01'],
+            'itens.*.tipo' => ['sometimes', 'nullable', 'in:material,servico'],
             'itens.*.cotacoes' => ['sometimes', 'array'],
             'itens.*.cotacoes.*.fonte' => ['required_with:itens.*.cotacoes', 'string', 'max:255'],
             'itens.*.cotacoes.*.fornecedor' => ['nullable', 'string', 'max:255'],

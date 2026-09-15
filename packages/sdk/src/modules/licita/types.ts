@@ -33,7 +33,7 @@ export type StatusMapaRisco = 'rascunho' | 'aprovado';
 export type StatusPesquisaPreco = 'rascunho' | 'aprovado';
 export type StatusTr = 'rascunho' | 'aprovado';
 export type StatusAprovacaoFinal = 'pendente' | 'aprovada' | 'rejeitada';
-export type MetodoReferenciaPreco = 'media' | 'mediana' | 'menor_valor';
+export type MetodoReferenciaPreco = 'media' | 'mediana' | 'menor_valor' | 'media_saneada';
 export type GrauPrioridade = 'baixa' | 'media' | 'alta' | 'critica';
 export type AcaoVersaoDfd =
   | 'criado'
@@ -295,7 +295,26 @@ export interface ItemPesquisaPreco {
   descricao: string;
   unidade_medida: string;
   quantidade: number;
+  /** Copiado do item do DFD — usado pela busca de preços por IA para saber se o código é CATMAT (material) ou CATSER (serviço). Ausente em itens criados antes desta funcionalidade. */
+  tipo?: TipoItemDfd | null;
   cotacoes: CotacaoItemPesquisaPreco[];
+}
+
+export interface EstatisticaSaneamentoItem {
+  total_encontrado: number;
+  cv_percentual_final: number;
+  outliers_removidos: number;
+}
+
+export interface SugestaoCotacoesItem {
+  codigo: string;
+  cotacoes_sugeridas: CotacaoItemPesquisaPreco[];
+  estatisticas: EstatisticaSaneamentoItem;
+}
+
+export interface SugerirCotacoesPesquisaPrecoOutput {
+  itens: SugestaoCotacoesItem[];
+  justificativa_metodo_sugerida: string;
 }
 
 export interface PesquisaPrecoVersao {

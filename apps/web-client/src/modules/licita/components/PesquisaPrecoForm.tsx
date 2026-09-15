@@ -1,18 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import { Button, Select } from '@sysgov/ui';
-import { Plus, Trash2 } from 'lucide-react';
-import type {
-  CampoConfig,
-  CotacaoItemPesquisaPreco,
-  CreatePesquisaPrecoInput,
-  ItemPesquisaPreco,
-  MembroEquipePlanejamento,
-  MetodoReferenciaPreco,
+import { Plus, Sparkles, Trash2 } from 'lucide-react';
+import {
+  sysgovApi,
+  type CampoConfig,
+  type CotacaoItemPesquisaPreco,
+  type CreatePesquisaPrecoInput,
+  type EstatisticaSaneamentoItem,
+  type ItemPesquisaPreco,
+  type MembroEquipePlanejamento,
+  type MetodoReferenciaPreco,
 } from '@sysgov/sdk';
 import { CamposExtrasFields } from './CamposExtrasFields';
 import { ValidationErrorModal } from '@/components/ui';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
-import { MINIMO_COTACOES_POR_ITEM, METODO_REFERENCIA_LABEL, cotacoesValidas, valorReferenciaItem } from '../utils/precoReferencia';
+import { MINIMO_COTACOES_POR_ITEM, METODO_REFERENCIA_LABEL, cotacoesValidas, descreverSaneamento, valorReferenciaItem } from '../utils/precoReferencia';
 
 const emptyMembro: MembroEquipePlanejamento = { nome: '', cargo: '', matricula: '' };
 
@@ -25,7 +27,7 @@ const emptyCotacao: CotacaoItemPesquisaPreco = {
 };
 
 const METODO_OPTIONS: { value: MetodoReferenciaPreco; label: string }[] = (
-  ['mediana', 'media', 'menor_valor'] as MetodoReferenciaPreco[]
+  ['mediana', 'media', 'menor_valor', 'media_saneada'] as MetodoReferenciaPreco[]
 ).map((value) => ({ value, label: METODO_REFERENCIA_LABEL[value] }));
 
 /** Aba usada por campos sem `aba` definida — sempre a primeira (ver DfdForm/EtpForm/MapaRiscoForm, mesmo padrão). */
@@ -42,6 +44,8 @@ interface PesquisaPrecoFormProps {
   onSubmit: (data: CreatePesquisaPrecoInput) => Promise<void> | void;
   /** Campos extras configurados pelo órgão para a Pesquisa de Preços (ver CamposConfiguracaoPage). */
   camposExtras?: CampoConfig[];
+  /** Processo da Pesquisa de Preços — usado para buscar preços reais no Compras.gov.br/PNCP por item. */
+  processoId: number;
 }
 
 /**
@@ -60,6 +64,7 @@ export const PesquisaPrecoForm: React.FC<PesquisaPrecoFormProps> = ({
   submitLabel,
   onSubmit,
   camposExtras = [],
+  processoId,
 }) => {
   const [equipe, setEquipe] = useState<MembroEquipePlanejamento[]>(
     initialValue?.equipe_planejamento && initialValue.equipe_planejamento.length > 0
@@ -78,6 +83,9 @@ export const PesquisaPrecoForm: React.FC<PesquisaPrecoFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
   const [abaAtiva, setAbaAtiva] = useState(ABA_PADRAO);
+  const [buscandoPrecos, setBuscandoPrecos] = useState(false);
+  const [erroBuscaPrecos, setErroBuscaPrecos] = useState<string | null>(null);
+  const [estatisticasBusca, setEstatisticasBusca] = useState<Record<string, EstatisticaSaneamentoItem>>({});
 
   const camposExtrasPorAba = useMemo(() => {
     const ordenados = [...camposExtras].sort((a, b) => a.ordem - b.ordem);
@@ -122,6 +130,39 @@ export const PesquisaPrecoForm: React.FC<PesquisaPrecoFormProps> = ({
     setItens((prev) =>
       prev.map((item, i) => (i === itemIndex ? { ...item, cotacoes: item.cotacoes.filter((_, j) => j !== cotacaoIndex) } : item)),
     );
+  };
+
+  const handleBuscarPrecos = async () => {
+    setErroBuscaPrecos(null);
+    setBuscandoPrecos(true);
+    try {
+      const resultado = await sysgovApi.licita.sugerirCotacoesPesquisaPreco(processoId);
+      const sugestaoPorCodigo = new Map(resultado.itens.map((i) => [i.codigo, i]));
+
+      setItens((prev) =>
+        prev.map((item) => {
+          const sugestao = sugestaoPorCodigo.get(item.codigo);
+          if (!sugestao) return item;
+
+          // Nunca substitui cotações já digitadas — só soma as novas,
+          // evitando duplicar a mesma referência se o usuário clicar de novo.
+          const referenciasExistentes = new Set(item.cotacoes.map((c) => c.referencia).filter(Boolean));
+          const novas = sugestao.cotacoes_sugeridas.filter((c) => !referenciasExistentes.has(c.referencia));
+
+          return { ...item, cotacoes: [...item.cotacoes, ...novas] };
+        }),
+      );
+
+      setEstatisticasBusca(Object.fromEntries(resultado.itens.map((i) => [i.codigo, i.estatisticas])));
+
+      if (!justificativaMetodo.trim()) {
+        setJustificativaMetodo(resultado.justificativa_metodo_sugerida);
+      }
+    } catch (err) {
+      setErroBuscaPrecos(getApiErrorMessage(err, 'Não foi possível buscar preços no Compras.gov.br/PNCP.'));
+    } finally {
+      setBuscandoPrecos(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -206,9 +247,29 @@ export const PesquisaPrecoForm: React.FC<PesquisaPrecoFormProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
-          Itens e Cotações <span className="font-normal text-muted-foreground">(mínimo {MINIMO_COTACOES_POR_ITEM} fontes por item para enviar à revisão)</span>
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium text-foreground">
+            Itens e Cotações <span className="font-normal text-muted-foreground">(mínimo {MINIMO_COTACOES_POR_ITEM} fontes por item para enviar à revisão)</span>
+          </label>
+          {!disabled && itens.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              leftIcon={<Sparkles className="h-3.5 w-3.5" />}
+              isLoading={buscandoPrecos}
+              onClick={handleBuscarPrecos}
+            >
+              Buscar Preços no Compras.gov.br/PNCP
+            </Button>
+          )}
+        </div>
+
+        {erroBuscaPrecos && (
+          <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {erroBuscaPrecos}
+          </div>
+        )}
 
         {itens.length === 0 && (
           <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
@@ -221,6 +282,8 @@ export const PesquisaPrecoForm: React.FC<PesquisaPrecoFormProps> = ({
             const validas = cotacoesValidas(item.cotacoes);
             const referencia = valorReferenciaItem(item.cotacoes, metodoReferencia);
             const completo = validas.length >= MINIMO_COTACOES_POR_ITEM;
+            const estatisticaBusca = estatisticasBusca[item.codigo];
+            const saneamentoAoVivo = metodoReferencia === 'media_saneada' ? descreverSaneamento(item.cotacoes) : null;
 
             return (
               <div key={itemIndex} className="rounded-lg border border-border p-3 space-y-3">
@@ -247,6 +310,17 @@ export const PesquisaPrecoForm: React.FC<PesquisaPrecoFormProps> = ({
                     )}
                   </div>
                 </div>
+
+                {estatisticaBusca && (
+                  <p className="text-xs text-muted-foreground">
+                    Compras.gov.br: {estatisticaBusca.total_encontrado} cotações encontradas, {estatisticaBusca.outliers_removidos} outlier(s) removido(s), CV% final de {estatisticaBusca.cv_percentual_final}%.
+                  </p>
+                )}
+                {saneamentoAoVivo && (
+                  <p className="text-xs text-muted-foreground">
+                    Média Saneada: CV% de {saneamentoAoVivo.cvPercentual.toFixed(1)}%, {saneamentoAoVivo.outliersRemovidos} outlier(s) removido(s) do cálculo.
+                  </p>
+                )}
 
                 <div className="space-y-2">
                   {item.cotacoes.map((cotacao, cotacaoIndex) => (

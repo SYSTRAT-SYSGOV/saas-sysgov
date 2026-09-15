@@ -13,6 +13,7 @@ use Modules\Licita\Http\Controllers\LicitaIaController;
 use Modules\Licita\Http\Controllers\MapaRiscoController;
 use Modules\Licita\Http\Controllers\MapaRiscoIaController;
 use Modules\Licita\Http\Controllers\PesquisaPrecoController;
+use Modules\Licita\Http\Controllers\PesquisaPrecoIaController;
 use Modules\Licita\Http\Controllers\ProcessoController;
 use Modules\Licita\Http\Controllers\TrController;
 
@@ -49,6 +50,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::put('/mapas-riscos/{id}', [MapaRiscoController::class, 'update']);
 
     Route::post('/processos/{processoId}/pesquisas-precos', [PesquisaPrecoController::class, 'store']);
+    // Antes de '/pesquisas-precos/{id}': mesmo cuidado de precedência de
+    // rota do '/mapa-riscos/ia/...' acima.
+    Route::post('/processos/{processoId}/pesquisas-precos/ia/sugerir-cotacoes', [PesquisaPrecoIaController::class, 'sugerirCotacoes']);
     Route::get('/pesquisas-precos/{id}', [PesquisaPrecoController::class, 'show']);
     Route::put('/pesquisas-precos/{id}', [PesquisaPrecoController::class, 'update']);
 

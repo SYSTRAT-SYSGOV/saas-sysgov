@@ -1,6 +1,6 @@
 import type { CampoConfig, PesquisaPreco, Processo, Tenant } from '@sysgov/sdk';
 import { CSS_CABECALHO_ORGAO, escapeHtml, renderCabecalhoOrgao } from './pdfCabecalho';
-import { METODO_REFERENCIA_LABEL, cotacoesValidas, valorReferenciaItem } from './precoReferencia';
+import { METODO_REFERENCIA_LABEL, cotacoesValidas, descreverSaneamento, valorReferenciaItem } from './precoReferencia';
 
 function formatarMoeda(valor: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -141,12 +141,13 @@ export function gerarPesquisaPrecoPdf(janela: Window, processo: Processo, tenant
     ${itens.length === 0 ? '<p>Nenhum item cadastrado.</p>' : itens.map((item) => {
       const validas = cotacoesValidas(item.cotacoes);
       const referencia = valorReferenciaItem(item.cotacoes, pesquisaPreco.metodo_referencia);
+      const saneamento = pesquisaPreco.metodo_referencia === 'media_saneada' ? descreverSaneamento(item.cotacoes) : null;
       return `<div class="item-card">
         <div class="titulo">
           <span>${escapeHtml(item.codigo)} — ${escapeHtml(item.descricao)}</span>
           <span>${referencia !== null ? formatarMoeda(referencia) : 'Sem cotações válidas'}</span>
         </div>
-        <div class="subtitulo">${item.quantidade} ${escapeHtml(item.unidade_medida)} · ${validas.length} cotação(ões) válida(s)</div>
+        <div class="subtitulo">${item.quantidade} ${escapeHtml(item.unidade_medida)} · ${validas.length} cotação(ões) válida(s)${saneamento ? ` · CV% ${saneamento.cvPercentual.toFixed(1)}% · ${saneamento.outliersRemovidos} outlier(s) removido(s)` : ''}</div>
         <table>
           <thead><tr><th>Fonte</th><th>Fornecedor</th><th>Valor Unitário</th><th>Data</th><th>Referência</th></tr></thead>
           <tbody>
