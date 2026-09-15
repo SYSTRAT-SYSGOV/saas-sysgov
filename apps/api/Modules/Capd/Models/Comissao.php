@@ -11,6 +11,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Comissão de Avaliação Periódica de Desempenho (CAPD).
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property int $ciclo_id
+ * @property string|null $numero_portaria
+ * @property \Illuminate\Support\Carbon|null $data_publicacao_portaria
+ * @property bool $ativa
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 final class Comissao extends Model
 {
@@ -38,6 +47,7 @@ final class Comissao extends Model
         return $this->belongsTo(CicloAvaliacao::class, 'ciclo_id');
     }
 
+    /** @return HasMany<ComissaoMembro, $this> */
     public function membros(): HasMany
     {
         return $this->hasMany(ComissaoMembro::class, 'comissao_id');

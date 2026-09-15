@@ -12,6 +12,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Membro da Comissão CAPD.
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property int $comissao_id
+ * @property int $servidor_id
+ * @property string $papel
+ * @property bool $ativo
+ * @property \Illuminate\Support\Carbon|null $data_inicio_mandato
+ * @property \Illuminate\Support\Carbon|null $data_fim_mandato
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 final class ComissaoMembro extends Model
 {

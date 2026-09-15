@@ -48,6 +48,9 @@ trait HasPermissions
         return $this->hasPermission($permission, $tenantId);
     }
 
+    /**
+     * @param string|array<int, string> $roleSlug
+     */
     public function hasRole(string|array $roleSlug, ?int $tenantId = null): bool
     {
         if (is_array($roleSlug)) {

@@ -11,6 +11,33 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * Ciclo de Avaliação Periódica de Desempenho.
  *
+ * @property int $id
+ * @property int $tenant_id
+ * @property int|null $ano_referencia
+ * @property int|null $ano_competencia
+ * @property string $nome
+ * @property \Illuminate\Support\Carbon|null $data_inicio_avaliacao
+ * @property \Illuminate\Support\Carbon|null $data_fim_avaliacao
+ * @property \Illuminate\Support\Carbon|null $data_inicio
+ * @property \Illuminate\Support\Carbon|null $data_fim
+ * @property \Illuminate\Support\Carbon|null $data_limite_preenchimento
+ * @property \Illuminate\Support\Carbon|null $data_limite_recurso
+ * @property string $status
+ * @property bool $cadencia_automatica
+ * @property int|null $etapa_cadencia
+ * @property string|null $modo_f1
+ * @property string|null $modo_f2
+ * @property string|null $tipo_assinatura_ata
+ * @property array<string, mixed>|null $metadata
+ * @property array<string, mixed>|null $regras_config
+ * @property string|null $nota_corte_nfc
+ * @property string|null $quinquenio_percentual
+ * @property bool $redistribuir_fator_h
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read Comissao|null $comissao
+ *
  * Status: planejamento → em_avaliacao → recursivo → deliberacao → homologado → encerrado
  */
 final class CicloAvaliacao extends Model
@@ -122,6 +149,7 @@ final class CicloAvaliacao extends Model
         return $this->hasMany(DiarioBordo::class, 'ciclo_id');
     }
 
+    /** @return \Illuminate\Database\Eloquent\Relations\HasOne<Comissao, $this> */
     public function comissao(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(Comissao::class, 'ciclo_id');

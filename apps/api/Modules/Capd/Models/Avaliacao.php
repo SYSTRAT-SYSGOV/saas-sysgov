@@ -12,6 +12,36 @@ use Modules\Capd\Events\AvaliacaoHomologada;
 /**
  * Avaliação de Desempenho de um servidor num ciclo.
  *
+ * @property int $id
+ * @property int $tenant_id
+ * @property int $ciclo_id
+ * @property int $servidor_id
+ * @property int $avaliador_id
+ * @property \Illuminate\Support\Carbon|null $periodo_inicio
+ * @property \Illuminate\Support\Carbon|null $periodo_fim
+ * @property int|null $dias_exercicio
+ * @property int|null $avaliacao_consolidada_id
+ * @property string $tipo_avaliacao
+ * @property string $status_avaliacao
+ * @property array<string, mixed>|null $respostas_fatores
+ * @property int|null $modelo_formulario_id
+ * @property array<string, mixed>|null $respostas_perguntas
+ * @property string|null $nota_final
+ * @property bool|null $elegivel_progressao
+ * @property \Illuminate\Support\Carbon|null $data_conclusao
+ * @property \Illuminate\Support\Carbon|null $ciencia_servidor_em
+ * @property bool $devolutiva_realizada
+ * @property \Illuminate\Support\Carbon|null $devolutiva_em
+ * @property string|null $devolutiva_resumo
+ * @property string|null $devolutiva_acordos
+ * @property int|null $devolutiva_por
+ * @property string|null $ciencia_ip
+ * @property string|null $ciencia_tipo
+ * @property string|null $parecer_avaliador
+ * @property bool $homologada
+ * @property \Illuminate\Support\Carbon|null $homologada_em
+ * @property int|null $homologada_por
+ *
  * INVARIANTE: após homologada = true, o registro é imutável (RN-C07).
  * Qualquer tentativa de update dispara AvaliacaoHomologadaException.
  */
@@ -108,43 +138,57 @@ final class Avaliacao extends Model
 
     // ── Relacionamentos ───────────────────────────────────────────────
 
+    /** @return BelongsTo<CicloAvaliacao, $this> */
     public function ciclo(): BelongsTo
     {
         return $this->belongsTo(CicloAvaliacao::class, 'ciclo_id');
     }
 
+    /** @return BelongsTo<ModeloFormulario, $this> */
     public function modeloFormulario(): BelongsTo
     {
         return $this->belongsTo(ModeloFormulario::class, 'modelo_formulario_id');
     }
 
+    /** @return BelongsTo<\App\Models\User, $this> */
     public function servidor(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'servidor_id');
     }
 
+    /** @return BelongsTo<Servidor, $this> */
     public function servidorData(): BelongsTo
     {
         return $this->belongsTo(Servidor::class, 'servidor_id', 'user_id');
     }
 
+    /** @return BelongsTo<\App\Models\User, $this> */
     public function avaliador(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'avaliador_id');
     }
 
+    /** @return HasMany<Recurso, $this> */
     public function recursos(): HasMany
     {
         return $this->hasMany(Recurso::class, 'avaliacao_id');
     }
 
-    /** Avaliação "guarda-chuva" quando esta é uma parcial de transferência. */
+    /**
+     * Avaliação "guarda-chuva" quando esta é uma parcial de transferência.
+     *
+     * @return BelongsTo<self, $this>
+     */
     public function consolidada(): BelongsTo
     {
         return $this->belongsTo(self::class, 'avaliacao_consolidada_id');
     }
 
-    /** Avaliações parciais desta consolidada. */
+    /**
+     * Avaliações parciais desta consolidada.
+     *
+     * @return HasMany<self, $this>
+     */
     public function parciais(): HasMany
     {
         return $this->hasMany(self::class, 'avaliacao_consolidada_id');

@@ -7,6 +7,8 @@ namespace Modules\Capd\Services;
 use App\Support\AuditLogger;
 use App\Support\TenantContext;
 use Carbon\Carbon;
+use Modules\Capd\Models\Avaliacao;
+use Modules\Capd\Models\CicloAvaliacao;
 use Modules\Capd\Models\ComissaoMembro;
 use Modules\Capd\Models\Impedimento;
 use Modules\Capd\Models\Recurso;
@@ -34,8 +36,11 @@ final class SorteioRelatorService
         $tenantId = (int) app(TenantContext::class)->id();
 
         // Identifica comissão vinculada ao ciclo da avaliação
+        /** @var Avaliacao $avaliacao */
         $avaliacao = $recurso->avaliacao()->with('ciclo.comissao.membros')->firstOrFail();
-        $comissao  = $avaliacao->ciclo->comissao;
+        /** @var CicloAvaliacao|null $ciclo */
+        $ciclo     = $avaliacao->ciclo;
+        $comissao  = $ciclo?->comissao;
 
         if (! $comissao || ! $comissao->ativa) {
             throw new \DomainException('Não há comissão CAPD ativa configurada para este ciclo de avaliação.');
@@ -62,6 +67,7 @@ final class SorteioRelatorService
 
         // Sorteio criptograficamente seguro via random_int (CSPRNG)
         $indiceSorteado = random_int(0, $candidatos->count() - 1);
+        /** @var ComissaoMembro $relator */
         $relator        = $candidatos[$indiceSorteado];
 
         // Prazo legal de 5 dias úteis (RN-C05)

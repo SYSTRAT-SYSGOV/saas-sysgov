@@ -11,6 +11,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Fator de Avaliação Periódica de Desempenho (F1 a F8).
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property string $codigo
+ * @property string $nome
+ * @property string|null $descricao
+ * @property bool $automatizado
+ * @property float $peso_geral
+ * @property float $peso_magisterio
+ * @property int $ordem
+ * @property bool $ativo
  */
 final class FatorAvaliacao extends Model
 {

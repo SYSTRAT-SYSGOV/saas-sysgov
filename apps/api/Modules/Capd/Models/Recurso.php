@@ -44,31 +44,37 @@ final class Recurso extends Model
         self::STATUS_PAUTADO,
     ];
 
+    /** @return BelongsTo<Avaliacao, $this> */
     public function avaliacao(): BelongsTo
     {
         return $this->belongsTo(Avaliacao::class, 'avaliacao_id');
     }
 
+    /** @return BelongsTo<\App\Models\User, $this> */
     public function recorrente(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'recorrente_id');
     }
 
+    /** @return BelongsTo<FatorAvaliacao, $this> */
     public function fatorContestado(): BelongsTo
     {
         return $this->belongsTo(FatorAvaliacao::class, 'fator_contestado_id');
     }
 
+    /** @return BelongsTo<ComissaoMembro, $this> */
     public function relator(): BelongsTo
     {
         return $this->belongsTo(ComissaoMembro::class, 'relator_id');
     }
 
+    /** @return HasMany<RecursoDocumento, $this> */
     public function documentos(): HasMany
     {
         return $this->hasMany(RecursoDocumento::class, 'recurso_id');
     }
 
+    /** @return HasMany<Deliberacao, $this> */
     public function deliberacoes(): HasMany
     {
         return $this->hasMany(Deliberacao::class, 'recurso_id');
