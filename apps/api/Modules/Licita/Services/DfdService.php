@@ -165,8 +165,11 @@ final class DfdService
             $this->audit->record('licita', 'dfd.aprovado', "Dfd #{$dfd->id}", null, ['parecer' => $parecer]);
             $this->outbox->publish('licita.DfdAprovado', ['id' => $dfd->id, 'processo_id' => $dfd->processo_id]);
 
-            // RN-002: fluxo sequencial — ao aprovar o DFD, o processo avança para o ETP.
-            $this->processos->avancarFase($dfd->processo, FaseLicita::Etp, $dfd->objeto);
+            // Ao aprovar o DFD, o processo libera a equipe de planejamento
+            // para editar ETP/Mapa de Riscos/Pesquisa de Preços livremente
+            // (sem gate de aprovação entre eles) até a aprovação final do
+            // Ordenador — ver AprovacaoFinalService.
+            $this->processos->avancarFase($dfd->processo, FaseLicita::EmElaboracao, $dfd->objeto);
 
             return $dfd->load(['elaborador', 'aprovador', 'versoes.usuario']);
         });

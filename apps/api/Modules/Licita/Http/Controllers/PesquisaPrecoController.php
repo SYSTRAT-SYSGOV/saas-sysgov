@@ -59,68 +59,6 @@ final class PesquisaPrecoController extends Controller
         return response()->json($pesquisaPreco);
     }
 
-    public function enviarRevisao(Request $request, int $id): JsonResponse
-    {
-        $pesquisaPreco = PesquisaPreco::findOrFail($id);
-        $this->authorize('update', $pesquisaPreco);
-
-        $mensagem = $request->validate(['mensagem' => ['nullable', 'string', 'max:1000']])['mensagem'] ?? null;
-
-        try {
-            $pesquisaPreco = $this->pesquisasPrecos->enviarParaRevisao($pesquisaPreco, $request->user(), $mensagem);
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($pesquisaPreco);
-    }
-
-    public function reabrir(Request $request, int $id): JsonResponse
-    {
-        $pesquisaPreco = PesquisaPreco::findOrFail($id);
-        $this->authorize('reabrir', $pesquisaPreco);
-
-        try {
-            $pesquisaPreco = $this->pesquisasPrecos->reabrir($pesquisaPreco, $request->user());
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($pesquisaPreco);
-    }
-
-    public function aprovar(Request $request, int $id): JsonResponse
-    {
-        $pesquisaPreco = PesquisaPreco::findOrFail($id);
-        $this->authorize('aprovar', $pesquisaPreco);
-
-        $parecer = $request->validate(['parecer' => ['nullable', 'string', 'max:1000']])['parecer'] ?? null;
-
-        try {
-            $pesquisaPreco = $this->pesquisasPrecos->aprovar($pesquisaPreco, $request->user(), $parecer);
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($pesquisaPreco);
-    }
-
-    public function rejeitar(Request $request, int $id): JsonResponse
-    {
-        $pesquisaPreco = PesquisaPreco::findOrFail($id);
-        $this->authorize('rejeitar', $pesquisaPreco);
-
-        $motivo = $request->validate(['motivo' => ['required', 'string', 'max:1000']])['motivo'];
-
-        try {
-            $pesquisaPreco = $this->pesquisasPrecos->rejeitar($pesquisaPreco, $request->user(), $motivo);
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($pesquisaPreco);
-    }
-
     /**
      * @return array<string, mixed>
      */

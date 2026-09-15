@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Licita\Http\Controllers\CampoConfiguracaoController;
 use Modules\Licita\Http\Controllers\DfdController;
 use Modules\Licita\Http\Controllers\DfdIaController;
+use Modules\Licita\Http\Controllers\AprovacaoFinalController;
 use Modules\Licita\Http\Controllers\EtpController;
 use Modules\Licita\Http\Controllers\LegalDocumentoController;
 use Modules\Licita\Http\Controllers\LicitaIaController;
@@ -36,26 +37,18 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::post('/processos/{processoId}/etp', [EtpController::class, 'store']);
     Route::get('/etps/{id}', [EtpController::class, 'show']);
     Route::put('/etps/{id}', [EtpController::class, 'update']);
-    Route::post('/etps/{id}/reabrir', [EtpController::class, 'reabrir']);
-    Route::post('/etps/{id}/enviar-revisao', [EtpController::class, 'enviarRevisao']);
-    Route::post('/etps/{id}/aprovar', [EtpController::class, 'aprovar']);
-    Route::post('/etps/{id}/rejeitar', [EtpController::class, 'rejeitar']);
 
     Route::post('/processos/{processoId}/mapa-riscos', [MapaRiscoController::class, 'store']);
     Route::get('/mapas-riscos/{id}', [MapaRiscoController::class, 'show']);
     Route::put('/mapas-riscos/{id}', [MapaRiscoController::class, 'update']);
-    Route::post('/mapas-riscos/{id}/reabrir', [MapaRiscoController::class, 'reabrir']);
-    Route::post('/mapas-riscos/{id}/enviar-revisao', [MapaRiscoController::class, 'enviarRevisao']);
-    Route::post('/mapas-riscos/{id}/aprovar', [MapaRiscoController::class, 'aprovar']);
-    Route::post('/mapas-riscos/{id}/rejeitar', [MapaRiscoController::class, 'rejeitar']);
 
     Route::post('/processos/{processoId}/pesquisas-precos', [PesquisaPrecoController::class, 'store']);
     Route::get('/pesquisas-precos/{id}', [PesquisaPrecoController::class, 'show']);
     Route::put('/pesquisas-precos/{id}', [PesquisaPrecoController::class, 'update']);
-    Route::post('/pesquisas-precos/{id}/reabrir', [PesquisaPrecoController::class, 'reabrir']);
-    Route::post('/pesquisas-precos/{id}/enviar-revisao', [PesquisaPrecoController::class, 'enviarRevisao']);
-    Route::post('/pesquisas-precos/{id}/aprovar', [PesquisaPrecoController::class, 'aprovar']);
-    Route::post('/pesquisas-precos/{id}/rejeitar', [PesquisaPrecoController::class, 'rejeitar']);
+
+    Route::post('/processos/{id}/aprovacao-final/solicitar', [AprovacaoFinalController::class, 'solicitar']);
+    Route::post('/processos/{id}/aprovacao-final/aprovar', [AprovacaoFinalController::class, 'aprovar']);
+    Route::post('/processos/{id}/aprovacao-final/rejeitar', [AprovacaoFinalController::class, 'rejeitar']);
 
     Route::get('/legislacao', [LegalDocumentoController::class, 'index']);
     Route::post('/legislacao', [LegalDocumentoController::class, 'store']);

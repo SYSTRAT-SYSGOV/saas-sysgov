@@ -10,8 +10,6 @@ use App\Support\OutboxPublisher;
 use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Support\Facades\DB;
-use Modules\Licita\Enums\FaseLicita;
-use Modules\Licita\Enums\StatusDfd;
 use Modules\Licita\Enums\StatusEtp;
 use Modules\Licita\Models\Etp;
 use Modules\Licita\Models\Processo;
@@ -30,7 +28,6 @@ final class EtpService
         private readonly AuditLogger $audit,
         private readonly OutboxPublisher $outbox,
         private readonly TenantContext $tenantContext,
-        private readonly ProcessoService $processos,
         private readonly CampoConfiguracaoService $camposConfiguracao,
         private readonly HtmlSanitizer $sanitizer,
     ) {}
@@ -44,12 +41,14 @@ final class EtpService
             throw new DomainException('RN-001: tenant não identificado para criação do ETP.');
         }
 
-        // RN-002: fluxo sequencial — o ETP só existe depois do DFD aprovado
-        // (é ele quem faz o processo avançar para a fase "etp", ver
-        // DfdService::aprovar).
+        // RN-002: o ETP só existe depois de haver um DFD (não precisa mais
+        // estar aprovado — a partir do DFD aprovado, a equipe de
+        // planejamento edita ETP/Mapa de Riscos/Pesquisa de Preços livremente
+        // e em qualquer ordem; a única aprovação formal que resta é a final,
+        // do Ordenador, ver AprovacaoFinalService).
         $dfd = $processo->dfd;
-        if ($dfd === null || !$dfd->statusEnum()->is(StatusDfd::Aprovado)) {
-            throw new DomainException('O DFD deste processo precisa estar aprovado antes de iniciar o ETP.');
+        if ($dfd === null) {
+            throw new DomainException('Cadastre o DFD deste processo antes de iniciar o ETP.');
         }
 
         if ($processo->etp()->exists()) {
@@ -88,8 +87,8 @@ final class EtpService
      */
     public function atualizar(Etp $etp, array $data, User $user): Etp
     {
-        if (!$etp->statusEnum()->is(StatusEtp::Rascunho, StatusEtp::Rejeitado, StatusEtp::EmRevisao)) {
-            throw new DomainException('ETP aprovado é imutável. Apenas rascunhos, em revisão ou rejeitados podem ser editados.');
+        if ($etp->statusEnum()->is(StatusEtp::Aprovado)) {
+            throw new DomainException('ETP aprovado é imutável — a aprovação final do processo já travou este documento.');
         }
 
         $camposExtras = array_key_exists('campos_extras', $data) ? $data['campos_extras'] : ($etp->campos_extras ?? []);
@@ -107,83 +106,6 @@ final class EtpService
                 $this->audit->record('licita', 'etp.revisado', "Etp #{$etp->id}", $antes, $etp->toArray());
                 $this->outbox->publish('licita.EtpRevisado', ['id' => $etp->id, 'campos' => array_keys($diff)]);
             }
-
-            return $etp->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    /**
-     * Reabre um ETP rejeitado para edição (mesma RN-002 do DFD: rejeitado -> rascunho).
-     */
-    public function reabrir(Etp $etp, User $user): Etp
-    {
-        $this->validarTransicao($etp, StatusEtp::Rascunho);
-
-        return DB::transaction(function () use ($etp, $user): Etp {
-            $etp->update(['status' => StatusEtp::Rascunho->value]);
-            $etp->refresh();
-
-            $this->registrarVersao($etp, 'reaberto', $user);
-            $this->audit->record('licita', 'etp.reaberto', "Etp #{$etp->id}", null, null);
-            $this->outbox->publish('licita.EtpReaberto', ['id' => $etp->id]);
-
-            return $etp->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    public function enviarParaRevisao(Etp $etp, User $user, ?string $mensagem = null): Etp
-    {
-        $this->validarTransicao($etp, StatusEtp::EmRevisao);
-
-        return DB::transaction(function () use ($etp, $user, $mensagem): Etp {
-            $etp->update(['status' => StatusEtp::EmRevisao->value]);
-            $etp->refresh();
-
-            $this->registrarVersao($etp, 'enviado_revisao', $user, $mensagem !== null && $mensagem !== '' ? ['mensagem' => $mensagem] : []);
-            $this->audit->record('licita', 'etp.enviado_revisao', "Etp #{$etp->id}", null, ['mensagem' => $mensagem]);
-            $this->outbox->publish('licita.EtpEnviadoRevisao', ['id' => $etp->id]);
-
-            return $etp->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    public function aprovar(Etp $etp, User $aprovador, ?string $parecer = null): Etp
-    {
-        $this->validarTransicao($etp, StatusEtp::Aprovado);
-        $this->validarSegregacaoFuncoes($etp, $aprovador, 'aprová-lo');
-
-        return DB::transaction(function () use ($etp, $aprovador, $parecer): Etp {
-            $etp->update([
-                'status' => StatusEtp::Aprovado->value,
-                'aprovado_por' => $aprovador->id,
-                'aprovado_em' => now(),
-            ]);
-            $etp->refresh();
-
-            $this->registrarVersao($etp, 'aprovado', $aprovador, $parecer !== null && $parecer !== '' ? ['parecer' => $parecer] : []);
-            $this->audit->record('licita', 'etp.aprovado', "Etp #{$etp->id}", null, ['parecer' => $parecer]);
-            $this->outbox->publish('licita.EtpAprovado', ['id' => $etp->id, 'processo_id' => $etp->processo_id]);
-
-            // RN-002: fluxo sequencial — ao aprovar o ETP, o processo avança
-            // para o Mapa de Riscos.
-            $this->processos->avancarFase($etp->processo, FaseLicita::MapaRiscos);
-
-            return $etp->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    public function rejeitar(Etp $etp, User $rejeitor, string $motivo): Etp
-    {
-        $this->validarTransicao($etp, StatusEtp::Rejeitado);
-        $this->validarSegregacaoFuncoes($etp, $rejeitor, 'rejeitá-lo');
-
-        return DB::transaction(function () use ($etp, $rejeitor, $motivo): Etp {
-            $etp->update(['status' => StatusEtp::Rejeitado->value]);
-            $etp->refresh();
-
-            $this->registrarVersao($etp, 'rejeitado', $rejeitor, ['motivo' => $motivo]);
-            $this->audit->record('licita', 'etp.rejeitado', "Etp #{$etp->id}", null, ['motivo' => $motivo]);
-            $this->outbox->publish('licita.EtpRejeitado', ['id' => $etp->id, 'motivo' => $motivo]);
 
             return $etp->load(['elaborador', 'aprovador', 'versoes.usuario']);
         });
@@ -217,23 +139,6 @@ final class EtpService
         }
 
         return $data;
-    }
-
-    private function validarTransicao(Etp $etp, StatusEtp $novo): void
-    {
-        if (!$etp->statusEnum()->podeTransicionarPara($novo)) {
-            throw new DomainException(sprintf('Transição inválida de "%s" para "%s".', $etp->statusEnum()->label(), $novo->label()));
-        }
-    }
-
-    /**
-     * RN-005: segregação de funções — quem elabora não pode aprovar/rejeitar o próprio ETP.
-     */
-    private function validarSegregacaoFuncoes(Etp $etp, User $ator, string $acao): void
-    {
-        if ($etp->elaborado_por === (int) $ator->id) {
-            throw new DomainException("RN-005: o elaborador do ETP não pode {$acao} (segregação de funções).");
-        }
     }
 
     /**

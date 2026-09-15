@@ -3,9 +3,7 @@ import { CSS_CABECALHO_ORGAO, escapeHtml, renderCabecalhoOrgao } from './pdfCabe
 
 const STATUS_LABEL: Record<Etp['status'], string> = {
   rascunho: 'Rascunho',
-  em_revisao: 'Em Revisão',
   aprovado: 'Aprovado',
-  rejeitado: 'Rejeitado',
 };
 
 function formatarDataHora(iso: string | null | undefined): string {

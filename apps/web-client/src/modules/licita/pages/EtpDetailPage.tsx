@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button } from '@sysgov/ui';
-import { StatusChip, PageHeader, ScreenState, ValidationErrorModal, ConfirmDialog } from '@/components/ui';
-import { ArrowLeft, ClipboardList, CheckCircle2, XCircle, Send, RotateCcw } from 'lucide-react';
-import { useAuth } from '@/core/auth/useAuth';
-import { useCan } from '@/core/rbac/useCan';
+import { StatusChip, PageHeader, ScreenState, ValidationErrorModal } from '@/components/ui';
+import { ArrowLeft, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 import { sysgovApi, type AcaoVersaoEtp, type CampoConfig, type CreateEtpInput, type Etp, type Processo, type StatusEtp } from '@sysgov/sdk';
@@ -17,25 +15,18 @@ interface Toast {
 
 const STATUS_LABEL: Record<StatusEtp, string> = {
   rascunho: 'Rascunho',
-  em_revisao: 'Em Revisão',
   aprovado: 'Aprovado',
-  rejeitado: 'Rejeitado',
 };
 
-const STATUS_VARIANT: Record<StatusEtp, 'neutral' | 'warning' | 'success' | 'danger'> = {
+const STATUS_VARIANT: Record<StatusEtp, 'neutral' | 'success'> = {
   rascunho: 'neutral',
-  em_revisao: 'warning',
   aprovado: 'success',
-  rejeitado: 'danger',
 };
 
 const ACAO_LABEL: Record<AcaoVersaoEtp, string> = {
   criado: 'Criado',
   revisado: 'Revisado',
-  enviado_revisao: 'Enviado para revisão',
   aprovado: 'Aprovado',
-  rejeitado: 'Rejeitado',
-  reaberto: 'Reaberto para edição',
 };
 
 interface EtpDetailPageProps {
@@ -45,25 +36,19 @@ interface EtpDetailPageProps {
 }
 
 /**
- * Tela do ETP — mesma estrutura de ações da tela do DFD (DfdDetailPage):
- * criar/editar, enviar para revisão, aprovar/rejeitar com motivo, reabrir.
- * Só existe a partir do momento em que o DFD do processo está aprovado
- * (RN aplicada no backend, EtpService::criar) — antes disso mostra um aviso
- * em vez do formulário.
+ * Tela do ETP — sem aprovação individual: fica em rascunho, sempre editável
+ * pela equipe de planejamento, até a aprovação final do Ordenador travar
+ * tudo de uma vez (ver AprovacaoOrdenadorPage). Só existe a partir do
+ * momento em que há um DFD no processo (RN aplicada no backend,
+ * EtpService::criar) — antes disso mostra um aviso em vez do formulário.
  */
 export const EtpDetailPage: React.FC<EtpDetailPageProps> = ({ processoId, onBack, onChanged }) => {
-  const { user } = useAuth();
-  const { can } = useCan();
   const [processo, setProcesso] = useState<Processo | null>(null);
   const [etp, setEtp] = useState<Etp | null>(null);
   const [camposExtras, setCamposExtras] = useState<CampoConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [confirmAprovar, setConfirmAprovar] = useState(false);
-  const [confirmRejeitar, setConfirmRejeitar] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const notify = (t: Toast) => {
@@ -71,9 +56,8 @@ export const EtpDetailPage: React.FC<EtpDetailPageProps> = ({ processoId, onBack
     window.setTimeout(() => setToasts((prev) => prev.filter((x) => x !== t)), 5000);
   };
 
-  const podeAprovar = can('licita.aprovar') && etp?.elaborado_por !== user?.id;
-  const editavel = etp ? ['rascunho', 'em_revisao', 'rejeitado'].includes(etp.status) : true;
-  const dfdAprovado = processo?.dfd?.status === 'aprovado';
+  const editavel = etp ? etp.status !== 'aprovado' : true;
+  const dfdCadastrado = processo?.dfd != null;
 
   useEffect(() => {
     let cancelado = false;
@@ -111,38 +95,35 @@ export const EtpDetailPage: React.FC<EtpDetailPageProps> = ({ processoId, onBack
 
   const handleCreate = async (data: CreateEtpInput) => {
     if (!processo) return;
-    const novoEtp = await sysgovApi.licita.createEtp(processo.id, data);
-    setEtp(novoEtp);
-    await refreshProcesso();
-    notify({ type: 'success', title: 'ETP criado', message: 'O rascunho do ETP foi salvo com sucesso.' });
-  };
-
-  const handleUpdate = async (data: CreateEtpInput) => {
-    if (!etp) return;
-    const atualizado = await sysgovApi.licita.updateEtp(etp.id, data);
-    setEtp(atualizado);
-    await refreshProcesso();
-    notify({ type: 'success', title: 'ETP salvo', message: 'As alterações foram salvas com sucesso.' });
-  };
-
-  const runAction = async (action: () => Promise<Etp>, sucesso: { title: string; message: string }) => {
-    setActionError(null);
-    setValidationErrors(null);
-    setActionLoading(true);
     try {
-      const atualizado = await action();
-      setEtp(atualizado);
+      const novoEtp = await sysgovApi.licita.createEtp(processo.id, data);
+      setEtp(novoEtp);
       await refreshProcesso();
-      notify({ type: 'success', ...sucesso });
+      notify({ type: 'success', title: 'ETP criado', message: 'O rascunho do ETP foi salvo com sucesso.' });
     } catch (err) {
       const fieldErrors = getApiValidationErrors(err);
       if (fieldErrors) {
         setValidationErrors(fieldErrors);
       } else {
-        setActionError(getApiErrorMessage(err, 'Erro ao executar ação.'));
+        notify({ type: 'error', title: 'Erro ao criar ETP', message: getApiErrorMessage(err, 'Erro ao criar o ETP.') });
       }
-    } finally {
-      setActionLoading(false);
+    }
+  };
+
+  const handleUpdate = async (data: CreateEtpInput) => {
+    if (!etp) return;
+    try {
+      const atualizado = await sysgovApi.licita.updateEtp(etp.id, data);
+      setEtp(atualizado);
+      await refreshProcesso();
+      notify({ type: 'success', title: 'ETP salvo', message: 'As alterações foram salvas com sucesso.' });
+    } catch (err) {
+      const fieldErrors = getApiValidationErrors(err);
+      if (fieldErrors) {
+        setValidationErrors(fieldErrors);
+      } else {
+        notify({ type: 'error', title: 'Erro ao salvar', message: getApiErrorMessage(err, 'Erro ao salvar o ETP.') });
+      }
     }
   };
 
@@ -175,12 +156,12 @@ export const EtpDetailPage: React.FC<EtpDetailPageProps> = ({ processoId, onBack
         }
       />
 
-      {!dfdAprovado && !etp ? (
+      {!dfdCadastrado && !etp ? (
         <Card className="p-6">
           <ScreenState
             type="empty"
-            title="DFD ainda não aprovado"
-            description="O Estudo Técnico Preliminar (ETP) só pode ser iniciado depois que o DFD deste processo for aprovado."
+            title="DFD ainda não cadastrado"
+            description="O Estudo Técnico Preliminar (ETP) só pode ser iniciado depois que o DFD deste processo for cadastrado."
             actionLabel="Voltar"
             onAction={onBack}
           />
@@ -200,112 +181,6 @@ export const EtpDetailPage: React.FC<EtpDetailPageProps> = ({ processoId, onBack
                   </span>
                 )}
               </div>
-
-              <div className="flex items-center gap-2">
-                {etp.status === 'rascunho' && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    leftIcon={<Send className="h-3.5 w-3.5" />}
-                    isLoading={actionLoading}
-                    onClick={() =>
-                      runAction(() => sysgovApi.licita.enviarEtpParaRevisao(etp.id), {
-                        title: 'Enviado para revisão',
-                        message: 'O ETP foi enviado para revisão com sucesso.',
-                      })
-                    }
-                  >
-                    Enviar para Revisão
-                  </Button>
-                )}
-                {etp.status === 'em_revisao' && podeAprovar && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
-                      isLoading={actionLoading}
-                      onClick={() => setConfirmAprovar(true)}
-                    >
-                      Aprovar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      leftIcon={<XCircle className="h-3.5 w-3.5" />}
-                      onClick={() => setConfirmRejeitar(true)}
-                    >
-                      Rejeitar
-                    </Button>
-                  </>
-                )}
-                {etp.status === 'em_revisao' && !podeAprovar && (
-                  <span className="text-xs text-muted-foreground italic">
-                    Aguardando aprovação de outro responsável (segregação de funções).
-                  </span>
-                )}
-                {etp.status === 'rejeitado' && can('licita.update') && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
-                    isLoading={actionLoading}
-                    onClick={() =>
-                      runAction(() => sysgovApi.licita.reabrirEtp(etp.id), {
-                        title: 'ETP reaberto',
-                        message: 'O ETP voltou para rascunho e já pode ser editado.',
-                      })
-                    }
-                  >
-                    Reabrir para Edição
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {etp && (
-            <>
-              <ConfirmDialog
-                open={confirmAprovar}
-                onClose={() => setConfirmAprovar(false)}
-                destructive={false}
-                requireReason={false}
-                confirmLabel="Aprovar"
-                title="Aprovar ETP"
-                description="Confirma a aprovação deste ETP? Depois de aprovado, o documento fica imutável e o processo avança para a próxima fase (Mapa de Riscos)."
-                onConfirm={() => {
-                  setConfirmAprovar(false);
-                  runAction(() => sysgovApi.licita.aprovarEtp(etp.id), {
-                    title: 'ETP aprovado',
-                    message: 'O ETP foi aprovado com sucesso.',
-                  });
-                }}
-              />
-
-              <ConfirmDialog
-                open={confirmRejeitar}
-                onClose={() => setConfirmRejeitar(false)}
-                destructive
-                requireReason
-                reasonPlaceholder="Motivo da rejeição..."
-                confirmLabel="Rejeitar"
-                title="Rejeitar ETP"
-                description="Confirma a rejeição deste ETP? Ele voltará para rascunho, o elaborador poderá editá-lo e reenviar para revisão."
-                onConfirm={(motivo) => {
-                  setConfirmRejeitar(false);
-                  runAction(() => sysgovApi.licita.rejeitarEtp(etp.id, motivo), {
-                    title: 'ETP rejeitado',
-                    message: 'A rejeição foi registrada com sucesso.',
-                  });
-                }}
-              />
-            </>
-          )}
-
-          {actionError && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {actionError}
             </div>
           )}
 

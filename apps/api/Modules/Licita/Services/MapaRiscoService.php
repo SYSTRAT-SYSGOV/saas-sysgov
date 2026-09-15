@@ -10,8 +10,6 @@ use App\Support\OutboxPublisher;
 use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Support\Facades\DB;
-use Modules\Licita\Enums\FaseLicita;
-use Modules\Licita\Enums\StatusEtp;
 use Modules\Licita\Enums\StatusMapaRisco;
 use Modules\Licita\Models\MapaRisco;
 use Modules\Licita\Models\Processo;
@@ -32,7 +30,6 @@ final class MapaRiscoService
         private readonly AuditLogger $audit,
         private readonly OutboxPublisher $outbox,
         private readonly TenantContext $tenantContext,
-        private readonly ProcessoService $processos,
         private readonly CampoConfiguracaoService $camposConfiguracao,
         private readonly HtmlSanitizer $sanitizer,
     ) {}
@@ -46,12 +43,12 @@ final class MapaRiscoService
             throw new DomainException('RN-001: tenant não identificado para criação do Mapa de Riscos.');
         }
 
-        // RN-002: fluxo sequencial — o Mapa de Riscos só existe depois do
-        // ETP aprovado (é ele quem faz o processo avançar para a fase
-        // "mapa_riscos", ver EtpService::aprovar).
+        // RN-002: o Mapa de Riscos só existe depois de haver um ETP (não
+        // precisa mais estar aprovado — ver comentário equivalente em
+        // EtpService::criar).
         $etp = $processo->etp;
-        if ($etp === null || !$etp->statusEnum()->is(StatusEtp::Aprovado)) {
-            throw new DomainException('O ETP deste processo precisa estar aprovado antes de iniciar o Mapa de Riscos.');
+        if ($etp === null) {
+            throw new DomainException('Cadastre o ETP deste processo antes de iniciar o Mapa de Riscos.');
         }
 
         if ($processo->mapaRisco()->exists()) {
@@ -90,8 +87,8 @@ final class MapaRiscoService
      */
     public function atualizar(MapaRisco $mapaRisco, array $data, User $user): MapaRisco
     {
-        if (!$mapaRisco->statusEnum()->is(StatusMapaRisco::Rascunho, StatusMapaRisco::Rejeitado, StatusMapaRisco::EmRevisao)) {
-            throw new DomainException('Mapa de Riscos aprovado é imutável. Apenas rascunhos, em revisão ou rejeitados podem ser editados.');
+        if ($mapaRisco->statusEnum()->is(StatusMapaRisco::Aprovado)) {
+            throw new DomainException('Mapa de Riscos aprovado é imutável — a aprovação final do processo já travou este documento.');
         }
 
         $camposExtras = array_key_exists('campos_extras', $data) ? $data['campos_extras'] : ($mapaRisco->campos_extras ?? []);
@@ -109,83 +106,6 @@ final class MapaRiscoService
                 $this->audit->record('licita', 'mapa_riscos.revisado', "MapaRisco #{$mapaRisco->id}", $antes, $mapaRisco->toArray());
                 $this->outbox->publish('licita.MapaRiscoRevisado', ['id' => $mapaRisco->id, 'campos' => array_keys($diff)]);
             }
-
-            return $mapaRisco->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    /**
-     * Reabre um Mapa de Riscos rejeitado para edição (mesma RN-002 do DFD/ETP: rejeitado -> rascunho).
-     */
-    public function reabrir(MapaRisco $mapaRisco, User $user): MapaRisco
-    {
-        $this->validarTransicao($mapaRisco, StatusMapaRisco::Rascunho);
-
-        return DB::transaction(function () use ($mapaRisco, $user): MapaRisco {
-            $mapaRisco->update(['status' => StatusMapaRisco::Rascunho->value]);
-            $mapaRisco->refresh();
-
-            $this->registrarVersao($mapaRisco, 'reaberto', $user);
-            $this->audit->record('licita', 'mapa_riscos.reaberto', "MapaRisco #{$mapaRisco->id}", null, null);
-            $this->outbox->publish('licita.MapaRiscoReaberto', ['id' => $mapaRisco->id]);
-
-            return $mapaRisco->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    public function enviarParaRevisao(MapaRisco $mapaRisco, User $user, ?string $mensagem = null): MapaRisco
-    {
-        $this->validarTransicao($mapaRisco, StatusMapaRisco::EmRevisao);
-
-        return DB::transaction(function () use ($mapaRisco, $user, $mensagem): MapaRisco {
-            $mapaRisco->update(['status' => StatusMapaRisco::EmRevisao->value]);
-            $mapaRisco->refresh();
-
-            $this->registrarVersao($mapaRisco, 'enviado_revisao', $user, $mensagem !== null && $mensagem !== '' ? ['mensagem' => $mensagem] : []);
-            $this->audit->record('licita', 'mapa_riscos.enviado_revisao', "MapaRisco #{$mapaRisco->id}", null, ['mensagem' => $mensagem]);
-            $this->outbox->publish('licita.MapaRiscoEnviadoRevisao', ['id' => $mapaRisco->id]);
-
-            return $mapaRisco->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    public function aprovar(MapaRisco $mapaRisco, User $aprovador, ?string $parecer = null): MapaRisco
-    {
-        $this->validarTransicao($mapaRisco, StatusMapaRisco::Aprovado);
-        $this->validarSegregacaoFuncoes($mapaRisco, $aprovador, 'aprová-lo');
-
-        return DB::transaction(function () use ($mapaRisco, $aprovador, $parecer): MapaRisco {
-            $mapaRisco->update([
-                'status' => StatusMapaRisco::Aprovado->value,
-                'aprovado_por' => $aprovador->id,
-                'aprovado_em' => now(),
-            ]);
-            $mapaRisco->refresh();
-
-            $this->registrarVersao($mapaRisco, 'aprovado', $aprovador, $parecer !== null && $parecer !== '' ? ['parecer' => $parecer] : []);
-            $this->audit->record('licita', 'mapa_riscos.aprovado', "MapaRisco #{$mapaRisco->id}", null, ['parecer' => $parecer]);
-            $this->outbox->publish('licita.MapaRiscoAprovado', ['id' => $mapaRisco->id, 'processo_id' => $mapaRisco->processo_id]);
-
-            // RN-002: fluxo sequencial — ao aprovar o Mapa de Riscos, o
-            // processo avança para a Pesquisa de Preços.
-            $this->processos->avancarFase($mapaRisco->processo, FaseLicita::PesquisaPrecos);
-
-            return $mapaRisco->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    public function rejeitar(MapaRisco $mapaRisco, User $rejeitor, string $motivo): MapaRisco
-    {
-        $this->validarTransicao($mapaRisco, StatusMapaRisco::Rejeitado);
-        $this->validarSegregacaoFuncoes($mapaRisco, $rejeitor, 'rejeitá-lo');
-
-        return DB::transaction(function () use ($mapaRisco, $rejeitor, $motivo): MapaRisco {
-            $mapaRisco->update(['status' => StatusMapaRisco::Rejeitado->value]);
-            $mapaRisco->refresh();
-
-            $this->registrarVersao($mapaRisco, 'rejeitado', $rejeitor, ['motivo' => $motivo]);
-            $this->audit->record('licita', 'mapa_riscos.rejeitado', "MapaRisco #{$mapaRisco->id}", null, ['motivo' => $motivo]);
-            $this->outbox->publish('licita.MapaRiscoRejeitado', ['id' => $mapaRisco->id, 'motivo' => $motivo]);
 
             return $mapaRisco->load(['elaborador', 'aprovador', 'versoes.usuario']);
         });
@@ -225,23 +145,6 @@ final class MapaRiscoService
         }
 
         return $data;
-    }
-
-    private function validarTransicao(MapaRisco $mapaRisco, StatusMapaRisco $novo): void
-    {
-        if (!$mapaRisco->statusEnum()->podeTransicionarPara($novo)) {
-            throw new DomainException(sprintf('Transição inválida de "%s" para "%s".', $mapaRisco->statusEnum()->label(), $novo->label()));
-        }
-    }
-
-    /**
-     * RN-005: segregação de funções — quem elabora não pode aprovar/rejeitar o próprio Mapa de Riscos.
-     */
-    private function validarSegregacaoFuncoes(MapaRisco $mapaRisco, User $ator, string $acao): void
-    {
-        if ($mapaRisco->elaborado_por === (int) $ator->id) {
-            throw new DomainException("RN-005: o elaborador do Mapa de Riscos não pode {$acao} (segregação de funções).");
-        }
     }
 
     /**

@@ -16,6 +16,7 @@ const processoBase: Processo = {
   etp: null,
   mapa_risco: null,
   pesquisa_preco: null,
+  aprovacao_final: null,
   created_at: '2026-01-15T10:00:00.000000Z',
   updated_at: '2026-01-15T10:00:00.000000Z',
 };
@@ -27,7 +28,7 @@ const processos: Processo[] = [
     id: 2,
     numero: '002',
     objeto: 'Contratação de serviços de limpeza',
-    fase_atual: 'etp',
+    fase_atual: 'em_elaboracao',
     created_at: '2026-02-20T10:00:00.000000Z',
     dfd: {
       id: 1,
@@ -75,7 +76,7 @@ describe('aplicarFiltrosAvancados', () => {
   });
 
   it('filters by a select field on the process itself (exact match)', () => {
-    const filtros: FiltroAvancado[] = [{ campo: 'fase_atual', valor: 'etp' }];
+    const filtros: FiltroAvancado[] = [{ campo: 'fase_atual', valor: 'em_elaboracao' }];
     const resultado = aplicarFiltrosAvancados(processos, filtros);
     expect(resultado.map((p) => p.id)).toEqual([2]);
   });
@@ -100,13 +101,13 @@ describe('aplicarFiltrosAvancados', () => {
 
   it('combines multiple active filters with AND', () => {
     const filtros: FiltroAvancado[] = [
-      { campo: 'fase_atual', valor: 'etp' },
+      { campo: 'fase_atual', valor: 'em_elaboracao' },
       { campo: 'dfd_grau_prioridade', valor: 'alta' },
     ];
     expect(aplicarFiltrosAvancados(processos, filtros).map((p) => p.id)).toEqual([2]);
 
     const filtrosSemMatch: FiltroAvancado[] = [
-      { campo: 'fase_atual', valor: 'etp' },
+      { campo: 'fase_atual', valor: 'em_elaboracao' },
       { campo: 'dfd_grau_prioridade', valor: 'baixa' },
     ];
     expect(aplicarFiltrosAvancados(processos, filtrosSemMatch)).toEqual([]);

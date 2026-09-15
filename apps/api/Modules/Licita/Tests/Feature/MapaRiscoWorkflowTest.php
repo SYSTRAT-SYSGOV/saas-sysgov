@@ -10,7 +10,6 @@ use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Modules\Licita\Enums\FaseLicita;
 use Modules\Licita\Enums\GrauPrioridade;
 use Modules\Licita\Enums\StatusMapaRisco;
 use Modules\Licita\Models\Processo;
@@ -84,10 +83,10 @@ final class MapaRiscoWorkflowTest extends TestCase
     }
 
     /**
-     * DFD e ETP aprovados (pré-requisito de todo teste do Mapa de Riscos) —
-     * devolve o processo já pronto para iniciar o Mapa de Riscos.
+     * DFD aprovado + ETP criado (pré-requisito do Mapa de Riscos) — devolve
+     * o processo pronto para iniciar o Mapa de Riscos.
      */
-    private function processoComEtpAprovado(User $elaborador, User $aprovador): Processo
+    private function processoComEtp(User $elaborador, User $aprovador): Processo
     {
         $processo = $this->criarProcesso($elaborador);
 
@@ -96,103 +95,52 @@ final class MapaRiscoWorkflowTest extends TestCase
         $dfd = $dfdService->enviarParaRevisao($dfd, $elaborador);
         $dfdService->aprovar($dfd, $aprovador);
 
-        $etpService = app(EtpService::class);
-        $etp = $etpService->criar($processo->fresh(), ['conteudo' => 'ETP de teste.'], $elaborador);
-        $etp = $etpService->enviarParaRevisao($etp, $elaborador);
-        $etpService->aprovar($etp, $aprovador);
+        app(EtpService::class)->criar($processo->fresh(), ['conteudo' => 'ETP de teste.'], $elaborador);
 
         return $processo->fresh();
     }
 
-    public function test_nao_permite_criar_mapa_de_riscos_sem_etp_aprovado(): void
+    public function test_nao_permite_criar_mapa_de_riscos_sem_etp(): void
     {
         [, $elaborador] = $this->setUpTenantEUsuarios();
         $processo = $this->criarProcesso($elaborador);
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('ETP deste processo precisa estar aprovado');
+        $this->expectExceptionMessage('Cadastre o ETP');
         app(MapaRiscoService::class)->criar($processo, ['riscos' => $this->dadosRiscos()], $elaborador);
     }
 
     public function test_mapa_de_riscos_nasce_com_a_equipe_copiada_do_etp(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComEtpAprovado($elaborador, $aprovador);
+        $processo = $this->processoComEtp($elaborador, $aprovador);
 
         $mapaRisco = app(MapaRiscoService::class)->criar($processo, ['riscos' => $this->dadosRiscos()], $elaborador);
 
         self::assertSame($processo->etp->equipe_planejamento, $mapaRisco->equipe_planejamento);
     }
 
-    public function test_fluxo_completo_de_aprovacao_avanca_processo_para_pesquisa_precos(): void
+    public function test_mapa_de_riscos_continua_editavel_a_qualquer_momento(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComEtpAprovado($elaborador, $aprovador);
+        $processo = $this->processoComEtp($elaborador, $aprovador);
 
         $service = app(MapaRiscoService::class);
         $mapaRisco = $service->criar($processo, ['riscos' => $this->dadosRiscos()], $elaborador);
         self::assertSame(StatusMapaRisco::Rascunho->value, $mapaRisco->status);
 
-        $mapaRisco = $service->enviarParaRevisao($mapaRisco, $elaborador);
-        self::assertSame(StatusMapaRisco::EmRevisao->value, $mapaRisco->status);
+        $novosRiscos = $this->dadosRiscos();
+        $novosRiscos[0]['descricao'] = 'Descrição revisada depois de descoberta no TR.';
+        $mapaRisco = $service->atualizar($mapaRisco, ['riscos' => $novosRiscos], $elaborador);
 
-        $mapaRisco = $service->aprovar($mapaRisco, $aprovador, 'De acordo.');
-        self::assertSame(StatusMapaRisco::Aprovado->value, $mapaRisco->status);
-        self::assertSame($aprovador->id, $mapaRisco->aprovado_por);
-
-        self::assertSame(FaseLicita::PesquisaPrecos->value, $processo->fresh()->fase_atual);
-    }
-
-    public function test_elaborador_nao_pode_aprovar_o_proprio_mapa_de_riscos(): void
-    {
-        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComEtpAprovado($elaborador, $aprovador);
-
-        $service = app(MapaRiscoService::class);
-        $mapaRisco = $service->criar($processo, ['riscos' => $this->dadosRiscos()], $elaborador);
-        $mapaRisco = $service->enviarParaRevisao($mapaRisco, $elaborador);
-
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('RN-005');
-        $service->aprovar($mapaRisco, $elaborador);
-    }
-
-    public function test_rejeitar_exige_motivo_e_devolve_para_rascunho(): void
-    {
-        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComEtpAprovado($elaborador, $aprovador);
-
-        $service = app(MapaRiscoService::class);
-        $mapaRisco = $service->criar($processo, ['riscos' => $this->dadosRiscos()], $elaborador);
-        $mapaRisco = $service->enviarParaRevisao($mapaRisco, $elaborador);
-        $mapaRisco = $service->rejeitar($mapaRisco, $aprovador, 'Faltou detalhar a ação de contingência.');
-
-        self::assertSame(StatusMapaRisco::Rejeitado, $mapaRisco->statusEnum());
-        self::assertSame('rejeitado', $mapaRisco->versoes()->reorder('versao', 'desc')->first()->acao);
-
-        $mapaRisco = $service->reabrir($mapaRisco, $elaborador);
-        self::assertSame(StatusMapaRisco::Rascunho, $mapaRisco->statusEnum());
-    }
-
-    public function test_mapa_de_riscos_aprovado_e_imutavel(): void
-    {
-        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComEtpAprovado($elaborador, $aprovador);
-
-        $service = app(MapaRiscoService::class);
-        $mapaRisco = $service->criar($processo, ['riscos' => $this->dadosRiscos()], $elaborador);
-        $mapaRisco = $service->enviarParaRevisao($mapaRisco, $elaborador);
-        $mapaRisco = $service->aprovar($mapaRisco, $aprovador);
-
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('imutável');
-        $service->atualizar($mapaRisco, ['riscos' => []], $elaborador);
+        self::assertSame('Descrição revisada depois de descoberta no TR.', $mapaRisco->riscos[0]['descricao']);
+        self::assertSame(StatusMapaRisco::Rascunho->value, $mapaRisco->status);
     }
 
     public function test_nao_permite_criar_segundo_mapa_de_riscos_no_mesmo_processo(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComEtpAprovado($elaborador, $aprovador);
+        $processo = $this->processoComEtp($elaborador, $aprovador);
 
         $service = app(MapaRiscoService::class);
         $service->criar($processo, ['riscos' => $this->dadosRiscos()], $elaborador);

@@ -73,14 +73,29 @@ final class EtpWorkflowTest extends TestCase
         return $processo->fresh();
     }
 
-    public function test_nao_permite_criar_etp_sem_dfd_aprovado(): void
+    public function test_nao_permite_criar_etp_sem_dfd(): void
     {
         [, $elaborador] = $this->setUpTenantEUsuarios();
-        $processo = $this->criarProcesso($elaborador);
+        $processo = app(ProcessoService::class)->criar(['objeto' => null], $elaborador);
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('DFD deste processo precisa estar aprovado');
+        $this->expectExceptionMessage('Cadastre o DFD');
         app(EtpService::class)->criar($processo, ['conteudo' => 'Estudo técnico preliminar.'], $elaborador);
+    }
+
+    public function test_criar_etp_nao_exige_dfd_aprovado_apenas_que_exista(): void
+    {
+        // Ao aprovar o DFD o processo já avança pra "em_elaboracao", então
+        // este cenário (DFD em rascunho/revisão) só é alcançável chamando o
+        // service direto, sem passar pelo fluxo normal — mas a regra em si
+        // (RN-002 relaxada) deve permitir.
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+        $dfd = app(DfdService::class)->criar($processo, $this->dadosDfd(), $elaborador);
+
+        $etp = app(EtpService::class)->criar($processo->fresh(), ['conteudo' => 'Estudo técnico preliminar.'], $elaborador);
+
+        self::assertSame($dfd->equipe_planejamento, $etp->equipe_planejamento);
     }
 
     public function test_etp_nasce_com_a_equipe_copiada_do_dfd(): void
@@ -91,6 +106,7 @@ final class EtpWorkflowTest extends TestCase
         $etp = app(EtpService::class)->criar($processo, ['conteudo' => 'Estudo técnico preliminar.'], $elaborador);
 
         self::assertSame($processo->dfd->equipe_planejamento, $etp->equipe_planejamento);
+        self::assertSame(FaseLicita::EmElaboracao->value, $processo->fresh()->fase_atual);
     }
 
     public function test_equipe_do_etp_pode_ser_editada_independente_do_dfd(): void
@@ -112,73 +128,26 @@ final class EtpWorkflowTest extends TestCase
         self::assertNotSame($novaEquipe, $processo->dfd->fresh()->equipe_planejamento);
     }
 
-    public function test_fluxo_completo_de_aprovacao_avanca_processo_para_mapa_riscos(): void
+    public function test_etp_continua_editavel_a_qualquer_momento_enquanto_nao_aprovado_em_lote(): void
     {
+        // Não existe mais "enviar para revisão"/aprovação individual — o
+        // ETP fica em rascunho, sempre editável, até a aprovação final do
+        // Ordenador (ver AprovacaoFinalWorkflowTest). Simula a equipe de
+        // planejamento voltando a mexer no ETP várias vezes.
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
         $processo = $this->processoComDfdAprovado($elaborador, $aprovador);
 
         $etpService = app(EtpService::class);
-        $etp = $etpService->criar($processo, ['conteudo' => 'Estudo técnico preliminar.'], $elaborador);
+        $etp = $etpService->criar($processo, ['conteudo' => 'Versão inicial.'], $elaborador);
         self::assertSame(StatusEtp::Rascunho->value, $etp->status);
 
-        $etp = $etpService->enviarParaRevisao($etp, $elaborador);
-        self::assertSame(StatusEtp::EmRevisao->value, $etp->status);
+        $etp = $etpService->atualizar($etp, ['conteudo' => 'Segunda versão, corrigida.'], $elaborador);
+        self::assertSame('Segunda versão, corrigida.', $etp->conteudo);
+        self::assertSame(StatusEtp::Rascunho->value, $etp->status);
 
-        $etp = $etpService->aprovar($etp, $aprovador, 'De acordo.');
-        self::assertSame(StatusEtp::Aprovado->value, $etp->status);
-        self::assertSame($aprovador->id, $etp->aprovado_por);
-
-        self::assertSame(FaseLicita::MapaRiscos->value, $processo->fresh()->fase_atual);
-    }
-
-    public function test_elaborador_nao_pode_aprovar_o_proprio_etp(): void
-    {
-        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComDfdAprovado($elaborador, $aprovador);
-
-        $etpService = app(EtpService::class);
-        $etp = $etpService->criar($processo, ['conteudo' => 'Estudo técnico preliminar.'], $elaborador);
-        $etp = $etpService->enviarParaRevisao($etp, $elaborador);
-
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('RN-005');
-        $etpService->aprovar($etp, $elaborador);
-    }
-
-    public function test_rejeitar_exige_motivo_e_devolve_para_rascunho(): void
-    {
-        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComDfdAprovado($elaborador, $aprovador);
-
-        $etpService = app(EtpService::class);
-        $etp = $etpService->criar($processo, ['conteudo' => 'Estudo técnico preliminar.'], $elaborador);
-        $etp = $etpService->enviarParaRevisao($etp, $elaborador);
-        $etp = $etpService->rejeitar($etp, $aprovador, 'Faltou detalhar o levantamento de mercado.');
-
-        self::assertSame(StatusEtp::Rejeitado, $etp->statusEnum());
-        self::assertSame('rejeitado', $etp->versoes()->reorder('versao', 'desc')->first()->acao);
-        self::assertSame(
-            ['motivo' => 'Faltou detalhar o levantamento de mercado.'],
-            $etp->versoes()->reorder('versao', 'desc')->first()->campos_alterados,
-        );
-
-        $etp = $etpService->reabrir($etp, $elaborador);
-        self::assertSame(StatusEtp::Rascunho, $etp->statusEnum());
-    }
-
-    public function test_etp_aprovado_e_imutavel(): void
-    {
-        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComDfdAprovado($elaborador, $aprovador);
-
-        $etpService = app(EtpService::class);
-        $etp = $etpService->criar($processo, ['conteudo' => 'Estudo técnico preliminar.'], $elaborador);
-        $etp = $etpService->enviarParaRevisao($etp, $elaborador);
-        $etp = $etpService->aprovar($etp, $aprovador);
-
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('imutável');
-        $etpService->atualizar($etp, ['conteudo' => 'Tentativa de alteração pós-aprovação'], $elaborador);
+        $etp = $etpService->atualizar($etp, ['conteudo' => 'Terceira versão, revisada de novo.'], $elaborador);
+        self::assertSame('Terceira versão, revisada de novo.', $etp->conteudo);
+        self::assertCount(3, $etp->versoes);
     }
 
     public function test_nao_permite_criar_segundo_etp_no_mesmo_processo(): void

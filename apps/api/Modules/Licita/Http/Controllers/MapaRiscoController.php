@@ -60,68 +60,6 @@ final class MapaRiscoController extends Controller
         return response()->json($mapaRisco);
     }
 
-    public function enviarRevisao(Request $request, int $id): JsonResponse
-    {
-        $mapaRisco = MapaRisco::findOrFail($id);
-        $this->authorize('update', $mapaRisco);
-
-        $mensagem = $request->validate(['mensagem' => ['nullable', 'string', 'max:1000']])['mensagem'] ?? null;
-
-        try {
-            $mapaRisco = $this->mapasRiscos->enviarParaRevisao($mapaRisco, $request->user(), $mensagem);
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($mapaRisco);
-    }
-
-    public function reabrir(Request $request, int $id): JsonResponse
-    {
-        $mapaRisco = MapaRisco::findOrFail($id);
-        $this->authorize('reabrir', $mapaRisco);
-
-        try {
-            $mapaRisco = $this->mapasRiscos->reabrir($mapaRisco, $request->user());
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($mapaRisco);
-    }
-
-    public function aprovar(Request $request, int $id): JsonResponse
-    {
-        $mapaRisco = MapaRisco::findOrFail($id);
-        $this->authorize('aprovar', $mapaRisco);
-
-        $parecer = $request->validate(['parecer' => ['nullable', 'string', 'max:1000']])['parecer'] ?? null;
-
-        try {
-            $mapaRisco = $this->mapasRiscos->aprovar($mapaRisco, $request->user(), $parecer);
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($mapaRisco);
-    }
-
-    public function rejeitar(Request $request, int $id): JsonResponse
-    {
-        $mapaRisco = MapaRisco::findOrFail($id);
-        $this->authorize('rejeitar', $mapaRisco);
-
-        $motivo = $request->validate(['motivo' => ['required', 'string', 'max:1000']])['motivo'];
-
-        try {
-            $mapaRisco = $this->mapasRiscos->rejeitar($mapaRisco, $request->user(), $motivo);
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($mapaRisco);
-    }
-
     /**
      * @return array<string, mixed>
      */

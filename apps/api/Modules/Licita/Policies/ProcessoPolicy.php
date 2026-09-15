@@ -30,6 +30,30 @@ final class ProcessoPolicy
         return $this->hasPermission($user, 'licita.update') && $processo->tenant_id === app(TenantContext::class)->id();
     }
 
+    /**
+     * Solicitar a aprovação final é uma ação de edição do processo (mesma
+     * permissão de editar os documentos) — quem monta o pacote de artefatos
+     * é a equipe de planejamento.
+     */
+    public function solicitarAprovacaoFinal(User $user, Processo $processo): bool
+    {
+        return $this->update($user, $processo);
+    }
+
+    /**
+     * Aprovar/rejeitar o pacote final é uma permissão distinta ("licita.aprovar"
+     * é usada só pelo DFD) — reservada ao Ordenador de Despesas.
+     */
+    public function aprovarFinal(User $user, Processo $processo): bool
+    {
+        return $this->hasPermission($user, 'licita.aprovar_final') && $processo->tenant_id === app(TenantContext::class)->id();
+    }
+
+    public function rejeitarFinal(User $user, Processo $processo): bool
+    {
+        return $this->aprovarFinal($user, $processo);
+    }
+
     private function hasPermission(User $user, string $permission): bool
     {
         return $user->is_platform_admin || $user->hasPermission($permission);

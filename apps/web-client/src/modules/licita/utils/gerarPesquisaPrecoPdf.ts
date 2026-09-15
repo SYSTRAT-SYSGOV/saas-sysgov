@@ -23,9 +23,7 @@ function formatarValorCampoExtra(campo: CampoConfig, valor: unknown): string {
 
 const STATUS_LABEL: Record<PesquisaPreco['status'], string> = {
   rascunho: 'Rascunho',
-  em_revisao: 'Em Revisão',
   aprovado: 'Aprovado',
-  rejeitado: 'Rejeitado',
 };
 
 function formatarData(iso: string | null | undefined): string {

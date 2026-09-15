@@ -58,68 +58,6 @@ final class EtpController extends Controller
         return response()->json($etp);
     }
 
-    public function enviarRevisao(Request $request, int $id): JsonResponse
-    {
-        $etp = Etp::findOrFail($id);
-        $this->authorize('update', $etp);
-
-        $mensagem = $request->validate(['mensagem' => ['nullable', 'string', 'max:1000']])['mensagem'] ?? null;
-
-        try {
-            $etp = $this->etps->enviarParaRevisao($etp, $request->user(), $mensagem);
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($etp);
-    }
-
-    public function reabrir(Request $request, int $id): JsonResponse
-    {
-        $etp = Etp::findOrFail($id);
-        $this->authorize('reabrir', $etp);
-
-        try {
-            $etp = $this->etps->reabrir($etp, $request->user());
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($etp);
-    }
-
-    public function aprovar(Request $request, int $id): JsonResponse
-    {
-        $etp = Etp::findOrFail($id);
-        $this->authorize('aprovar', $etp);
-
-        $parecer = $request->validate(['parecer' => ['nullable', 'string', 'max:1000']])['parecer'] ?? null;
-
-        try {
-            $etp = $this->etps->aprovar($etp, $request->user(), $parecer);
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($etp);
-    }
-
-    public function rejeitar(Request $request, int $id): JsonResponse
-    {
-        $etp = Etp::findOrFail($id);
-        $this->authorize('rejeitar', $etp);
-
-        $motivo = $request->validate(['motivo' => ['required', 'string', 'max:1000']])['motivo'];
-
-        try {
-            $etp = $this->etps->rejeitar($etp, $request->user(), $motivo);
-        } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
-
-        return response()->json($etp);
-    }
-
     /**
      * @return array<string, mixed>
      */

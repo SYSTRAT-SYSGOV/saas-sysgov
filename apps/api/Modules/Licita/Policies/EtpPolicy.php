@@ -25,21 +25,6 @@ final class EtpPolicy
         return $this->hasPermission($user, 'licita.update') && $etp->tenant_id === app(TenantContext::class)->id();
     }
 
-    public function reabrir(User $user, Etp $etp): bool
-    {
-        return $this->update($user, $etp);
-    }
-
-    public function aprovar(User $user, Etp $etp): bool
-    {
-        return $this->hasPermission($user, 'licita.aprovar') && $etp->tenant_id === app(TenantContext::class)->id();
-    }
-
-    public function rejeitar(User $user, Etp $etp): bool
-    {
-        return $this->aprovar($user, $etp);
-    }
-
     private function hasPermission(User $user, string $permission): bool
     {
         return $user->is_platform_admin || $user->hasPermission($permission);

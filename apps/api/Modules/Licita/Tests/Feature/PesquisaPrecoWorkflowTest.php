@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Licita\Enums\FaseLicita;
 use Modules\Licita\Enums\GrauPrioridade;
 use Modules\Licita\Enums\StatusPesquisaPreco;
 use Modules\Licita\Models\Processo;
@@ -99,10 +98,10 @@ final class PesquisaPrecoWorkflowTest extends TestCase
     }
 
     /**
-     * DFD, ETP e Mapa de Riscos aprovados (pré-requisito de toda a Pesquisa
-     * de Preços) — devolve o processo já pronto para iniciá-la.
+     * DFD aprovado + ETP + Mapa de Riscos criados (pré-requisito da
+     * Pesquisa de Preços) — devolve o processo pronto para iniciá-la.
      */
-    private function processoComMapaRiscoAprovado(User $elaborador, User $aprovador): Processo
+    private function processoComMapaRisco(User $elaborador, User $aprovador): Processo
     {
         $processo = $this->criarProcesso($elaborador);
 
@@ -111,33 +110,26 @@ final class PesquisaPrecoWorkflowTest extends TestCase
         $dfd = $dfdService->enviarParaRevisao($dfd, $elaborador);
         $dfdService->aprovar($dfd, $aprovador);
 
-        $etpService = app(EtpService::class);
-        $etp = $etpService->criar($processo->fresh(), ['conteudo' => 'ETP de teste.'], $elaborador);
-        $etp = $etpService->enviarParaRevisao($etp, $elaborador);
-        $etpService->aprovar($etp, $aprovador);
-
-        $mapaRiscoService = app(MapaRiscoService::class);
-        $mapaRisco = $mapaRiscoService->criar($processo->fresh(), ['riscos' => $this->dadosRiscos()], $elaborador);
-        $mapaRisco = $mapaRiscoService->enviarParaRevisao($mapaRisco, $elaborador);
-        $mapaRiscoService->aprovar($mapaRisco, $aprovador);
+        app(EtpService::class)->criar($processo->fresh(), ['conteudo' => 'ETP de teste.'], $elaborador);
+        app(MapaRiscoService::class)->criar($processo->fresh(), ['riscos' => $this->dadosRiscos()], $elaborador);
 
         return $processo->fresh();
     }
 
-    public function test_nao_permite_criar_pesquisa_de_precos_sem_mapa_de_riscos_aprovado(): void
+    public function test_nao_permite_criar_pesquisa_de_precos_sem_mapa_de_riscos(): void
     {
         [, $elaborador] = $this->setUpTenantEUsuarios();
         $processo = $this->criarProcesso($elaborador);
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('Mapa de Riscos deste processo precisa estar aprovado');
+        $this->expectExceptionMessage('Cadastre o Mapa de Riscos');
         app(PesquisaPrecoService::class)->criar($processo, ['metodo_referencia' => 'mediana'], $elaborador);
     }
 
     public function test_pesquisa_de_precos_nasce_com_itens_copiados_do_dfd(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComMapaRiscoAprovado($elaborador, $aprovador);
+        $processo = $this->processoComMapaRisco($elaborador, $aprovador);
 
         $pesquisaPreco = app(PesquisaPrecoService::class)->criar($processo, ['metodo_referencia' => 'mediana'], $elaborador);
 
@@ -147,80 +139,54 @@ final class PesquisaPrecoWorkflowTest extends TestCase
         self::assertSame($processo->mapaRisco->equipe_planejamento, $pesquisaPreco->equipe_planejamento);
     }
 
-    public function test_nao_permite_enviar_para_revisao_sem_minimo_de_cotacoes_por_item(): void
+    public function test_validar_completude_bloqueia_sem_minimo_de_cotacoes_por_item(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComMapaRiscoAprovado($elaborador, $aprovador);
+        $processo = $this->processoComMapaRisco($elaborador, $aprovador);
 
         $service = app(PesquisaPrecoService::class);
         $pesquisaPreco = $service->criar($processo, ['metodo_referencia' => 'mediana'], $elaborador);
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('RN-006');
-        $service->enviarParaRevisao($pesquisaPreco, $elaborador);
+        $service->validarCompletude($pesquisaPreco);
     }
 
-    public function test_fluxo_completo_de_aprovacao_avanca_processo_para_tr(): void
+    public function test_validar_completude_passa_com_minimo_de_cotacoes_por_item(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComMapaRiscoAprovado($elaborador, $aprovador);
-
-        $service = app(PesquisaPrecoService::class);
-        $pesquisaPreco = $service->criar($processo, ['metodo_referencia' => 'mediana'], $elaborador);
-
-        $itens = $pesquisaPreco->itens;
-        $itens[0]['cotacoes'] = $this->cotacoes(5200);
-        $pesquisaPreco = $service->atualizar($pesquisaPreco, ['itens' => $itens], $elaborador);
-
-        $pesquisaPreco = $service->enviarParaRevisao($pesquisaPreco, $elaborador);
-        self::assertSame(StatusPesquisaPreco::EmRevisao->value, $pesquisaPreco->status);
-
-        $pesquisaPreco = $service->aprovar($pesquisaPreco, $aprovador, 'De acordo.');
-        self::assertSame(StatusPesquisaPreco::Aprovado->value, $pesquisaPreco->status);
-        self::assertSame($aprovador->id, $pesquisaPreco->aprovado_por);
-
-        self::assertSame(FaseLicita::Tr->value, $processo->fresh()->fase_atual);
-    }
-
-    public function test_elaborador_nao_pode_aprovar_a_propria_pesquisa_de_precos(): void
-    {
-        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComMapaRiscoAprovado($elaborador, $aprovador);
+        $processo = $this->processoComMapaRisco($elaborador, $aprovador);
 
         $service = app(PesquisaPrecoService::class);
         $pesquisaPreco = $service->criar($processo, ['metodo_referencia' => 'mediana'], $elaborador);
         $itens = $pesquisaPreco->itens;
         $itens[0]['cotacoes'] = $this->cotacoes(5200);
         $pesquisaPreco = $service->atualizar($pesquisaPreco, ['itens' => $itens], $elaborador);
-        $pesquisaPreco = $service->enviarParaRevisao($pesquisaPreco, $elaborador);
 
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('RN-005');
-        $service->aprovar($pesquisaPreco, $elaborador);
+        // Não deve lançar DomainException — item tem 3 cotações válidas.
+        $service->validarCompletude($pesquisaPreco);
+        $this->expectNotToPerformAssertions();
     }
 
-    public function test_pesquisa_de_precos_aprovada_e_imutavel(): void
+    public function test_pesquisa_de_precos_continua_editavel_a_qualquer_momento(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComMapaRiscoAprovado($elaborador, $aprovador);
+        $processo = $this->processoComMapaRisco($elaborador, $aprovador);
 
         $service = app(PesquisaPrecoService::class);
         $pesquisaPreco = $service->criar($processo, ['metodo_referencia' => 'mediana'], $elaborador);
         $itens = $pesquisaPreco->itens;
         $itens[0]['cotacoes'] = $this->cotacoes(5200);
         $pesquisaPreco = $service->atualizar($pesquisaPreco, ['itens' => $itens], $elaborador);
-        $pesquisaPreco = $service->enviarParaRevisao($pesquisaPreco, $elaborador);
-        $pesquisaPreco = $service->aprovar($pesquisaPreco, $aprovador);
 
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('imutável');
-        $service->atualizar($pesquisaPreco, ['itens' => []], $elaborador);
+        self::assertSame(StatusPesquisaPreco::Rascunho->value, $pesquisaPreco->status);
+        self::assertCount(3, $pesquisaPreco->itens[0]['cotacoes']);
     }
 
     public function test_nao_permite_criar_segunda_pesquisa_de_precos_no_mesmo_processo(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
-        $processo = $this->processoComMapaRiscoAprovado($elaborador, $aprovador);
+        $processo = $this->processoComMapaRisco($elaborador, $aprovador);
 
         $service = app(PesquisaPrecoService::class);
         $service->criar($processo, ['metodo_referencia' => 'mediana'], $elaborador);
