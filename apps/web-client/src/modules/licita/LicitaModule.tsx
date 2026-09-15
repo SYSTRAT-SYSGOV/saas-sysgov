@@ -13,6 +13,7 @@ import { DfdDetailPage } from './pages/DfdDetailPage';
 import { EtpDetailPage } from './pages/EtpDetailPage';
 import { MapaRiscoDetailPage } from './pages/MapaRiscoDetailPage';
 import { PesquisaPrecoDetailPage } from './pages/PesquisaPrecoDetailPage';
+import { TrDetailPage } from './pages/TrDetailPage';
 import { AprovacaoOrdenadorPage } from './pages/AprovacaoOrdenadorPage';
 import { FasesLicitaStepper, type FaseLicitaImplementada } from './components/FasesLicitaStepper';
 import { LegislacaoPage } from './pages/LegislacaoPage';
@@ -22,6 +23,7 @@ import { abrirJanelaPdf, gerarDfdPdf } from './utils/gerarDfdPdf';
 import { gerarEtpPdf } from './utils/gerarEtpPdf';
 import { gerarMapaRiscoPdf } from './utils/gerarMapaRiscoPdf';
 import { gerarPesquisaPrecoPdf } from './utils/gerarPesquisaPrecoPdf';
+import { gerarTrPdf } from './utils/gerarTrPdf';
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
@@ -49,17 +51,6 @@ const DFD_STATUS_VARIANT: Record<StatusDfd, 'neutral' | 'warning' | 'success' | 
   rejeitado: 'danger',
 };
 
-/** ETP/Mapa de Riscos/Pesquisa de Preços não têm mais aprovação individual — só rascunho (editável) e aprovado (travado pela aprovação final do Ordenador). */
-const DOC_STATUS_LABEL: Record<'rascunho' | 'aprovado', string> = {
-  rascunho: 'Rascunho',
-  aprovado: 'Aprovado',
-};
-
-const DOC_STATUS_VARIANT: Record<'rascunho' | 'aprovado', 'neutral' | 'success'> = {
-  rascunho: 'neutral',
-  aprovado: 'success',
-};
-
 type Tab = 'processos' | 'legislacao' | 'campos';
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -85,7 +76,7 @@ const ProcessosTab: React.FC<{
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   const handleGerarPdf = useCallback(
-    async (processoId: number, tipo: 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos') => {
+    async (processoId: number, tipo: 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'tr') => {
       // Precisa abrir a janela AQUI, síncrono, ainda dentro do clique — se
       // abrirmos só depois do await abaixo, o navegador já não reconhece
       // como resposta direta a um gesto do usuário e bloqueia o popup
@@ -115,8 +106,10 @@ const ProcessosTab: React.FC<{
           gerarEtpPdf(janela, processoCompleto, tenant, config?.campos ?? []);
         } else if (tipo === 'mapa_riscos') {
           gerarMapaRiscoPdf(janela, processoCompleto, tenant, config?.campos ?? []);
-        } else {
+        } else if (tipo === 'pesquisa_precos') {
           gerarPesquisaPrecoPdf(janela, processoCompleto, tenant, config?.campos ?? []);
+        } else {
+          gerarTrPdf(janela, processoCompleto, tenant, config?.campos ?? []);
         }
       } catch (err: any) {
         janela.close();
@@ -166,10 +159,12 @@ const ProcessosTab: React.FC<{
           const etp = row.original.etp;
           const mapaRisco = row.original.mapa_risco;
           const pesquisaPreco = row.original.pesquisa_preco;
+          const tr = row.original.tr;
           const gerandoDfd = gerandoPdfId === `${row.original.id}:dfd`;
           const gerandoEtp = gerandoPdfId === `${row.original.id}:etp`;
           const gerandoMapaRisco = gerandoPdfId === `${row.original.id}:mapa_riscos`;
           const gerandoPesquisaPreco = gerandoPdfId === `${row.original.id}:pesquisa_precos`;
+          const gerandoTr = gerandoPdfId === `${row.original.id}:tr`;
 
           const items: ActionsMenuItem[] = [
             {
@@ -213,6 +208,15 @@ const ProcessosTab: React.FC<{
               icon: <FileDown className="h-3.5 w-3.5" />,
               loading: gerandoPesquisaPreco,
               onSelect: () => handleGerarPdf(row.original.id, 'pesquisa_precos'),
+            });
+          }
+          if (tr) {
+            items.push({
+              key: 'pdf-tr',
+              label: 'Baixar PDF do Termo de Referência',
+              icon: <FileDown className="h-3.5 w-3.5" />,
+              loading: gerandoTr,
+              onSelect: () => handleGerarPdf(row.original.id, 'tr'),
             });
           }
 
@@ -269,45 +273,6 @@ const ProcessosTab: React.FC<{
           const dfd = row.original.dfd;
           if (!dfd) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
           return <StatusChip label={DFD_STATUS_LABEL[dfd.status]} variant={DFD_STATUS_VARIANT[dfd.status]} />;
-        },
-      },
-      {
-        id: 'etp_status',
-        header: 'Status do ETP',
-        size: 150,
-        meta: {
-          exportValue: (p) => (p.etp ? DOC_STATUS_LABEL[p.etp.status] : 'Não iniciado'),
-        },
-        cell: ({ row }) => {
-          const etp = row.original.etp;
-          if (!etp) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
-          return <StatusChip label={DOC_STATUS_LABEL[etp.status]} variant={DOC_STATUS_VARIANT[etp.status]} />;
-        },
-      },
-      {
-        id: 'mapa_riscos_status',
-        header: 'Status do Mapa de Riscos',
-        size: 170,
-        meta: {
-          exportValue: (p) => (p.mapa_risco ? DOC_STATUS_LABEL[p.mapa_risco.status] : 'Não iniciado'),
-        },
-        cell: ({ row }) => {
-          const mapaRisco = row.original.mapa_risco;
-          if (!mapaRisco) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
-          return <StatusChip label={DOC_STATUS_LABEL[mapaRisco.status]} variant={DOC_STATUS_VARIANT[mapaRisco.status]} />;
-        },
-      },
-      {
-        id: 'pesquisa_precos_status',
-        header: 'Status da Pesquisa de Preços',
-        size: 190,
-        meta: {
-          exportValue: (p) => (p.pesquisa_preco ? DOC_STATUS_LABEL[p.pesquisa_preco.status] : 'Não iniciado'),
-        },
-        cell: ({ row }) => {
-          const pesquisaPreco = row.original.pesquisa_preco;
-          if (!pesquisaPreco) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
-          return <StatusChip label={DOC_STATUS_LABEL[pesquisaPreco.status]} variant={DOC_STATUS_VARIANT[pesquisaPreco.status]} />;
         },
       },
       {
@@ -482,6 +447,7 @@ const ProcessoDocumentoPage: React.FC<ProcessoDocumentoPageProps> = ({ processoI
     <div className="space-y-4">
       <FasesLicitaStepper processo={processo} faseAtiva={documento} onSelecionar={setDocumento} />
       {documento === 'aprovacao_ordenador' && <AprovacaoOrdenadorPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
+      {documento === 'tr' && <TrDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'pesquisa_precos' && <PesquisaPrecoDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'mapa_riscos' && <MapaRiscoDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'etp' && <EtpDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}

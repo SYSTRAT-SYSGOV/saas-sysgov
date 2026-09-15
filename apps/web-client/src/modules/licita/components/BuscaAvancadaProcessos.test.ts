@@ -16,6 +16,7 @@ const processoBase: Processo = {
   etp: null,
   mapa_risco: null,
   pesquisa_preco: null,
+  tr: null,
   aprovacao_final: null,
   created_at: '2026-01-15T10:00:00.000000Z',
   updated_at: '2026-01-15T10:00:00.000000Z',
