@@ -129,6 +129,18 @@ export const MapaRiscoForm: React.FC<MapaRiscoFormProps> = ({
         const semVazios = prev.filter((r) => r.descricao.trim() !== '');
         return [...semVazios, ...resultado.riscos];
       });
+      // Só preenche campos extras ainda vazios — nunca sobrescreve o que a
+      // equipe de planejamento já digitou manualmente.
+      setCamposExtrasValores((prev) => {
+        const atualizados = { ...prev };
+        for (const [chave, valor] of Object.entries(resultado.campos_extras)) {
+          const atual = atualizados[chave];
+          if (atual === undefined || atual === null || String(atual).trim() === '') {
+            atualizados[chave] = valor;
+          }
+        }
+        return atualizados;
+      });
       setLegislacaoUtilizadaIa(resultado.legislacao_utilizada);
     } catch (err) {
       setErroIa(getApiErrorMessage(err, 'Não foi possível gerar riscos com IA.'));
@@ -232,10 +244,10 @@ export const MapaRiscoForm: React.FC<MapaRiscoFormProps> = ({
           <div className="mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             {legislacaoUtilizadaIa.length > 0 ? (
               <>
-                Riscos sugeridos pela IA com base em: {legislacaoUtilizadaIa.map((l) => l.titulo).join(', ')}. Revise antes de salvar.
+                Riscos e campos extras sugeridos pela IA com base em: {legislacaoUtilizadaIa.map((l) => l.titulo).join(', ')}. Revise antes de salvar.
               </>
             ) : (
-              'Riscos sugeridos pela IA (sem legislação específica encontrada). Revise antes de salvar.'
+              'Riscos e campos extras sugeridos pela IA (sem legislação específica encontrada). Revise antes de salvar.'
             )}
           </div>
         )}

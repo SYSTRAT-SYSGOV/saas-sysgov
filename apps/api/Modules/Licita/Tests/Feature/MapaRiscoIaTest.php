@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Licita\Enums\GrauPrioridade;
 use Modules\Licita\Models\LegalDocumento;
 use Modules\Licita\Models\Processo;
+use Modules\Licita\Services\CampoConfiguracaoService;
 use Modules\Licita\Services\DfdService;
 use Modules\Licita\Services\EtpService;
 use Modules\Licita\Services\MapaRiscoIaService;
@@ -93,28 +94,35 @@ final class MapaRiscoIaTest extends TestCase
                 })
                 ->andReturn([
                     'content' => json_encode([
-                        [
-                            'descricao' => 'Atraso na entrega do serviço pelo fornecedor.',
-                            'fase' => 'gestao_contratual',
-                            'probabilidade' => 3,
-                            'impacto' => 4,
-                            'causa' => 'Fornecedor sem estrutura suficiente.',
-                            'dano' => 'Descontinuidade da limpeza predial.',
-                            'alocacao' => 'contratada',
-                            'acao_preventiva' => 'Exigir comprovação de capacidade técnica na habilitação.',
-                            'acao_contingencia' => 'Acionar fornecedor reserva.',
+                        'riscos' => [
+                            [
+                                'descricao' => 'Atraso na entrega do serviço pelo fornecedor.',
+                                'fase' => 'gestao_contratual',
+                                'probabilidade' => 3,
+                                'impacto' => 4,
+                                'causa' => 'Fornecedor sem estrutura suficiente.',
+                                'dano' => 'Descontinuidade da limpeza predial.',
+                                'alocacao' => 'contratada',
+                                'acao_preventiva' => 'Exigir comprovação de capacidade técnica na habilitação.',
+                                'responsavel_prevencao' => 'Setor de Compras',
+                                'acao_contingencia' => 'Acionar fornecedor reserva.',
+                                'responsavel_contingencia' => 'Fiscal do Contrato',
+                            ],
+                            [
+                                'descricao' => 'Risco com valores inválidos, deve ser normalizado.',
+                                'fase' => 'fase_inexistente',
+                                'probabilidade' => 99,
+                                'impacto' => 0,
+                                'causa' => null,
+                                'dano' => null,
+                                'alocacao' => 'alocacao_invalida',
+                                'acao_preventiva' => null,
+                                'responsavel_prevencao' => null,
+                                'acao_contingencia' => null,
+                                'responsavel_contingencia' => null,
+                            ],
                         ],
-                        [
-                            'descricao' => 'Risco com valores inválidos, deve ser normalizado.',
-                            'fase' => 'fase_inexistente',
-                            'probabilidade' => 99,
-                            'impacto' => 0,
-                            'causa' => null,
-                            'dano' => null,
-                            'alocacao' => 'alocacao_invalida',
-                            'acao_preventiva' => null,
-                            'acao_contingencia' => null,
-                        ],
+                        'campos_extras' => [],
                     ]),
                     'model' => 'deepseek/deepseek-v4-pro-0813',
                     'usage' => [],
@@ -126,15 +134,65 @@ final class MapaRiscoIaTest extends TestCase
         self::assertCount(2, $resultado['riscos']);
         self::assertSame('gestao_contratual', $resultado['riscos'][0]['fase']);
         self::assertSame('contratada', $resultado['riscos'][0]['alocacao']);
+        self::assertSame('Setor de Compras', $resultado['riscos'][0]['responsavel_prevencao']);
+        self::assertSame('Fiscal do Contrato', $resultado['riscos'][0]['responsavel_contingencia']);
 
         // Segundo risco: valores inválidos normalizados para os defaults seguros.
         self::assertSame('planejamento', $resultado['riscos'][1]['fase']);
         self::assertSame('compartilhado', $resultado['riscos'][1]['alocacao']);
         self::assertSame(5, $resultado['riscos'][1]['probabilidade']);
         self::assertSame(1, $resultado['riscos'][1]['impacto']);
+        self::assertNull($resultado['riscos'][1]['responsavel_prevencao']);
+        self::assertNull($resultado['riscos'][1]['responsavel_contingencia']);
 
         self::assertNotEmpty($resultado['legislacao_utilizada']);
         self::assertSame('Lei Geral de Licitações e Contratos Administrativos', $resultado['legislacao_utilizada'][0]['titulo']);
+    }
+
+    public function test_campos_extras_configurados_sao_sugeridos_e_normalizados(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuario();
+        $processo = $this->criarProcessoComDfdEEtp($elaborador);
+
+        app(CampoConfiguracaoService::class)->salvar('mapa_riscos', [
+            ['key' => 'observacao_geral', 'label' => 'Observação Geral', 'tipo' => 'texto', 'obrigatorio' => false, 'ordem' => 1],
+            ['key' => 'analise_detalhada', 'label' => 'Análise Detalhada', 'tipo' => 'texto_longo', 'obrigatorio' => false, 'ordem' => 2],
+            ['key' => 'orcamento_previsto', 'label' => 'Orçamento Previsto', 'tipo' => 'numero', 'obrigatorio' => false, 'ordem' => 3],
+        ]);
+
+        $this->mock(NanoGptClient::class, function ($mock) {
+            $mock->shouldReceive('chatCompletion')
+                ->once()
+                ->withArgs(function (array $messages) {
+                    $conteudoUsuario = $messages[1]['content'] ?? '';
+
+                    return str_contains($conteudoUsuario, '"observacao_geral"')
+                        && str_contains($conteudoUsuario, '"analise_detalhada"')
+                        && !str_contains($conteudoUsuario, '"orcamento_previsto"');
+                })
+                ->andReturn([
+                    'content' => json_encode([
+                        'riscos' => [
+                            ['descricao' => 'Risco de teste.', 'fase' => 'planejamento', 'probabilidade' => 2, 'impacto' => 2, 'alocacao' => 'contratante'],
+                        ],
+                        'campos_extras' => [
+                            'observacao_geral' => 'Resumo curto sugerido pela IA.',
+                            'analise_detalhada' => 'Texto longo sugerido pela IA, com mais de uma frase de análise.',
+                            'orcamento_previsto' => '150000',
+                            'campo_inexistente' => 'Não deve aparecer no resultado.',
+                        ],
+                    ]),
+                    'model' => 'deepseek/deepseek-v4-pro-0813',
+                    'usage' => [],
+                ]);
+        });
+
+        $resultado = app(MapaRiscoIaService::class)->sugerirRiscos($processo);
+
+        self::assertSame([
+            'observacao_geral' => 'Resumo curto sugerido pela IA.',
+            'analise_detalhada' => 'Texto longo sugerido pela IA, com mais de uma frase de análise.',
+        ], $resultado['campos_extras']);
     }
 
     public function test_resposta_envolta_em_markdown_e_processada_normalmente(): void
@@ -147,7 +205,10 @@ final class MapaRiscoIaTest extends TestCase
                 ->once()
                 ->andReturn([
                     'content' => "```json\n" . json_encode([
-                        ['descricao' => 'Risco de teste.', 'fase' => 'planejamento', 'probabilidade' => 2, 'impacto' => 2, 'alocacao' => 'contratante'],
+                        'riscos' => [
+                            ['descricao' => 'Risco de teste.', 'fase' => 'planejamento', 'probabilidade' => 2, 'impacto' => 2, 'alocacao' => 'contratante'],
+                        ],
+                        'campos_extras' => [],
                     ]) . "\n```",
                     'model' => 'deepseek/deepseek-v4-pro-0813',
                     'usage' => [],
@@ -168,7 +229,7 @@ final class MapaRiscoIaTest extends TestCase
         $this->mock(NanoGptClient::class, function ($mock) {
             $mock->shouldReceive('chatCompletion')
                 ->once()
-                ->andReturn(['content' => json_encode([]), 'model' => 'deepseek/deepseek-v4-pro-0813', 'usage' => []]);
+                ->andReturn(['content' => json_encode(['riscos' => [], 'campos_extras' => []]), 'model' => 'deepseek/deepseek-v4-pro-0813', 'usage' => []]);
         });
 
         $this->expectException(AiException::class);

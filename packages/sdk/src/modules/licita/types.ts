@@ -489,6 +489,8 @@ export interface SugerirTextoIaOutput {
  */
 export interface SugerirRiscosMapaRiscoOutput {
   riscos: Risco[];
+  /** Sugestões para os campos extras (texto/texto_longo) configurados pelo tenant para o Mapa de Riscos — só preenche campos ainda vazios no formulário. */
+  campos_extras: Record<string, string>;
   legislacao_utilizada: LegislacaoUtilizadaIa[];
 }
 
