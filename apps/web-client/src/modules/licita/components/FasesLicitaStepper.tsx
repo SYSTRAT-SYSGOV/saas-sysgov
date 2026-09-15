@@ -13,6 +13,8 @@ interface Passo {
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
+  em_elaboracao: 'Em Elaboração',
+  aprovacao_ordenador: 'Aprovação do Ordenador',
   etp: 'ETP',
   mapa_riscos: 'Mapa de Riscos',
   pesquisa_precos: 'Pesquisa de Preços',
@@ -21,53 +23,58 @@ const FASE_LABEL: Record<FaseLicita, string> = {
   concluido: 'Concluído',
 };
 
-/** Fases com tela própria implementada hoje. */
-export type FaseLicitaImplementada = 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos';
+/**
+ * Passos exibidos no passo a passo, na ordem — não deriva mais de
+ * `Object.keys(FASE_LABEL)` porque `em_elaboracao`/`concluido` são valores
+ * de `Processo.fase_atual`, não documentos próprios com tela.
+ */
+const PASSOS_EXIBIDOS: FaseLicita[] = ['dfd', 'etp', 'mapa_riscos', 'pesquisa_precos', 'tr', 'edital', 'aprovacao_ordenador'];
 
-/** As demais fases aparecem no passo a passo como "em breve", sem link (ver README do módulo Licita). Tipado como FaseLicita[] (não FaseLicitaImplementada[]) só pra `.includes(fase)` aceitar qualquer FaseLicita na checagem abaixo. */
-const FASES_IMPLEMENTADAS: FaseLicita[] = ['dfd', 'etp', 'mapa_riscos', 'pesquisa_precos'];
+/** Fases com tela própria implementada hoje. */
+export type FaseLicitaImplementada = 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'aprovacao_ordenador';
+
+/** As demais fases aparecem no passo a passo como "em breve", sem link. */
+const FASES_IMPLEMENTADAS: FaseLicita[] = ['dfd', 'etp', 'mapa_riscos', 'pesquisa_precos', 'aprovacao_ordenador'];
 
 interface FasesLicitaStepperProps {
   processo: Processo;
-  /** Fase cuja tela está aberta agora — pode ser diferente da fase_atual do processo (usuário navegando pra trás pra conferir uma fase já aprovada). */
+  /** Fase cuja tela está aberta agora — pode ser diferente da fase_atual do processo (usuário navegando livremente entre os documentos). */
   faseAtiva: FaseLicitaImplementada;
   onSelecionar: (fase: FaseLicitaImplementada) => void;
 }
 
 /**
- * Passo a passo das fases do Licita (DFD → ETP → Mapa de Riscos → Pesquisa
- * de Preços → TR → Edital → Concluído), fixo no topo de toda tela de
- * documento do processo — sem ele, dentro do ETP não havia como voltar pra
- * conferir o DFD, e dentro do Mapa de Riscos não havia como voltar pro ETP;
- * só dava pra "Voltar" direto pra lista de processos.
+ * Passo a passo das fases do Licita, fixo no topo de toda tela de documento
+ * do processo. Diferente do desenho original: depois do DFD aprovado, ETP,
+ * Mapa de Riscos e Pesquisa de Preços não se bloqueiam mais em cadeia — a
+ * equipe de planejamento pode abrir e editar qualquer um deles a qualquer
+ * momento (não há mais aprovação individual por fase). O único gate real é
+ * o DFD no início e a Aprovação do Ordenador no final (ver
+ * AprovacaoOrdenadorPage).
  */
 export const FasesLicitaStepper: React.FC<FasesLicitaStepperProps> = ({ processo, faseAtiva, onSelecionar }) => {
   const dfdAprovado = processo.dfd?.status === 'aprovado';
-  const etpAprovado = processo.etp?.status === 'aprovado';
-  const mapaRiscoAprovado = processo.mapa_risco?.status === 'aprovado';
-  const pesquisaPrecoAprovada = processo.pesquisa_preco?.status === 'aprovado';
+  const processoConcluido = processo.fase_atual === 'concluido';
 
-  const passos: Passo[] = (Object.keys(FASE_LABEL) as FaseLicita[]).map((fase) => {
+  const passos: Passo[] = PASSOS_EXIBIDOS.map((fase) => {
     if (!FASES_IMPLEMENTADAS.includes(fase)) {
       return { fase, label: FASE_LABEL[fase], estado: 'em_breve' };
     }
 
-    const aprovado =
-      fase === 'dfd' ? dfdAprovado
-      : fase === 'etp' ? etpAprovado
-      : fase === 'mapa_riscos' ? mapaRiscoAprovado
-      : pesquisaPrecoAprovada;
-    if (aprovado) return { fase, label: FASE_LABEL[fase], estado: 'aprovado' };
+    if (fase === 'dfd') {
+      return { fase, label: FASE_LABEL[fase], estado: dfdAprovado ? 'aprovado' : 'atual' };
+    }
 
-    // Alcançável (mesmo sem estar aprovada ainda): dfd sempre; etp quando o
-    // dfd está aprovado; mapa_riscos quando o etp está aprovado;
-    // pesquisa_precos quando o mapa_riscos está aprovado.
-    const alcancavel =
-      fase === 'dfd' ||
-      (fase === 'etp' && dfdAprovado) ||
-      (fase === 'mapa_riscos' && etpAprovado) ||
-      (fase === 'pesquisa_precos' && mapaRiscoAprovado);
-    return { fase, label: FASE_LABEL[fase], estado: alcancavel ? 'atual' : 'bloqueado' };
+    if (fase === 'aprovacao_ordenador') {
+      if (processoConcluido) return { fase, label: FASE_LABEL[fase], estado: 'aprovado' };
+      return { fase, label: FASE_LABEL[fase], estado: dfdAprovado ? 'atual' : 'bloqueado' };
+    }
+
+    // ETP / Mapa de Riscos / Pesquisa de Preços: liberados juntos assim que
+    // o DFD está aprovado, sem depender do status um do outro.
+    const status = fase === 'etp' ? processo.etp?.status : fase === 'mapa_riscos' ? processo.mapa_risco?.status : processo.pesquisa_preco?.status;
+    if (status === 'aprovado') return { fase, label: FASE_LABEL[fase], estado: 'aprovado' };
+    return { fase, label: FASE_LABEL[fase], estado: dfdAprovado ? 'atual' : 'bloqueado' };
   });
 
   return (

@@ -10,8 +10,6 @@ use App\Support\OutboxPublisher;
 use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Support\Facades\DB;
-use Modules\Licita\Enums\FaseLicita;
-use Modules\Licita\Enums\StatusMapaRisco;
 use Modules\Licita\Enums\StatusPesquisaPreco;
 use Modules\Licita\Models\PesquisaPreco;
 use Modules\Licita\Models\Processo;
@@ -26,14 +24,13 @@ final class PesquisaPrecoService
         'campos_extras',
     ];
 
-    /** RN-006 (IN SEGES/ME nº 65/2021, art. 5º-6º): mínimo de fontes de cotação por item para envio à revisão. */
+    /** RN-006 (IN SEGES/ME nº 65/2021, art. 5º-6º): mínimo de fontes de cotação por item exigido para a aprovação final do processo. */
     private const MINIMO_COTACOES_POR_ITEM = 3;
 
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly OutboxPublisher $outbox,
         private readonly TenantContext $tenantContext,
-        private readonly ProcessoService $processos,
         private readonly CampoConfiguracaoService $camposConfiguracao,
     ) {}
 
@@ -46,12 +43,12 @@ final class PesquisaPrecoService
             throw new DomainException('RN-001: tenant não identificado para criação da Pesquisa de Preços.');
         }
 
-        // RN-002: fluxo sequencial — a Pesquisa de Preços só existe depois do
-        // Mapa de Riscos aprovado (é ele quem faz o processo avançar para a
-        // fase "pesquisa_precos", ver MapaRiscoService::aprovar).
+        // RN-002: a Pesquisa de Preços só existe depois de haver um Mapa de
+        // Riscos (não precisa mais estar aprovado — ver comentário
+        // equivalente em EtpService::criar).
         $mapaRisco = $processo->mapaRisco;
-        if ($mapaRisco === null || !$mapaRisco->statusEnum()->is(StatusMapaRisco::Aprovado)) {
-            throw new DomainException('O Mapa de Riscos deste processo precisa estar aprovado antes de iniciar a Pesquisa de Preços.');
+        if ($mapaRisco === null) {
+            throw new DomainException('Cadastre o Mapa de Riscos deste processo antes de iniciar a Pesquisa de Preços.');
         }
 
         if ($processo->pesquisaPreco()->exists()) {
@@ -105,8 +102,8 @@ final class PesquisaPrecoService
      */
     public function atualizar(PesquisaPreco $pesquisaPreco, array $data, User $user): PesquisaPreco
     {
-        if (!$pesquisaPreco->statusEnum()->is(StatusPesquisaPreco::Rascunho, StatusPesquisaPreco::Rejeitado, StatusPesquisaPreco::EmRevisao)) {
-            throw new DomainException('Pesquisa de Preços aprovada é imutável. Apenas rascunhos, em revisão ou rejeitadas podem ser editadas.');
+        if ($pesquisaPreco->statusEnum()->is(StatusPesquisaPreco::Aprovado)) {
+            throw new DomainException('Pesquisa de Preços aprovada é imutável — a aprovação final do processo já travou este documento.');
         }
 
         $camposExtras = array_key_exists('campos_extras', $data) ? $data['campos_extras'] : ($pesquisaPreco->campos_extras ?? []);
@@ -129,95 +126,17 @@ final class PesquisaPrecoService
     }
 
     /**
-     * Reabre uma Pesquisa de Preços rejeitada para edição (mesma RN-002 do DFD/ETP/Mapa de Riscos: rejeitado -> rascunho).
-     */
-    public function reabrir(PesquisaPreco $pesquisaPreco, User $user): PesquisaPreco
-    {
-        $this->validarTransicao($pesquisaPreco, StatusPesquisaPreco::Rascunho);
-
-        return DB::transaction(function () use ($pesquisaPreco, $user): PesquisaPreco {
-            $pesquisaPreco->update(['status' => StatusPesquisaPreco::Rascunho->value]);
-            $pesquisaPreco->refresh();
-
-            $this->registrarVersao($pesquisaPreco, 'reaberto', $user);
-            $this->audit->record('licita', 'pesquisa_precos.reaberto', "PesquisaPreco #{$pesquisaPreco->id}", null, null);
-            $this->outbox->publish('licita.PesquisaPrecoReaberto', ['id' => $pesquisaPreco->id]);
-
-            return $pesquisaPreco->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    public function enviarParaRevisao(PesquisaPreco $pesquisaPreco, User $user, ?string $mensagem = null): PesquisaPreco
-    {
-        $this->validarTransicao($pesquisaPreco, StatusPesquisaPreco::EmRevisao);
-        $this->validarMinimoCotacoes($pesquisaPreco);
-
-        return DB::transaction(function () use ($pesquisaPreco, $user, $mensagem): PesquisaPreco {
-            $pesquisaPreco->update(['status' => StatusPesquisaPreco::EmRevisao->value]);
-            $pesquisaPreco->refresh();
-
-            $this->registrarVersao($pesquisaPreco, 'enviado_revisao', $user, $mensagem !== null && $mensagem !== '' ? ['mensagem' => $mensagem] : []);
-            $this->audit->record('licita', 'pesquisa_precos.enviado_revisao', "PesquisaPreco #{$pesquisaPreco->id}", null, ['mensagem' => $mensagem]);
-            $this->outbox->publish('licita.PesquisaPrecoEnviadoRevisao', ['id' => $pesquisaPreco->id]);
-
-            return $pesquisaPreco->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    public function aprovar(PesquisaPreco $pesquisaPreco, User $aprovador, ?string $parecer = null): PesquisaPreco
-    {
-        $this->validarTransicao($pesquisaPreco, StatusPesquisaPreco::Aprovado);
-        $this->validarSegregacaoFuncoes($pesquisaPreco, $aprovador, 'aprová-la');
-
-        return DB::transaction(function () use ($pesquisaPreco, $aprovador, $parecer): PesquisaPreco {
-            $pesquisaPreco->update([
-                'status' => StatusPesquisaPreco::Aprovado->value,
-                'aprovado_por' => $aprovador->id,
-                'aprovado_em' => now(),
-            ]);
-            $pesquisaPreco->refresh();
-
-            $this->registrarVersao($pesquisaPreco, 'aprovado', $aprovador, $parecer !== null && $parecer !== '' ? ['parecer' => $parecer] : []);
-            $this->audit->record('licita', 'pesquisa_precos.aprovado', "PesquisaPreco #{$pesquisaPreco->id}", null, ['parecer' => $parecer]);
-            $this->outbox->publish('licita.PesquisaPrecoAprovado', ['id' => $pesquisaPreco->id, 'processo_id' => $pesquisaPreco->processo_id]);
-
-            // RN-002: fluxo sequencial — ao aprovar a Pesquisa de Preços, o
-            // processo avança para o Termo de Referência.
-            $this->processos->avancarFase($pesquisaPreco->processo, FaseLicita::Tr);
-
-            return $pesquisaPreco->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    public function rejeitar(PesquisaPreco $pesquisaPreco, User $rejeitor, string $motivo): PesquisaPreco
-    {
-        $this->validarTransicao($pesquisaPreco, StatusPesquisaPreco::Rejeitado);
-        $this->validarSegregacaoFuncoes($pesquisaPreco, $rejeitor, 'rejeitá-la');
-
-        return DB::transaction(function () use ($pesquisaPreco, $rejeitor, $motivo): PesquisaPreco {
-            $pesquisaPreco->update(['status' => StatusPesquisaPreco::Rejeitado->value]);
-            $pesquisaPreco->refresh();
-
-            $this->registrarVersao($pesquisaPreco, 'rejeitado', $rejeitor, ['motivo' => $motivo]);
-            $this->audit->record('licita', 'pesquisa_precos.rejeitado', "PesquisaPreco #{$pesquisaPreco->id}", null, ['motivo' => $motivo]);
-            $this->outbox->publish('licita.PesquisaPrecoRejeitado', ['id' => $pesquisaPreco->id, 'motivo' => $motivo]);
-
-            return $pesquisaPreco->load(['elaborador', 'aprovador', 'versoes.usuario']);
-        });
-    }
-
-    /**
      * RN-006 (IN SEGES/ME nº 65/2021): cada item precisa de no mínimo 3
      * cotações válidas (valor_unitario > 0) para a Pesquisa de Preços poder
-     * seguir para revisão — evita mandar pra aprovação uma pesquisa
-     * incompleta, mas não trava o rascunho (o elaborador pode salvar aos
-     * poucos enquanto ainda está coletando as cotações).
+     * entrar na aprovação final do processo. Chamado por
+     * `AprovacaoFinalService::solicitar()` — não há mais "enviar para
+     * revisão" individual.
      */
-    private function validarMinimoCotacoes(PesquisaPreco $pesquisaPreco): void
+    public function validarCompletude(PesquisaPreco $pesquisaPreco): void
     {
         $itens = $pesquisaPreco->itens ?? [];
         if ($itens === []) {
-            throw new DomainException('Cadastre ao menos um item com cotações antes de enviar para revisão.');
+            throw new DomainException('A Pesquisa de Preços precisa de ao menos um item com cotações antes de solicitar a aprovação final.');
         }
 
         foreach ($itens as $index => $item) {
@@ -229,26 +148,9 @@ final class PesquisaPrecoService
             if (count($cotacoesValidas) < self::MINIMO_COTACOES_POR_ITEM) {
                 $descricao = $item['descricao'] !== '' ? $item['descricao'] : ('item ' . ($index + 1));
                 throw new DomainException(
-                    "RN-006: o item \"{$descricao}\" precisa de no mínimo " . self::MINIMO_COTACOES_POR_ITEM . ' cotações válidas antes de enviar para revisão.'
+                    "RN-006: o item \"{$descricao}\" da Pesquisa de Preços precisa de no mínimo " . self::MINIMO_COTACOES_POR_ITEM . ' cotações válidas antes de solicitar a aprovação final.'
                 );
             }
-        }
-    }
-
-    private function validarTransicao(PesquisaPreco $pesquisaPreco, StatusPesquisaPreco $novo): void
-    {
-        if (!$pesquisaPreco->statusEnum()->podeTransicionarPara($novo)) {
-            throw new DomainException(sprintf('Transição inválida de "%s" para "%s".', $pesquisaPreco->statusEnum()->label(), $novo->label()));
-        }
-    }
-
-    /**
-     * RN-005: segregação de funções — quem elabora não pode aprovar/rejeitar a própria Pesquisa de Preços.
-     */
-    private function validarSegregacaoFuncoes(PesquisaPreco $pesquisaPreco, User $ator, string $acao): void
-    {
-        if ($pesquisaPreco->elaborado_por === (int) $ator->id) {
-            throw new DomainException("RN-005: o elaborador da Pesquisa de Preços não pode {$acao} (segregação de funções).");
         }
     }
 

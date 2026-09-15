@@ -25,21 +25,6 @@ final class PesquisaPrecoPolicy
         return $this->hasPermission($user, 'licita.update') && $pesquisaPreco->tenant_id === app(TenantContext::class)->id();
     }
 
-    public function reabrir(User $user, PesquisaPreco $pesquisaPreco): bool
-    {
-        return $this->update($user, $pesquisaPreco);
-    }
-
-    public function aprovar(User $user, PesquisaPreco $pesquisaPreco): bool
-    {
-        return $this->hasPermission($user, 'licita.aprovar') && $pesquisaPreco->tenant_id === app(TenantContext::class)->id();
-    }
-
-    public function rejeitar(User $user, PesquisaPreco $pesquisaPreco): bool
-    {
-        return $this->aprovar($user, $pesquisaPreco);
-    }
-
     private function hasPermission(User $user, string $permission): bool
     {
         return $user->is_platform_admin || $user->hasPermission($permission);

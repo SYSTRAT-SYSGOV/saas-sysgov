@@ -3,12 +3,35 @@
  * Riscos, Pesquisa de Preços, TR, Edital). Fase 1: Processo + DFD.
  */
 
-export type FaseLicita = 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'tr' | 'edital' | 'concluido';
+/**
+ * `Etp`/`MapaRiscos`/`PesquisaPrecos`/`Tr`/`Edital` seguem existindo como
+ * identificadores de "tipo de documento" (campos configuráveis, PDF), mas
+ * **não são mais valores possíveis de `Processo.fase_atual`** — depois do
+ * DFD aprovado, a equipe de planejamento edita esses documentos livremente
+ * e em qualquer ordem, sem gate de aprovação entre eles. `fase_atual` só
+ * transita entre `dfd → em_elaboracao → aprovacao_ordenador → concluido`.
+ */
+export type FaseLicita =
+  | 'dfd'
+  | 'em_elaboracao'
+  | 'aprovacao_ordenador'
+  | 'etp'
+  | 'mapa_riscos'
+  | 'pesquisa_precos'
+  | 'tr'
+  | 'edital'
+  | 'concluido';
 export type StatusProcesso = 'em_andamento' | 'concluido' | 'cancelado';
 export type StatusDfd = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
-export type StatusEtp = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
-export type StatusMapaRisco = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
-export type StatusPesquisaPreco = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
+/**
+ * Sem máquina de estados própria — `aprovado` só é setado em lote pela
+ * aprovação final do Ordenador (ver AprovacaoFinal), nunca pelo próprio
+ * documento. Enquanto `rascunho`, fica sempre editável.
+ */
+export type StatusEtp = 'rascunho' | 'aprovado';
+export type StatusMapaRisco = 'rascunho' | 'aprovado';
+export type StatusPesquisaPreco = 'rascunho' | 'aprovado';
+export type StatusAprovacaoFinal = 'pendente' | 'aprovada' | 'rejeitada';
 export type MetodoReferenciaPreco = 'media' | 'mediana' | 'menor_valor';
 export type GrauPrioridade = 'baixa' | 'media' | 'alta' | 'critica';
 export type AcaoVersaoDfd =
@@ -19,9 +42,9 @@ export type AcaoVersaoDfd =
   | 'rejeitado'
   | 'reaberto'
   | 'equipe_alterada_pelo_aprovador';
-export type AcaoVersaoEtp = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado' | 'reaberto';
-export type AcaoVersaoMapaRisco = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado' | 'reaberto';
-export type AcaoVersaoPesquisaPreco = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado' | 'reaberto';
+export type AcaoVersaoEtp = 'criado' | 'revisado' | 'aprovado';
+export type AcaoVersaoMapaRisco = 'criado' | 'revisado' | 'aprovado';
+export type AcaoVersaoPesquisaPreco = 'criado' | 'revisado' | 'aprovado';
 
 export type FaseRisco = 'planejamento' | 'selecao_fornecedor' | 'gestao_contratual';
 export type AlocacaoRisco = 'contratante' | 'contratada' | 'compartilhado';
@@ -221,7 +244,9 @@ export interface Risco {
 
 /**
  * Mapa de Riscos (art. 22 da Lei 14.133/2021) — matriz de riscos da
- * contratação. Só pode ser criado com o ETP do mesmo processo aprovado.
+ * contratação. Só pode ser criado depois de existir um ETP no mesmo
+ * processo (não precisa estar aprovado — sem aprovação individual por
+ * fase, ver AprovacaoFinal).
  */
 export interface MapaRisco {
   id: number;
@@ -283,8 +308,9 @@ export interface PesquisaPrecoVersao {
 /**
  * Pesquisa de Preços (IN SEGES/ME nº 65/2021) — apuração do valor estimado
  * da contratação a partir de cotações por item (mínimo 3 fontes por item
- * para poder seguir para revisão, ver RN-006 em PesquisaPrecoService). Só
- * pode ser criada com o Mapa de Riscos do mesmo processo aprovado.
+ * para poder entrar na aprovação final, ver RN-006 em
+ * PesquisaPrecoService::validarCompletude). Só pode ser criada depois de
+ * existir um Mapa de Riscos no mesmo processo (não precisa estar aprovado).
  */
 export interface PesquisaPreco {
   id: number;
@@ -307,6 +333,30 @@ export interface PesquisaPreco {
   updated_at: string;
 }
 
+/**
+ * Aprovação final do Ordenador de Despesas sobre o pacote inteiro de
+ * artefatos do processo (ETP, Mapa de Riscos, Pesquisa de Preços — e TR/
+ * Edital quando existirem), de uma vez só — é a única aprovação formal que
+ * resta depois do DFD. Uma linha por processo; cada nova solicitação
+ * (inclusive após rejeição) atualiza a mesma linha.
+ */
+export interface AprovacaoFinal {
+  id: number;
+  tenant_id: number;
+  processo_id: number;
+  status: StatusAprovacaoFinal;
+  solicitado_por: number | null;
+  solicitado_em: string | null;
+  aprovado_por: number | null;
+  aprovado_em: string | null;
+  parecer: string | null;
+  motivo_rejeicao: string | null;
+  solicitante: UsuarioResumo | null;
+  aprovador: UsuarioResumo | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Processo {
   id: number;
   tenant_id: number;
@@ -325,6 +375,10 @@ export interface Processo {
   // snake_case (não pesquisaPreco): Eloquent serializa relações com Str::snake()
   // no toArray()/toJson() — pesquisaPreco() no model vira "pesquisa_preco" no JSON.
   pesquisa_preco: PesquisaPreco | null;
+  // snake_case (não aprovacaoFinal): Eloquent serializa relações com
+  // Str::snake() no toArray()/toJson() — aprovacaoFinal() no model vira
+  // "aprovacao_final" no JSON.
+  aprovacao_final: AprovacaoFinal | null;
   created_at: string;
   updated_at: string;
 }

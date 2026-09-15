@@ -19,9 +19,7 @@ function formatarValorCampoExtra(campo: CampoConfig, valor: unknown): string {
 
 const STATUS_LABEL: Record<MapaRisco['status'], string> = {
   rascunho: 'Rascunho',
-  em_revisao: 'Em Revisão',
   aprovado: 'Aprovado',
-  rejeitado: 'Rejeitado',
 };
 
 const FASE_LABEL: Record<FaseRisco, string> = {

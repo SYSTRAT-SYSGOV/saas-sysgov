@@ -13,6 +13,7 @@ import { DfdDetailPage } from './pages/DfdDetailPage';
 import { EtpDetailPage } from './pages/EtpDetailPage';
 import { MapaRiscoDetailPage } from './pages/MapaRiscoDetailPage';
 import { PesquisaPrecoDetailPage } from './pages/PesquisaPrecoDetailPage';
+import { AprovacaoOrdenadorPage } from './pages/AprovacaoOrdenadorPage';
 import { FasesLicitaStepper, type FaseLicitaImplementada } from './components/FasesLicitaStepper';
 import { LegislacaoPage } from './pages/LegislacaoPage';
 import { LegislacaoDetailPage } from './pages/LegislacaoDetailPage';
@@ -24,6 +25,8 @@ import { gerarPesquisaPrecoPdf } from './utils/gerarPesquisaPrecoPdf';
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
+  em_elaboracao: 'Em Elaboração',
+  aprovacao_ordenador: 'Aprovação do Ordenador',
   etp: 'ETP',
   mapa_riscos: 'Mapa de Riscos',
   pesquisa_precos: 'Pesquisa de Preços',
@@ -44,6 +47,17 @@ const DFD_STATUS_VARIANT: Record<StatusDfd, 'neutral' | 'warning' | 'success' | 
   em_revisao: 'warning',
   aprovado: 'success',
   rejeitado: 'danger',
+};
+
+/** ETP/Mapa de Riscos/Pesquisa de Preços não têm mais aprovação individual — só rascunho (editável) e aprovado (travado pela aprovação final do Ordenador). */
+const DOC_STATUS_LABEL: Record<'rascunho' | 'aprovado', string> = {
+  rascunho: 'Rascunho',
+  aprovado: 'Aprovado',
+};
+
+const DOC_STATUS_VARIANT: Record<'rascunho' | 'aprovado', 'neutral' | 'success'> = {
+  rascunho: 'neutral',
+  aprovado: 'success',
 };
 
 type Tab = 'processos' | 'legislacao' | 'campos';
@@ -262,14 +276,12 @@ const ProcessosTab: React.FC<{
         header: 'Status do ETP',
         size: 150,
         meta: {
-          // StatusEtp usa os mesmos 4 valores do StatusDfd — reaproveita os
-          // mesmos mapas de label/variant em vez de duplicá-los.
-          exportValue: (p) => (p.etp ? DFD_STATUS_LABEL[p.etp.status] : 'Não iniciado'),
+          exportValue: (p) => (p.etp ? DOC_STATUS_LABEL[p.etp.status] : 'Não iniciado'),
         },
         cell: ({ row }) => {
           const etp = row.original.etp;
           if (!etp) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
-          return <StatusChip label={DFD_STATUS_LABEL[etp.status]} variant={DFD_STATUS_VARIANT[etp.status]} />;
+          return <StatusChip label={DOC_STATUS_LABEL[etp.status]} variant={DOC_STATUS_VARIANT[etp.status]} />;
         },
       },
       {
@@ -277,13 +289,12 @@ const ProcessosTab: React.FC<{
         header: 'Status do Mapa de Riscos',
         size: 170,
         meta: {
-          // StatusMapaRisco usa os mesmos 4 valores do StatusDfd — reaproveita os mesmos mapas de label/variant.
-          exportValue: (p) => (p.mapa_risco ? DFD_STATUS_LABEL[p.mapa_risco.status] : 'Não iniciado'),
+          exportValue: (p) => (p.mapa_risco ? DOC_STATUS_LABEL[p.mapa_risco.status] : 'Não iniciado'),
         },
         cell: ({ row }) => {
           const mapaRisco = row.original.mapa_risco;
           if (!mapaRisco) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
-          return <StatusChip label={DFD_STATUS_LABEL[mapaRisco.status]} variant={DFD_STATUS_VARIANT[mapaRisco.status]} />;
+          return <StatusChip label={DOC_STATUS_LABEL[mapaRisco.status]} variant={DOC_STATUS_VARIANT[mapaRisco.status]} />;
         },
       },
       {
@@ -291,13 +302,12 @@ const ProcessosTab: React.FC<{
         header: 'Status da Pesquisa de Preços',
         size: 190,
         meta: {
-          // StatusPesquisaPreco usa os mesmos 4 valores do StatusDfd — reaproveita os mesmos mapas de label/variant.
-          exportValue: (p) => (p.pesquisa_preco ? DFD_STATUS_LABEL[p.pesquisa_preco.status] : 'Não iniciado'),
+          exportValue: (p) => (p.pesquisa_preco ? DOC_STATUS_LABEL[p.pesquisa_preco.status] : 'Não iniciado'),
         },
         cell: ({ row }) => {
           const pesquisaPreco = row.original.pesquisa_preco;
           if (!pesquisaPreco) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
-          return <StatusChip label={DFD_STATUS_LABEL[pesquisaPreco.status]} variant={DFD_STATUS_VARIANT[pesquisaPreco.status]} />;
+          return <StatusChip label={DOC_STATUS_LABEL[pesquisaPreco.status]} variant={DOC_STATUS_VARIANT[pesquisaPreco.status]} />;
         },
       },
       {
@@ -410,18 +420,18 @@ type DocumentoAtivo = FaseLicitaImplementada;
 
 /**
  * Decide qual tela abrir ao clicar num processo: DFD enquanto ele não
- * estiver aprovado; ETP a partir daí, enquanto ele não estiver aprovado;
- * Mapa de Riscos a partir do ETP aprovado (as telas de fases já aprovadas
- * continuam acessíveis a partir daqui, só ficam com o formulário desabilitado
- * — quem quiser conferir/baixar o PDF de um documento já aprovado usa os
- * botões da grid de Processos). Faz uma busca leve própria só para decidir
- * — DfdDetailPage/EtpDetailPage/MapaRiscoDetailPage buscam os dados
+ * estiver aprovado; a partir daí, ETP/Mapa de Riscos/Pesquisa de Preços já
+ * não se bloqueiam mais em cadeia (equipe de planejamento edita qualquer um
+ * a qualquer momento — sem aprovação individual por fase), então abre a
+ * Aprovação do Ordenador quando o processo já está nessa etapa (ou
+ * concluído), senão cai no ETP por padrão — o usuário navega livremente
+ * pelos outros documentos pelo passo a passo (FasesLicitaStepper). Faz uma
+ * busca leve própria só para decidir — cada DetailPage busca os dados
  * completos de novo ao montar, igual ao padrão já usado no resto do módulo
  * (sem cache client-side de Processo).
  */
 const documentoPorFase = (processo: Processo): DocumentoAtivo => {
-  if (processo.mapa_risco?.status === 'aprovado') return 'pesquisa_precos';
-  if (processo.etp?.status === 'aprovado') return 'mapa_riscos';
+  if (processo.fase_atual === 'aprovacao_ordenador' || processo.fase_atual === 'concluido') return 'aprovacao_ordenador';
   if (processo.dfd?.status === 'aprovado') return 'etp';
   return 'dfd';
 };
@@ -471,6 +481,7 @@ const ProcessoDocumentoPage: React.FC<ProcessoDocumentoPageProps> = ({ processoI
   return (
     <div className="space-y-4">
       <FasesLicitaStepper processo={processo} faseAtiva={documento} onSelecionar={setDocumento} />
+      {documento === 'aprovacao_ordenador' && <AprovacaoOrdenadorPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'pesquisa_precos' && <PesquisaPrecoDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'mapa_riscos' && <MapaRiscoDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'etp' && <EtpDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}

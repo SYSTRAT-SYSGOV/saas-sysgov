@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read Etp|null $etp
  * @property-read MapaRisco|null $mapaRisco
  * @property-read PesquisaPreco|null $pesquisaPreco
+ * @property-read AprovacaoFinal|null $aprovacaoFinal
  * @property-read User|null $criador
  */
 final class Processo extends Model
@@ -85,6 +86,14 @@ final class Processo extends Model
     public function pesquisaPreco(): HasOne
     {
         return $this->hasOne(PesquisaPreco::class, 'processo_id');
+    }
+
+    /**
+     * @return HasOne<AprovacaoFinal, $this>
+     */
+    public function aprovacaoFinal(): HasOne
+    {
+        return $this->hasOne(AprovacaoFinal::class, 'processo_id');
     }
 
     /**

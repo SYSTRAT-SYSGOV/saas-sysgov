@@ -60,7 +60,7 @@ final class DfdWorkflowTest extends TestCase
         return [$tenant, $elaborador, $aprovador];
     }
 
-    public function test_fluxo_completo_de_aprovacao_avanca_processo_para_etp(): void
+    public function test_fluxo_completo_de_aprovacao_avanca_processo_para_em_elaboracao(): void
     {
         [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
         $processo = $this->criarProcesso($elaborador);
@@ -78,7 +78,7 @@ final class DfdWorkflowTest extends TestCase
         self::assertSame($aprovador->id, $dfd->aprovado_por);
         self::assertNotNull($dfd->aprovado_em);
 
-        self::assertSame(FaseLicita::Etp->value, $processo->fresh()->fase_atual);
+        self::assertSame(FaseLicita::EmElaboracao->value, $processo->fresh()->fase_atual);
     }
 
     public function test_elaborador_nao_pode_aprovar_o_proprio_dfd(): void

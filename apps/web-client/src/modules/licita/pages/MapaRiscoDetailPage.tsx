@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button } from '@sysgov/ui';
-import { StatusChip, PageHeader, ScreenState, ValidationErrorModal, ConfirmDialog } from '@/components/ui';
-import { ArrowLeft, ShieldAlert, CheckCircle2, XCircle, Send, RotateCcw } from 'lucide-react';
-import { useAuth } from '@/core/auth/useAuth';
-import { useCan } from '@/core/rbac/useCan';
+import { StatusChip, PageHeader, ScreenState, ValidationErrorModal } from '@/components/ui';
+import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 import {
@@ -25,25 +23,18 @@ interface Toast {
 
 const STATUS_LABEL: Record<StatusMapaRisco, string> = {
   rascunho: 'Rascunho',
-  em_revisao: 'Em Revisão',
   aprovado: 'Aprovado',
-  rejeitado: 'Rejeitado',
 };
 
-const STATUS_VARIANT: Record<StatusMapaRisco, 'neutral' | 'warning' | 'success' | 'danger'> = {
+const STATUS_VARIANT: Record<StatusMapaRisco, 'neutral' | 'success'> = {
   rascunho: 'neutral',
-  em_revisao: 'warning',
   aprovado: 'success',
-  rejeitado: 'danger',
 };
 
 const ACAO_LABEL: Record<AcaoVersaoMapaRisco, string> = {
   criado: 'Criado',
   revisado: 'Revisado',
-  enviado_revisao: 'Enviado para revisão',
   aprovado: 'Aprovado',
-  rejeitado: 'Rejeitado',
-  reaberto: 'Reaberto para edição',
 };
 
 interface MapaRiscoDetailPageProps {
@@ -53,25 +44,20 @@ interface MapaRiscoDetailPageProps {
 }
 
 /**
- * Tela do Mapa de Riscos — mesma estrutura de ações das telas do DFD/ETP:
- * criar/editar, enviar para revisão, aprovar/rejeitar com motivo, reabrir.
- * Só existe a partir do momento em que o ETP do processo está aprovado
- * (RN aplicada no backend, MapaRiscoService::criar) — antes disso mostra um
- * aviso em vez do formulário.
+ * Tela do Mapa de Riscos — sem aprovação individual: fica em rascunho,
+ * sempre editável pela equipe de planejamento, até a aprovação final do
+ * Ordenador travar tudo de uma vez (ver AprovacaoOrdenadorPage). Só existe a
+ * partir do momento em que há um ETP no processo (RN aplicada no backend,
+ * MapaRiscoService::criar) — antes disso mostra um aviso em vez do
+ * formulário.
  */
 export const MapaRiscoDetailPage: React.FC<MapaRiscoDetailPageProps> = ({ processoId, onBack, onChanged }) => {
-  const { user } = useAuth();
-  const { can } = useCan();
   const [processo, setProcesso] = useState<Processo | null>(null);
   const [mapaRisco, setMapaRisco] = useState<MapaRisco | null>(null);
   const [camposExtras, setCamposExtras] = useState<CampoConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [confirmAprovar, setConfirmAprovar] = useState(false);
-  const [confirmRejeitar, setConfirmRejeitar] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const notify = (t: Toast) => {
@@ -79,9 +65,8 @@ export const MapaRiscoDetailPage: React.FC<MapaRiscoDetailPageProps> = ({ proces
     window.setTimeout(() => setToasts((prev) => prev.filter((x) => x !== t)), 5000);
   };
 
-  const podeAprovar = can('licita.aprovar') && mapaRisco?.elaborado_por !== user?.id;
-  const editavel = mapaRisco ? ['rascunho', 'em_revisao', 'rejeitado'].includes(mapaRisco.status) : true;
-  const etpAprovado = processo?.etp?.status === 'aprovado';
+  const editavel = mapaRisco ? mapaRisco.status !== 'aprovado' : true;
+  const etpCadastrado = processo?.etp != null;
 
   useEffect(() => {
     let cancelado = false;
@@ -119,38 +104,35 @@ export const MapaRiscoDetailPage: React.FC<MapaRiscoDetailPageProps> = ({ proces
 
   const handleCreate = async (data: CreateMapaRiscoInput) => {
     if (!processo) return;
-    const novo = await sysgovApi.licita.createMapaRisco(processo.id, data);
-    setMapaRisco(novo);
-    await refreshProcesso();
-    notify({ type: 'success', title: 'Mapa de Riscos criado', message: 'O rascunho do Mapa de Riscos foi salvo com sucesso.' });
-  };
-
-  const handleUpdate = async (data: CreateMapaRiscoInput) => {
-    if (!mapaRisco) return;
-    const atualizado = await sysgovApi.licita.updateMapaRisco(mapaRisco.id, data);
-    setMapaRisco(atualizado);
-    await refreshProcesso();
-    notify({ type: 'success', title: 'Mapa de Riscos salvo', message: 'As alterações foram salvas com sucesso.' });
-  };
-
-  const runAction = async (action: () => Promise<MapaRisco>, sucesso: { title: string; message: string }) => {
-    setActionError(null);
-    setValidationErrors(null);
-    setActionLoading(true);
     try {
-      const atualizado = await action();
-      setMapaRisco(atualizado);
+      const novo = await sysgovApi.licita.createMapaRisco(processo.id, data);
+      setMapaRisco(novo);
       await refreshProcesso();
-      notify({ type: 'success', ...sucesso });
+      notify({ type: 'success', title: 'Mapa de Riscos criado', message: 'O rascunho do Mapa de Riscos foi salvo com sucesso.' });
     } catch (err) {
       const fieldErrors = getApiValidationErrors(err);
       if (fieldErrors) {
         setValidationErrors(fieldErrors);
       } else {
-        setActionError(getApiErrorMessage(err, 'Erro ao executar ação.'));
+        notify({ type: 'error', title: 'Erro ao criar', message: getApiErrorMessage(err, 'Erro ao criar o Mapa de Riscos.') });
       }
-    } finally {
-      setActionLoading(false);
+    }
+  };
+
+  const handleUpdate = async (data: CreateMapaRiscoInput) => {
+    if (!mapaRisco) return;
+    try {
+      const atualizado = await sysgovApi.licita.updateMapaRisco(mapaRisco.id, data);
+      setMapaRisco(atualizado);
+      await refreshProcesso();
+      notify({ type: 'success', title: 'Mapa de Riscos salvo', message: 'As alterações foram salvas com sucesso.' });
+    } catch (err) {
+      const fieldErrors = getApiValidationErrors(err);
+      if (fieldErrors) {
+        setValidationErrors(fieldErrors);
+      } else {
+        notify({ type: 'error', title: 'Erro ao salvar', message: getApiErrorMessage(err, 'Erro ao salvar o Mapa de Riscos.') });
+      }
     }
   };
 
@@ -183,12 +165,12 @@ export const MapaRiscoDetailPage: React.FC<MapaRiscoDetailPageProps> = ({ proces
         }
       />
 
-      {!etpAprovado && !mapaRisco ? (
+      {!etpCadastrado && !mapaRisco ? (
         <Card className="p-6">
           <ScreenState
             type="empty"
-            title="ETP ainda não aprovado"
-            description="O Mapa de Riscos só pode ser iniciado depois que o ETP deste processo for aprovado."
+            title="ETP ainda não cadastrado"
+            description="O Mapa de Riscos só pode ser iniciado depois que o ETP deste processo for cadastrado."
             actionLabel="Voltar"
             onAction={onBack}
           />
@@ -208,112 +190,6 @@ export const MapaRiscoDetailPage: React.FC<MapaRiscoDetailPageProps> = ({ proces
                   </span>
                 )}
               </div>
-
-              <div className="flex items-center gap-2">
-                {mapaRisco.status === 'rascunho' && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    leftIcon={<Send className="h-3.5 w-3.5" />}
-                    isLoading={actionLoading}
-                    onClick={() =>
-                      runAction(() => sysgovApi.licita.enviarMapaRiscoParaRevisao(mapaRisco.id), {
-                        title: 'Enviado para revisão',
-                        message: 'O Mapa de Riscos foi enviado para revisão com sucesso.',
-                      })
-                    }
-                  >
-                    Enviar para Revisão
-                  </Button>
-                )}
-                {mapaRisco.status === 'em_revisao' && podeAprovar && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
-                      isLoading={actionLoading}
-                      onClick={() => setConfirmAprovar(true)}
-                    >
-                      Aprovar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      leftIcon={<XCircle className="h-3.5 w-3.5" />}
-                      onClick={() => setConfirmRejeitar(true)}
-                    >
-                      Rejeitar
-                    </Button>
-                  </>
-                )}
-                {mapaRisco.status === 'em_revisao' && !podeAprovar && (
-                  <span className="text-xs text-muted-foreground italic">
-                    Aguardando aprovação de outro responsável (segregação de funções).
-                  </span>
-                )}
-                {mapaRisco.status === 'rejeitado' && can('licita.update') && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
-                    isLoading={actionLoading}
-                    onClick={() =>
-                      runAction(() => sysgovApi.licita.reabrirMapaRisco(mapaRisco.id), {
-                        title: 'Mapa de Riscos reaberto',
-                        message: 'O Mapa de Riscos voltou para rascunho e já pode ser editado.',
-                      })
-                    }
-                  >
-                    Reabrir para Edição
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {mapaRisco && (
-            <>
-              <ConfirmDialog
-                open={confirmAprovar}
-                onClose={() => setConfirmAprovar(false)}
-                destructive={false}
-                requireReason={false}
-                confirmLabel="Aprovar"
-                title="Aprovar Mapa de Riscos"
-                description="Confirma a aprovação deste Mapa de Riscos? Depois de aprovado, o documento fica imutável e o processo avança para a próxima fase (Pesquisa de Preços)."
-                onConfirm={() => {
-                  setConfirmAprovar(false);
-                  runAction(() => sysgovApi.licita.aprovarMapaRisco(mapaRisco.id), {
-                    title: 'Mapa de Riscos aprovado',
-                    message: 'O Mapa de Riscos foi aprovado com sucesso.',
-                  });
-                }}
-              />
-
-              <ConfirmDialog
-                open={confirmRejeitar}
-                onClose={() => setConfirmRejeitar(false)}
-                destructive
-                requireReason
-                reasonPlaceholder="Motivo da rejeição..."
-                confirmLabel="Rejeitar"
-                title="Rejeitar Mapa de Riscos"
-                description="Confirma a rejeição deste Mapa de Riscos? Ele voltará para rascunho, o elaborador poderá editá-lo e reenviar para revisão."
-                onConfirm={(motivo) => {
-                  setConfirmRejeitar(false);
-                  runAction(() => sysgovApi.licita.rejeitarMapaRisco(mapaRisco.id, motivo), {
-                    title: 'Mapa de Riscos rejeitado',
-                    message: 'A rejeição foi registrada com sucesso.',
-                  });
-                }}
-              />
-            </>
-          )}
-
-          {actionError && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {actionError}
             </div>
           )}
 
@@ -333,9 +209,9 @@ export const MapaRiscoDetailPage: React.FC<MapaRiscoDetailPageProps> = ({ proces
                     equipe_planejamento: mapaRisco.equipe_planejamento ?? undefined,
                     campos_extras: mapaRisco.campos_extras ?? undefined,
                   }
-                : // Ainda não existe Mapa de Riscos: pré-preenche com a equipe
-                  // já cadastrada no ETP do processo (mesmo raciocínio do
-                  // ETP em relação ao DFD — ver EtpDetailPage).
+                : // Ainda não existe Mapa de Riscos: pré-preenche com a
+                  // equipe já cadastrada no ETP do processo (mesmo raciocínio
+                  // do ETP em relação ao DFD — ver EtpDetailPage).
                   { equipe_planejamento: processo.etp?.equipe_planejamento ?? undefined }
             }
             disabled={!editavel}

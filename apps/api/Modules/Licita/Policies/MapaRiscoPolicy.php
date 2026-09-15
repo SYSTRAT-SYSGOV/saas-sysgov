@@ -25,21 +25,6 @@ final class MapaRiscoPolicy
         return $this->hasPermission($user, 'licita.update') && $mapaRisco->tenant_id === app(TenantContext::class)->id();
     }
 
-    public function reabrir(User $user, MapaRisco $mapaRisco): bool
-    {
-        return $this->update($user, $mapaRisco);
-    }
-
-    public function aprovar(User $user, MapaRisco $mapaRisco): bool
-    {
-        return $this->hasPermission($user, 'licita.aprovar') && $mapaRisco->tenant_id === app(TenantContext::class)->id();
-    }
-
-    public function rejeitar(User $user, MapaRisco $mapaRisco): bool
-    {
-        return $this->aprovar($user, $mapaRisco);
-    }
-
     private function hasPermission(User $user, string $permission): bool
     {
         return $user->is_platform_admin || $user->hasPermission($permission);

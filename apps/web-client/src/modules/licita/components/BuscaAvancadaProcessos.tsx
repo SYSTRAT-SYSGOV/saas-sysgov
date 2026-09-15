@@ -21,13 +21,14 @@ interface CampoBuscavel {
   opcoes?: { value: string; label: string }[];
 }
 
+// Só os 4 valores que Processo.fase_atual realmente assume hoje — os demais
+// casos de FaseLicita (etp/mapa_riscos/pesquisa_precos/tr/edital) são só
+// identificadores de tipo de documento, não fases do processo em si (ver
+// comentário no enum FaseLicita/tipo FaseLicita do SDK).
 const FASE_OPCOES: { value: FaseLicita; label: string }[] = [
   { value: 'dfd', label: 'DFD' },
-  { value: 'etp', label: 'ETP' },
-  { value: 'mapa_riscos', label: 'Mapa de Riscos' },
-  { value: 'pesquisa_precos', label: 'Pesquisa de Preços' },
-  { value: 'tr', label: 'Termo de Referência' },
-  { value: 'edital', label: 'Edital' },
+  { value: 'em_elaboracao', label: 'Em Elaboração' },
+  { value: 'aprovacao_ordenador', label: 'Aprovação do Ordenador' },
   { value: 'concluido', label: 'Concluído' },
 ];
 
