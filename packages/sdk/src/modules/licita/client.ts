@@ -20,6 +20,8 @@ import type {
   Processo,
   ProcessoFilters,
   SugerirCotacoesPesquisaPrecoOutput,
+  SugerirItensDfdInput,
+  SugerirItensDfdOutput,
   SugerirJustificativaDfdInput,
   SugerirJustificativaDfdOutput,
   SugerirRiscosMapaRiscoOutput,
@@ -177,6 +179,11 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async sugerirJustificativaDfd(input: SugerirJustificativaDfdInput): Promise<SugerirJustificativaDfdOutput> {
     return this.api.request('/licita/dfds/ia/sugerir-justificativa', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  /** Gera itens (materiais/serviços) para o DFD a partir do Objeto/Área/Justificativa — a lista retornada deve ser somada aos itens já existentes no formulário, nunca substituí-los. */
+  async sugerirItensDfd(input: SugerirItensDfdInput): Promise<SugerirItensDfdOutput> {
+    return this.api.request('/licita/dfds/ia/sugerir-itens', { method: 'POST', body: JSON.stringify(input) });
   }
 
   /** "Sugerir com IA" genérico — usado por qualquer campo de texto rico do Licita sem prompt dedicado. */

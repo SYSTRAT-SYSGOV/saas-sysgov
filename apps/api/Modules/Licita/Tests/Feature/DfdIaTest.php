@@ -143,4 +143,91 @@ final class DfdIaTest extends TestCase
 
         app(DfdIaService::class)->sugerirJustificativa('Contratação de material de expediente.', null, []);
     }
+
+    public function test_sugestao_de_itens_normaliza_a_resposta(): void
+    {
+        $this->setUpTenant();
+
+        $this->mock(NanoGptClient::class, function ($mock) {
+            $mock->shouldReceive('chatCompletion')
+                ->once()
+                ->andReturn([
+                    'content' => json_encode([
+                        'itens' => [
+                            ['tipo' => 'material', 'codigo' => '482190', 'descricao' => 'Notebook', 'unidade_medida' => 'unidade', 'quantidade' => 5, 'valor_unitario' => 3500],
+                            ['tipo' => 'tipo_invalido', 'codigo' => null, 'descricao' => 'Serviço de suporte técnico', 'unidade_medida' => null, 'quantidade' => 'abc', 'valor_unitario' => -10],
+                        ],
+                    ]),
+                    'model' => 'deepseek/deepseek-v4-pro-0813',
+                    'usage' => [],
+                ]);
+        });
+
+        $resultado = app(DfdIaService::class)->sugerirItens('Aquisição de equipamentos de TI.', null, null);
+
+        self::assertCount(2, $resultado['itens']);
+        self::assertSame('material', $resultado['itens'][0]['tipo']);
+        self::assertSame('482190', $resultado['itens'][0]['codigo']);
+        self::assertSame(5.0, $resultado['itens'][0]['quantidade']);
+        self::assertSame(3500.0, $resultado['itens'][0]['valor_unitario']);
+
+        // Segundo item: valores inválidos normalizados para os defaults seguros.
+        self::assertSame('material', $resultado['itens'][1]['tipo']);
+        self::assertSame('', $resultado['itens'][1]['codigo']);
+        self::assertSame('unidade', $resultado['itens'][1]['unidade_medida']);
+        self::assertSame(1.0, $resultado['itens'][1]['quantidade']);
+        self::assertSame(0.0, $resultado['itens'][1]['valor_unitario']);
+    }
+
+    public function test_sugestao_de_itens_processa_resposta_envolta_em_markdown(): void
+    {
+        $this->setUpTenant();
+
+        $this->mock(NanoGptClient::class, function ($mock) {
+            $mock->shouldReceive('chatCompletion')
+                ->once()
+                ->andReturn([
+                    'content' => "```json\n" . json_encode([
+                        'itens' => [['tipo' => 'servico', 'codigo' => '27146', 'descricao' => 'Suporte técnico de TI', 'unidade_medida' => 'mês', 'quantidade' => 12, 'valor_unitario' => 8000]],
+                    ]) . "\n```",
+                    'model' => 'deepseek/deepseek-v4-pro-0813',
+                    'usage' => [],
+                ]);
+        });
+
+        $resultado = app(DfdIaService::class)->sugerirItens('Contratação de suporte técnico de TI.', null, null);
+
+        self::assertCount(1, $resultado['itens']);
+        self::assertSame('Suporte técnico de TI', $resultado['itens'][0]['descricao']);
+    }
+
+    public function test_sugestao_de_itens_sem_nenhum_item_valido_lanca_ai_exception(): void
+    {
+        $this->setUpTenant();
+
+        $this->mock(NanoGptClient::class, function ($mock) {
+            $mock->shouldReceive('chatCompletion')
+                ->once()
+                ->andReturn(['content' => json_encode(['itens' => []]), 'model' => 'deepseek/deepseek-v4-pro-0813', 'usage' => []]);
+        });
+
+        $this->expectException(AiException::class);
+        app(DfdIaService::class)->sugerirItens('Contratação de material de expediente.', null, null);
+    }
+
+    public function test_sugestao_de_itens_propaga_erro_do_provedor_de_ia(): void
+    {
+        $this->setUpTenant();
+
+        $this->mock(NanoGptClient::class, function ($mock) {
+            $mock->shouldReceive('chatCompletion')
+                ->once()
+                ->andThrow(new AiException('O suporte de IA está desativado nas configurações da plataforma.'));
+        });
+
+        $this->expectException(AiException::class);
+        $this->expectExceptionMessage('O suporte de IA está desativado nas configurações da plataforma.');
+
+        app(DfdIaService::class)->sugerirItens('Contratação de material de expediente.', null, null);
+    }
 }

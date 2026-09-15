@@ -554,6 +554,18 @@ export interface SugerirJustificativaDfdOutput {
   legislacao_utilizada: LegislacaoUtilizadaIa[];
 }
 
+export interface SugerirItensDfdInput {
+  objeto: string;
+  area_requisitante?: string | null;
+  /** Justificativa já escrita (HTML do editor), usada só como contexto adicional — não é modificada por esta chamada. */
+  justificativa?: string | null;
+}
+
+export interface SugerirItensDfdOutput {
+  /** Código/quantidade/valor unitário são estimativas de planejamento a confirmar — a Pesquisa de Preços, mais adiante, apura o valor real. */
+  itens: ItemDfd[];
+}
+
 /**
  * "Sugerir com IA" genérico — usado por qualquer campo de texto rico
  * (TinyMCE) do Licita que não tenha um prompt dedicado (ver
