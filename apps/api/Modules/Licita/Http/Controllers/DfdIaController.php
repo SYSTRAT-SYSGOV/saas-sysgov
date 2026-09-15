@@ -50,4 +50,27 @@ final class DfdIaController extends Controller
 
         return response()->json($resultado);
     }
+
+    public function sugerirItens(Request $request): JsonResponse
+    {
+        $this->authorize('create', Dfd::class);
+
+        $data = $request->validate([
+            'objeto' => ['required', 'string', 'max:500'],
+            'area_requisitante' => ['nullable', 'string', 'max:255'],
+            'justificativa' => ['nullable', 'string', 'max:8000'],
+        ]);
+
+        try {
+            $resultado = $this->service->sugerirItens(
+                $data['objeto'],
+                $data['area_requisitante'] ?? null,
+                $data['justificativa'] ?? null,
+            );
+        } catch (AiException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        return response()->json($resultado);
+    }
 }

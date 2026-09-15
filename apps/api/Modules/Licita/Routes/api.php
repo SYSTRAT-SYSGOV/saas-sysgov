@@ -26,6 +26,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     // Antes de '/dfds/{id}': "ia" não é um id numérico, mas fica explícito aqui
     // para não depender de precedência de rota caso isso mude no futuro.
     Route::post('/dfds/ia/sugerir-justificativa', [DfdIaController::class, 'sugerirJustificativa']);
+    Route::post('/dfds/ia/sugerir-itens', [DfdIaController::class, 'sugerirItens']);
     // Genérico: usado por QUALQUER campo de texto rico (TinyMCE) do Licita
     // que não tenha um prompt dedicado — ver RichTextEditorWithIa no front.
     Route::post('/ia/sugerir-texto', [LicitaIaController::class, 'sugerirTexto']);

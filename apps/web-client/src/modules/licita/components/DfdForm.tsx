@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Button, Select } from '@sysgov/ui';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Sparkles, Trash2 } from 'lucide-react';
 import { sysgovApi, type CampoConfig, type CreateDfdInput, type GrauPrioridade, type ItemDfd, type MembroEquipePlanejamento, type TipoItemDfd } from '@sysgov/sdk';
 import { CamposExtrasFields } from './CamposExtrasFields';
 import { RichTextEditorWithIa } from './RichTextEditorWithIa';
@@ -119,6 +119,9 @@ export const DfdForm: React.FC<DfdFormProps> = ({
   // payload, então precisa cair para false assim que o usuário mexer no
   // texto (deixou de ser o que a IA gerou).
   const [justificativaGeradaPorIa, setJustificativaGeradaPorIa] = useState(initialValue?.gerado_por_ia ?? false);
+  const [sugerindoItens, setSugerindoItens] = useState(false);
+  const [erroSugerirItens, setErroSugerirItens] = useState<string | null>(null);
+  const [itensSugeridosPorIa, setItensSugeridosPorIa] = useState(false);
 
   const handleJustificativaChange = (value: string) => {
     setJustificativa(value);
@@ -177,6 +180,29 @@ export const DfdForm: React.FC<DfdFormProps> = ({
     });
     setJustificativaGeradaPorIa(true);
     return { texto: resultado.justificativa, legislacaoUtilizada: resultado.legislacao_utilizada };
+  };
+
+  const handleSugerirItens = async () => {
+    setErroSugerirItens(null);
+    setSugerindoItens(true);
+    try {
+      const resultado = await sysgovApi.licita.sugerirItensDfd({
+        objeto,
+        area_requisitante: areaRequisitante || null,
+        justificativa: justificativa.replace(/<[^>]*>/g, '').trim() || null,
+      });
+      // Sempre soma aos itens já cadastrados, nunca substitui — mesmo
+      // padrão de handleGerarRiscosComIa/handleBuscarPrecos.
+      setItens((prev) => [
+        ...prev,
+        ...resultado.itens.map((it) => ({ ...it, quantidade: String(it.quantidade), valor_unitario: String(it.valor_unitario) })),
+      ]);
+      setItensSugeridosPorIa(true);
+    } catch (err) {
+      setErroSugerirItens(getApiErrorMessage(err, 'Não foi possível sugerir itens com IA.'));
+    } finally {
+      setSugerindoItens(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -408,17 +434,45 @@ export const DfdForm: React.FC<DfdFormProps> = ({
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-medium text-foreground">Itens (Materiais e Serviços)</label>
             {!disabled && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                leftIcon={<Plus className="h-3.5 w-3.5" />}
-                onClick={() => setItens((prev) => [...prev, criarItemVazio('material')])}
-              >
-                Adicionar Item
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Sparkles className="h-3.5 w-3.5" />}
+                  isLoading={sugerindoItens}
+                  disabled={!objeto.trim()}
+                  title={!objeto.trim() ? 'Preencha o Objeto para gerar a sugestão.' : undefined}
+                  onClick={handleSugerirItens}
+                >
+                  Sugerir Itens com IA
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<Plus className="h-3.5 w-3.5" />}
+                  onClick={() => setItens((prev) => [...prev, criarItemVazio('material')])}
+                >
+                  Adicionar Item
+                </Button>
+              </div>
             )}
           </div>
+
+          {erroSugerirItens && (
+            <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {erroSugerirItens}
+            </div>
+          )}
+
+          {itensSugeridosPorIa && (
+            <div className="mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              Itens sugeridos pela IA — código, quantidade e valores são estimativas de planejamento; confira e
+              ajuste antes de salvar (a Pesquisa de Preços, mais adiante, apura o valor real).
+            </div>
+          )}
+
           <div className="space-y-3">
             {itens.length === 0 && (
               <p className="text-sm text-muted-foreground">Nenhum item cadastrado.</p>
