@@ -11,12 +11,14 @@ use Modules\Licita\Models\Dfd;
 use Modules\Licita\Models\Etp;
 use Modules\Licita\Models\LegalDocumento;
 use Modules\Licita\Models\MapaRisco;
+use Modules\Licita\Models\PesquisaPreco;
 use Modules\Licita\Models\Processo;
 use Modules\Licita\Policies\CampoConfiguracaoPolicy;
 use Modules\Licita\Policies\DfdPolicy;
 use Modules\Licita\Policies\EtpPolicy;
 use Modules\Licita\Policies\LegalDocumentoPolicy;
 use Modules\Licita\Policies\MapaRiscoPolicy;
+use Modules\Licita\Policies\PesquisaPrecoPolicy;
 use Modules\Licita\Policies\ProcessoPolicy;
 
 final class LicitaServiceProvider extends ServiceProvider
@@ -27,6 +29,7 @@ final class LicitaServiceProvider extends ServiceProvider
         Gate::policy(Dfd::class, DfdPolicy::class);
         Gate::policy(Etp::class, EtpPolicy::class);
         Gate::policy(MapaRisco::class, MapaRiscoPolicy::class);
+        Gate::policy(PesquisaPreco::class, PesquisaPrecoPolicy::class);
         Gate::policy(LegalDocumento::class, LegalDocumentoPolicy::class);
         Gate::policy(CampoConfiguracao::class, CampoConfiguracaoPolicy::class);
         $this->loadRoutesFrom(__DIR__ . '/../Routes/api.php');

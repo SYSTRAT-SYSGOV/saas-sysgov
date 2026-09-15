@@ -22,10 +22,10 @@ const FASE_LABEL: Record<FaseLicita, string> = {
 };
 
 /** Fases com tela própria implementada hoje. */
-export type FaseLicitaImplementada = 'dfd' | 'etp' | 'mapa_riscos';
+export type FaseLicitaImplementada = 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos';
 
 /** As demais fases aparecem no passo a passo como "em breve", sem link (ver README do módulo Licita). Tipado como FaseLicita[] (não FaseLicitaImplementada[]) só pra `.includes(fase)` aceitar qualquer FaseLicita na checagem abaixo. */
-const FASES_IMPLEMENTADAS: FaseLicita[] = ['dfd', 'etp', 'mapa_riscos'];
+const FASES_IMPLEMENTADAS: FaseLicita[] = ['dfd', 'etp', 'mapa_riscos', 'pesquisa_precos'];
 
 interface FasesLicitaStepperProps {
   processo: Processo;
@@ -45,18 +45,28 @@ export const FasesLicitaStepper: React.FC<FasesLicitaStepperProps> = ({ processo
   const dfdAprovado = processo.dfd?.status === 'aprovado';
   const etpAprovado = processo.etp?.status === 'aprovado';
   const mapaRiscoAprovado = processo.mapa_risco?.status === 'aprovado';
+  const pesquisaPrecoAprovada = processo.pesquisa_preco?.status === 'aprovado';
 
   const passos: Passo[] = (Object.keys(FASE_LABEL) as FaseLicita[]).map((fase) => {
     if (!FASES_IMPLEMENTADAS.includes(fase)) {
       return { fase, label: FASE_LABEL[fase], estado: 'em_breve' };
     }
 
-    const aprovado = fase === 'dfd' ? dfdAprovado : fase === 'etp' ? etpAprovado : mapaRiscoAprovado;
+    const aprovado =
+      fase === 'dfd' ? dfdAprovado
+      : fase === 'etp' ? etpAprovado
+      : fase === 'mapa_riscos' ? mapaRiscoAprovado
+      : pesquisaPrecoAprovada;
     if (aprovado) return { fase, label: FASE_LABEL[fase], estado: 'aprovado' };
 
     // Alcançável (mesmo sem estar aprovada ainda): dfd sempre; etp quando o
-    // dfd está aprovado; mapa_riscos quando o etp está aprovado.
-    const alcancavel = fase === 'dfd' || (fase === 'etp' && dfdAprovado) || (fase === 'mapa_riscos' && etpAprovado);
+    // dfd está aprovado; mapa_riscos quando o etp está aprovado;
+    // pesquisa_precos quando o mapa_riscos está aprovado.
+    const alcancavel =
+      fase === 'dfd' ||
+      (fase === 'etp' && dfdAprovado) ||
+      (fase === 'mapa_riscos' && etpAprovado) ||
+      (fase === 'pesquisa_precos' && mapaRiscoAprovado);
     return { fase, label: FASE_LABEL[fase], estado: alcancavel ? 'atual' : 'bloqueado' };
   });
 

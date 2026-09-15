@@ -10,6 +10,7 @@ use Modules\Licita\Http\Controllers\EtpController;
 use Modules\Licita\Http\Controllers\LegalDocumentoController;
 use Modules\Licita\Http\Controllers\LicitaIaController;
 use Modules\Licita\Http\Controllers\MapaRiscoController;
+use Modules\Licita\Http\Controllers\PesquisaPrecoController;
 use Modules\Licita\Http\Controllers\ProcessoController;
 
 Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita'])->prefix('api/licita')->group(function (): void {
@@ -47,6 +48,14 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::post('/mapas-riscos/{id}/enviar-revisao', [MapaRiscoController::class, 'enviarRevisao']);
     Route::post('/mapas-riscos/{id}/aprovar', [MapaRiscoController::class, 'aprovar']);
     Route::post('/mapas-riscos/{id}/rejeitar', [MapaRiscoController::class, 'rejeitar']);
+
+    Route::post('/processos/{processoId}/pesquisas-precos', [PesquisaPrecoController::class, 'store']);
+    Route::get('/pesquisas-precos/{id}', [PesquisaPrecoController::class, 'show']);
+    Route::put('/pesquisas-precos/{id}', [PesquisaPrecoController::class, 'update']);
+    Route::post('/pesquisas-precos/{id}/reabrir', [PesquisaPrecoController::class, 'reabrir']);
+    Route::post('/pesquisas-precos/{id}/enviar-revisao', [PesquisaPrecoController::class, 'enviarRevisao']);
+    Route::post('/pesquisas-precos/{id}/aprovar', [PesquisaPrecoController::class, 'aprovar']);
+    Route::post('/pesquisas-precos/{id}/rejeitar', [PesquisaPrecoController::class, 'rejeitar']);
 
     Route::get('/legislacao', [LegalDocumentoController::class, 'index']);
     Route::post('/legislacao', [LegalDocumentoController::class, 'store']);

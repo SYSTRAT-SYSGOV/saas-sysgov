@@ -7,12 +7,14 @@ import type {
   CreateEtpInput,
   CreateLegalDocumentoInput,
   CreateMapaRiscoInput,
+  CreatePesquisaPrecoInput,
   CreateProcessoInput,
   Dfd,
   Etp,
   LegalDocumento,
   MapaRisco,
   MembroEquipePlanejamento,
+  PesquisaPreco,
   Processo,
   ProcessoFilters,
   SugerirJustificativaDfdInput,
@@ -23,6 +25,7 @@ import type {
   UpdateDfdInput,
   UpdateEtpInput,
   UpdateMapaRiscoInput,
+  UpdatePesquisaPrecoInput,
   UpdateLegalDocumentoInput,
 } from './types';
 
@@ -150,6 +153,37 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async rejeitarMapaRisco(id: number, motivo: string): Promise<MapaRisco> {
     return this.api.request(`/licita/mapas-riscos/${id}/rejeitar`, { method: 'POST', body: JSON.stringify({ motivo }) });
+  }
+
+  async createPesquisaPreco(processoId: number, input: CreatePesquisaPrecoInput): Promise<PesquisaPreco> {
+    return this.api.request(`/licita/processos/${processoId}/pesquisas-precos`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async getPesquisaPreco(id: number): Promise<PesquisaPreco> {
+    return this.api.request(`/licita/pesquisas-precos/${id}`);
+  }
+
+  async updatePesquisaPreco(id: number, input: UpdatePesquisaPrecoInput): Promise<PesquisaPreco> {
+    return this.api.request(`/licita/pesquisas-precos/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async reabrirPesquisaPreco(id: number): Promise<PesquisaPreco> {
+    return this.api.request(`/licita/pesquisas-precos/${id}/reabrir`, { method: 'POST' });
+  }
+
+  async enviarPesquisaPrecoParaRevisao(id: number, mensagem?: string): Promise<PesquisaPreco> {
+    return this.api.request(`/licita/pesquisas-precos/${id}/enviar-revisao`, {
+      method: 'POST',
+      body: JSON.stringify({ mensagem }),
+    });
+  }
+
+  async aprovarPesquisaPreco(id: number, parecer?: string): Promise<PesquisaPreco> {
+    return this.api.request(`/licita/pesquisas-precos/${id}/aprovar`, { method: 'POST', body: JSON.stringify({ parecer }) });
+  }
+
+  async rejeitarPesquisaPreco(id: number, motivo: string): Promise<PesquisaPreco> {
+    return this.api.request(`/licita/pesquisas-precos/${id}/rejeitar`, { method: 'POST', body: JSON.stringify({ motivo }) });
   }
 
   async sugerirJustificativaDfd(input: SugerirJustificativaDfdInput): Promise<SugerirJustificativaDfdOutput> {
