@@ -55,6 +55,9 @@ export type { SelectProps, SelectOption } from './components/Select';
 export { RichTextEditor } from './components/RichTextEditor';
 export type { RichTextEditorProps } from './components/RichTextEditor';
 
+export { ActionsMenu } from './components/ActionsMenu';
+export type { ActionsMenuProps, ActionsMenuItem } from './components/ActionsMenu';
+
 // ============================================================
 // Componentes de domínio SYSGOV (sem equivalente no catálogo shadcn)
 // ============================================================
