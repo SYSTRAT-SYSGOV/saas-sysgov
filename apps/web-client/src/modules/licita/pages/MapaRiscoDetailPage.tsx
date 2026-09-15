@@ -201,6 +201,7 @@ export const MapaRiscoDetailPage: React.FC<MapaRiscoDetailPageProps> = ({ proces
 
           <MapaRiscoForm
             key={mapaRisco ? `${mapaRisco.id}-${mapaRisco.updated_at}` : 'novo'}
+            processoId={processoId}
             initialValue={
               mapaRisco
                 ? {
