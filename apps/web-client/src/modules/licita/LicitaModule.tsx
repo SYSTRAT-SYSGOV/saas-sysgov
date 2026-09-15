@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useAuth } from '@/core/auth/useAuth';
 import { Plus, Gavel, Search, BookOpen, Settings2, FileDown, Pencil, SlidersHorizontal } from 'lucide-react';
-import { Accordion, Button, Card } from '@sysgov/ui';
+import { Accordion, ActionsMenu, Button, Card, type ActionsMenuItem } from '@sysgov/ui';
 import { PageHeader, DataTable, EmptyState, SearchInput, StatusChip, ScreenState } from '@/components/ui';
 import { sysgovApi, type FaseLicita, type LegalDocumento, type Processo, type StatusDfd } from '@sysgov/sdk';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -145,7 +145,7 @@ const ProcessosTab: React.FC<{
       {
         id: 'acoes',
         header: '',
-        size: 90,
+        size: 56,
         enableSorting: false,
         cell: ({ row }) => {
           const dfd = row.original.dfd;
@@ -156,75 +156,55 @@ const ProcessosTab: React.FC<{
           const gerandoEtp = gerandoPdfId === `${row.original.id}:etp`;
           const gerandoMapaRisco = gerandoPdfId === `${row.original.id}:mapa_riscos`;
           const gerandoPesquisaPreco = gerandoPdfId === `${row.original.id}:pesquisa_precos`;
+
+          const items: ActionsMenuItem[] = [
+            {
+              key: 'editar',
+              label: 'Editar',
+              icon: <Pencil className="h-3.5 w-3.5" />,
+              onSelect: () => onOpenProcesso(row.original.id),
+            },
+          ];
+          if (dfd) {
+            items.push({
+              key: 'pdf-dfd',
+              label: 'Baixar PDF do DFD',
+              icon: <FileDown className="h-3.5 w-3.5" />,
+              loading: gerandoDfd,
+              onSelect: () => handleGerarPdf(row.original.id, 'dfd'),
+            });
+          }
+          if (etp) {
+            items.push({
+              key: 'pdf-etp',
+              label: 'Baixar PDF do ETP',
+              icon: <FileDown className="h-3.5 w-3.5" />,
+              loading: gerandoEtp,
+              onSelect: () => handleGerarPdf(row.original.id, 'etp'),
+            });
+          }
+          if (mapaRisco) {
+            items.push({
+              key: 'pdf-mapa-riscos',
+              label: 'Baixar PDF do Mapa de Riscos',
+              icon: <FileDown className="h-3.5 w-3.5" />,
+              loading: gerandoMapaRisco,
+              onSelect: () => handleGerarPdf(row.original.id, 'mapa_riscos'),
+            });
+          }
+          if (pesquisaPreco) {
+            items.push({
+              key: 'pdf-pesquisa-precos',
+              label: 'Baixar PDF da Pesquisa de Preços',
+              icon: <FileDown className="h-3.5 w-3.5" />,
+              loading: gerandoPesquisaPreco,
+              onSelect: () => handleGerarPdf(row.original.id, 'pesquisa_precos'),
+            });
+          }
+
           return (
-            <div className="flex justify-center gap-1">
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Editar"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenProcesso(row.original.id);
-                }}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              {dfd && (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  title="Baixar PDF do DFD"
-                  isLoading={gerandoDfd}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleGerarPdf(row.original.id, 'dfd');
-                  }}
-                >
-                  {!gerandoDfd && <FileDown className="h-3.5 w-3.5" />}
-                </Button>
-              )}
-              {etp && (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  title="Baixar PDF do ETP"
-                  isLoading={gerandoEtp}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleGerarPdf(row.original.id, 'etp');
-                  }}
-                >
-                  {!gerandoEtp && <FileDown className="h-3.5 w-3.5" />}
-                </Button>
-              )}
-              {mapaRisco && (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  title="Baixar PDF do Mapa de Riscos"
-                  isLoading={gerandoMapaRisco}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleGerarPdf(row.original.id, 'mapa_riscos');
-                  }}
-                >
-                  {!gerandoMapaRisco && <FileDown className="h-3.5 w-3.5" />}
-                </Button>
-              )}
-              {pesquisaPreco && (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  title="Baixar PDF da Pesquisa de Preços"
-                  isLoading={gerandoPesquisaPreco}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleGerarPdf(row.original.id, 'pesquisa_precos');
-                  }}
-                >
-                  {!gerandoPesquisaPreco && <FileDown className="h-3.5 w-3.5" />}
-                </Button>
-              )}
+            <div className="flex justify-center">
+              <ActionsMenu items={items} triggerLabel="Ações do processo" />
             </div>
           );
         },
