@@ -480,6 +480,20 @@ export interface SugerirTextoIaOutput {
   legislacao_utilizada: LegislacaoUtilizadaIa[];
 }
 
+/**
+ * Geração de riscos por IA para o Mapa de Riscos (ver
+ * MapaRiscoIaService::sugerirRiscos) — usa objeto do processo + DFD + ETP
+ * como contexto. Os riscos retornados são somados aos já existentes no
+ * formulário, nunca substituem — a equipe de planejamento sempre revisa
+ * antes de salvar.
+ */
+export interface SugerirRiscosMapaRiscoOutput {
+  riscos: Risco[];
+  /** Sugestões para os campos extras (texto/texto_longo) configurados pelo tenant para o Mapa de Riscos — só preenche campos ainda vazios no formulário. */
+  campos_extras: Record<string, string>;
+  legislacao_utilizada: LegislacaoUtilizadaIa[];
+}
+
 export interface ProcessoFilters {
   fase_atual?: FaseLicita | '';
   status_geral?: StatusProcesso | '';

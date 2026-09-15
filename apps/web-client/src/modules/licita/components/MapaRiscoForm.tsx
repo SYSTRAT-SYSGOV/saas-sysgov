@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Button, Select } from '@sysgov/ui';
-import { Plus, Trash2 } from 'lucide-react';
-import type { AlocacaoRisco, CampoConfig, CreateMapaRiscoInput, FaseRisco, MembroEquipePlanejamento, Risco } from '@sysgov/sdk';
+import { Plus, Sparkles, Trash2 } from 'lucide-react';
+import { sysgovApi, type AlocacaoRisco, type CampoConfig, type CreateMapaRiscoInput, type FaseRisco, type LegislacaoUtilizadaIa, type MembroEquipePlanejamento, type Risco } from '@sysgov/sdk';
 import { CamposExtrasFields } from './CamposExtrasFields';
 import { ValidationErrorModal } from '@/components/ui';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
@@ -47,6 +47,8 @@ interface MapaRiscoFormProps {
   onSubmit: (data: CreateMapaRiscoInput) => Promise<void> | void;
   /** Campos extras configurados pelo órgão para o Mapa de Riscos (ver CamposConfiguracaoPage). */
   camposExtras?: CampoConfig[];
+  /** Processo do Mapa de Riscos — usado para buscar objeto/DFD/ETP como contexto da geração de riscos por IA. */
+  processoId: number;
 }
 
 /**
@@ -62,6 +64,7 @@ export const MapaRiscoForm: React.FC<MapaRiscoFormProps> = ({
   submitLabel,
   onSubmit,
   camposExtras = [],
+  processoId,
 }) => {
   const [equipe, setEquipe] = useState<MembroEquipePlanejamento[]>(
     initialValue?.equipe_planejamento && initialValue.equipe_planejamento.length > 0
@@ -78,6 +81,9 @@ export const MapaRiscoForm: React.FC<MapaRiscoFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ApiFieldError[] | null>(null);
   const [abaAtiva, setAbaAtiva] = useState(ABA_PADRAO);
+  const [gerandoRiscosIa, setGerandoRiscosIa] = useState(false);
+  const [erroIa, setErroIa] = useState<string | null>(null);
+  const [legislacaoUtilizadaIa, setLegislacaoUtilizadaIa] = useState<LegislacaoUtilizadaIa[] | null>(null);
 
   // Agrupa os campos extras por aba (ver comentário equivalente no
   // DfdForm/EtpForm) — campos sem aba caem na aba padrão, junto dos riscos
@@ -109,6 +115,38 @@ export const MapaRiscoForm: React.FC<MapaRiscoFormProps> = ({
 
   const updateRisco = (index: number, patch: Partial<Risco>) => {
     setRiscos((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  };
+
+  const handleGerarRiscosComIa = async () => {
+    setErroIa(null);
+    setGerandoRiscosIa(true);
+    try {
+      const resultado = await sysgovApi.licita.sugerirRiscosMapaRisco(processoId);
+      setRiscos((prev) => {
+        // Descarta o card vazio inicial (sem descrição) antes de somar os
+        // sugeridos — sem isso, o primeiro clique deixaria um card em
+        // branco no meio da lista.
+        const semVazios = prev.filter((r) => r.descricao.trim() !== '');
+        return [...semVazios, ...resultado.riscos];
+      });
+      // Só preenche campos extras ainda vazios — nunca sobrescreve o que a
+      // equipe de planejamento já digitou manualmente.
+      setCamposExtrasValores((prev) => {
+        const atualizados = { ...prev };
+        for (const [chave, valor] of Object.entries(resultado.campos_extras)) {
+          const atual = atualizados[chave];
+          if (atual === undefined || atual === null || String(atual).trim() === '') {
+            atualizados[chave] = valor;
+          }
+        }
+        return atualizados;
+      });
+      setLegislacaoUtilizadaIa(resultado.legislacao_utilizada);
+    } catch (err) {
+      setErroIa(getApiErrorMessage(err, 'Não foi possível gerar riscos com IA.'));
+    } finally {
+      setGerandoRiscosIa(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,17 +210,47 @@ export const MapaRiscoForm: React.FC<MapaRiscoFormProps> = ({
         <div className="flex items-center justify-between mb-2">
           <label className="block text-sm font-medium text-foreground">Riscos Identificados</label>
           {!disabled && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              leftIcon={<Plus className="h-3.5 w-3.5" />}
-              onClick={() => setRiscos((prev) => [...prev, { ...emptyRisco }])}
-            >
-              Adicionar Risco
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                leftIcon={<Sparkles className="h-3.5 w-3.5" />}
+                isLoading={gerandoRiscosIa}
+                onClick={handleGerarRiscosComIa}
+              >
+                Gerar Riscos com IA
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                leftIcon={<Plus className="h-3.5 w-3.5" />}
+                onClick={() => setRiscos((prev) => [...prev, { ...emptyRisco }])}
+              >
+                Adicionar Risco
+              </Button>
+            </div>
           )}
         </div>
+
+        {erroIa && (
+          <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {erroIa}
+          </div>
+        )}
+
+        {legislacaoUtilizadaIa && (
+          <div className="mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            {legislacaoUtilizadaIa.length > 0 ? (
+              <>
+                Riscos e campos extras sugeridos pela IA com base em: {legislacaoUtilizadaIa.map((l) => l.titulo).join(', ')}. Revise antes de salvar.
+              </>
+            ) : (
+              'Riscos e campos extras sugeridos pela IA (sem legislação específica encontrada). Revise antes de salvar.'
+            )}
+          </div>
+        )}
 
         <div className="space-y-3">
           {riscos.map((risco, index) => {

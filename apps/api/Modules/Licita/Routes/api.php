@@ -11,6 +11,7 @@ use Modules\Licita\Http\Controllers\EtpController;
 use Modules\Licita\Http\Controllers\LegalDocumentoController;
 use Modules\Licita\Http\Controllers\LicitaIaController;
 use Modules\Licita\Http\Controllers\MapaRiscoController;
+use Modules\Licita\Http\Controllers\MapaRiscoIaController;
 use Modules\Licita\Http\Controllers\PesquisaPrecoController;
 use Modules\Licita\Http\Controllers\ProcessoController;
 
@@ -39,6 +40,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::put('/etps/{id}', [EtpController::class, 'update']);
 
     Route::post('/processos/{processoId}/mapa-riscos', [MapaRiscoController::class, 'store']);
+    // Antes de '/mapas-riscos/{id}': "ia" não é um id numérico, mas fica
+    // explícito aqui para não depender de precedência de rota (mesmo
+    // padrão de '/dfds/ia/sugerir-justificativa').
+    Route::post('/processos/{processoId}/mapa-riscos/ia/sugerir-riscos', [MapaRiscoIaController::class, 'sugerirRiscos']);
     Route::get('/mapas-riscos/{id}', [MapaRiscoController::class, 'show']);
     Route::put('/mapas-riscos/{id}', [MapaRiscoController::class, 'update']);
 

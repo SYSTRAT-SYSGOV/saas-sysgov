@@ -20,6 +20,7 @@ import type {
   ProcessoFilters,
   SugerirJustificativaDfdInput,
   SugerirJustificativaDfdOutput,
+  SugerirRiscosMapaRiscoOutput,
   SugerirTextoIaInput,
   SugerirTextoIaOutput,
   TipoDocumentoConfiguravel,
@@ -116,6 +117,11 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async updateMapaRisco(id: number, input: UpdateMapaRiscoInput): Promise<MapaRisco> {
     return this.api.request(`/licita/mapas-riscos/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  /** Gera riscos por IA a partir do objeto/DFD/ETP do processo — a lista retornada deve ser somada aos riscos já existentes no formulário, nunca substituí-los. */
+  async sugerirRiscosMapaRisco(processoId: number): Promise<SugerirRiscosMapaRiscoOutput> {
+    return this.api.request(`/licita/processos/${processoId}/mapa-riscos/ia/sugerir-riscos`, { method: 'POST' });
   }
 
   async createPesquisaPreco(processoId: number, input: CreatePesquisaPrecoInput): Promise<PesquisaPreco> {
