@@ -8,6 +8,8 @@ export type StatusProcesso = 'em_andamento' | 'concluido' | 'cancelado';
 export type StatusDfd = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
 export type StatusEtp = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
 export type StatusMapaRisco = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
+export type StatusPesquisaPreco = 'rascunho' | 'em_revisao' | 'aprovado' | 'rejeitado';
+export type MetodoReferenciaPreco = 'media' | 'mediana' | 'menor_valor';
 export type GrauPrioridade = 'baixa' | 'media' | 'alta' | 'critica';
 export type AcaoVersaoDfd =
   | 'criado'
@@ -19,6 +21,7 @@ export type AcaoVersaoDfd =
   | 'equipe_alterada_pelo_aprovador';
 export type AcaoVersaoEtp = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado' | 'reaberto';
 export type AcaoVersaoMapaRisco = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado' | 'reaberto';
+export type AcaoVersaoPesquisaPreco = 'criado' | 'revisado' | 'enviado_revisao' | 'aprovado' | 'rejeitado' | 'reaberto';
 
 export type FaseRisco = 'planejamento' | 'selecao_fornecedor' | 'gestao_contratual';
 export type AlocacaoRisco = 'contratante' | 'contratada' | 'compartilhado';
@@ -239,6 +242,71 @@ export interface MapaRisco {
   updated_at: string;
 }
 
+export interface CotacaoItemPesquisaPreco {
+  /** Fonte da cotação (ex.: "Painel de Preços", "Fornecedor direto", "Ata de registro de preços") — ver IN SEGES/ME nº 65/2021. */
+  fonte: string;
+  fornecedor?: string | null;
+  valor_unitario: number;
+  data_cotacao?: string | null;
+  /** Link/identificação da cotação (URL do Painel de Preços, número da proposta, etc.). */
+  referencia?: string | null;
+}
+
+/**
+ * Item da Pesquisa de Preços — nasce como cópia de um item do DFD do
+ * processo (codigo/descricao/unidade_medida/quantidade), ganhando sua
+ * própria lista de cotações. O valor de referência (média/mediana/menor)
+ * nunca é persistido — sempre calculado a partir das cotações (ver
+ * utils/precoReferencia.ts), mesmo padrão do nível/classificação do Mapa de
+ * Riscos.
+ */
+export interface ItemPesquisaPreco {
+  codigo: string;
+  descricao: string;
+  unidade_medida: string;
+  quantidade: number;
+  cotacoes: CotacaoItemPesquisaPreco[];
+}
+
+export interface PesquisaPrecoVersao {
+  id: number;
+  pesquisa_preco_id: number;
+  versao: number;
+  acao: AcaoVersaoPesquisaPreco;
+  campos_alterados: Record<string, { de: unknown; para: unknown }> | null;
+  dados: Record<string, unknown> | null;
+  user_id: number;
+  usuario: UsuarioResumo | null;
+  created_at: string;
+}
+
+/**
+ * Pesquisa de Preços (IN SEGES/ME nº 65/2021) — apuração do valor estimado
+ * da contratação a partir de cotações por item (mínimo 3 fontes por item
+ * para poder seguir para revisão, ver RN-006 em PesquisaPrecoService). Só
+ * pode ser criada com o Mapa de Riscos do mesmo processo aprovado.
+ */
+export interface PesquisaPreco {
+  id: number;
+  tenant_id: number;
+  processo_id: number;
+  /** Nasce como cópia da equipe do Mapa de Riscos (ver PesquisaPrecoService::criar), mas é editável independentemente dali em diante. */
+  equipe_planejamento: MembroEquipePlanejamento[] | null;
+  itens: ItemPesquisaPreco[] | null;
+  metodo_referencia: MetodoReferenciaPreco;
+  justificativa_metodo: string | null;
+  campos_extras: Record<string, unknown> | null;
+  status: StatusPesquisaPreco;
+  elaborado_por: number;
+  aprovado_por: number | null;
+  aprovado_em: string | null;
+  elaborador: UsuarioResumo | null;
+  aprovador: UsuarioResumo | null;
+  versoes: PesquisaPrecoVersao[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Processo {
   id: number;
   tenant_id: number;
@@ -254,6 +322,9 @@ export interface Processo {
   // snake_case (não mapaRisco): Eloquent serializa relações com Str::snake()
   // no toArray()/toJson() — mapaRisco() no model vira "mapa_risco" no JSON.
   mapa_risco: MapaRisco | null;
+  // snake_case (não pesquisaPreco): Eloquent serializa relações com Str::snake()
+  // no toArray()/toJson() — pesquisaPreco() no model vira "pesquisa_preco" no JSON.
+  pesquisa_preco: PesquisaPreco | null;
   created_at: string;
   updated_at: string;
 }
@@ -301,6 +372,18 @@ export interface CreateMapaRiscoInput {
 }
 
 export type UpdateMapaRiscoInput = Partial<CreateMapaRiscoInput>;
+
+export interface CreatePesquisaPrecoInput {
+  /** Se omitido na criação, o backend copia os itens do DFD do processo, cada um sem cotações (ver PesquisaPrecoService::criar). */
+  itens?: ItemPesquisaPreco[];
+  metodo_referencia: MetodoReferenciaPreco;
+  justificativa_metodo?: string | null;
+  /** Se omitido na criação, o backend copia a equipe do Mapa de Riscos do processo (ver PesquisaPrecoService::criar). */
+  equipe_planejamento?: MembroEquipePlanejamento[];
+  campos_extras?: Record<string, unknown>;
+}
+
+export type UpdatePesquisaPrecoInput = Partial<CreatePesquisaPrecoInput>;
 
 export interface SugerirJustificativaDfdInput {
   objeto: string;

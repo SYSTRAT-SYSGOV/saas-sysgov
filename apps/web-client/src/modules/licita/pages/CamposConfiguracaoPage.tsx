@@ -18,7 +18,7 @@ const TIPO_DOCUMENTO_OPTIONS: { value: TipoDocumentoConfiguravel; label: string;
   { value: 'dfd_item_servico', label: 'DFD — Item de Serviço', disponivel: true },
   { value: 'etp', label: 'ETP', disponivel: true },
   { value: 'mapa_riscos', label: 'Mapa de Riscos', disponivel: true },
-  { value: 'pesquisa_precos', label: 'Pesquisa de Preços', disponivel: false },
+  { value: 'pesquisa_precos', label: 'Pesquisa de Preços', disponivel: true },
   { value: 'tr', label: 'Termo de Referência', disponivel: false },
   { value: 'edital', label: 'Edital', disponivel: false },
 ];

@@ -12,6 +12,7 @@ import { BuscaAvancadaProcessos, aplicarFiltrosAvancados, type FiltroAvancado } 
 import { DfdDetailPage } from './pages/DfdDetailPage';
 import { EtpDetailPage } from './pages/EtpDetailPage';
 import { MapaRiscoDetailPage } from './pages/MapaRiscoDetailPage';
+import { PesquisaPrecoDetailPage } from './pages/PesquisaPrecoDetailPage';
 import { FasesLicitaStepper, type FaseLicitaImplementada } from './components/FasesLicitaStepper';
 import { LegislacaoPage } from './pages/LegislacaoPage';
 import { LegislacaoDetailPage } from './pages/LegislacaoDetailPage';
@@ -19,6 +20,7 @@ import { CamposConfiguracaoPage } from './pages/CamposConfiguracaoPage';
 import { abrirJanelaPdf, gerarDfdPdf } from './utils/gerarDfdPdf';
 import { gerarEtpPdf } from './utils/gerarEtpPdf';
 import { gerarMapaRiscoPdf } from './utils/gerarMapaRiscoPdf';
+import { gerarPesquisaPrecoPdf } from './utils/gerarPesquisaPrecoPdf';
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
@@ -69,7 +71,7 @@ const ProcessosTab: React.FC<{
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   const handleGerarPdf = useCallback(
-    async (processoId: number, tipo: 'dfd' | 'etp' | 'mapa_riscos') => {
+    async (processoId: number, tipo: 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos') => {
       // Precisa abrir a janela AQUI, síncrono, ainda dentro do clique — se
       // abrirmos só depois do await abaixo, o navegador já não reconhece
       // como resposta direta a um gesto do usuário e bloqueia o popup
@@ -97,8 +99,10 @@ const ProcessosTab: React.FC<{
           gerarDfdPdf(janela, processoCompleto, tenant, config?.campos ?? []);
         } else if (tipo === 'etp') {
           gerarEtpPdf(janela, processoCompleto, tenant, config?.campos ?? []);
-        } else {
+        } else if (tipo === 'mapa_riscos') {
           gerarMapaRiscoPdf(janela, processoCompleto, tenant, config?.campos ?? []);
+        } else {
+          gerarPesquisaPrecoPdf(janela, processoCompleto, tenant, config?.campos ?? []);
         }
       } catch (err: any) {
         janela.close();
@@ -147,9 +151,11 @@ const ProcessosTab: React.FC<{
           const dfd = row.original.dfd;
           const etp = row.original.etp;
           const mapaRisco = row.original.mapa_risco;
+          const pesquisaPreco = row.original.pesquisa_preco;
           const gerandoDfd = gerandoPdfId === `${row.original.id}:dfd`;
           const gerandoEtp = gerandoPdfId === `${row.original.id}:etp`;
           const gerandoMapaRisco = gerandoPdfId === `${row.original.id}:mapa_riscos`;
+          const gerandoPesquisaPreco = gerandoPdfId === `${row.original.id}:pesquisa_precos`;
 
           const items: ActionsMenuItem[] = [
             {
@@ -184,6 +190,15 @@ const ProcessosTab: React.FC<{
               icon: <FileDown className="h-3.5 w-3.5" />,
               loading: gerandoMapaRisco,
               onSelect: () => handleGerarPdf(row.original.id, 'mapa_riscos'),
+            });
+          }
+          if (pesquisaPreco) {
+            items.push({
+              key: 'pdf-pesquisa-precos',
+              label: 'Baixar PDF da Pesquisa de Preços',
+              icon: <FileDown className="h-3.5 w-3.5" />,
+              loading: gerandoPesquisaPreco,
+              onSelect: () => handleGerarPdf(row.original.id, 'pesquisa_precos'),
             });
           }
 
@@ -269,6 +284,20 @@ const ProcessosTab: React.FC<{
           const mapaRisco = row.original.mapa_risco;
           if (!mapaRisco) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
           return <StatusChip label={DFD_STATUS_LABEL[mapaRisco.status]} variant={DFD_STATUS_VARIANT[mapaRisco.status]} />;
+        },
+      },
+      {
+        id: 'pesquisa_precos_status',
+        header: 'Status da Pesquisa de Preços',
+        size: 190,
+        meta: {
+          // StatusPesquisaPreco usa os mesmos 4 valores do StatusDfd — reaproveita os mesmos mapas de label/variant.
+          exportValue: (p) => (p.pesquisa_preco ? DFD_STATUS_LABEL[p.pesquisa_preco.status] : 'Não iniciado'),
+        },
+        cell: ({ row }) => {
+          const pesquisaPreco = row.original.pesquisa_preco;
+          if (!pesquisaPreco) return <span className="text-xs text-muted-foreground italic">Não iniciado</span>;
+          return <StatusChip label={DFD_STATUS_LABEL[pesquisaPreco.status]} variant={DFD_STATUS_VARIANT[pesquisaPreco.status]} />;
         },
       },
       {
@@ -391,6 +420,7 @@ type DocumentoAtivo = FaseLicitaImplementada;
  * (sem cache client-side de Processo).
  */
 const documentoPorFase = (processo: Processo): DocumentoAtivo => {
+  if (processo.mapa_risco?.status === 'aprovado') return 'pesquisa_precos';
   if (processo.etp?.status === 'aprovado') return 'mapa_riscos';
   if (processo.dfd?.status === 'aprovado') return 'etp';
   return 'dfd';
@@ -441,6 +471,7 @@ const ProcessoDocumentoPage: React.FC<ProcessoDocumentoPageProps> = ({ processoI
   return (
     <div className="space-y-4">
       <FasesLicitaStepper processo={processo} faseAtiva={documento} onSelecionar={setDocumento} />
+      {documento === 'pesquisa_precos' && <PesquisaPrecoDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'mapa_riscos' && <MapaRiscoDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'etp' && <EtpDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'dfd' && <DfdDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}

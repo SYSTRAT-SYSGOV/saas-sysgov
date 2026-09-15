@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read Dfd|null $dfd
  * @property-read Etp|null $etp
  * @property-read MapaRisco|null $mapaRisco
+ * @property-read PesquisaPreco|null $pesquisaPreco
  * @property-read User|null $criador
  */
 final class Processo extends Model
@@ -76,6 +77,14 @@ final class Processo extends Model
     public function mapaRisco(): HasOne
     {
         return $this->hasOne(MapaRisco::class, 'processo_id');
+    }
+
+    /**
+     * @return HasOne<PesquisaPreco, $this>
+     */
+    public function pesquisaPreco(): HasOne
+    {
+        return $this->hasOne(PesquisaPreco::class, 'processo_id');
     }
 
     /**

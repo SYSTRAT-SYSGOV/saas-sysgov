@@ -20,7 +20,7 @@ final class ProcessoController extends Controller
     {
         $this->authorize('viewAny', Processo::class);
 
-        $query = Processo::query()->with(['dfd', 'etp', 'mapaRisco'])->latest();
+        $query = Processo::query()->with(['dfd', 'etp', 'mapaRisco', 'pesquisaPreco'])->latest();
 
         if ($fase = $request->query('fase_atual')) {
             $query->where('fase_atual', $fase);
@@ -61,6 +61,7 @@ final class ProcessoController extends Controller
             'dfd.elaborador', 'dfd.aprovador', 'dfd.versoes.usuario',
             'etp.elaborador', 'etp.aprovador', 'etp.versoes.usuario',
             'mapaRisco.elaborador', 'mapaRisco.aprovador', 'mapaRisco.versoes.usuario',
+            'pesquisaPreco.elaborador', 'pesquisaPreco.aprovador', 'pesquisaPreco.versoes.usuario',
             'criador',
         ])->findOrFail($id);
         $this->authorize('view', $processo);
