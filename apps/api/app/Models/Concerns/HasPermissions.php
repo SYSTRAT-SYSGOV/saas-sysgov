@@ -48,8 +48,17 @@ trait HasPermissions
         return $this->hasPermission($permission, $tenantId);
     }
 
-    public function hasRole(string $roleSlug, ?int $tenantId = null): bool
+    public function hasRole(string|array $roleSlug, ?int $tenantId = null): bool
     {
+        if (is_array($roleSlug)) {
+            foreach ($roleSlug as $slug) {
+                if ($this->hasRole($slug, $tenantId)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         if ($this->is_platform_admin) {
             return true;
         }

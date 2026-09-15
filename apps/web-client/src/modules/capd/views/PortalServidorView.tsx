@@ -43,7 +43,11 @@ const api = new SysgovApi();
 
 type ServidorSubTab = 'espelho' | 'cit' | 'recurso' | 'simulador' | 'pmd';
 
-export const PortalServidorView: React.FC = () => {
+export interface PortalServidorViewProps {
+  portalSelector?: React.ReactNode;
+}
+
+export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSelector }) => {
   const [activeTab, setActiveTab] = useState<ServidorSubTab>('espelho');
   const [loading, setLoading] = useState<boolean>(true);
   const [espelho, setEspelho] = useState<ApiEspelhoAvaliacao | null>(null);
@@ -80,20 +84,17 @@ export const PortalServidorView: React.FC = () => {
       const avAtual = listaAv.data?.[0];
 
       if (avAtual) {
-        // Carrega espelho detalhado
-        const esp = await api.capd.obterEspelhoAvaliacao(avAtual.id).catch(() => null);
+        // Carrega em paralelo espelho, incidentes, simulação e PMD
+        const [esp, resCit, sim, listaPmd] = await Promise.all([
+          api.capd.obterEspelhoAvaliacao(avAtual.id).catch(() => null),
+          api.capd.listDiarioBordo({ servidor_id: avAtual.servidor_id }).catch(() => ({ data: [] })),
+          api.capd.simularProgressao(avAtual.servidor_id).catch(() => null),
+          api.capd.listPmds({ servidor_id: avAtual.servidor_id }).catch(() => ({ data: [] })),
+        ]);
+
         setEspelho(esp);
-
-        // Carrega incidentes do CIT
-        const resCit = await api.capd.listDiarioBordo({ servidor_id: avAtual.servidor_id }).catch(() => ({ data: [] }));
         setIncidentes(resCit.data || []);
-
-        // Carrega simulação de progressão
-        const sim = await api.capd.simularProgressao(avAtual.servidor_id).catch(() => null);
         setSimulacao(sim);
-
-        // Carrega PMD se houver
-        const listaPmd = await api.capd.listPmds({ servidor_id: avAtual.servidor_id }).catch(() => ({ data: [] }));
         setPmd(listaPmd.data?.[0] || null);
       }
     } catch (e) {
@@ -177,7 +178,7 @@ export const PortalServidorView: React.FC = () => {
     { key: 'pmd', label: 'Plano de Melhoria (PMD)', icon: <GraduationCap className="h-4 w-4" />, badge: pmd ? 1 : undefined },
   ];
 
-  if (loading) {
+  if (loading && !espelho) {
     return <ScreenState type="loading" title="Carregando portal do servidor avaliado..." />;
   }
 
@@ -189,7 +190,8 @@ export const PortalServidorView: React.FC = () => {
         subtitle="Consulta ao espelho funcional de desempenho, ciência eletrônica, linha do tempo CIT e simulação de progressão"
         badge="Área do Servidor"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {portalSelector}
             {espelho && !espelho.ciencia_servidor_em && (
               <Button
                 variant="default"

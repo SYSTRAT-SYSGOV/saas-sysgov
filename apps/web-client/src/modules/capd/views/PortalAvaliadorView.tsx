@@ -35,6 +35,7 @@ import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiAvaliacao,
   ApiDiarioBordo,
+  ApiFator,
   ApiKpisEquipe,
   ApiRecurso,
   ApiServidor,
@@ -43,7 +44,6 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs, type TabsItem } from '@/components/ui/Tabs';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ScreenState } from '@/components/ui/ScreenState';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -51,13 +51,18 @@ const api = new SysgovApi();
 
 type AvaliadorSubTab = 'avaliacoes' | 'cit' | 'devolutivas' | 'contrarrazoes' | 'pmd';
 
-export const PortalAvaliadorView: React.FC = () => {
+export interface PortalAvaliadorViewProps {
+  portalSelector?: React.ReactNode;
+}
+
+export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portalSelector }) => {
   const [activeTab, setActiveTab] = useState<AvaliadorSubTab>('avaliacoes');
   const [loading, setLoading] = useState<boolean>(true);
   const [avaliacoes, setAvaliacoes] = useState<ApiAvaliacao[]>([]);
   const [incidentes, setIncidentes] = useState<ApiDiarioBordo[]>([]);
   const [recursos, setRecursos] = useState<ApiRecurso[]>([]);
   const [servidores, setServidores] = useState<ApiServidor[]>([]);
+  const [fatores, setFatores] = useState<ApiFator[]>([]);
   const [kpisEquipe, setKpisEquipe] = useState<ApiKpisEquipe | null>(null);
   const [selectedAvaliadorId, setSelectedAvaliadorId] = useState<string>('todos');
 
@@ -69,7 +74,7 @@ export const PortalAvaliadorView: React.FC = () => {
   // Modal Novo Incidente CIT
   const [modalCitOpen, setModalCitOpen] = useState<boolean>(false);
   const [citServidorId, setCitServidorId] = useState<string>('');
-  const [citFatorId, setCitFatorId] = useState<number>(1);
+  const [citFatorId, setCitFatorId] = useState<number | null>(null);
   const [citTipo, setCitTipo] = useState<'positivo' | 'negativo'>('positivo');
   const [citDataOcorrencia, setCitDataOcorrencia] = useState<string>(new Date().toISOString().split('T')[0]);
   const [citDescricao, setCitDescricao] = useState<string>('');
@@ -103,35 +108,48 @@ export const PortalAvaliadorView: React.FC = () => {
     setLoading(true);
     try {
       const activeAvaliadorId = avaliadorId !== undefined ? avaliadorId : selectedAvaliadorId;
-      const params: { per_page: number; avaliador_id?: number } = { per_page: 100 };
+      const params: { per_page: number; avaliador_id?: number } = { per_page: 25 };
+      const kpisParams: { avaliador_id?: number } = {};
       if (activeAvaliadorId && activeAvaliadorId !== 'todos') {
         params.avaliador_id = Number(activeAvaliadorId);
+        kpisParams.avaliador_id = Number(activeAvaliadorId);
       }
 
-      const [resAv, resCit, resRec, resServ, resKpis] = await Promise.all([
+      // 1. CARREGAMENTO PRIORITÁRIO: Avaliações e KPIs em paralelo imediato
+      const [resAv, resKpis] = await Promise.all([
         api.capd.listAvaliacoes(params).catch(() => ({ data: [] })),
-        api.capd.listDiarioBordo().catch(() => ({ data: [] })),
-        api.capd.listRecursos().catch(() => ({ data: [] })),
-        api.capd.listServidores().catch(() => ({ data: [] })),
-        api.capd.getKpisEquipe().catch(() => null),
+        api.capd.getKpisEquipe(kpisParams).catch(() => null),
       ]);
 
       setAvaliacoes(resAv.data || []);
-      setIncidentes(resCit.data || []);
-      setRecursos(resRec.data || []);
       setKpisEquipe(resKpis);
-      const servList = Array.isArray(resServ) ? resServ : (resServ.data || []);
-      setServidores(servList);
+      setLoading(false); // <── DESBLOQUEIA A TELA IMEDIATAMENTE
 
-      if (servList[0] && !citServidorId) {
-        setCitServidorId(String(servList[0].user_id || servList[0].id));
-      }
+      // 2. CARREGAMENTO SECUNDÁRIO: listas auxiliares em segundo plano sem travar a interface
+      Promise.all([
+        api.capd.listDiarioBordo().catch(() => ({ data: [] })),
+        api.capd.listRecursos().catch(() => ({ data: [] })),
+        api.capd.listServidores({ per_page: 50 }).catch(() => ({ data: [] })),
+        api.capd.listFatores().catch(() => []),
+      ]).then(([resCit, resRec, resServ, resFatores]) => {
+        setIncidentes(resCit.data || []);
+        setRecursos(resRec.data || []);
+        const servList = Array.isArray(resServ) ? resServ : (resServ.data || []);
+        setServidores(servList);
+        setFatores(resFatores || []);
+
+        if (servList[0]) {
+          setCitServidorId((prev) => prev || String(servList[0].user_id || servList[0].id));
+        }
+        if (resFatores?.[0]) {
+          setCitFatorId((prev) => (prev !== null ? prev : resFatores[0].id));
+        }
+      });
     } catch (e) {
       console.error('Erro ao carregar dados do avaliador:', e);
-    } finally {
       setLoading(false);
     }
-  }, [selectedAvaliadorId, citServidorId]);
+  }, [selectedAvaliadorId]);
 
   useEffect(() => {
     carregarDadosAvaliador();
@@ -165,7 +183,7 @@ export const PortalAvaliadorView: React.FC = () => {
 
   const handleSalvarCit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!citServidorId) return;
+    if (!citServidorId || !citFatorId) return;
 
     if (citDescricao.trim().length < 30) {
       setFeedback({
@@ -583,10 +601,6 @@ export const PortalAvaliadorView: React.FC = () => {
     { key: 'contrarrazoes', label: 'Contrarrazões Recursais', icon: <MessageSquare className="h-4 w-4" />, badge: recursos.length },
   ];
 
-  if (loading) {
-    return <ScreenState type="loading" title="Carregando portal do avaliador..." />;
-  }
-
   return (
     <div className="space-y-6">
       {/* ── Topo do Portal do Avaliador ───────────────────────────────── */}
@@ -595,7 +609,8 @@ export const PortalAvaliadorView: React.FC = () => {
         subtitle="Avaliação funcional de 90° na Escala Gráfica, Trava Anti-Leniência (CIT), Devolutiva Presencial e Contrarrazões"
         badge="Chefia Imediata"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {portalSelector}
             <Button
               variant="default"
               size="sm"
@@ -609,15 +624,14 @@ export const PortalAvaliadorView: React.FC = () => {
       />
 
       {/* ── KPIs da Equipe ───────────────────────────────────────────── */}
-      {kpisEquipe && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KpiCard title="Total da Equipe" value={kpisEquipe.total_equipe} />
-            <KpiCard title="Pendentes" value={kpisEquipe.pendentes} />
-            <KpiCard title="Concluídas" value={kpisEquipe.concluidas} />
-            <KpiCard title="Nota Média" value={kpisEquipe.nota_media} />
-          </div>
-          {kpisEquipe.concluidas > 0 && (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard title="Total da Equipe" value={kpisEquipe ? kpisEquipe.total_equipe : (loading ? '...' : 0)} />
+          <KpiCard title="Pendentes" value={kpisEquipe ? kpisEquipe.pendentes : (loading ? '...' : 0)} />
+          <KpiCard title="Concluídas" value={kpisEquipe ? kpisEquipe.concluidas : (loading ? '...' : 0)} />
+          <KpiCard title="Nota Média" value={kpisEquipe ? kpisEquipe.nota_media : (loading ? '...' : '0.00')} />
+        </div>
+        {kpisEquipe && kpisEquipe.concluidas > 0 && (
             <div className="rounded-lg border border-border bg-muted/10 p-3">
               <p className="text-[11px] font-mono font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Distribuição de Graus (avaliações concluídas)
@@ -641,8 +655,7 @@ export const PortalAvaliadorView: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
-      )}
+      </div>
 
       {/* ── Sub-abas de Navegação ──────────────────────────────────────── */}
       <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />
@@ -891,16 +904,12 @@ export const PortalAvaliadorView: React.FC = () => {
             <div>
               <label className="block font-semibold text-foreground mb-1">Fator de Avaliação Qualitativo:</label>
               <Select
-                value={String(citFatorId)}
+                value={citFatorId !== null ? String(citFatorId) : ''}
                 onChange={(v) => setCitFatorId(Number(v))}
-                options={[
-                  { value: '3', label: 'F3 — Eficiência e Produtividade' },
-                  { value: '4', label: 'F4 — Comprometimento e Urbanidade' },
-                  { value: '5', label: 'F5 — Relacionamento Interpessoal' },
-                  { value: '6', label: 'F6 — Iniciativa e Resolução de Problemas' },
-                  { value: '7', label: 'F7 — Organização, Método e Cooperação' },
-                  { value: '8', label: 'F8 — Zelo Patrimonial' },
-                ]}
+                options={fatores.map((f) => ({
+                  value: String(f.id),
+                  label: `${f.codigo} — ${f.nome}`,
+                }))}
               />
             </div>
           </div>

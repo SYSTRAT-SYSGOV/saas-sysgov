@@ -55,7 +55,11 @@ interface TrilhaForenseItem {
   integridade: 'valida' | 'violada';
 }
 
-export const PortalAuditoriaView: React.FC = () => {
+export interface PortalAuditoriaViewProps {
+  portalSelector?: React.ReactNode;
+}
+
+export const PortalAuditoriaView: React.FC<PortalAuditoriaViewProps> = ({ portalSelector }) => {
   const [activeTab, setActiveTab] = useState<AuditoriaSubTab>('impedimentos');
   const [loading, setLoading] = useState<boolean>(true);
   const [impedimentos, setImpedimentos] = useState<ApiImpedimentoAuditoria[]>([]);
@@ -373,7 +377,8 @@ export const PortalAuditoriaView: React.FC = () => {
         subtitle="Fiscalização de impedimentos de parentesco até 3º grau, rastro de auditoria imutável e verificador de integridade SHA-256."
         badge="Controle Interno Municipal"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {portalSelector}
             <Button size="sm" variant="outline" onClick={carregarDadosAuditoria} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
               Atualizar Trilha

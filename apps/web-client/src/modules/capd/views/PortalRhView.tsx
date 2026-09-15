@@ -339,7 +339,11 @@ const getNomeCurtoSecretaria = (nome?: string | null): string => {
     .replace(/Secretaria Municipal do /i, '');
 };
 
-export const PortalRhView: React.FC = () => {
+export interface PortalRhViewProps {
+  portalSelector?: React.ReactNode;
+}
+
+export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) => {
   const [activeTab, setActiveTab] = useState<RhSubTab>('analytics');
   const [loading, setLoading] = useState<boolean>(true);
   const [ciclos, setCiclos] = useState<ApiCiclo[]>([]);
@@ -892,16 +896,14 @@ export const PortalRhView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── CONTAGEM REGRESSIVA EM TEMPO REAL ─────────────────────────── */}
-      <CountdownWidget />
-
       <PageHeader
         icon={<TrendingUp className="h-6 w-6 text-primary" />}
         title="Portal de RH e Secretaria Municipal de Gestão de Pessoas"
         subtitle="Inteligência de dados com Recharts, controle de prazos regimentais, desempate Art. 39 e integração de folha."
         badge="SMGP / Universal RH"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {portalSelector}
             <Button size="sm" variant="outline" onClick={handleExportarCsvFolha}>
               <Download className="h-4 w-4 mr-1.5" />
               Exportar para ERP de Folha (CSV)
@@ -909,6 +911,9 @@ export const PortalRhView: React.FC = () => {
           </div>
         }
       />
+
+      {/* ── CONTAGEM REGRESSIVA EM TEMPO REAL ─────────────────────────── */}
+      <CountdownWidget />
 
       <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />
 

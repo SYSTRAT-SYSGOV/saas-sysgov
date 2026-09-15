@@ -44,13 +44,14 @@ final class DiarioBordoPolicy
         }
 
         try {
-            if ($user->hasRole(['admin_tenant', 'admin', 'gestor_rh', 'avaliador_capd', 'avaliador', 'chefia', 'membro_comissao'])) {
+            $papeisPrivilegiados = ['admin_tenant', 'gestor', 'avaliador', 'membro_capd', 'gestor_rh'];
+            if (collect($papeisPrivilegiados)->some(fn (string $slug) => $user->hasRole($slug))) {
                 return true;
             }
 
-            return $user->hasPermissionTo('capd.diario_bordo.criar');
+            return $user->hasPermissionTo('capd.cit.create');
         } catch (\Throwable) {
-            return (bool) ($user->is_platform_admin || $user->roles()->whereIn('name', ['admin_tenant', 'admin', 'gestor_rh', 'avaliador_capd', 'avaliador', 'chefia'])->exists());
+            return (bool) $user->is_platform_admin;
         }
     }
 

@@ -49,6 +49,11 @@ final class Recurso extends Model
         return $this->belongsTo(Avaliacao::class, 'avaliacao_id');
     }
 
+    public function recorrente(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'recorrente_id');
+    }
+
     public function fatorContestado(): BelongsTo
     {
         return $this->belongsTo(FatorAvaliacao::class, 'fator_contestado_id');

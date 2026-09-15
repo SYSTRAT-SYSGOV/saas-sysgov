@@ -68,7 +68,11 @@ type CadSubTab =
   | 'consolidacao'
   | 'homologacao';
 
-export const PortalCadView: React.FC = () => {
+export interface PortalCadViewProps {
+  portalSelector?: React.ReactNode;
+}
+
+export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) => {
   const [activeTab, setActiveTab] = useState<CadSubTab>('julgamento');
   const [loading, setLoading] = useState<boolean>(true);
   const [recursos, setRecursos] = useState<ApiRecurso[]>([]);
@@ -357,6 +361,7 @@ export const PortalCadView: React.FC = () => {
         title="Portal da CAD — Comissão de Avaliação e Desempenho"
         subtitle="Julgamento colegiado em 3 colunas, verificação de impedimentos, relatoria e atas com assinatura digital."
         badge="Órgão Julgador Oficial"
+        actions={portalSelector ? <div className="flex flex-wrap items-center gap-2">{portalSelector}</div> : undefined}
       />
 
       <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />

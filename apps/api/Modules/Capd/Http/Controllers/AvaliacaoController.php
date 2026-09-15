@@ -56,10 +56,32 @@ final class AvaliacaoController extends Controller
 
         $query = Avaliacao::with([
             'ciclo:id,nome,ano_referencia',
-            'recursos',
             'servidor:id,name,email',
             'servidorData',
             'avaliador:id,name,email',
+        ])->select([
+            'id',
+            'tenant_id',
+            'ciclo_id',
+            'servidor_id',
+            'avaliador_id',
+            'periodo_inicio',
+            'periodo_fim',
+            'dias_exercicio',
+            'nota_final',
+            'elegivel_progressao',
+            'data_conclusao',
+            'ciencia_servidor_em',
+            'devolutiva_realizada',
+            'devolutiva_em',
+            'devolutiva_resumo',
+            'devolutiva_acordos',
+            'devolutiva_por',
+            'homologada',
+            'homologada_em',
+            'homologada_por',
+            'created_at',
+            'updated_at',
         ]);
 
         if ($request->filled('avaliador_id')) {
@@ -130,7 +152,9 @@ final class AvaliacaoController extends Controller
             collect(['admin_tenant', 'admin', 'gestor_rh', 'root', 'comissao_capd'])->some(fn ($r) => $avaliador->hasRole($r))
         );
 
-        if (! $isAdminOrGestor) {
+        if ($request->filled('avaliador_id')) {
+            $query->where('avaliador_id', (int) $request->query('avaliador_id'));
+        } elseif (! $isAdminOrGestor) {
             $query->where('avaliador_id', $avaliador->id);
         }
 

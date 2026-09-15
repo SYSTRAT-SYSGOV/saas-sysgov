@@ -60,7 +60,7 @@ export class CapdModuleClient {
     return this.api.request(`/capd/dashboard/metricas${query}`);
   }
 
-  async getKpisEquipe(params?: { ciclo_id?: number }): Promise<ApiKpisEquipe> {
+  async getKpisEquipe(params?: { ciclo_id?: number; avaliador_id?: number }): Promise<ApiKpisEquipe> {
     return this.api.request(`/capd/avaliacoes/kpis-equipe${buildQueryString(params)}`);
   }
 
