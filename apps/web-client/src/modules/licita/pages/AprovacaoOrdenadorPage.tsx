@@ -70,6 +70,8 @@ export const AprovacaoOrdenadorPage: React.FC<AprovacaoOrdenadorPageProps> = ({ 
 
   const aprovacao: AprovacaoFinal | null = processo?.aprovacao_final ?? null;
   const pendente = aprovacao?.status === 'pendente';
+  const concluido = processo?.fase_atual === 'concluido';
+  const podeSolicitar = !pendente && !concluido;
   const podeAprovar = can('licita.aprovar_final') && aprovacao?.solicitado_por !== user?.id;
   const artefatosCompletos = processo?.etp != null && processo?.mapa_risco != null && processo?.pesquisa_preco != null;
 
@@ -267,7 +269,7 @@ export const AprovacaoOrdenadorPage: React.FC<AprovacaoOrdenadorPageProps> = ({ 
           </div>
         </div>
 
-        {!pendente && can('licita.update') && (
+        {podeSolicitar && can('licita.update') && (
           <div className="flex justify-end">
             <Button
               variant="primary"
