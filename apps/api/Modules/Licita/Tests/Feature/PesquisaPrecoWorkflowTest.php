@@ -137,6 +137,8 @@ final class PesquisaPrecoWorkflowTest extends TestCase
         self::assertSame('Serviço de limpeza predial', $pesquisaPreco->itens[0]['descricao']);
         self::assertSame([], $pesquisaPreco->itens[0]['cotacoes']);
         self::assertSame($processo->mapaRisco->equipe_planejamento, $pesquisaPreco->equipe_planejamento);
+        // 'tipo' é copiado do DFD (material/servico) — usado pela busca de preços por IA para saber se o código é CATMAT ou CATSER.
+        self::assertSame('servico', $pesquisaPreco->itens[0]['tipo']);
     }
 
     public function test_validar_completude_bloqueia_sem_minimo_de_cotacoes_por_item(): void

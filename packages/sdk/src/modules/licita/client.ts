@@ -19,6 +19,7 @@ import type {
   PesquisaPreco,
   Processo,
   ProcessoFilters,
+  SugerirCotacoesPesquisaPrecoOutput,
   SugerirJustificativaDfdInput,
   SugerirJustificativaDfdOutput,
   SugerirRiscosMapaRiscoOutput,
@@ -137,6 +138,11 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async updatePesquisaPreco(id: number, input: UpdatePesquisaPrecoInput): Promise<PesquisaPreco> {
     return this.api.request(`/licita/pesquisas-precos/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  /** Busca preços reais no Compras.gov.br/PNCP por item (CATMAT/CATSER) e sugere cotações saneadas estatisticamente — o resultado deve ser somado às cotações já existentes no formulário, nunca substituí-las. */
+  async sugerirCotacoesPesquisaPreco(processoId: number): Promise<SugerirCotacoesPesquisaPrecoOutput> {
+    return this.api.request(`/licita/processos/${processoId}/pesquisas-precos/ia/sugerir-cotacoes`, { method: 'POST' });
   }
 
   async createTr(processoId: number, input: CreateTrInput): Promise<Tr> {

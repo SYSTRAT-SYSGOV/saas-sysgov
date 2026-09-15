@@ -220,6 +220,7 @@ export const PesquisaPrecoDetailPage: React.FC<PesquisaPrecoDetailPageProps> = (
                       descricao: item.descricao,
                       unidade_medida: item.unidade_medida,
                       quantidade: item.quantidade,
+                      tipo: item.tipo,
                       cotacoes: [],
                     })),
                   }
@@ -228,6 +229,7 @@ export const PesquisaPrecoDetailPage: React.FC<PesquisaPrecoDetailPageProps> = (
             submitLabel={pesquisaPreco ? 'Salvar Alterações' : 'Criar Pesquisa de Preços'}
             onSubmit={pesquisaPreco ? handleUpdate : handleCreate}
             camposExtras={camposExtras}
+            processoId={processoId}
           />
 
           {pesquisaPreco && (pesquisaPreco.versoes?.length ?? 0) > 0 && (

@@ -77,6 +77,10 @@ final class PesquisaPrecoService
                 'descricao' => $item['descricao'],
                 'unidade_medida' => $item['unidade_medida'],
                 'quantidade' => $item['quantidade'],
+                // Preservado para a busca de preços por IA saber se o
+                // código é CATMAT (material) ou CATSER (serviço) — ver
+                // PesquisaPrecoIaService.
+                'tipo' => $item['tipo'],
                 'cotacoes' => [],
             ], $itensDfd);
         }

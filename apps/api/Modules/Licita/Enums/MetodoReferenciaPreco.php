@@ -15,6 +15,8 @@ enum MetodoReferenciaPreco: string
     case Media = 'media';
     case Mediana = 'mediana';
     case MenorValor = 'menor_valor';
+    /** Média das cotações após remoção iterativa de outliers até o Coeficiente de Variação ficar abaixo de 25% (ver SaneamentoEstatisticoService). */
+    case MediaSaneada = 'media_saneada';
 
     public function label(): string
     {
@@ -22,6 +24,7 @@ enum MetodoReferenciaPreco: string
             self::Media => 'Média',
             self::Mediana => 'Mediana',
             self::MenorValor => 'Menor Valor',
+            self::MediaSaneada => 'Média Saneada',
         };
     }
 }
