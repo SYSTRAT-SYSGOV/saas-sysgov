@@ -1,11 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   Button,
   Badge,
   Input,
   Modal,
+  KpiCard,
+  AlertCard,
+  StatusChip,
+  Select,
 } from '@sysgov/ui';
+import type { SelectOption } from '@sysgov/ui';
 import {
   UserCheck,
   FileText,
@@ -55,7 +63,6 @@ import type {
 } from '@sysgov/sdk';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs, type TabsItem } from '@/components/ui/Tabs';
-import { StatusChip } from '@/components/ui/StatusChip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ScreenState } from '@/components/ui/ScreenState';
 
@@ -121,40 +128,7 @@ function ProgressBar({ value, max = 100, color = 'emerald' }: { value: number; m
   );
 }
 
-// ─── StatCard local (substitui KpiCard com props flexíveis) ──────────────────
-interface StatCardProps {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  description?: string;
-  accentColor?: 'emerald' | 'cyan' | 'indigo' | 'amber' | 'rose';
-}
-function StatCard({ title, value, icon, description, accentColor = 'cyan' }: StatCardProps) {
-  const borderMap: Record<string, string> = {
-    emerald: 'border-l-emerald-500',
-    cyan: 'border-l-cyan-500',
-    indigo: 'border-l-indigo-500',
-    amber: 'border-l-amber-500',
-    rose: 'border-l-rose-500',
-  };
-  const iconBgMap: Record<string, string> = {
-    emerald: 'bg-emerald-950/50 text-emerald-400',
-    cyan: 'bg-cyan-950/50 text-cyan-400',
-    indigo: 'bg-indigo-950/50 text-indigo-400',
-    amber: 'bg-amber-950/50 text-amber-400',
-    rose: 'bg-rose-950/50 text-rose-400',
-  };
-  return (
-    <Card className={`p-4 border-l-4 border-border ${borderMap[accentColor]} hover:shadow-md transition-shadow`}>
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-snug">{title}</span>
-        <div className={`p-2 rounded-lg shrink-0 ${iconBgMap[accentColor]}`}>{icon}</div>
-      </div>
-      <div className="mt-2 font-mono text-lg font-black text-foreground tabular-nums">{value}</div>
-      {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
-    </Card>
-  );
-}
+
 
 function GrauStars({ grau }: { grau: number }) {
   return (
@@ -391,39 +365,42 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
             <>
               {/* KPI Cards de Resumo */}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <StatCard
+                <KpiCard
                   title="Nota Final do Ciclo (Nc)"
                   value={`${Number(espelho.nota_final).toFixed(2)} pts`}
+                  subtitle={espelho.elegivel_progressao ? 'Acima do corte ≥ 70 pts' : 'Abaixo do corte < 70 pts'}
                   icon={<Award className="h-5 w-5" />}
-                  description={espelho.elegivel_progressao ? 'Acima do corte (≥ 70 pts)' : 'Abaixo do corte (< 70 pts)'}
-                  accentColor={espelho.elegivel_progressao ? 'emerald' : 'rose'}
+                  iconBgColor={espelho.elegivel_progressao ? 'bg-status-success-bg text-status-success' : 'bg-status-danger-bg text-status-danger'}
+                  statusBadge={<StatusChip label={espelho.elegivel_progressao ? 'Apto' : 'Abaixo do Corte'} variant={espelho.elegivel_progressao ? 'success' : 'danger'} />}
                 />
-                <StatCard
+                <KpiCard
                   title="Ciclo de Referência"
                   value={espelho.ciclo?.ano_referencia?.toString() || 'Vigente'}
+                  subtitle={espelho.ciclo?.nome || 'Ciclo Anual de Avaliação'}
                   icon={<CalendarDays className="h-5 w-5" />}
-                  description={espelho.ciclo?.nome || 'Ciclo Anual de Avaliação'}
-                  accentColor="cyan"
+                  iconBgColor="bg-[#0e7490]/10 text-[#06b6d4]"
                 />
-                <StatCard
+                <KpiCard
                   title="Devolutiva Presencial"
                   value={espelho.devolutiva_realizada ? 'Realizada' : 'Pendente'}
+                  subtitle={`Gestor: ${espelho.avaliador?.nome || 'Chefia Imediata'}`}
                   icon={<MessageSquare className="h-5 w-5" />}
-                  description={`Gestor: ${espelho.avaliador?.nome || 'Chefia Imediata'}`}
-                  accentColor={espelho.devolutiva_realizada ? 'emerald' : 'amber'}
+                  iconBgColor={espelho.devolutiva_realizada ? 'bg-status-success-bg text-status-success' : 'bg-status-warning-bg text-status-warning'}
+                  statusBadge={<StatusChip label={espelho.devolutiva_realizada ? 'Concluída' : 'Aguardando'} variant={espelho.devolutiva_realizada ? 'success' : 'warning'} />}
                 />
-                <StatCard
+                <KpiCard
                   title="Ciência Eletrônica"
                   value={espelho.ciencia_servidor_em ? 'Assinada' : 'Pendente'}
-                  icon={<Fingerprint className="h-5 w-5" />}
-                  description={
+                  subtitle={
                     espelho.ciencia_servidor_em
                       ? `Em ${new Date(espelho.ciencia_servidor_em).toLocaleDateString('pt-BR')}`
                       : espelho.ciencia_tipo
                       ? `Tipo: ${espelho.ciencia_tipo}`
                       : 'Aguardando assinatura digital'
                   }
-                  accentColor={espelho.ciencia_servidor_em ? 'emerald' : 'rose'}
+                  icon={<Fingerprint className="h-5 w-5" />}
+                  iconBgColor={espelho.ciencia_servidor_em ? 'bg-status-success-bg text-status-success' : 'bg-status-danger-bg text-status-danger'}
+                  statusBadge={<StatusChip label={espelho.ciencia_servidor_em ? 'Assinada' : 'Pendente'} variant={espelho.ciencia_servidor_em ? 'success' : 'danger'} />}
                 />
               </div>
 
@@ -681,45 +658,36 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
         <div className="space-y-4">
           {/* KPIs do CIT */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard
+            <KpiCard
               title="Total de Registros"
               value={incidentes.length.toString()}
+              subtitle="Todos os apontamentos do período"
               icon={<BookOpen className="h-5 w-5" />}
-              description="Todos os apontamentos do período"
-              accentColor="cyan"
+              iconBgColor="bg-[#0e7490]/10 text-[#06b6d4]"
             />
-            <StatCard
+            <KpiCard
               title="Fatos Positivos"
               value={incidentesPositivos.length.toString()}
+              subtitle="Desempenhos exemplares registrados"
               icon={<CircleCheck className="h-5 w-5" />}
-              description="Desempenhos exemplares registrados"
-              accentColor="emerald"
+              iconBgColor="bg-status-success-bg text-status-success"
+              statusBadge={<StatusChip label="Favorável" variant="success" />}
             />
-            <StatCard
+            <KpiCard
               title="Pontos a Desenvolver"
               value={incidentesNegativos.length.toString()}
+              subtitle="Oportunidades de melhoria"
               icon={<AlertCircle className="h-5 w-5" />}
-              description="Oportunidades de melhoria registradas"
-              accentColor="amber"
+              iconBgColor="bg-status-warning-bg text-status-warning"
+              statusBadge={<StatusChip label="Atenção" variant="warning" />}
             />
           </div>
 
-          {/* Cabeçalho informativo */}
-          <Card className="p-4 border-border bg-muted/20">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-cyan-950/50 rounded-lg border border-cyan-700/30">
-                <BookOpen className="h-4 w-4 text-cyan-400" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-foreground">
-                  Diário de Bordo — Técnica do Incidente Crítico (Art. 24)
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Fatos observáveis, desempenhos exemplares e pontos a desenvolver registrados pela chefia imediata ao longo do período avaliativo. Estes registros fundamentam a pontuação atribuída na Escala Gráfica.
-                </p>
-              </div>
-            </div>
-          </Card>
+          <AlertCard
+            priority="info"
+            title="Diário de Bordo — Técnica do Incidente Crítico (Art. 24)"
+            description="Fatos observáveis, desempenhos exemplares e pontos a desenvolver registrados pela chefia imediata ao longo do período avaliativo. Estes registros fundamentam a pontuação atribuída na Escala Gráfica de Chiavenato."
+          />
 
           {/* Filtros */}
           <div className="flex flex-col sm:flex-row gap-3">
@@ -855,26 +823,28 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
             <>
               {/* KPIs principais */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatCard
+                <KpiCard
                   title="NFC Trienal Projetada"
                   value={`${Number(simulacao.nfc_projetada).toFixed(2)} pts`}
+                  subtitle="Média aritmética dos 3 ciclos anuais"
                   icon={<BarChart3 className="h-5 w-5" />}
-                  description="Média aritmética dos 3 ciclos anuais"
-                  accentColor="indigo"
+                  iconBgColor="bg-[#4f46e5]/10 text-[#6366f1]"
                 />
-                <StatCard
+                <KpiCard
                   title="Elegibilidade Regimental"
                   value={simulacao.elegivel_progressao ? 'APTO' : 'INAPTO'}
+                  subtitle="Corte legal: 70,00 pontos (Art. 16)"
                   icon={<Target className="h-5 w-5" />}
-                  description="Corte legal: 70,00 pontos (Art. 16)"
-                  accentColor={simulacao.elegivel_progressao ? 'emerald' : 'rose'}
+                  iconBgColor={simulacao.elegivel_progressao ? 'bg-status-success-bg text-status-success' : 'bg-status-danger-bg text-status-danger'}
+                  statusBadge={<StatusChip label={simulacao.elegivel_progressao ? 'Progressão Garantida' : 'PMD Obrigatório'} variant={simulacao.elegivel_progressao ? 'success' : 'danger'} />}
                 />
-                <StatCard
+                <KpiCard
                   title="Impacto Salarial Total"
                   value={`+${simulacao.percentual_total_aumento?.toFixed(1) || '0.0'}%`}
+                  subtitle="Progressão horizontal + quinquênios"
                   icon={<ArrowUpCircle className="h-5 w-5" />}
-                  description="Progressão horizontal + quinquênios"
-                  accentColor="emerald"
+                  iconBgColor="bg-status-success-bg text-status-success"
+                  trend={{ value: '+10% progressão', isPositive: true }}
                 />
               </div>
 
@@ -1030,26 +1000,27 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
 
               {/* Prazos */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatCard
+                <KpiCard
                   title="Prazo do PMD"
                   value={`${pmd.prazo_meses} meses`}
+                  subtitle="Período de acompanhamento"
                   icon={<Clock className="h-5 w-5" />}
-                  description="Período de acompanhamento"
-                  accentColor="amber"
+                  iconBgColor="bg-status-warning-bg text-status-warning"
                 />
-                <StatCard
+                <KpiCard
                   title="Data Limite"
                   value={pmd.data_limite || 'A definir'}
+                  subtitle="Prazo máximo para conclusão"
                   icon={<CalendarDays className="h-5 w-5" />}
-                  description="Prazo máximo para conclusão"
-                  accentColor="rose"
+                  iconBgColor="bg-status-danger-bg text-status-danger"
                 />
-                <StatCard
+                <KpiCard
                   title="Responsável"
                   value="Chefia Imediata"
+                  subtitle="Acompanhamento e orientação"
                   icon={<User className="h-5 w-5" />}
-                  description="Acompanhamento e orientação"
-                  accentColor="cyan"
+                  iconBgColor="bg-[#0e7490]/10 text-[#06b6d4]"
+                  statusBadge={<StatusChip label={pmd.status === 'concluido' ? 'Concluído' : 'Em Andamento'} variant={pmd.status === 'concluido' ? 'success' : 'warning'} />}
                 />
               </div>
 
