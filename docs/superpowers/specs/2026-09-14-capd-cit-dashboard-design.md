@@ -64,23 +64,16 @@ export type RespostaFator = {
   - Estado **"Vinculado ✓"** (chip) quando `respostas[codigo].diario_bordo_id === a.id`,
     com opção de desvincular.
   - Botão **"Anexar evidência"** quando `a.evidencias.length === 0` — abre um
-    `<input type="file" accept=".pdf,.png,.jpg,.jpeg">`, chama o novo método do SDK
-    `uploadEvidenciaDiarioBordo(id, file)` e re-busca a lista de CIT do fator ao concluir.
+    `<input type="file" accept=".pdf,.png,.jpg,.jpeg">`, chama o método do SDK já existente
+    `uploadEvidencia(diarioId, file)` e re-busca a lista de CIT do fator ao concluir.
 - Correção do aviso amarelo: trocar `anotacoesFator.length === 0` por
   `!anotacoesFator.some(a => (a.evidencias?.length ?? 0) > 0)` — reflete a regra real da
   Trava (exige evidência, não só o registro).
 
 ### SDK (`packages/sdk/src/modules/capd/client.ts`)
 
-Novo método:
-
-```ts
-async uploadEvidenciaDiarioBordo(id: number, arquivo: File): Promise<ApiEvidencia> {
-  const form = new FormData();
-  form.append('arquivo', arquivo);
-  return this.api.request(`/capd/diario-bordo/${id}/evidencias`, { method: 'POST', body: form });
-}
-```
+Nenhuma mudança necessária — `uploadEvidencia(diarioId: number, file: File): Promise<{ message: string; hash_sha256: string }>`
+já existe (`client.ts:80-86`) e aponta para o mesmo endpoint `POST /capd/diario-bordo/{id}/evidencias`.
 
 ## Feature B — Dashboard de KPIs no Portal do Avaliador
 

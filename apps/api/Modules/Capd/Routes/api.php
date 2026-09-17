@@ -131,6 +131,7 @@ Route::get('dashboard/metricas', [DashboardController::class, 'metricas'])->name
 // ── Gestão de Servidores Públicos (RH Universal) ──────────────────────
 Route::prefix('servidores')->group(function (): void {
     Route::get('/', [\Modules\Capd\Http\Controllers\ServidorController::class, 'index'])->name('capd.servidores.index');
+    Route::get('/meu-perfil', [\Modules\Capd\Http\Controllers\ServidorController::class, 'meuPerfil'])->name('capd.servidores.meu-perfil');
     Route::post('/', [\Modules\Capd\Http\Controllers\ServidorController::class, 'store'])->name('capd.servidores.store');
     Route::post('/importar-csv', [\Modules\Capd\Http\Controllers\ServidorController::class, 'importCsv'])->name('capd.servidores.import-csv');
     Route::get('/{servidor}', [\Modules\Capd\Http\Controllers\ServidorController::class, 'show'])->name('capd.servidores.show');

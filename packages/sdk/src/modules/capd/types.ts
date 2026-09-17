@@ -64,6 +64,7 @@ export type RespostaFator = {
   automatizado?: boolean;
   justificativa?: string;
   diario_bordo_id?: number;
+  incidente_tipo?: 'positivo' | 'negativo';
 };
 
 export type ApiAvaliacao = {
@@ -101,6 +102,7 @@ export type ApiAvaliacao = {
   avaliacao_consolidada_id?: number | null;
   tipo_avaliacao?: 'integral' | 'parcial' | 'consolidada';
   status_avaliacao?: 'ativa' | 'suspensa_licenca';
+  incidentes_cit?: ApiDiarioBordo[];
 };
 
 export type ApiComissao = {
@@ -495,11 +497,17 @@ export type ApiPainelFiltros = {
 
 export type ApiEspelhoAvaliacao = {
   avaliacao_id: number;
+  protocolo?: string;
+  orgao?: {
+    nome?: string;
+    estado?: string;
+  };
   ciclo: { id?: number; nome?: string; ano_referencia?: number };
-  servidor: { id?: number; nome?: string; matricula?: string };
-  avaliador: { id?: number; nome?: string };
+  servidor: { id?: number; nome?: string; matricula?: string; cargo?: string };
+  avaliador: { id?: number; nome?: string; matricula?: string };
   nota_final: string;
   elegivel_progressao: boolean;
+  conceito?: string;
   data_conclusao?: string | null;
   ciencia_servidor_em?: string | null;
   ciencia_tipo?: 'concordancia' | 'discordancia_recurso' | null;
@@ -507,12 +515,18 @@ export type ApiEspelhoAvaliacao = {
   devolutiva_em?: string | null;
   devolutiva_resumo?: string | null;
   parecer_avaliador?: string | null;
+  assinatura_chefia?: {
+    status?: string;
+    hash?: string;
+    data?: string | null;
+  };
   fatores: Array<{
     codigo: string;
     nome: string;
     descricao?: string | null;
     grau?: number | null;
     nota: number | string;
+    conceito?: string;
     peso: number;
     justificativa?: string | null;
   }>;

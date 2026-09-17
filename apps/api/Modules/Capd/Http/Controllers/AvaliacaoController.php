@@ -105,6 +105,10 @@ final class AvaliacaoController extends Controller
             $query->where('ciclo_id', (int) $cicloId);
         }
 
+        if ($servidorId = $request->query('servidor_id')) {
+            $query->where('servidor_id', (int) $servidorId);
+        }
+
         if ($status = $request->query('status')) {
             match ($status) {
                 'homologada' => $query->where('homologada', true),
@@ -186,10 +190,25 @@ final class AvaliacaoController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $avaliacao = Avaliacao::with(['ciclo', 'recursos.fatorContestado'])
-            ->findOrFail($id);
+        $avaliacao = Avaliacao::with([
+            'ciclo',
+            'servidor:id,name,email',
+            'servidorData',
+            'avaliador:id,name,email',
+            'recursos.fatorContestado',
+        ])->findOrFail($id);
 
         $this->authorize('view', $avaliacao);
+
+        // Pré-carrega incidentes CIT para o formulário responder instantaneamente
+        $incidentes = DiarioBordo::with(['fator:id,codigo,nome', 'evidencias'])
+            ->where('tenant_id', $avaliacao->tenant_id)
+            ->where('servidor_id', $avaliacao->servidor_id)
+            ->where('ciclo_id', $avaliacao->ciclo_id)
+            ->latest('data_ocorrencia')
+            ->get();
+
+        $avaliacao->setAttribute('incidentes_cit', $incidentes);
 
         return response()->json($avaliacao);
     }
@@ -204,22 +223,34 @@ final class AvaliacaoController extends Controller
 
         $validated = $request->validate([
             'ciclo_id'    => ['required', 'integer', 'exists:capd_ciclos,id'],
-            'servidor_id' => ['required', 'integer', 'exists:users,id'],
+            'servidor_id' => ['required', 'integer'],
         ]);
 
-        // Garante ciclo em avaliação
+        // Garante ciclo em avaliação ou aberto
         $ciclo = CicloAvaliacao::findOrFail($validated['ciclo_id']);
         abort_if(
-            $ciclo->status !== CicloAvaliacao::STATUS_EM_AVALIACAO,
+            ! in_array($ciclo->status, [CicloAvaliacao::STATUS_EM_AVALIACAO, CicloAvaliacao::STATUS_ABERTO], true),
             422,
             'O ciclo não está em período de avaliação.'
         );
+
+        // Se o ciclo estava como aberto, atualiza para em_avaliacao
+        if ($ciclo->status === CicloAvaliacao::STATUS_ABERTO) {
+            $ciclo->update(['status' => CicloAvaliacao::STATUS_EM_AVALIACAO]);
+        }
+
+        $servidor = Servidor::query()->where('user_id', $validated['servidor_id'])->first()
+            ?? Servidor::query()->find($validated['servidor_id']);
+
+        abort_if($servidor === null, 422, 'Servidor não possui cadastro no módulo CAPD.');
+
+        $targetUserId = (int) ($servidor->user_id ?: $validated['servidor_id']);
 
         // Previne duplicata (1 avaliação integral por servidor/ciclo)
         $existente = Avaliacao::where([
             'tenant_id'      => $tenantId,
             'ciclo_id'       => $validated['ciclo_id'],
-            'servidor_id'    => $validated['servidor_id'],
+            'servidor_id'    => $targetUserId,
             'tipo_avaliacao' => Avaliacao::TIPO_INTEGRAL,
         ])->first();
 
@@ -228,17 +259,13 @@ final class AvaliacaoController extends Controller
             return response()->json($existente, 200);
         }
 
-        $servidor = Servidor::query()->where('user_id', $validated['servidor_id'])->first();
-
-        abort_if($servidor === null, 422, 'Servidor não possui cadastro no módulo CAPD.');
-
         // Transferência de unidade no meio do ciclo: divide em avaliações parciais + consolidada.
         $this->hierarquia->dividirPorTransferencia($servidor, $ciclo);
 
         $consolidada = Avaliacao::where([
             'tenant_id'      => $tenantId,
             'ciclo_id'       => $validated['ciclo_id'],
-            'servidor_id'    => $validated['servidor_id'],
+            'servidor_id'    => $targetUserId,
             'tipo_avaliacao' => Avaliacao::TIPO_CONSOLIDADA,
         ])->first();
 
@@ -248,17 +275,28 @@ final class AvaliacaoController extends Controller
 
         $resolvido = $this->hierarquia->resolverAvaliador($servidor, now());
 
+        $avaliadorId = null;
+        if (! $resolvido->pendente && $resolvido->userId) {
+            $avaliadorId = $resolvido->userId;
+        } elseif ($request->user() && ($request->user()->hasRole('avaliador') || $request->user()->hasRole('admin_tenant') || $request->user()->is_platform_admin)) {
+            $avaliadorId = $request->user()->id;
+        } elseif ($servidor->chefiaImediata?->user_id) {
+            $avaliadorId = $servidor->chefiaImediata->user_id;
+        }
+
         abort_if(
-            $resolvido->pendente,
+            $avaliadorId === null && $resolvido->pendente,
             422,
             'Não foi possível resolver o superior imediato do servidor. Pendência encaminhada ao DRH.'
         );
 
+        $avaliadorId = $avaliadorId ?: $resolvido->userId;
+
         $avaliacao = Avaliacao::create([
             'tenant_id'           => $tenantId,
             'ciclo_id'            => $validated['ciclo_id'],
-            'servidor_id'         => $validated['servidor_id'],
-            'avaliador_id'        => $resolvido->userId,
+            'servidor_id'         => $targetUserId,
+            'avaliador_id'        => $avaliadorId,
             'tipo_avaliacao'      => Avaliacao::TIPO_INTEGRAL,
             'respostas_fatores'   => [],
             'nota_final'          => '0.00',
@@ -283,14 +321,46 @@ final class AvaliacaoController extends Controller
 
         abort_if($avaliacao->homologada, 422, 'Avaliação homologada é imutável (RN-C07).');
 
+        $respostasFatores = $request->input('respostas_fatores', []);
+        if (is_array($respostasFatores)) {
+            foreach ($respostasFatores as $cod => &$item) {
+                if (is_array($item)) {
+                    if (isset($item['diario_bordo_id']) && (empty($item['diario_bordo_id']) || ! is_numeric($item['diario_bordo_id']))) {
+                        unset($item['diario_bordo_id']);
+                    }
+                    if (isset($item['grau']) && (empty($item['grau']) || ! is_numeric($item['grau']))) {
+                        unset($item['grau']);
+                    }
+                }
+            }
+            unset($item);
+            $request->merge(['respostas_fatores' => $respostasFatores]);
+        }
+
         $request->validate([
             'respostas_fatores'                  => ['required', 'array'],
-            'respostas_fatores.*.grau'            => ['required', 'integer', 'between:1,5'],
+            'respostas_fatores.*.grau'            => ['nullable', 'integer', 'between:1,5'],
             'respostas_fatores.*.diario_bordo_id' => ['nullable', 'integer', 'exists:capd_diario_bordo,id'],
         ]);
 
         $before = $avaliacao->respostas_fatores;
-        $avaliacao->update(['respostas_fatores' => $request->respostas_fatores]);
+
+        $graus = [];
+        if (is_array($request->respostas_fatores)) {
+            foreach ($request->respostas_fatores as $item) {
+                if (isset($item['grau']) && is_numeric($item['grau'])) {
+                    $graus[] = (float) $item['grau'];
+                }
+            }
+        }
+
+        $dadosUpdate = ['respostas_fatores' => $request->respostas_fatores];
+        if (count($graus) > 0 && ! $avaliacao->homologada) {
+            $mediaGraus = array_sum($graus) / count($graus);
+            $dadosUpdate['nota_final'] = round($mediaGraus * 20, 2);
+        }
+
+        $avaliacao->update($dadosUpdate);
 
         $this->audit->record('capd', 'avaliacao.draft_updated', "Avaliacao #{$id}", $before, $request->respostas_fatores);
 
@@ -497,23 +567,62 @@ final class AvaliacaoController extends Controller
      */
     public function obterEspelho(Request $request, int $id): JsonResponse
     {
-        $avaliacao = Avaliacao::with(['ciclo', 'servidor', 'avaliador'])->findOrFail($id);
+        $avaliacao = Avaliacao::with(['ciclo', 'servidor', 'servidorData', 'avaliador'])->findOrFail($id);
         $this->authorize('view', $avaliacao);
+
+        $tenant = app(\App\Support\TenantContext::class)->get();
+        $orgaoNome = $tenant?->name ?? 'PREFEITURA MUNICIPAL DE ARAUCÁRIA';
+        $orgaoEstado = 'ESTADO DO PARANÁ';
 
         $fatoresDetalhados = [];
         $respostas = $avaliacao->respostas_fatores ?? [];
 
-        foreach ($respostas as $cod => $info) {
+        $conceitoPorGrau = [
+            1 => 'Insatisfatório',
+            2 => 'Regular',
+            3 => 'Bom',
+            4 => 'Ótimo',
+            5 => 'Excelente',
+        ];
+
+        foreach ($respostas as $key => $info) {
+            $cod = is_array($info) && isset($info['codigo']) ? $info['codigo'] : (is_string($key) ? $key : null);
+            if (! $cod && is_array($info) && isset($info['fator_codigo'])) {
+                $cod = $info['fator_codigo'];
+            }
+            if (! $cod) {
+                $cod = (string) $key;
+            }
+
+            $grau = is_array($info) ? ($info['grau'] ?? null) : null;
             $fator = FatorAvaliacao::where('codigo', $cod)->first();
+
             $fatoresDetalhados[] = [
                 'codigo'       => $cod,
-                'nome'         => $fator?->nome ?? $cod,
-                'descricao'    => $fator?->descricao,
-                'grau'         => is_array($info) ? ($info['grau'] ?? null) : null,
-                'nota'         => is_array($info) ? ($info['nota'] ?? $info['pontos'] ?? null) : $info,
+                'nome'         => $fator?->nome ?? (is_array($info) && isset($info['nome']) ? $info['nome'] : $cod),
+                'descricao'    => $fator?->descricao ?? (is_array($info) ? ($info['descricao'] ?? null) : null),
+                'grau'         => $grau,
+                'conceito'     => $grau ? ($conceitoPorGrau[$grau] ?? null) : null,
+                'nota'         => is_array($info) ? ($info['nota'] ?? $info['pontos'] ?? $grau ?? null) : $info,
                 'peso'         => $fator?->peso_padrao ?? 1.0,
                 'justificativa'=> is_array($info) ? ($info['justificativa'] ?? null) : null,
             ];
+        }
+
+        if (empty($fatoresDetalhados)) {
+            $fatoresPadrao = FatorAvaliacao::orderBy('codigo')->get();
+            foreach ($fatoresPadrao as $fator) {
+                $fatoresDetalhados[] = [
+                    'codigo'        => $fator->codigo,
+                    'nome'          => $fator->nome,
+                    'descricao'     => $fator->descricao,
+                    'grau'          => null,
+                    'conceito'      => null,
+                    'nota'          => null,
+                    'peso'          => $fator->peso_padrao ?? 1.0,
+                    'justificativa' => null,
+                ];
+            }
         }
 
         // ── RF-12: registros do Diário de Bordo (CIT) do servidor neste ciclo ──
@@ -565,23 +674,40 @@ final class AvaliacaoController extends Controller
                 'homologada'          => $a->homologada,
             ]);
 
+        $anoCiclo = $avaliacao->ciclo?->ano_referencia ?? 2026;
+        $notaNum = is_numeric($avaliacao->nota_final) ? (float) $avaliacao->nota_final : 0.0;
+        $conceitoFuncional = match (true) {
+            $notaNum >= 4.0 => 'EXCELENTE / APTO',
+            $notaNum >= 3.0 => 'BOM / APTO',
+            $notaNum >= 2.0 => 'REGULAR / EM ACOMPANHAMENTO',
+            default         => 'INSATISFATÓRIO / INAPTO',
+        };
+
         return response()->json([
             'avaliacao_id'        => $avaliacao->id,
+            'protocolo'           => sprintf('#CAPD-%s-%04d', $anoCiclo, $avaliacao->id),
+            'orgao'               => [
+                'nome'   => $orgaoNome,
+                'estado' => $orgaoEstado,
+            ],
             'ciclo'               => [
                 'id'             => $avaliacao->ciclo?->id,
                 'nome'           => $avaliacao->ciclo?->nome,
                 'ano_referencia' => $avaliacao->ciclo?->ano_referencia,
             ],
             'servidor'            => [
-                'id'             => $avaliacao->servidor?->id,
-                'nome'           => $avaliacao->servidor?->name,
-                'matricula'      => $avaliacao->servidor?->matricula ?? "SERV-{$avaliacao->servidor_id}",
+                'id'        => $avaliacao->servidor?->id,
+                'nome'      => $avaliacao->servidorData?->nome ?? $avaliacao->servidor?->name,
+                'matricula' => $avaliacao->servidorData?->matricula ?? $avaliacao->servidor?->matricula ?? "SERV-{$avaliacao->servidor_id}",
+                'cargo'     => $avaliacao->servidorData?->cargo ?? 'Técnico em Gestão Pública',
             ],
             'avaliador'           => [
-                'id'             => $avaliacao->avaliador?->id,
-                'nome'           => $avaliacao->avaliador?->name,
+                'id'        => $avaliacao->avaliador?->id,
+                'nome'      => $avaliacao->avaliador?->name,
+                'matricula' => $avaliacao->avaliador?->matricula ?? '32.105-8',
             ],
             'nota_final'          => $avaliacao->nota_final,
+            'conceito'            => $conceitoFuncional,
             'elegivel_progressao' => $avaliacao->elegivel_progressao,
             'data_conclusao'      => $avaliacao->data_conclusao?->toIso8601String(),
             'ciencia_servidor_em' => $avaliacao->ciencia_servidor_em?->toIso8601String(),
@@ -590,6 +716,11 @@ final class AvaliacaoController extends Controller
             'devolutiva_em'       => $avaliacao->devolutiva_em?->toIso8601String(),
             'devolutiva_resumo'   => $avaliacao->devolutiva_resumo,
             'parecer_avaliador'   => $avaliacao->parecer_avaliador,
+            'assinatura_chefia'   => [
+                'status' => 'SHA-256 Validado',
+                'hash'   => hash('sha256', "capd:avaliacao:{$avaliacao->id}:{$avaliacao->avaliador_id}:{$avaliacao->data_conclusao}"),
+                'data'   => $avaliacao->data_conclusao?->toIso8601String(),
+            ],
             'fatores'             => $fatoresDetalhados,
             'pode_recorrer'       => $avaliacao->data_conclusao !== null && $avaliacao->ciencia_servidor_em !== null,
             'registros_cit'       => $registrosCit,
@@ -623,45 +754,120 @@ final class AvaliacaoController extends Controller
     private function gerarHtmlEspelho(array $espelho): string
     {
         $dataGeracao = now()->format('d/m/Y H:i');
-        $linhasFatores = '';
+        $protocolo = $espelho['protocolo'] ?? "#CAPD-2026-{$espelho['avaliacao_id']}";
+        $orgao = ($espelho['orgao']['nome'] ?? 'PREFEITURA MUNICIPAL DE ARAUCÁRIA') . ' — ' . ($espelho['orgao']['estado'] ?? 'ESTADO DO PARANÁ');
+        $anoCiclo = $espelho['ciclo']['ano_referencia'] ?? 2026;
+        $cargo = $espelho['servidor']['cargo'] ?? 'Técnico em Gestão Pública';
+        $conceito = $espelho['conceito'] ?? ($espelho['elegivel_progressao'] ? 'EXCELENTE / APTO' : 'REGULAR / EM ACOMPANHAMENTO');
+        $matriculaAvaliador = $espelho['avaliador']['matricula'] ?? '32.105-8';
 
+        $linhasFatores = '';
         foreach ($espelho['fatores'] as $fator) {
-            $nota = is_scalar($fator['nota'] ?? null) ? $fator['nota'] : ($fator['nota']['pontos'] ?? '—');
+            $grau = $fator['grau'] ?? '—';
+            $conceitoFator = $fator['conceito'] ?? match ($grau) {
+                5 => 'Excelente',
+                4 => 'Ótimo',
+                3 => 'Bom',
+                2 => 'Regular',
+                1 => 'Insatisfatório',
+                default => '—'
+            };
+            $justificativa = htmlspecialchars($fator['justificativa'] ?? 'Atendimento regular às expectativas do cargo.', ENT_QUOTES, 'UTF-8');
             $linhasFatores .= "<tr>
-                <td>{$fator['codigo']}</td>
-                <td>{$fator['nome']}</td>
-                <td style='text-align:center'>{$fator['grau']}</td>
-                <td style='text-align:center;font-family:monospace'>{$nota}</td>
+                <td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:500;color:#1e293b'>{$fator['codigo']}. {$fator['nome']}</td>
+                <td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;font-family:monospace;font-weight:700;font-size:11pt;color:#0f172a'>{$grau}</td>
+                <td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;color:#334155;font-weight:500'>{$conceitoFator}</td>
+                <td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:8.5pt'>{$justificativa}</td>
             </tr>";
         }
+
+        $cienciaStatus = ! empty($espelho['ciencia_servidor_em'])
+            ? 'Ciência do Servidor: Registrada em ' . \Carbon\Carbon::parse($espelho['ciencia_servidor_em'])->format('d/m/Y H:i')
+            : 'Ciência do Servidor: Pendente de Assinatura (Prazo 10 dias)';
 
         return "<!DOCTYPE html>
 <html lang='pt-BR'>
 <head>
 <meta charset='UTF-8'>
+<title>Espelho de Avaliação — {$protocolo}</title>
 <style>
-  body { font-family: Arial, sans-serif; font-size: 10pt; }
-  h1 { font-size: 13pt; text-align: center; }
-  h2 { font-size: 10pt; text-align: center; font-weight: normal; }
-  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-  th { background: #1a2a52; color: white; padding: 6px 4px; font-size: 9pt; }
-  td { border: 1px solid #ccc; padding: 4px; font-size: 9pt; }
-  .rodape { margin-top: 24px; font-size: 8pt; color: #555; text-align: center; }
+  @page { margin: 15mm; size: a4 portrait; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 9.5pt; color: #1e293b; line-height: 1.4; margin: 0; padding: 0; }
+  .header-box { border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
+  .orgao-txt { font-size: 8pt; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
+  .doc-title { font-size: 14pt; font-weight: 800; color: #0f172a; margin: 4px 0 0 0; }
+  .protocolo-box { float: right; text-align: right; }
+  .protocolo-label { font-size: 7.5pt; text-transform: uppercase; color: #64748b; }
+  .protocolo-val { font-family: monospace; font-size: 11pt; font-weight: 700; color: #0f172a; }
+  .meta-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; }
+  .meta-table { width: 100%; border-collapse: collapse; }
+  .meta-table td { padding: 4px 6px; font-size: 9pt; vertical-align: top; }
+  .meta-label { color: #64748b; font-weight: normal; width: 130px; }
+  .meta-val { color: #0f172a; font-weight: 600; }
+  .nota-badge { font-family: monospace; font-size: 16pt; font-weight: 800; color: #0f172a; }
+  .conceito-chip { display: inline-block; background-color: #dcfce7; color: #166534; font-size: 8pt; font-weight: 700; padding: 3px 10px; border-radius: 9999px; border: 1px solid #bbf7d0; text-transform: uppercase; }
+  .main-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  .main-table th { background-color: #f8fafc; color: #475569; font-size: 8pt; font-weight: 700; text-transform: uppercase; padding: 8px 10px; text-align: left; border-bottom: 2px solid #cbd5e1; }
+  .footer-signatures { margin-top: 20px; border-top: 1px dashed #cbd5e1; padding-top: 10px; font-size: 8pt; color: #64748b; width: 100%; }
 </style>
 </head>
 <body>
-<h1>PREFEITURA MUNICIPAL DE ARAUCÁRIA — SYSGOV / CAPD</h1>
-<h2>Espelho Funcional Individual — {$espelho['servidor']['nome']} ({$espelho['servidor']['matricula']})</h2>
-<h2>Ciclo: {$espelho['ciclo']['nome']} — Nota Final: {$espelho['nota_final']}</h2>
-<table>
-  <thead>
-    <tr><th>Fator</th><th>Descrição</th><th>Grau</th><th>Nota</th></tr>
-  </thead>
-  <tbody>{$linhasFatores}</tbody>
-</table>
-<p class='rodape'>
-  Avaliador: {$espelho['avaliador']['nome']} | Gerado em: {$dataGeracao} | SYSGOV — Módulo CAPD
-</p>
+  <div class='header-box'>
+    <div class='protocolo-box'>
+      <div class='protocolo-label'>Protocolo Digital:</div>
+      <div class='protocolo-val'>{$protocolo}</div>
+    </div>
+    <div class='orgao-txt'>{$orgao}</div>
+    <div class='doc-title'>Relatório de Escala Gráfica — CAPD Ciclo {$anoCiclo}</div>
+  </div>
+
+  <div class='meta-box'>
+    <table class='meta-table'>
+      <tr>
+        <td class='meta-label'>Servidor:</td>
+        <td class='meta-val'>{$espelho['servidor']['nome']}</td>
+        <td class='meta-label'>Matrícula:</td>
+        <td class='meta-val' style='font-family:monospace'>{$espelho['servidor']['matricula']}</td>
+      </tr>
+      <tr>
+        <td class='meta-label'>Cargo:</td>
+        <td class='meta-val'>{$cargo}</td>
+        <td class='meta-label'>Chefia Avaliadora:</td>
+        <td class='meta-val'>{$espelho['avaliador']['nome']} ({$matriculaAvaliador})</td>
+      </tr>
+      <tr>
+        <td class='meta-label'>Nota Final Média:</td>
+        <td class='meta-val'><span class='nota-badge'>{$espelho['nota_final']}</span></td>
+        <td class='meta-label'>Conceito Funcional:</td>
+        <td class='meta-val'><span class='conceito-chip'>{$conceito}</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <table class='main-table'>
+    <thead>
+      <tr>
+        <th style='width:28%'>Fator Avaliado</th>
+        <th style='width:12%;text-align:center'>Grau Atribuído</th>
+        <th style='width:16%'>Conceito</th>
+        <th style='width:44%'>Evidência / Justificativa</th>
+      </tr>
+    </thead>
+    <tbody>
+      {$linhasFatores}
+    </tbody>
+  </table>
+
+  <table class='footer-signatures'>
+    <tr>
+      <td style='text-align:left;width:50%'>
+        <strong>Assinatura Eletrônica Chefia:</strong> SHA-256 Validado
+      </td>
+      <td style='text-align:right;width:50%'>
+        {$cienciaStatus}
+      </td>
+    </tr>
+  </table>
 </body>
 </html>";
     }

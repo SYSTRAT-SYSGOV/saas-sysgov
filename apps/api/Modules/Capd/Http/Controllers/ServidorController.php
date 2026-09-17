@@ -26,6 +26,11 @@ final class ServidorController extends Controller
         $filters = $request->only(['search', 'situacao', 'estagio_probatorio', 'orgao_lotacao']);
         $perPage = (int) $request->input('per_page', 25);
 
+        if ($request->boolean('meus_subordinados')) {
+            $meuServidor = Servidor::where('user_id', $request->user()?->id)->first();
+            $filters['chefia_imediata_id'] = $meuServidor === null ? 0 : $meuServidor->id;
+        }
+
         $servidores = $this->servidorService->list($filters, $perPage);
 
         return response()->json($servidores);
@@ -160,5 +165,44 @@ final class ServidorController extends Controller
         $resultado = $this->servidorService->importFromCsv($content);
 
         return response()->json($resultado);
+    }
+
+    public function meuPerfil(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json([
+                'servidor' => null,
+                'lotacao' => null,
+                'secretarias_disponiveis' => [],
+            ]);
+        }
+
+        $servidor = Servidor::where('user_id', $user->id)
+            ->with(['chefiaImediata', 'subordinados'])
+            ->first();
+
+        if (! $servidor && $user->email) {
+            $servidor = Servidor::where('email', $user->email)->first();
+            if ($servidor && ! $servidor->user_id) {
+                $servidor->update(['user_id' => $user->id]);
+            }
+        }
+
+        $lotacao = $servidor?->orgao_lotacao ?? $servidor?->lotacao_fisica;
+
+        $secretarias = Servidor::query()
+            ->whereNotNull('orgao_lotacao')
+            ->where('orgao_lotacao', '!=', '')
+            ->distinct()
+            ->orderBy('orgao_lotacao')
+            ->pluck('orgao_lotacao')
+            ->values();
+
+        return response()->json([
+            'servidor' => $servidor,
+            'lotacao' => $lotacao,
+            'secretarias_disponiveis' => $secretarias,
+        ]);
     }
 }

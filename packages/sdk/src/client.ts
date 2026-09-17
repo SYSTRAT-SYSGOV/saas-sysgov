@@ -125,6 +125,37 @@ export class SysgovApi implements ApiRequester {
     return response.json() as Promise<T>;
   }
 
+  public async requestBlob(path: string, init: RequestInit = {}): Promise<Blob> {
+    const headers = new Headers(init.headers);
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('sysgov_auth_token') ||
+          localStorage.getItem('sysgov_token') ||
+          this.token
+        : this.token;
+
+    const tenantId =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('sysgov_active_tenant_id')
+        : null;
+
+    const tenantSlug =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('sysgov_tenant') || this.tenantSlug
+        : this.tenantSlug;
+
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    if (tenantId) headers.set('X-Tenant-ID', tenantId);
+    if (tenantSlug) headers.set('X-Tenant-Slug', tenantSlug);
+
+    const fullUrl = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
+    const response = await fetch(fullUrl, { ...init, headers });
+    if (!response.ok) {
+      throw new Error(`SYSGOV API respondeu ${response.status} ao baixar arquivo.`);
+    }
+    return response.blob();
+  }
+
   public async get<T>(path: string, init: RequestInit = {}): Promise<{ data: T }> {
     const data = await this.request<T>(path, { ...init, method: 'GET' });
     return { data };

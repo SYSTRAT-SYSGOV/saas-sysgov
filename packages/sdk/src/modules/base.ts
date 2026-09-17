@@ -10,4 +10,5 @@ export type RequestOptions = {
 
 export interface ApiRequester {
   request<T>(path: string, options?: RequestOptions): Promise<T>;
+  requestBlob?(path: string, options?: RequestOptions): Promise<Blob>;
 }

@@ -15,7 +15,8 @@ export interface DialogProps {
   icon?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  headerActions?: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   className?: string;
 }
 
@@ -24,7 +25,8 @@ const sizeMap: Record<NonNullable<DialogProps['size']>, string> = {
   md: 'sm:max-w-md',
   lg: 'sm:max-w-lg',
   xl: 'sm:max-w-2xl',
-  full: 'sm:max-w-4xl',
+  '2xl': 'sm:max-w-4xl',
+  full: 'sm:max-w-6xl lg:max-w-7xl',
 };
 
 /**
@@ -41,6 +43,7 @@ export const Dialog: React.FC<DialogProps> = ({
   icon,
   children,
   footer,
+  headerActions,
   size = 'md',
   className,
 }) => {
@@ -53,11 +56,12 @@ export const Dialog: React.FC<DialogProps> = ({
           className
         )}
       >
-        <DialogHeader className="shrink-0 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 py-4 text-left">
+        <DialogHeader className="shrink-0 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 py-4 text-left pr-12">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
             {icon}
             {title}
           </DialogTitle>
+          {headerActions && <div className="flex items-center gap-2 mr-2">{headerActions}</div>}
         </DialogHeader>
 
         <div className={cn('flex-1 overflow-y-auto custom-scrollbar p-6', !footer && 'pb-6')}>

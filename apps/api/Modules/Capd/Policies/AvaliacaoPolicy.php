@@ -54,9 +54,9 @@ final class AvaliacaoPolicy
 
     public function create(User $user): bool
     {
-        // Qualquer usuário com papel de avaliador pode criar
+        // Qualquer usuário com papel de avaliador (chefia imediata) pode criar
         return $user->hasPermissionTo('capd.avaliacoes.criar')
-            || $user->hasRole(['admin_tenant', 'gestor_rh']);
+            || $user->hasRole(['admin_tenant', 'gestor_rh', 'avaliador']);
     }
 
     public function update(User $user, Avaliacao $avaliacao): bool

@@ -48,6 +48,8 @@ export { Skeleton } from './components/skeleton';
 
 export { Dialog, Modal } from './components/Dialog';
 export type { DialogProps, ModalProps } from './components/Dialog';
+export { Drawer } from './components/Drawer';
+export type { DrawerProps } from './components/Drawer';
 
 export { Select } from './components/Select';
 export type { SelectProps, SelectOption } from './components/Select';

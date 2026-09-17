@@ -29,7 +29,9 @@ apps/api/list_*.php
 # Rascunhos duplicados do módulo Procurement
 apps/api/Modules/Procurement/app/
 
-# Editor / IDE
+# Editor / IDE / Ferramentas
 .kilo/
 apps/api/public/storage
+graphify-out/
+apps/api/storage/
 

@@ -89,8 +89,15 @@ export class CapdModuleClient {
 
   // ── Avaliações ──────────────────────────────────────────────────────
 
-  async listAvaliacoes(params?: { ciclo_id?: number; status?: string; avaliador_id?: number; per_page?: number }): Promise<{ data: ApiAvaliacao[] }> {
+  async listAvaliacoes(params?: { ciclo_id?: number; servidor_id?: number; status?: string; avaliador_id?: number; per_page?: number }): Promise<{ data: ApiAvaliacao[] }> {
     return this.api.request(`/capd/avaliacoes${buildQueryString(params)}`);
+  }
+
+  async createAvaliacao(input: { ciclo_id: number; servidor_id: number }): Promise<ApiAvaliacao> {
+    return this.api.request('/capd/avaliacoes', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
   }
 
   async getAvaliacao(id: number): Promise<ApiAvaliacao> {
@@ -186,8 +193,12 @@ export class CapdModuleClient {
 
   // ── Gestão de Servidores Públicos (RH Universal) ────────────────────
 
-  async listServidores(params?: { search?: string; situacao?: string; estagio_probatorio?: boolean; per_page?: number }): Promise<{ data: any[]; total: number; current_page: number }> {
+  async listServidores(params?: { search?: string; situacao?: string; estagio_probatorio?: boolean; orgao_lotacao?: string; meus_subordinados?: boolean; per_page?: number }): Promise<{ data: any[]; total: number; current_page: number }> {
     return this.api.request(`/capd/servidores${buildQueryString(params)}`);
+  }
+
+  async getMeuPerfil(): Promise<{ servidor: any | null; lotacao: string | null; secretarias_disponiveis: string[] }> {
+    return this.api.request('/capd/servidores/meu-perfil');
   }
 
   async getServidor(id: number): Promise<any> {
@@ -398,6 +409,13 @@ export class CapdModuleClient {
 
   async obterEspelhoAvaliacao(avaliacaoId: number): Promise<ApiEspelhoAvaliacao> {
     return this.api.request(`/capd/avaliacoes/${avaliacaoId}/espelho`);
+  }
+
+  async exportarEspelhoPdf(avaliacaoId: number): Promise<Blob> {
+    if (this.api.requestBlob) {
+      return this.api.requestBlob(`/capd/avaliacoes/${avaliacaoId}/espelho/exportar-pdf`);
+    }
+    return (this.api as any).request(`/capd/avaliacoes/${avaliacaoId}/espelho/exportar-pdf`);
   }
 
   async registrarDevolutiva(

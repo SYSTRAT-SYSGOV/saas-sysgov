@@ -691,18 +691,6 @@ parameters:
 			path: Modules/Capd/Database/Seeders/CapdDadosDemonstracaoSeeder.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$homologada\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Database/Seeders/CapdDadosDemonstracaoSeeder.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$servidor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Database/Seeders/CapdDadosDemonstracaoSeeder.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$user_id\.$#'
 			identifier: property.notFound
 			count: 4
@@ -721,30 +709,6 @@ parameters:
 			path: Modules/Capd/Database/Seeders/CapdFatoresSeeder.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$codigo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Database/Seeders/CapdPerguntasPadraoSeeder.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$ordem\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Database/Seeders/CapdPerguntasPadraoSeeder.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$peso_geral\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Database/Seeders/CapdPerguntasPadraoSeeder.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$peso_magisterio\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Database/Seeders/CapdPerguntasPadraoSeeder.php
-
-		-
 			message: '#^Property Modules\\Capd\\Database\\Seeders\\CapdPerguntasPadraoSeeder\:\:\$opcoesEscalaPadrao type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -755,54 +719,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: Modules/Capd/Database/Seeders/CapdRbacSeeder.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_referencia\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_fim_avaliacao\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$codigo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$descricao\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$peso_geral\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
 
 		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\RhIntegracao\:\:\$tenant_id\.$#'
@@ -841,18 +757,6 @@ parameters:
 			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\Capd\\Models\\FatorAvaliacao\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\Capd\\Models\\FatorAvaliacao\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: Modules/Capd/Http/Controllers/Api/CapdEmbedController.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\RhIntegracao\:\:\$driver\.$#'
 			identifier: property.notFound
 			count: 1
@@ -871,129 +775,15 @@ parameters:
 			path: Modules/Capd/Http/Controllers/Api/RhApiController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\CicloAvaliacao\>\|Modules\\Capd\\Models\\CicloAvaliacao\:\:\$status\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\Servidor\>\|Modules\\Capd\\Models\\Servidor\:\:\$user_id\.$#'
 			identifier: property.notFound
 			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ano_referencia\.$#'
-			identifier: property.notFound
-			count: 3
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$codigo\.$#'
 			identifier: property.notFound
 			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$matricula\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$ciclo_id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$ciencia_ip\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$ciencia_servidor_em\.$#'
-			identifier: property.notFound
-			count: 3
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$ciencia_tipo\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$data_conclusao\.$#'
-			identifier: property.notFound
-			count: 4
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$devolutiva_em\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$devolutiva_realizada\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$devolutiva_resumo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$elegivel_progressao\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$homologada\.$#'
-			identifier: property.notFound
-			count: 5
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$nota_final\.$#'
-			identifier: property.notFound
-			count: 4
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$parecer_avaliador\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$respostas_fatores\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$servidor_id\.$#'
-			identifier: property.notFound
-			count: 10
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
@@ -1015,18 +805,6 @@ parameters:
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$descricao\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$peso_padrao\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1036,6 +814,12 @@ parameters:
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$atende_publico\.$#'
 			identifier: property.notFound
 			count: 2
+			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$cargo\.$#'
+			identifier: property.notFound
+			count: 1
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
@@ -1053,6 +837,12 @@ parameters:
 		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$matricula\.$#'
 			identifier: property.notFound
+			count: 2
+			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$nome\.$#'
+			identifier: property.notFound
 			count: 1
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
@@ -1069,15 +859,33 @@ parameters:
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
+			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
+
+		-
 			message: '#^Method Modules\\Capd\\Http\\Controllers\\AvaliacaoController\:\:gerarHtmlEspelho\(\) has parameter \$espelho with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\Capd\\Models\\Avaliacao\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 2
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
@@ -1087,20 +895,14 @@ parameters:
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
-			message: '#^Parameter \#1 \$ciclo of method Modules\\Capd\\Services\\IngestaoAutomaticaService\:\:calcularF1F2\(\) expects Modules\\Capd\\Models\\CicloAvaliacao, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\Capd\\Models\\DiarioBordo\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
 			count: 1
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\Capd\\Models\\Avaliacao\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 2
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Modules\\Capd\\Models\\DiarioBordo\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
+			message: '#^Using nullsafe property access "\?\-\>ano_referencia" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
 			count: 1
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
@@ -1111,7 +913,19 @@ parameters:
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
+			message: '#^Using nullsafe property access "\?\-\>cargo" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>cargo_efetivo" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>descricao" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
@@ -1125,13 +939,13 @@ parameters:
 		-
 			message: '#^Using nullsafe property access "\?\-\>matricula" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 2
+			count: 4
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>nome" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 1
+			count: 2
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
@@ -1165,12 +979,6 @@ parameters:
 			path: Modules/Capd/Http/Controllers/CapdController.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_competencia\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Http/Controllers/CicloController.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$cargo_efetivo\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1187,48 +995,6 @@ parameters:
 			identifier: property.notFound
 			count: 2
 			path: Modules/Capd/Http/Controllers/CicloController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Comissao\:\:\$numero_portaria\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/ComissaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\ComissaoMembro\:\:\$servidor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/ComissaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$nota_final\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/ConsolidacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_competencia\.$#'
-			identifier: property.notFound
-			count: 3
-			path: Modules/Capd/Http/Controllers/ConsolidacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$etapa_cadencia\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Http/Controllers/ConsolidacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/ConsolidacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$tenant_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/ConsolidacaoController.php
 
 		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$data_admissao\.$#'
@@ -1345,24 +1111,6 @@ parameters:
 			path: Modules/Capd/Http/Controllers/ConsolidacaoController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\CicloAvaliacao\>\|Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_referencia\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/DashboardController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\CicloAvaliacao\>\|Modules\\Capd\\Models\\CicloAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/DashboardController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\CicloAvaliacao\>\|Modules\\Capd\\Models\\CicloAvaliacao\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/DashboardController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\Recurso\>\|Modules\\Capd\\Models\\Recurso\:\:\$status\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1379,42 +1127,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: Modules/Capd/Http/Controllers/DeliberacaoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$codigo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/DeliberacaoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$respostas_fatores\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/DeliberacaoController.php
-
-		-
-			message: '#^Parameter \#1 \$avaliacao of method Modules\\Capd\\Services\\CalculadoraNotaService\:\:recalcularEPersistir\(\) expects Modules\\Capd\\Models\\Avaliacao, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: Modules/Capd/Http/Controllers/DeliberacaoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\FatorAvaliacao\>\|Modules\\Capd\\Models\\FatorAvaliacao\:\:\$automatizado\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/DiarioBordoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\FatorAvaliacao\>\|Modules\\Capd\\Models\\FatorAvaliacao\:\:\$codigo\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Http/Controllers/DiarioBordoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Http/Controllers/DiarioBordoController.php
 
 		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\DiarioBordo\:\:\$ciclo_id\.$#'
@@ -1453,12 +1165,6 @@ parameters:
 			path: Modules/Capd/Http/Controllers/DiarioBordoController.php
 
 		-
-			message: '#^Parameter \#1 \$roleSlug of method App\\Models\\User\:\:hasRole\(\) expects string, array\<int, string\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: Modules/Capd/Http/Controllers/DiarioBordoController.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>user_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -1475,12 +1181,6 @@ parameters:
 			identifier: argument.templateType
 			count: 2
 			path: Modules/Capd/Http/Controllers/EscalaGraficaController.php
-
-		-
-			message: '#^Parameter \#1 \$roleSlug of method App\\Models\\User\:\:hasRole\(\) expects string, array\<int, string\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: Modules/Capd/Http/Controllers/HomologacaoController.php
 
 		-
 			message: '#^Unable to resolve the template type TKey in call to function collect$#'
@@ -1525,30 +1225,6 @@ parameters:
 			path: Modules/Capd/Http/Controllers/PendenciaHierarquiaController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\Avaliacao\>\|Modules\\Capd\\Models\\Avaliacao\:\:\$data_conclusao\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/RecursoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\Avaliacao\>\|Modules\\Capd\\Models\\Avaliacao\:\:\$servidor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/RecursoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$avaliador_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/RecursoController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$data_limite_recurso\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/RecursoController.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Recurso\:\:\$recorrente_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1561,20 +1237,38 @@ parameters:
 			path: Modules/Capd/Http/Controllers/RecursoController.php
 
 		-
-			message: '#^Parameter \#1 \$roleSlug of method App\\Models\\User\:\:hasRole\(\) expects string, array\<int, string\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: Modules/Capd/Http/Controllers/RecursoController.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\RhIntegracao\:\:\$api_key\.$#'
 			identifier: property.notFound
 			count: 1
 			path: Modules/Capd/Http/Controllers/RhIntegrationController.php
 
 		-
+			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$lotacao_fisica\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Capd/Http/Controllers/ServidorController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$orgao_lotacao\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Capd/Http/Controllers/ServidorController.php
+
+		-
+			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Capd/Http/Controllers/ServidorController.php
+
+		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\ServidorAfastamento\:\:\$servidor_id\.$#'
 			identifier: property.notFound
+			count: 1
+			path: Modules/Capd/Http/Controllers/ServidorController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>orgao_lotacao" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
 			count: 1
 			path: Modules/Capd/Http/Controllers/ServidorController.php
 
@@ -1607,96 +1301,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: Modules/Capd/Jobs/IpmWebhookJob.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Capd\\Models\\Avaliacao\>\|Modules\\Capd\\Models\\Avaliacao\:\:\$homologada\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Listeners/RecalcularNotaConsolidada.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$avaliacao_consolidada_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Listeners/RecalcularNotaConsolidada.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$dias_exercicio\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Listeners/RecalcularNotaConsolidada.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$homologada\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Listeners/RecalcularNotaConsolidada.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$nota_final\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Listeners/RecalcularNotaConsolidada.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$tipo_avaliacao\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Listeners/RecalcularNotaConsolidada.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:reduce\(\) expects callable\(float, Illuminate\\Database\\Eloquent\\Model, int\)\: float, Closure\(float, Modules\\Capd\\Models\\Avaliacao\)\: float given\.$#'
-			identifier: argument.type
-			count: 1
-			path: Modules/Capd/Listeners/RecalcularNotaConsolidada.php
-
-		-
-			message: '#^Parameter \#1 \$key of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:contains\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model\|int\|string, Closure\(Modules\\Capd\\Models\\Avaliacao\)\: bool given\.$#'
-			identifier: argument.type
-			count: 1
-			path: Modules/Capd/Listeners/RecalcularNotaConsolidada.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$homologada\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Models/Avaliacao.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Avaliacao\:\:avaliador\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Avaliacao.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Avaliacao\:\:ciclo\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Avaliacao.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Avaliacao\:\:consolidada\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Avaliacao.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Avaliacao\:\:modeloFormulario\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Avaliacao.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Avaliacao\:\:parciais\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Avaliacao.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Avaliacao\:\:recursos\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Avaliacao.php
 
 		-
 			message: '#^Method Modules\\Capd\\Models\\Avaliacao\:\:scopeNaoHomologadas\(\) has no return type specified\.$#'
@@ -1759,18 +1363,6 @@ parameters:
 			path: Modules/Capd/Models/Avaliacao.php
 
 		-
-			message: '#^Method Modules\\Capd\\Models\\Avaliacao\:\:servidor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Avaliacao.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Avaliacao\:\:servidorData\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Avaliacao.php
-
-		-
 			message: '#^Method Modules\\Capd\\Models\\AvaliacaoUsuario\:\:ciclo\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1783,73 +1375,7 @@ parameters:
 			path: Modules/Capd/Models/AvaliacaoUsuario.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_competencia\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_referencia\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_fim\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_fim_avaliacao\.$#'
-			identifier: property.notFound
-			count: 4
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_inicio\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_inicio_avaliacao\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_limite_recurso\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$modo_f1\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$modo_f2\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$tipo_assinatura_ata\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
 			message: '#^Method Modules\\Capd\\Models\\CicloAvaliacao\:\:avaliacoes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/CicloAvaliacao.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\CicloAvaliacao\:\:comissao\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: Modules/Capd/Models/CicloAvaliacao.php
@@ -1886,12 +1412,6 @@ parameters:
 
 		-
 			message: '#^Method Modules\\Capd\\Models\\Comissao\:\:ciclo\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Comissao.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Comissao\:\:membros\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: Modules/Capd/Models/Comissao.php
@@ -2419,36 +1939,6 @@ parameters:
 			path: Modules/Capd/Models/Recurso.php
 
 		-
-			message: '#^Method Modules\\Capd\\Models\\Recurso\:\:avaliacao\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Recurso.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Recurso\:\:deliberacoes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Recurso.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Recurso\:\:documentos\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Recurso.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Recurso\:\:fatorContestado\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Recurso.php
-
-		-
-			message: '#^Method Modules\\Capd\\Models\\Recurso\:\:relator\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: Modules/Capd/Models/Recurso.php
-
-		-
 			message: '#^Method Modules\\Capd\\Models\\Recurso\:\:scopePendentes\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -2563,30 +2053,6 @@ parameters:
 			path: Modules/Capd/Models/SessaoPauta.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$avaliador_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Policies/AvaliacaoPolicy.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$homologada\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Policies/AvaliacaoPolicy.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$servidor_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Policies/AvaliacaoPolicy.php
-
-		-
-			message: '#^Parameter \#1 \$roleSlug of method App\\Models\\User\:\:hasRole\(\) expects string, array\<int, string\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: Modules/Capd/Policies/AvaliacaoPolicy.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\CapdItem\:\:\$tenant_id\.$#'
 			identifier: property.notFound
 			count: 3
@@ -2609,24 +2075,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: Modules/Capd/Policies/DiarioBordoPolicy.php
-
-		-
-			message: '#^Left side of \|\| is always false\.$#'
-			identifier: booleanOr.leftAlwaysFalse
-			count: 1
-			path: Modules/Capd/Policies/DiarioBordoPolicy.php
-
-		-
-			message: '#^Parameter \#1 \$roleSlug of method App\\Models\\User\:\:hasRole\(\) expects string, array\<int, string\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: Modules/Capd/Policies/DiarioBordoPolicy.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$avaliador_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Policies/RecursoPolicy.php
 
 		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Recurso\:\:\$recorrente_id\.$#'
@@ -2689,30 +2137,6 @@ parameters:
 			path: Modules/Capd/Services/CalculadoraNotaService.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$ciclo_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CalculadoraNotaService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$respostas_fatores\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CalculadoraNotaService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$servidor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CalculadoraNotaService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:fatoresComPesosEfetivos\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: Modules/Capd/Services/CalculadoraNotaService.php
-
-		-
 			message: '#^Method Modules\\Capd\\Services\\CalculadoraNotaService\:\:calcular\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -2723,84 +2147,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: Modules/Capd/Services/CalculadoraNotaService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$homologada_em\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$nota_final\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_competencia\.$#'
-			identifier: property.notFound
-			count: 3
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$cadencia_automatica\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_fim\.$#'
-			identifier: property.notFound
-			count: 3
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_inicio\.$#'
-			identifier: property.notFound
-			count: 4
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_limite_preenchimento\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_limite_recurso\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$etapa_cadencia\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$regras_config\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/CicloService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$tenant_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Services/CicloService.php
 
 		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$cargo_efetivo\.$#'
@@ -2863,24 +2209,6 @@ parameters:
 			path: Modules/Capd/Services/CicloService.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_competencia\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/ConsolidacaoTrienalService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$etapa_cadencia\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/ConsolidacaoTrienalService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$tenant_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Services/ConsolidacaoTrienalService.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$matricula\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2930,18 +2258,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Services/HierarquiaService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_fim_avaliacao\.$#'
-			identifier: property.notFound
-			count: 3
-			path: Modules/Capd/Services/HierarquiaService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_inicio_avaliacao\.$#'
 			identifier: property.notFound
 			count: 2
 			path: Modules/Capd/Services/HierarquiaService.php
@@ -3019,18 +2335,6 @@ parameters:
 			path: Modules/Capd/Services/HomologacaoLoteService.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_referencia\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/HomologacaoLoteService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/HomologacaoLoteService.php
-
-		-
 			message: '#^Parameter \#1 \$callback of static method Illuminate\\Database\\Connection\:\:transaction\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
@@ -3041,30 +2345,6 @@ parameters:
 			identifier: staticMethod.unresolvableReturnType
 			count: 1
 			path: Modules/Capd/Services/HomologacaoLoteService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_fim_avaliacao\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/IngestaoAutomaticaService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_inicio_avaliacao\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/IngestaoAutomaticaService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$modo_f1\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/IngestaoAutomaticaService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$modo_f2\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/IngestaoAutomaticaService.php
 
 		-
 			message: '#^Comparison operation "\<\=" between int\<min, 2\> and 2 is always true\.$#'
@@ -3140,18 +2420,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$orgao_lotacao\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/PainelGerencialService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$data_conclusao\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/PainelGerencialService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_limite_preenchimento\.$#'
 			identifier: property.notFound
 			count: 1
 			path: Modules/Capd/Services/PainelGerencialService.php
@@ -3427,24 +2695,6 @@ parameters:
 			path: Modules/Capd/Services/PerguntaService.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_competencia\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/PmdService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$data_inicio\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/PmdService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$tenant_id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: Modules/Capd/Services/PmdService.php
-
-		-
 			message: '#^Property Modules\\Capd\\Services\\PmdService\:\:\$tenantContext is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
@@ -3467,66 +2717,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: Modules/Capd/Services/QuinquenioService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$matricula\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/RhIntegrationService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/RhIntegrationService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$ciclo_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/RhIntegrationService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$elegivel_progressao\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Services/RhIntegrationService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$homologada_em\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Services/RhIntegrationService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$nota_final\.$#'
-			identifier: property.notFound
-			count: 3
-			path: Modules/Capd/Services/RhIntegrationService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$servidor_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Services/RhIntegrationService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$tenant_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/RhIntegrationService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_referencia\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Services/RhIntegrationService.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/RhIntegrationService.php
 
 		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\RhIntegracao\:\:\$driver\.$#'
@@ -3583,12 +2773,6 @@ parameters:
 			path: Modules/Capd/Services/ServidorService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ciclo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Services/SorteioRelatorService.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Recurso\:\:\$recorrente_id\.$#'
 			identifier: property.notFound
 			count: 2
@@ -3637,18 +2821,6 @@ parameters:
 			path: Modules/Capd/Tests/Feature/CadastroPerguntasTest.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Tests/Feature/CapdTenantIsolationEvoluidoTest.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$tenant_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Tests/Feature/CapdTenantIsolationEvoluidoTest.php
-
-		-
 			message: '#^Method Modules\\Capd\\Tests\\Feature\\CicloControllerRbacTest\:\:payloadCiclo\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -3673,24 +2845,6 @@ parameters:
 			path: Modules/Capd/Tests/Feature/CicloDozeMesesCadenciaTest.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$ano_competencia\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Tests/Feature/CicloDozeMesesCadenciaTest.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$etapa_cadencia\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Tests/Feature/CicloDozeMesesCadenciaTest.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\CicloAvaliacao\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Tests/Feature/CicloDozeMesesCadenciaTest.php
-
-		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\Servidor\:\:\$user_id\.$#'
 			identifier: property.notFound
 			count: 2
@@ -3707,12 +2861,6 @@ parameters:
 			identifier: argument.templateType
 			count: 4
 			path: Modules/Capd/Tests/Feature/ConsolidacaoNfcTest.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$nome\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Tests/Feature/FatorControllerTest.php
 
 		-
 			message: '#^Method Modules\\Capd\\Tests\\Feature\\FatorControllerTest\:\:headers\(\) return type has no value type specified in iterable type array\.$#'
@@ -3769,30 +2917,6 @@ parameters:
 			path: Modules/Capd/Tests/Feature/Hierarquia/SplitTransferenciaTest.php
 
 		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$avaliador_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Tests/Feature/Hierarquia/SplitTransferenciaTest.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$dias_exercicio\.$#'
-			identifier: property.notFound
-			count: 2
-			path: Modules/Capd/Tests/Feature/Hierarquia/SplitTransferenciaTest.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$homologada\.$#'
-			identifier: property.notFound
-			count: 3
-			path: Modules/Capd/Tests/Feature/Hierarquia/SplitTransferenciaTest.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$nota_final\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Tests/Feature/Hierarquia/SplitTransferenciaTest.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
@@ -3808,12 +2932,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 3
-			path: Modules/Capd/Tests/Feature/Hierarquia/SuspensaoLicencaLongaTest.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$status_avaliacao\.$#'
-			identifier: property.notFound
-			count: 1
 			path: Modules/Capd/Tests/Feature/Hierarquia/SuspensaoLicencaLongaTest.php
 
 		-
@@ -3941,12 +3059,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: Modules/Capd/Tests/Feature/PmdControllerRbacTest.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\Avaliacao\:\:\$nota_final\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Tests/Feature/PreviewNotaTest.php
 
 		-
 			message: '#^Method Modules\\Capd\\Tests\\Feature\\QuinquenioTest\:\:headers\(\) return type has no value type specified in iterable type array\.$#'
