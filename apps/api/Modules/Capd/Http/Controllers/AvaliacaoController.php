@@ -577,9 +577,11 @@ final class AvaliacaoController extends Controller
         // RF-02: o peso exibido no espelho deve ser o peso efetivamente configurado
         // no modelo de formulário vigente (ModeloFatorPeso), não um valor fictício —
         // FatorAvaliacao não possui campo "peso_padrao".
-        $pesosPorCodigo = ($avaliacao->modeloFormulario?->fatoresPesos ?? collect())
-            ->keyBy(fn ($mfp) => $mfp->fator?->codigo)
-            ->map(fn ($mfp) => (float) $mfp->peso);
+        $modeloFormulario = $avaliacao->modeloFormulario;
+        $fatoresPesosModelo = $modeloFormulario !== null ? $modeloFormulario->fatoresPesos : collect();
+        $pesosPorCodigo = $fatoresPesosModelo
+            ->keyBy(fn (\Modules\Capd\Models\ModeloFatorPeso $mfp) => $mfp->fator?->codigo)
+            ->map(fn (\Modules\Capd\Models\ModeloFatorPeso $mfp) => (float) $mfp->peso);
 
         $fatoresDetalhados = [];
         $respostas = $avaliacao->respostas_fatores ?? [];

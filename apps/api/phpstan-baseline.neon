@@ -783,7 +783,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$codigo\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
@@ -800,12 +800,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Modules\\Capd\\Models\\DiarioBordo\:\:\$tipo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Access to an undefined property Modules\\Capd\\Models\\FatorAvaliacao\:\:\$peso_padrao\.$#'
 			identifier: property.notFound
 			count: 1
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
@@ -901,6 +895,12 @@ parameters:
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
 
 		-
+			message: '#^Unable to resolve the template type TNewKey in call to method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:keyBy\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>ano_referencia" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -950,12 +950,6 @@ parameters:
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>nome_completo" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>peso_padrao" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: Modules/Capd/Http/Controllers/AvaliacaoController.php
