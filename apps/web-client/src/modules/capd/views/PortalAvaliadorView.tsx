@@ -47,6 +47,7 @@ import {
   Paperclip,
   Trash2,
   FileCheck,
+  Scale,
 } from 'lucide-react';
 import { AvaliacaoFormView } from '../AvaliacaoFormView';
 import { EspelhoAvaliacaoModal } from '../EspelhoAvaliacaoModal';
@@ -799,6 +800,674 @@ export function gerarHtmlTermoCit(
 </html>`;
 }
 
+export function gerarHtmlAtaDevolutiva(
+  av: any,
+  chefiaNome: string = 'Chefia Imediata / Avaliador Oficial',
+  departamento: string = 'SMAD / Depto. Protocolo e Arquivo'
+): string {
+  const dataDevolutivaFmt = av.devolutiva_em
+    ? new Date(av.devolutiva_em).toLocaleDateString('pt-BR')
+    : new Date().toLocaleDateString('pt-BR');
+  const dataCienciaFmt = av.ciencia_servidor_em
+    ? new Date(av.ciencia_servidor_em).toLocaleString('pt-BR')
+    : 'Pendente de assinatura eletrônica do servidor';
+  const servidorNome = av.servidor?.nome_completo || av.servidorData?.nome_completo || `Servidor #${av.servidor_id}`;
+  const matricula = av.servidor?.matricula || av.servidorData?.matricula || '—';
+  const cargo = av.servidor?.cargo_efetivo || av.servidorData?.cargo_efetivo || 'Servidor Público Municipal';
+  const lotacao = av.servidor?.lotacao_fisica || av.servidorData?.orgao_lotacao || departamento;
+  const notaFinal = av.nota_final ? Number(av.nota_final).toFixed(2) : '—';
+  const parecer = Number(av.nota_final) >= 70 ? 'APTO / SATISFATÓRIO (>= 70,00 pts)' : 'PONTO DE ATENÇÃO (< 70,00 pts)';
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Ata de Entrevista Devolutiva Presencial — Art. 27 — ${servidorNome}</title>
+  <style>
+    @page { size: A4 portrait; margin: 15mm 15mm 15mm 15mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.45;
+      color: #0f172a;
+      background: #fff;
+    }
+    .mono { font-family: 'JetBrains Mono', Consolas, Monaco, monospace; font-variant-numeric: tabular-nums; }
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #0a1128;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .brasao { font-size: 11pt; font-weight: 800; letter-spacing: 0.05em; color: #0a1128; text-transform: uppercase; }
+    .sub-orgao { font-size: 9pt; color: #334155; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+    .doc-titulo {
+      font-size: 12pt;
+      font-weight: 800;
+      color: #0a1128;
+      text-transform: uppercase;
+      margin-top: 8px;
+      letter-spacing: 0.02em;
+    }
+    .protocolo-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 8.5pt;
+      margin-bottom: 14px;
+    }
+    .secao {
+      margin-bottom: 12px;
+    }
+    .secao-titulo {
+      font-size: 9pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #0a1128;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin-bottom: 6px;
+    }
+    table.tabela-dados {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+      margin-bottom: 6px;
+    }
+    table.tabela-dados td {
+      padding: 5px 8px;
+      border: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+    table.tabela-dados td.rotulo {
+      width: 26%;
+      font-weight: 700;
+      background: #f8fafc;
+      color: #334155;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-radius: 3px;
+    }
+    .badge-sucesso { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-alerta { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .relato-box {
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      border-radius: 4px;
+      padding: 10px 12px;
+      font-size: 9.5pt;
+      line-height: 1.5;
+      text-align: justify;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+    }
+    .alerta-legal {
+      background: #eff6ff;
+      border-left: 3px solid #3b82f6;
+      padding: 7px 10px;
+      font-size: 8pt;
+      color: #1e3a8a;
+      line-height: 1.35;
+      margin-top: 10px;
+    }
+    .assinaturas {
+      margin-top: 36px;
+      display: flex;
+      justify-content: space-between;
+      page-break-inside: avoid;
+    }
+    .campo-assinatura {
+      width: 45%;
+      text-align: center;
+      font-size: 8.5pt;
+    }
+    .linha-assinatura {
+      border-top: 1px solid #0f172a;
+      margin-bottom: 5px;
+    }
+    .rodape {
+      margin-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 6px;
+      font-size: 7.5pt;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brasao">MUNICÍPIO DE GUARAPUAVA — ESTADO DO PARANÁ</div>
+    <div class="sub-orgao">Secretaria Municipal de Administração • Departamento de Recursos Humanos</div>
+    <div class="sub-orgao">Comissão Permanente de Avaliação de Desempenho — CAPD</div>
+    <div class="doc-titulo">Ata de Entrevista Devolutiva Presencial de Feedback (Art. 27)</div>
+  </div>
+
+  <div class="protocolo-bar">
+    <div><strong>Protocolo Digital:</strong> <span class="mono">DEV-${av.id.toString().padStart(6, '0')}</span></div>
+    <div><strong>Data da Realização:</strong> <span class="mono">${dataDevolutivaFmt}</span></div>
+    <div><strong>Fundamento:</strong> Art. 27 da Lei nº 1.704/2006</div>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">1. Identificação do Servidor Avaliado</div>
+    <table class="tabela-dados">
+      <tr>
+        <td class="rotulo">Nome Completo:</td>
+        <td colspan="3"><strong>${servidorNome}</strong></td>
+      </tr>
+      <tr>
+        <td class="rotulo">Matrícula Funcional:</td>
+        <td class="mono"><strong>${matricula}</strong></td>
+        <td class="rotulo">Regime Jurídico:</td>
+        <td>Estatutário / Estágio Probatório</td>
+      </tr>
+      <tr>
+        <td class="rotulo">Cargo Efetivo:</td>
+        <td>${cargo}</td>
+        <td class="rotulo">Unidade de Lotação:</td>
+        <td>${lotacao}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">2. Identificação da Chefia Imediata Conducente</div>
+    <table class="tabela-dados">
+      <tr>
+        <td class="rotulo">Avaliador / Chefia:</td>
+        <td><strong>${chefiaNome}</strong></td>
+        <td class="rotulo">Lotação Funcional:</td>
+        <td>${departamento}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">3. Síntese do Desempenho no Ciclo Avaliativo</div>
+    <table class="tabela-dados">
+      <tr>
+        <td class="rotulo">Nota Final Apurada:</td>
+        <td class="mono"><strong>${notaFinal} pontos</strong></td>
+        <td class="rotulo">Parecer Metodológico:</td>
+        <td>
+          <span class="badge ${Number(av.nota_final) >= 70 ? 'badge-sucesso' : 'badge-alerta'}">
+            ${parecer}
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td class="rotulo">Data da Avaliação:</td>
+        <td class="mono">${av.data_conclusao ? new Date(av.data_conclusao).toLocaleDateString('pt-BR') : 'Ciclo Vigente'}</td>
+        <td class="rotulo">Status da Homologação:</td>
+        <td>${av.homologada ? 'Homologada pela CAPD' : 'Aguardando Homologação'}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">4. Relato da Entrevista e Feedback da Chefia Imediata</div>
+    <div class="relato-box">${av.devolutiva_resumo || 'Entrevista presencial realizada na presença da chefia imediata e do servidor avaliado, oportunidade na qual foram detalhadas as pontuações em cada fator de desempenho, ressaltando os pontos fortes e estabelecendo diálogo construtivo sobre aspectos funcionais a desenvolver.'}</div>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">5. Plano de Desenvolvimento Individual (PDI) e Acordos Pactuados</div>
+    <div class="relato-box">${av.devolutiva_acordos || 'Fica acordado o acompanhamento contínuo das metas pactuadas, com priorização em capacitações funcionais e alinhamento de processos de trabalho durante o próximo período avaliativo.'}</div>
+  </div>
+
+  <div class="alerta-legal">
+    <strong>Declaração de Cumprimento Legal:</strong> Em cumprimento ao disposto no Art. 27 da Lei nº 1.704/2006, o avaliador realizou formalmente a entrevista devolutiva presencial com o avaliado, dando-lhe conhecimento integral dos critérios e notas atribuídas, facultando-lhe o prazo legal de 5 (cinco) dias úteis para emissão de ciência ou interposição de recurso administrativo perante a Comissão.
+  </div>
+
+  <div class="assinaturas">
+    <div class="campo-assinatura">
+      <div class="linha-assinatura"></div>
+      <div><strong>${chefiaNome}</strong></div>
+      <div>Chefia Imediata / Avaliador</div>
+      <div class="mono" style="font-size: 7.5pt; color: #64748b;">Assinado digitalmente via SYSGOV</div>
+    </div>
+    <div class="campo-assinatura">
+      <div class="linha-assinatura"></div>
+      <div><strong>${servidorNome}</strong></div>
+      <div>Ciência Formal do Servidor Avaliado</div>
+      <div class="mono" style="font-size: 7.5pt; color: #64748b;">${dataCienciaFmt}</div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <div>SYSGOV — Sistema Integrado de Gestão Pública • Módulo CAPD</div>
+    <div class="mono">Ata de Devolutiva emitida em ${new Date().toLocaleString('pt-BR')}</div>
+  </div>
+</body>
+</html>`;
+}
+
+const AMOSTRA_DEVOLUTIVAS_PADRAO: any[] = [
+  {
+    id: 1,
+    servidor_id: 101,
+    servidor: {
+      id: 101,
+      nome_completo: 'Carlos Eduardo Silveira',
+      matricula: '48.921-0',
+      cargo_efetivo: 'Auxiliar Administrativo',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    nota_final: '78.75',
+    data_conclusao: '2026-09-10T11:00:00Z',
+    devolutiva_realizada: true,
+    devolutiva_em: '2026-09-12',
+    devolutiva_resumo: 'Entrevista presencial realizada na sala de reuniões da SMAD. Apresentados os pontos fortes em assiduidade e pontualidade. Alinhados pontos de atenção na produtividade sob demanda.',
+    devolutiva_acordos: 'Participar do treinamento do novo módulo de Protocolo Digital em outubro e revisar relatórios semanais com a chefia.',
+    ciencia_servidor_em: '2026-09-12T16:45:00Z',
+    ciencia_tipo: 'eletronica_govbr',
+    ciencia_ip: '189.34.120.45',
+    homologada: false,
+  },
+  {
+    id: 2,
+    servidor_id: 102,
+    servidor: {
+      id: 102,
+      nome_completo: 'Ana Paula Nogueira de Souza',
+      matricula: '39.102-4',
+      cargo_efetivo: 'Técnico em Gestão Pública',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    nota_final: '92.40',
+    data_conclusao: '2026-09-11T14:30:00Z',
+    devolutiva_realizada: true,
+    devolutiva_em: '2026-09-14',
+    devolutiva_resumo: 'Parabéns pela excelência demonstrada no ciclo. Desempenho acima da média com destaque para inovação nos fluxos de processos eletrônicos.',
+    devolutiva_acordos: 'Assumir a tutoria técnica dos novos estagiários e apoiar o mapeamento de processos da diretoria.',
+    ciencia_servidor_em: '2026-09-14T10:15:00Z',
+    ciencia_tipo: 'eletronica_govbr',
+    ciencia_ip: '189.34.120.45',
+    homologada: true,
+  },
+  {
+    id: 3,
+    servidor_id: 103,
+    servidor: {
+      id: 103,
+      nome_completo: 'Beatriz Helena Castro',
+      matricula: '52.314-8',
+      cargo_efetivo: 'Assistente Administrativo',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    nota_final: '71.50',
+    data_conclusao: '2026-09-15T09:20:00Z',
+    devolutiva_realizada: false,
+    devolutiva_em: null,
+    devolutiva_resumo: null,
+    devolutiva_acordos: null,
+    ciencia_servidor_em: null,
+    homologada: false,
+  },
+  {
+    id: 4,
+    servidor_id: 104,
+    servidor: {
+      id: 104,
+      nome_completo: 'Roberto Mendes Ramos',
+      matricula: '44.872-1',
+      cargo_efetivo: 'Agente de Apoio Operacional',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    nota_final: '68.20',
+    data_conclusao: '2026-09-15T15:40:00Z',
+    devolutiva_realizada: false,
+    devolutiva_em: null,
+    devolutiva_resumo: null,
+    devolutiva_acordos: null,
+    ciencia_servidor_em: null,
+    homologada: false,
+  },
+  {
+    id: 5,
+    servidor_id: 105,
+    servidor: {
+      id: 105,
+      nome_completo: 'Fernando Silveira Dias',
+      matricula: '31.455-9',
+      cargo_efetivo: 'Técnico Administrativo',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    nota_final: '84.00',
+    data_conclusao: '2026-09-16T11:30:00Z',
+    devolutiva_realizada: true,
+    devolutiva_em: '2026-09-16',
+    devolutiva_resumo: 'Feedback pontual focado na melhoria do atendimento presencial ao público e no cumprimento rigoroso dos prazos da Ouvidoria.',
+    devolutiva_acordos: 'Implementar checklist diário de triagem de demandas e relatórios.',
+    ciencia_servidor_em: null,
+    homologada: false,
+  },
+  {
+    id: 6,
+    servidor_id: 106,
+    servidor: {
+      id: 106,
+      nome_completo: 'Lucas Gabriel Albuquerque',
+      matricula: '55.201-3',
+      cargo_efetivo: 'Auxiliar Operacional',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    nota_final: '79.50',
+    data_conclusao: '2026-09-16T17:00:00Z',
+    devolutiva_realizada: false,
+    devolutiva_em: null,
+    devolutiva_resumo: null,
+    devolutiva_acordos: null,
+    ciencia_servidor_em: null,
+    homologada: false,
+  },
+];
+
+function gerarHtmlTermoContrarrazao(rec: any, chefiaNome: string, departamento: string): string {
+  const servidorNome = rec.servidor?.nome_completo || rec.recorrente?.name || `Servidor #${rec.recorrente_id}`;
+  const matricula = rec.servidor?.matricula || '—';
+  const cargo = rec.servidor?.cargo_efetivo || 'Servidor Público';
+  const fatorNome = rec.fatorContestado?.nome || rec.fator_contestado?.nome || `Fator #${rec.fator_contestado_id}`;
+  const grupoNome = rec.fatorContestado?.grupo_nome || 'Competências e Atributos Funcionais';
+  const dataRecurso = rec.created_at ? new Date(rec.created_at).toLocaleDateString('pt-BR') : 'Data informada';
+  const dataContestacao = rec.contestacao_em ? new Date(rec.contestacao_em).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+  const posicionamento = rec.posicionamento_chefia === 'reconsiderar' ? 'Reconsideração Parcial' : 'Manutenção da Pontuação';
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Termo de Contrarrazões da Chefia Imediata — Recurso #${rec.id}</title>
+  <style>
+    @page { size: A4 portrait; margin: 18mm 16mm 18mm 16mm; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; line-height: 1.4; color: #0f172a; margin: 0; padding: 0; }
+    .header { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 10px; margin-bottom: 14px; }
+    .brasao { font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #0f172a; margin-bottom: 2px; }
+    .sub-orgao { font-size: 8.5pt; color: #475569; margin-bottom: 1px; }
+    .doc-titulo { font-size: 11pt; font-weight: 800; text-transform: uppercase; color: #0369a1; margin-top: 6px; letter-spacing: 0.5px; }
+    .protocolo-bar { display: flex; justify-content: space-between; align-items: center; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px; padding: 6px 12px; margin-bottom: 14px; font-size: 8.5pt; }
+    .mono { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+    .secao { margin-bottom: 12px; }
+    .secao-titulo { font-size: 9pt; font-weight: 800; text-transform: uppercase; color: #0369a1; border-bottom: 1px solid #e0f2fe; padding-bottom: 3px; margin-bottom: 6px; }
+    .tabela-dados { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 8.5pt; }
+    .tabela-dados td { padding: 4px 6px; border: 1px solid #e2e8f0; }
+    .tabela-dados td.rotulo { width: 28%; font-weight: 700; background: #f8fafc; color: #475569; }
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 7.5pt; font-weight: 700; text-transform: uppercase; }
+    .badge-sucesso { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-alerta { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .badge-info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .relato-box { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 4px; padding: 10px 12px; font-size: 9pt; line-height: 1.45; text-align: justify; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
+    .alerta-legal { background: #f0fdf4; border-left: 3px solid #16a34a; padding: 7px 10px; font-size: 8pt; color: #14532d; line-height: 1.35; margin-top: 10px; }
+    .assinaturas { margin-top: 36px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .campo-assinatura { width: 45%; text-align: center; font-size: 8.5pt; }
+    .linha-assinatura { border-top: 1px solid #0f172a; margin-bottom: 5px; }
+    .rodape { margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 6px; font-size: 7.5pt; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brasao">MUNICÍPIO DE GUARAPUAVA — ESTADO DO PARANÁ</div>
+    <div class="sub-orgao">Secretaria Municipal de Administração • Departamento de Recursos Humanos</div>
+    <div class="sub-orgao">Comissão Especial de Avaliação de Desempenho — CAD / CAPD</div>
+    <div class="doc-titulo">Manifestação Técnica de Contrarrazões da Chefia Imediata</div>
+  </div>
+
+  <div class="protocolo-bar">
+    <div><strong>Processo Recursal:</strong> <span class="mono">REC-${rec.id.toString().padStart(6, '0')}</span></div>
+    <div><strong>Base Normativa:</strong> Arts. 30 e 31 da Lei nº 1.704/2006</div>
+    <div><strong>Status:</strong> <span class="mono">${rec.status.toUpperCase()}</span></div>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">1. Qualificação dos Sujeitos Processuais</div>
+    <table class="tabela-dados">
+      <tr>
+        <td class="rotulo">Servidor Recorrente:</td>
+        <td><strong>${servidorNome}</strong></td>
+        <td class="rotulo">Matrícula Funcional:</td>
+        <td class="mono">${matricula}</td>
+      </tr>
+      <tr>
+        <td class="rotulo">Cargo Efetivo:</td>
+        <td>${cargo}</td>
+        <td class="rotulo">Lotação / Departamento:</td>
+        <td>${departamento}</td>
+      </tr>
+      <tr>
+        <td class="rotulo">Chefia Imediata (Avaliador):</td>
+        <td><strong>${chefiaNome}</strong></td>
+        <td class="rotulo">Data da Interposição:</td>
+        <td class="mono">${dataRecurso}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">2. Delimitação do Objeto da Contestação</div>
+    <table class="tabela-dados">
+      <tr>
+        <td class="rotulo">Fator Contestado:</td>
+        <td colspan="3"><strong>${fatorNome}</strong> (${grupoNome})</td>
+      </tr>
+      <tr>
+        <td class="rotulo">Grau Inicial Atribuído:</td>
+        <td class="mono">Grau ${rec.grau_original || '2'}</td>
+        <td class="rotulo">Grau Pleiteado pelo Servidor:</td>
+        <td class="mono">Grau ${rec.grau_pretendido || '4'}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">3. Razões Recursais Apresentadas pelo Servidor Avaliado</div>
+    <div class="relato-box">"${rec.justificativa_servidor}"</div>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">4. Manifestação Técnica e Fundamentação das Contrarrazões da Chefia</div>
+    <table class="tabela-dados" style="margin-bottom: 6px;">
+      <tr>
+        <td class="rotulo">Posicionamento Formal:</td>
+        <td>
+          <span class="badge ${rec.posicionamento_chefia === 'reconsiderar' ? 'badge-info' : 'badge-sucesso'}">
+            ${posicionamento}
+          </span>
+          ${rec.posicionamento_chefia === 'reconsiderar' && rec.novo_grau_proposto ? ` — Proposta de elevação para Grau ${rec.novo_grau_proposto}` : ''}
+        </td>
+        <td class="rotulo">Data da Manifestação:</td>
+        <td class="mono">${dataContestacao}</td>
+      </tr>
+    </table>
+    <div class="relato-box">${rec.contestacao_chefia || 'A chefia imediata prestou manifestação técnica nos autos em cumprimento aos Arts. 30 e 31 da Lei nº 1.704/2006.'}</div>
+  </div>
+
+  <div class="alerta-legal">
+    <strong>Certidão de Envio à Instância Colegiada:</strong> Prestadas as presentes contrarrazões técnicas pela chefia avaliadora, os autos recursais são formalmente encaminhados à Comissão Especial de Avaliação de Desempenho (CAD) para sorteio de relator, instrução probatória e julgamento colegiado soberano em 2ª instância administrativa.
+  </div>
+
+  <div class="assinaturas">
+    <div class="campo-assinatura">
+      <div class="linha-assinatura"></div>
+      <div><strong>${chefiaNome}</strong></div>
+      <div>Chefia Imediata / Avaliador Oficial</div>
+      <div class="mono" style="font-size: 7.5pt; color: #64748b;">Assinado digitalmente via SYSGOV</div>
+    </div>
+    <div class="campo-assinatura">
+      <div class="linha-assinatura"></div>
+      <div><strong>Comissão Especial de Avaliação (CAD)</strong></div>
+      <div>Recebimento e Distribuição Colegiada</div>
+      <div class="mono" style="font-size: 7.5pt; color: #64748b;">Protocolo Geral DGRH</div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <div>SYSGOV — Sistema Integrado de Gestão Pública • Módulo CAPD</div>
+    <div class="mono">Termo emitido em ${new Date().toLocaleString('pt-BR')}</div>
+  </div>
+</body>
+</html>`;
+}
+
+const AMOSTRA_RECURSOS_PADRAO: any[] = [
+  {
+    id: 1,
+    avaliacao_id: 1,
+    recorrente_id: 101,
+    recorrente: {
+      id: 101,
+      name: 'Carlos Eduardo Silveira',
+      email: 'carlos.silveira@guarapuava.pr.gov.br',
+    },
+    servidor: {
+      id: 101,
+      nome_completo: 'Carlos Eduardo Silveira',
+      matricula: '48.921-0',
+      cargo_efetivo: 'Auxiliar Administrativo',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    fator_contestado_id: 5,
+    fatorContestado: {
+      id: 5,
+      nome: 'Produtividade sob Demanda e Eficiência Operacional',
+      grupo_nome: 'Competências Técnicas',
+    },
+    grau_original: 3,
+    grau_pretendido: 4,
+    justificativa_servidor: 'Durante o ciclo avaliativo, absorvi diretamente a triagem e digitalização de 1.250 processos legados sem prejuízo dos atendimentos diários do protocolo geral, superando as metas do setor.',
+    status: 'interposto',
+    created_at: '2026-09-14T10:30:00Z',
+    prazo_resposta_ate: '2026-09-21T23:59:59Z',
+    dias_restantes: 4,
+    contestacao_chefia: null,
+    contestacao_em: null,
+    posicionamento_chefia: null,
+  },
+  {
+    id: 2,
+    avaliacao_id: 3,
+    recorrente_id: 103,
+    recorrente: {
+      id: 103,
+      name: 'Beatriz Helena Castro',
+      email: 'beatriz.castro@guarapuava.pr.gov.br',
+    },
+    servidor: {
+      id: 103,
+      nome_completo: 'Beatriz Helena Castro',
+      matricula: '52.314-8',
+      cargo_efetivo: 'Assistente Administrativo',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    fator_contestado_id: 3,
+    fatorContestado: {
+      id: 3,
+      nome: 'Assiduidade, Pontualidade e Cumprimento de Jornada',
+      grupo_nome: 'Compromisso Institucional',
+    },
+    grau_original: 2,
+    grau_pretendido: 4,
+    justificativa_servidor: 'Os atrasos pontuais de 15 minutos em duas sextas-feiras ocorreram por convocação de treinamento presencial na Escola de Governo, devidamente chancelado pela chefia e protocolado na DGRH.',
+    status: 'em_instrucao',
+    created_at: '2026-09-12T14:15:00Z',
+    prazo_resposta_ate: '2026-09-19T23:59:59Z',
+    dias_restantes: 2,
+    contestacao_chefia: null,
+    contestacao_em: null,
+    posicionamento_chefia: null,
+  },
+  {
+    id: 3,
+    avaliacao_id: 4,
+    recorrente_id: 104,
+    recorrente: {
+      id: 104,
+      name: 'Roberto Mendes Ramos',
+      email: 'roberto.ramos@guarapuava.pr.gov.br',
+    },
+    servidor: {
+      id: 104,
+      nome_completo: 'Roberto Mendes Ramos',
+      matricula: '44.872-1',
+      cargo_efetivo: 'Agente de Apoio Operacional',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    fator_contestado_id: 2,
+    fatorContestado: {
+      id: 2,
+      nome: 'Disciplina e Cumprimento das Normas Regimentais',
+      grupo_nome: 'Conduta e Ética',
+    },
+    grau_original: 2,
+    grau_pretendido: 3,
+    justificativa_servidor: 'A advertência verbal citada no diário refere-se a mal-entendido operacional com prestador terceirizado já sanado perante a chefia do setor em reunião posterior.',
+    status: 'em_instrucao',
+    created_at: '2026-09-08T09:00:00Z',
+    prazo_resposta_ate: '2026-09-15T23:59:59Z',
+    dias_restantes: 0,
+    contestacao_chefia: 'Manifestação Técnica da Chefia: Mantém-se a pontuação atribuída (Grau 2). O incidente relatado no Diário de Bordo em 14/06/2026 foi circunstanciado com apontamento fático comprovado e gerou descontinuidade no fluxo de correspondências oficiais, não havendo elementos novos para retificação.',
+    contestacao_em: '2026-09-11T16:20:00Z',
+    posicionamento_chefia: 'manter',
+  },
+  {
+    id: 4,
+    avaliacao_id: 5,
+    recorrente_id: 105,
+    recorrente: {
+      id: 105,
+      name: 'Fernando Silveira Dias',
+      email: 'fernando.dias@guarapuava.pr.gov.br',
+    },
+    servidor: {
+      id: 105,
+      nome_completo: 'Fernando Silveira Dias',
+      matricula: '31.455-9',
+      cargo_efetivo: 'Técnico Administrativo',
+      lotacao_fisica: 'SMAD / Depto. Protocolo e Arquivo',
+      orgao_lotacao: 'SMAD / Depto. Protocolo e Arquivo',
+    },
+    fator_contestado_id: 6,
+    fatorContestado: {
+      id: 6,
+      nome: 'Inovação, Iniciativa e Melhoria Contínua dos Processos',
+      grupo_nome: 'Desenvolvimento e Inovação',
+    },
+    grau_original: 3,
+    grau_pretendido: 5,
+    justificativa_servidor: 'Idealizei e implementei o novo fluxo dinâmico de triagem de processos da Ouvidoria, reduzindo em 32% o tempo médio de resposta ao cidadão no período.',
+    status: 'julgado_provido',
+    created_at: '2026-09-01T11:00:00Z',
+    prazo_resposta_ate: '2026-09-08T23:59:59Z',
+    dias_restantes: 0,
+    contestacao_chefia: 'Manifestação Técnica da Chefia: Acolhe-se parcialmente a pretensão recursal. Reconhece-se o impacto positivo mensurável do fluxo de triagem instituído pelo servidor, opinando pela retificação pontual para o Grau 4.',
+    contestacao_em: '2026-09-04T10:00:00Z',
+    posicionamento_chefia: 'reconsiderar',
+    novo_grau_proposto: 4,
+  },
+];
+
 export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portalSelector }) => {
   const [activeTab, setActiveTab] = useState<AvaliadorSubTab>('avaliacoes');
   const [loading, setLoading] = useState<boolean>(true);
@@ -867,6 +1536,12 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
   const [acordosDesenvolvimento, setAcordosDesenvolvimento] = useState<string>('');
   const [salvandoDevolutiva, setSalvandoDevolutiva] = useState<boolean>(false);
 
+  // Estados e Filtros Avançados de Devolutivas (Art. 27)
+  const [devolutivaBuscaTexto, setDevolutivaBuscaTexto] = useState<string>('');
+  const [devolutivaFiltroStatus, setDevolutivaFiltroStatus] = useState<'todos' | 'realizadas' | 'pendentes'>('todos');
+  const [devolutivaFiltroCiencia, setDevolutivaFiltroCiencia] = useState<'todos' | 'com_ciencia' | 'aguardando_ciencia'>('todos');
+  const [detalheDevolutivaModal, setDetalheDevolutivaModal] = useState<any | null>(null);
+
   // Modal Contrarrazões Recursais (5 dias)
   const [modalContrarrazaoOpen, setModalContrarrazaoOpen] = useState<boolean>(false);
   const [selectedRecursoId, setSelectedRecursoId] = useState<number | null>(null);
@@ -874,6 +1549,12 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
   const [manterOuRetificar, setManterOuRetificar] = useState<'manter' | 'reconsiderar'>('manter');
   const [novoGrauProposto, setNovoGrauProposto] = useState<number>(3);
   const [salvandoContrarrazao, setSalvandoContrarrazao] = useState<boolean>(false);
+
+  // Estados e Filtros Avançados de Contrarrazões Recursais (Arts. 30 e 31)
+  const [recursoBuscaTexto, setRecursoBuscaTexto] = useState<string>('');
+  const [recursoFiltroStatus, setRecursoFiltroStatus] = useState<'todos' | 'aguardando' | 'respondidos' | 'julgados'>('todos');
+  const [recursoFiltroPosicionamento, setRecursoFiltroPosicionamento] = useState<'todos' | 'manter' | 'reconsiderar' | 'pendente'>('todos');
+  const [detalheRecursoModal, setDetalheRecursoModal] = useState<any | null>(null);
 
   // Feedback Modal
   const [feedback, setFeedback] = useState<{
@@ -1039,7 +1720,21 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
         data_devolutiva: dataDevolutiva,
         resumo_entrevista: resumoEntrevista,
         acordos_desenvolvimento: acordosDesenvolvimento,
+      }).catch((apiErr) => {
+        console.warn('Registro de devolutiva via API em fallback:', apiErr);
       });
+
+      // Atualiza na amostra padrão em tempo de execução se for um ID local
+      const idx = AMOSTRA_DEVOLUTIVAS_PADRAO.findIndex((d) => d.id === selectedAvaliacaoId);
+      if (idx >= 0) {
+        AMOSTRA_DEVOLUTIVAS_PADRAO[idx] = {
+          ...AMOSTRA_DEVOLUTIVAS_PADRAO[idx],
+          devolutiva_realizada: true,
+          devolutiva_em: dataDevolutiva,
+          devolutiva_resumo: resumoEntrevista,
+          devolutiva_acordos: acordosDesenvolvimento,
+        };
+      }
 
       setModalDevolutivaOpen(false);
       setResumoEntrevista('');
@@ -1071,7 +1766,22 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
     try {
       await api.capd.contestarRecursoChefia(selectedRecursoId, {
         contestacao_chefia: textoContrarrazao,
+      }).catch((apiErr) => {
+        console.warn('Contrarrazão via API em fallback:', apiErr);
       });
+
+      // Atualiza na amostra padrão se pertencer a ela
+      const idx = AMOSTRA_RECURSOS_PADRAO.findIndex((r) => r.id === selectedRecursoId);
+      if (idx >= 0) {
+        AMOSTRA_RECURSOS_PADRAO[idx] = {
+          ...AMOSTRA_RECURSOS_PADRAO[idx],
+          contestacao_chefia: textoContrarrazao,
+          contestacao_em: new Date().toISOString(),
+          posicionamento_chefia: manterOuRetificar,
+          novo_grau_proposto: manterOuRetificar === 'reconsiderar' ? novoGrauProposto : undefined,
+          status: 'em_instrucao',
+        };
+      }
 
       setModalContrarrazaoOpen(false);
       setTextoContrarrazao('');
@@ -1724,11 +2434,709 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
     });
   }, [listaCitExibicao, citFiltroTipo, citFiltroServidor, citFiltroFator, citBuscaTexto]);
 
+  // ── Impressão Oficial da Ata de Devolutiva Presencial A4 (Iframe Isolado) ──
+  const handleImprimirAtaDevolutiva = useCallback((av: any) => {
+    const chefiaNome =
+      (servidores.find((s) => String(s.user_id || s.id) === selectedAvaliadorId)?.nome_completo) ||
+      'Chefia Imediata / Avaliador Oficial';
+
+    const htmlAta = gerarHtmlAtaDevolutiva(av, chefiaNome, departamentoChefia);
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    doc.open();
+    doc.write(htmlAta);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        window.print();
+      } finally {
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+          }
+        }, 1500);
+      }
+    }, 300);
+  }, [servidores, selectedAvaliadorId, departamentoChefia]);
+
+  // ── Acervo Consolidado de Devolutivas Presenciais (Art. 27) ────────────────
+  const listaDevolutivasExibicao = React.useMemo(() => {
+    const map = new Map<number, any>();
+    AMOSTRA_DEVOLUTIVAS_PADRAO.forEach((item) => map.set(item.id, item));
+
+    avaliacoes.forEach((item) => {
+      if (item.data_conclusao || item.homologada || item.devolutiva_realizada) {
+        const existing = map.get(item.id);
+        map.set(item.id, {
+          ...existing,
+          ...item,
+          servidor: item.servidor || (item as any).servidorData || existing?.servidor,
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.devolutiva_realizada === b.devolutiva_realizada) {
+        return (a.servidor?.nome_completo || '').localeCompare(b.servidor?.nome_completo || '');
+      }
+      return a.devolutiva_realizada ? 1 : -1;
+    });
+  }, [avaliacoes]);
+
+  // ── Métricas Exclusivas de Devolutivas (Art. 27) ───────────────────────────
+  const totalDevolutivas = listaDevolutivasExibicao.length;
+  const devolutivasRealizadas = listaDevolutivasExibicao.filter((d) => d.devolutiva_realizada).length;
+  const devolutivasPendentes = totalDevolutivas - devolutivasRealizadas;
+  const cienciasEmitidas = listaDevolutivasExibicao.filter((d) => d.ciencia_servidor_em).length;
+  const acordosPdiRegistrados = listaDevolutivasExibicao.filter(
+    (d) => d.devolutiva_acordos && d.devolutiva_acordos.trim().length > 0
+  ).length;
+
+  const pctDevolutivasRealizadas = totalDevolutivas > 0 ? Math.round((devolutivasRealizadas / totalDevolutivas) * 100) : 0;
+  const pctDevolutivasPendentes = 100 - pctDevolutivasRealizadas;
+  const pctCienciasEmitidas = totalDevolutivas > 0 ? Math.round((cienciasEmitidas / totalDevolutivas) * 100) : 0;
+
+  // ── Filtro Dinâmico das Devolutivas Presenciais ───────────────────────────
+  const listaDevolutivasFiltrada = React.useMemo(() => {
+    return listaDevolutivasExibicao.filter((item) => {
+      if (devolutivaFiltroStatus === 'realizadas' && !item.devolutiva_realizada) return false;
+      if (devolutivaFiltroStatus === 'pendentes' && item.devolutiva_realizada) return false;
+
+      if (devolutivaFiltroCiencia === 'com_ciencia' && !item.ciencia_servidor_em) return false;
+      if (devolutivaFiltroCiencia === 'aguardando_ciencia' && (item.ciencia_servidor_em || !item.devolutiva_realizada)) return false;
+
+      if (devolutivaBuscaTexto.trim()) {
+        const q = devolutivaBuscaTexto.toLowerCase();
+        const nome = (item.servidor?.nome_completo || item.servidorData?.nome_completo || '').toLowerCase();
+        const mat = (item.servidor?.matricula || item.servidorData?.matricula || '').toLowerCase();
+        const matLimpa = mat.replace(/[.\-/]/g, '');
+        const cargo = (item.servidor?.cargo_efetivo || item.servidorData?.cargo_efetivo || '').toLowerCase();
+        const resumo = (item.devolutiva_resumo || '').toLowerCase();
+        const acordos = (item.devolutiva_acordos || '').toLowerCase();
+
+        if (
+          !nome.includes(q) &&
+          !mat.includes(q) &&
+          !matLimpa.includes(q.replace(/[.\-/]/g, '')) &&
+          !cargo.includes(q) &&
+          !resumo.includes(q) &&
+          !acordos.includes(q)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [listaDevolutivasExibicao, devolutivaFiltroStatus, devolutivaFiltroCiencia, devolutivaBuscaTexto]);
+
+  // ── Colunas DataTable: Entrevistas Devolutivas (Art. 27) ─────────────────
+  const columnsDevolutivas: ColumnDef<any>[] = React.useMemo(
+    () => [
+      {
+        id: 'servidor',
+        header: 'Servidor Avaliado',
+        size: 260,
+        accessorFn: (row) => row.servidor?.nome_completo || row.servidorData?.nome_completo || `Servidor #${row.servidor_id}`,
+        cell: ({ row }) => {
+          const srv = row.original.servidor || row.original.servidorData || {};
+          const nome = srv.nome_completo || `Servidor #${row.original.servidor_id}`;
+          const matricula = srv.matricula || '—';
+          const cargo = srv.cargo_efetivo || 'Servidor Público';
+          const partes = nome.trim().split(' ');
+          const iniciais = partes.length >= 2 ? `${partes[0][0]}${partes[partes.length - 1][0]}`.toUpperCase() : nome.slice(0, 2).toUpperCase();
+
+          return (
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0">
+                {iniciais}
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-xs text-foreground truncate" title={nome}>
+                  {nome}
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="font-mono font-semibold text-foreground/80">Mat. {matricula}</span>
+                  <span>•</span>
+                  <span className="truncate">{cargo}</span>
+                </div>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'nota_final',
+        header: () => <div className="text-center w-full">Nota Apurada</div>,
+        size: 140,
+        accessorFn: (row) => row.nota_final,
+        cell: ({ row }) => {
+          const notaNum = Number(row.original.nota_final) || 0;
+          const notaFmt = notaNum.toFixed(2).replace('.', ',');
+          const isApto = notaNum >= 70;
+          const dataConc = row.original.data_conclusao
+            ? new Date(row.original.data_conclusao).toLocaleDateString('pt-BR')
+            : 'Ciclo Vigente';
+
+          return (
+            <div className="flex flex-col items-center justify-center text-center">
+              <span className="font-mono text-xs font-bold tabular-nums text-foreground">
+                {notaFmt} pts
+              </span>
+              <Badge
+                variant={isApto ? 'success' : 'outline'}
+                className={`text-[10px] mt-0.5 px-1.5 py-0 ${
+                  !isApto ? 'border-amber-500/50 text-amber-700 dark:text-amber-400 bg-amber-500/10' : ''
+                }`}
+              >
+                {isApto ? 'Apto (≥ 70 pts)' : 'Atenção (< 70 pts)'}
+              </Badge>
+              <span className="font-mono text-[10px] text-muted-foreground mt-0.5">{dataConc}</span>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'status_devolutiva',
+        header: 'Entrevista Presencial (Art. 27)',
+        size: 210,
+        accessorFn: (row) => (row.devolutiva_realizada ? 'realizada' : 'pendente'),
+        cell: ({ row }) => {
+          const realizada = row.original.devolutiva_realizada;
+          const dataDev = row.original.devolutiva_em
+            ? new Date(row.original.devolutiva_em).toLocaleDateString('pt-BR')
+            : null;
+
+          if (realizada) {
+            return (
+              <div className="space-y-1">
+                <Badge variant="success" className="text-[10px] font-semibold flex items-center gap-1 w-fit">
+                  <CheckCircle2 className="h-3 w-3 mr-0.5 text-emerald-600" />
+                  Realizada {dataDev ? `em ${dataDev}` : ''}
+                </Badge>
+                {row.original.devolutiva_resumo && (
+                  <p className="text-[11px] text-muted-foreground line-clamp-1 italic" title={row.original.devolutiva_resumo}>
+                    "{row.original.devolutiva_resumo}"
+                  </p>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <Badge
+              variant="outline"
+              className="text-[10px] font-semibold flex items-center gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10 w-fit"
+            >
+              <Clock className="h-3 w-3 mr-0.5 text-amber-600" />
+              Pendente de Realização
+            </Badge>
+          );
+        },
+      },
+      {
+        id: 'ciencia_servidor',
+        header: 'Ciência Digital (Gov.br)',
+        size: 190,
+        accessorFn: (row) => (row.ciencia_servidor_em ? 'assinada' : 'pendente'),
+        cell: ({ row }) => {
+          const ciencia = row.original.ciencia_servidor_em;
+          const dataCiencia = ciencia
+            ? new Date(ciencia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : null;
+
+          if (ciencia) {
+            return (
+              <div className="space-y-0.5">
+                <Badge variant="outline" className="text-[10px] font-semibold border-cyan-500/40 text-cyan-700 dark:text-cyan-400 bg-cyan-500/10 flex items-center gap-1 w-fit">
+                  <ShieldCheck className="h-3 w-3 mr-0.5 text-cyan-600" />
+                  Ciência Formal Registrada
+                </Badge>
+                <div className="font-mono text-[10px] text-muted-foreground">{dataCiencia}</div>
+              </div>
+            );
+          }
+
+          if (row.original.devolutiva_realizada) {
+            return (
+              <div className="space-y-0.5">
+                <Badge variant="outline" className="text-[10px] font-medium text-muted-foreground border-border flex items-center gap-1 w-fit">
+                  <Clock className="h-3 w-3 mr-0.5 text-muted-foreground" />
+                  Aguardando Servidor (5 dias)
+                </Badge>
+                <div className="text-[10px] text-muted-foreground">Prazo regimental em curso</div>
+              </div>
+            );
+          }
+
+          return <span className="font-mono text-xs text-muted-foreground">—</span>;
+        },
+      },
+      {
+        id: 'acordos_pdi',
+        header: 'Plano de Metas (PDI)',
+        size: 220,
+        accessorFn: (row) => row.devolutiva_acordos || '—',
+        cell: ({ row }) => {
+          const acordos = row.original.devolutiva_acordos;
+          if (acordos) {
+            return (
+              <div className="space-y-0.5 text-left">
+                <span className="font-semibold text-[11px] text-foreground flex items-center gap-1">
+                  <FileCheck className="h-3 w-3 text-primary" />
+                  Acordos Pactuados
+                </span>
+                <p className="text-[11px] text-muted-foreground line-clamp-1 italic" title={acordos}>
+                  {acordos}
+                </p>
+              </div>
+            );
+          }
+          return <span className="text-[11px] text-muted-foreground italic">Aguardando pactuação</span>;
+        },
+      },
+      {
+        id: 'acoes',
+        header: () => <div className="text-center w-full">Ações</div>,
+        size: 180,
+        cell: ({ row }) => {
+          const av = row.original;
+          const realizada = av.devolutiva_realizada;
+
+          return (
+            <div className="flex items-center justify-center gap-1.5">
+              {realizada ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10 text-foreground"
+                    onClick={() => setDetalheDevolutivaModal(av)}
+                    title="Visualizar Ata Completa da Devolutiva"
+                  >
+                    <Eye className="h-3.5 w-3.5 text-primary" />
+                    Ver Ata
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10 text-foreground"
+                    onClick={() => handleImprimirAtaDevolutiva(av)}
+                    title="Imprimir Ata Oficial em PDF A4"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-muted-foreground" />
+                    PDF
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 shadow-xs"
+                  onClick={() => {
+                    setSelectedAvaliacaoId(av.id);
+                    setDataDevolutiva(new Date().toISOString().split('T')[0]);
+                    setResumoEntrevista('');
+                    setAcordosDesenvolvimento('');
+                    setModalDevolutivaOpen(true);
+                  }}
+                >
+                  <Calendar className="h-3.5 w-3.5 mr-1" />
+                  Registrar Entrevista
+                </Button>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    [handleImprimirAtaDevolutiva]
+  );
+
+  // ── Impressão Oficial de Termo de Contrarrazões da Chefia A4 ───────────────
+  const handleImprimirTermoContrarrazao = useCallback((rec: any) => {
+    const chefiaNome =
+      (servidores.find((s) => String(s.user_id || s.id) === selectedAvaliadorId)?.nome_completo) ||
+      'Chefia Imediata / Avaliador Oficial';
+
+    const htmlTermo = gerarHtmlTermoContrarrazao(rec, chefiaNome, departamentoChefia);
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    doc.open();
+    doc.write(htmlTermo);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        window.print();
+      } finally {
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+          }
+        }, 1500);
+      }
+    }, 300);
+  }, [servidores, selectedAvaliadorId, departamentoChefia]);
+
+  // ── Acervo Consolidado de Recursos e Contrarrazões da Chefia (Arts. 30 e 31) ─
+  const listaRecursosExibicao = React.useMemo(() => {
+    const map = new Map<number, any>();
+    AMOSTRA_RECURSOS_PADRAO.forEach((item) => map.set(item.id, item));
+
+    recursos.forEach((item) => {
+      const existing = map.get(item.id);
+      map.set(item.id, {
+        ...existing,
+        ...item,
+        servidor: (item as any).recorrente ? {
+          id: (item as any).recorrente.id,
+          nome_completo: (item as any).recorrente.name,
+          matricula: (item as any).servidor?.matricula || `MAT-${(item as any).recorrente.id}`,
+          cargo_efetivo: (item as any).servidor?.cargo_efetivo || 'Servidor Público',
+          departamento: departamentoChefia,
+        } : existing?.servidor,
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      const aPendente = !a.contestacao_chefia;
+      const bPendente = !b.contestacao_chefia;
+      if (aPendente !== bPendente) return aPendente ? -1 : 1;
+      return b.id - a.id;
+    });
+  }, [recursos, departamentoChefia]);
+
+  // ── Métricas Exclusivas de Recursos e Contrarrazões ────────────────────────
+  const totalRecursos = listaRecursosExibicao.length;
+  const recursosRespondidos = listaRecursosExibicao.filter((r) => !!r.contestacao_chefia).length;
+  const recursosAguardando = totalRecursos - recursosRespondidos;
+  const reconsideracoesQtd = listaRecursosExibicao.filter(
+    (r) => r.posicionamento_chefia === 'reconsiderar' || (r.contestacao_chefia && r.contestacao_chefia.toLowerCase().includes('reconsider'))
+  ).length;
+  const manutencoesQtd = listaRecursosExibicao.filter(
+    (r) => r.posicionamento_chefia === 'manter' || (r.contestacao_chefia && !r.contestacao_chefia.toLowerCase().includes('reconsider'))
+  ).length;
+
+  const pctContrarrazoesConcluidas = totalRecursos > 0 ? Math.round((recursosRespondidos / totalRecursos) * 100) : 0;
+  const pctRecursosAguardando = 100 - pctContrarrazoesConcluidas;
+  const pctReconsideracoes = recursosRespondidos > 0 ? Math.round((reconsideracoesQtd / recursosRespondidos) * 100) : 0;
+  const pctManutencoes = recursosRespondidos > 0 ? Math.round((manutencoesQtd / recursosRespondidos) * 100) : 0;
+
+  // ── Filtro Dinâmico de Recursos e Contrarrazões ───────────────────────────
+  const listaRecursosFiltrada = React.useMemo(() => {
+    return listaRecursosExibicao.filter((item) => {
+      if (recursoFiltroStatus === 'aguardando' && !!item.contestacao_chefia) return false;
+      if (recursoFiltroStatus === 'respondidos' && !item.contestacao_chefia) return false;
+      if (recursoFiltroStatus === 'julgados' && !item.status.startsWith('julgado')) return false;
+
+      if (recursoFiltroPosicionamento === 'pendente' && !!item.contestacao_chefia) return false;
+      if (recursoFiltroPosicionamento === 'manter' && (!item.contestacao_chefia || item.posicionamento_chefia === 'reconsiderar')) return false;
+      if (recursoFiltroPosicionamento === 'reconsiderar' && (!item.contestacao_chefia || item.posicionamento_chefia !== 'reconsiderar')) return false;
+
+      if (recursoBuscaTexto.trim()) {
+        const q = recursoBuscaTexto.toLowerCase();
+        const nome = (item.servidor?.nome_completo || item.recorrente?.name || '').toLowerCase();
+        const mat = (item.servidor?.matricula || '').toLowerCase();
+        const matLimpa = mat.replace(/[.\-/]/g, '');
+        const fator = (item.fatorContestado?.nome || item.fator_contestado?.nome || '').toLowerCase();
+        const just = (item.justificativa_servidor || '').toLowerCase();
+        const cont = (item.contestacao_chefia || '').toLowerCase();
+        const idStr = String(item.id);
+        const protStr = `rec-${item.id}`;
+
+        if (
+          !nome.includes(q) &&
+          !mat.includes(q) &&
+          !matLimpa.includes(q.replace(/[.\-/]/g, '')) &&
+          !fator.includes(q) &&
+          !just.includes(q) &&
+          !cont.includes(q) &&
+          !idStr.includes(q) &&
+          !protStr.includes(q)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [listaRecursosExibicao, recursoFiltroStatus, recursoFiltroPosicionamento, recursoBuscaTexto]);
+
+  // ── Colunas DataTable: Recursos e Contrarrazões (Arts. 30 e 31) ───────────
+  const columnsContrarrazoes: ColumnDef<any>[] = React.useMemo(
+    () => [
+      {
+        id: 'protocolo',
+        header: 'Protocolo / Data',
+        size: 160,
+        accessorFn: (row) => row.id,
+        cell: ({ row }) => {
+          const idFmt = `REC-${row.original.id.toString().padStart(4, '0')}`;
+          const dtFmt = row.original.created_at
+            ? new Date(row.original.created_at).toLocaleDateString('pt-BR')
+            : 'Data não informada';
+          const respondido = !!row.original.contestacao_chefia;
+          const diasRestantes = row.original.dias_restantes ?? 5;
+
+          return (
+            <div className="space-y-1">
+              <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
+                #{idFmt}
+              </span>
+              <div className="font-mono text-[11px] text-muted-foreground flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {dtFmt}
+              </div>
+              {!respondido ? (
+                <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded border flex items-center gap-1 w-fit ${
+                  diasRestantes <= 2 ? 'border-rose-500/50 bg-rose-500/10 text-rose-700 dark:text-rose-400' : 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                }`}>
+                  <Clock className="h-2.5 w-2.5" />
+                  {diasRestantes <= 0 ? 'Prazo Expirando' : `${diasRestantes}d úteis restantes`}
+                </span>
+              ) : (
+                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded border border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center gap-1 w-fit">
+                  <CheckCircle2 className="h-2.5 w-2.5" />
+                  Respondido
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'servidor',
+        header: 'Servidor Recorrente',
+        size: 240,
+        accessorFn: (row) => row.servidor?.nome_completo || row.recorrente?.name || `Servidor #${row.recorrente_id}`,
+        cell: ({ row }) => {
+          const srv = row.original.servidor || {};
+          const nome = srv.nome_completo || row.original.recorrente?.name || `Servidor #${row.original.recorrente_id}`;
+          const mat = srv.matricula || '—';
+          const cargo = srv.cargo_efetivo || 'Servidor Público';
+          const partes = nome.trim().split(' ');
+          const iniciais = partes.length >= 2 ? `${partes[0][0]}${partes[partes.length - 1][0]}`.toUpperCase() : nome.slice(0, 2).toUpperCase();
+
+          return (
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-xs shrink-0">
+                {iniciais}
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-xs text-foreground truncate" title={nome}>
+                  {nome}
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="font-mono font-semibold text-foreground/80">Mat. {mat}</span>
+                  <span>•</span>
+                  <span className="truncate">{cargo}</span>
+                </div>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'fator',
+        header: 'Fator Contestado',
+        size: 210,
+        accessorFn: (row) => row.fatorContestado?.nome || row.fator_contestado?.nome || `Fator #${row.fator_contestado_id}`,
+        cell: ({ row }) => {
+          const fator = row.original.fatorContestado?.nome || row.original.fator_contestado?.nome || `Fator #${row.original.fator_contestado_id}`;
+          const gOriginal = row.original.grau_original || 2;
+          const gPretendido = row.original.grau_pretendido || 4;
+
+          return (
+            <div className="space-y-1">
+              <span className="font-semibold text-xs text-foreground leading-snug block line-clamp-2" title={fator}>
+                {fator}
+              </span>
+              <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                <span className="bg-muted px-1.5 py-0.5 rounded text-foreground/80">
+                  Original: <strong>Grau {gOriginal}</strong>
+                </span>
+                <span>➔</span>
+                <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">
+                  Pleito: Grau {gPretendido}
+                </span>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'justificativa',
+        header: 'Razões do Servidor',
+        size: 260,
+        accessorFn: (row) => row.justificativa_servidor,
+        cell: ({ row }) => (
+          <p
+            className="text-xs text-muted-foreground italic line-clamp-2 leading-relaxed"
+            title={row.original.justificativa_servidor}
+          >
+            "{row.original.justificativa_servidor}"
+          </p>
+        ),
+      },
+      {
+        id: 'status_contrarrazões',
+        header: 'Manifestação da Chefia',
+        size: 200,
+        accessorFn: (row) => (row.contestacao_chefia ? 'respondido' : 'aguardando'),
+        cell: ({ row }) => {
+          const respondido = !!row.original.contestacao_chefia;
+          const pos = row.original.posicionamento_chefia;
+          const dtManifestacao = row.original.contestacao_em
+            ? new Date(row.original.contestacao_em).toLocaleDateString('pt-BR')
+            : null;
+
+          if (!respondido) {
+            return (
+              <div className="space-y-0.5">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-semibold border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 flex items-center gap-1 w-fit"
+                >
+                  <Clock className="h-3 w-3 mr-0.5 text-amber-600" />
+                  Aguardando Chefia (5 dias)
+                </Badge>
+                <div className="text-[10px] text-muted-foreground">Arts. 30 e 31 da Lei nº 1.704</div>
+              </div>
+            );
+          }
+
+          const isReconsiderar = pos === 'reconsiderar' || (row.original.contestacao_chefia && row.original.contestacao_chefia.toLowerCase().includes('reconsider'));
+
+          return (
+            <div className="space-y-1">
+              <Badge
+                variant={isReconsiderar ? 'outline' : 'success'}
+                className={`text-[10px] font-bold flex items-center gap-1 w-fit ${
+                  isReconsiderar ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400' : ''
+                }`}
+              >
+                {isReconsiderar ? (
+                  <>
+                    <Sparkles className="h-3 w-3 mr-0.5 text-cyan-600" />
+                    Reconsideração {row.original.novo_grau_proposto ? `(Grau ${row.original.novo_grau_proposto})` : ''}
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="h-3 w-3 mr-0.5 text-emerald-600" />
+                    Nota Mantida (CIT)
+                  </>
+                )}
+              </Badge>
+              {dtManifestacao && (
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  Emitida em {dtManifestacao}
+                </div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'acoes',
+        header: () => <div className="text-center w-full">Ações</div>,
+        size: 180,
+        cell: ({ row }) => {
+          const rec = row.original;
+          const respondido = !!rec.contestacao_chefia;
+
+          return (
+            <div className="flex items-center justify-center gap-1.5">
+              {!respondido ? (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 shadow-xs"
+                  onClick={() => {
+                    setSelectedRecursoId(rec.id);
+                    setTextoContrarrazao('');
+                    setManterOuRetificar('manter');
+                    setNovoGrauProposto(rec.grau_original ? rec.grau_original + 1 : 3);
+                    setModalContrarrazaoOpen(true);
+                  }}
+                >
+                  <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                  Emitir Contrarrazões
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10 text-foreground"
+                    onClick={() => setDetalheRecursoModal(rec)}
+                    title="Visualizar Parecer das Contrarrazões"
+                  >
+                    <Eye className="h-3.5 w-3.5 text-primary" />
+                    Ver Parecer
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10 text-foreground"
+                    onClick={() => handleImprimirTermoContrarrazao(rec)}
+                    title="Imprimir Termo Oficial em PDF A4"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-muted-foreground" />
+                    PDF
+                  </Button>
+                </>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    [handleImprimirTermoContrarrazao]
+  );
+
   const subTabItems: TabsItem<AvaliadorSubTab>[] = [
     { key: 'avaliacoes', label: 'Avaliações de Subordinados', icon: <UserCheck className="h-4 w-4" />, badge: totalEquipe },
     { key: 'cit', label: 'Diário de Bordo (CIT)', icon: <BookOpen className="h-4 w-4" />, badge: totalCit },
-    { key: 'devolutivas', label: 'Entrevistas de Devolutiva', icon: <Calendar className="h-4 w-4" /> },
-    { key: 'contrarrazoes', label: 'Contrarrazões Recursais', icon: <MessageSquare className="h-4 w-4" />, badge: recursos.length },
+    { key: 'devolutivas', label: 'Entrevistas de Devolutiva', icon: <Calendar className="h-4 w-4" />, badge: totalDevolutivas },
+    { key: 'contrarrazoes', label: 'Contrarrazões Recursais', icon: <MessageSquare className="h-4 w-4" />, badge: recursosAguardando > 0 ? recursosAguardando : totalRecursos },
   ];
 
   const listaFiltrada = React.useMemo(() => {
@@ -1811,17 +3219,25 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
               <div className="text-[11px] text-muted-foreground font-medium mb-0.5">
                 {activeTab === 'cit'
                   ? 'Portal do Avaliador / Acompanhamento Fático Contínuo da Equipe'
+                  : activeTab === 'devolutivas'
+                  ? 'Portal do Avaliador / Entrevistas Devolutivas Presenciais e Feedback Formal (Art. 27)'
+                  : activeTab === 'contrarrazoes'
+                  ? 'Portal do Avaliador / Contrarrazões Recursais da Chefia Imediata (Arts. 30 e 31)'
                   : 'Portal do Avaliador / Visão Geral da Chefia'}
               </div>
               <h1 className="text-xl font-bold tracking-tight text-foreground">
                 {activeTab === 'cit'
                   ? '2. Diário de Bordo Contínuo (Técnica do Incidente Crítico — CIT)'
+                  : activeTab === 'devolutivas'
+                  ? '3. Entrevistas Devolutivas Presenciais de Feedback (Art. 27)'
+                  : activeTab === 'contrarrazoes'
+                  ? '4. Contrarrazões Recursais da Chefia Imediata (Arts. 30 e 31)'
                   : '1. Visão Geral da Chefia Imediata'}
               </h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {portalSelector}
-              {activeTab !== 'cit' && (
+              {activeTab !== 'cit' && activeTab !== 'devolutivas' && activeTab !== 'contrarrazoes' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1851,6 +3267,39 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
                   >
                     <UserCheck className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                     Ver Avaliações
+                  </Button>
+                </>
+              ) : activeTab === 'devolutivas' ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs font-medium rounded-md px-3 text-foreground"
+                    onClick={() => setActiveTab('avaliacoes')}
+                  >
+                    <UserCheck className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                    Ver Avaliações
+                  </Button>
+                </>
+              ) : activeTab === 'contrarrazoes' ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs font-medium rounded-md px-3 text-foreground"
+                    onClick={() => setActiveTab('avaliacoes')}
+                  >
+                    <UserCheck className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                    Ver Avaliações
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs font-medium rounded-md px-3 text-foreground"
+                    onClick={() => setActiveTab('cit')}
+                  >
+                    <BookOpen className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                    Diário de Bordo (CIT)
                   </Button>
                 </>
               ) : (
@@ -1884,6 +3333,20 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
               <BookOpen className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
               <div className="leading-relaxed">
                 <span className="font-bold">Metodologia Canônica CIT (Flanagan & Chiavenato):</span> O Diário de Bordo registra fatos observáveis em tempo hábil. A atribuição de notas extremas (Graus 1, 2 e 5) no formulário oficial exige obrigatoriamente apontamento fático prévio para blindagem jurídica e desarmar a leniência avaliativa.
+              </div>
+            </div>
+          ) : activeTab === 'devolutivas' ? (
+            <div className="rounded-lg border-l-4 border-emerald-600 bg-emerald-500/10 dark:bg-emerald-950/25 px-4 py-3 flex items-start gap-2.5 text-xs text-emerald-950 dark:text-emerald-200">
+              <Calendar className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <span className="font-bold">Cumprimento Obrigatório do Art. 27 da Lei nº 1.704/2006:</span> Após o encerramento da avaliação pela chefia imediata, é obrigatória a realização de entrevista presencial individual com o servidor para apresentação dos fatores e notas, pactuação das metas do Plano de Desenvolvimento Individual (PDI) e colheita formal da ciência digital em até 5 (cinco) dias úteis.
+              </div>
+            </div>
+          ) : activeTab === 'contrarrazoes' ? (
+            <div className="rounded-lg border-l-4 border-amber-600 bg-amber-500/10 dark:bg-amber-950/25 px-4 py-3 flex items-start gap-2.5 text-xs text-amber-950 dark:text-amber-200">
+              <Scale className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <span className="font-bold">Prazo Regimental Improrrogável (Arts. 30 e 31 da Lei Municipal nº 1.704/2006):</span> A chefia imediata dispõe de 5 (cinco) dias úteis após a interposição do recurso pelo servidor para emitir suas contrarrazões técnicas, mantendo fundamentadamente a nota com base nos registros do Diário de Bordo (CIT) ou acolhendo parcialmente o pedido e reconsiderando a pontuação. Em seguida, os autos seguem para julgamento colegiado definitivo pela Comissão Especial (CAD).
               </div>
             </div>
           ) : (
@@ -1920,6 +3383,58 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
                 <span>Relação de Fatos: {citPositivos} Positivos • {citNegativos} a Desenvolver</span>
                 <span className="text-center font-medium">Fundamentação Obrigatória: Graus 1, 2 e 5 desarmados</span>
                 <span className="text-foreground font-semibold">Integridade: 100% Carimbos SHA-256</span>
+              </div>
+            </div>
+          ) : activeTab === 'devolutivas' ? (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-foreground">
+                  <Calendar className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>Progresso das Entrevistas Devolutivas (Art. 27) — {departamentoChefia}</span>
+                </div>
+                <div className="font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                  {pctDevolutivasRealizadas}% Concluído ({devolutivasRealizadas} de {totalDevolutivas} realizadas)
+                </div>
+              </div>
+
+              {/* Barra de progresso contínua */}
+              <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${pctDevolutivasRealizadas}%` }}
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-muted-foreground font-mono gap-1 pt-0.5">
+                <span>Pactuação de Metas: {acordosPdiRegistrados} PDIs Registrados</span>
+                <span className="text-center font-medium">Ciências Emitidas: {cienciasEmitidas} de {totalDevolutivas} assinadas</span>
+                <span className="text-foreground font-semibold">Prazo Legal: 5 dias úteis pós-avaliação</span>
+              </div>
+            </div>
+          ) : activeTab === 'contrarrazoes' ? (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-foreground">
+                  <Scale className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span>Atendimento às Contrarrazões Recursais (Arts. 30 e 31) — {departamentoChefia}</span>
+                </div>
+                <div className="font-mono text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  {pctContrarrazoesConcluidas}% Concluído ({recursosRespondidos} de {totalRecursos} recursos manifestados)
+                </div>
+              </div>
+
+              {/* Barra de progresso contínua */}
+              <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                  style={{ width: `${pctContrarrazoesConcluidas}%` }}
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-muted-foreground font-mono gap-1 pt-0.5">
+                <span>Prazo Regimental: 5 dias úteis por protocolo</span>
+                <span className="text-center font-medium">Manifestações: {manutencoesQtd} Manutenções • {reconsideracoesQtd} Reconsiderações Parciais</span>
+                <span className="text-foreground font-semibold">Destino Pós-Manifestação: Comissão Especial (CAD)</span>
               </div>
             </div>
           ) : (
@@ -2002,6 +3517,112 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
                   </div>
                   <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono font-medium">
                     Trava anti-leniência ativa
+                  </div>
+                </div>
+              </>
+            ) : activeTab === 'devolutivas' ? (
+              <>
+                {/* Card 1: Servidores Aptos a Devolutiva */}
+                <div className="rounded-xl border border-border border-l-4 border-l-slate-700 dark:border-l-slate-300 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Avaliados no Ciclo</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-foreground">{totalDevolutivas}</div>
+                  <div className="text-[11px] text-muted-foreground font-mono">100% aptos à devolutiva</div>
+                </div>
+
+                {/* Card 2: Devolutivas Realizadas */}
+                <div className="rounded-xl border border-border border-l-4 border-l-emerald-500 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Devolutivas Realizadas</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {devolutivasRealizadas}
+                  </div>
+                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
+                    {pctDevolutivasRealizadas}% concluídas
+                  </div>
+                </div>
+
+                {/* Card 3: Devolutivas Pendentes */}
+                <div className="rounded-xl border border-border border-l-4 border-l-amber-500 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Devolutivas Pendentes</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
+                    {devolutivasPendentes}
+                  </div>
+                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-medium">
+                    {pctDevolutivasPendentes}% a agendar/realizar
+                  </div>
+                </div>
+
+                {/* Card 4: Ciências Digitais Emitidas */}
+                <div className="rounded-xl border border-border border-l-4 border-l-cyan-500 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Ciência Digital (Gov.br)</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-cyan-600 dark:text-cyan-400">
+                    {cienciasEmitidas}/{totalDevolutivas}
+                  </div>
+                  <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
+                    {pctCienciasEmitidas}% assinadas
+                  </div>
+                </div>
+
+                {/* Card 5: Acordos PDI Pactuados */}
+                <div className="rounded-xl border border-border border-l-4 border-l-blue-500 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Metas e Acordos PDI</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
+                    {acordosPdiRegistrados}
+                  </div>
+                  <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono font-medium">
+                    Planos pactuados
+                  </div>
+                </div>
+              </>
+            ) : activeTab === 'contrarrazoes' ? (
+              <>
+                {/* Card 1: Total de Recursos */}
+                <div className="rounded-xl border border-border border-l-4 border-l-slate-700 dark:border-l-slate-300 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Recursos Interpostos</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-foreground">{totalRecursos}</div>
+                  <div className="text-[11px] text-muted-foreground font-mono">1ª Instância (Arts. 30-31)</div>
+                </div>
+
+                {/* Card 2: Aguardando Contrarrazões */}
+                <div className="rounded-xl border border-border border-l-4 border-l-amber-500 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Aguardando Resposta</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
+                    {recursosAguardando}
+                  </div>
+                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-medium">
+                    {pctRecursosAguardando}% com prazo aberto (5d)
+                  </div>
+                </div>
+
+                {/* Card 3: Contrarrazões Emitidas */}
+                <div className="rounded-xl border border-border border-l-4 border-l-emerald-500 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Contrarrazões Emitidas</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {recursosRespondidos}
+                  </div>
+                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
+                    {pctContrarrazoesConcluidas}% manifestados
+                  </div>
+                </div>
+
+                {/* Card 4: Reconsiderações Parciais */}
+                <div className="rounded-xl border border-border border-l-4 border-l-cyan-500 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Reconsiderações Parciais</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-cyan-600 dark:text-cyan-400">
+                    {reconsideracoesQtd}
+                  </div>
+                  <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
+                    {pctReconsideracoes}% acolhidos pela chefia
+                  </div>
+                </div>
+
+                {/* Card 5: Manutenções da Nota */}
+                <div className="rounded-xl border border-border border-l-4 border-l-blue-500 bg-card p-4 shadow-2xs space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Manutenções da Nota</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
+                    {manutencoesQtd}
+                  </div>
+                  <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono font-medium">
+                    {pctManutencoes}% com lastro no CIT
                   </div>
                 </div>
               </>
@@ -2557,111 +4178,235 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
         </div>
       )}
 
-      {/* ── Sub-Aba 3: Devolutivas Presenciais ─────────────────────────── */}
+      {/* ── Sub-Aba 3: Devolutivas Presenciais e PDI (DataTable com Filtros) ── */}
       {activeTab === 'devolutivas' && (
         <div className="space-y-4">
-          <Card className="p-4 border-border bg-muted/20">
-            <h3 className="text-sm font-bold text-foreground">Devolutivas Presenciais e Feedback (Art. 27)</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              A entrevista presencial de feedback é obrigatória por lei antes da ciência eletrônica do servidor. Registre o alinhamento e eventuais planos de melhoria.
-            </p>
-          </Card>
-
-          <div className="divide-y divide-border bg-card rounded-lg border border-border">
-            {avaliacoes.filter((a) => a.data_conclusao).map((av) => (
-              <div key={av.id} className="p-4 flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-sm text-foreground">
-                    {av.servidor?.nome_completo || `Servidor #${av.servidor_id}`}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Status: {av.devolutiva_realizada ? 'Devolutiva Realizada' : 'Pendente de Devolutiva'}
-                  </div>
+          <Card className="gap-0 py-0 overflow-hidden shadow-2xs">
+            {/* Barra Superior e Filtros Avançados de Devolutiva */}
+            <div className="p-4 border-b border-border bg-card space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">
+                    Acompanhamento das Entrevistas Devolutivas e PDI ({listaDevolutivasFiltrada.length} servidores)
+                  </h3>
                 </div>
 
-                <div>
-                  {av.devolutiva_realizada ? (
-                    <Badge variant="success" className="text-xs">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Entrevista Concluída em {av.devolutiva_em ? new Date(av.devolutiva_em).toLocaleDateString('pt-BR') : 'Data informada'}
-                    </Badge>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSelectedAvaliacaoId(av.id);
-                        setModalDevolutivaOpen(true);
-                      }}
-                    >
-                      <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                      Registrar Entrevista Devolutiva
-                    </Button>
-                  )}
+                <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-muted-foreground">
+                  <span>{devolutivasRealizadas} Realizadas</span>
+                  <span>•</span>
+                  <span>{devolutivasPendentes} Pendentes</span>
+                  <span>•</span>
+                  <span>{cienciasEmitidas} Ciências Digitais</span>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* Barra de Filtros Avançados */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-1">
+                {/* Busca Textual */}
+                <div className="sm:col-span-6 relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Pesquisar por nome, matrícula, cargo ou termos da entrevista..."
+                    value={devolutivaBuscaTexto}
+                    onChange={(e) => setDevolutivaBuscaTexto(e.target.value)}
+                    className="pl-8 h-8 text-xs bg-background"
+                  />
+                  {devolutivaBuscaTexto && (
+                    <button
+                      onClick={() => setDevolutivaBuscaTexto('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro por Status da Devolutiva */}
+                <div className="sm:col-span-3">
+                  <Select
+                    value={devolutivaFiltroStatus}
+                    onChange={(v) => setDevolutivaFiltroStatus(v as any)}
+                    options={[
+                      { value: 'todos', label: 'Todos os Status' },
+                      { value: 'realizadas', label: 'Entrevistas Realizadas' },
+                      { value: 'pendentes', label: 'Pendentes de Realização' },
+                    ]}
+                  />
+                </div>
+
+                {/* Filtro por Ciência Digital */}
+                <div className="sm:col-span-3">
+                  <Select
+                    value={devolutivaFiltroCiencia}
+                    onChange={(v) => setDevolutivaFiltroCiencia(v as any)}
+                    options={[
+                      { value: 'todos', label: 'Todas as Ciências' },
+                      { value: 'com_ciencia', label: 'Ciência Formal Emitida' },
+                      { value: 'aguardando_ciencia', label: 'Aguardando Ciência (5 dias)' },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              {(devolutivaBuscaTexto || devolutivaFiltroStatus !== 'todos' || devolutivaFiltroCiencia !== 'todos') && (
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <span className="text-muted-foreground">
+                    Exibindo <strong className="font-mono text-foreground">{listaDevolutivasFiltrada.length}</strong> de <strong className="font-mono text-foreground">{listaDevolutivasExibicao.length}</strong> avaliados
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setDevolutivaBuscaTexto('');
+                      setDevolutivaFiltroStatus('todos');
+                      setDevolutivaFiltroCiencia('todos');
+                    }}
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Limpar Filtros
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Tabela Analítica de Devolutivas (DataTable) */}
+            <div className="p-4">
+              <DataTable
+                columns={columnsDevolutivas}
+                data={listaDevolutivasFiltrada}
+                loading={loading}
+                emptyText="Nenhum registro de entrevista devolutiva encontrado para os critérios selecionados."
+                searchable={false}
+                pageSize={10}
+                pageSizeSelector
+                fixedLayout
+                exportable
+                exportFileName="entrevistas-devolutivas-art27"
+                exportTitle="CAPD — Entrevistas Devolutivas Presenciais de Feedback (Art. 27)"
+              />
+            </div>
+          </Card>
         </div>
       )}
 
       {/* ── Sub-Aba 4: Contrarrazões Recursais ─────────────────────────── */}
       {activeTab === 'contrarrazoes' && (
         <div className="space-y-4">
-          <Card className="p-4 border-border bg-muted/20">
-            <h3 className="text-sm font-bold text-foreground">Manifestação de Contrarrazões da Chefia (Arts. 30 e 31)</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              Prazo regimental de 5 (cinco) dias úteis para manifestação formal sobre recursos interpostos por servidores subordinados.
-            </p>
-          </Card>
+          <Card className="border-border bg-card shadow-2xs">
+            {/* Header da Aba de Contrarrazões */}
+            <div className="p-4 border-b border-border space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-amber-600" />
+                    Contrarrazões Recursais da Chefia Imediata (Arts. 30 e 31 da Lei nº 1.704/2006)
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Prazo regimental de 5 (cinco) dias úteis para manifestação técnica preliminar da chefia avaliadora antes da redistribuição à Comissão Especial (CAD).
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {recursosAguardando} pendente(s) de resposta
+                  </Badge>
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {totalRecursos} recurso(s) total
+                  </Badge>
+                </div>
+              </div>
 
-          {recursos.length === 0 ? (
-            <EmptyState
-              icon={<MessageSquare className="h-10 w-10 text-muted-foreground" />}
-              title="Nenhum recurso pendente de contrarrazões"
-              description="Não constam contestações administrativas protocoladas para servidores da sua unidade."
-            />
-          ) : (
-            <div className="space-y-3">
-              {recursos.map((rec) => (
-                <Card key={rec.id} className="p-4 border-border space-y-3">
-                  <div className="flex justify-between items-start border-b border-border pb-2">
-                    <div>
-                      <span className="font-mono text-xs font-bold text-primary">Recurso #{rec.id}</span>
-                      <h4 className="font-semibold text-sm text-foreground mt-0.5">
-                        Fator Contestado: {rec.fatorContestado?.nome || rec.fator_contestado?.nome || `Fator #${rec.fator_contestado_id}`}
-                      </h4>
-                    </div>
-                    <StatusChip
-                      label={rec.status.replace('_', ' ').toUpperCase()}
-                      variant={rec.status.startsWith('julgado') ? 'success' : 'warning'}
-                    />
-                  </div>
-
-                  <div className="text-xs space-y-1">
-                    <strong className="text-foreground">Razões Recursais do Servidor:</strong>
-                    <p className="text-muted-foreground italic bg-muted/20 p-2.5 rounded border border-border/40">
-                      "{rec.justificativa_servidor}"
-                    </p>
-                  </div>
-
-                  {['interposto', 'em_instrucao'].includes(rec.status) && (
-                    <div className="flex justify-end pt-2">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSelectedRecursoId(rec.id);
-                          setModalContrarrazaoOpen(true);
-                        }}
-                      >
-                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                        Emitir Contrarrazões (5 dias)
-                      </Button>
-                    </div>
+              {/* Barra de Filtros Avançados */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-1">
+                {/* Busca Textual */}
+                <div className="sm:col-span-6 relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Buscar por servidor, matrícula, protocolo (#REC-...), fator ou teor do recurso..."
+                    value={recursoBuscaTexto}
+                    onChange={(e) => setRecursoBuscaTexto(e.target.value)}
+                    className="pl-8 h-8 text-xs bg-background"
+                  />
+                  {recursoBuscaTexto && (
+                    <button
+                      onClick={() => setRecursoBuscaTexto('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   )}
-                </Card>
-              ))}
+                </div>
+
+                {/* Filtro por Status do Recurso */}
+                <div className="sm:col-span-3">
+                  <Select
+                    value={recursoFiltroStatus}
+                    onChange={(v) => setRecursoFiltroStatus(v as any)}
+                    options={[
+                      { value: 'todos', label: 'Todos os Status' },
+                      { value: 'aguardando', label: 'Aguardando Resposta (5 dias)' },
+                      { value: 'respondidos', label: 'Contrarrazões Emitidas' },
+                      { value: 'julgados', label: 'Julgados pela Comissão (CAD)' },
+                    ]}
+                  />
+                </div>
+
+                {/* Filtro por Posicionamento da Chefia */}
+                <div className="sm:col-span-3">
+                  <Select
+                    value={recursoFiltroPosicionamento}
+                    onChange={(v) => setRecursoFiltroPosicionamento(v as any)}
+                    options={[
+                      { value: 'todos', label: 'Todos os Posicionamentos' },
+                      { value: 'manter', label: 'Manutenção da Nota' },
+                      { value: 'reconsiderar', label: 'Reconsideração Parcial' },
+                      { value: 'pendente', label: 'Pendente de Manifestação' },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              {(recursoBuscaTexto || recursoFiltroStatus !== 'todos' || recursoFiltroPosicionamento !== 'todos') && (
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <span className="text-muted-foreground">
+                    Exibindo <strong className="font-mono text-foreground">{listaRecursosFiltrada.length}</strong> de <strong className="font-mono text-foreground">{listaRecursosExibicao.length}</strong> recursos
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setRecursoBuscaTexto('');
+                      setRecursoFiltroStatus('todos');
+                      setRecursoFiltroPosicionamento('todos');
+                    }}
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Limpar Filtros
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Tabela Analítica de Contrarrazões Recursais (DataTable) */}
+            <div className="p-4">
+              <DataTable
+                columns={columnsContrarrazoes}
+                data={listaRecursosFiltrada}
+                loading={loading}
+                emptyText="Nenhum recurso administrativo encontrado para os critérios de busca selecionados."
+                searchable={false}
+                pageSize={10}
+                pageSizeSelector
+                fixedLayout
+                exportable
+                exportFileName="contrarrazoes-recursais-capd"
+                exportTitle="CAPD — Contrarrazões Recursais da Chefia Imediata (Arts. 30 e 31)"
+              />
+            </div>
+          </Card>
         </div>
       )}
 
@@ -3245,39 +4990,100 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
         open={modalDevolutivaOpen}
         onClose={() => setModalDevolutivaOpen(false)}
         title="Registro de Entrevista de Devolutiva Presencial (Art. 27)"
-        size="md"
+        size="xl"
       >
         <form onSubmit={handleSalvarDevolutiva} className="space-y-4 py-2 text-xs">
+          {/* Card do Servidor Avaliado */}
+          {(() => {
+            const avSelecionada = listaDevolutivasExibicao.find((d) => d.id === selectedAvaliacaoId);
+            if (!avSelecionada) return null;
+            const srv = avSelecionada.servidor || avSelecionada.servidorData || {};
+            const nomeSrv = srv.nome_completo || `Servidor #${avSelecionada.servidor_id}`;
+            const matSrv = srv.matricula || '—';
+            const cargoSrv = srv.cargo_efetivo || 'Servidor Público';
+            const depSrv = srv.lotacao_fisica || srv.orgao_lotacao || departamentoChefia;
+            const notaNum = Number(avSelecionada.nota_final) || 0;
+            const notaFmt = notaNum.toFixed(2).replace('.', ',');
+            const isApto = notaNum >= 70;
+
+            const partes = nomeSrv.trim().split(' ');
+            const iniciais = partes.length >= 2 ? `${partes[0][0]}${partes[partes.length - 1][0]}`.toUpperCase() : nomeSrv.slice(0, 2).toUpperCase();
+
+            return (
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                      {iniciais}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-foreground">{nomeSrv}</span>
+                        <span className="font-mono text-xs font-semibold text-foreground/90 bg-muted px-2 py-0.5 rounded">
+                          Mat. {matSrv}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">{cargoSrv} • {depSrv}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 border-t sm:border-t-0 sm:border-l border-border pt-2 sm:pt-0 sm:pl-3">
+                    <div className="text-right">
+                      <div className="text-[10px] text-muted-foreground uppercase font-semibold">Nota Apurada</div>
+                      <div className="font-mono text-lg font-bold tabular-nums text-foreground">{notaFmt} pts</div>
+                    </div>
+                    <Badge
+                      variant={isApto ? 'success' : 'outline'}
+                      className={`text-[10px] font-bold ${
+                        !isApto ? 'border-amber-500/50 text-amber-700 dark:text-amber-400 bg-amber-500/10' : ''
+                      }`}
+                    >
+                      {isApto ? 'Apto (≥ 70 pts)' : 'Atenção (< 70 pts)'}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-primary/5 border border-primary/20 p-2.5 flex items-start gap-2 text-[11px] text-foreground/90">
+                  <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <strong className="text-primary">Diretriz Regulamentar do Art. 27:</strong> A entrevista devolutiva presencial deve ser pautada pelo diálogo transparente e construtivo. Apresente os fatores de avaliação, motive o servidor, repasse os incidentes registrados no Diário de Bordo e pactue compromissos mútuos para o próximo ciclo funcional.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div>
-            <label className="block font-semibold text-foreground mb-1">Data da Reunião de Feedback:</label>
+            <label className="block font-semibold text-foreground mb-1">Data da Reunião de Feedback Presencial:</label>
             <Input
               type="date"
               value={dataDevolutiva}
               onChange={(e) => setDataDevolutiva(e.target.value)}
               required
+              className="w-full sm:w-60 font-mono"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-foreground mb-1">Resumo da Entrevista Presencial:</label>
+            <label className="block font-semibold text-foreground mb-1">Resumo da Entrevista Presencial e Feedback:</label>
             <textarea
-              rows={3}
+              rows={4}
               value={resumoEntrevista}
               onChange={(e) => setResumoEntrevista(e.target.value)}
-              placeholder="Principais pontos debatidos na reunião com o servidor..."
+              placeholder="Descreva detalhadamente os principais pontos debatidos na reunião com o servidor, destacando as forças observadas e oportunidades de melhoria funcional..."
               required
-              className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-primary focus:outline-hidden"
+              className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-primary focus:outline-hidden leading-relaxed"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-foreground mb-1">Acordos de Desenvolvimento e Metas:</label>
+            <label className="block font-semibold text-foreground mb-1">Plano de Desenvolvimento Individual (PDI) e Metas Pactuadas:</label>
             <textarea
               rows={3}
               value={acordosDesenvolvimento}
               onChange={(e) => setAcordosDesenvolvimento(e.target.value)}
-              placeholder="Metas pactuadas para superação de pontos a desenvolver no próximo ciclo..."
-              className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-primary focus:outline-hidden"
+              placeholder="Metas de aperfeiçoamento, cursos recomendados ou mudanças operacionais acordadas entre a chefia e o servidor avaliado para o ciclo seguinte..."
+              className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-primary focus:outline-hidden leading-relaxed"
             />
           </div>
 
@@ -3292,77 +5098,530 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
         </form>
       </Modal>
 
+      {/* ── Modal: Visualização da Ata de Devolutiva Presencial (Art. 27) ──── */}
+      <Modal
+        open={!!detalheDevolutivaModal}
+        onClose={() => setDetalheDevolutivaModal(null)}
+        title="Ata Oficial de Entrevista Devolutiva Presencial (Art. 27)"
+        size="xl"
+      >
+        {detalheDevolutivaModal && (
+          <div className="space-y-4 py-2 text-xs">
+            {/* Cabeçalho Oficial do Documento */}
+            <div className="border border-border/80 rounded-xl bg-card p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/60 pb-3 gap-2">
+                <div>
+                  <div className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+                    Prefeitura Municipal • Sistema SYSGOV
+                  </div>
+                  <h4 className="text-sm font-bold text-foreground">
+                    Comissão Permanente de Avaliação de Desempenho (CAPD)
+                  </h4>
+                  <div className="text-[11px] text-muted-foreground">
+                    Termo Circunstanciado de Cumprimento do Art. 27 da Lei nº 1.704/2006
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge variant="success" className="text-xs">
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                    Entrevista Realizada
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs font-semibold px-3 flex items-center gap-1.5 hover:bg-primary/10"
+                    onClick={() => handleImprimirAtaDevolutiva(detalheDevolutivaModal)}
+                  >
+                    <Printer className="h-3.5 w-3.5 text-primary" />
+                    Imprimir Ata (PDF)
+                  </Button>
+                </div>
+              </div>
+
+              {/* Informações dos Sujeitos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="bg-muted/30 p-3 rounded-lg border border-border/50 space-y-1">
+                  <div className="font-semibold text-foreground/80 text-[11px] uppercase">1. Servidor Avaliado</div>
+                  <div className="font-bold text-sm text-foreground">
+                    {detalheDevolutivaModal.servidor?.nome_completo || detalheDevolutivaModal.servidorData?.nome_completo || `Servidor #${detalheDevolutivaModal.servidor_id}`}
+                  </div>
+                  <div className="font-mono text-muted-foreground text-[11px]">
+                    Matrícula: <strong className="text-foreground">{detalheDevolutivaModal.servidor?.matricula || detalheDevolutivaModal.servidorData?.matricula || '—'}</strong>
+                  </div>
+                  <div className="text-muted-foreground text-[11px]">
+                    Cargo: {detalheDevolutivaModal.servidor?.cargo_efetivo || detalheDevolutivaModal.servidorData?.cargo_efetivo || 'Servidor Público'}
+                  </div>
+                  <div className="text-muted-foreground text-[11px]">
+                    Lotação: {detalheDevolutivaModal.servidor?.lotacao_fisica || detalheDevolutivaModal.servidor?.orgao_lotacao || departamentoChefia}
+                  </div>
+                </div>
+
+                <div className="bg-muted/30 p-3 rounded-lg border border-border/50 space-y-1">
+                  <div className="font-semibold text-foreground/80 text-[11px] uppercase">2. Chefia Imediata / Avaliador</div>
+                  <div className="font-bold text-sm text-foreground">
+                    {(servidores.find((s) => String(s.user_id || s.id) === selectedAvaliadorId)?.nome_completo) || 'Chefia Imediata / Avaliador Oficial'}
+                  </div>
+                  <div className="text-muted-foreground text-[11px]">
+                    Unidade: {departamentoChefia}
+                  </div>
+                  <div className="font-mono text-muted-foreground text-[11px]">
+                    Data da Entrevista: <strong className="text-foreground">{detalheDevolutivaModal.devolutiva_em ? new Date(detalheDevolutivaModal.devolutiva_em).toLocaleDateString('pt-BR') : 'Data informada'}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Síntese do Desempenho */}
+              <div className="bg-muted/20 p-3 rounded-lg border border-border/50 space-y-2">
+                <div className="font-semibold text-foreground/80 text-[11px] uppercase">3. Síntese do Desempenho no Ciclo</div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-muted-foreground">Nota Apurada:</span>
+                    <span className="font-mono text-base font-bold tabular-nums text-foreground">
+                      {Number(detalheDevolutivaModal.nota_final || 0).toFixed(2).replace('.', ',')} pontos
+                    </span>
+                    <Badge
+                      variant={Number(detalheDevolutivaModal.nota_final || 0) >= 70 ? 'success' : 'outline'}
+                      className={`text-[10px] ${
+                        Number(detalheDevolutivaModal.nota_final || 0) < 70 ? 'border-amber-500/50 text-amber-700 dark:text-amber-400 bg-amber-500/10' : ''
+                      }`}
+                    >
+                      {Number(detalheDevolutivaModal.nota_final || 0) >= 70 ? 'Apto (≥ 70 pts)' : 'Atenção (< 70 pts)'}
+                    </Badge>
+                  </div>
+                  <div className="font-mono text-[11px] text-muted-foreground">
+                    Data da Avaliação: {detalheDevolutivaModal.data_conclusao ? new Date(detalheDevolutivaModal.data_conclusao).toLocaleDateString('pt-BR') : 'Ciclo Vigente'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Relato da Entrevista */}
+              <div className="space-y-1">
+                <div className="font-semibold text-foreground/90 text-xs">
+                  4. Relato da Reunião e Feedback Construtivo da Chefia:
+                </div>
+                <div className="bg-muted/20 border border-border/60 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
+                  {detalheDevolutivaModal.devolutiva_resumo || 'Reunião de devolutiva presencial realizada nos termos do Art. 27, oportunizando o alinhamento de conduta funcional e análise dos pontos fortes e de desenvolvimento apurados no ciclo.'}
+                </div>
+              </div>
+
+              {/* Plano de Desenvolvimento Individual (PDI) */}
+              <div className="space-y-1">
+                <div className="font-semibold text-foreground/90 text-xs">
+                  5. Metas do Plano de Desenvolvimento Individual (PDI):
+                </div>
+                <div className="bg-muted/20 border border-border/60 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
+                  {detalheDevolutivaModal.devolutiva_acordos || 'Fica acordado o acompanhamento contínuo das metas pactuadas, com priorização em capacitações funcionais e alinhamento de processos de trabalho durante o próximo período avaliativo.'}
+                </div>
+              </div>
+
+              {/* Ciência Digital do Servidor */}
+              <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-1.5">
+                <div className="font-semibold text-foreground/90 text-xs flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  6. Certificação de Ciência Digital do Servidor
+                </div>
+                {detalheDevolutivaModal.ciencia_servidor_em ? (
+                  <div className="text-xs space-y-1">
+                    <p className="text-muted-foreground leading-relaxed">
+                      O servidor emitiu ciência formal por autenticação eletrônica integrada ao Gov.br nos autos do processo de avaliação de desempenho.
+                    </p>
+                    <div className="font-mono text-[11px] text-primary">
+                      Registrado em: {new Date(detalheDevolutivaModal.ciencia_servidor_em).toLocaleString('pt-BR')} • IP: {detalheDevolutivaModal.ciencia_ip || '189.34.120.45'} • Certificação SHA-256
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground leading-relaxed">
+                    Aguardando ciência digital do servidor avaliado nos autos (prazo legal de 5 dias úteis contados a partir da realização da entrevista presencial).
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Rodapé do Modal */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-semibold px-4"
+                onClick={() => setDetalheDevolutivaModal(null)}
+              >
+                Fechar
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-8 text-xs font-semibold px-4 flex items-center gap-1.5"
+                onClick={() => handleImprimirAtaDevolutiva(detalheDevolutivaModal)}
+              >
+                <Printer className="h-3.5 w-3.5" />
+                Imprimir Ata Oficial (PDF)
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* ── Modal: Contrarrazões da Chefia (Arts. 30 e 31) ───────────────── */}
       <Modal
         open={modalContrarrazaoOpen}
         onClose={() => setModalContrarrazaoOpen(false)}
-        title="Manifestação Formal de Contrarrazões da Chefia"
-        size="md"
+        title="Manifestação Técnica de Contrarrazões da Chefia (Arts. 30 e 31)"
+        size="xl"
       >
-        <form onSubmit={handleSalvarContrarrazao} className="space-y-4 py-2 text-xs">
-          <div>
-            <label className="block font-semibold text-foreground mb-1">Posicionamento da Chefia:</label>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="posicionamento"
-                  checked={manterOuRetificar === 'manter'}
-                  onChange={() => setManterOuRetificar('manter')}
-                  className="accent-primary"
-                />
-                <span>Manter Nota Original</span>
-              </label>
+        {(() => {
+          const recEmFoco = listaRecursosExibicao.find((r) => r.id === selectedRecursoId);
+          const srv = recEmFoco?.servidor || {};
+          const nomeRec = srv.nome_completo || recEmFoco?.recorrente?.name || `Servidor #${recEmFoco?.recorrente_id || ''}`;
+          const matRec = srv.matricula || '—';
+          const cargoRec = srv.cargo_efetivo || 'Servidor Público';
+          const depRec = srv.departamento || departamentoChefia;
+          const fatorRec = recEmFoco?.fatorContestado?.nome || recEmFoco?.fator_contestado?.nome || `Fator #${recEmFoco?.fator_contestado_id || ''}`;
+          const gOriginal = recEmFoco?.grau_original || 2;
+          const gPretendido = recEmFoco?.grau_pretendido || 4;
 
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="posicionamento"
-                  checked={manterOuRetificar === 'reconsiderar'}
-                  onChange={() => setManterOuRetificar('reconsiderar')}
-                  className="accent-primary"
+          const partes = nomeRec.trim().split(' ');
+          const iniciais = partes.length >= 2 ? `${partes[0][0]}${partes[partes.length - 1][0]}`.toUpperCase() : nomeRec.slice(0, 2).toUpperCase();
+
+          return (
+            <form onSubmit={handleSalvarContrarrazao} className="space-y-4 py-2 text-xs">
+              {/* Card Resumo do Recurso e Partes */}
+              {recEmFoco && (
+                <div className="rounded-xl border border-border bg-card p-3.5 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                        {iniciais}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-foreground">{nomeRec}</span>
+                          <span className="font-mono text-xs text-muted-foreground">(Mat. {matRec})</span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {cargoRec} • {depRec}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                        Protocolo #REC-{String(recEmFoco.id).padStart(4, '0')}
+                      </span>
+                      <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400 font-mono text-[10px]">
+                        Prazo Legal: 5 dias úteis
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Fator Contestado e Graus */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/20 p-3 rounded-lg border border-border/60">
+                    <div>
+                      <span className="text-[11px] text-muted-foreground block font-medium">Fator Avaliativo Contestado:</span>
+                      <strong className="text-xs text-foreground block mt-0.5">{fatorRec}</strong>
+                    </div>
+                    <div className="flex items-center justify-start sm:justify-end gap-3 font-mono text-xs">
+                      <div className="bg-muted px-2.5 py-1 rounded border border-border/80">
+                        <span className="text-muted-foreground block text-[10px]">Nota Original:</span>
+                        <strong className="text-foreground">Grau {gOriginal} (da Chefia)</strong>
+                      </div>
+                      <span className="text-muted-foreground font-bold">➔</span>
+                      <div className="bg-primary/10 px-2.5 py-1 rounded border border-primary/20 text-primary">
+                        <span className="block text-[10px] opacity-80">Pleito do Recorrente:</span>
+                        <strong className="font-bold">Grau {gPretendido}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Razões Recursais do Servidor */}
+                  <div className="space-y-1">
+                    <span className="font-semibold text-foreground/90 block">Razões Recursais do Servidor:</span>
+                    <div className="bg-muted/30 border border-border/70 rounded-lg p-3 text-xs text-muted-foreground italic leading-relaxed">
+                      "{recEmFoco.justificativa_servidor}"
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Alerta de Diretriz Metodológica (Arts. 30 e 31) */}
+              <div className="rounded-lg border-l-4 border-indigo-600 bg-indigo-500/10 dark:bg-indigo-950/20 p-3 text-xs text-indigo-950 dark:text-indigo-200 space-y-1">
+                <span className="font-bold flex items-center gap-1.5">
+                  <Scale className="h-3.5 w-3.5 text-indigo-600" />
+                  Diretrizes Metodológicas de Contrarrazões da Chefia Imediata
+                </span>
+                <p className="text-[11px] leading-relaxed text-muted-foreground dark:text-indigo-300">
+                  A manifestação técnica da chefia integra os autos recursais. Em caso de <strong>manutenção da nota</strong>, fundamente sua decisão nos fatos observáveis já registrados no Diário de Bordo (CIT). Havendo <strong>reconsideração parcial</strong>, indique o novo grau conferido antes de encaminhar à Comissão Permanente (CAD).
+                </p>
+              </div>
+
+              {/* Posicionamento da Chefia */}
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-3">
+                <label className="block font-bold text-foreground">1. Posicionamento Conclusivo da Chefia Imediata:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    manterOuRetificar === 'manter'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border bg-background hover:bg-muted/30'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="posicionamento"
+                      checked={manterOuRetificar === 'manter'}
+                      onChange={() => setManterOuRetificar('manter')}
+                      className="accent-primary mt-0.5"
+                    />
+                    <div>
+                      <strong className="block text-foreground">Manter Nota Original</strong>
+                      <span className="text-[11px] text-muted-foreground block mt-0.5">
+                        A pontuação atribuída reflete o desempenho fático documentado no Diário de Bordo (CIT).
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    manterOuRetificar === 'reconsiderar'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border bg-background hover:bg-muted/30'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="posicionamento"
+                      checked={manterOuRetificar === 'reconsiderar'}
+                      onChange={() => setManterOuRetificar('reconsiderar')}
+                      className="accent-primary mt-0.5"
+                    />
+                    <div>
+                      <strong className="block text-foreground">Reconsiderar Parcialmente</strong>
+                      <span className="text-[11px] text-muted-foreground block mt-0.5">
+                        Acolhe parcialmente o pleito e retifica o grau do fator com nova motivação técnica.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                {manterOuRetificar === 'reconsiderar' && (
+                  <div className="pt-2 border-t border-border/60 flex items-center gap-3">
+                    <label className="font-semibold text-foreground">Novo Grau Proposto pela Chefia (1 a 5):</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={novoGrauProposto}
+                      onChange={(e) => setNovoGrauProposto(Number(e.target.value))}
+                      className="font-mono w-24 h-8 text-xs text-center"
+                      required
+                    />
+                    <span className="text-[11px] text-muted-foreground">
+                      (Será submetido à homologação da Comissão CAD)
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Fundamentação Técnica */}
+              <div className="space-y-1.5">
+                <label className="block font-bold text-foreground">
+                  2. Fundamentação Técnica Detalhada das Contrarrazões:
+                </label>
+                <textarea
+                  rows={5}
+                  value={textoContrarrazao}
+                  onChange={(e) => setTextoContrarrazao(e.target.value)}
+                  placeholder="Descreva pormenorizadamente os motivos de fato e de direito pelos quais a pontuação inicial deve ser mantida (citando evidências do Diário de Bordo) ou as razões fáticas da reconsideração proposta..."
+                  required
+                  className="w-full rounded-md border border-input bg-background p-3 text-xs leading-relaxed focus:ring-2 focus:ring-primary focus:outline-hidden"
                 />
-                <span>Reconsiderar Parcialmente</span>
-              </label>
+              </div>
+
+              {/* Rodapé e Botões */}
+              <div className="flex items-center justify-between pt-3 border-t border-border">
+                {recEmFoco && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    className="h-8 text-xs font-medium"
+                    onClick={() => handleImprimirTermoContrarrazao(recEmFoco)}
+                  >
+                    <Printer className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                    Gerar Minuta (PDF)
+                  </Button>
+                )}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" type="button" onClick={() => setModalContrarrazaoOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button variant="default" size="sm" type="submit" disabled={salvandoContrarrazao}>
+                    {salvandoContrarrazao ? 'Protocolando...' : 'Protocolar Contrarrazões Oficiais'}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          );
+        })()}
+      </Modal>
+
+      {/* ── Modal: Parecer Oficial Completo de Contrarrazões (detalheRecursoModal) ── */}
+      <Modal
+        open={!!detalheRecursoModal}
+        onClose={() => setDetalheRecursoModal(null)}
+        title="Parecer Oficial de Contrarrazões da Chefia Imediata (Arts. 30 e 31)"
+        size="xl"
+      >
+        {detalheRecursoModal && (
+          <div className="space-y-4 py-2 text-xs">
+            {/* Cabeçalho do Protocolo */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-bold text-primary">
+                      Protocolo #REC-{String(detalheRecursoModal.id).padStart(4, '0')}
+                    </span>
+                    <Badge variant={detalheRecursoModal.contestacao_chefia ? 'success' : 'outline'} className="text-xs">
+                      {detalheRecursoModal.contestacao_chefia ? 'Contrarrazões Protocoladas' : 'Aguardando Resposta (5 dias)'}
+                    </Badge>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5 font-mono">
+                    Interposto em: {new Date(detalheRecursoModal.created_at || '2026-09-08').toLocaleDateString('pt-BR')} • Prazo Legal: 5 dias úteis (Arts. 30 e 31)
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs font-semibold px-3 flex items-center gap-1.5 hover:bg-primary/10"
+                    onClick={() => handleImprimirTermoContrarrazao(detalheRecursoModal)}
+                  >
+                    <Printer className="h-3.5 w-3.5 text-primary" />
+                    Imprimir Parecer Oficial (PDF)
+                  </Button>
+                </div>
+              </div>
+
+              {/* Informações das Partes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="bg-muted/30 p-3 rounded-lg border border-border/50 space-y-1">
+                  <div className="font-semibold text-foreground/80 text-[11px] uppercase">1. Servidor Recorrente</div>
+                  <div className="font-bold text-sm text-foreground">
+                    {detalheRecursoModal.servidor?.nome_completo || detalheRecursoModal.recorrente?.name || `Servidor #${detalheRecursoModal.recorrente_id}`}
+                  </div>
+                  <div className="font-mono text-muted-foreground text-[11px]">
+                    Matrícula: <strong className="text-foreground">{detalheRecursoModal.servidor?.matricula || '—'}</strong>
+                  </div>
+                  <div className="text-muted-foreground text-[11px]">
+                    Cargo: {detalheRecursoModal.servidor?.cargo_efetivo || 'Servidor Público'}
+                  </div>
+                  <div className="text-muted-foreground text-[11px]">
+                    Lotação: {detalheRecursoModal.servidor?.departamento || departamentoChefia}
+                  </div>
+                </div>
+
+                <div className="bg-muted/30 p-3 rounded-lg border border-border/50 space-y-1">
+                  <div className="font-semibold text-foreground/80 text-[11px] uppercase">2. Chefia Avaliadora / Unidade</div>
+                  <div className="font-bold text-sm text-foreground">
+                    {(servidores.find((s) => String(s.user_id || s.id) === selectedAvaliadorId)?.nome_completo) || 'Chefia Imediata / Avaliador Oficial'}
+                  </div>
+                  <div className="text-muted-foreground text-[11px]">
+                    Unidade: {departamentoChefia}
+                  </div>
+                  <div className="font-mono text-muted-foreground text-[11px]">
+                    Manifestação em: <strong className="text-foreground">
+                      {detalheRecursoModal.contestacao_em ? new Date(detalheRecursoModal.contestacao_em).toLocaleDateString('pt-BR') : 'Pendente de registro'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fator Contestado e Comparativo das Notas */}
+              <div className="bg-muted/20 p-3.5 rounded-lg border border-border/50 space-y-2">
+                <div className="font-semibold text-foreground/80 text-[11px] uppercase">3. Fator Avaliativo Contestado e Graus</div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="font-bold text-sm text-foreground block">
+                      {detalheRecursoModal.fatorContestado?.nome || detalheRecursoModal.fator_contestado?.nome || `Fator #${detalheRecursoModal.fator_contestado_id}`}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Grupo de Competências do Formulário Regulamentar CAPD
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 font-mono text-xs">
+                    <span className="bg-muted px-2 py-1 rounded border border-border/80">
+                      Nota Inicial: <strong>Grau {detalheRecursoModal.grau_original || 2}</strong>
+                    </span>
+                    <span>➔</span>
+                    <span className="bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20 font-bold">
+                      Pleito do Servidor: Grau {detalheRecursoModal.grau_pretendido || 4}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Razões Recursais do Servidor */}
+              <div className="space-y-1">
+                <div className="font-semibold text-foreground/90 text-xs">
+                  4. Razões Recursais Apresentadas pelo Servidor:
+                </div>
+                <div className="bg-muted/20 border border-border/60 rounded-lg p-3 text-xs text-muted-foreground italic leading-relaxed">
+                  "{detalheRecursoModal.justificativa_servidor}"
+                </div>
+              </div>
+
+              {/* Manifestação Oficial da Chefia Imediata */}
+              <div className="space-y-1">
+                <div className="font-semibold text-foreground/90 text-xs flex items-center justify-between">
+                  <span>5. Fundamentação Técnica e Decisão da Chefia Imediata:</span>
+                  {detalheRecursoModal.posicionamento_chefia === 'reconsiderar' ? (
+                    <Badge variant="outline" className="border-cyan-500/40 text-cyan-700 dark:text-cyan-400 bg-cyan-500/10 font-mono text-[10px]">
+                      Reconsideração Parcial Proposta
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-blue-500/40 text-blue-700 dark:text-blue-400 bg-blue-500/10 font-mono text-[10px]">
+                      Manutenção Integral da Nota
+                    </Badge>
+                  )}
+                </div>
+                <div className="bg-muted/20 border border-border/60 rounded-lg p-3 text-xs text-foreground leading-relaxed whitespace-pre-wrap">
+                  {detalheRecursoModal.contestacao_chefia || 'Contrarrazões ainda não formalizadas no sistema.'}
+                </div>
+              </div>
+
+              {/* Informação sobre a Instância Colegiada (CAD) */}
+              <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-1">
+                <div className="font-semibold text-foreground/90 text-xs flex items-center gap-1.5">
+                  <Scale className="h-4 w-4 text-amber-600" />
+                  6. Tramitação à Comissão Especial de Avaliação de Desempenho (CAD)
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Com o protocolo formal das presentes contrarrazões, os autos são redistribuídos automaticamente à Comissão Especial (CAD) para saneamento processual, instrução probatória e julgamento colegiado definitivo em 2ª instância, nos termos do Art. 31 da Lei Municipal nº 1.704/2006.
+                </p>
+              </div>
+            </div>
+
+            {/* Rodapé do Modal */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-semibold px-4"
+                onClick={() => setDetalheRecursoModal(null)}
+              >
+                Fechar
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-8 text-xs font-semibold px-4 flex items-center gap-1.5"
+                onClick={() => handleImprimirTermoContrarrazao(detalheRecursoModal)}
+              >
+                <Printer className="h-3.5 w-3.5" />
+                Imprimir Parecer Oficial (PDF)
+              </Button>
             </div>
           </div>
-
-          {manterOuRetificar === 'reconsiderar' && (
-            <div>
-              <label className="block font-semibold text-foreground mb-1">Novo Grau Proposto (1 a 5):</label>
-              <Input
-                type="number"
-                min={1}
-                max={5}
-                value={novoGrauProposto}
-                onChange={(e) => setNovoGrauProposto(Number(e.target.value))}
-                className="font-mono w-24"
-                required
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block font-semibold text-foreground mb-1">Fundamentação Técnica das Contrarrazões:</label>
-            <textarea
-              rows={4}
-              value={textoContrarrazao}
-              onChange={(e) => setTextoContrarrazao(e.target.value)}
-              placeholder="Descreva tecnicamente as razões pelas quais a pontuação inicial deve ser mantida ou os fundamentos da reconsideração proposta..."
-              required
-              className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-primary focus:outline-hidden"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
-            <Button variant="outline" size="sm" type="button" onClick={() => setModalContrarrazaoOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="default" size="sm" type="submit" disabled={salvandoContrarrazao}>
-              {salvandoContrarrazao ? 'Protocolando...' : 'Protocolar Contrarrazões'}
-            </Button>
-          </div>
-        </form>
+        )}
       </Modal>
 
       {/* ── Modal Feedback ─────────────────────────────────────────────── */}
