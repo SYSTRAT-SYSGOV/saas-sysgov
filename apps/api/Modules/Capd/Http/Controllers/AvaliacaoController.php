@@ -567,12 +567,19 @@ final class AvaliacaoController extends Controller
      */
     public function obterEspelho(Request $request, int $id): JsonResponse
     {
-        $avaliacao = Avaliacao::with(['ciclo', 'servidor', 'servidorData', 'avaliador'])->findOrFail($id);
+        $avaliacao = Avaliacao::with(['ciclo', 'servidor', 'servidorData', 'avaliador', 'modeloFormulario.fatoresPesos.fator'])->findOrFail($id);
         $this->authorize('view', $avaliacao);
 
         $tenant = app(\App\Support\TenantContext::class)->get();
         $orgaoNome = $tenant?->name ?? 'PREFEITURA MUNICIPAL DE ARAUCÁRIA';
         $orgaoEstado = 'ESTADO DO PARANÁ';
+
+        // RF-02: o peso exibido no espelho deve ser o peso efetivamente configurado
+        // no modelo de formulário vigente (ModeloFatorPeso), não um valor fictício —
+        // FatorAvaliacao não possui campo "peso_padrao".
+        $pesosPorCodigo = ($avaliacao->modeloFormulario?->fatoresPesos ?? collect())
+            ->keyBy(fn ($mfp) => $mfp->fator?->codigo)
+            ->map(fn ($mfp) => (float) $mfp->peso);
 
         $fatoresDetalhados = [];
         $respostas = $avaliacao->respostas_fatores ?? [];
@@ -604,7 +611,7 @@ final class AvaliacaoController extends Controller
                 'grau'         => $grau,
                 'conceito'     => $grau ? ($conceitoPorGrau[$grau] ?? null) : null,
                 'nota'         => is_array($info) ? ($info['nota'] ?? $info['pontos'] ?? $grau ?? null) : $info,
-                'peso'         => $fator?->peso_padrao ?? 1.0,
+                'peso'         => $pesosPorCodigo->get($cod) ?? 0.0,
                 'justificativa'=> is_array($info) ? ($info['justificativa'] ?? null) : null,
             ];
         }
@@ -619,7 +626,7 @@ final class AvaliacaoController extends Controller
                     'grau'          => null,
                     'conceito'      => null,
                     'nota'          => null,
-                    'peso'          => $fator->peso_padrao ?? 1.0,
+                    'peso'          => $pesosPorCodigo->get($fator->codigo) ?? 0.0,
                     'justificativa' => null,
                 ];
             }
