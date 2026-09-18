@@ -193,6 +193,7 @@ Route::prefix('ciclos')->group(function (): void {
 Route::prefix('modelos-formulario')->group(function (): void {
     Route::get('/', [PerguntaController::class, 'indexModelos'])->name('capd.modelos.index');
     Route::get('/vigente', [PerguntaController::class, 'modeloVigente'])->name('capd.modelos.vigente');
+    Route::get('/identificar-grupo', [PerguntaController::class, 'identificarGrupo'])->name('capd.modelos.identificar-grupo');
     Route::post('/', [PerguntaController::class, 'storeModelo'])->name('capd.modelos.store');
     Route::get('/{id}', [PerguntaController::class, 'showModelo'])->name('capd.modelos.show');
     Route::post('/{id}/perguntas', [PerguntaController::class, 'storePergunta'])->name('capd.modelos.perguntas.store');

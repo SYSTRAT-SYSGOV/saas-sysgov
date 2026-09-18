@@ -75,7 +75,7 @@ const DEMO_RESPONSE: LoginResponse = {
       },
     },
   ],
-  modules: ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users'],
+  modules: ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users', 'capd'],
   permissions: [
     'dashboard.view',
     'org.view',
@@ -93,6 +93,8 @@ const DEMO_RESPONSE: LoginResponse = {
     'rh.view',
     'cemiterios.view',
     'users.manage',
+    'capd.view',
+    'capd.manage',
   ],
   navigation: [
     {
@@ -113,6 +115,7 @@ const DEMO_RESPONSE: LoginResponse = {
       items: [
         { id: 'nav-org', label: 'Organograma Municipal', icon: 'Network', route: '/organograma', shortcut: 'O', badge: null, module: 'org', permission: 'org.view' },
         { id: 'nav-usr', label: 'Usuários & Acessos', icon: 'Users', route: '/usuarios', shortcut: 'U', badge: null, module: 'users', permission: 'users.manage' },
+        { id: 'nav-capd', label: 'Avaliação de Desempenho (CAPD)', icon: 'ClipboardCheck', route: '/capd', shortcut: 'P', badge: null, module: 'capd', permission: 'capd.view' },
         { id: 'nav-ped', label: 'Módulo Pedagógico', icon: 'GraduationCap', route: '/pedagogico', shortcut: 'E', badge: null, module: 'pedagogico', permission: 'pedagogico.view' },
         { id: 'nav-rh', label: 'Recursos Humanos / Folha', icon: 'Users', route: '/rh', shortcut: 'R', badge: null, module: 'rh', permission: 'rh.view' },
         { id: 'nav-cem', label: 'Gestão de Cemitérios', icon: 'Cross', route: '/cemiterios', shortcut: 'G', badge: null, module: 'cemiterios', permission: 'cemiterios.view' },

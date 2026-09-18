@@ -9,7 +9,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Plano de Carreira (Geral vs Magistério) para cálculo ponderado de notas no CAPD.
+ * Plano de Carreira para cálculo ponderado de notas no CAPD.
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property string $codigo
+ * @property string $nome
+ * @property string|null $lei_referencia
+ * @property bool $ativo
  */
 final class PlanoCarreira extends Model
 {

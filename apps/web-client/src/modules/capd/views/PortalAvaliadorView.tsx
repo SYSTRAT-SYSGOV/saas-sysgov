@@ -3885,20 +3885,8 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Alternador de Visualização em Pílulas */}
+                  {/* Alternador de Visualização em Pílulas (Tabela como primeira opção ativa) */}
                   <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border/60">
-                    <button
-                      type="button"
-                      onClick={() => setCitVisualizacao('timeline')}
-                      className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                        citVisualizacao === 'timeline'
-                          ? 'bg-background text-foreground shadow-xs'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <LayoutList className="h-3.5 w-3.5" />
-                      Linha do Tempo
-                    </button>
                     <button
                       type="button"
                       onClick={() => setCitVisualizacao('tabela')}
@@ -3910,6 +3898,18 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
                     >
                       <Table className="h-3.5 w-3.5" />
                       Tabela Analítica
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCitVisualizacao('timeline')}
+                      className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                        citVisualizacao === 'timeline'
+                          ? 'bg-background text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <LayoutList className="h-3.5 w-3.5" />
+                      Linha do Tempo
                     </button>
                   </div>
 

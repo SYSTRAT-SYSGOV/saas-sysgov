@@ -26,8 +26,9 @@ final class PerguntaController extends Controller
     {
         $planoId = $request->query('plano_carreira_id') ? (int) $request->query('plano_carreira_id') : null;
         $cargo = $request->query('cargo') ? (string) $request->query('cargo') : null;
+        $grupo = $request->query('grupo') ? (string) $request->query('grupo') : null;
 
-        $modelos = $this->perguntaService->listarModelos($planoId, $cargo);
+        $modelos = $this->perguntaService->listarModelos($planoId, $cargo, $grupo);
 
         return response()->json($modelos);
     }
@@ -36,14 +37,39 @@ final class PerguntaController extends Controller
     {
         $planoId = $request->query('plano_carreira_id') ? (int) $request->query('plano_carreira_id') : null;
         $cargo = $request->query('cargo') ? (string) $request->query('cargo') : null;
+        $grupo = $request->query('grupo') ? (string) $request->query('grupo') : null;
+        $servidorId = $request->query('servidor_id') ? (int) $request->query('servidor_id') : null;
 
-        $modelo = $this->perguntaService->getModeloVigente($planoId, $cargo);
+        $servidor = null;
+        if ($servidorId) {
+            $servidor = \Modules\Capd\Models\Servidor::query()->where('user_id', $servidorId)->first()
+                ?? \Modules\Capd\Models\Servidor::query()->find($servidorId);
+        }
+
+        $modelo = $this->perguntaService->resolverModeloParaServidor($servidor, $cargo, $grupo);
 
         if (! $modelo) {
             return response()->json(['message' => 'Nenhum modelo vigente encontrado.'], 404);
         }
 
         return response()->json($modelo);
+    }
+
+    public function identificarGrupo(Request $request): JsonResponse
+    {
+        $servidorId = $request->query('servidor_id') ? (int) $request->query('servidor_id') : null;
+        $cargo = $request->query('cargo') ? (string) $request->query('cargo') : null;
+        $lotacao = $request->query('lotacao') ? (string) $request->query('lotacao') : null;
+
+        $servidor = null;
+        if ($servidorId) {
+            $servidor = \Modules\Capd\Models\Servidor::query()->where('user_id', $servidorId)->first()
+                ?? \Modules\Capd\Models\Servidor::query()->find($servidorId);
+        }
+
+        $grupo = $this->perguntaService->identificarGrupoFuncional($servidor, $cargo, $lotacao);
+
+        return response()->json($grupo);
     }
 
     public function storeModelo(Request $request): JsonResponse

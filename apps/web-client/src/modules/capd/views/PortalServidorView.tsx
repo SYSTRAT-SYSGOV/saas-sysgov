@@ -57,13 +57,15 @@ import {
   FileCheck,
   Paperclip,
   Printer,
+  Scale,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiEspelhoAvaliacao,
   ApiDiarioBordo,
-  ApiSimulacaoProgressao,
   ApiAvaliacao,
+  ApiRecurso,
+  ApiFator,
 } from '@sysgov/sdk';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs, type TabsItem } from '@/components/ui/Tabs';
@@ -75,7 +77,7 @@ import { MatrizEscalaGrafica, type RespostaItem } from '../components/MatrizEsca
 
 const api = new SysgovApi();
 
-type ServidorSubTab = 'espelho' | 'cit' | 'simulador' | 'pmd' | 'recurso';
+type ServidorSubTab = 'espelho' | 'cit' | 'recurso';
 
 export interface PortalServidorViewProps {
   portalSelector?: React.ReactNode;
@@ -133,10 +135,13 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
   const [selectedAvalId, setSelectedAvalId] = useState<number | null>(null);
   const [espelho, setEspelho] = useState<ApiEspelhoAvaliacao | null>(null);
   const [incidentes, setIncidentes] = useState<ApiDiarioBordo[]>([]);
-  const [simulacao, setSimulacao] = useState<ApiSimulacaoProgressao | null>(null);
-  const [pmd, setPmd] = useState<any | null>(null);
+  const [recursos, setRecursos] = useState<ApiRecurso[]>([]);
+  const [fatoresCadastrados, setFatoresCadastrados] = useState<ApiFator[]>([]);
+  const [detalheRecursoModal, setDetalheRecursoModal] = useState<ApiRecurso | null>(null);
+  const [filtroRecursoStatus, setFiltroRecursoStatus] = useState<string>('todos');
+  const [fatorRecursoId, setFatorRecursoId] = useState<number | null>(null);
 
-  const [citVisualizacao, setCitVisualizacao] = useState<'timeline' | 'tabela'>('timeline');
+  const [citVisualizacao, setCitVisualizacao] = useState<'timeline' | 'tabela'>('tabela');
   const [filtroCitBusca, setFiltroCitBusca] = useState('');
   const [filtroCitTipo, setFiltroCitTipo] = useState<'todos' | 'positivo' | 'negativo'>('todos');
   const [filtroCitFator, setFiltroCitFator] = useState<string>('todos');
@@ -149,7 +154,6 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
   const [observacoesCiencia, setObservacoesCiencia] = useState<string>('');
   const [assinando, setAssinando] = useState<boolean>(false);
   const [modalRecursoOpen, setModalRecursoOpen] = useState<boolean>(false);
-  const [fatoresContestados, setFatoresContestados] = useState<string[]>([]);
   const [fundamentacaoRecurso, setFundamentacaoRecurso] = useState<string>('');
   const [novoGrauDesejado, setNovoGrauDesejado] = useState<number>(4);
   const [enviandoRecurso, setEnviandoRecurso] = useState<boolean>(false);
@@ -178,16 +182,16 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
       const servidorId = aval?.servidor_id;
       if (!servidorId) return;
 
-      const [esp, resCit, sim, listaPmd] = await Promise.all([
+      const [esp, resCit, resRecursos, listaFatores] = await Promise.all([
         api.capd.obterEspelhoAvaliacao(id).catch(() => null),
         api.capd.listDiarioBordo({ servidor_id: servidorId }).catch(() => ({ data: [] })),
-        api.capd.simularProgressao(servidorId).catch(() => null),
-        api.capd.listPmds({ servidor_id: servidorId }).catch(() => ({ data: [] })),
+        api.capd.listRecursos().catch(() => ({ data: [] })),
+        api.capd.listFatores().catch(() => []),
       ]);
       setEspelho(esp);
       setIncidentes(resCit.data || []);
-      setSimulacao(sim);
-      setPmd(listaPmd.data?.[0] || null);
+      setRecursos(resRecursos.data || []);
+      setFatoresCadastrados(listaFatores || []);
     } catch (e) {
       console.error('Erro ao carregar dados da avaliação:', e);
     } finally {
@@ -543,41 +547,510 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
     } finally { setAssinando(false); }
   };
 
+  const prazoRecursal = useMemo(() => {
+    if (!espelho?.ciencia_servidor_em) return null;
+    const dataCiencia = new Date(espelho.ciencia_servidor_em);
+    const dataLimite = new Date(dataCiencia);
+    let diasAdicionados = 0;
+    while (diasAdicionados < 10) {
+      dataLimite.setDate(dataLimite.getDate() + 1);
+      const diaSemana = dataLimite.getDay();
+      if (diaSemana !== 0 && diaSemana !== 6) {
+        diasAdicionados++;
+      }
+    }
+    const hoje = new Date();
+    const expirado = hoje.getTime() > dataLimite.getTime();
+    const diffMs = dataLimite.getTime() - hoje.getTime();
+    const diasRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    return {
+      dataCiencia,
+      dataLimite,
+      expirado,
+      diasRestantes,
+    };
+  }, [espelho]);
+
+  const fatoresDisponiveisRecurso = useMemo(() => {
+    if (fatoresCadastrados.length > 0) {
+      return fatoresCadastrados.map((f) => {
+        const espFator = espelho?.fatores?.find((ef) => ef.codigo === f.codigo);
+        return {
+          id: f.id,
+          codigo: f.codigo,
+          nome: f.nome,
+          descricao: f.descricao,
+          peso: espFator?.peso ?? f.peso_geral,
+          grauAtual: espFator?.grau ?? null,
+          notaAtual: espFator?.nota ?? null,
+          justificativaAtual: espFator?.justificativa ?? null,
+        };
+      });
+    }
+    return (espelho?.fatores || []).map((ef, idx) => ({
+      id: idx + 1,
+      codigo: ef.codigo,
+      nome: ef.nome,
+      descricao: ef.descricao || '',
+      peso: ef.peso,
+      grauAtual: ef.grau ?? null,
+      notaAtual: ef.nota ?? null,
+      justificativaAtual: ef.justificativa ?? null,
+    }));
+  }, [fatoresCadastrados, espelho]);
+
+  useEffect(() => {
+    if (!fatorRecursoId && fatoresDisponiveisRecurso.length > 0) {
+      setFatorRecursoId(fatoresDisponiveisRecurso[0].id);
+    }
+  }, [fatorRecursoId, fatoresDisponiveisRecurso]);
+
+  const fatorSelecionadoRecurso = useMemo(() => {
+    return fatoresDisponiveisRecurso.find((f) => f.id === fatorRecursoId) || fatoresDisponiveisRecurso[0];
+  }, [fatoresDisponiveisRecurso, fatorRecursoId]);
+
+  const fatoresRecursoOptions: SelectOption[] = useMemo(() => {
+    return fatoresDisponiveisRecurso.map((f) => ({
+      value: String(f.id),
+      label: `${f.codigo} — ${f.nome} (Grau atual: ${f.grauAtual ?? '—'}, Peso: ${f.peso}%)`,
+    }));
+  }, [fatoresDisponiveisRecurso]);
+
+  const filtroStatusRecursoOptions: SelectOption[] = [
+    { value: 'todos', label: 'Todos os Status' },
+    { value: 'interposto', label: 'Interposto / Aguardando Chefia' },
+    { value: 'em_instrucao', label: 'Em Instrução / Relatoria' },
+    { value: 'pautado', label: 'Pautado para Julgamento' },
+    { value: 'julgado_provido', label: 'Julgado Provido (Deferido)' },
+    { value: 'julgado_desprovido', label: 'Julgado Desprovido (Mantido)' },
+  ];
+
+  const totalRecursos = recursos.length;
+  const recursosEmTramitacao = useMemo(() => {
+    return recursos.filter((r) => ['interposto', 'em_instrucao', 'pautado'].includes(r.status)).length;
+  }, [recursos]);
+  const recursosJulgados = useMemo(() => {
+    return recursos.filter((r) => ['julgado_provido', 'julgado_desprovido'].includes(r.status)).length;
+  }, [recursos]);
+
+  const recursosFiltrados = useMemo(() => {
+    return recursos.filter((rec) => {
+      if (filtroRecursoStatus !== 'todos' && rec.status !== filtroRecursoStatus) {
+        return false;
+      }
+      return true;
+    });
+  }, [recursos, filtroRecursoStatus]);
+
+  const getStatusRecursoBadge = (status: string) => {
+    switch (status) {
+      case 'interposto':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] uppercase font-bold border-amber-500/50 text-amber-700 dark:text-amber-400 bg-amber-500/10"
+          >
+            <Clock className="h-3 w-3 mr-1 text-amber-600" />
+            Interposto / Aguardando Chefia
+          </Badge>
+        );
+      case 'em_instrucao':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] uppercase font-bold border-blue-500/50 text-blue-700 dark:text-blue-400 bg-blue-500/10"
+          >
+            <FileText className="h-3 w-3 mr-1 text-blue-600" />
+            Em Instrução / Relatoria
+          </Badge>
+        );
+      case 'pautado':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] uppercase font-bold border-purple-500/50 text-purple-700 dark:text-purple-400 bg-purple-500/10"
+          >
+            <Calendar className="h-3 w-3 mr-1 text-purple-600" />
+            Pautado para Julgamento
+          </Badge>
+        );
+      case 'julgado_provido':
+        return (
+          <Badge
+            variant="success"
+            className="text-[10px] uppercase font-bold"
+          >
+            <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-600" />
+            Julgado Provido (Deferido)
+          </Badge>
+        );
+      case 'julgado_desprovido':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] uppercase font-bold border-rose-500/50 text-rose-700 dark:text-rose-400 bg-rose-500/10"
+          >
+            <XCircle className="h-3 w-3 mr-1 text-rose-600" />
+            Julgado Desprovido (Mantido)
+          </Badge>
+        );
+      case 'cancelado':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] uppercase font-medium text-muted-foreground"
+          >
+            Cancelado
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="text-[10px]">
+            {status}
+          </Badge>
+        );
+    }
+  };
+
+  const handleImprimirRecurso = useCallback(
+    (rec: ApiRecurso) => {
+      const win = window.open('', '_blank');
+      if (!win) return;
+      const dataFormatada = new Date(rec.created_at).toLocaleDateString('pt-BR');
+      const servidorNome = espelho?.servidor?.nome || rec.servidor?.nome_completo || 'Servidor Avaliado';
+      const matricula = espelho?.servidor?.matricula || rec.servidor?.matricula || '—';
+      const cargo = espelho?.servidor?.cargo || rec.servidor?.cargo_efetivo || 'Servidor Público';
+      const fatorNome =
+        rec.fatorContestado?.nome || rec.fator_contestado?.nome || `Fator #${rec.fator_contestado_id}`;
+      const statusLabel =
+        rec.status === 'julgado_provido'
+          ? 'Julgado Provido (Deferido)'
+          : rec.status === 'julgado_desprovido'
+          ? 'Julgado Desprovido (Mantido)'
+          : rec.status === 'pautado'
+          ? 'Pautado para Julgamento'
+          : rec.status === 'em_instrucao'
+          ? 'Em Instrução na CAD'
+          : 'Interposto / Aguardando Chefia';
+
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Petição de Recurso Administrativo - #${rec.id}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #111827; line-height: 1.5; }
+            .header { border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }
+            .title { font-size: 20px; font-weight: bold; margin: 0; }
+            .subtitle { font-size: 12px; color: #6b7280; margin-top: 4px; }
+            .section { margin-bottom: 20px; }
+            .section-title { font-size: 13px; font-weight: bold; text-transform: uppercase; color: #4b5563; margin-bottom: 8px; border-bottom: 1px solid #f3f4f6; padding-bottom: 4px; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; }
+            .label { color: #6b7280; font-size: 11px; }
+            .value { font-weight: 600; margin-top: 2px; }
+            .box { background: #f9fafb; border: 1px solid #e5e7eb; padding: 14px; border-radius: 6px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+            .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+            .badge-status { background: #e0e7ff; color: #3730a3; }
+            .footer { margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 11px; color: #9ca3af; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="title">Termo de Interposição de Recurso Administrativo</h1>
+            <div class="subtitle">Comissão de Avaliação de Desempenho (CAD) — Arts. 30 e 31 da Lei nº 1.704/2006</div>
+          </div>
+          <div class="section">
+            <div class="section-title">Dados do Processo e Recorrente</div>
+            <div class="grid">
+              <div><div class="label">Protocolo do Recurso:</div><div class="value">#REC-${rec.id}</div></div>
+              <div><div class="label">Data de Protocolo:</div><div class="value">${dataFormatada}</div></div>
+              <div><div class="label">Servidor Recorrente:</div><div class="value">${servidorNome}</div></div>
+              <div><div class="label">Matrícula Funcional:</div><div class="value">${matricula}</div></div>
+              <div><div class="label">Cargo Efetivo:</div><div class="value">${cargo}</div></div>
+              <div><div class="label">Status Processual:</div><div class="value"><span class="badge badge-status">${statusLabel}</span></div></div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-title">Fator Funcional Objeto da Impugnação</div>
+            <div class="box"><strong>Fator Contestado:</strong> ${fatorNome}</div>
+          </div>
+          <div class="section">
+            <div class="section-title">Razões e Fundamentação do Servidor (Art. 30)</div>
+            <div class="box">${rec.justificativa_servidor}</div>
+          </div>
+          ${
+            rec.contestacao_chefia
+              ? `
+          <div class="section">
+            <div class="section-title">Contrarrazões da Chefia Imediata (Art. 31)</div>
+            <div class="box">${rec.contestacao_chefia}</div>
+          </div>
+          `
+              : ''
+          }
+          ${
+            rec.relator
+              ? `
+          <div class="section">
+            <div class="section-title">Instrução Colegiada (CAD)</div>
+            <div class="grid">
+              <div><div class="label">Relator Designado:</div><div class="value">${
+                rec.relator.nome_completo || rec.relator.name || 'Membro da Comissão'
+              }</div></div>
+              <div><div class="label">Prazo de Relatoria:</div><div class="value">${
+                rec.prazo_relator_ate ? new Date(rec.prazo_relator_ate).toLocaleDateString('pt-BR') : 'Regimental'
+              }</div></div>
+            </div>
+          </div>
+          `
+              : ''
+          }
+          <div class="footer">
+            Documento emitido eletronicamente via SYSGOV em ${new Date().toLocaleString(
+              'pt-BR'
+            )} • Válido para instrução probatória e recurso junto à CAD.
+          </div>
+        </body>
+        </html>
+      `);
+      win.document.close();
+      win.focus();
+      win.print();
+    },
+    [espelho]
+  );
+
+  const columnsRecursos: ColumnDef<ApiRecurso>[] = useMemo(
+    () => [
+      {
+        id: 'protocolo',
+        header: 'Protocolo / Data',
+        size: 140,
+        accessorFn: (row) => row.id,
+        cell: ({ row }) => (
+          <div className="space-y-0.5 text-left">
+            <span className="font-mono text-xs font-bold text-foreground block">
+              #REC-{String(row.original.id).padStart(4, '0')}
+            </span>
+            <span className="font-mono text-[11px] text-muted-foreground tabular-nums flex items-center gap-1">
+              <CalendarDays className="h-3 w-3" />
+              {new Date(row.original.created_at).toLocaleDateString('pt-BR')}
+            </span>
+          </div>
+        ),
+        meta: {
+          exportHeader: 'Protocolo',
+          exportValue: (row) => `#REC-${row.id}`,
+        },
+      },
+      {
+        id: 'fator',
+        header: 'Fator Contestado',
+        size: 220,
+        accessorFn: (row) =>
+          row.fatorContestado?.nome || row.fator_contestado?.nome || `Fator #${row.fator_contestado_id}`,
+        cell: ({ row }) => {
+          const cod = row.original.fatorContestado?.codigo || row.original.fator_contestado?.codigo;
+          const nome =
+            row.original.fatorContestado?.nome ||
+            row.original.fator_contestado?.nome ||
+            `Fator #${row.original.fator_contestado_id}`;
+          return (
+            <div className="space-y-0.5 text-left">
+              <div className="flex items-center gap-1.5">
+                {cod && (
+                  <Badge variant="outline" className="font-mono text-[10px] px-1 py-0 text-primary border-primary/30">
+                    {cod}
+                  </Badge>
+                )}
+                <span className="text-xs font-semibold text-foreground truncate max-w-[180px]" title={nome}>
+                  {nome}
+                </span>
+              </div>
+            </div>
+          );
+        },
+        meta: {
+          exportHeader: 'Fator Contestado',
+          exportValue: (row) =>
+            row.fatorContestado?.nome || row.fator_contestado?.nome || `Fator #${row.fator_contestado_id}`,
+        },
+      },
+      {
+        id: 'status',
+        header: 'Status Processual',
+        size: 180,
+        accessorFn: (row) => row.status,
+        cell: ({ row }) => getStatusRecursoBadge(row.original.status),
+        meta: {
+          exportHeader: 'Status',
+          exportValue: (row) => row.status,
+        },
+      },
+      {
+        id: 'relator',
+        header: 'Relator da CAD',
+        size: 160,
+        accessorFn: (row) => row.relator?.nome_completo || row.relator?.name || 'Aguardando',
+        cell: ({ row }) => {
+          const nome = row.original.relator?.nome_completo || row.original.relator?.name;
+          return nome ? (
+            <div className="flex items-center gap-1.5 text-xs text-foreground/90 font-medium">
+              <User className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="truncate max-w-[130px]" title={nome}>
+                {nome}
+              </span>
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground italic flex items-center gap-1">
+              <Clock className="h-3 w-3 text-muted-foreground/60" />
+              Aguardando sorteio
+            </span>
+          );
+        },
+        meta: {
+          exportHeader: 'Relator',
+          exportValue: (row) => row.relator?.nome_completo || row.relator?.name || 'Aguardando sorteio',
+        },
+      },
+      {
+        id: 'fase',
+        header: 'Fase Regimental',
+        size: 170,
+        cell: ({ row }) => {
+          const st = row.original.status;
+          if (st === 'interposto') {
+            return (
+              <span className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">
+                Contrarrazões Chefia (Art. 31)
+              </span>
+            );
+          }
+          if (st === 'em_instrucao') {
+            return (
+              <span className="text-[11px] text-blue-700 dark:text-blue-400 font-medium">
+                Elaboração de Voto / CAD
+              </span>
+            );
+          }
+          if (st === 'pautado') {
+            return (
+              <span className="text-[11px] text-purple-700 dark:text-purple-400 font-medium">
+                Pauta de Sessão Colegiada
+              </span>
+            );
+          }
+          if (st === 'julgado_provido' || st === 'julgado_desprovido') {
+            return (
+              <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                Decisão Homologada
+              </span>
+            );
+          }
+          return <span className="text-[11px] text-muted-foreground">—</span>;
+        },
+      },
+      {
+        id: 'acoes',
+        header: 'Ações',
+        size: 150,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10"
+              onClick={() => setDetalheRecursoModal(row.original)}
+            >
+              <Eye className="h-3.5 w-3.5 text-primary" />
+              Ver Autos
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-1.5 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
+              title="Imprimir Petição e Termo de Recurso (PDF)"
+              onClick={() => handleImprimirRecurso(row.original)}
+            >
+              <Printer className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [handleImprimirRecurso]
+  );
+
   const handleSubmeterRecurso = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!espelho) return;
+    if (!fatorRecursoId) {
+      setFeedback({
+        open: true,
+        type: 'warning',
+        title: 'Fator Não Selecionado',
+        message: 'Selecione o fator da avaliação funcional que você deseja contestar.',
+      });
+      return;
+    }
+    if (fundamentacaoRecurso.trim().length < 50) {
+      setFeedback({
+        open: true,
+        type: 'warning',
+        title: 'Fundamentação Insuficiente',
+        message: 'A justificativa do recurso deve conter no mínimo 50 caracteres para instrução válida (Art. 30).',
+      });
+      return;
+    }
     setEnviandoRecurso(true);
     try {
-      await api.capd.createRecurso({ avaliacao_id: espelho.avaliacao_id, fator_contestado_id: 1, justificativa_servidor: `[Fatores: ${fatoresContestados.join(', ')}] ${fundamentacaoRecurso}` });
+      const fObj = fatoresDisponiveisRecurso.find((f) => f.id === fatorRecursoId);
+      const justificativaFormatada = `[Grau Pleiteado: Grau ${novoGrauDesejado} - ${getGrauLabel(novoGrauDesejado)} | Fator Contestado: ${fObj?.codigo || ''} - ${fObj?.nome || ''}]\n\n${fundamentacaoRecurso.trim()}`;
+      await api.capd.createRecurso({
+        avaliacao_id: espelho.avaliacao_id,
+        fator_contestado_id: fatorRecursoId,
+        justificativa_servidor: justificativaFormatada,
+      });
       setModalRecursoOpen(false);
       setFundamentacaoRecurso('');
       await carregarDadosAvaliacao(selectedAvalId!);
-      setFeedback({ open: true, type: 'success', title: 'Recurso Protocolado', message: 'Seu recurso foi encaminhado com sucesso à chefia imediata.' });
+      setFeedback({
+        open: true,
+        type: 'success',
+        title: 'Recurso Administrativo Protocolado',
+        message:
+          'Seu recurso foi protocolado com sucesso e encaminhado para manifestação e contrarrazões da chefia imediata (Art. 31 da Lei nº 1.704/2006).',
+      });
     } catch (err: any) {
-      setFeedback({ open: true, type: 'error', title: 'Erro no Protocolo', message: err?.response?.data?.message || 'Falha ao protocolar.' });
-    } finally { setEnviandoRecurso(false); }
+      setFeedback({
+        open: true,
+        type: 'error',
+        title: 'Erro no Protocolo do Recurso',
+        message: err?.response?.data?.message || 'Falha ao protocolar o recurso administrativo.',
+      });
+    } finally {
+      setEnviandoRecurso(false);
+    }
   };
 
   const subTabItems: TabsItem<ServidorSubTab>[] = [
     { key: 'espelho', label: 'Espelho da Avaliação', icon: <FileText className="h-4 w-4" /> },
     { key: 'cit', label: 'Diário de Bordo', icon: <BookOpen className="h-4 w-4" />, badge: incidentes.length || undefined },
-    { key: 'simulador', label: 'Simulador de Progressão', icon: <TrendingUp className="h-4 w-4" /> },
-    { key: 'pmd', label: 'Plano de Melhoria (PMD)', icon: <GraduationCap className="h-4 w-4" />, badge: pmd ? 1 : undefined },
-    { key: 'recurso', label: 'Meu Recurso', icon: <ShieldAlert className="h-4 w-4" /> },
+    { key: 'recurso', label: 'Meu Recurso', icon: <Scale className="h-4 w-4" />, badge: recursos.length || undefined },
   ];
 
   if (loading && !espelho) return <ScreenState type="loading" title="Carregando portal do servidor avaliado..." />;
 
-  const cycleOptions: SelectOption[] = avaliacoes.map(av => ({
+  const cycleOptions: SelectOption[] = avaliacoes.map((av) => ({
     value: av.id.toString(),
-    label: `Ciclo ${av.ciclo?.ano_referencia || av.ciclo?.nome || av.id}`
+    label: `Ciclo ${av.ciclo?.ano_referencia || av.ciclo?.nome || av.id}`,
   }));
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Portal do Servidor Avaliado"
-        subtitle="Consulta ao espelho funcional de desempenho, ciência eletrônica e simulação de progressão"
+        subtitle="Consulta ao espelho funcional de desempenho, diário de bordo e acompanhamento recursal"
         badge="Área do Servidor"
         actions={
           <div className="flex flex-wrap items-center gap-3">
@@ -765,6 +1238,18 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                 <div className="flex items-center bg-muted/60 p-1 rounded-lg border border-border/60 shrink-0">
                   <button
                     type="button"
+                    onClick={() => setCitVisualizacao('tabela')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      citVisualizacao === 'tabela'
+                        ? 'bg-background text-foreground shadow-2xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Table className="h-3.5 w-3.5" />
+                    Tabela Dinâmica
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setCitVisualizacao('timeline')}
                     className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                       citVisualizacao === 'timeline'
@@ -774,18 +1259,6 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                   >
                     <LayoutList className="h-3.5 w-3.5" />
                     Linha do Tempo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCitVisualizacao('tabela')}
-                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                      citVisualizacao === 'tabela'
-                        ? 'bg-background text-foreground shadow-2xs'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Table className="h-3.5 w-3.5" />
-                    Tabela Analítica
                   </button>
                 </div>
               </div>
@@ -1003,173 +1476,243 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
         </div>
       )}
 
-      {activeTab === 'simulador' && (
+      {activeTab === 'recurso' && (
         <div className="space-y-6">
-          {simulacao ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <KpiCard title="NFC Trienal Projetada" value={`${Number(simulacao.nfc_projetada).toFixed(2)} pts`} subtitle="Média aritmética dos 3 ciclos" icon={<BarChart3 className="h-5 w-5" />} iconBgColor="bg-status-info-bg text-status-info" />
-                <KpiCard title="Elegibilidade Regimental" value={simulacao.elegivel_progressao ? 'APTO' : 'INAPTO'} subtitle="Corte legal: 70,00 pontos" icon={<Target className="h-5 w-5" />} iconBgColor={simulacao.elegivel_progressao ? 'bg-status-success-bg text-status-success' : 'bg-status-danger-bg text-status-danger'} statusBadge={<StatusChip label={simulacao.elegivel_progressao ? 'Progressão Garantida' : 'PMD Obrigatório'} variant={simulacao.elegivel_progressao ? 'success' : 'danger'} />} />
-                <KpiCard title="Impacto Salarial Total" value={`+${simulacao.percentual_total_aumento?.toFixed(1) || '0.0'}%`} subtitle="Progressão horizontal + quinquênios" icon={<ArrowUpCircle className="h-5 w-5" />} iconBgColor="bg-status-success-bg text-status-success" />
+          {/* ── Banner de Admissibilidade / Tempestividade ──────────────────────── */}
+          {!espelho?.ciencia_servidor_em ? (
+            <div className="flex items-start gap-4 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10">
+              <div className="p-2 bg-amber-500/20 rounded-lg text-amber-700 dark:text-amber-400 shrink-0 mt-0.5">
+                <AlertTriangle className="h-5 w-5" />
               </div>
-              <Card className={`p-5 border-border ${simulacao.elegivel_progressao ? 'bg-status-success-bg border-status-success-border' : 'bg-status-danger-bg border-status-danger-border'}`}>
-                <div className="flex items-start gap-4">
-                  <div className={`p-3 rounded-xl ${simulacao.elegivel_progressao ? 'bg-white/60' : 'bg-white/60'}`}>
-                    {simulacao.elegivel_progressao ? <CheckCircle2 className="h-6 w-6 text-status-success" /> : <XCircle className="h-6 w-6 text-status-danger" />}
+              <div className="flex-1 space-y-1">
+                <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                  Ciência Eletrônica Obrigatória (Art. 27 da Lei nº 1.704/2006)
+                </h4>
+                <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                  Para protocolar um recurso administrativo contra as notas da avaliação funcional, é obrigatório registrar previamente a assinatura eletrônica de ciência no espelho. O prazo legal de 10 dias úteis é deflagrado a partir da ciência.
+                </p>
+                <div className="pt-2">
+                  <Button
+                    size="sm"
+                    onClick={() => setModalCienciaOpen(true)}
+                    className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold"
+                  >
+                    <Fingerprint className="h-3.5 w-3.5 mr-1.5" />
+                    Registrar Ciência Agora
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : prazoRecursal?.expirado ? (
+            <div className="flex items-start gap-4 p-4 rounded-xl border border-rose-500/40 bg-rose-500/10">
+              <div className="p-2 bg-rose-500/20 rounded-lg text-rose-700 dark:text-rose-400 shrink-0 mt-0.5">
+                <XCircle className="h-5 w-5" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200">
+                  Prazo Recursal Expirado (Preclusão Administrativa)
+                </h4>
+                <p className="text-xs text-rose-800 dark:text-rose-300 leading-relaxed">
+                  O prazo legal de 10 dias úteis para interposição de recurso administrativo encerrou-se em{' '}
+                  <span className="font-mono font-bold tabular-nums">
+                    {prazoRecursal.dataLimite.toLocaleDateString('pt-BR')}
+                  </span>
+                  . A ciência foi lavrada em{' '}
+                  <span className="font-mono font-bold tabular-nums">
+                    {prazoRecursal.dataCiencia.toLocaleDateString('pt-BR')}
+                  </span>
+                  .
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-4 p-4 rounded-xl border border-blue-500/30 bg-blue-500/5">
+              <div className="p-2 bg-blue-500/10 rounded-lg text-blue-600 shrink-0 mt-0.5">
+                <CalendarDays className="h-5 w-5" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="text-sm font-bold text-blue-950 dark:text-blue-200">
+                    Prazo Recursal Aberto — Tempestividade Preservada (Art. 30)
+                  </h4>
+                  <Badge variant="outline" className="font-mono text-xs font-bold border-blue-500/40 text-blue-700 dark:text-blue-400 bg-blue-500/10">
+                    {prazoRecursal?.diasRestantes ?? 0} dias úteis restantes
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Ciência protocolada em{' '}
+                  <span className="font-mono font-bold text-foreground">
+                    {prazoRecursal ? prazoRecursal.dataCiencia.toLocaleDateString('pt-BR') : '—'}
+                  </span>
+                  . Prazo fatal para protocolo de recurso à CAD:{' '}
+                  <span className="font-mono font-bold text-foreground">
+                    {prazoRecursal ? prazoRecursal.dataLimite.toLocaleDateString('pt-BR') : '—'}
+                  </span>
+                  .
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── KPI Cards de Acompanhamento ────────────────────────────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <KpiCard
+              title="Total de Recursos"
+              value={String(totalRecursos)}
+              subtitle="Interpostos neste ciclo funcional"
+              icon={<Scale className="h-5 w-5" />}
+              iconBgColor="bg-status-info-bg text-status-info"
+            />
+            <KpiCard
+              title="Em Tramitação"
+              value={String(recursosEmTramitacao)}
+              subtitle="Instrução, chefia ou relatoria"
+              icon={<Clock className="h-5 w-5" />}
+              iconBgColor="bg-status-warning-bg text-status-warning"
+              statusBadge={
+                recursosEmTramitacao > 0 ? (
+                  <StatusChip label="Processamento Ativo" variant="warning" />
+                ) : (
+                  <StatusChip label="Sem Pendências" variant="neutral" />
+                )
+              }
+            />
+            <KpiCard
+              title="Decisões Homologadas"
+              value={String(recursosJulgados)}
+              subtitle="Julgados colegiados da CAD"
+              icon={<Award className="h-5 w-5" />}
+              iconBgColor="bg-status-success-bg text-status-success"
+              statusBadge={
+                recursosJulgados > 0 ? (
+                  <StatusChip label="Concluídos" variant="success" />
+                ) : (
+                  <StatusChip label="Nenhum Julgado" variant="neutral" />
+                )
+              }
+            />
+          </div>
+
+          {/* ── Card Institucional e Ação de Interposição ─────────────────────────── */}
+          <Card className="p-5 border-l-4 border-l-primary border-border bg-card space-y-4">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div className="space-y-1.5 max-w-3xl">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                    <Scale className="h-5 w-5" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className={`text-base font-bold ${simulacao.elegivel_progressao ? 'text-status-success' : 'text-status-danger'}`}>
-                      {simulacao.elegivel_progressao ? 'Servidor Apto à Progressão Horizontal (+10%)' : 'Servidor Inapto — NFC Abaixo do Corte'}
+                  <div>
+                    <h3 className="text-base font-bold text-foreground">
+                      Recurso Administrativo à CAD — Arts. 30 e 31 da Lei nº 1.704/2006
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      {simulacao.elegivel_progressao ? 'A NFC trienal calculada supera o mínimo legal de 70,00 pontos, conferindo direito à progressão horizontal de 10% sobre o vencimento-base.' : 'A NFC trienal calculada está abaixo do mínimo legal. Será elaborado um PMD para o próximo triênio.'}
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Garantia do contraditório e da ampla defesa no processo de avaliação funcional de estágio probatório.
                     </p>
                   </div>
                 </div>
-              </Card>
-              <Card className="p-5 border-border">
-                <h4 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4"><DollarSign className="h-4 w-4 text-emerald-500" /> Quinquênios e Adicional por Tempo de Serviço (Art. 17)</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 bg-muted/40 rounded-lg border border-border text-center">
-                    <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Quinquênios Adquiridos</span>
-                    <div className="font-mono font-black text-3xl text-foreground mt-1">{simulacao.quinquenios?.qtd_quinquenios || 0}</div>
-                    <span className="text-xs text-muted-foreground">períodos de 5 anos</span>
-                  </div>
-                  <div className="p-4 bg-status-success-bg rounded-lg border border-status-success-border text-center">
-                    <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Adicional sobre o Básico</span>
-                    <div className="font-mono font-black text-3xl text-status-success mt-1">+{simulacao.quinquenios?.percentual_total?.toFixed(1) || '0.0'}%</div>
-                    <span className="text-xs text-muted-foreground">sobre o vencimento-base</span>
-                  </div>
-                  <div className="p-4 bg-muted/40 rounded-lg border border-border text-center">
-                    <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Próximo Quinquênio</span>
-                    <div className="font-mono font-bold text-base text-foreground mt-1">{simulacao.quinquenios?.proximo_em || 'Em apuração'}</div>
-                    <span className="text-xs text-muted-foreground">data prevista</span>
-                  </div>
+                <div className="pt-2 text-xs text-muted-foreground leading-relaxed space-y-1">
+                  <p>
+                    • <strong className="text-foreground">Prazo Recursal (Art. 30):</strong> 10 dias úteis a contar da ciência eletrônica no espelho de avaliação.
+                  </p>
+                  <p>
+                    • <strong className="text-foreground">Contrarrazões da Chefia Imediata (Art. 31):</strong> A chefia dispõe de 5 dias úteis para prestar esclarecimentos circunstanciados e juntar provas.
+                  </p>
+                  <p>
+                    • <strong className="text-foreground">Julgamento Colegiado (CAD):</strong> Sorteio de relator imparcial na Comissão e deliberação em sessão plenária com emissão de parecer e resolução final.
+                  </p>
                 </div>
-              </Card>
-              <Card className="gap-0 py-0 overflow-hidden">
-                <div className="p-4 border-b border-border bg-card">
-                  <h4 className="text-sm font-bold text-foreground">Histórico de Notas Anuais — Triênio Atual</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">As 3 notas anuais compõem a NFC pela média aritmética simples.</p>
-                </div>
-                <div className="p-5 space-y-4">
-                  {simulacao.historico_ciclos?.map((h, idx) => {
-                    const nota = Number(h.nota);
-                    const color = nota >= 70 ? 'emerald' : nota >= 50 ? 'amber' : 'rose';
-                    return (
-                      <div key={idx} className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-xs text-status-info px-2 py-1 bg-status-info-bg rounded border border-status-info-border">Ano {idx + 1}</span>
-                            <span className="text-xs text-muted-foreground">{h.ano ? `(${h.ano})` : ''} Ciclo #{h.ciclo_id}</span>
-                          </div>
-                          <span className={`font-mono font-black text-lg tabular-nums ${color === 'emerald' ? 'text-status-success' : color === 'amber' ? 'text-[#8D5B00]' : 'text-status-danger'}`}>{nota.toFixed(2)} pts</span>
-                        </div>
-                        <ProgressBar value={nota} max={100} color={color} />
-                        <div className="flex justify-between text-[10px] text-muted-foreground font-mono"><span>0</span><span className="text-[#8D5B00]">corte: 70</span><span>100</span></div>
-                      </div>
-                    );
-                  })}
-                  <div className="pt-3 border-t border-border flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1"><Percent className="h-3.5 w-3.5" /> Média (NFC Trienal):</span>
-                    <span className="font-mono font-black text-xl text-foreground tabular-nums">{Number(simulacao.nfc_projetada).toFixed(2)} pts</span>
-                  </div>
-                </div>
-              </Card>
-            </>
-          ) : (
-            <EmptyState icon={<TrendingUp className="h-10 w-10 text-muted-foreground" />} title="Simulação não disponível" description="Avaliações insuficientes para a projeção trienal." />
-          )}
-        </div>
-      )}
-
-      {activeTab === 'pmd' && (
-        <div className="space-y-4">
-          {pmd ? (
-            <>
-              <Card className="p-5 border-border bg-status-warning-bg border-status-warning-border">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-xl bg-white/60"><GraduationCap className="h-6 w-6 text-[#8D5B00]" /></div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-foreground">Plano de Melhoria de Desempenho (PMD) Ativo</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">Instrumento de apoio gerado em razão de nota inferior a 70,00 pontos.</p>
-                      </div>
-                      <StatusChip label={pmd.status === 'concluido' ? 'Concluído' : 'Em Andamento'} variant={pmd.status === 'concluido' ? 'success' : 'warning'} />
-                    </div>
-                  </div>
-                </div>
-              </Card>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <KpiCard title="Prazo do PMD" value={`${pmd.prazo_meses} meses`} subtitle="Período de acompanhamento" icon={<Clock className="h-5 w-5" />} iconBgColor="bg-status-warning-bg text-status-warning" />
-                <KpiCard title="Data Limite" value={pmd.data_limite || 'A definir'} subtitle="Prazo máximo para conclusão" icon={<CalendarDays className="h-5 w-5" />} iconBgColor="bg-status-danger-bg text-status-danger" />
-                <KpiCard title="Responsável" value="Chefia Imediata" subtitle="Acompanhamento e orientação" icon={<User className="h-5 w-5" />} iconBgColor="bg-status-info-bg text-status-info" statusBadge={<StatusChip label={pmd.status === 'concluido' ? 'Concluído' : 'Em Andamento'} variant={pmd.status === 'concluido' ? 'success' : 'warning'} />} />
               </div>
-              <Card className="p-5 border-border space-y-4">
-                <div className="space-y-1">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Search className="h-3.5 w-3.5" /> Diagnóstico de Causas</h4>
-                  <div className="p-3 bg-muted/40 rounded-lg border border-border text-sm text-foreground leading-relaxed">{pmd.diagnostico_causas}</div>
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Ações e Metas de Evolução</h4>
-                  <div className="p-3 bg-muted/40 rounded-lg border border-border text-sm text-foreground leading-relaxed">{pmd.acoes_desenvolvimento}</div>
-                </div>
-                {pmd.observacoes_rh && (
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" /> Observações da Área de RH</h4>
-                    <div className="p-3 bg-status-info-bg rounded-lg border border-status-info-border text-xs text-muted-foreground leading-relaxed">{pmd.observacoes_rh}</div>
-                  </div>
-                )}
-              </Card>
-              <div className="flex items-start gap-3 p-4 bg-muted/40 rounded-lg border border-border text-xs text-muted-foreground">
-                <Shield className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>O PMD não caracteriza punição administrativa, mas é um instrumento de apoio ao desenvolvimento funcional.</span>
-              </div>
-            </>
-          ) : (
-            <EmptyState icon={<GraduationCap className="h-10 w-10 text-muted-foreground" />} title="Nenhum PMD ativo" description="Você não possui obrigações de PMD pendentes." />
-          )}
-        </div>
-      )}
 
-      {activeTab === 'recurso' && (
-        <div className="space-y-4">
-          <Card className="p-4 border-l-4 border-l-amber-500 border-border bg-card">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-status-warning-bg rounded-lg border border-status-warning-border"><ShieldAlert className="h-5 w-5 text-[#8D5B00]" /></div>
-              <div className="flex-1">
-                <h3 className="text-sm font-bold text-foreground">Recurso Administrativo à CAD — Arts. 30 e 31</h3>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  O servidor tem direito a interpor recurso administrativo no prazo de <strong className="text-foreground">10 dias úteis</strong> a contar da ciência.
-                </p>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <Badge variant="outline" className="text-[10px]"><CalendarDays className="h-3 w-3 mr-1" /> Prazo: 10 dias úteis</Badge>
-                  <Badge variant="outline" className="text-[10px]"><Hash className="h-3 w-3 mr-1" /> Contrarrazões: 5 dias úteis</Badge>
-                  <Badge variant="outline" className="text-[10px]"><Briefcase className="h-3 w-3 mr-1" /> Julgamento: CAD</Badge>
-                </div>
+              <div className="shrink-0 flex flex-col gap-2">
+                <Button
+                  onClick={() => {
+                    if (!espelho?.ciencia_servidor_em) {
+                      setFeedback({
+                        open: true,
+                        type: 'warning',
+                        title: 'Ciência Necessária',
+                        message: 'Por favor, assine a ciência eletrônica antes de protocolar o recurso.',
+                      });
+                      return;
+                    }
+                    if (prazoRecursal?.expirado) {
+                      setFeedback({
+                        open: true,
+                        type: 'warning',
+                        title: 'Prazo Precluso',
+                        message: 'O prazo regulamentar de 10 dias úteis para interposição de recurso já expirou.',
+                      });
+                      return;
+                    }
+                    setModalRecursoOpen(true);
+                  }}
+                  disabled={!espelho?.ciencia_servidor_em || Boolean(prazoRecursal?.expirado)}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 shadow-sm cursor-pointer"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Interpor Recurso Administrativo
+                </Button>
               </div>
             </div>
           </Card>
-          {espelho && !espelho.ciencia_servidor_em && (
-            <div className="flex items-start gap-3 p-4 bg-status-danger-bg border border-status-danger-border rounded-lg">
-              <XCircle className="h-5 w-5 text-status-danger shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-status-danger">Ciência Eletrônica Obrigatória</p>
-                <p className="text-xs text-status-danger/80 mt-0.5">Para protocolar um recurso, é necessário primeiro registrar a ciência eletrônica.</p>
+
+          {/* ── Listagem / Histórico de Recursos ───────────────────────────────── */}
+          <Card className="gap-0 py-0 overflow-hidden">
+            <div className="p-4 border-b border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <ScrollText className="h-4 w-4 text-primary" />
+                  Processos e Recursos Protocolados
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Acompanhe a instrução processual, manifestação da chefia e decisões colegiadas.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Filtrar:</span>
+                <Select
+                  value={filtroRecursoStatus}
+                  onChange={(val) => setFiltroRecursoStatus(val || 'todos')}
+                  options={filtroStatusRecursoOptions}
+                  className="w-56 text-xs"
+                />
               </div>
             </div>
-          )}
-          {espelho?.pode_recorrer && (
-            <Button onClick={() => setModalRecursoOpen(true)} className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white" size="sm">
-              <ShieldAlert className="h-4 w-4 mr-2" /> Interpor Recurso Administrativo
-            </Button>
-          )}
-          <Card className="gap-0 py-0 overflow-hidden">
-            <div className="p-4 border-b border-border bg-card">
-              <h3 className="text-sm font-bold text-foreground">Histórico de Recursos</h3>
+
+            <div className="p-4">
+              {recursosFiltrados.length === 0 ? (
+                <EmptyState
+                  icon={<Scale className="h-10 w-10 text-muted-foreground" />}
+                  title={recursos.length === 0 ? 'Nenhum recurso protocolado' : 'Nenhum recurso encontrado'}
+                  description={
+                    recursos.length === 0
+                      ? 'Caso discorde dos graus atribuídos pela chefia imediata em algum fator, você pode interpor recurso administrativo no prazo de 10 dias úteis.'
+                      : 'Não há recursos cadastrados com o status selecionado no filtro.'
+                  }
+                  actionLabel={
+                    espelho?.ciencia_servidor_em && !prazoRecursal?.expirado && recursos.length === 0
+                      ? 'Interpor Primeiro Recurso'
+                      : undefined
+                  }
+                  onAction={() => setModalRecursoOpen(true)}
+                />
+              ) : (
+                <DataTable
+                  columns={columnsRecursos}
+                  data={recursosFiltrados}
+                  loading={loading}
+                  emptyText="Nenhum recurso encontrado."
+                  searchable={false}
+                  pageSize={10}
+                  pageSizeSelector
+                  fixedLayout
+                  exportable
+                  exportFileName="recursos-administrativos-capd"
+                  exportTitle="CAPD — Recursos Administrativos do Servidor"
+                />
+              )}
             </div>
-            <EmptyState icon={<ScrollText className="h-8 w-8 text-muted-foreground" />} title="Nenhum recurso protocolado" description="Você ainda não interpôs nenhum recurso neste ciclo." />
           </Card>
         </div>
       )}
@@ -1213,45 +1756,341 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
         </div>
       </Modal>
 
-      <Modal open={modalRecursoOpen} onClose={() => setModalRecursoOpen(false)} title="Interposição de Recurso Administrativo (Art. 30)" size="lg">
-        <form onSubmit={handleSubmeterRecurso} className="space-y-5 py-2 text-xs">
-          <div className="flex items-start gap-3 p-3 bg-status-warning-bg border border-status-warning-border rounded-lg">
-            <AlertTriangle className="h-4 w-4 text-[#8D5B00] shrink-0 mt-0.5" />
-            <div className="flex-1"><p className="font-semibold text-[#8D5B00]">Prazos Regimentais</p><p className="text-xs text-muted-foreground mt-1">Prazo de 10 dias úteis para interposição a contar da ciência.</p></div>
+      <Modal
+        open={modalRecursoOpen}
+        onClose={() => setModalRecursoOpen(false)}
+        title="Interposição de Recurso Administrativo à CAD (Art. 30)"
+        size="lg"
+      >
+        <form onSubmit={handleSubmeterRecurso} className="space-y-4 py-2 text-xs">
+          <div className="flex items-start gap-3 p-3 bg-status-info-bg border border-status-info-border rounded-lg">
+            <Info className="h-4 w-4 text-status-info shrink-0 mt-0.5" />
+            <div className="flex-1 text-muted-foreground leading-relaxed">
+              Conforme o <strong className="text-foreground">Art. 30 da Lei nº 1.704/2006</strong>, o recurso deve indicar expressamente o fator funcional contestado, o grau pleiteado e as razões de fato e de direito que justificam a revisão da nota.
+            </div>
           </div>
-          <div>
-            <label className="block font-semibold text-foreground mb-2">Fatores Contestados:</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {espelho?.fatores?.map((f) => (
-                <label key={f.codigo} className={`flex items-center gap-2.5 p-2.5 border rounded-lg cursor-pointer transition-colors ${fatoresContestados.includes(f.codigo) ? 'border-status-info-border bg-status-info-bg' : 'border-border hover:bg-muted/10'}`}>
-                  <input type="checkbox" checked={fatoresContestados.includes(f.codigo)} onChange={(e) => e.target.checked ? setFatoresContestados(p => [...p, f.codigo]) : setFatoresContestados(p => p.filter(c => c !== f.codigo))} className="accent-blue-500" />
-                  <span className="font-mono font-bold text-status-info text-[11px]">{f.codigo}</span>
-                  <span className="truncate text-foreground">{f.nome}</span>
-                  <span className="ml-auto font-mono font-bold text-muted-foreground shrink-0">Grau {f.grau}</span>
-                </label>
+
+          <div className="space-y-1.5">
+            <label className="block font-semibold text-foreground">
+              Selecione o Fator Funcional Objeto do Recurso: <span className="text-status-danger">*</span>
+            </label>
+            <Select
+              value={fatorRecursoId ? String(fatorRecursoId) : null}
+              onChange={(val) => setFatorRecursoId(Number(val))}
+              options={fatoresRecursoOptions}
+              className="w-full"
+            />
+          </div>
+
+          {fatorSelecionadoRecurso && (
+            <div className="p-3.5 rounded-lg border border-border bg-muted/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-foreground text-xs">
+                  Situação Atual do Fator no Espelho:
+                </span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  Peso Regimental: <strong className="text-foreground">{fatorSelecionadoRecurso.peso}%</strong>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="p-2.5 rounded bg-background border border-border">
+                  <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Grau Atribuído pela Chefia</span>
+                  <div className="font-mono text-base font-bold text-foreground mt-0.5">
+                    {fatorSelecionadoRecurso.grauAtual ? `Grau ${fatorSelecionadoRecurso.grauAtual}` : 'Não avaliado'}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-background border border-border">
+                  <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Nota Ponderada Atual</span>
+                  <div className="font-mono text-base font-bold text-foreground mt-0.5">
+                    {fatorSelecionadoRecurso.notaAtual !== null ? `${Number(fatorSelecionadoRecurso.notaAtual).toFixed(2)} pts` : '—'}
+                  </div>
+                </div>
+              </div>
+              {fatorSelecionadoRecurso.justificativaAtual && (
+                <div className="text-[11px] text-muted-foreground bg-background p-2 rounded border border-border/70">
+                  <span className="font-semibold text-foreground mr-1">Justificativa da chefia:</span>
+                  {fatorSelecionadoRecurso.justificativaAtual}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="block font-semibold text-foreground">
+              Grau Pleiteado na Revisão (1 a 5): <span className="text-status-danger">*</span>
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {[1, 2, 3, 4, 5].map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setNovoGrauDesejado(g)}
+                  className={`p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
+                    novoGrauDesejado === g
+                      ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                      : 'border-border bg-card hover:bg-muted/30'
+                  }`}
+                >
+                  <div className="font-mono font-bold text-sm text-foreground">Grau {g}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{getGrauLabel(g)}</div>
+                </button>
               ))}
             </div>
           </div>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="block font-semibold text-foreground mb-1.5">Grau Pleiteado (1 a 5):</label>
-              <Input type="number" min={1} max={5} value={novoGrauDesejado} onChange={(e) => setNovoGrauDesejado(Number(e.target.value))} className="font-mono" required />
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block font-semibold text-foreground">
+                Razões Recursais Fundamentadas: <span className="text-status-danger">*</span>
+              </label>
+              <span
+                className={`font-mono text-[11px] ${
+                  fundamentacaoRecurso.trim().length >= 50 ? 'text-status-success font-semibold' : 'text-status-danger'
+                }`}
+              >
+                {fundamentacaoRecurso.trim().length}/5000 (mínimo de 50 caracteres)
+              </span>
             </div>
-            {novoGrauDesejado >= 1 && novoGrauDesejado <= 5 && (
-              <div className={`px-3 py-2 rounded-lg border text-xs font-semibold ${getGrauBgColor(novoGrauDesejado)} ${getGrauColor(novoGrauDesejado)}`}>{getGrauLabel(novoGrauDesejado)}</div>
+            <textarea
+              rows={5}
+              value={fundamentacaoRecurso}
+              onChange={(e) => setFundamentacaoRecurso(e.target.value)}
+              placeholder="Descreva fundamentadamente os fatos, atividades desenvolvidas e evidências que justificam a alteração da nota..."
+              required
+              className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-primary outline-none resize-none"
+            />
+            {fundamentacaoRecurso.trim().length > 0 && fundamentacaoRecurso.trim().length < 50 && (
+              <p className="text-[11px] text-status-danger flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Faltam {50 - fundamentacaoRecurso.trim().length} caracteres para atingir o mínimo exigido pelo regulamento.
+              </p>
             )}
           </div>
-          <div>
-            <label className="block font-semibold text-foreground mb-1.5">Razões Recursais Fundamentadas: <span className="text-status-danger">*</span></label>
-            <textarea rows={5} value={fundamentacaoRecurso} onChange={(e) => setFundamentacaoRecurso(e.target.value)} placeholder="Descreva os motivos da contestação..." required className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
-          </div>
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
-            <Button variant="outline" size="sm" type="button" onClick={() => setModalRecursoOpen(false)}>Cancelar</Button>
-            <Button size="sm" type="submit" disabled={enviandoRecurso || !fundamentacaoRecurso.trim()} className="bg-amber-600 hover:bg-amber-700 text-white">
-              <Send className="h-4 w-4 mr-1.5" /> {enviandoRecurso ? 'Protocolando...' : 'Protocolar Recurso'}
+
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => setModalRecursoOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              type="submit"
+              disabled={enviandoRecurso || fundamentacaoRecurso.trim().length < 50}
+              className="bg-primary hover:bg-primary/90 text-white cursor-pointer"
+            >
+              <Send className="h-4 w-4 mr-1.5" />
+              {enviandoRecurso ? 'Protocolando...' : 'Protocolar Recurso'}
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* ── Modal: Autos e Tramitação do Recurso Administrativo ─────────────── */}
+      <Modal
+        open={!!detalheRecursoModal}
+        onClose={() => setDetalheRecursoModal(null)}
+        title="Autos do Recurso Administrativo à CAD (Arts. 30 e 31)"
+        size="2xl"
+      >
+        {detalheRecursoModal && (
+          <div className="space-y-4 py-2 text-xs">
+            {/* Header com Protocolo e Status */}
+            <div className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Scale className="h-4 w-4 text-primary" />
+                  <span className="font-bold text-foreground">
+                    Protocolo #REC-{String(detalheRecursoModal.id).padStart(4, '0')}
+                  </span>
+                </div>
+                <div className="font-mono text-[11px] text-muted-foreground">
+                  Protocolado em: {new Date(detalheRecursoModal.created_at).toLocaleString('pt-BR')}
+                </div>
+              </div>
+              <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-border/60">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Status Atual:</span>
+                  {getStatusRecursoBadge(detalheRecursoModal.status)}
+                </div>
+                {detalheRecursoModal.prazo_julgamento && (
+                  <div className="font-mono text-[11px] text-muted-foreground">
+                    Prazo Limite para Julgamento: {new Date(detalheRecursoModal.prazo_julgamento).toLocaleDateString('pt-BR')}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Fases Regimentais da Tramitação */}
+            <div className="p-3.5 rounded-xl border border-border bg-card space-y-2">
+              <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                Fluxo Regimental de Tramitação (Arts. 30 e 31)
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1">
+                <div className="p-2.5 rounded-lg border border-status-success-border bg-status-success-bg text-center space-y-1">
+                  <div className="flex items-center justify-center gap-1 font-bold text-status-success text-[11px]">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    1. Interposição
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Protocolado pelo servidor</p>
+                </div>
+                <div className={`p-2.5 rounded-lg border text-center space-y-1 ${
+                  detalheRecursoModal.contestacao_chefia
+                    ? 'border-status-success-border bg-status-success-bg'
+                    : 'border-border bg-muted/20'
+                }`}>
+                  <div className={`flex items-center justify-center gap-1 font-bold text-[11px] ${
+                    detalheRecursoModal.contestacao_chefia ? 'text-status-success' : 'text-muted-foreground'
+                  }`}>
+                    {detalheRecursoModal.contestacao_chefia ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                    2. Chefia Imediata
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Contrarrazões (Art. 31)</p>
+                </div>
+                <div className={`p-2.5 rounded-lg border text-center space-y-1 ${
+                  detalheRecursoModal.relator
+                    ? 'border-status-success-border bg-status-success-bg'
+                    : 'border-border bg-muted/20'
+                }`}>
+                  <div className={`flex items-center justify-center gap-1 font-bold text-[11px] ${
+                    detalheRecursoModal.relator ? 'text-status-success' : 'text-muted-foreground'
+                  }`}>
+                    {detalheRecursoModal.relator ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                    3. Relatoria CAD
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Distribuição e parecer</p>
+                </div>
+                <div className={`p-2.5 rounded-lg border text-center space-y-1 ${
+                  ['julgado_provido', 'julgado_desprovido'].includes(detalheRecursoModal.status)
+                    ? 'border-status-success-border bg-status-success-bg'
+                    : 'border-border bg-muted/20'
+                }`}>
+                  <div className={`flex items-center justify-center gap-1 font-bold text-[11px] ${
+                    ['julgado_provido', 'julgado_desprovido'].includes(detalheRecursoModal.status)
+                      ? 'text-status-success'
+                      : 'text-muted-foreground'
+                  }`}>
+                    {['julgado_provido', 'julgado_desprovido'].includes(detalheRecursoModal.status) ? (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    ) : (
+                      <Clock className="h-3.5 w-3.5" />
+                    )}
+                    4. Julgamento
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Decisão colegiada</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Fator Contestado */}
+            <div className="p-3.5 rounded-xl border border-border bg-card space-y-2">
+              <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                Fator Objeto da Contestação
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="font-bold text-sm text-foreground">
+                  {detalheRecursoModal.fatorContestado?.nome ||
+                    detalheRecursoModal.fator_contestado?.nome ||
+                    `Fator #${detalheRecursoModal.fator_contestado_id}`}
+                </div>
+                {(detalheRecursoModal.fatorContestado?.codigo || detalheRecursoModal.fator_contestado?.codigo) && (
+                  <Badge variant="outline" className="font-mono text-xs font-bold text-primary">
+                    {detalheRecursoModal.fatorContestado?.codigo || detalheRecursoModal.fator_contestado?.codigo}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Razões Recursais do Servidor */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <FileText className="h-4 w-4 text-primary" />
+                <span>Razões e Fundamentação do Servidor (Art. 30):</span>
+              </div>
+              <div className="bg-muted/20 border border-border/60 rounded-lg p-3.5 text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                {detalheRecursoModal.justificativa_servidor}
+              </div>
+            </div>
+
+            {/* Manifestação / Contrarrazões da Chefia Imediata (Art. 31) */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                  <MessageSquare className="h-4 w-4 text-amber-600" />
+                  <span>Contrarrazões da Chefia Imediata (Art. 31):</span>
+                </div>
+                <Badge
+                  variant={detalheRecursoModal.contestacao_chefia ? 'success' : 'outline'}
+                  className="text-[10px]"
+                >
+                  {detalheRecursoModal.contestacao_chefia ? 'Juntada nos Autos' : 'Pendente (Prazo: 5 dias úteis)'}
+                </Badge>
+              </div>
+              {detalheRecursoModal.contestacao_chefia ? (
+                <div className="bg-muted/20 border border-border/60 rounded-lg p-3.5 text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                  {detalheRecursoModal.contestacao_chefia}
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-muted/10 border border-dashed border-border text-center text-[11px] text-muted-foreground">
+                  A chefia imediata ainda não prestou as contrarrazões regimentais no prazo de 5 dias úteis.
+                </div>
+              )}
+            </div>
+
+            {/* Relatoria e Sessão Colegiada */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                  <Users className="h-4 w-4 text-indigo-600" />
+                  <span>Instrução na Comissão de Avaliação de Desempenho (CAD):</span>
+                </div>
+                <Badge variant="outline" className="text-[10px]">
+                  {detalheRecursoModal.relator ? 'Relator Designado' : 'Aguardando Sorteio'}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Relator Designado:</span>
+                  <span className="font-semibold text-foreground">
+                    {detalheRecursoModal.relator?.nome_completo || detalheRecursoModal.relator?.name || 'Aguardando distribuição'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Prazo de Conclusão do Voto:</span>
+                  <span className="font-mono font-semibold text-foreground">
+                    {detalheRecursoModal.prazo_relator_ate
+                      ? new Date(detalheRecursoModal.prazo_relator_ate).toLocaleDateString('pt-BR')
+                      : 'Conforme pauta regimental'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Ações do Modal */}
+            <div className="flex items-center justify-between pt-3 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-medium cursor-pointer border-primary/40 hover:bg-primary/5 text-primary"
+                onClick={() => handleImprimirRecurso(detalheRecursoModal)}
+              >
+                <Printer className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                Imprimir Termo de Recurso (PDF)
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-8 text-xs font-semibold px-4 cursor-pointer"
+                onClick={() => setDetalheRecursoModal(null)}
+              >
+                Fechar
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* ── Modal: Ficha Circunstanciada do Incidente Crítico (CIT) ──────── */}

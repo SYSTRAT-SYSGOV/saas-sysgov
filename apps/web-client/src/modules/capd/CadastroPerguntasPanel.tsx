@@ -21,6 +21,17 @@ import {
   AlertTriangle,
   RotateCw,
   FileQuestion,
+  Shield,
+  HeartPulse,
+  GraduationCap,
+  Building2,
+  Eye,
+  Info,
+  Search,
+  Filter,
+  Check,
+  Scale,
+  Edit3,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 import type { ApiModeloFormulario, ApiPergunta, TipoPergunta } from '@sysgov/sdk';
@@ -31,21 +42,141 @@ import { EmptyState } from '@/components/ui/EmptyState';
 
 const api = new SysgovApi();
 
+// Definição visual e metadados dos 4 Grupos Funcionais Canônicos
+export interface GrupoFuncionalMeta {
+  key: string;
+  nome: string;
+  codigoModelo: string;
+  leiReferencia: string;
+  descricao: string;
+  publicoAlvo: string;
+  icon: React.ComponentType<{ className?: string }>;
+  corBadge: string;
+}
+
+export const GRUPOS_FUNCIONAIS: Record<string, GrupoFuncionalMeta> = {
+  seguranca: {
+    key: 'seguranca',
+    nome: 'Segurança Pública',
+    codigoModelo: 'FORM_SEGURANCA_V1',
+    leiReferencia: 'Lei nº 2.012/2011 e Lei Federal nº 13.022/2014',
+    descricao: 'Guarda Municipal, Agentes de Segurança Patrimonial, Trânsito e Defesa Social (SMSP).',
+    publicoAlvo: 'Guarda Municipal (1ª, 2ª e 3ª Classe), Agentes de Trânsito, Vigilantes e servidores da SMSP.',
+    icon: Shield,
+    corBadge: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30',
+  },
+  saude: {
+    key: 'saude',
+    nome: 'Saúde',
+    codigoModelo: 'FORM_SAUDE_V1',
+    leiReferencia: 'Lei nº 1.940/2009 e Sistema Único de Saúde (SUS)',
+    descricao: 'Médicos, Enfermagem, Odontologia, Farmácia, Técnicos, ACS/ACE e servidores da SMS.',
+    publicoAlvo: 'Médicos, Enfermeiros, Técnicos de Enfermagem, Dentistas, ACS, ACE, Farmacêuticos e SMS.',
+    icon: HeartPulse,
+    corBadge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+  },
+  magisterio: {
+    key: 'magisterio',
+    nome: 'Magistério',
+    codigoModelo: 'FORM_MAGISTERIO_V1',
+    leiReferencia: 'Lei Municipal nº 1.835/2008 (Plano de Carreira da Educação)',
+    descricao: 'Professores de Educação Infantil, Ensino Fundamental, Pedagogos, Educadores e SMED.',
+    publicoAlvo: 'Professores, Docentes, Pedagogos, Educadores Infantis e servidores da Secretaria de Educação.',
+    icon: GraduationCap,
+    corBadge: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/30',
+  },
+  geral: {
+    key: 'geral',
+    nome: 'Quadro Geral',
+    codigoModelo: 'FORM_GERAL_V1',
+    leiReferencia: 'Lei Municipal nº 1.704/2006 (Estatuto dos Servidores Municipais)',
+    descricao: 'Cargos Administrativos, Operacionais, Obras, Finanças, Planejamento e demais secretarias.',
+    publicoAlvo: 'Assistentes Administrativos, Fiscais, Técnicos, Operacionais e secretarias em geral.',
+    icon: Building2,
+    corBadge: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30',
+  },
+};
+
+// Detalhamento canônico dos 5 Graus da Escala Gráfica de Chiavenato
+export const GRAUS_CHIAVENATO = [
+  {
+    grau: 1,
+    rotulo: 'Grau 1 - Insuficiente',
+    descricao: 'Desempenho nitidamente abaixo do padrão regulamentar exigido, demandando supervisão constante e retrabalho.',
+    travaCit: true,
+    travaDesc: 'Obrigatório registro prévio de incidente negativo no Diário de Bordo Digital (CIT)',
+    cor: 'text-status-danger bg-status-danger-bg border-status-danger-border',
+  },
+  {
+    grau: 2,
+    rotulo: 'Grau 2 - Regular',
+    descricao: 'Atende parcialmente aos padrões do cargo, apresentando oscilações pontuais que demandam orientação corretiva.',
+    travaCit: false,
+    travaDesc: 'Aviso pedagógico; registro no Diário de Bordo recomendado para embasamento',
+    cor: 'text-status-warning bg-status-warning-bg border-status-warning-border',
+  },
+  {
+    grau: 3,
+    rotulo: 'Grau 3 - Bom (Padrão)',
+    descricao: 'Cumpre plenamente e com regularidade todos os deveres funcionais, rotinas e prazos estatutários.',
+    travaCit: false,
+    travaDesc: 'Padrão institucional regulamentar — dispensa justificativa circunstanciada',
+    cor: 'text-primary bg-primary/10 border-primary/20',
+  },
+  {
+    grau: 4,
+    rotulo: 'Grau 4 - Muito Bom',
+    descricao: 'Supera com presteza, autonomia e zelo as expectativas habituais da função pública.',
+    travaCit: false,
+    travaDesc: 'Desempenho de destaque positivo — dispensa trava restritiva',
+    cor: 'text-status-success bg-status-success-bg border-status-success-border',
+  },
+  {
+    grau: 5,
+    rotulo: 'Grau 5 - Excelente',
+    descricao: 'Desempenho exemplar de referência municipal, com impacto de inovação, alta resolutividade e dedicação extraordinária.',
+    travaCit: true,
+    travaDesc: 'Obrigatório registro prévio de incidente positivo / elogio no Diário de Bordo Digital (CIT)',
+    cor: 'text-purple-700 dark:text-purple-400 bg-purple-500/10 border-purple-500/30',
+  },
+];
+
+export interface PerguntaComGrupo extends ApiPergunta {
+  grupoFuncionalKey?: string;
+  grupoFuncionalNome?: string;
+  modeloCodigo?: string;
+  modeloNome?: string;
+}
+
 export const CadastroPerguntasPanel: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [modelos, setModelos] = useState<ApiModeloFormulario[]>([]);
-  const [selectedModelo, setSelectedModelo] = useState<ApiModeloFormulario | null>(null);
+  const [selectedGrupo, setSelectedGrupo] = useState<string>('todos');
+  const [selectedModeloId, setSelectedModeloId] = useState<number | null>(null);
 
-  // Modal de nova pergunta
+  // Filtros avançados da tabela DataTable
+  const [buscaTexto, setBuscaTexto] = useState<string>('');
+  const [filtroCategoria, setFiltroCategoria] = useState<string>('todos');
+  const [filtroTravaCit, setFiltroTravaCit] = useState<string>('todos');
+
+  // Modal de cadastro/edição de pergunta
   const [showModalPergunta, setShowModalPergunta] = useState<boolean>(false);
+  const [editingPerguntaId, setEditingPerguntaId] = useState<number | null>(null);
+  const [perguntaModeloId, setPerguntaModeloId] = useState<number | null>(null);
   const [perguntaCodigo, setPerguntaCodigo] = useState<string>('');
   const [perguntaEnunciado, setPerguntaEnunciado] = useState<string>('');
   const [perguntaTipo, setPerguntaTipo] = useState<TipoPergunta>('escala_grafica');
   const [perguntaGrupo, setPerguntaGrupo] = useState<string>('competencias');
-  const [perguntaPeso, setPerguntaPeso] = useState<number>(1.0);
+  const [perguntaPeso, setPerguntaPeso] = useState<number>(1.5);
   const [perguntaObrigatoria, setPerguntaObrigatoria] = useState<boolean>(true);
   const [perguntaExigeEvidencia, setPerguntaExigeEvidencia] = useState<boolean>(false);
   const [savingPergunta, setSavingPergunta] = useState<boolean>(false);
+
+  // Modais de apoio: Graus de Chiavenato e Simulador de Avaliação
+  const [showModalGraus, setShowModalGraus] = useState<boolean>(false);
+  const [showSimuladorModal, setShowSimuladorModal] = useState<boolean>(false);
+  const [simuladorModelo, setSimuladorModelo] = useState<ApiModeloFormulario | null>(null);
+  const [simuladorRespostas, setSimuladorRespostas] = useState<Record<string, number>>({});
 
   // Estados de confirmação e alertas estilizados (padrão SYSGOV)
   const [showConfirmSeedModal, setShowConfirmSeedModal] = useState<boolean>(false);
@@ -54,6 +185,7 @@ export const CadastroPerguntasPanel: React.FC = () => {
     open: boolean;
     perguntaId: number;
     codigo: string;
+    modeloId?: number;
   } | null>(null);
   const [feedbackModal, setFeedbackModal] = useState<{
     open: boolean;
@@ -63,42 +195,147 @@ export const CadastroPerguntasPanel: React.FC = () => {
     details?: Array<{ label: string; value: string; code?: boolean }>;
   } | null>(null);
 
+  // Carrega todos os modelos cadastrados
   const fetchModelos = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.capd.listModelosFormulario();
       setModelos(data);
-      if (data.length > 0) {
-        const full = await api.capd.getModeloFormulario(selectedModelo?.id || data[0].id);
-        setSelectedModelo(full);
+      if (data.length > 0 && !selectedModeloId) {
+        setSelectedModeloId(data[0].id);
       }
     } catch (err) {
       console.error('Erro ao carregar modelos:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedModelo?.id]);
+  }, [selectedModeloId]);
 
   useEffect(() => {
     fetchModelos();
   }, [fetchModelos]);
 
-  const handleSelectModelo = async (modeloId: number) => {
-    try {
-      const full = await api.capd.getModeloFormulario(modeloId);
-      setSelectedModelo(full);
-    } catch (err) {
-      console.error(err);
+  // Modelo atualmente em foco para detalhes/edição
+  const selectedModelo = useMemo(() => {
+    if (!selectedModeloId) return modelos[0] || null;
+    return modelos.find((m) => m.id === selectedModeloId) || modelos[0] || null;
+  }, [modelos, selectedModeloId]);
+
+  // Identifica o grupo funcional de um modelo com base no código
+  const getGrupoFuncionalFromModelo = useCallback((m: ApiModeloFormulario): GrupoFuncionalMeta => {
+    const cod = (m.codigo || '').toUpperCase();
+    if (cod.includes('SEGURANCA')) return GRUPOS_FUNCIONAIS.seguranca;
+    if (cod.includes('SAUDE')) return GRUPOS_FUNCIONAIS.saude;
+    if (cod.includes('MAGISTERIO')) return GRUPOS_FUNCIONAIS.magisterio;
+    return GRUPOS_FUNCIONAIS.geral;
+  }, []);
+
+  // Lista consolidada de todas as perguntas ativas com os metadados do grupo funcional
+  const todasPerguntas = useMemo<PerguntaComGrupo[]>(() => {
+    const lista: PerguntaComGrupo[] = [];
+    for (const m of modelos) {
+      const grupoMeta = getGrupoFuncionalFromModelo(m);
+      if (m.perguntas_ativas && Array.isArray(m.perguntas_ativas)) {
+        for (const p of m.perguntas_ativas) {
+          lista.push({
+            ...p,
+            grupoFuncionalKey: grupoMeta.key,
+            grupoFuncionalNome: grupoMeta.nome,
+            modeloCodigo: m.codigo,
+            modeloNome: m.nome,
+          });
+        }
+      }
     }
+    return lista;
+  }, [modelos, getGrupoFuncionalFromModelo]);
+
+  // Filtragem avançada para o DataTable primário
+  const perguntasFiltradas = useMemo<PerguntaComGrupo[]>(() => {
+    return todasPerguntas.filter((p) => {
+      // Filtro por grupo funcional da aba
+      if (selectedGrupo !== 'todos' && p.grupoFuncionalKey !== selectedGrupo) {
+        return false;
+      }
+      // Filtro textual
+      if (buscaTexto.trim()) {
+        const t = buscaTexto.toLowerCase();
+        const cod = (p.codigo || '').toLowerCase();
+        const enun = (p.enunciado || '').toLowerCase();
+        const mod = (p.modeloNome || '').toLowerCase();
+        const grp = (p.grupo_key || '').toLowerCase();
+        if (!cod.includes(t) && !enun.includes(t) && !mod.includes(t) && !grp.includes(t)) {
+          return false;
+        }
+      }
+      // Filtro por categoria (assiduidade, disciplina, competencias)
+      if (filtroCategoria !== 'todos') {
+        const cat = (p.grupo_key || '').toLowerCase();
+        if (!cat.includes(filtroCategoria.toLowerCase())) {
+          return false;
+        }
+      }
+      // Filtro por trava CIT
+      if (filtroTravaCit === 'com_trava' && !p.exige_evidencia) return false;
+      if (filtroTravaCit === 'sem_trava' && p.exige_evidencia) return false;
+
+      return true;
+    });
+  }, [todasPerguntas, selectedGrupo, buscaTexto, filtroCategoria, filtroTravaCit]);
+
+  // KPIs agregados do banco de perguntas
+  const kpis = useMemo(() => {
+    const totalModelos = modelos.length;
+    const totalPerguntas = todasPerguntas.length;
+    const totalComCit = todasPerguntas.filter((p) => p.exige_evidencia).length;
+    const gruposRepresentados = new Set(todasPerguntas.map((p) => p.grupoFuncionalKey)).size;
+
+    return {
+      totalModelos,
+      totalPerguntas,
+      totalComCit,
+      gruposRepresentados,
+    };
+  }, [modelos, todasPerguntas]);
+
+  // Abre modal para criação de nova pergunta
+  const handleAbrirNovaPergunta = (modeloAlvoId?: number) => {
+    const mId = modeloAlvoId || selectedModelo?.id || modelos[0]?.id || null;
+    setEditingPerguntaId(null);
+    setPerguntaModeloId(mId);
+    setPerguntaCodigo(`P${(perguntasFiltradas.length || 0) + 1}`);
+    setPerguntaEnunciado('');
+    setPerguntaTipo('escala_grafica');
+    setPerguntaGrupo('competencias');
+    setPerguntaPeso(1.5);
+    setPerguntaObrigatoria(true);
+    setPerguntaExigeEvidencia(false);
+    setShowModalPergunta(true);
   };
 
+  // Abre modal para edição de pergunta existente
+  const handleEditarPergunta = (p: PerguntaComGrupo) => {
+    setEditingPerguntaId(p.id);
+    setPerguntaModeloId(p.modelo_id);
+    setPerguntaCodigo(p.codigo);
+    setPerguntaEnunciado(p.enunciado);
+    setPerguntaTipo(p.tipo as TipoPergunta);
+    setPerguntaGrupo(p.grupo_key || 'competencias');
+    setPerguntaPeso(Number(p.peso || 1.5));
+    setPerguntaObrigatoria(p.obrigatoria);
+    setPerguntaExigeEvidencia(p.exige_evidencia);
+    setShowModalPergunta(true);
+  };
+
+  // Salvar pergunta (criação ou edição)
   const handleSalvarPergunta = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedModelo) return;
+    if (!perguntaModeloId) return;
     setSavingPergunta(true);
 
     try {
-      await api.capd.savePergunta(selectedModelo.id, {
+      await api.capd.savePergunta(perguntaModeloId, {
+        id: editingPerguntaId || undefined,
         codigo: perguntaCodigo,
         enunciado: perguntaEnunciado,
         tipo: perguntaTipo,
@@ -119,62 +356,51 @@ export const CadastroPerguntasPanel: React.FC = () => {
       });
 
       setShowModalPergunta(false);
-      const codigoSalvo = perguntaCodigo;
-      setPerguntaCodigo('');
-      setPerguntaEnunciado('');
-      await handleSelectModelo(selectedModelo.id);
+      await fetchModelos();
 
       setFeedbackModal({
         open: true,
         type: 'success',
-        title: 'Pergunta Salva com Sucesso',
-        message: `O fator ${codigoSalvo} foi gravado e integrado ao modelo de avaliação vigente.`,
+        title: editingPerguntaId ? 'Pergunta Atualizada' : 'Pergunta Cadastrada com Sucesso',
+        message: `O fator ${perguntaCodigo} foi integrado com sucesso ao instrumento de avaliação.`,
       });
     } catch (err: any) {
       setFeedbackModal({
         open: true,
         type: 'error',
         title: 'Erro ao Salvar Pergunta',
-        message: err.message || 'Verifique as informações preenchidas e tente novamente.',
+        message: err?.message || 'Verifique os dados preenchidos e tente novamente.',
       });
     } finally {
       setSavingPergunta(false);
     }
   };
 
-  const handleExcluirPergunta = (perguntaId: number, codigo: string) => {
-    setConfirmDeleteModal({
-      open: true,
-      perguntaId,
-      codigo,
-    });
-  };
-
-  const handleConfirmDeletePergunta = async () => {
+  // Exclusão de pergunta
+  const handleConfirmarExclusaoPergunta = async () => {
     if (!confirmDeleteModal) return;
     try {
       await api.capd.destroyPergunta(confirmDeleteModal.perguntaId);
       const cod = confirmDeleteModal.codigo;
       setConfirmDeleteModal(null);
-      if (selectedModelo) {
-        await handleSelectModelo(selectedModelo.id);
-      }
+      await fetchModelos();
       setFeedbackModal({
         open: true,
         type: 'success',
         title: 'Pergunta Removida',
-        message: `A pergunta ${cod} foi removida com sucesso do instrumento de avaliação.`,
+        message: `A pergunta ${cod} foi removida com sucesso do banco de instrumentos.`,
       });
     } catch (err: any) {
       setFeedbackModal({
         open: true,
         type: 'error',
-        title: 'Erro ao Excluir Pergunta',
-        message: err.message || 'Não foi possível remover o item.',
+        title: 'Erro ao Excluir',
+        message: err?.message || 'Não foi possível remover a pergunta.',
       });
     }
   };
 
+  // Sincronização / Carga do Seed Canônico dos 4 Grupos
   const handleConfirmSeedPadrao = async () => {
     setLoadingSeed(true);
     try {
@@ -184,14 +410,15 @@ export const CadastroPerguntasPanel: React.FC = () => {
       setFeedbackModal({
         open: true,
         type: 'success',
-        title: 'Modelo e Perguntas Padrão Gerados com Sucesso!',
-        message: 'Os instrumentos oficiais e seus 8 fatores da Escala Gráfica de Chiavenato foram gerados e sincronizados para este município.',
+        title: 'Banco de Perguntas Atualizado com os 4 Grupos!',
+        message: 'Os 4 instrumentos oficiais da metodologia da Escala Gráfica de Chiavenato foram provisionados e sincronizados com sucesso.',
         details: [
-          { label: 'Modelos Criados/Atualizados', value: 'FORM_GERAL_V1 e FORM_MAGISTERIO_V1', code: true },
-          { label: 'Metodologia de Avaliação', value: 'Escala Gráfica de Desempenho (Chiavenato, Graus 1 a 5)' },
-          { label: 'Fatores Parametrizados', value: 'P1 a P8 (Assiduidade, Disciplina, Competências)', code: true },
-          { label: 'Distribuição dos Pesos', value: 'Assiduidade (15%), Disciplina (15%), Competências (70%)', code: true },
-          { label: 'Trava Anti-Leniência (CIT)', value: 'Ativa (Graus 1 e 5 exigem registro no Diário de Bordo)' },
+          { label: '🛡️ Segurança Pública', value: 'FORM_SEGURANCA_V1 (Guarda Municipal e Agentes)', code: true },
+          { label: '🩺 Saúde Pública', value: 'FORM_SAUDE_V1 (Médicos, Enfermagem, Odonto, ACS/ACE)', code: true },
+          { label: '📚 Magistério', value: 'FORM_MAGISTERIO_V1 (Professores, Pedagogos, SMED)', code: true },
+          { label: '🏛️ Quadro Geral', value: 'FORM_GERAL_V1 (Administrativo, Operacional, Finanças)', code: true },
+          { label: 'Metodologia', value: 'Escala Gráfica de Desempenho (Chiavenato, Graus 1 a 5)' },
+          { label: 'Trava Anti-Leniência (CIT)', value: 'Ativa (Graus 1 e 5 exigem Diário de Bordo)' },
         ],
       });
     } catch (err: any) {
@@ -199,16 +426,28 @@ export const CadastroPerguntasPanel: React.FC = () => {
       setFeedbackModal({
         open: true,
         type: 'error',
-        title: 'Erro ao Gerar Seed Padrão',
-        message: err.message || 'Falha ao processar a geração dos modelos de instrumento.',
+        title: 'Falha na Sincronização',
+        message: err?.message || 'Erro ao sincronizar os modelos oficiais.',
       });
     } finally {
       setLoadingSeed(false);
     }
   };
 
-  // Colunas TanStack do DataTable de Perguntas
-  const columns = useMemo<ColumnDef<ApiPergunta>[]>(
+  // Abre simulador / espelho do instrumento
+  const handleAbrirSimulador = (m: ApiModeloFormulario) => {
+    setSimuladorModelo(m);
+    // Inicializa com grau 3 em todas as perguntas
+    const initial: Record<string, number> = {};
+    m.perguntas_ativas?.forEach((p) => {
+      initial[p.codigo] = 3;
+    });
+    setSimuladorRespostas(initial);
+    setShowSimuladorModal(true);
+  };
+
+  // Colunas TanStack do DataTable Primário
+  const columns = useMemo<ColumnDef<PerguntaComGrupo>[]>(
     () => [
       {
         accessorKey: 'codigo',
@@ -221,23 +460,37 @@ export const CadastroPerguntasPanel: React.FC = () => {
         ),
       },
       {
-        accessorKey: 'enunciado',
-        header: 'Enunciado do Fator / Pergunta',
-        cell: ({ row }) => (
-          <div>
-            <div className="font-medium text-foreground">{row.original.enunciado}</div>
-            <div className="text-xs text-muted-foreground">Grupo: {row.original.grupo_key}</div>
-          </div>
-        ),
+        accessorKey: 'grupoFuncionalNome',
+        header: 'Grupo Funcional / Carreira',
+        size: 190,
+        cell: ({ row }) => {
+          const gKey = row.original.grupoFuncionalKey || 'geral';
+          const meta = GRUPOS_FUNCIONAIS[gKey] || GRUPOS_FUNCIONAIS.geral;
+          const Icon = meta.icon;
+          return (
+            <div className="flex items-center gap-1.5">
+              <Badge variant="outline" className={`font-semibold text-xs py-0.5 px-2 flex items-center gap-1.5 ${meta.corBadge}`}>
+                <Icon className="h-3 w-3 shrink-0" />
+                <span>{meta.nome}</span>
+              </Badge>
+            </div>
+          );
+        },
       },
       {
-        accessorKey: 'tipo',
-        header: 'Tipo',
-        size: 150,
+        accessorKey: 'enunciado',
+        header: 'Fator Avaliado & Descrição Operacional',
         cell: ({ row }) => (
-          <Badge variant="outline" className="font-mono text-xs">
-            {row.original.tipo}
-          </Badge>
+          <div className="space-y-0.5 py-1">
+            <div className="font-medium text-foreground text-xs leading-snug">
+              {row.original.enunciado}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="font-mono">Modelo: {row.original.modeloCodigo}</span>
+              <span>•</span>
+              <span className="capitalize">Grupo: {row.original.grupo_key}</span>
+            </div>
+          </div>
         ),
       },
       {
@@ -245,38 +498,56 @@ export const CadastroPerguntasPanel: React.FC = () => {
         header: 'Peso',
         size: 90,
         cell: ({ row }) => (
-          <span className="font-mono tabular-nums font-semibold text-foreground">
-            {Number(row.original.peso).toFixed(1)}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="font-mono tabular-nums font-bold text-foreground text-xs">
+              {Number(row.original.peso).toFixed(1)}
+            </span>
+            <span className="text-[10px] text-muted-foreground">pts</span>
+          </div>
         ),
       },
       {
         accessorKey: 'exige_evidencia',
         header: 'Trava CIT',
-        size: 130,
-        cell: ({ row }) => (
+        size: 140,
+        cell: ({ row }) =>
           row.original.exige_evidencia ? (
-            <StatusChip label="Exige CIT" variant="warning" />
+            <StatusChip label="Exige CIT (Graus 1 e 5)" variant="warning" />
           ) : (
-            <StatusChip label="Padrão" variant="neutral" />
-          )
-        ),
+            <StatusChip label="Escala Padrão" variant="neutral" />
+          ),
       },
       {
         id: 'acoes',
-        header: '',
-        size: 60,
+        header: 'Ações',
+        size: 110,
         enableSorting: false,
         cell: ({ row }) => (
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-1">
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => handleExcluirPergunta(row.original.id, row.original.codigo)}
-              title="Remover pergunta"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              onClick={() => handleEditarPergunta(row.original)}
+              title="Editar fator / pergunta"
             >
-              <Trash2 className="h-4 w-4" />
+              <Edit3 className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() =>
+                setConfirmDeleteModal({
+                  open: true,
+                  perguntaId: row.original.id,
+                  codigo: row.original.codigo,
+                  modeloId: row.original.modelo_id,
+                })
+              }
+              title="Remover fator"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
         ),
@@ -289,120 +560,354 @@ export const CadastroPerguntasPanel: React.FC = () => {
     <div className="space-y-6">
       {/* ── Topo: Cabeçalho Canônico PageHeader ───────────────────────── */}
       <PageHeader
-        title="Cadastro de Perguntas & Instrumentos de Avaliação"
-        subtitle="Metodologia de Escala Gráfica (Chiavenato) parametrizada por plano de carreira e pesos por grupo"
+        title="Banco de Perguntas & Instrumentos por Grupo Funcional"
+        subtitle="Escala Gráfica de Chiavenato parametrizada para Segurança Pública, Saúde, Magistério e Quadro Geral"
         actions={
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowConfirmSeedModal(true)}
+              onClick={() => setShowModalGraus(true)}
+              className="border-border text-foreground font-semibold"
             >
-              <Sparkles className="h-4 w-4 mr-1.5 text-amber-600" />
-              Carregar Seed Padrão (F1 a F8)
+              <Scale className="h-4 w-4 mr-1.5 text-primary" />
+              Estrutura dos 5 Graus
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowConfirmSeedModal(true)}
+              className="border-border text-foreground font-semibold"
+            >
+              <Sparkles className="h-4 w-4 mr-1.5 text-amber-500" />
+              Carregar Banco Padrão (4 Grupos)
             </Button>
 
             <Button
               variant="default"
               size="sm"
-              onClick={() => {
-                setPerguntaCodigo(`P${(selectedModelo?.perguntas_ativas?.length || 0) + 1}`);
-                setShowModalPergunta(true);
-              }}
-              disabled={!selectedModelo}
+              onClick={() => handleAbrirNovaPergunta()}
+              className="bg-primary text-primary-foreground font-semibold"
             >
               <Plus className="h-4 w-4 mr-1.5" />
-              Adicionar Pergunta
+              Adicionar Fator / Pergunta
             </Button>
           </div>
         }
       />
 
-      {/* ── Seletor de Modelo Formulario ─────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Painel Esquerdo: Lista de Modelos */}
-        <Card className="gap-0 py-0 overflow-hidden">
-          <CardHeader className="p-4 border-b border-border bg-muted/20">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Modelos de Formulário
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 space-y-1">
-            {modelos.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => handleSelectModelo(m.id)}
-                className={`w-full text-left p-2.5 rounded text-xs transition-colors ${
-                  selectedModelo?.id === m.id
-                    ? 'bg-primary/10 border border-primary/30 text-primary font-semibold'
-                    : 'hover:bg-muted/40 text-foreground'
-                }`}
-              >
-                <div className="truncate font-medium">{m.nome}</div>
-                <div className="text-muted-foreground font-mono mt-0.5">
-                  {m.codigo} | v{m.versao}
-                </div>
-              </button>
-            ))}
-          </CardContent>
+      {/* ── Top KPIs do Banco de Instrumentos ─────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="p-4 bg-muted/20 border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Grupos Funcionais
+            </span>
+            <Shield className="h-4 w-4 text-primary" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold font-mono text-foreground">
+              {kpis.totalModelos || 4}
+            </span>
+            <span className="text-xs text-status-success font-medium">Carreiras Oficiais</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1 truncate">
+            Segurança, Saúde, Magistério e Geral
+          </p>
         </Card>
 
-        {/* Painel Direito: Perguntas do Modelo Selecionado */}
-        <div className="md:col-span-3 space-y-4">
-          {selectedModelo ? (
-            <>
-              {/* Resumo dos Grupos e Pesos do Modelo */}
-              <Card className="p-4 bg-muted/20 border-border">
-                <div className="flex items-center justify-between text-xs font-semibold text-foreground mb-3">
-                  <span className="flex items-center gap-1.5">
-                    <Layers className="h-3.5 w-3.5 text-primary" />
-                    Ponderação dos Grupos no Modelo
-                  </span>
-                  <span className="font-mono text-muted-foreground">
-                    Vigência: {selectedModelo.vigencia_inicio} a {selectedModelo.vigencia_fim || 'Indeterminada'}
-                  </span>
-                </div>
+        <Card className="p-4 bg-muted/20 border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Fatores Cadastrados
+            </span>
+            <Layers className="h-4 w-4 text-indigo-500" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold font-mono text-foreground">
+              {kpis.totalPerguntas}
+            </span>
+            <span className="text-xs text-muted-foreground font-mono">perguntas ativas</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Média de ~7 a 8 fatores por grupo funcional
+          </p>
+        </Card>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                  {selectedModelo.grupos &&
-                    Object.entries(selectedModelo.grupos).map(([k, g]) => (
-                      <div key={k} className="p-2.5 bg-card rounded border border-border">
-                        <div className="text-muted-foreground truncate">{g.nome}</div>
-                        <div className="font-mono font-bold text-primary mt-1">
-                          Peso: {g.peso}%
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </Card>
+        <Card className="p-4 bg-muted/20 border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Metodologia Oficial
+            </span>
+            <Scale className="h-4 w-4 text-emerald-500" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-sm font-bold font-mono text-foreground">
+              Escala Gráfica
+            </span>
+            <span className="text-xs text-status-success font-mono font-bold">1 a 5</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Chiavenato + Diário de Bordo (CIT)
+          </p>
+        </Card>
 
-              {/* Tabela TanStack de Perguntas Cadastradas */}
-              <Card className="gap-0 py-0 overflow-hidden">
-                <DataTable
-                  data={selectedModelo.perguntas_ativas || []}
-                  columns={columns}
-                  fixedLayout
-                  emptyText="Nenhuma pergunta cadastrada neste modelo. Clique em 'Carregar Seed Padrão' ou 'Adicionar Pergunta'."
-                />
-              </Card>
-            </>
-          ) : (
-            <EmptyState
-              icon={<FileQuestion className="h-8 w-8 text-muted-foreground" />}
-              title="Nenhum modelo selecionado"
-              description="Selecione um modelo de formulário ao lado para gerenciar os fatores e perguntas."
-            />
-          )}
+        <Card className="p-4 bg-muted/20 border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Trava 100% de Pesos
+            </span>
+            <CheckCircle2 className="h-4 w-4 text-status-success" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold font-mono text-status-success">
+              100%
+            </span>
+            <span className="text-xs text-status-success font-medium">Validado</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1 truncate">
+            Assiduidade, Disciplina e Competências
+          </p>
+        </Card>
+      </div>
+
+      {/* ── Seletor Rápido em Abas/Pills por Grupo Funcional ──────────── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Filtrar por Carreira / Grupo do Servidor
+          </span>
+          <span className="text-xs font-mono text-muted-foreground">
+            Exibindo: <strong className="text-foreground">{perguntasFiltradas.length}</strong> de{' '}
+            <strong className="text-foreground">{todasPerguntas.length}</strong> fatores
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+          {/* Aba: Todos */}
+          <button
+            type="button"
+            onClick={() => setSelectedGrupo('todos')}
+            className={`p-3 rounded-xl border text-left transition-all ${
+              selectedGrupo === 'todos'
+                ? 'bg-primary/10 border-primary text-primary shadow-xs'
+                : 'bg-card border-border hover:bg-muted/40 text-foreground'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold">Todos os Grupos</span>
+              <Badge variant="outline" className="font-mono text-[10px]">
+                {todasPerguntas.length}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground line-clamp-1">
+              Visão geral de todos os instrumentos
+            </p>
+          </button>
+
+          {/* Abas: Segurança Pública, Saúde, Magistério, Quadro Geral */}
+          {Object.entries(GRUPOS_FUNCIONAIS).map(([gKey, meta]) => {
+            const Icon = meta.icon;
+            const count = todasPerguntas.filter((p) => p.grupoFuncionalKey === gKey).length;
+            const isSelected = selectedGrupo === gKey;
+            return (
+              <button
+                key={gKey}
+                type="button"
+                onClick={() => setSelectedGrupo(gKey)}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  isSelected
+                    ? 'bg-primary/10 border-primary text-primary shadow-xs'
+                    : 'bg-card border-border hover:bg-muted/40 text-foreground'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span className="text-xs font-bold truncate">{meta.nome}</span>
+                  </div>
+                  <Badge variant="outline" className="font-mono text-[10px]">
+                    {count}
+                  </Badge>
+                </div>
+                <p className="text-[10px] text-muted-foreground line-clamp-1">
+                  {meta.publicoAlvo}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Modal: Adicionar Pergunta ─────────────────────────────────── */}
+      {/* ── Banner Informativo do Grupo Selecionado ───────────────────── */}
+      {selectedGrupo !== 'todos' && GRUPOS_FUNCIONAIS[selectedGrupo] && (
+        <Card className="p-4 bg-muted/15 border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              {(() => {
+                const Icon = GRUPOS_FUNCIONAIS[selectedGrupo].icon;
+                return (
+                  <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                );
+              })()}
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-foreground">
+                    Grupo Funcional: {GRUPOS_FUNCIONAIS[selectedGrupo].nome}
+                  </h4>
+                  <Badge variant="outline" className="font-mono text-[11px]">
+                    {GRUPOS_FUNCIONAIS[selectedGrupo].codigoModelo}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {GRUPOS_FUNCIONAIS[selectedGrupo].descricao}
+                </p>
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  Base Legal: {GRUPOS_FUNCIONAIS[selectedGrupo].leiReferencia}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {(() => {
+                const m = modelos.find((mod) => getGrupoFuncionalFromModelo(mod).key === selectedGrupo);
+                if (!m) return null;
+                return (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAbrirSimulador(m)}
+                    className="text-xs font-semibold gap-1.5"
+                  >
+                    <Eye className="h-3.5 w-3.5 text-primary" />
+                    Simular Formulário
+                  </Button>
+                );
+              })()}
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  const m = modelos.find((mod) => getGrupoFuncionalFromModelo(mod).key === selectedGrupo);
+                  handleAbrirNovaPergunta(m?.id);
+                }}
+                className="text-xs font-semibold gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Adicionar Fator ao Grupo
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Barra de Filtros Avançados da Tabela DataTable ───────────── */}
+      <Card className="p-3 bg-muted/20 border-border">
+        <div className="flex flex-col md:flex-row items-center gap-3">
+          {/* Busca textual */}
+          <div className="relative flex-1 w-full">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={buscaTexto}
+              onChange={(e) => setBuscaTexto(e.target.value)}
+              placeholder="Buscar por código (P1), fator avaliado, cargo ou descrição..."
+              className="pl-9 text-xs h-9 bg-background"
+            />
+          </div>
+
+          {/* Filtro por categoria do fator */}
+          <div className="w-full md:w-56">
+            <Select
+              value={filtroCategoria}
+              onChange={(val) => setFiltroCategoria(val as string)}
+              options={[
+                { value: 'todos', label: 'Todas as Categorias' },
+                { value: 'assiduidade', label: 'Assiduidade / Plantão' },
+                { value: 'disciplina', label: 'Disciplina / Ética' },
+                { value: 'competencias', label: 'Competências / Técnica' },
+              ]}
+              aria-label="Filtrar por Categoria"
+            />
+          </div>
+
+          {/* Filtro por Trava CIT */}
+          <div className="w-full md:w-52">
+            <Select
+              value={filtroTravaCit}
+              onChange={(val) => setFiltroTravaCit(val as string)}
+              options={[
+                { value: 'todos', label: 'Todas as Travas' },
+                { value: 'com_trava', label: 'Exige Trava CIT' },
+                { value: 'sem_trava', label: 'Sem Trava CIT' },
+              ]}
+              aria-label="Filtrar por Trava CIT"
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Visualização Primária: DataTable de Fatores (Sempre Ativada) ── */}
+      <Card className="gap-0 py-0 overflow-hidden border-border shadow-2xs">
+        <CardHeader className="p-4 border-b border-border bg-muted/10 flex flex-row items-center justify-between">
+          <div className="space-y-0.5">
+            <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Layers className="h-4 w-4 text-primary" />
+              Matriz do Banco de Perguntas
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Estrutura regulamentar de fatores ativos com ponderação de pesos e regras de incidentes críticos
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-mono">
+              Registros: <strong className="text-foreground">{perguntasFiltradas.length}</strong>
+            </span>
+          </div>
+        </CardHeader>
+
+        <DataTable
+          data={perguntasFiltradas}
+          columns={columns}
+          fixedLayout
+          pageSizeSelector
+          pageSize={10}
+          emptyText="Nenhum fator encontrado com os filtros selecionados. Clique em 'Carregar Banco Padrão' ou 'Adicionar Fator'."
+        />
+      </Card>
+
+      {/* ── Modal: Adicionar / Editar Fator ───────────────────────────── */}
       <Modal
         open={showModalPergunta}
         onClose={() => setShowModalPergunta(false)}
-        title="Nova Pergunta / Fator do Instrumento"
+        title={editingPerguntaId ? 'Editar Fator / Pergunta' : 'Novo Fator do Instrumento de Avaliação'}
+        size="md"
       >
-        <form onSubmit={handleSalvarPergunta} className="space-y-4">
+        <form onSubmit={handleSalvarPergunta} className="space-y-4 py-2">
+          {/* Seletor de Modelo / Grupo Funcional */}
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Instrumento / Grupo Funcional
+            </label>
+            <Select
+              value={String(perguntaModeloId || modelos[0]?.id || '')}
+              onChange={(val) => setPerguntaModeloId(Number(val))}
+              options={modelos.map((m) => {
+                const g = getGrupoFuncionalFromModelo(m);
+                return {
+                  value: String(m.id),
+                  label: `${g.nome} — ${m.codigo} (${m.nome})`,
+                };
+              })}
+              aria-label="Grupo Funcional Alvo"
+            />
+          </div>
+
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1">
@@ -411,15 +916,15 @@ export const CadastroPerguntasPanel: React.FC = () => {
               <Input
                 value={perguntaCodigo}
                 onChange={(e) => setPerguntaCodigo(e.target.value)}
-                placeholder="Ex.: P1, F1"
-                className="font-mono"
+                placeholder="Ex.: P1, P2"
+                className="font-mono text-xs"
                 required
               />
             </div>
 
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-foreground mb-1">
-                Tipo do Campo
+                Tipo da Pergunta
               </label>
               <Select
                 value={perguntaTipo}
@@ -439,12 +944,13 @@ export const CadastroPerguntasPanel: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1">
-              Enunciado / Fator Avaliado
+              Enunciado do Fator Avaliado
             </label>
             <Input
               value={perguntaEnunciado}
               onChange={(e) => setPerguntaEnunciado(e.target.value)}
-              placeholder="Ex.: Capacidade de Iniciativa e Solução de Demandas"
+              placeholder="Ex.: Mediação de Conflitos e Gerenciamento de Crises"
+              className="text-xs"
               required
             />
           </div>
@@ -452,51 +958,56 @@ export const CadastroPerguntasPanel: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1">
-                Grupo
+                Categoria Temática
               </label>
-              <Input
+              <Select
                 value={perguntaGrupo}
-                onChange={(e) => setPerguntaGrupo(e.target.value)}
-                placeholder="assiduidade, disciplina, competencias"
-                required
+                onChange={(val) => setPerguntaGrupo(val as string)}
+                options={[
+                  { value: 'assiduidade', label: 'Assiduidade / Pontualidade' },
+                  { value: 'disciplina', label: 'Disciplina / Ética' },
+                  { value: 'competencias', label: 'Competências / Técnica' },
+                ]}
+                aria-label="Categoria Temática"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1">
-                Peso Relativo
+                Peso Relativo (Pontos)
               </label>
               <Input
                 type="number"
                 step="0.1"
+                min="0.1"
+                max="10.0"
                 value={perguntaPeso}
                 onChange={(e) => setPerguntaPeso(Number(e.target.value))}
-                className="font-mono"
+                className="font-mono text-xs"
                 required
               />
             </div>
           </div>
 
-          <div className="p-3 bg-muted/20 rounded border border-border space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground">Preenchimento Obrigatório</span>
-              <Switch
-                checked={perguntaObrigatoria}
-                onCheckedChange={setPerguntaObrigatoria}
-              />
-            </div>
-
+          <div className="p-3 bg-muted/20 rounded-xl border border-border space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-foreground">Trava Antileniência (Exige CIT)</div>
+                <div className="font-semibold text-foreground">Preenchimento Obrigatório</div>
                 <div className="text-muted-foreground text-[11px]">
-                  Exige registro prévio de incidente crítico no Diário de Bordo para graus extremos
+                  O formulário só poderá ser concluído com resposta a este fator
                 </div>
               </div>
-              <Switch
-                checked={perguntaExigeEvidencia}
-                onCheckedChange={setPerguntaExigeEvidencia}
-              />
+              <Switch checked={perguntaObrigatoria} onCheckedChange={setPerguntaObrigatoria} />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-border/50 pt-2">
+              <div>
+                <div className="font-semibold text-foreground">Trava Anti-Leniência (Exige CIT)</div>
+                <div className="text-muted-foreground text-[11px]">
+                  Notas extremas (Grau 1 ou Grau 5) exigem apontamento no Diário de Bordo
+                </div>
+              </div>
+              <Switch checked={perguntaExigeEvidencia} onCheckedChange={setPerguntaExigeEvidencia} />
             </div>
           </div>
 
@@ -504,6 +1015,7 @@ export const CadastroPerguntasPanel: React.FC = () => {
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => setShowModalPergunta(false)}
             >
               Cancelar
@@ -511,19 +1023,170 @@ export const CadastroPerguntasPanel: React.FC = () => {
             <Button
               type="submit"
               variant="default"
+              size="sm"
               disabled={savingPergunta}
+              className="bg-primary text-primary-foreground font-semibold"
             >
-              {savingPergunta ? 'Salvando...' : 'Salvar Pergunta'}
+              {savingPergunta ? (
+                <>
+                  <RotateCw className="h-4 w-4 mr-1.5 animate-spin" />
+                  Salvando...
+                </>
+              ) : editingPerguntaId ? (
+                'Salvar Alterações'
+              ) : (
+                'Cadastrar Fator'
+              )}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* ── Modal de Confirmação: Inicializar Seed Padrão ─────────────── */}
+      {/* ── Modal: Estrutura dos 5 Graus de Chiavenato ─────────────────── */}
+      <Modal
+        open={showModalGraus}
+        onClose={() => setShowModalGraus(false)}
+        title="Escala Gráfica de Avaliação de Desempenho (Chiavenato, Graus 1 a 5)"
+        size="lg"
+        footer={
+          <div className="flex justify-end w-full">
+            <Button variant="default" size="sm" onClick={() => setShowModalGraus(false)}>
+              Entendido
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <div className="flex items-start gap-3 p-3 bg-muted/20 rounded-xl border border-border">
+            <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="space-y-1 text-xs">
+              <p className="font-semibold text-foreground">
+                Metodologia Canônica e Trava Anti-Leniência
+              </p>
+              <p className="text-muted-foreground leading-relaxed">
+                A avaliação utiliza estritamente a Escala Gráfica em 5 graus contínuos. A Lei Municipal estipula que
+                atribuir graus extremos (1 ou 5) é bloqueado pelo sistema a menos que haja apontamento no Diário de Bordo (CIT).
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {GRAUS_CHIAVENATO.map((g) => (
+              <div
+                key={g.grau}
+                className={`p-3 rounded-xl border transition-all ${g.cor}`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs">{g.rotulo}</span>
+                    {g.travaCit && (
+                      <Badge variant="outline" className="font-semibold text-[10px] bg-status-warning-bg text-status-warning border-status-warning-border">
+                        Exige Diário de Bordo (CIT)
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="font-mono text-xs font-bold">Nota {g.grau}.0</span>
+                </div>
+                <p className="text-xs text-foreground/90 leading-relaxed">
+                  {g.descricao}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1 font-mono">
+                  {g.travaDesc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Modal: Simulador / Espelho do Instrumento ──────────────────── */}
+      {showSimuladorModal && simuladorModelo && (
+        <Modal
+          open={showSimuladorModal}
+          onClose={() => setShowSimuladorModal(false)}
+          title={`Simulador: ${simuladorModelo.nome}`}
+          size="lg"
+          footer={
+            <div className="flex justify-between items-center w-full">
+              <div className="text-xs text-muted-foreground">
+                Média simulada:{' '}
+                <strong className="font-mono text-foreground text-sm">
+                  {(
+                    Object.values(simuladorRespostas).reduce((a, b) => a + b, 0) /
+                    (Object.keys(simuladorRespostas).length || 1)
+                  ).toFixed(2)}
+                </strong>{' '}
+                / 5.0
+              </div>
+              <Button variant="default" size="sm" onClick={() => setShowSimuladorModal(false)}>
+                Fechar Simulador
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4 py-2">
+            <p className="text-xs text-muted-foreground">
+              Esta prévia demonstra como o avaliador preencherá as notas do servidor neste grupo funcional:
+            </p>
+
+            <div className="space-y-3">
+              {simuladorModelo.perguntas_ativas?.map((p) => {
+                const selected = simuladorRespostas[p.codigo] || 3;
+                return (
+                  <div key={p.codigo} className="p-3 bg-muted/15 rounded-xl border border-border space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-mono font-bold text-foreground text-xs mr-2">
+                          {p.codigo}
+                        </span>
+                        <span className="font-medium text-foreground text-xs">
+                          {p.enunciado}
+                        </span>
+                      </div>
+                      {p.exige_evidencia && (
+                        <Badge variant="outline" className="text-[10px] shrink-0 font-semibold bg-status-warning-bg text-status-warning border-status-warning-border">
+                          Trava CIT
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-1.5 pt-1">
+                      {[1, 2, 3, 4, 5].map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() =>
+                            setSimuladorRespostas((prev) => ({
+                              ...prev,
+                              [p.codigo]: g,
+                            }))
+                          }
+                          className={`p-2 rounded-lg text-center border text-xs font-semibold transition-all ${
+                            selected === g
+                              ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                              : 'bg-card border-border hover:bg-muted/40 text-muted-foreground'
+                          }`}
+                        >
+                          <div className="font-mono text-xs">Grau {g}</div>
+                          <div className="text-[10px] opacity-80 mt-0.5">
+                            {g === 1 ? 'Insuf.' : g === 2 ? 'Reg.' : g === 3 ? 'Bom' : g === 4 ? 'Ótimo' : 'Excel.'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Modal de Confirmação: Carga do Banco Padrão dos 4 Grupos ──── */}
       <Modal
         open={showConfirmSeedModal}
         onClose={() => !loadingSeed && setShowConfirmSeedModal(false)}
-        title="Inicializar Instrumentos e Fatores Padrão"
+        title="Sincronizar Banco de Perguntas (4 Grupos Oficiais)"
         size="md"
         footer={
           <div className="flex justify-end gap-2 w-full">
@@ -540,11 +1203,12 @@ export const CadastroPerguntasPanel: React.FC = () => {
               size="sm"
               disabled={loadingSeed}
               onClick={handleConfirmSeedPadrao}
+              className="bg-primary text-primary-foreground font-semibold"
             >
               {loadingSeed ? (
                 <>
                   <RotateCw className="h-4 w-4 mr-1.5 animate-spin" />
-                  Gerando Instrumentos...
+                  Sincronizando 4 Grupos...
                 </>
               ) : (
                 <>
@@ -563,33 +1227,46 @@ export const CadastroPerguntasPanel: React.FC = () => {
             </div>
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">
-                Deseja gerar a estrutura padrão da Escala Gráfica de Chiavenato?
+                Deseja sincronizar os 4 Grupos Funcionais oficiais?
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Esta ação criará ou atualizará os modelos de avaliação oficiais do município com os 8 fatores funcionais recomendados pela legislação municipal e contratos do SAPDS.
+                Esta ação configurará os modelos de formulário e perguntas específicas para cada carreira com a metodologia da Escala Gráfica de Chiavenato:
               </p>
             </div>
           </div>
 
-          <div className="rounded-lg border border-border bg-muted/20 p-3.5 space-y-2 text-xs">
-            <div className="font-semibold text-foreground">Estrutura que será gerada:</div>
-            <ul className="space-y-1.5 text-muted-foreground list-disc list-inside">
-              <li>
-                <span className="font-mono font-medium text-foreground">FORM_GERAL_V1</span>: Instrumento do Quadro Geral (8 fatores)
-              </li>
-              <li>
-                <span className="font-mono font-medium text-foreground">FORM_MAGISTERIO_V1</span>: Instrumento do Magistério (pesos diferenciados)
-              </li>
-              <li>
-                <span className="font-mono font-medium text-foreground">P1 a P8</span>: Escala Gráfica com 5 graus de desempenho (1 a 5)
-              </li>
-              <li>
-                <span className="font-mono font-medium text-foreground">Assiduidade (15%), Disciplina (15%), Competências (70%)</span>
-              </li>
-              <li>
-                <span className="font-mono font-medium text-foreground">Trava Anti-Leniência</span>: exigência de apontamento no CIT
-              </li>
-            </ul>
+          <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2.5 text-xs">
+            <div className="font-semibold text-foreground">Instrumentos que serão provisionados:</div>
+            <div className="space-y-2 text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <Shield className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground">Segurança Pública (FORM_SEGURANCA_V1)</strong>
+                  <p className="text-[11px]">Guarda Municipal, Agentes de Segurança Patrimonial, Trânsito e Defesa Social (7 fatores)</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <HeartPulse className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground">Saúde Pública (FORM_SAUDE_V1)</strong>
+                  <p className="text-[11px]">Médicos, Enfermagem, Técnicos, Odontologia, ACS/ACE e SMS (7 fatores)</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <GraduationCap className="h-4 w-4 text-indigo-500 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground">Magistério Municipal (FORM_MAGISTERIO_V1)</strong>
+                  <p className="text-[11px]">Professores, Pedagogos, Educadores Infantis e SMED (7 fatores pedagógicos)</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Building2 className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-foreground">Quadro Geral (FORM_GERAL_V1)</strong>
+                  <p className="text-[11px]">Cargos Administrativos, Operacionais, Obras, Finanças e demais secretarias (8 fatores)</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Modal>
@@ -613,29 +1290,29 @@ export const CadastroPerguntasPanel: React.FC = () => {
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={handleConfirmDeletePergunta}
+                onClick={handleConfirmarExclusaoPergunta}
               >
-                Remover Pergunta
+                Remover Fator
               </Button>
             </div>
           }
         >
           <div className="space-y-3 py-2">
             <p className="text-sm text-foreground">
-              Tem certeza de que deseja remover a pergunta{' '}
+              Tem certeza de que deseja remover o fator{' '}
               <span className="font-mono font-bold text-foreground">
                 {confirmDeleteModal.codigo}
               </span>{' '}
-              deste instrumento de avaliação?
+              deste instrumento?
             </p>
-            <p className="text-xs text-status-warning bg-status-warning-bg p-2.5 rounded border border-status-warning-border">
-              Atenção: Perguntas já avaliadas em ciclos anteriores não serão afetadas, mas o item deixará de constar nas novas avaliações.
+            <p className="text-xs text-status-warning bg-status-warning-bg p-2.5 rounded-lg border border-status-warning-border">
+              Atenção: Avaliações já homologadas em ciclos anteriores não serão alteradas, mas este fator deixará de constar nos novos formulários.
             </p>
           </div>
         </Modal>
       )}
 
-      {/* ── Modal de Alerta / Feedback Estilizado (Padrão SYSGOV) ──────── */}
+      {/* ── Modal de Feedback / Sucesso / Erro ─────────────────────────── */}
       {feedbackModal && (
         <Modal
           open={feedbackModal.open}
@@ -681,16 +1358,16 @@ export const CadastroPerguntasPanel: React.FC = () => {
 
                 {feedbackModal.type === 'success' && (
                   <div className="mt-2">
-                    <StatusChip label="Status: Concluído e Sincronizado" variant="success" />
+                    <StatusChip label="Status: Sincronizado e Ativo" variant="success" />
                   </div>
                 )}
               </div>
             </div>
 
             {feedbackModal.details && feedbackModal.details.length > 0 && (
-              <div className="rounded-lg border border-border bg-muted/20 p-3.5 space-y-2">
+              <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2">
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Resumo da Operação
+                  Detalhamento dos Instrumentos
                 </div>
                 <div className="space-y-1.5 divide-y divide-border text-xs">
                   {feedbackModal.details.map((item, idx) => (
@@ -698,7 +1375,7 @@ export const CadastroPerguntasPanel: React.FC = () => {
                       <span className="text-muted-foreground">{item.label}</span>
                       <span
                         className={`font-medium text-foreground ${
-                          item.code ? 'font-mono tabular-nums text-[11px]' : ''
+                          item.code ? 'font-mono text-[11px]' : ''
                         }`}
                       >
                         {item.value}

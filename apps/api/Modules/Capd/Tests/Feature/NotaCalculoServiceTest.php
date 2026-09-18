@@ -294,6 +294,7 @@ class NotaCalculoServiceTest extends TestCase
             public string $quinquenio_percentual = '5.00';
             public string $data_fim;
             public int $etapa_cadencia = 3;
+            /** @var array<string, mixed>|null */
             public ?array $regras_config = null;
             public bool $redistribuir_fator_h = false;
 
@@ -303,6 +304,7 @@ class NotaCalculoServiceTest extends TestCase
                 $this->data_fim       = $dataFim;
             }
 
+            /** @return array<string, mixed> */
             public function getRegras(): array
             {
                 return array_merge([

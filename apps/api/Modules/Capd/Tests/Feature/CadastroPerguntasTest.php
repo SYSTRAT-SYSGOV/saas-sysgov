@@ -239,5 +239,60 @@ final class CadastroPerguntasTest extends TestCase
         $perguntasCount = Pergunta::where('modelo_id', $modelo->id)->count();
         self::assertSame(8, $perguntasCount);
     }
+
+    public function test_seed_padrao_gera_quatro_grupos_funcionais_e_resolve_modelo_dinamico(): void
+    {
+        /** @var User $user */
+        $user = User::factory()->create();
+        $user->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
+
+        $this->actingAs($user)
+            ->withHeader('X-Tenant-ID', (string) $this->tenant->id)
+            ->postJson('/api/capd/modelos-formulario/seed-padrao')
+            ->assertStatus(200);
+
+        // Verifica os 4 modelos gerados
+        $mSeguranca = ModeloFormulario::where('codigo', 'FORM_SEGURANCA_V1')->first();
+        $mSaude     = ModeloFormulario::where('codigo', 'FORM_SAUDE_V1')->first();
+        $mMagisterio= ModeloFormulario::where('codigo', 'FORM_MAGISTERIO_V1')->first();
+        $mGeral     = ModeloFormulario::where('codigo', 'FORM_GERAL_V1')->first();
+
+        self::assertNotNull($mSeguranca, 'Modelo de Segurança Pública deve ser criado.');
+        self::assertNotNull($mSaude, 'Modelo de Saúde deve ser criado.');
+        self::assertNotNull($mMagisterio, 'Modelo de Magistério deve ser criado.');
+        self::assertNotNull($mGeral, 'Modelo de Quadro Geral deve ser criado.');
+
+        // Verifica perguntas de cada modelo
+        self::assertGreaterThanOrEqual(7, Pergunta::where('modelo_id', $mSeguranca->id)->count());
+        self::assertGreaterThanOrEqual(7, Pergunta::where('modelo_id', $mSaude->id)->count());
+        self::assertGreaterThanOrEqual(7, Pergunta::where('modelo_id', $mMagisterio->id)->count());
+        self::assertSame(8, Pergunta::where('modelo_id', $mGeral->id)->count());
+
+        // Valida identificação heurística dos grupos funcionais
+        $grupoSeguranca = $this->perguntaService->identificarGrupoFuncional(null, 'Guarda Municipal 1ª Classe', 'Secretaria Municipal de Segurança Pública');
+        self::assertSame('seguranca', $grupoSeguranca['chave']);
+        self::assertSame('FORM_SEGURANCA_V1', $grupoSeguranca['codigo_modelo']);
+
+        $grupoSaude = $this->perguntaService->identificarGrupoFuncional(null, 'Enfermeiro Padrão UBS', 'Secretaria Municipal de Saúde');
+        self::assertSame('saude', $grupoSaude['chave']);
+        self::assertSame('FORM_SAUDE_V1', $grupoSaude['codigo_modelo']);
+
+        $grupoMagisterio = $this->perguntaService->identificarGrupoFuncional(null, 'Professor de Educação Infantil', 'Escola Municipal Paulo Freire');
+        self::assertSame('magisterio', $grupoMagisterio['chave']);
+        self::assertSame('FORM_MAGISTERIO_V1', $grupoMagisterio['codigo_modelo']);
+
+        $grupoGeral = $this->perguntaService->identificarGrupoFuncional(null, 'Assistente Administrativo', 'Secretaria Municipal de Finanças');
+        self::assertSame('geral', $grupoGeral['chave']);
+        self::assertSame('FORM_GERAL_V1', $grupoGeral['codigo_modelo']);
+
+        // Valida resolução dinâmica do modelo
+        $modeloResolvidoSeg = $this->perguntaService->resolverModeloParaServidor(null, 'Guarda Municipal');
+        self::assertNotNull($modeloResolvidoSeg);
+        self::assertSame('FORM_SEGURANCA_V1', $modeloResolvidoSeg->codigo);
+
+        $modeloResolvidoSau = $this->perguntaService->resolverModeloParaServidor(null, 'Médico Clínico Geral');
+        self::assertNotNull($modeloResolvidoSau);
+        self::assertSame('FORM_SAUDE_V1', $modeloResolvidoSau->codigo);
+    }
 }
 

@@ -12,6 +12,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\OrgChart\Models\OrgUnit;
 
+/**
+ * Servidor no módulo CAPD.
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property int|null $user_id
+ * @property string $matricula
+ * @property string $nome_completo
+ * @property string|null $cargo_efetivo
+ * @property string|null $orgao_lotacao
+ * @property string|null $lotacao_fisica
+ * @property int|null $plano_carreira_id
+ * @property bool $atende_publico
+ * @property PlanoCarreira|null $planoCarreira
+ * @property OrgUnit|null $orgUnit
+ */
 final class Servidor extends Model
 {
     use TenantAware, SoftDeletes;

@@ -280,6 +280,21 @@ export const NovaAvaliacaoWizard: React.FC<NovaAvaliacaoWizardProps> = ({
     [historico?.anteriores, cicloId]
   );
 
+  const grupoFuncionalDetectado = useMemo(() => {
+    if (!servidorSelecionado) return null;
+    const texto = `${servidorSelecionado.cargo_efetivo || ''} ${servidorSelecionado.orgao_lotacao || ''} ${lotacao || ''}`.toLowerCase();
+    if (/guarda|gcm|seguran|vigilante|patrimonial|transito|trânsito|smsp|polic/.test(texto)) {
+      return { nome: 'Segurança Pública', codigo: 'FORM_SEGURANCA_V1', icon: '🛡️' };
+    }
+    if (/medico|médico|enferm|tecnico|odont|dentist|farmac|saude|saúde|sms|upa|ubs|acs|ace/.test(texto)) {
+      return { nome: 'Saúde Pública', codigo: 'FORM_SAUDE_V1', icon: '🩺' };
+    }
+    if (/professor|pedagog|educador|educac|educaç|smed|escola|cmei/.test(texto)) {
+      return { nome: 'Magistério', codigo: 'FORM_MAGISTERIO_V1', icon: '📚' };
+    }
+    return { nome: 'Quadro Geral', codigo: 'FORM_GERAL_V1', icon: '🏛️' };
+  }, [servidorSelecionado, lotacao]);
+
   // Carrega histórico e CIT do servidor selecionado
   useEffect(() => {
     if (!servidorSelecionado) {
@@ -775,10 +790,12 @@ export const NovaAvaliacaoWizard: React.FC<NovaAvaliacaoWizardProps> = ({
                     </div>
                     <div>
                       <span className="text-muted-foreground block text-[10px] uppercase font-mono">
-                        Regime Jurídico
+                        Grupo Funcional & Instrumento
                       </span>
-                      <span className="font-medium text-foreground text-xs capitalize">
-                        {servidorSelecionado?.regime_juridico || 'Estatutário'}
+                      <span className="font-semibold text-primary text-xs flex items-center gap-1">
+                        <span>{grupoFuncionalDetectado?.icon}</span>
+                        <span>{grupoFuncionalDetectado?.nome}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">({grupoFuncionalDetectado?.codigo})</span>
                       </span>
                     </div>
                   </div>

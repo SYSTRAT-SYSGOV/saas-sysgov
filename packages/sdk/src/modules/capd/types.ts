@@ -16,6 +16,7 @@ export type ApiCiclo = {
   modo_f1?: 'manual' | 'api';
   modo_f2?: 'manual' | 'api';
   tipo_assinatura_ata?: 'sha256' | 'icp_brasil';
+  nota_corte_nfc?: number;
   metadata?: Record<string, unknown>;
   regras_config?: ApiRegrasCicloConfig;
 };
@@ -116,6 +117,7 @@ export type ApiComissao = {
   data_publicacao_portaria: string;
   ativa: boolean;
   membros?: ApiComissaoMembro[];
+  ciclo?: ApiCiclo;
 };
 
 export type ApiComissaoMembro = {
@@ -124,7 +126,27 @@ export type ApiComissaoMembro = {
   servidor_id: number;
   papel: 'presidente' | 'secretario' | 'titular_gestao' | 'titular_servidor' | 'suplente';
   ativo: boolean;
-  servidor?: { id: number; name: string; email: string };
+  data_inicio_mandato?: string | null;
+  data_fim_mandato?: string | null;
+  nome_completo?: string;
+  matricula?: string;
+  servidor?: {
+    id: number;
+    name?: string;
+    email?: string;
+    nome_completo?: string;
+    matricula?: string;
+    cargo?: string;
+    lotacao?: string;
+  };
+  impedimentos?: Array<{
+    id: number;
+    servidor_alvo_id: number;
+    tipo_impedimento: string;
+    motivo: string;
+    declarado_em: string;
+    servidorAlvo?: { id: number; name?: string };
+  }>;
 };
 
 export type ApiRecurso = {
@@ -158,6 +180,9 @@ export type ApiSessao = {
   hash_ata_sha256?: string | null;
   finalizada: boolean;
   finalizada_em?: string | null;
+  comissao?: { id: number; numero_portaria?: string };
+  pautas?: any[];
+  deliberacoes?: any[];
 };
 
 export type ApiDashboardMetricas = {
@@ -221,6 +246,32 @@ export type VotarRecursoInput = {
   voto_favoravel: boolean;
   novo_grau_proposto?: number;
   parecer_voto?: string;
+};
+
+export type CreateSessaoInput = {
+  comissao_id: number;
+  tipo_sessao: 'ordinaria' | 'extraordinaria';
+  data_sessao: string;
+  quorum_minimo?: number;
+};
+
+export type CreateComissaoInput = {
+  ciclo_id: number;
+  numero_portaria: string;
+  data_publicacao_portaria: string;
+};
+
+export type AdicionarMembroInput = {
+  servidor_id: number;
+  papel: 'presidente' | 'secretario' | 'titular_gestao' | 'titular_servidor' | 'suplente';
+  data_inicio_mandato?: string;
+  data_fim_mandato?: string;
+};
+
+export type DeclararImpedimentoInput = {
+  servidor_alvo_id: number;
+  tipo_impedimento: 'grau_parentesco' | 'subordinacao_direta' | 'recorrente' | 'avaliador' | 'autodeclarado';
+  motivo: string;
 };
 
 export type ApiServidor = {

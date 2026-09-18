@@ -152,18 +152,37 @@ export const AvaliacaoFormView: React.FC<Props> = ({
           }
         }
 
+        // Garante carregamento do modelo de formulário e grupo funcional do servidor
+        if (!(av as any).modelo_formulario && av.servidor_id) {
+          try {
+            const srvData = (av as any).servidorData;
+            const mod = await api.capd.getModeloFormularioVigente(undefined, srvData?.cargo_efetivo, { servidor_id: av.servidor_id });
+            const grp = await api.capd.identificarGrupoFuncional({ servidor_id: av.servidor_id, cargo: srvData?.cargo_efetivo });
+            (av as any).modelo_formulario = mod;
+            (av as any).grupo_funcional = grp;
+            setAvaliacao({ ...av, modelo_formulario: mod, grupo_funcional: grp } as any);
+          } catch (modErr) {
+            console.warn('Erro ao resolver modelo do grupo funcional:', modErr);
+          }
+        }
+
         setAnotacoesCit(citList);
 
         // Carrega as respostas salvas no rascunho da avaliação
         const respostasCarregadas = { ...(av.respostas_fatores || {}) };
 
         // Recupera o texto da justificativa se houver incidente já vinculado pelo avaliador
-        for (const fItem of FATORES_CANONICOS) {
-          const resp = respostasCarregadas[fItem.codigo];
+        const listaFatoresRef = (av as any)?.modelo_formulario?.perguntas_ativas?.length
+          ? (av as any).modelo_formulario.perguntas_ativas
+          : FATORES_CANONICOS;
+
+        for (const fItem of listaFatoresRef) {
+          const cod = fItem.codigo;
+          const resp = respostasCarregadas[cod];
           if (resp?.diario_bordo_id && !resp.justificativa) {
             const inc = citList.find((a) => a.id === resp.diario_bordo_id);
             if (inc) {
-              respostasCarregadas[fItem.codigo] = {
+              respostasCarregadas[cod] = {
                 ...resp,
                 justificativa: inc.descricao_fato,
                 incidente_tipo: inc.tipo,
@@ -206,6 +225,20 @@ export const AvaliacaoFormView: React.FC<Props> = ({
   }, [anotacoesCit, fatores]);
 
   const fatoresExibidos: FatorItem[] = useMemo(() => {
+    const modeloPerguntas = (avaliacao as any)?.modelo_formulario?.perguntas_ativas;
+    if (modeloPerguntas && Array.isArray(modeloPerguntas) && modeloPerguntas.length > 0) {
+      return modeloPerguntas.map((p: any) => {
+        const opcoesDesc = p.opcoes && Array.isArray(p.opcoes) ? p.opcoes.map((o: any) => o.descricao || o.rotulo) : undefined;
+        return {
+          id: p.id,
+          codigo: p.codigo,
+          nome: p.enunciado,
+          descricao: p.enunciado,
+          criterios: opcoesDesc,
+        };
+      });
+    }
+
     return FATORES_CANONICOS.map((fCanonico) => {
       const dbFator = fatores.find((f) => f.codigo === fCanonico.codigo);
       return {
@@ -215,7 +248,7 @@ export const AvaliacaoFormView: React.FC<Props> = ({
         descricao: dbFator?.descricao || fCanonico.descricao,
       };
     });
-  }, [fatores]);
+  }, [avaliacao, fatores]);
 
   const fatoresPendentes = useMemo(
     () => fatoresExibidos.filter((f) => !respostas[f.codigo]?.grau).length,
@@ -803,6 +836,26 @@ export const AvaliacaoFormView: React.FC<Props> = ({
             notaCorte={notaCorte}
             progresso={progresso}
           />
+
+          {/* Banner do Grupo Funcional Carregado Conforme Carreira do Servidor */}
+          {((avaliacao as any)?.grupo_funcional || (avaliacao as any)?.modelo_formulario) && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-primary/25 bg-primary/5 text-xs">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="font-semibold text-xs bg-primary/10 text-primary border-primary/30">
+                  {((avaliacao as any)?.grupo_funcional?.nome) || 'Grupo Funcional'}
+                </Badge>
+                <span className="font-semibold text-foreground">
+                  {(avaliacao as any)?.modelo_formulario?.nome || 'Instrumento de Avaliação de Desempenho'}
+                </span>
+                <span className="font-mono text-muted-foreground text-[11px]">
+                  [{(avaliacao as any)?.modelo_formulario?.codigo || 'FORM_VIGENTE'}]
+                </span>
+              </div>
+              <span className="text-muted-foreground text-[11px]">
+                {((avaliacao as any)?.grupo_funcional?.descricao) || 'Formulário carregado conforme a carreira do servidor'}
+              </span>
+            </div>
+          )}
 
           <div className="rounded-lg border border-status-warning-border bg-status-warning-bg px-4 py-3 text-xs text-status-warning flex items-start gap-2">
             <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />

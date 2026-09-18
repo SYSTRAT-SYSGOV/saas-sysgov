@@ -34,6 +34,11 @@ import type {
   CreateAvaliacaoUsuarioInput,
   RespostaFator,
   VotarRecursoInput,
+  CreateSessaoInput,
+  CreateComissaoInput,
+  AdicionarMembroInput,
+  DeclararImpedimentoInput,
+  ApiComissaoMembro,
 } from './types';
 
 function buildQueryString(params?: Record<string, unknown>): string {
@@ -140,6 +145,27 @@ export class CapdModuleClient {
     return this.api.request(`/capd/comissoes/${id}`);
   }
 
+  async createComissao(input: CreateComissaoInput): Promise<ApiComissao> {
+    return this.api.request('/capd/comissoes', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async adicionarMembroComissao(comissaoId: number, input: AdicionarMembroInput): Promise<ApiComissaoMembro> {
+    return this.api.request(`/capd/comissoes/${comissaoId}/membros`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async declararImpedimento(membroId: number, input: DeclararImpedimentoInput): Promise<{ message: string; impedimento: any }> {
+    return this.api.request(`/capd/comissoes/membros/${membroId}/impedimentos`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
   // ── Recursos ────────────────────────────────────────────────────────
 
   async listRecursos(params?: { status?: string }): Promise<{ data: ApiRecurso[] }> {
@@ -163,6 +189,13 @@ export class CapdModuleClient {
 
   async listSessoes(): Promise<{ data: ApiSessao[] }> {
     return this.api.request('/capd/sessoes');
+  }
+
+  async createSessao(input: CreateSessaoInput): Promise<ApiSessao> {
+    return this.api.request('/capd/sessoes', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
   }
 
   async getSessao(id: number): Promise<{ sessao: ApiSessao; integridade_ata_ok: boolean }> {
@@ -367,12 +400,33 @@ export class CapdModuleClient {
 
   // ── Modelos de Formulário e Cadastro de Perguntas ───────────────────
 
-  async listModelosFormulario(planoId?: number, cargo?: string): Promise<ApiModeloFormulario[]> {
-    return this.api.request(`/capd/modelos-formulario${buildQueryString({ plano_carreira_id: planoId, cargo })}`);
+  async listModelosFormulario(planoId?: number, cargo?: string, grupo?: string): Promise<ApiModeloFormulario[]> {
+    return this.api.request(`/capd/modelos-formulario${buildQueryString({ plano_carreira_id: planoId, cargo, grupo })}`);
   }
 
-  async getModeloFormularioVigente(planoId?: number, cargo?: string): Promise<ApiModeloFormulario> {
-    return this.api.request(`/capd/modelos-formulario/vigente${buildQueryString({ plano_carreira_id: planoId, cargo })}`);
+  async getModeloFormularioVigente(
+    planoId?: number,
+    cargo?: string,
+    options?: { servidor_id?: number; grupo?: string }
+  ): Promise<ApiModeloFormulario> {
+    return this.api.request(
+      `/capd/modelos-formulario/vigente${buildQueryString({
+        plano_carreira_id: planoId,
+        cargo,
+        servidor_id: options?.servidor_id,
+        grupo: options?.grupo,
+      })}`
+    );
+  }
+
+  async identificarGrupoFuncional(params?: {
+    servidor_id?: number;
+    cargo?: string;
+    lotacao?: string;
+  }): Promise<{ chave: string; nome: string; codigo_modelo: string; descricao: string; icone?: string }> {
+    return this.api.request(
+      `/capd/modelos-formulario/identificar-grupo${buildQueryString(params || {})}`
+    );
   }
 
   async saveModeloFormulario(dados: Partial<ApiModeloFormulario>): Promise<ApiModeloFormulario> {

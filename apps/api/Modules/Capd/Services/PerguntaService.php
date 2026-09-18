@@ -15,6 +15,7 @@ use Modules\Capd\Models\DiarioBordo;
 use Modules\Capd\Models\ModeloFormulario;
 use Modules\Capd\Models\Pergunta;
 use Modules\Capd\Models\PlanoCarreira;
+use Modules\Capd\Models\Servidor;
 
 /**
  * Gestão de Modelos de Formulário e Cadastro de Perguntas do Instrumento de Avaliação.
@@ -25,6 +26,7 @@ use Modules\Capd\Models\PlanoCarreira;
  * - Regras condicionais entre respostas
  * - Grupos com pesos ponderados
  * - Trava antileniência vinculada ao Diário de Bordo (CIT)
+ * - Separação por Grupos Funcionais: Segurança Pública, Saúde, Magistério e Quadro Geral
  */
 final class PerguntaService
 {
@@ -37,9 +39,170 @@ final class PerguntaService
         private readonly TravaElectronicaService $trava,
     ) {}
 
-    public function listarModelos(?int $planoCarreiraId = null, ?string $cargo = null): Collection
+    /**
+     * Identifica o grupo funcional/carreira com base no servidor, cargo ou lotação:
+     * - seguranca: Guarda Municipal, Agentes de Segurança Patrimonial, Trânsito, SMSP
+     * - saude: Médicos, Enfermagem, Técnicos, Odontólogos, ACS/ACE, SMS
+     * - magisterio: Professores, Pedagogos, Educadores Infantis, SMED
+     * - geral: Quadro Geral Administrativo / Operacional
+     *
+     * @return array{chave: string, nome: string, codigo_modelo: string, descricao: string, icone: string}
+     */
+    public function identificarGrupoFuncional(?Servidor $servidor = null, ?string $cargo = null, ?string $lotacao = null): array
+    {
+        $planoCodigo = ($servidor !== null && $servidor->planoCarreira !== null) ? (string) $servidor->planoCarreira->codigo : null;
+        if ($planoCodigo === 'SEGURANCA') {
+            return [
+                'chave'         => 'seguranca',
+                'nome'          => 'Segurança Pública',
+                'codigo_modelo' => 'FORM_SEGURANCA_V1',
+                'descricao'     => 'Guarda Municipal, Agentes de Segurança Patrimonial, Trânsito e Defesa Social (SMSP)',
+                'icone'         => 'Shield',
+            ];
+        }
+        if ($planoCodigo === 'SAUDE') {
+            return [
+                'chave'         => 'saude',
+                'nome'          => 'Saúde Pública',
+                'codigo_modelo' => 'FORM_SAUDE_V1',
+                'descricao'     => 'Médicos, Enfermagem, Odontologia, Técnicos e Agentes de Saúde/Endemias (SMS)',
+                'icone'         => 'HeartPulse',
+            ];
+        }
+        if ($planoCodigo === 'MAGISTERIO') {
+            return [
+                'chave'         => 'magisterio',
+                'nome'          => 'Magistério',
+                'codigo_modelo' => 'FORM_MAGISTERIO_V1',
+                'descricao'     => 'Professores, Pedagogos, Educadores e Especialistas de Educação (SMED)',
+                'icone'         => 'GraduationCap',
+            ];
+        }
+
+        $cargoServidor = $servidor !== null ? (string) ($servidor->cargo_efetivo ?? '') : '';
+        $orgaoServidor = $servidor !== null ? (string) ($servidor->orgao_lotacao ?? '') : '';
+        $lotacaoFisicaServidor = $servidor !== null ? (string) ($servidor->lotacao_fisica ?? '') : '';
+        $orgUnitName = ($servidor !== null && $servidor->orgUnit !== null) ? (string) $servidor->orgUnit->name : '';
+        $orgUnitCode = ($servidor !== null && $servidor->orgUnit !== null) ? (string) $servidor->orgUnit->code : '';
+
+        $textoCargo = mb_strtolower(trim($cargoServidor . ' ' . ($cargo ?? '')));
+        $textoLotacao = mb_strtolower(trim(
+            $orgaoServidor . ' ' .
+            $lotacaoFisicaServidor . ' ' .
+            $orgUnitName . ' ' .
+            $orgUnitCode . ' ' .
+            ($lotacao ?? '')
+        ));
+        $textoGeral = $textoCargo . ' ' . $textoLotacao;
+
+        // 1. Segurança Pública
+        if (preg_match('/(guarda|gcm|seguran|vigilante|patrimonial|transito|trânsito|defesa civil|smsp|polic|polícia)/iu', $textoGeral)) {
+            return [
+                'chave'         => 'seguranca',
+                'nome'          => 'Segurança Pública',
+                'codigo_modelo' => 'FORM_SEGURANCA_V1',
+                'descricao'     => 'Guarda Municipal, Agentes de Segurança Patrimonial, Trânsito e Defesa Social (SMSP)',
+                'icone'         => 'Shield',
+            ];
+        }
+
+        // 2. Saúde Pública
+        if (preg_match('/(medico|médico|médic|medic|enferm|tecnico|técnico|odont|dentist|farmac|psicol|psicól|fisioter|saude|saúde|sms|upa|ubs|acs|ace|endemia|hospital|pronto socorro|clinic|clínic)/iu', $textoGeral)) {
+            return [
+                'chave'         => 'saude',
+                'nome'          => 'Saúde Pública',
+                'codigo_modelo' => 'FORM_SAUDE_V1',
+                'descricao'     => 'Médicos, Enfermagem, Odontologia, Técnicos e Agentes de Saúde/Endemias (SMS)',
+                'icone'         => 'HeartPulse',
+            ];
+        }
+
+        // 3. Magistério
+        if (preg_match('/(professor|docente|pedagog|educador|educac|educaç|smed|escola|cmei|creche|ensino)/iu', $textoGeral)) {
+            return [
+                'chave'         => 'magisterio',
+                'nome'          => 'Magistério',
+                'codigo_modelo' => 'FORM_MAGISTERIO_V1',
+                'descricao'     => 'Professores, Pedagogos, Educadores e Especialistas de Educação (SMED)',
+                'icone'         => 'GraduationCap',
+            ];
+        }
+
+        // 4. Quadro Geral (Padrão)
+        return [
+            'chave'         => 'geral',
+            'nome'          => 'Quadro Geral',
+            'codigo_modelo' => 'FORM_GERAL_V1',
+            'descricao'     => 'Cargos Administrativos, Operacionais, Obras, Finanças e Planejamento',
+            'icone'         => 'Building2',
+        ];
+    }
+
+    /**
+     * Resolve o modelo de formulário de avaliação aplicável ao servidor ou cargo.
+     */
+    public function resolverModeloParaServidor(?Servidor $servidor = null, ?string $cargo = null, ?string $grupoFuncional = null): ?ModeloFormulario
+    {
+        $codigoModeloAlvo = null;
+        if ($grupoFuncional !== null) {
+            $codigoModeloAlvo = match (mb_strtolower($grupoFuncional)) {
+                'seguranca', 'segurança' => 'FORM_SEGURANCA_V1',
+                'saude', 'saúde'         => 'FORM_SAUDE_V1',
+                'magisterio', 'magistério' => 'FORM_MAGISTERIO_V1',
+                'geral'                  => 'FORM_GERAL_V1',
+                default                  => null,
+            };
+        }
+
+        if ($codigoModeloAlvo === null) {
+            $grupoInfo = $this->identificarGrupoFuncional($servidor, $cargo);
+            $codigoModeloAlvo = $grupoInfo['codigo_modelo'];
+        }
+
+        // Busca pelo código específico do grupo funcional
+        $modelo = ModeloFormulario::with(['perguntasAtivas', 'planoCarreira'])
+            ->ativos()
+            ->where('codigo', $codigoModeloAlvo)
+            ->orderByDesc('versao')
+            ->first();
+
+        if ($modelo !== null) {
+            return $modelo;
+        }
+
+        // Se não encontrar pelo código direto, tenta pelo plano de carreira associado
+        if ($servidor?->plano_carreira_id) {
+            $modelo = ModeloFormulario::with(['perguntasAtivas', 'planoCarreira'])
+                ->ativos()
+                ->where('plano_carreira_id', $servidor->plano_carreira_id)
+                ->orderByDesc('versao')
+                ->first();
+
+            if ($modelo !== null) {
+                return $modelo;
+            }
+        }
+
+        // Fallback para getModeloVigente padrão
+        return $this->getModeloVigente($servidor?->plano_carreira_id, $cargo);
+    }
+
+    public function listarModelos(?int $planoCarreiraId = null, ?string $cargo = null, ?string $grupoFuncional = null): Collection
     {
         $query = ModeloFormulario::with(['perguntasAtivas', 'planoCarreira'])->ativos();
+
+        if ($grupoFuncional !== null) {
+            $codigoAlvo = match (mb_strtolower($grupoFuncional)) {
+                'seguranca', 'segurança' => 'FORM_SEGURANCA_V1',
+                'saude', 'saúde'         => 'FORM_SAUDE_V1',
+                'magisterio', 'magistério' => 'FORM_MAGISTERIO_V1',
+                'geral'                  => 'FORM_GERAL_V1',
+                default                  => null,
+            };
+            if ($codigoAlvo) {
+                $query->where('codigo', $codigoAlvo);
+            }
+        }
 
         if ($planoCarreiraId !== null) {
             $query->where('plano_carreira_id', $planoCarreiraId);

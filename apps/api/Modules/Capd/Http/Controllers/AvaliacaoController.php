@@ -208,7 +208,14 @@ final class AvaliacaoController extends Controller
             ->latest('data_ocorrencia')
             ->get();
 
+        $servidor = Servidor::where('user_id', $avaliacao->servidor_id)->first()
+            ?? Servidor::find($avaliacao->servidor_id);
+        $modelo = $this->perguntaService->resolverModeloParaServidor($servidor);
+        $grupo = $this->perguntaService->identificarGrupoFuncional($servidor);
+
         $avaliacao->setAttribute('incidentes_cit', $incidentes);
+        $avaliacao->setAttribute('modelo_formulario', $modelo);
+        $avaliacao->setAttribute('grupo_funcional', $grupo);
 
         return response()->json($avaliacao);
     }
@@ -359,7 +366,7 @@ final class AvaliacaoController extends Controller
             $modelo = $avaliacao->modeloFormulario;
             if (! $modelo) {
                 $servidor = Servidor::where('user_id', $avaliacao->servidor_id)->first();
-                $modelo = $this->perguntaService->getModeloVigente($servidor?->plano_carreira_id);
+                $modelo = $this->perguntaService->resolverModeloParaServidor($servidor);
             }
 
             $somaPonderada = 0.0;
@@ -427,7 +434,7 @@ final class AvaliacaoController extends Controller
 
         // ── Resolve o modelo de formulário vigente do servidor (RF-02) ────
         $servidor = Servidor::where('user_id', $avaliacao->servidor_id)->first();
-        $modelo   = $this->perguntaService->getModeloVigente($servidor?->plano_carreira_id);
+        $modelo   = $this->perguntaService->resolverModeloParaServidor($servidor);
 
         if ($modelo === null) {
             return response()->json([
@@ -1040,7 +1047,7 @@ final class AvaliacaoController extends Controller
         ]);
 
         $servidor = Servidor::where('user_id', $avaliacao->servidor_id)->first();
-        $modelo   = $this->perguntaService->getModeloVigente($servidor?->plano_carreira_id);
+        $modelo   = $this->perguntaService->resolverModeloParaServidor($servidor);
 
         if ($modelo === null) {
             return response()->json(['message' => 'Nenhum modelo de formulário vigente configurado para este servidor.'], 422);
