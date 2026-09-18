@@ -250,13 +250,26 @@ export const AvaliacaoFormView: React.FC<Props> = ({
       return n <= 10 ? n * 10 : n;
     }
 
-    const graus = fatoresExibidos
-      .map((f) => respostas[f.codigo]?.grau)
-      .filter((g): g is number => typeof g === 'number' && g > 0);
+    const fatoresRespondidos = fatoresExibidos.filter(
+      (f) => typeof respostas[f.codigo]?.grau === 'number' && (respostas[f.codigo]?.grau ?? 0) > 0
+    );
 
-    if (graus.length > 0) {
-      const somaPontos = graus.reduce((soma, g) => soma + (GRAU_PONTOS[g] ?? 70), 0);
-      return somaPontos / graus.length;
+    if (fatoresRespondidos.length > 0) {
+      let somaPonderada = 0;
+      let somaPesos = 0;
+      for (const f of fatoresRespondidos) {
+        const g = respostas[f.codigo]!.grau!;
+        const pontos = GRAU_PONTOS[g] ?? (g * 20);
+        const peso = Number((f as any).peso ?? 0);
+        if (peso > 0) {
+          somaPonderada += pontos * peso;
+          somaPesos += peso;
+        } else {
+          somaPonderada += pontos;
+          somaPesos += 1;
+        }
+      }
+      return somaPesos > 0 ? somaPonderada / somaPesos : null;
     }
 
     if (avaliacao?.nota_final) {

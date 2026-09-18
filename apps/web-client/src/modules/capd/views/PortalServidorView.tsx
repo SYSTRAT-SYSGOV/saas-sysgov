@@ -52,6 +52,11 @@ import {
   X,
   ShieldCheck,
   Briefcase,
+  Copy,
+  Check,
+  FileCheck,
+  Paperclip,
+  Printer,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
@@ -64,6 +69,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs, type TabsItem } from '@/components/ui/Tabs';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ScreenState } from '@/components/ui/ScreenState';
+import { DataTable } from '@/components/ui/DataTable';
+import type { ColumnDef } from '@tanstack/react-table';
 import { MatrizEscalaGrafica, type RespostaItem } from '../components/MatrizEscalaGrafica';
 
 const api = new SysgovApi();
@@ -129,8 +136,14 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
   const [simulacao, setSimulacao] = useState<ApiSimulacaoProgressao | null>(null);
   const [pmd, setPmd] = useState<any | null>(null);
 
+  const [citVisualizacao, setCitVisualizacao] = useState<'timeline' | 'tabela'>('timeline');
   const [filtroCitBusca, setFiltroCitBusca] = useState('');
   const [filtroCitTipo, setFiltroCitTipo] = useState<'todos' | 'positivo' | 'negativo'>('todos');
+  const [filtroCitFator, setFiltroCitFator] = useState<string>('todos');
+  const [filtroCitDataInicio, setFiltroCitDataInicio] = useState<string>('');
+  const [filtroCitDataFim, setFiltroCitDataFim] = useState<string>('');
+  const [detalheCitModal, setDetalheCitModal] = useState<ApiDiarioBordo | null>(null);
+  const [copiadoHash, setCopiadoHash] = useState<boolean>(false);
   const [modalCienciaOpen, setModalCienciaOpen] = useState<boolean>(false);
   const [tipoCiencia, setTipoCiencia] = useState<'concordancia' | 'discordancia_recurso'>('concordancia');
   const [observacoesCiencia, setObservacoesCiencia] = useState<string>('');
@@ -192,13 +205,294 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
     }
   }, [selectedAvalId, carregarDadosAvaliacao]);
 
+  const fatoresCitOptions = useMemo<SelectOption[]>(() => {
+    const opts: SelectOption[] = [{ value: 'todos', label: 'Todos os Fatores' }];
+    const map = new Map<string, string>();
+
+    for (const inc of incidentes) {
+      const chave = inc.fator?.codigo || (inc.fator_id ? String(inc.fator_id) : '');
+      const rotulo = inc.fator?.nome || (inc.fator_id ? `Fator #${inc.fator_id}` : '');
+      if (chave && rotulo && !map.has(chave)) {
+        map.set(chave, rotulo);
+      }
+    }
+
+    if (espelho?.fatores) {
+      for (const f of espelho.fatores) {
+        const chave = f.codigo;
+        const rotulo = f.nome ? `${f.codigo} - ${f.nome}` : f.codigo;
+        if (chave && !map.has(chave)) {
+          map.set(chave, rotulo);
+        }
+      }
+    }
+
+    map.forEach((label, val) => {
+      opts.push({ value: val, label });
+    });
+    return opts;
+  }, [espelho, incidentes]);
+
   const incidentesFiltrados = useMemo(() => {
     return incidentes.filter((inc) => {
-      const matchTipo = filtroCitTipo === 'todos' || inc.tipo === filtroCitTipo;
-      const matchBusca = !filtroCitBusca || inc.descricao_fato?.toLowerCase().includes(filtroCitBusca.toLowerCase()) || inc.fator?.nome?.toLowerCase().includes(filtroCitBusca.toLowerCase());
-      return matchTipo && matchBusca;
+      if (filtroCitTipo === 'positivo' && inc.tipo !== 'positivo') return false;
+      if (filtroCitTipo === 'negativo' && inc.tipo === 'positivo') return false;
+
+      if (filtroCitFator !== 'todos') {
+        const matchCod = inc.fator?.codigo === filtroCitFator;
+        const matchId = inc.fator_id?.toString() === filtroCitFator;
+        if (!matchCod && !matchId) {
+          return false;
+        }
+      }
+
+      if (filtroCitDataInicio) {
+        const dataInc = inc.data_ocorrencia ? inc.data_ocorrencia.substring(0, 10) : '';
+        if (dataInc && dataInc < filtroCitDataInicio) return false;
+      }
+
+      if (filtroCitDataFim) {
+        const dataInc = inc.data_ocorrencia ? inc.data_ocorrencia.substring(0, 10) : '';
+        if (dataInc && dataInc > filtroCitDataFim) return false;
+      }
+
+      if (filtroCitBusca.trim()) {
+        const term = filtroCitBusca.toLowerCase().trim();
+        const matchDesc = inc.descricao_fato?.toLowerCase().includes(term);
+        const matchFator = inc.fator?.nome?.toLowerCase().includes(term);
+        const matchHash = inc.hash_sha256?.toLowerCase().includes(term);
+        const matchId = inc.id?.toString().includes(term);
+        if (!matchDesc && !matchFator && !matchHash && !matchId) {
+          return false;
+        }
+      }
+      return true;
     });
-  }, [incidentes, filtroCitTipo, filtroCitBusca]);
+  }, [incidentes, filtroCitTipo, filtroCitFator, filtroCitDataInicio, filtroCitDataFim, filtroCitBusca]);
+
+  const columnsCit: ColumnDef<ApiDiarioBordo>[] = useMemo(
+    () => [
+      {
+        id: 'data_ocorrencia',
+        header: 'Data Ocorrência',
+        size: 120,
+        accessorFn: (row) => row.data_ocorrencia,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs tabular-nums text-muted-foreground font-semibold">
+            {new Date(row.original.data_ocorrencia).toLocaleDateString('pt-BR')}
+          </span>
+        ),
+        meta: {
+          exportHeader: 'Data Ocorrência',
+          exportValue: (row) => new Date(row.data_ocorrencia).toLocaleDateString('pt-BR'),
+        },
+      },
+      {
+        id: 'tipo',
+        header: 'Classificação CIT',
+        size: 150,
+        accessorFn: (row) => row.tipo,
+        cell: ({ row }) => {
+          const isPositivo = row.original.tipo === 'positivo';
+          return (
+            <Badge
+              variant={isPositivo ? 'success' : 'outline'}
+              className={`text-[10px] uppercase font-bold flex items-center gap-1 w-fit ${
+                !isPositivo
+                  ? 'border-amber-500/50 text-amber-700 dark:text-amber-400 bg-amber-500/10'
+                  : ''
+              }`}
+            >
+              {isPositivo ? (
+                <>
+                  <ThumbsUp className="h-3 w-3 mr-0.5 text-emerald-600" />
+                  Fato Positivo
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-3 w-3 mr-0.5 text-amber-600" />
+                  A Desenvolver
+                </>
+              )}
+            </Badge>
+          );
+        },
+        meta: {
+          exportHeader: 'Classificação',
+          exportValue: (row) => (row.tipo === 'positivo' ? 'Fato Positivo' : 'Ponto a Desenvolver'),
+        },
+      },
+      {
+        id: 'fator',
+        header: 'Fator Vinculado',
+        size: 180,
+        accessorFn: (row) => row.fator?.nome || `Fator #${row.fator_id}`,
+        cell: ({ row }) => (
+          <span className="text-xs font-medium text-foreground/90">
+            {row.original.fator?.nome || `Fator #${row.original.fator_id}`}
+          </span>
+        ),
+        meta: {
+          exportHeader: 'Fator',
+          exportValue: (row) => row.fator?.nome || `Fator #${row.fator_id}`,
+        },
+      },
+      {
+        id: 'descricao_fato',
+        header: 'Conduta Fática Registrada',
+        size: 340,
+        accessorFn: (row) => row.descricao_fato,
+        cell: ({ row }) => (
+          <span
+            className="text-xs text-muted-foreground leading-relaxed line-clamp-2 block text-left"
+            title={row.original.descricao_fato}
+          >
+            {row.original.descricao_fato}
+          </span>
+        ),
+        meta: {
+          exportHeader: 'Descrição do Fato',
+          exportValue: (row) => row.descricao_fato,
+        },
+      },
+      {
+        id: 'hash_sha256',
+        header: 'Hash SHA-256',
+        size: 130,
+        accessorFn: (row) => row.hash_sha256,
+        cell: ({ row }) => {
+          const h = row.original.hash_sha256;
+          return h ? (
+            <span
+              className="font-mono text-[10px] text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded border border-border/50 cursor-pointer hover:text-foreground"
+              title={`Hash Digital Completo: ${h} (Clique para copiar)`}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard?.writeText(h);
+              }}
+            >
+              {h.slice(0, 8)}...{h.slice(-4)}
+            </span>
+          ) : (
+            <span className="text-[11px] text-muted-foreground font-mono">—</span>
+          );
+        },
+        meta: {
+          exportHeader: 'Hash SHA-256',
+          exportValue: (row) => row.hash_sha256 || '—',
+        },
+      },
+      {
+        id: 'acoes',
+        header: 'Ações',
+        size: 110,
+        cell: ({ row }) => (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 hover:bg-primary/10"
+            onClick={() => setDetalheCitModal(row.original)}
+          >
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            Ver Ficha
+          </Button>
+        ),
+      },
+    ],
+    []
+  );
+
+  const handleImprimirTermoCit = useCallback((incidente: ApiDiarioBordo) => {
+    const win = window.open('', '_blank');
+    if (!win) return;
+    const dataFormatada = new Date(incidente.data_ocorrencia).toLocaleDateString('pt-BR');
+    const servidorNome = espelho?.servidor?.nome || incidente.servidor?.nome_completo || 'Servidor Avaliado';
+    const matricula = espelho?.servidor?.matricula || incidente.servidor?.matricula || '—';
+    const cargo = espelho?.servidor?.cargo || incidente.servidor?.cargo_efetivo || 'Servidor Público';
+    const fatorNome = incidente.fator?.nome || `Fator #${incidente.fator_id}`;
+    const isPositivo = incidente.tipo === 'positivo';
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Ficha do Apontamento CIT - #${incidente.id}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #111827; }
+          .header { border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }
+          .title { font-size: 20px; font-weight: bold; margin: 0; }
+          .subtitle { font-size: 12px; color: #6b7280; margin-top: 4px; }
+          .section { margin-bottom: 20px; }
+          .section-title { font-size: 13px; font-weight: bold; text-transform: uppercase; color: #4b5563; margin-bottom: 8px; border-bottom: 1px solid #f3f4f6; padding-bottom: 4px; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; }
+          .label { color: #6b7280; font-size: 11px; }
+          .value { font-weight: 600; margin-top: 2px; }
+          .hash { font-family: monospace; font-size: 11px; background: #f9fafb; padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 4px; word-break: break-all; }
+          .box { background: #f9fafb; border: 1px solid #e5e7eb; padding: 14px; border-radius: 6px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+          .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+          .badge-pos { background: #d1fae5; color: #065f46; }
+          .badge-neg { background: #fef3c7; color: #92400e; }
+          .footer { margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 11px; color: #9ca3af; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1 class="title">Diário de Bordo — Ficha Circunstanciada de Incidente Crítico (CIT)</h1>
+          <div class="subtitle">Sistema de Gestão de Desempenho e Avaliação Funcional (CAPD / SYSGOV)</div>
+        </div>
+        <div class="section">
+          <div class="section-title">Identificação do Servidor Avaliado</div>
+          <div class="grid">
+            <div><div class="label">Nome Completo:</div><div class="value">${servidorNome}</div></div>
+            <div><div class="label">Matrícula Funcional:</div><div class="value">${matricula}</div></div>
+            <div><div class="label">Cargo Efetivo:</div><div class="value">${cargo}</div></div>
+            <div><div class="label">Data da Ocorrência:</div><div class="value">${dataFormatada}</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Classificação Metodológica</div>
+          <div class="grid">
+            <div>
+              <div class="label">Natureza da Conduta:</div>
+              <div class="value"><span class="badge ${isPositivo ? 'badge-pos' : 'badge-neg'}">${isPositivo ? 'Fato Positivo (Superação)' : 'Ponto a Desenvolver'}</span></div>
+            </div>
+            <div><div class="label">Fator Vinculado:</div><div class="value">${fatorNome}</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Relato Circunstanciado do Fato</div>
+          <div class="box">${incidente.descricao_fato}</div>
+        </div>
+        <div class="section">
+          <div class="section-title">Protocolo e Blindagem de Auditoria</div>
+          <div class="hash">SHA-256: ${incidente.hash_sha256 || 'Protocolo Digital Imutável'}</div>
+        </div>
+        <div class="footer">
+          Documento emitido eletronicamente em ${new Date().toLocaleString('pt-BR')} • Válido para instrução probatória do estágio probatório.
+        </div>
+      </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    win.print();
+  }, [espelho]);
+
+  const temFiltrosCitAtivos = Boolean(
+    filtroCitBusca.trim() ||
+    filtroCitTipo !== 'todos' ||
+    filtroCitFator !== 'todos' ||
+    filtroCitDataInicio ||
+    filtroCitDataFim
+  );
+
+  const handleLimparFiltrosCit = useCallback(() => {
+    setFiltroCitBusca('');
+    setFiltroCitTipo('todos');
+    setFiltroCitFator('todos');
+    setFiltroCitDataInicio('');
+    setFiltroCitDataFim('');
+  }, []);
 
   const incidentesPositivos = useMemo(() => incidentes.filter((i) => i.tipo === 'positivo'), [incidentes]);
   const incidentesNegativos = useMemo(() => incidentes.filter((i) => i.tipo !== 'positivo'), [incidentes]);
@@ -226,6 +520,15 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
     }
     return mapa;
   }, [incidentes]);
+
+  const { espelhoNotaPontos, espelhoIsElegivel } = useMemo(() => {
+    const raw = Number(espelho?.nota_final || 0);
+    const pontos = raw <= 10 && raw > 0 ? raw * 10 : raw;
+    const elegivel = typeof espelho?.elegivel_progressao === 'boolean'
+      ? (espelho.elegivel_progressao || pontos >= 70)
+      : (pontos >= 70);
+    return { espelhoNotaPontos: pontos, espelhoIsElegivel: elegivel };
+  }, [espelho]);
 
   const handleAssinarCiencia = async () => {
     if (!espelho) return;
@@ -327,11 +630,11 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <KpiCard
                   title="Nota Final do Ciclo (Nc)"
-                  value={`${Number(espelho.nota_final).toFixed(2)} pts`}
-                  subtitle={espelho.elegivel_progressao ? 'Acima do corte ≥ 70 pts' : 'Abaixo do corte < 70 pts'}
+                  value={`${espelhoNotaPontos.toFixed(2)} pts`}
+                  subtitle={espelhoIsElegivel ? 'Acima do corte ≥ 70 pts' : 'Abaixo do corte < 70 pts'}
                   icon={<Award className="h-5 w-5" />}
-                  iconBgColor={espelho.elegivel_progressao ? 'bg-status-success-bg text-status-success' : 'bg-status-danger-bg text-status-danger'}
-                  statusBadge={<StatusChip label={espelho.elegivel_progressao ? 'Apto' : 'Abaixo do Corte'} variant={espelho.elegivel_progressao ? 'success' : 'danger'} />}
+                  iconBgColor={espelhoIsElegivel ? 'bg-status-success-bg text-status-success' : 'bg-status-danger-bg text-status-danger'}
+                  statusBadge={<StatusChip label={espelhoIsElegivel ? 'Apto' : 'Abaixo do Corte'} variant={espelhoIsElegivel ? 'success' : 'danger'} />}
                 />
                 <KpiCard
                   title="Ciclo de Referência"
@@ -358,14 +661,14 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                     </h3>
                     <p className="text-xs text-muted-foreground">Nota de corte: <span className="font-mono font-bold text-foreground">70,00 pontos</span></p>
                   </div>
-                  <StatusChip label={espelho.elegivel_progressao ? 'Apto à Progressão' : 'Abaixo do Corte'} variant={espelho.elegivel_progressao ? 'success' : 'danger'} />
+                  <StatusChip label={espelhoIsElegivel ? 'Apto à Progressão' : 'Abaixo do Corte'} variant={espelhoIsElegivel ? 'success' : 'danger'} />
                 </div>
                 <div className="mt-4 space-y-1.5">
                   <div className="flex justify-between text-xs font-mono text-muted-foreground">
-                    <span>0 pts</span> <span className="text-foreground font-bold">{Number(espelho.nota_final).toFixed(2)} pts</span> <span>100 pts</span>
+                    <span>0 pts</span> <span className="text-foreground font-bold">{espelhoNotaPontos.toFixed(2)} pts</span> <span>100 pts</span>
                   </div>
                   <div className="relative">
-                    <ProgressBar value={Number(espelho.nota_final)} max={100} color={espelho.elegivel_progressao ? 'emerald' : 'rose'} />
+                    <ProgressBar value={espelhoNotaPontos} max={100} color={espelhoIsElegivel ? 'emerald' : 'rose'} />
                     <div className="absolute top-0 -translate-x-1/2 h-1.5 w-0.5 bg-amber-400" style={{ left: '70%' }} />
                   </div>
                   <div className="text-[10px] text-[#8D5B00] text-right font-mono">← Corte: 70,00 pts</div>
@@ -407,7 +710,7 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                   <span className="text-xs text-muted-foreground font-mono">Soma dos pesos: {(espelho.fatores?.reduce((s, f) => s + f.peso, 0) ?? 0).toFixed(2)}%</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-muted-foreground uppercase">Nota Final:</span>
-                    <span className="font-mono text-xl font-black text-foreground tabular-nums">{Number(espelho.nota_final).toFixed(2)}</span>
+                    <span className="font-mono text-xl font-black text-foreground tabular-nums">{espelhoNotaPontos.toFixed(2)}</span>
                   </div>
                 </div>
               </Card>
@@ -421,9 +724,29 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
       {activeTab === 'cit' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiCard title="Total de Registros" value={incidentes.length.toString()} subtitle="Apontamentos do período" icon={<BookOpen className="h-5 w-5" />} iconBgColor="bg-status-info-bg text-status-info" />
-            <KpiCard title="Fatos Positivos" value={incidentesPositivos.length.toString()} subtitle="Desempenhos exemplares" icon={<CircleCheck className="h-5 w-5" />} iconBgColor="bg-status-success-bg text-status-success" statusBadge={<StatusChip label="Favorável" variant="success" />} />
-            <KpiCard title="Pontos a Desenvolver" value={incidentesNegativos.length.toString()} subtitle="Oportunidades de melhoria" icon={<AlertCircle className="h-5 w-5" />} iconBgColor="bg-status-warning-bg text-status-warning" statusBadge={<StatusChip label="Atenção" variant="warning" />} />
+            <KpiCard
+              title="Total de Registros"
+              value={incidentes.length.toString()}
+              subtitle="Apontamentos fáticos do período"
+              icon={<BookOpen className="h-5 w-5" />}
+              iconBgColor="bg-status-info-bg text-status-info"
+            />
+            <KpiCard
+              title="Fatos Positivos"
+              value={incidentesPositivos.length.toString()}
+              subtitle="Desempenhos exemplares (superação)"
+              icon={<CircleCheck className="h-5 w-5" />}
+              iconBgColor="bg-status-success-bg text-status-success"
+              statusBadge={<StatusChip label="Favorável" variant="success" />}
+            />
+            <KpiCard
+              title="Pontos a Desenvolver"
+              value={incidentesNegativos.length.toString()}
+              subtitle="Oportunidades de orientação e melhoria"
+              icon={<AlertCircle className="h-5 w-5" />}
+              iconBgColor="bg-status-warning-bg text-status-warning"
+              statusBadge={<StatusChip label="Atenção" variant="warning" />}
+            />
           </div>
 
           <Card className="gap-0 py-0 overflow-hidden shadow-2xs">
@@ -432,15 +755,114 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-indigo-600" />
                   <h3 className="text-sm font-bold text-foreground">Diário de Bordo — Fatos Observáveis (CIT)</h3>
-                  <Badge variant="outline" className="text-[10px] font-mono">{incidentes.length} registros</Badge>
+                  <Badge variant="outline" className="text-[10px] font-mono">
+                    {incidentesFiltrados.length === incidentes.length
+                      ? `${incidentes.length} registros`
+                      : `${incidentesFiltrados.length} de ${incidentes.length} registros`}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center bg-muted/60 p-1 rounded-lg border border-border/60 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setCitVisualizacao('timeline')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      citVisualizacao === 'timeline'
+                        ? 'bg-background text-foreground shadow-2xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <LayoutList className="h-3.5 w-3.5" />
+                    Linha do Tempo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCitVisualizacao('tabela')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      citVisualizacao === 'tabela'
+                        ? 'bg-background text-foreground shadow-2xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Table className="h-3.5 w-3.5" />
+                    Tabela Analítica
+                  </button>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              {/* Barra de Filtros Dinâmicos Avançados */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-2 border-t border-border/50">
+                {/* Busca Textual */}
+                <div className="relative lg:col-span-2">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={filtroCitBusca}
+                    onChange={(e) => setFiltroCitBusca(e.target.value)}
+                    placeholder="Pesquisar fato, fator ou hash..."
+                    className="pl-8 pr-8 h-8 text-xs"
+                  />
+                  {filtroCitBusca && (
+                    <button
+                      type="button"
+                      onClick={() => setFiltroCitBusca('')}
+                      className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro de Fator */}
+                <div>
+                  <Select
+                    value={filtroCitFator}
+                    onChange={(v) => setFiltroCitFator(v || 'todos')}
+                    options={fatoresCitOptions}
+                    className="w-full h-8 text-xs"
+                  />
+                </div>
+
+                {/* Filtro de Período (De / Até) */}
+                <div className="flex items-center gap-1.5 sm:col-span-2 lg:col-span-2">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground w-1/2">
+                    <span className="text-[11px] font-medium shrink-0">De:</span>
+                    <Input
+                      type="date"
+                      value={filtroCitDataInicio}
+                      onChange={(e) => setFiltroCitDataInicio(e.target.value)}
+                      className="h-8 text-xs font-mono w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground w-1/2">
+                    <span className="text-[11px] font-medium shrink-0">Até:</span>
+                    <Input
+                      type="date"
+                      value={filtroCitDataFim}
+                      onChange={(e) => setFiltroCitDataFim(e.target.value)}
+                      className="h-8 text-xs font-mono w-full"
+                    />
+                  </div>
+                  {temFiltrosCitAtivos && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs text-muted-foreground hover:text-foreground shrink-0 px-2 cursor-pointer"
+                      title="Limpar filtros"
+                      onClick={handleLimparFiltrosCit}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                      Limpar
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Chips de Classificação Metodológica */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 {[
-                  { key: 'todos', label: 'Todos', count: incidentes.length },
-                  { key: 'positivo', label: 'Positivos', count: incidentesPositivos.length, dot: 'bg-emerald-500' },
-                  { key: 'negativo', label: 'A Desenvolver', count: incidentesNegativos.length, dot: 'bg-amber-500' },
+                  { key: 'todos', label: 'Todos os Registros', count: incidentes.length },
+                  { key: 'positivo', label: 'Fatos Positivos (Superação)', count: incidentesPositivos.length, dot: 'bg-emerald-500' },
+                  { key: 'negativo', label: 'Pontos a Desenvolver', count: incidentesNegativos.length, dot: 'bg-amber-500' },
                 ].map((chip) => {
                   const ativo = filtroCitTipo === chip.key;
                   return (
@@ -448,7 +870,7 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                       key={chip.key}
                       type="button"
                       onClick={() => setFiltroCitTipo(chip.key as any)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
                         ativo
                           ? 'bg-primary text-primary-foreground shadow-xs'
                           : 'bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/50'
@@ -463,31 +885,28 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                   );
                 })}
               </div>
-
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  value={filtroCitBusca}
-                  onChange={(e) => setFiltroCitBusca(e.target.value)}
-                  placeholder="Pesquisar fato, fator ou descrição..."
-                  className="pl-8 h-8 text-xs"
-                />
-              </div>
             </div>
 
+            {/* Conteúdo Dinâmico: Timeline ou Tabela Analítica */}
             <div className="p-4 bg-muted/10">
               {incidentesFiltrados.length === 0 ? (
-                <EmptyState icon={<BookOpen className="h-10 w-10 text-muted-foreground" />} title="Nenhum registro encontrado" description="Não constam registros com o filtro aplicado." />
-              ) : (
+                <EmptyState
+                  icon={<BookOpen className="h-10 w-10 text-muted-foreground" />}
+                  title="Nenhum apontamento encontrado"
+                  description="Não constam registros no Diário de Bordo para os filtros selecionados."
+                  actionLabel={temFiltrosCitAtivos ? 'Limpar Filtros' : undefined}
+                  onAction={temFiltrosCitAtivos ? handleLimparFiltrosCit : undefined}
+                />
+              ) : citVisualizacao === 'timeline' ? (
                 <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-border">
                   {incidentesFiltrados.map((inc) => {
                     const isPositivo = inc.tipo === 'positivo';
                     const dataObj = new Date(inc.data_ocorrencia);
                     const dataFormatada = dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-                    const servidorNome = espelho?.servidor?.nome || 'Servidor Avaliado';
-                    const matricula = espelho?.servidor?.matricula || '—';
-                    const cargo = espelho?.servidor?.cargo || 'Servidor Público Municipal';
+                    const servidorNome = espelho?.servidor?.nome || inc.servidor?.nome_completo || 'Servidor Avaliado';
+                    const matricula = espelho?.servidor?.matricula || inc.servidor?.matricula || '—';
+                    const cargo = espelho?.servidor?.cargo || inc.servidor?.cargo_efetivo || 'Servidor Público Municipal';
                     const fatorNome = inc.fator?.nome || `Fator #${inc.fator_id}`;
                     const hash = inc.hash_sha256;
                     const partes = servidorNome.trim().split(' ');
@@ -537,8 +956,11 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                               {hash && (
                                 <span
                                   className="font-mono text-[10px] text-muted-foreground/80 bg-muted/50 px-2 py-0.5 rounded border border-border/60 flex items-center gap-1 cursor-pointer hover:text-foreground"
-                                  title={`Hash SHA-256 Imutável: ${hash}`}
-                                  onClick={() => navigator.clipboard?.writeText(hash)}
+                                  title={`Hash SHA-256 Imutável: ${hash} (Clique para copiar)`}
+                                  onClick={() => {
+                                    navigator.clipboard?.writeText(hash);
+                                    setFeedback({ open: true, type: 'success', title: 'Hash Copiado', message: `SHA-256 copiado: ${hash}` });
+                                  }}
                                 >
                                   <ShieldCheck className="h-3 w-3 text-emerald-600" />
                                   sha256: {hash.slice(0, 10)}...{hash.slice(-6)}
@@ -546,7 +968,12 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                               )}
                               <span className="text-muted-foreground/70 hidden md:inline">• Válido para fundamentar Graus 1, 2 ou 5</span>
                             </div>
-                            <Button variant="outline" size="sm" className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 self-end sm:self-auto hover:bg-primary/10" onClick={() => {}}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 self-end sm:self-auto hover:bg-primary/10"
+                              onClick={() => setDetalheCitModal(inc)}
+                            >
                               <Eye className="h-3.5 w-3.5 text-primary" /> Ver Ficha Completa
                             </Button>
                           </div>
@@ -555,6 +982,21 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
                     );
                   })}
                 </div>
+              ) : (
+                /* ── MODO 2: Tabela Analítica (DataTable) ─────────────────────────── */
+                <DataTable
+                  columns={columnsCit}
+                  data={incidentesFiltrados}
+                  loading={loading}
+                  emptyText="Nenhum apontamento no Diário de Bordo atende aos filtros aplicados."
+                  searchable={false}
+                  pageSize={10}
+                  pageSizeSelector
+                  fixedLayout
+                  exportable
+                  exportFileName="diario-de-bordo-cit-servidor"
+                  exportTitle="CAPD — Diário de Bordo do Servidor Avaliado (CIT)"
+                />
               )}
             </div>
           </Card>
@@ -743,9 +1185,9 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase font-semibold text-muted-foreground">Sua nota final</span>
-                  <div className="font-mono text-2xl font-black text-foreground mt-0.5">{Number(espelho.nota_final).toFixed(2)} pts</div>
+                  <div className="font-mono text-2xl font-black text-foreground mt-0.5">{espelhoNotaPontos.toFixed(2)} pts</div>
                 </div>
-                <StatusChip label={espelho.elegivel_progressao ? 'Apto' : 'Abaixo do Corte'} variant={espelho.elegivel_progressao ? 'success' : 'danger'} />
+                <StatusChip label={espelhoIsElegivel ? 'Apto' : 'Abaixo do Corte'} variant={espelhoIsElegivel ? 'success' : 'danger'} />
               </div>
             </div>
           )}
@@ -810,6 +1252,245 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* ── Modal: Ficha Circunstanciada do Incidente Crítico (CIT) ──────── */}
+      <Modal
+        open={!!detalheCitModal}
+        onClose={() => {
+          setDetalheCitModal(null);
+          setCopiadoHash(false);
+        }}
+        title="Ficha Circunstanciada do Incidente Crítico (CIT)"
+        size="2xl"
+      >
+        {detalheCitModal && (
+          <div className="space-y-4 py-2 text-xs">
+            {/* Banner com Hash SHA-256 e Integridade */}
+            <div className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  <span className="font-bold text-foreground">Protocolo Digital de Auditoria Imutável</span>
+                  <Badge variant="outline" className="text-[10px] font-mono">
+                    ID #{detalheCitModal.id}
+                  </Badge>
+                </div>
+                <div className="font-mono text-[11px] text-muted-foreground">
+                  Registrado em: {new Date(detalheCitModal.created_at || detalheCitModal.data_ocorrencia).toLocaleString('pt-BR')}
+                </div>
+              </div>
+
+              {detalheCitModal.hash_sha256 && (
+                <div className="flex items-center justify-between gap-2 bg-background p-2 rounded-lg border border-border/80">
+                  <div className="truncate font-mono text-[11px] text-muted-foreground">
+                    <span className="text-foreground/70 font-semibold mr-1">SHA-256:</span>
+                    {detalheCitModal.hash_sha256}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px] font-mono text-primary hover:bg-primary/10 shrink-0 cursor-pointer"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(detalheCitModal.hash_sha256 || '');
+                      setCopiadoHash(true);
+                      setTimeout(() => setCopiadoHash(false), 2000);
+                    }}
+                  >
+                    {copiadoHash ? (
+                      <>
+                        <Check className="h-3 w-3 mr-1 text-emerald-600" />
+                        Copiado
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copiar
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Grid com Dados do Servidor e Classificação */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Card Servidor */}
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Servidor Avaliado
+                </div>
+                <div className="space-y-1">
+                  <div className="font-bold text-sm text-foreground">
+                    {espelho?.servidor?.nome || detalheCitModal.servidor?.nome_completo || `Servidor #${detalheCitModal.servidor_id}`}
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span>Matrícula:</span>
+                    <span className="font-mono font-bold text-foreground">
+                      {espelho?.servidor?.matricula || detalheCitModal.servidor?.matricula || '—'}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span>Cargo:</span>{' '}
+                    <span className="text-foreground font-medium">
+                      {espelho?.servidor?.cargo || detalheCitModal.servidor?.cargo_efetivo || 'Servidor Público'}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span>Lotação:</span>{' '}
+                    <span className="text-foreground font-medium">
+                      {detalheCitModal.servidor?.lotacao_fisica || detalheCitModal.servidor?.orgao_lotacao || 'Órgão de Origem'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Metadados do Fato */}
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Classificação Metodológica
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Natureza da Conduta:</span>
+                    <Badge
+                      variant={detalheCitModal.tipo === 'positivo' ? 'success' : 'outline'}
+                      className={`text-[10px] uppercase font-bold flex items-center gap-1 ${
+                        detalheCitModal.tipo !== 'positivo'
+                          ? 'border-amber-500/50 text-amber-700 dark:text-amber-400 bg-amber-500/10'
+                          : ''
+                      }`}
+                    >
+                      {detalheCitModal.tipo === 'positivo' ? (
+                        <>
+                          <ThumbsUp className="h-3 w-3 mr-0.5 text-emerald-600" />
+                          Fato Positivo (Superação)
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="h-3 w-3 mr-0.5 text-amber-600" />
+                          Ponto a Desenvolver
+                        </>
+                      )}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Fator Vinculado:</span>
+                    <span className="font-bold text-foreground">
+                      {detalheCitModal.fator?.nome || `Fator #${detalheCitModal.fator_id}`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Data da Ocorrência:</span>
+                    <span className="font-mono font-bold text-foreground">
+                      {new Date(detalheCitModal.data_ocorrencia).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Efeito na Avaliação:</span>
+                    <span className="font-semibold text-primary">
+                      {detalheCitModal.tipo === 'positivo' ? 'Habilita Graus 4 ou 5' : 'Habilita Graus 1 ou 2'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Descrição Circunstanciada do Fato */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <FileText className="h-4 w-4 text-indigo-600" />
+                <span>Descrição Circunstanciada do Fato Observado:</span>
+              </div>
+              <div className="bg-muted/20 border border-border/60 rounded-lg p-3.5 text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words break-all overflow-hidden">
+                {detalheCitModal.descricao_fato}
+              </div>
+            </div>
+
+            {/* Evidências Documentais Vinculadas */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                  <Paperclip className="h-4 w-4 text-primary" />
+                  <span>Evidências e Documentos Probatórios Vinculados:</span>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-mono">
+                  {(detalheCitModal.evidencias?.length || 0)} anexo(s)
+                </Badge>
+              </div>
+
+              {detalheCitModal.evidencias && detalheCitModal.evidencias.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {detalheCitModal.evidencias.map((ev: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-muted/20 border border-border/80 text-xs"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <FileCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <div className="truncate">
+                          <div className="font-semibold text-foreground truncate">{ev.nome_original || 'Documento Comprobatório'}</div>
+                          <div className="text-[10px] font-mono text-muted-foreground truncate">
+                            SHA: {ev.hash_sha256 ? `${ev.hash_sha256.substring(0, 16)}...` : 'Certificado'}
+                          </div>
+                        </div>
+                      </div>
+                      {ev.url && (
+                        <a
+                          href={ev.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 text-primary hover:bg-primary/10 rounded cursor-pointer shrink-0 text-[11px] font-medium"
+                        >
+                          Abrir
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-muted/10 border border-dashed border-border/80 text-center text-[11px] text-muted-foreground">
+                  Nenhum arquivo digital anexado a este apontamento. O registro é fundamentado na declaração circunstanciada da chefia imediata com protocolo digital de auditoria imutável.
+                </div>
+              )}
+            </div>
+
+            {/* Fundamentação Legal e Blindagem da Trava Anti-Leniência */}
+            <div className="rounded-xl border-l-4 border-indigo-600 bg-indigo-500/10 dark:bg-indigo-950/20 p-3.5 text-xs text-indigo-950 dark:text-indigo-200 space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <BookOpen className="h-3.5 w-3.5 text-indigo-600" />
+                Fundamento Regulamentar e Trava Anti-Leniência
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground dark:text-indigo-300">
+                Este apontamento integra o prontuário permanente do servidor durante o estágio probatório. Em cumprimento à metodologia canônica da Escala Gráfica combinada com a Técnica do Incidente Crítico (CIT), notas extremas (Graus 1, 2 ou 5) no fator correlato exigem esta evidência documental prévia para validade homologatória perante a Comissão Permanente (CAPD).
+              </p>
+            </div>
+
+            {/* Ações do Modal */}
+            <div className="flex items-center justify-between pt-3 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-medium cursor-pointer border-primary/40 hover:bg-primary/5 text-primary"
+                onClick={() => handleImprimirTermoCit(detalheCitModal)}
+              >
+                <Printer className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                Imprimir Termo Oficial (PDF)
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-8 text-xs font-semibold px-4"
+                onClick={() => setDetalheCitModal(null)}
+              >
+                Fechar
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {feedback && (

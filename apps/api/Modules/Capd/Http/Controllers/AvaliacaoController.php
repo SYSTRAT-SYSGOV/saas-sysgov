@@ -356,8 +356,38 @@ final class AvaliacaoController extends Controller
 
         $dadosUpdate = ['respostas_fatores' => $request->respostas_fatores];
         if (count($graus) > 0 && ! $avaliacao->homologada) {
-            $mediaGraus = array_sum($graus) / count($graus);
-            $dadosUpdate['nota_final'] = round($mediaGraus * 20, 2);
+            $modelo = $avaliacao->modeloFormulario;
+            if (! $modelo) {
+                $servidor = Servidor::where('user_id', $avaliacao->servidor_id)->first();
+                $modelo = $this->perguntaService->getModeloVigente($servidor?->plano_carreira_id);
+            }
+
+            $somaPonderada = 0.0;
+            $somaPesos = 0.0;
+
+            if ($modelo) {
+                $servidor = Servidor::where('user_id', $avaliacao->servidor_id)->first();
+                $fatoresPesos = $modelo->fatoresComPesosEfetivos($servidor?->atende_publico ?? true);
+                foreach ($fatoresPesos as $mfp) {
+                    $cod = $mfp->fator?->codigo;
+                    if ($cod && isset($request->respostas_fatores[$cod]['grau']) && is_numeric($request->respostas_fatores[$cod]['grau'])) {
+                        $g = (float) $request->respostas_fatores[$cod]['grau'];
+                        $p = (float) $mfp->peso;
+                        $somaPonderada += ($g * 20.0) * $p;
+                        $somaPesos += $p;
+                    }
+                }
+            }
+
+            if ($somaPesos > 0) {
+                $notaFinal = round($somaPonderada / $somaPesos, 2);
+            } else {
+                $mediaGraus = array_sum($graus) / count($graus);
+                $notaFinal = round($mediaGraus * 20, 2);
+            }
+
+            $dadosUpdate['nota_final'] = number_format($notaFinal, 2, '.', '');
+            $dadosUpdate['elegivel_progressao'] = (float) $notaFinal >= 70.0;
         }
 
         $avaliacao->update($dadosUpdate);
@@ -685,11 +715,18 @@ final class AvaliacaoController extends Controller
 
         $anoCiclo = $avaliacao->ciclo?->ano_referencia ?? 2026;
         $notaNum = is_numeric($avaliacao->nota_final) ? (float) $avaliacao->nota_final : 0.0;
+        $notaPontos = $notaNum <= 10.0 && $notaNum > 0.0 ? $notaNum * 10.0 : $notaNum;
+        $elegivel = $avaliacao->elegivel_progressao || ($notaPontos >= 70.0);
+
+        if ($avaliacao->elegivel_progressao !== $elegivel && ! $avaliacao->homologada) {
+            $avaliacao->update(['elegivel_progressao' => $elegivel]);
+        }
+
         $conceitoFuncional = match (true) {
-            $notaNum >= 4.0 => 'EXCELENTE / APTO',
-            $notaNum >= 3.0 => 'BOM / APTO',
-            $notaNum >= 2.0 => 'REGULAR / EM ACOMPANHAMENTO',
-            default         => 'INSATISFATÓRIO / INAPTO',
+            $notaPontos >= 90.0 => 'EXCELENTE / APTO',
+            $notaPontos >= 75.0 => 'BOM / APTO',
+            $notaPontos >= 60.0 => 'REGULAR / EM ACOMPANHAMENTO',
+            default             => 'INSATISFATÓRIO / INAPTO',
         };
 
         return response()->json([
@@ -715,9 +752,9 @@ final class AvaliacaoController extends Controller
                 'nome'      => $avaliacao->avaliador?->name,
                 'matricula' => $avaliacao->avaliador?->matricula ?? '32.105-8',
             ],
-            'nota_final'          => $avaliacao->nota_final,
+            'nota_final'          => number_format($notaPontos, 2, '.', ''),
             'conceito'            => $conceitoFuncional,
-            'elegivel_progressao' => $avaliacao->elegivel_progressao,
+            'elegivel_progressao' => $elegivel,
             'data_conclusao'      => $avaliacao->data_conclusao?->toIso8601String(),
             'ciencia_servidor_em' => $avaliacao->ciencia_servidor_em?->toIso8601String(),
             'ciencia_tipo'        => $avaliacao->ciencia_tipo,
