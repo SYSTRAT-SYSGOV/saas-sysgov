@@ -16,7 +16,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  KpiCard,
+  StatCard,
 } from '@sysgov/ui';
 import {
   PageHeader,
@@ -36,10 +36,7 @@ import {
   Search,
   ShieldAlert,
   Users,
-  CheckCircle2,
-  Clock,
   FileText,
-  AlertTriangle,
   TrendingUp,
   UserCheck,
   Eye,
@@ -413,52 +410,51 @@ export const PainelGerencialPanel: React.FC<Props> = ({ cicloId: initialCicloId 
         }
       />
 
-      {/* Grade de KPIs Canônicos */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiCard
-          title="Total Servidores"
-          value={kpis.total_servidores}
-          icon={<Users className="h-5 w-5" />}
-          iconBgColor="bg-primary/10 text-primary"
-        />
-        <KpiCard
-          title="Concluídas"
-          value={`${kpis.percentual_concluidas}%`}
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          iconBgColor="bg-status-success-bg text-status-success"
-        />
-        <KpiCard
-          title="Pendências"
-          value={kpis.pendencias}
-          icon={<Clock className="h-5 w-5" />}
-          iconBgColor={kpis.pendencias > 0 ? "bg-status-warning-bg text-status-warning" : "bg-muted text-muted-foreground"}
-        />
-        <KpiCard
-          title="Recursos Abertos"
-          value={kpis.recursos_abertos}
-          icon={<FileText className="h-5 w-5" />}
-          iconBgColor={kpis.recursos_abertos > 0 ? "bg-status-warning-bg text-status-warning" : "bg-muted text-muted-foreground"}
-        />
-        <KpiCard
-          title="Auditoria Notas"
-          value={kpis.notas_extremas_auditoria}
-          icon={<ShieldAlert className="h-5 w-5" />}
-          iconBgColor={kpis.notas_extremas_auditoria > 0 ? "bg-status-danger-bg text-status-danger" : "bg-muted text-muted-foreground"}
-        />
-        <KpiCard
-          title="Prazos Vencendo"
-          value={kpis.prazos_vencendo}
-          icon={<AlertTriangle className="h-5 w-5" />}
-          iconBgColor={kpis.prazos_vencendo > 0 ? "bg-status-danger-bg text-status-danger" : "bg-muted text-muted-foreground"}
-        />
-      </div>
-
       {/* Sub-navegação com Tabs Canônicas */}
       <Tabs
         items={tabItems}
         value={activeVisao}
         onChange={setActiveVisao}
       />
+
+      {/* Grade de KPIs Canônicos */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard
+          label="Total Servidores"
+          value={kpis.total_servidores}
+          accentClassName="border-l-primary"
+        />
+        <StatCard
+          label="Concluídas"
+          value={`${kpis.percentual_concluidas}%`}
+          accentClassName="border-l-emerald-500"
+          valueClassName="text-emerald-600 dark:text-emerald-400"
+        />
+        <StatCard
+          label="Pendências"
+          value={kpis.pendencias}
+          accentClassName={kpis.pendencias > 0 ? 'border-l-amber-500' : 'border-l-primary'}
+          valueClassName={kpis.pendencias > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}
+        />
+        <StatCard
+          label="Recursos Abertos"
+          value={kpis.recursos_abertos}
+          accentClassName={kpis.recursos_abertos > 0 ? 'border-l-amber-500' : 'border-l-primary'}
+          valueClassName={kpis.recursos_abertos > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}
+        />
+        <StatCard
+          label="Auditoria Notas"
+          value={kpis.notas_extremas_auditoria}
+          accentClassName={kpis.notas_extremas_auditoria > 0 ? 'border-l-rose-500' : 'border-l-primary'}
+          valueClassName={kpis.notas_extremas_auditoria > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'}
+        />
+        <StatCard
+          label="Prazos Vencendo"
+          value={kpis.prazos_vencendo}
+          accentClassName={kpis.prazos_vencendo > 0 ? 'border-l-rose-500' : 'border-l-primary'}
+          valueClassName={kpis.prazos_vencendo > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'}
+        />
+      </div>
 
       {/* Visão 1: Geral de Servidores */}
       {activeVisao === 'geral' && (

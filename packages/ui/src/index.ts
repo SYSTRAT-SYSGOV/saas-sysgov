@@ -65,6 +65,7 @@ export type { ActionsMenuProps, ActionsMenuItem } from './components/ActionsMenu
 // ============================================================
 export * from './components/AlertCard';
 export * from './components/KpiCard';
+export * from './components/StatCard';
 export * from './components/StatusChip';
 export * from './components/SystratBrand';
 export * from './components/OrgTypeBadge';

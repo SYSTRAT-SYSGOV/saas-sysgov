@@ -6,7 +6,7 @@ import {
   Input,
   Select,
   Modal,
-  KpiCard,
+  StatCard,
 } from '@sysgov/ui';
 import {
   Gavel,
@@ -1549,340 +1549,217 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
         }
       />
 
+      <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />
+
       {/* ── KPI CARDS DINÂMICOS ────────────────────────────────────────── */}
       {activeTab === 'julgamento' ? (
         /* CARDS DEDICADOS EXCLUSIVAMENTE AOS RECURSOS ADMINISTRATIVOS */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            title="Fila Recursal em Trâmite"
+          <StatCard
+            label="Fila Recursal em Trâmite"
             value={`${recursosPendentes.length} Pendentes`}
-            subtitle={`${interpostosCount} interpostos • ${emInstrucaoCount} em instrução • ${pautadosCount} pautados`}
-            icon={<Scale className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
-            iconBgColor="bg-amber-100 dark:bg-amber-950/40"
-            statusBadge={
-              <Badge
-                variant={recursosPendentes.length > 0 ? 'warning' : 'outline'}
-                className="text-[10px] font-mono"
-              >
-                {recursosPendentes.length > 0 ? 'Deliberação Pendente' : 'Fila Zerada'}
-              </Badge>
-            }
+            caption={`${interpostosCount} interpostos • ${emInstrucaoCount} em instrução • ${pautadosCount} pautados`}
+            accentClassName="border-l-amber-500"
+            valueClassName="text-amber-600 dark:text-amber-400"
           />
 
-          <KpiCard
-            title="Distribuição de Relatoria"
+          <StatCard
+            label="Distribuição de Relatoria"
             value={`${comRelatorCount}/${recursos.length} Sorteados`}
-            subtitle={`${semRelatorCount} recursos aguardando designação de relator`}
-            icon={<UserCheck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
-            iconBgColor="bg-indigo-100 dark:bg-indigo-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono">
-                Art. 31 Isenção Legal
-              </Badge>
-            }
+            caption={`${semRelatorCount} recursos aguardando designação de relator`}
+            accentClassName="border-l-indigo-500"
+            valueClassName="text-indigo-600 dark:text-indigo-400"
           />
 
-          <KpiCard
-            title="Decisões Favoráveis (Providos)"
+          <StatCard
+            label="Decisões Favoráveis (Providos)"
             value={`${providosCount} Providos`}
-            subtitle={
+            caption={
               totalJulgados > 0
                 ? `${taxaProvimento}% dos recursos julgados pela CAD`
                 : 'Nenhum recurso julgado'
             }
-            icon={<CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
-            iconBgColor="bg-emerald-100 dark:bg-emerald-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
-                Retificação de Nota
-              </Badge>
-            }
+            accentClassName="border-l-emerald-500"
+            valueClassName="text-emerald-600 dark:text-emerald-400"
+            captionClassName="text-emerald-600 dark:text-emerald-400"
           />
 
-          <KpiCard
-            title="Decisões Mantidas (Desprovidos)"
+          <StatCard
+            label="Decisões Mantidas (Desprovidos)"
             value={`${desprovidosCount} Desprovidos`}
-            subtitle={
+            caption={
               totalJulgados > 0
                 ? `${taxaDesprovimento}% dos recursos julgados pela CAD`
                 : 'Nenhum recurso julgado'
             }
-            icon={<XCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
-            iconBgColor="bg-rose-100 dark:bg-rose-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono text-rose-600 dark:text-rose-400">
-                Nota Chefia Mantida
-              </Badge>
-            }
+            accentClassName="border-l-rose-500"
+            valueClassName="text-rose-600 dark:text-rose-400"
+            captionClassName="text-rose-600 dark:text-rose-400"
           />
         </div>
       ) : activeTab === 'sessoes' ? (
         /* CARDS DEDICADOS EXCLUSIVAMENTE A SESSÕES & ATAS COLEGIADAS */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <KpiCard
-            title="Total de Sessões"
+          <StatCard
+            label="Total de Sessões"
             value={`${sessoesStats.total} Sessões`}
-            subtitle="Realizadas ou agendadas"
-            icon={<Calendar className="h-5 w-5 text-primary" />}
-            iconBgColor="bg-primary/10"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono">
-                Ciclo CAD
-              </Badge>
-            }
+            caption="Realizadas ou agendadas"
+            accentClassName="border-l-primary"
           />
-          <KpiCard
-            title="Sessões Ordinárias"
+          <StatCard
+            label="Sessões Ordinárias"
             value={`${sessoesStats.ordinarias} Ordinárias`}
-            subtitle="Calendário regular"
-            icon={<Gavel className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-            iconBgColor="bg-blue-100 dark:bg-blue-950/40"
-            statusBadge={
-              <Badge variant="default" className="text-[10px] font-mono">
-                Pauta Comum
-              </Badge>
-            }
+            caption="Calendário regular"
+            accentClassName="border-l-blue-500"
+            valueClassName="text-blue-600 dark:text-blue-400"
           />
-          <KpiCard
-            title="Sessões Extraordinárias"
+          <StatCard
+            label="Sessões Extraordinárias"
             value={`${sessoesStats.extraordinarias} Extraordinárias`}
-            subtitle="Convocação especial"
-            icon={<Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
-            iconBgColor="bg-indigo-100 dark:bg-indigo-950/40"
-            statusBadge={
-              <Badge variant="secondary" className="text-[10px] font-mono">
-                Especial
-              </Badge>
-            }
+            caption="Convocação especial"
+            accentClassName="border-l-indigo-500"
+            valueClassName="text-indigo-600 dark:text-indigo-400"
           />
-          <KpiCard
-            title="Atas Seladas (SHA-256)"
+          <StatCard
+            label="Atas Seladas (SHA-256)"
             value={`${sessoesStats.seladas}/${sessoesStats.total} Seladas`}
-            subtitle={`${sessoesStats.taxaSelamento}% das atas com fé pública`}
-            icon={<ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
-            iconBgColor="bg-emerald-100 dark:bg-emerald-950/40"
-            statusBadge={
-              <Badge
-                variant={sessoesStats.taxaSelamento === 100 ? 'default' : 'outline'}
-                className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400"
-              >
-                {sessoesStats.taxaSelamento}% Fé Pública
-              </Badge>
-            }
+            caption={`${sessoesStats.taxaSelamento}% das atas com fé pública`}
+            accentClassName="border-l-emerald-500"
+            valueClassName="text-emerald-600 dark:text-emerald-400"
+            captionClassName="text-emerald-600 dark:text-emerald-400"
           />
-          <KpiCard
-            title="Quórum Médio"
+          <StatCard
+            label="Quórum Médio"
             value={`${sessoesStats.quorumMedio} membros`}
-            subtitle="Presença média registrada"
-            icon={<UserCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
-            iconBgColor="bg-amber-100 dark:bg-amber-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono">
-                Média Regimental
-              </Badge>
-            }
+            caption="Presença média registrada"
+            accentClassName="border-l-amber-500"
+            valueClassName="text-amber-600 dark:text-amber-400"
           />
         </div>
       ) : activeTab === 'comissao' ? (
         /* CARDS DEDICADOS EXCLUSIVAMENTE A COMISSÃO & CONTROLE DE IMPEDIMENTOS (ART. 31) */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <KpiCard
-            title="Portarias da CAD"
+          <StatCard
+            label="Portarias da CAD"
             value={`${comissoesStats.totalPortarias} Portarias`}
-            subtitle={`${comissoesStats.portariasVigentes} vigentes • ${comissoesStats.portariasInativas} inativas`}
-            icon={<FileText className="h-5 w-5 text-primary" />}
-            iconBgColor="bg-primary/10"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono">
-                Atos Oficiais
-              </Badge>
-            }
+            caption={`${comissoesStats.portariasVigentes} vigentes • ${comissoesStats.portariasInativas} inativas`}
+            accentClassName="border-l-primary"
           />
-          <KpiCard
-            title="Quadro de Membros"
+          <StatCard
+            label="Quadro de Membros"
             value={`${comissoesStats.totalMembros} Membros`}
-            subtitle="Servidores designados"
-            icon={<Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-            iconBgColor="bg-blue-100 dark:bg-blue-950/40"
-            statusBadge={
-              <Badge variant="default" className="text-[10px] font-mono">
-                Colegiado
-              </Badge>
-            }
+            caption="Servidores designados"
+            accentClassName="border-l-blue-500"
+            valueClassName="text-blue-600 dark:text-blue-400"
           />
-          <KpiCard
-            title="Titulares em Exercício"
+          <StatCard
+            label="Titulares em Exercício"
             value={`${comissoesStats.titularesCount} Titulares`}
-            subtitle="Direito a voto regimental"
-            icon={<UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
-            iconBgColor="bg-emerald-100 dark:bg-emerald-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
-                Voto Titular
-              </Badge>
-            }
+            caption="Direito a voto regimental"
+            accentClassName="border-l-emerald-500"
+            valueClassName="text-emerald-600 dark:text-emerald-400"
+            captionClassName="text-emerald-600 dark:text-emerald-400"
           />
-          <KpiCard
-            title="Suplentes Regimentais"
+          <StatCard
+            label="Suplentes Regimentais"
             value={`${comissoesStats.suplentesCount} Suplentes`}
-            subtitle="Substituição por Art. 31"
-            icon={<Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
-            iconBgColor="bg-indigo-100 dark:bg-indigo-950/40"
-            statusBadge={
-              <Badge variant="secondary" className="text-[10px] font-mono">
-                Substitutos
-              </Badge>
-            }
+            caption="Substituição por Art. 31"
+            accentClassName="border-l-indigo-500"
+            valueClassName="text-indigo-600 dark:text-indigo-400"
           />
-          <KpiCard
-            title="Impedimentos Averbados"
+          <StatCard
+            label="Impedimentos Averbados"
             value={`${comissoesStats.impedidosCount} Afastamento(s)`}
-            subtitle={`${comissoesStats.percentualApto}% do quadro sem restrições`}
-            icon={<ShieldAlert className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
-            iconBgColor="bg-rose-100 dark:bg-rose-950/40"
-            statusBadge={
-              <Badge
-                variant={comissoesStats.impedidosCount > 0 ? 'warning' : 'outline'}
-                className="text-[10px] font-mono"
-              >
-                Art. 31 Isenção
-              </Badge>
-            }
+            caption={`${comissoesStats.percentualApto}% do quadro sem restrições`}
+            accentClassName="border-l-rose-500"
+            valueClassName="text-rose-600 dark:text-rose-400"
           />
         </div>
       ) : activeTab === 'ciclos' ? (
         /* CARDS DEDICADOS EXCLUSIVAMENTE A GESTÃO DE CICLOS DE AVALIAÇÃO */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <KpiCard
-            title="Total de Ciclos"
+          <StatCard
+            label="Total de Ciclos"
             value={`${ciclos.length} Ciclos`}
-            subtitle={`${ciclos.filter((c) => ['aberto', 'em_avaliacao', 'em_recurso', 'deliberacao'].includes(c.status)).length} ativos • ${ciclos.filter((c) => c.status === 'encerrado' || c.status === 'homologado').length} concluídos`}
-            icon={<Calendar className="h-5 w-5 text-primary" />}
-            iconBgColor="bg-primary/10"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono">
-                Cadência Anual
-              </Badge>
-            }
+            caption={`${ciclos.filter((c) => ['aberto', 'em_avaliacao', 'em_recurso', 'deliberacao'].includes(c.status)).length} ativos • ${ciclos.filter((c) => c.status === 'encerrado' || c.status === 'homologado').length} concluídos`}
+            accentClassName="border-l-primary"
           />
-          <KpiCard
-            title="Ciclo Vigente"
+          <StatCard
+            label="Ciclo Vigente"
             value={cicloAtivo ? `${cicloAtivo.ano_competencia || cicloAtivo.ano_referencia}` : 'Nenhum'}
-            subtitle={cicloAtivo ? cicloAtivo.nome : 'Sem ciclo aberto'}
-            icon={<Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-            iconBgColor="bg-blue-100 dark:bg-blue-950/40"
-            statusBadge={
-              <Badge variant="default" className="text-[10px] font-mono">
-                {cicloAtivo?.status ? cicloAtivo.status.toUpperCase() : 'Inativo'}
-              </Badge>
-            }
+            caption={cicloAtivo ? cicloAtivo.nome : 'Sem ciclo aberto'}
+            accentClassName="border-l-blue-500"
+            valueClassName="text-blue-600 dark:text-blue-400"
           />
-          <KpiCard
-            title="Cadência Trienal"
+          <StatCard
+            label="Cadência Trienal"
             value={cicloAtivo ? `Etapa ${cicloAtivo.etapa_cadencia || 1} de 3` : 'Triênio'}
-            subtitle={
+            caption={
               cicloAtivo?.etapa_cadencia === 3
                 ? 'Etapa Conclusiva de Estabilidade'
                 : `${(cicloAtivo?.etapa_cadencia || 1) * 12} meses de interstício`
             }
-            icon={<BarChart3 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
-            iconBgColor="bg-emerald-100 dark:bg-emerald-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
-                12 Meses
-              </Badge>
-            }
+            accentClassName="border-l-emerald-500"
+            valueClassName="text-emerald-600 dark:text-emerald-400"
+            captionClassName="text-emerald-600 dark:text-emerald-400"
           />
-          <KpiCard
-            title="Ciclos Homologados"
+          <StatCard
+            label="Ciclos Homologados"
             value={`${ciclos.filter((c) => c.status === 'homologado').length} Homologados`}
-            subtitle="Notas com fé pública definitiva"
-            icon={<CheckCircle2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
-            iconBgColor="bg-indigo-100 dark:bg-indigo-950/40"
-            statusBadge={
-              <Badge variant="secondary" className="text-[10px] font-mono">
-                Imutáveis
-              </Badge>
-            }
+            caption="Notas com fé pública definitiva"
+            accentClassName="border-l-indigo-500"
+            valueClassName="text-indigo-600 dark:text-indigo-400"
           />
-          <KpiCard
-            title="Roll-Over Automático"
+          <StatCard
+            label="Roll-Over Automático"
             value={cicloAtivo?.cadencia_automatica !== false ? 'Ativado (N+1)' : 'Desativado'}
-            subtitle="Transição anual de estágio probatório"
-            icon={<RotateCcw className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
-            iconBgColor="bg-amber-100 dark:bg-amber-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono">
-                Lei nº 1.704
-              </Badge>
-            }
+            caption="Transição anual de estágio probatório"
+            accentClassName="border-l-amber-500"
+            valueClassName="text-amber-600 dark:text-amber-400"
           />
         </div>
+      ) : activeTab === 'perguntas' ? (
+        /* SEM CARDS AQUI: o Banco de Perguntas já exibe seus próprios KPIs internamente */
+        null
       ) : (
         /* CARDS GERAIS DE GOVERNANÇA DO ÓRGÃO */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            title="Recursos na CAD"
+          <StatCard
+            label="Recursos na CAD"
             value={recursosPendentes.length}
-            subtitle={`Total de ${recursos.length} recursos autuados`}
-            icon={<Scale className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
-            iconBgColor="bg-amber-100 dark:bg-amber-950/40"
-            statusBadge={
-              <Badge
-                variant={recursosPendentes.length > 0 ? 'warning' : 'outline'}
-                className="text-[10px] font-mono"
-              >
-                {recursosPendentes.length > 0 ? 'Pendente Deliberação' : 'Sem Pendências'}
-              </Badge>
-            }
+            caption={`Total de ${recursos.length} recursos autuados`}
+            accentClassName="border-l-amber-500"
+            valueClassName="text-amber-600 dark:text-amber-400"
           />
 
-          <KpiCard
-            title="Sessões & Atas SHA-256"
+          <StatCard
+            label="Sessões & Atas SHA-256"
             value={`${sessoesSeladas}/${sessoes.length}`}
-            subtitle="Atas com hash criptográfico selado"
-            icon={<Gavel className="h-5 w-5 text-primary" />}
-            iconBgColor="bg-emerald-100 dark:bg-emerald-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono">
-                Fé Pública & Auditoria
-              </Badge>
-            }
+            caption="Atas com hash criptográfico selado"
+            accentClassName="border-l-emerald-500"
           />
 
-          <KpiCard
-            title="Portarias & Membros"
+          <StatCard
+            label="Portarias & Membros"
             value={`${comissoesAtivas} Ativa(s)`}
-            subtitle={`${totalMembros} membros regimentais designados`}
-            icon={<ShieldCheck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
-            iconBgColor="bg-indigo-100 dark:bg-indigo-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono">
-                Art. 31 Isenção Legal
-              </Badge>
-            }
+            caption={`${totalMembros} membros regimentais designados`}
+            accentClassName="border-l-indigo-500"
+            valueClassName="text-indigo-600 dark:text-indigo-400"
           />
 
-          <KpiCard
-            title="Ciclo Vigente"
+          <StatCard
+            label="Ciclo Vigente"
             value={cicloAtivo ? cicloAtivo.nome : 'Sem Ciclo Ativo'}
-            subtitle={
+            caption={
               cicloAtivo
                 ? `Fase: ${cicloAtivo.status ? cicloAtivo.status.toUpperCase() : 'EM ANDAMENTO'} (12 meses)`
                 : 'Nenhum ciclo aberto'
             }
-            icon={<Calendar className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />}
-            iconBgColor="bg-cyan-100 dark:bg-cyan-950/40"
-            statusBadge={
-              <Badge variant="outline" className="text-[10px] font-mono">
-                Cadência Anual
-              </Badge>
-            }
+            accentClassName="border-l-cyan-500"
+            valueClassName="text-cyan-600 dark:text-cyan-400"
           />
         </div>
       )}
-
-      <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />
 
       {/* ── SUB-ABA 1: FILA DE JULGAMENTO DE RECURSOS ─────────────────── */}
       {activeTab === 'julgamento' && (

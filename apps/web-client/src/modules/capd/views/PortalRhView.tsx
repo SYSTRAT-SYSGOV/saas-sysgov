@@ -10,6 +10,7 @@ import {
   Input,
   Select,
   Modal,
+  StatCard,
 } from '@sysgov/ui';
 import {
   BarChart3,
@@ -73,7 +74,6 @@ import {
   ExternalLink,
   Code,
   Building2,
-  FolderTree,
   Shield,
   Briefcase,
   ChevronDown,
@@ -912,10 +912,10 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
         }
       />
 
+      <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />
+
       {/* ── CONTAGEM REGRESSIVA EM TEMPO REAL ─────────────────────────── */}
       <CountdownWidget />
-
-      <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />
 
       {/* ── SUB-ABA 1: DASHBOARD ANALÍTICO & BI COM RECHARTS ─────────── */}
       {activeTab === 'analytics' && (
@@ -1077,90 +1077,36 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
         <div className="space-y-6">
           {/* CARDS KPI DE COBERTURA INSTITUCIONAL */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="p-3 bg-card border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider block">
-                    Secretarias
-                  </span>
-                  <span className="font-mono text-xl font-black text-foreground tabular-nums">
-                    5
-                  </span>
-                </div>
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <Building2 className="h-5 w-5" />
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Pastas municipais ativas</p>
-            </Card>
+            <StatCard label="Secretarias" value={5} caption="Pastas municipais ativas" />
 
-            <Card className="p-3 bg-card border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider block">
-                    Departamentos
-                  </span>
-                  <span className="font-mono text-xl font-black text-foreground tabular-nums">
-                    10
-                  </span>
-                </div>
-                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
-                  <FolderTree className="h-5 w-5" />
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">2 unidades por secretaria</p>
-            </Card>
+            <StatCard
+              label="Departamentos"
+              value={10}
+              caption="2 unidades por secretaria"
+              accentClassName="border-l-blue-500"
+            />
 
-            <Card className="p-3 bg-card border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider block">
-                    Chefias Nomeadas
-                  </span>
-                  <span className="font-mono text-xl font-black text-foreground tabular-nums">
-                    15
-                  </span>
-                </div>
-                <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
-                  <Shield className="h-5 w-5" />
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">5 Secretários + 10 Diretores</p>
-            </Card>
+            <StatCard
+              label="Chefias Nomeadas"
+              value={15}
+              caption="5 Secretários + 10 Diretores"
+              accentClassName="border-l-amber-500"
+            />
 
-            <Card className="p-3 bg-card border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider block">
-                    Servidores Lotados
-                  </span>
-                  <span className="font-mono text-xl font-black text-foreground tabular-nums">
-                    50
-                  </span>
-                </div>
-                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-                  <Users className="h-5 w-5" />
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">5 em cada departamento</p>
-            </Card>
+            <StatCard
+              label="Servidores Lotados"
+              value={50}
+              caption="5 em cada departamento"
+              accentClassName="border-l-emerald-500"
+            />
 
-            <Card className="p-3 bg-card border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider block">
-                    Vínculos no Órgão
-                  </span>
-                  <span className="font-mono text-xl font-black text-emerald-500 tabular-nums">
-                    65 / 65
-                  </span>
-                </div>
-                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-                  <CheckCircle2 className="h-5 w-5" />
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">100% em org_unit_user</p>
-            </Card>
+            <StatCard
+              label="Vínculos no Órgão"
+              value="65 / 65"
+              caption="100% em org_unit_user"
+              accentClassName="border-l-emerald-500"
+              valueClassName="text-emerald-600 dark:text-emerald-400"
+            />
           </div>
 
           {/* BARRA DE FILTROS E BUSCA */}

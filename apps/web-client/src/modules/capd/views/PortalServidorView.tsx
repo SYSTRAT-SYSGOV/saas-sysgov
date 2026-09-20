@@ -5,10 +5,10 @@ import {
   Badge,
   Input,
   Modal,
-  KpiCard,
   AlertCard,
   StatusChip,
   Select,
+  StatCard,
 } from '@sysgov/ui';
 import type { SelectOption } from '@sysgov/ui';
 import {
@@ -74,6 +74,7 @@ import { ScreenState } from '@/components/ui/ScreenState';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { MatrizEscalaGrafica, type RespostaItem } from '../components/MatrizEscalaGrafica';
+import { useAuth } from '@/core/auth/useAuth';
 
 const api = new SysgovApi();
 
@@ -129,6 +130,7 @@ function ProgressBar({ value, max = 100, color = 'emerald' }: { value: number; m
 // ─── Component Principal ──────────────────────────────────────────────────────
 
 export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSelector }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ServidorSubTab>('espelho');
   const [loading, setLoading] = useState<boolean>(true);
   const [avaliacoes, setAvaliacoes] = useState<ApiAvaliacao[]>([]);
@@ -162,8 +164,18 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
   const carregarListaAvaliacoes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.capd.listAvaliacoes();
-      const lista = res.data || [];
+      let lista: ApiAvaliacao[] = [];
+      if (user?.id) {
+        const res = await api.capd.listAvaliacoes({ servidor_id: user.id });
+        lista = res.data || [];
+      }
+      if (lista.length === 0) {
+        // Conta sem avaliação própria vinculada (ex.: login administrativo usado para
+        // pré-visualizar o portal) — cai para a listagem geral, mesmo padrão de
+        // fallback já usado no Portal do Avaliador.
+        const fallback = await api.capd.listAvaliacoes();
+        lista = fallback.data || [];
+      }
       setAvaliacoes(lista);
       if (lista.length > 0) {
         setSelectedAvalId(lista[0].id);
@@ -173,7 +185,7 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   const carregarDadosAvaliacao = useCallback(async (id: number) => {
     setLoading(true);
@@ -1101,28 +1113,26 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
           {espelho ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <KpiCard
-                  title="Nota Final do Ciclo (Nc)"
+                <StatCard
+                  label="Nota Final do Ciclo (Nc)"
                   value={`${espelhoNotaPontos.toFixed(2)} pts`}
-                  subtitle={espelhoIsElegivel ? 'Acima do corte ≥ 70 pts' : 'Abaixo do corte < 70 pts'}
-                  icon={<Award className="h-5 w-5" />}
-                  iconBgColor={espelhoIsElegivel ? 'bg-status-success-bg text-status-success' : 'bg-status-danger-bg text-status-danger'}
-                  statusBadge={<StatusChip label={espelhoIsElegivel ? 'Apto' : 'Abaixo do Corte'} variant={espelhoIsElegivel ? 'success' : 'danger'} />}
+                  caption={espelhoIsElegivel ? 'Acima do corte ≥ 70 pts' : 'Abaixo do corte < 70 pts'}
+                  accentClassName={espelhoIsElegivel ? 'border-l-emerald-500' : 'border-l-rose-500'}
+                  valueClassName={espelhoIsElegivel ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}
+                  captionClassName={espelhoIsElegivel ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}
                 />
-                <KpiCard
-                  title="Ciclo de Referência"
+                <StatCard
+                  label="Ciclo de Referência"
                   value={espelho.ciclo?.ano_referencia?.toString() || 'Vigente'}
-                  subtitle={espelho.ciclo?.nome || 'Ciclo Anual de Avaliação'}
-                  icon={<CalendarDays className="h-5 w-5" />}
-                  iconBgColor="bg-status-info-bg text-status-info"
+                  caption={espelho.ciclo?.nome || 'Ciclo Anual de Avaliação'}
+                  accentClassName="border-l-cyan-500"
                 />
-                <KpiCard
-                  title="Devolutiva Presencial"
+                <StatCard
+                  label="Devolutiva Presencial"
                   value={espelho.devolutiva_realizada ? 'Realizada' : 'Pendente'}
-                  subtitle={`Gestor: ${espelho.avaliador?.nome || 'Chefia Imediata'}`}
-                  icon={<MessageSquare className="h-5 w-5" />}
-                  iconBgColor={espelho.devolutiva_realizada ? 'bg-status-success-bg text-status-success' : 'bg-status-warning-bg text-status-warning'}
-                  statusBadge={<StatusChip label={espelho.devolutiva_realizada ? 'Concluída' : 'Aguardando'} variant={espelho.devolutiva_realizada ? 'success' : 'warning'} />}
+                  caption={`Gestor: ${espelho.avaliador?.nome || 'Chefia Imediata'}`}
+                  accentClassName={espelho.devolutiva_realizada ? 'border-l-emerald-500' : 'border-l-amber-500'}
+                  valueClassName={espelho.devolutiva_realizada ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}
                 />
               </div>
 
@@ -1197,28 +1207,27 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
       {activeTab === 'cit' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiCard
-              title="Total de Registros"
+            <StatCard
+              label="Total de Registros"
               value={incidentes.length.toString()}
-              subtitle="Apontamentos fáticos do período"
-              icon={<BookOpen className="h-5 w-5" />}
-              iconBgColor="bg-status-info-bg text-status-info"
+              caption="Apontamentos fáticos do período"
+              accentClassName="border-l-cyan-500"
             />
-            <KpiCard
-              title="Fatos Positivos"
+            <StatCard
+              label="Fatos Positivos"
               value={incidentesPositivos.length.toString()}
-              subtitle="Desempenhos exemplares (superação)"
-              icon={<CircleCheck className="h-5 w-5" />}
-              iconBgColor="bg-status-success-bg text-status-success"
-              statusBadge={<StatusChip label="Favorável" variant="success" />}
+              caption="Desempenhos exemplares (superação)"
+              accentClassName="border-l-emerald-500"
+              valueClassName="text-emerald-600 dark:text-emerald-400"
+              captionClassName="text-emerald-600 dark:text-emerald-400"
             />
-            <KpiCard
-              title="Pontos a Desenvolver"
+            <StatCard
+              label="Pontos a Desenvolver"
               value={incidentesNegativos.length.toString()}
-              subtitle="Oportunidades de orientação e melhoria"
-              icon={<AlertCircle className="h-5 w-5" />}
-              iconBgColor="bg-status-warning-bg text-status-warning"
-              statusBadge={<StatusChip label="Atenção" variant="warning" />}
+              caption="Oportunidades de orientação e melhoria"
+              accentClassName="border-l-amber-500"
+              valueClassName="text-amber-600 dark:text-amber-400"
+              captionClassName="text-amber-600 dark:text-amber-400"
             />
           </div>
 
@@ -1556,40 +1565,35 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
 
           {/* ── KPI Cards de Acompanhamento ────────────────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiCard
-              title="Total de Recursos"
+            <StatCard
+              label="Total de Recursos"
               value={String(totalRecursos)}
-              subtitle="Interpostos neste ciclo funcional"
-              icon={<Scale className="h-5 w-5" />}
-              iconBgColor="bg-status-info-bg text-status-info"
+              caption="Interpostos neste ciclo funcional"
+              accentClassName="border-l-cyan-500"
             />
-            <KpiCard
-              title="Em Tramitação"
+            <StatCard
+              label="Em Tramitação"
               value={String(recursosEmTramitacao)}
-              subtitle="Instrução, chefia ou relatoria"
-              icon={<Clock className="h-5 w-5" />}
-              iconBgColor="bg-status-warning-bg text-status-warning"
-              statusBadge={
-                recursosEmTramitacao > 0 ? (
-                  <StatusChip label="Processamento Ativo" variant="warning" />
-                ) : (
-                  <StatusChip label="Sem Pendências" variant="neutral" />
-                )
+              caption={
+                recursosEmTramitacao > 0
+                  ? 'Processamento ativo — instrução, chefia ou relatoria'
+                  : 'Sem pendências — instrução, chefia ou relatoria'
               }
+              accentClassName="border-l-amber-500"
+              valueClassName="text-amber-600 dark:text-amber-400"
+              captionClassName={recursosEmTramitacao > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}
             />
-            <KpiCard
-              title="Decisões Homologadas"
+            <StatCard
+              label="Decisões Homologadas"
               value={String(recursosJulgados)}
-              subtitle="Julgados colegiados da CAD"
-              icon={<Award className="h-5 w-5" />}
-              iconBgColor="bg-status-success-bg text-status-success"
-              statusBadge={
-                recursosJulgados > 0 ? (
-                  <StatusChip label="Concluídos" variant="success" />
-                ) : (
-                  <StatusChip label="Nenhum Julgado" variant="neutral" />
-                )
+              caption={
+                recursosJulgados > 0
+                  ? 'Concluídos — julgados colegiados da CAD'
+                  : 'Nenhum julgado — julgados colegiados da CAD'
               }
+              accentClassName="border-l-emerald-500"
+              valueClassName="text-emerald-600 dark:text-emerald-400"
+              captionClassName={recursosJulgados > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}
             />
           </div>
 

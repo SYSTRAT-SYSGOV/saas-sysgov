@@ -40,7 +40,7 @@ final class EnsureMfaForManagersTest extends TestCase
         $response = $middleware->handle($request, fn ($req) => response()->json(['ok' => true]));
 
         self::assertSame(403, $response->getStatusCode());
-        self::assertSame('MFA_REQUIRED', $response->getData(true)['code']);
+        self::assertSame('MFA_REQUIRED', json_decode($response->getContent(), true)['code']);
     }
 
     public function test_manager_with_mfa_header_passes_through(): void

@@ -10,7 +10,7 @@ import {
   Input,
   Select,
   Modal,
-  KpiCard,
+  StatCard,
 } from '@sysgov/ui';
 import {
   UserCheck,
@@ -3327,6 +3327,9 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
             </div>
           </div>
 
+          {/* ── Sub-abas de Navegação ──────────────────────────────────────── */}
+          <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />
+
           {/* ── Banner de Alerta / Diretriz Metodológica ───────────────────── */}
           {activeTab === 'cit' ? (
             <div className="rounded-lg border-l-4 border-indigo-600 bg-indigo-500/10 dark:bg-indigo-950/25 px-4 py-3 flex items-start gap-2.5 text-xs text-indigo-950 dark:text-indigo-200">
@@ -3470,220 +3473,204 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
             {activeTab === 'cit' ? (
               <>
                 {/* Card 1: Total de Apontamentos CIT */}
-                <div className="rounded-xl border border-border border-l-4 border-l-indigo-600 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Apontamentos no Diário (CIT)</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-foreground">{totalCit}</div>
-                  <div className="text-[11px] text-muted-foreground font-mono">100% auditáveis e datados</div>
-                </div>
+                <StatCard
+                  label="Apontamentos no Diário (CIT)"
+                  value={totalCit}
+                  caption="100% auditáveis e datados"
+                  accentClassName="border-l-indigo-600"
+                />
 
                 {/* Card 2: Fatos Positivos */}
-                <div className="rounded-xl border border-border border-l-4 border-l-emerald-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Fatos Positivos (Superação)</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {citPositivos}
-                  </div>
-                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                    {pctCitPositivos}% do acervo (Graus 4 e 5)
-                  </div>
-                </div>
+                <StatCard
+                  label="Fatos Positivos (Superação)"
+                  value={citPositivos}
+                  caption={`${pctCitPositivos}% do acervo (Graus 4 e 5)`}
+                  accentClassName="border-l-emerald-500"
+                  valueClassName="text-emerald-600 dark:text-emerald-400"
+                  captionClassName="text-emerald-600 dark:text-emerald-400"
+                />
 
                 {/* Card 3: Pontos a Desenvolver */}
-                <div className="rounded-xl border border-border border-l-4 border-l-amber-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Pontos a Desenvolver</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
-                    {citNegativos}
-                  </div>
-                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-medium">
-                    {pctCitNegativos}% do acervo (Graus 1 e 2)
-                  </div>
-                </div>
+                <StatCard
+                  label="Pontos a Desenvolver"
+                  value={citNegativos}
+                  caption={`${pctCitNegativos}% do acervo (Graus 1 e 2)`}
+                  accentClassName="border-l-amber-500"
+                  valueClassName="text-amber-600 dark:text-amber-400"
+                  captionClassName="text-amber-600 dark:text-amber-400"
+                />
 
                 {/* Card 4: Servidores com Registro */}
-                <div className="rounded-xl border border-border border-l-4 border-l-cyan-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Servidores c/ Registro</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-cyan-600 dark:text-cyan-400">
-                    {servidoresComCit}/{totalEquipe}
-                  </div>
-                  <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
-                    {pctCoberturaCit}% da equipe mapeada
-                  </div>
-                </div>
+                <StatCard
+                  label="Servidores c/ Registro"
+                  value={`${servidoresComCit}/${totalEquipe}`}
+                  caption={`${pctCoberturaCit}% da equipe mapeada`}
+                  accentClassName="border-l-cyan-500"
+                  valueClassName="text-cyan-600 dark:text-cyan-400"
+                  captionClassName="text-cyan-600 dark:text-cyan-400"
+                />
 
                 {/* Card 5: Evidências Digitais SHA-256 */}
-                <div className="rounded-xl border border-border border-l-4 border-l-blue-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Evidências Digitais SHA-256</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
-                    {totalEvidencias}
-                  </div>
-                  <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono font-medium">
-                    Trava anti-leniência ativa
-                  </div>
-                </div>
+                <StatCard
+                  label="Evidências Digitais SHA-256"
+                  value={totalEvidencias}
+                  caption="Trava anti-leniência ativa"
+                  accentClassName="border-l-blue-500"
+                  valueClassName="text-blue-600 dark:text-blue-400"
+                  captionClassName="text-blue-600 dark:text-blue-400"
+                />
               </>
             ) : activeTab === 'devolutivas' ? (
               <>
                 {/* Card 1: Servidores Aptos a Devolutiva */}
-                <div className="rounded-xl border border-border border-l-4 border-l-slate-700 dark:border-l-slate-300 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Avaliados no Ciclo</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-foreground">{totalDevolutivas}</div>
-                  <div className="text-[11px] text-muted-foreground font-mono">100% aptos à devolutiva</div>
-                </div>
+                <StatCard
+                  label="Avaliados no Ciclo"
+                  value={totalDevolutivas}
+                  caption="100% aptos à devolutiva"
+                  accentClassName="border-l-slate-700 dark:border-l-slate-300"
+                />
 
                 {/* Card 2: Devolutivas Realizadas */}
-                <div className="rounded-xl border border-border border-l-4 border-l-emerald-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Devolutivas Realizadas</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {devolutivasRealizadas}
-                  </div>
-                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                    {pctDevolutivasRealizadas}% concluídas
-                  </div>
-                </div>
+                <StatCard
+                  label="Devolutivas Realizadas"
+                  value={devolutivasRealizadas}
+                  caption={`${pctDevolutivasRealizadas}% concluídas`}
+                  accentClassName="border-l-emerald-500"
+                  valueClassName="text-emerald-600 dark:text-emerald-400"
+                  captionClassName="text-emerald-600 dark:text-emerald-400"
+                />
 
                 {/* Card 3: Devolutivas Pendentes */}
-                <div className="rounded-xl border border-border border-l-4 border-l-amber-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Devolutivas Pendentes</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
-                    {devolutivasPendentes}
-                  </div>
-                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-medium">
-                    {pctDevolutivasPendentes}% a agendar/realizar
-                  </div>
-                </div>
+                <StatCard
+                  label="Devolutivas Pendentes"
+                  value={devolutivasPendentes}
+                  caption={`${pctDevolutivasPendentes}% a agendar/realizar`}
+                  accentClassName="border-l-amber-500"
+                  valueClassName="text-amber-600 dark:text-amber-400"
+                  captionClassName="text-amber-600 dark:text-amber-400"
+                />
 
                 {/* Card 4: Ciências Digitais Emitidas */}
-                <div className="rounded-xl border border-border border-l-4 border-l-cyan-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Ciência Digital (Gov.br)</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-cyan-600 dark:text-cyan-400">
-                    {cienciasEmitidas}/{totalDevolutivas}
-                  </div>
-                  <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
-                    {pctCienciasEmitidas}% assinadas
-                  </div>
-                </div>
+                <StatCard
+                  label="Ciência Digital (Gov.br)"
+                  value={`${cienciasEmitidas}/${totalDevolutivas}`}
+                  caption={`${pctCienciasEmitidas}% assinadas`}
+                  accentClassName="border-l-cyan-500"
+                  valueClassName="text-cyan-600 dark:text-cyan-400"
+                  captionClassName="text-cyan-600 dark:text-cyan-400"
+                />
 
                 {/* Card 5: Acordos PDI Pactuados */}
-                <div className="rounded-xl border border-border border-l-4 border-l-blue-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Metas e Acordos PDI</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
-                    {acordosPdiRegistrados}
-                  </div>
-                  <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono font-medium">
-                    Planos pactuados
-                  </div>
-                </div>
+                <StatCard
+                  label="Metas e Acordos PDI"
+                  value={acordosPdiRegistrados}
+                  caption="Planos pactuados"
+                  accentClassName="border-l-blue-500"
+                  valueClassName="text-blue-600 dark:text-blue-400"
+                  captionClassName="text-blue-600 dark:text-blue-400"
+                />
               </>
             ) : activeTab === 'contrarrazoes' ? (
               <>
                 {/* Card 1: Total de Recursos */}
-                <div className="rounded-xl border border-border border-l-4 border-l-slate-700 dark:border-l-slate-300 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Recursos Interpostos</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-foreground">{totalRecursos}</div>
-                  <div className="text-[11px] text-muted-foreground font-mono">1ª Instância (Arts. 30-31)</div>
-                </div>
+                <StatCard
+                  label="Recursos Interpostos"
+                  value={totalRecursos}
+                  caption="1ª Instância (Arts. 30-31)"
+                  accentClassName="border-l-slate-700 dark:border-l-slate-300"
+                />
 
                 {/* Card 2: Aguardando Contrarrazões */}
-                <div className="rounded-xl border border-border border-l-4 border-l-amber-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Aguardando Resposta</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
-                    {recursosAguardando}
-                  </div>
-                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-medium">
-                    {pctRecursosAguardando}% com prazo aberto (5d)
-                  </div>
-                </div>
+                <StatCard
+                  label="Aguardando Resposta"
+                  value={recursosAguardando}
+                  caption={`${pctRecursosAguardando}% com prazo aberto (5d)`}
+                  accentClassName="border-l-amber-500"
+                  valueClassName="text-amber-600 dark:text-amber-400"
+                  captionClassName="text-amber-600 dark:text-amber-400"
+                />
 
                 {/* Card 3: Contrarrazões Emitidas */}
-                <div className="rounded-xl border border-border border-l-4 border-l-emerald-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Contrarrazões Emitidas</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {recursosRespondidos}
-                  </div>
-                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                    {pctContrarrazoesConcluidas}% manifestados
-                  </div>
-                </div>
+                <StatCard
+                  label="Contrarrazões Emitidas"
+                  value={recursosRespondidos}
+                  caption={`${pctContrarrazoesConcluidas}% manifestados`}
+                  accentClassName="border-l-emerald-500"
+                  valueClassName="text-emerald-600 dark:text-emerald-400"
+                  captionClassName="text-emerald-600 dark:text-emerald-400"
+                />
 
                 {/* Card 4: Reconsiderações Parciais */}
-                <div className="rounded-xl border border-border border-l-4 border-l-cyan-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Reconsiderações Parciais</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-cyan-600 dark:text-cyan-400">
-                    {reconsideracoesQtd}
-                  </div>
-                  <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
-                    {pctReconsideracoes}% acolhidos pela chefia
-                  </div>
-                </div>
+                <StatCard
+                  label="Reconsiderações Parciais"
+                  value={reconsideracoesQtd}
+                  caption={`${pctReconsideracoes}% acolhidos pela chefia`}
+                  accentClassName="border-l-cyan-500"
+                  valueClassName="text-cyan-600 dark:text-cyan-400"
+                  captionClassName="text-cyan-600 dark:text-cyan-400"
+                />
 
                 {/* Card 5: Manutenções da Nota */}
-                <div className="rounded-xl border border-border border-l-4 border-l-blue-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Manutenções da Nota</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
-                    {manutencoesQtd}
-                  </div>
-                  <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono font-medium">
-                    {pctManutencoes}% com lastro no CIT
-                  </div>
-                </div>
+                <StatCard
+                  label="Manutenções da Nota"
+                  value={manutencoesQtd}
+                  caption={`${pctManutencoes}% com lastro no CIT`}
+                  accentClassName="border-l-blue-500"
+                  valueClassName="text-blue-600 dark:text-blue-400"
+                  captionClassName="text-blue-600 dark:text-blue-400"
+                />
               </>
             ) : (
               <>
                 {/* Card 1: Subordinados no Ciclo */}
-                <div className="rounded-xl border border-border border-l-4 border-l-slate-700 dark:border-l-slate-300 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Subordinados no Ciclo</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-foreground">{totalEquipe}</div>
-                  <div className="text-[11px] text-muted-foreground font-mono">100% sob sua gestão</div>
-                </div>
+                <StatCard
+                  label="Subordinados no Ciclo"
+                  value={totalEquipe}
+                  caption="100% sob sua gestão"
+                  accentClassName="border-l-slate-700 dark:border-l-slate-300"
+                />
 
                 {/* Card 2: Avaliações Submetidas */}
-                <div className="rounded-xl border border-border border-l-4 border-l-emerald-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Avaliações Submetidas</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {qtdSubmetidas}
-                  </div>
-                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                    {pctSubmetidas}% do total
-                  </div>
-                </div>
+                <StatCard
+                  label="Avaliações Submetidas"
+                  value={qtdSubmetidas}
+                  caption={`${pctSubmetidas}% do total`}
+                  accentClassName="border-l-emerald-500"
+                  valueClassName="text-emerald-600 dark:text-emerald-400"
+                  captionClassName="text-emerald-600 dark:text-emerald-400"
+                />
 
                 {/* Card 3: Rascunhos Incompletos */}
-                <div className="rounded-xl border border-border border-l-4 border-l-amber-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Rascunhos Incompletos</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
-                    {qtdRascunhos}
-                  </div>
-                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-medium">
-                    Requerem envio (D-1)
-                  </div>
-                </div>
+                <StatCard
+                  label="Rascunhos Incompletos"
+                  value={qtdRascunhos}
+                  caption="Requerem envio (D-1)"
+                  accentClassName="border-l-amber-500"
+                  valueClassName="text-amber-600 dark:text-amber-400"
+                  captionClassName="text-amber-600 dark:text-amber-400"
+                />
 
                 {/* Card 4: Pendentes de Início */}
-                <div className="rounded-xl border border-border border-l-4 border-l-rose-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Pendentes de Início</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-rose-600 dark:text-rose-400">
-                    {qtdPendentes}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground font-mono">
-                    {qtdBloqueadosPad > 0 ? `${qtdBloqueadosPad} com bloqueio PAD` : 'Aguardando avaliação'}
-                  </div>
-                </div>
+                <StatCard
+                  label="Pendentes de Início"
+                  value={qtdPendentes}
+                  caption={qtdBloqueadosPad > 0 ? `${qtdBloqueadosPad} com bloqueio PAD` : 'Aguardando avaliação'}
+                  accentClassName="border-l-rose-500"
+                  valueClassName="text-rose-600 dark:text-rose-400"
+                />
 
                 {/* Card 5: Notas Críticas c/ Evidência */}
-                <div className="rounded-xl border border-border border-l-4 border-l-cyan-500 bg-card p-4 shadow-2xs space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Notas Críticas c/ Evidência</div>
-                  <div className="text-2xl font-bold font-mono tabular-nums text-cyan-600 dark:text-cyan-400">
-                    {criticasComEvidencia}/{totalCriticas}
-                  </div>
-                  <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
-                    {pctConformidade}% em conformidade
-                  </div>
-                </div>
+                <StatCard
+                  label="Notas Críticas c/ Evidência"
+                  value={`${criticasComEvidencia}/${totalCriticas}`}
+                  caption={`${pctConformidade}% em conformidade`}
+                  accentClassName="border-l-cyan-500"
+                  valueClassName="text-cyan-600 dark:text-cyan-400"
+                  captionClassName="text-cyan-600 dark:text-cyan-400"
+                />
               </>
             )}
           </div>
-
-          {/* ── Sub-abas de Navegação ──────────────────────────────────────── */}
-          <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />
         </>
       )}
 

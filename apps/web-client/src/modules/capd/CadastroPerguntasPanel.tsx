@@ -11,6 +11,7 @@ import {
   Select,
   Modal,
   Switch,
+  StatCard,
 } from '@sysgov/ui';
 import {
   Plus,
@@ -599,77 +600,36 @@ export const CadastroPerguntasPanel: React.FC = () => {
 
       {/* ── Top KPIs do Banco de Instrumentos ─────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 bg-muted/20 border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Grupos Funcionais
-            </span>
-            <Shield className="h-4 w-4 text-primary" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-foreground">
-              {kpis.totalModelos || 4}
-            </span>
-            <span className="text-xs text-status-success font-medium">Carreiras Oficiais</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-1 truncate">
-            Segurança, Saúde, Magistério e Geral
-          </p>
-        </Card>
+        <StatCard
+          label="Grupos Funcionais"
+          value={kpis.totalModelos || 4}
+          caption="Segurança, Saúde, Magistério e Geral"
+          accentClassName="border-l-primary"
+        />
 
-        <Card className="p-4 bg-muted/20 border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Fatores Cadastrados
-            </span>
-            <Layers className="h-4 w-4 text-indigo-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-foreground">
-              {kpis.totalPerguntas}
-            </span>
-            <span className="text-xs text-muted-foreground font-mono">perguntas ativas</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Média de ~7 a 8 fatores por grupo funcional
-          </p>
-        </Card>
+        <StatCard
+          label="Fatores Cadastrados"
+          value={kpis.totalPerguntas}
+          caption="Média de ~7 a 8 fatores por grupo funcional"
+          accentClassName="border-l-indigo-500"
+        />
 
-        <Card className="p-4 bg-muted/20 border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Metodologia Oficial
-            </span>
-            <Scale className="h-4 w-4 text-emerald-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-sm font-bold font-mono text-foreground">
-              Escala Gráfica
-            </span>
-            <span className="text-xs text-status-success font-mono font-bold">1 a 5</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Chiavenato + Diário de Bordo (CIT)
-          </p>
-        </Card>
+        <StatCard
+          label="Metodologia Oficial"
+          value="Escala Gráfica (1 a 5)"
+          caption="Chiavenato + Diário de Bordo (CIT)"
+          accentClassName="border-l-emerald-500"
+          valueClassName="text-emerald-600 dark:text-emerald-400"
+        />
 
-        <Card className="p-4 bg-muted/20 border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Trava 100% de Pesos
-            </span>
-            <CheckCircle2 className="h-4 w-4 text-status-success" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-status-success">
-              100%
-            </span>
-            <span className="text-xs text-status-success font-medium">Validado</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-1 truncate">
-            Assiduidade, Disciplina e Competências
-          </p>
-        </Card>
+        <StatCard
+          label="Trava 100% de Pesos"
+          value="100%"
+          caption="Assiduidade, Disciplina e Competências"
+          accentClassName="border-l-emerald-500"
+          valueClassName="text-status-success"
+          captionClassName="text-status-success"
+        />
       </div>
 
       {/* ── Seletor Rápido em Abas/Pills por Grupo Funcional ──────────── */}
