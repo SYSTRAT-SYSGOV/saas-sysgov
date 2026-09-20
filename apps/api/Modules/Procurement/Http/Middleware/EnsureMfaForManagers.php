@@ -21,7 +21,7 @@ final class EnsureMfaForManagers
             // Verificar se o usuário possui MFA verificado na sessão/token
             $mfaVerified = $request->header('X-MFA-Verified') === 'true' ||
                 (bool) ($user->settings['mfa_enabled'] ?? false) ||
-                $request->session()->get('mfa_verified', true); // No ambiente de teste / API
+                $request->session()->get('mfa_verified', false);
 
             if (!$mfaVerified) {
                 return response()->json([

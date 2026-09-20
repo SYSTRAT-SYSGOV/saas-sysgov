@@ -9,6 +9,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 use Modules\Client\Models\ClientMenuGroup;
 use Modules\Client\Models\ClientMenuItem;
 use Modules\Client\Services\ClientNavigationService;
@@ -111,9 +112,11 @@ final class ClientNavigationController
     {
         $this->authorize('create', ClientMenuItem::class);
 
+        $allowedGroupIds = ClientMenuGroup::where('tenant_id', $this->tenants->id())->pluck('id');
+
         $data = $request->validate([
-            'menu_group_id' => ['required', 'integer', 'exists:client_menu_groups,id'],
-            'parent_id' => ['nullable', 'integer', 'exists:client_menu_items,id'],
+            'menu_group_id' => ['required', 'integer', Rule::in($allowedGroupIds)],
+            'parent_id' => ['nullable', 'integer', Rule::exists('client_menu_items', 'id')->whereIn('menu_group_id', $allowedGroupIds)],
             'label' => ['required', 'string', 'max:100'],
             'route' => ['required', 'string', 'max:200'],
             'icon' => ['nullable', 'string', 'max:50'],
@@ -175,14 +178,17 @@ final class ClientNavigationController
     {
         $this->authorize('update', ClientMenuItem::class);
 
+        $tenantId = $this->tenants->id();
+        $allowedGroupIds = ClientMenuGroup::where('tenant_id', $tenantId)->pluck('id');
+
         $data = $request->validate([
             'items' => ['required', 'array'],
-            'items.*.id' => ['required', 'integer', 'exists:client_menu_items,id'],
-            'items.*.menu_group_id' => ['nullable', 'integer', 'exists:client_menu_groups,id'],
-            'items.*.parent_id' => ['nullable', 'integer', 'exists:client_menu_items,id'],
+            'items.*.id' => ['required', 'integer', Rule::exists('client_menu_items', 'id')->whereIn('menu_group_id', $allowedGroupIds)],
+            'items.*.menu_group_id' => ['nullable', 'integer', Rule::in($allowedGroupIds)],
+            'items.*.parent_id' => ['nullable', 'integer', Rule::exists('client_menu_items', 'id')->whereIn('menu_group_id', $allowedGroupIds)],
             'items.*.order' => ['required', 'integer'],
             'groups' => ['nullable', 'array'],
-            'groups.*.id' => ['required', 'integer', 'exists:client_menu_groups,id'],
+            'groups.*.id' => ['required', 'integer', Rule::in($allowedGroupIds)],
             'groups.*.order' => ['required', 'integer'],
         ]);
 
@@ -194,12 +200,16 @@ final class ClientNavigationController
             if (isset($itemData['menu_group_id'])) {
                 $update['menu_group_id'] = $itemData['menu_group_id'];
             }
-            ClientMenuItem::where('id', $itemData['id'])->update($update);
+            ClientMenuItem::where('id', $itemData['id'])
+                ->whereIn('menu_group_id', $allowedGroupIds)
+                ->update($update);
         }
 
         if (!empty($data['groups'])) {
             foreach ($data['groups'] as $groupData) {
-                ClientMenuGroup::where('id', $groupData['id'])->update(['order' => $groupData['order']]);
+                ClientMenuGroup::where('id', $groupData['id'])
+                    ->where('tenant_id', $tenantId)
+                    ->update(['order' => $groupData['order']]);
             }
         }
 

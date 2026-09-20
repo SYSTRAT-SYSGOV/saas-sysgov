@@ -6,6 +6,7 @@ use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\EnsurePlatformAdmin;
 use App\Http\Middleware\EnsureModuleAccess;
 use App\Http\Middleware\EnsureAdminTenant;
+use Modules\Procurement\Http\Middleware\EnsureMfaForManagers;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -49,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'module-access' => EnsureModuleAccess::class,
             'admin-tenant' => EnsureAdminTenant::class,
             'mfa' => \Modules\Admin\Http\Middleware\EnsureMfa::class,
+            'mfa-managers' => EnsureMfaForManagers::class,
             'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
     })

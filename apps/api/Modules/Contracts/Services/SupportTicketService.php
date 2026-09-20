@@ -18,12 +18,12 @@ final readonly class SupportTicketService
         private OutboxPublisher $outbox
     ) {}
 
-    private function resolveTenantId(): ?int
+    private function resolveTenantId(): int
     {
         try {
             return app(TenantContext::class)->id();
         } catch (Throwable) {
-            return null;
+            abort(403, 'Tenant não resolvido.');
         }
     }
 
@@ -31,11 +31,10 @@ final readonly class SupportTicketService
     {
         $tenantId = $this->resolveTenantId();
         $year = date('Y');
-        $countQuery = SupportTicket::query()->whereYear('created_at', $year);
-        if ($tenantId !== null) {
-            $countQuery->where('tenant_id', $tenantId);
-        }
-        $count = $countQuery->count() + 1;
+        $count = SupportTicket::query()
+            ->where('tenant_id', $tenantId)
+            ->whereYear('created_at', $year)
+            ->count() + 1;
         $ticketNumber = sprintf('TICK-%s-%04d', $year, $count);
 
         // SLA por prioridade: crítica (4h), alta (12h), media (24h), baixa (48h)

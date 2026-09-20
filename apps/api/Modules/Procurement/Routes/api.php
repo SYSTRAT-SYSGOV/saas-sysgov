@@ -24,8 +24,8 @@ Route::prefix('api/licitacoes')
         // Ciclo de Vida e Transições
         Route::post('/{id}/publicar', [LicitacaoLifecycleController::class, 'publicar']);
         Route::post('/{id}/iniciar-disputa', [LicitacaoLifecycleController::class, 'iniciarDisputa']);
-        Route::post('/{id}/adjudicar', [LicitacaoLifecycleController::class, 'adjudicar']);
-        Route::post('/{id}/homologar', [LicitacaoLifecycleController::class, 'homologar']);
+        Route::post('/{id}/adjudicar', [LicitacaoLifecycleController::class, 'adjudicar'])->middleware('mfa-managers');
+        Route::post('/{id}/homologar', [LicitacaoLifecycleController::class, 'homologar'])->middleware('mfa-managers');
         Route::post('/{id}/cancelar', [LicitacaoLifecycleController::class, 'cancelar']);
 
         // Artefatos da Fase Interna (DFD, ETP, Matriz de Riscos, TR)

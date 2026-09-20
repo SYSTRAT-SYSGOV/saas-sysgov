@@ -92,19 +92,28 @@ final readonly class BudgetExecutionService
     public function createPayment(BudgetSettlement $settlement, array $data): BudgetPayment
     {
         $requestedAmountCents = (int) $data['amount_cents'];
-        if ($requestedAmountCents > $settlement->amount_cents) {
-            throw ValidationException::withMessages([
-                'amount_cents' => ['O valor da ordem de pagamento não pode exceder o valor liquidado.']
-            ]);
-        }
 
-        $year = date('Y', strtotime($data['payment_date']));
-        $count = BudgetPayment::query()->whereYear('payment_date', $year)->count() + 1;
-        $paymentNumber = sprintf('%sOB%06d', $year, $count);
+        return DB::transaction(function () use ($settlement, $data, $requestedAmountCents) {
+            $lockedSettlement = BudgetSettlement::query()->lockForUpdate()->findOrFail($settlement->id);
 
-        return DB::transaction(function () use ($settlement, $data, $paymentNumber, $requestedAmountCents) {
-            $payment = $settlement->payments()->create([
-                'org_unit_id' => $settlement->org_unit_id,
+            $paidSoFar = (int) $lockedSettlement->payments()->sum('amount_cents');
+            $unpaidAmountCents = max(0, $lockedSettlement->amount_cents - $paidSoFar);
+
+            if ($requestedAmountCents > $unpaidAmountCents) {
+                throw ValidationException::withMessages([
+                    'amount_cents' => [
+                        "O valor da ordem de pagamento (R$ " . number_format($requestedAmountCents / 100, 2, ',', '.') .
+                        ") excede o saldo ainda não pago da liquidação (R$ " . number_format($unpaidAmountCents / 100, 2, ',', '.') . ")."
+                    ]
+                ]);
+            }
+
+            $year = date('Y', strtotime($data['payment_date']));
+            $count = BudgetPayment::query()->whereYear('payment_date', $year)->count() + 1;
+            $paymentNumber = sprintf('%sOB%06d', $year, $count);
+
+            $payment = $lockedSettlement->payments()->create([
+                'org_unit_id' => $lockedSettlement->org_unit_id,
                 'payment_number' => $paymentNumber,
                 'payment_date' => $data['payment_date'],
                 'amount_cents' => $requestedAmountCents,
@@ -112,7 +121,7 @@ final readonly class BudgetExecutionService
                 'status' => 'pago',
             ]);
 
-            $commitment = $settlement->commitment;
+            $commitment = $lockedSettlement->commitment;
             $newPaidTotal = $commitment->paid_amount_cents + $requestedAmountCents;
             $commitmentStatus = $newPaidTotal >= $commitment->amount_cents ? 'pago' : $commitment->status;
 

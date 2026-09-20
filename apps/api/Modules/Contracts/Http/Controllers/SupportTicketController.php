@@ -22,11 +22,9 @@ final class SupportTicketController extends Controller
     {
         $tenantId = $this->resolveTenantId();
 
-        $query = SupportTicket::query()->with(['requester:id,name,email', 'assigned:id,name']);
-
-        if ($tenantId !== null) {
-            $query->where('tenant_id', $tenantId);
-        }
+        $query = SupportTicket::query()
+            ->where('tenant_id', $tenantId)
+            ->with(['requester:id,name,email', 'assigned:id,name']);
 
         if ($status = $request->query('status')) {
             $query->where('status', $status);
@@ -62,13 +60,9 @@ final class SupportTicketController extends Controller
     {
         $tenantId = $this->resolveTenantId();
 
-        $query = SupportTicket::with(['requester:id,name,email', 'assigned:id,name', 'messages.user:id,name,email']);
-
-        if ($tenantId !== null) {
-            $query->where('tenant_id', $tenantId);
-        }
-
-        $ticket = $query->findOrFail($id);
+        $ticket = SupportTicket::with(['requester:id,name,email', 'assigned:id,name', 'messages.user:id,name,email'])
+            ->where('tenant_id', $tenantId)
+            ->findOrFail($id);
 
         return response()->json($ticket);
     }
@@ -77,11 +71,7 @@ final class SupportTicketController extends Controller
     {
         $tenantId = $this->resolveTenantId();
 
-        $query = SupportTicket::query();
-        if ($tenantId !== null) {
-            $query->where('tenant_id', $tenantId);
-        }
-        $ticket = $query->findOrFail($id);
+        $ticket = SupportTicket::query()->where('tenant_id', $tenantId)->findOrFail($id);
 
         $validated = $request->validate([
             'message' => ['required', 'string'],
@@ -104,22 +94,18 @@ final class SupportTicketController extends Controller
     {
         $tenantId = $this->resolveTenantId();
 
-        $query = SupportTicket::query();
-        if ($tenantId !== null) {
-            $query->where('tenant_id', $tenantId);
-        }
-        $ticket = $query->findOrFail($id);
+        $ticket = SupportTicket::query()->where('tenant_id', $tenantId)->findOrFail($id);
 
         $resolved = $this->ticketService->resolveTicket($ticket);
         return response()->json($resolved);
     }
 
-    private function resolveTenantId(): ?int
+    private function resolveTenantId(): int
     {
         try {
             return app(TenantContext::class)->id();
         } catch (Throwable) {
-            return null;
+            abort(403, 'Tenant não resolvido.');
         }
     }
 }
