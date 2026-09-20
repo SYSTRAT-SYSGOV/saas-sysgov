@@ -42,7 +42,9 @@ import {
   Layers,
   Info,
   ArrowRight,
-  HelpCircle,
+  Copy,
+  Table as TableIcon,
+  LayoutGrid,
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 import type { ApiModeloFormulario, ApiEscalaGrafica, ApiEscalaNivel } from '@sysgov/sdk';
@@ -104,7 +106,7 @@ const PRESET_4_GRAUS: EscalaNivel[] = [
     valor_min: 0,
     valor_max: 49.99,
     descricao_comportamental:
-      'Desempenho que não cumpre as exigências fundamentais do cargo; necessita de intervenção e treinamento.',
+      'Desempenho que não cumpre as exigências fundamentais do cargo; necessita de intervenção e capacitação funcional.',
   },
   {
     grau: 2,
@@ -257,6 +259,10 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
   const [expandida, setExpandida] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
+
+  // Modo de visualização da Régua Contínua: Gráfico vs Tabela
+  const [modoVisao, setModoVisao] = useState<'regua' | 'tabela'>('regua');
+  const [copiadoAta, setCopiadoAta] = useState(false);
 
   // Modal de Criação / Edição
   const [modalOpen, setModalOpen] = useState(false);
@@ -462,7 +468,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
     ]);
   };
 
-  // Remover Último Nível (mínimo 3)
+  // Remover Nível (mínimo 3)
   const removerNivel = () => {
     if (niveis.length <= 3) return;
     const novaLista = niveis.slice(0, -1);
@@ -560,6 +566,30 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
     }
   };
 
+  // Copiar resumo formatado para ata da CAD
+  const copiarResumoParaAta = () => {
+    if (!escalaEmFoco) return;
+    const modeloNome = modelos.find((m) => m.id === selectedModeloId)?.nome ?? 'Quadro Geral';
+    const textoAta = `ESCALA GRÁFICA DE AVALIAÇÃO DE DESEMPENHO (CHIAVENATO) — ${escalaEmFoco.nome.toUpperCase()}
+Modelo Regulamentar: ${modeloNome}
+Amplitudes e Graus de Desempenho Funcional (Lei nº 1.704/2006, Art. 24):
+${escalaEmFoco.niveis
+  .map(
+    (n) =>
+      `• Grau ${n.grau} (${n.rotulo}): ${n.valor_min} a ${n.valor_max} pontos (Nota Escalar: ${((n.grau - 1) * 2.5).toFixed(1)}/10.0)${
+        [1, 2, 5].includes(n.grau)
+          ? ' [TRAVA ANTILENIÊNCIA ATIVA: Exige CIT prévio no Diário de Bordo]'
+          : ' [Grau Intermediário Regular]'
+      }\n  Descrição: ${n.descricao_comportamental || 'Sem descrição'}`
+  )
+  .join('\n')}
+Cobertura: 0.00 a 100.00 pontos contínuos. Cadastrado para fins de fé pública e registro em ata deliberativa da CAD.`;
+
+    navigator.clipboard.writeText(textoAta);
+    setCopiadoAta(true);
+    setTimeout(() => setCopiadoAta(false), 3000);
+  };
+
   const modeloSelecionado = modelos.find((m) => m.id === selectedModeloId);
 
   // Status de Cobertura da escala ativa
@@ -574,7 +604,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
 
   return (
     <div className="space-y-6">
-      {/* ── HEADER PRINCIPAL DO PAINEL ─────────────────────────────────── */}
+      {/* ── HEADER PRINCIPAL DA ABA ────────────────────────────────────── */}
       <PageHeader
         icon={<Scale className="h-6 w-6 text-primary" />}
         title="Escalas Gráficas de Avaliação (Chiavenato)"
@@ -655,7 +685,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
         </Card>
       ) : (
         <>
-          {/* ── 1. STATCARDS DE KPIS EXECUTIVOS DA CAD ───────────────────────── */}
+          {/* ── 1. STATCARDS EXCLUSIVOS DE KPIS DESTA ABA ──────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               label="Escala Vigente (Ativa)"
@@ -698,10 +728,11 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
             />
           </div>
 
-          {/* ── 2. RÉGUA GRÁFICA CONTÍNUA (SEGMENTAÇÃO CROMÁTICA CANÔNICA) ── */}
+          {/* ── 2. RÉGUA GRÁFICA CONTÍNUA (DESIGN REFINADO & NÃO SOBREPOSTO) ── */}
           {escalaEmFoco && (
-            <Card className="p-5 space-y-4 shadow-sm border-border">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+            <Card className="p-5 space-y-5 shadow-sm border-border">
+              {/* Cabeçalho da Régua com ações */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-lg bg-primary/10 text-primary">
                     <Layers className="h-5 w-5" />
@@ -716,92 +747,250 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
                       )}
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Graduação cromática das faixas de corte conforme diretrizes do SAPDS (Chiavenato, graus 1 a 5)
+                      Graduação cromática e faixas de corte conforme diretrizes do SAPDS (Chiavenato, graus 1 a 5)
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Modelo:</span>
-                  <Badge variant="outline" className="font-mono text-xs">
-                    {modeloSelecionado?.nome ?? ''}
-                  </Badge>
-                </div>
-              </div>
 
-              {/* Barra da Régua Contínua */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-muted-foreground font-mono tabular-nums">
-                  <span>0.00 pts (Início)</span>
-                  <span>50.00 pts</span>
-                  <span>100.00 pts (Teto)</span>
-                </div>
-
-                <div className="w-full h-11 rounded-lg overflow-hidden flex border border-border/80 shadow-inner bg-muted/40 p-1 gap-1">
-                  {escalaEmFoco.niveis.map((nivel) => {
-                    const larguraPct = Math.max(10, nivel.valor_max - nivel.valor_min);
-                    const visual = getGrauVisualConfig(nivel.grau, escalaEmFoco.qtd_niveis);
-                    const isSelecionadoNoSimulador =
-                      enquadramentoSimulador?.nivel.grau === nivel.grau;
-
-                    return (
-                      <div
-                        key={nivel.grau}
-                        style={{ width: `${larguraPct}%` }}
-                        className={`h-full rounded transition-all duration-200 flex flex-col items-center justify-center relative cursor-pointer select-none ${visual.bg} ${visual.border} border ${
-                          isSelecionadoNoSimulador ? 'ring-2 ring-primary ring-offset-1 scale-[1.02] shadow-sm z-10' : ''
-                        }`}
-                        onClick={() => setSimuladorPontos((nivel.valor_min + nivel.valor_max) / 2)}
-                        title={`G${nivel.grau}: ${nivel.rotulo} (${nivel.valor_min} - ${nivel.valor_max} pts)\n${nivel.descricao_comportamental ?? ''}`}
-                      >
-                        <div className="flex items-center gap-1">
-                          <span className={`text-xs font-mono font-bold ${visual.text}`}>
-                            G{nivel.grau}
-                          </span>
-                          <span className="text-[11px] font-medium text-foreground truncate hidden md:inline">
-                            {nivel.rotulo}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
-                          {nivel.valor_min}–{nivel.valor_max}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Legenda Resumida da Régua */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1">
-                {escalaEmFoco.niveis.map((n) => {
-                  const visual = getGrauVisualConfig(n.grau, escalaEmFoco.qtd_niveis);
-                  return (
-                    <div
-                      key={n.grau}
-                      className={`p-2.5 rounded-md border text-xs flex flex-col gap-1 transition-colors ${
-                        enquadramentoSimulador?.nivel.grau === n.grau
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border/60 bg-muted/10'
-                      }`}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Alternância de Modo de Visão */}
+                  <div className="inline-flex rounded-lg border border-border p-0.5 bg-muted/30">
+                    <Button
+                      variant={modoVisao === 'regua' ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setModoVisao('regua')}
+                      className="h-7 px-2.5 text-xs"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className={`font-mono font-bold text-xs ${visual.text}`}>
-                          Grau {n.grau}
-                        </span>
-                        <span className="font-mono text-[11px] tabular-nums text-muted-foreground font-semibold">
-                          {n.valor_min}–{n.valor_max} pts
-                        </span>
-                      </div>
-                      <div className="font-semibold text-foreground text-xs">{n.rotulo}</div>
-                      {visual.isExtremo && (
-                        <div className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
-                          <ShieldAlert className="h-3 w-3 shrink-0" />
-                          <span>Exige CIT (Trava)</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      <LayoutGrid className="h-3.5 w-3.5 mr-1" />
+                      Régua Visual
+                    </Button>
+                    <Button
+                      variant={modoVisao === 'tabela' ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setModoVisao('tabela')}
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      <TableIcon className="h-3.5 w-3.5 mr-1" />
+                      Tabela
+                    </Button>
+                  </div>
+
+                  {/* Copiar para Ata da CAD */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copiarResumoParaAta}
+                    className="h-8 text-xs font-medium"
+                    title="Copiar texto formal da régua para colar na ata de deliberação da CAD"
+                  >
+                    {copiadoAta ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                        Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                        Copiar p/ Ata
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
+
+              {modoVisao === 'regua' ? (
+                <div className="space-y-6">
+                  {/* Trilha da Régua com Marcador Dinâmico */}
+                  <div className="space-y-2 pt-2">
+                    {/* Marcador flutuante sincronizado com o Simulador */}
+                    <div className="relative h-7 w-full select-none">
+                      <div
+                        className="absolute -translate-x-1/2 flex flex-col items-center transition-all duration-150 z-20 pointer-events-none"
+                        style={{
+                          left: `${Math.max(2.5, Math.min(97.5, simuladorPontos))}%`,
+                        }}
+                      >
+                        <span className="px-2.5 py-0.5 rounded-full bg-foreground text-background text-[11px] font-mono font-bold shadow-md flex items-center gap-1.5 whitespace-nowrap border border-border">
+                          <span>{simuladorPontos.toFixed(1)} pts</span>
+                          <span className="opacity-75 text-[10px]">
+                            • G{enquadramentoSimulador?.nivel.grau}
+                          </span>
+                        </span>
+                        <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-foreground" />
+                      </div>
+                    </div>
+
+                    {/* Trilha Gráfica Limpa (sem colisão de textos internos) */}
+                    <div className="w-full h-8 rounded-xl overflow-hidden flex border border-border/80 shadow-xs bg-muted/30 p-1 gap-1 relative">
+                      {escalaEmFoco.niveis.map((nivel) => {
+                        const larguraPct = Math.max(6, nivel.valor_max - nivel.valor_min);
+                        const visual = getGrauVisualConfig(nivel.grau, escalaEmFoco.qtd_niveis);
+                        const isAtivo = enquadramentoSimulador?.nivel.grau === nivel.grau;
+
+                        return (
+                          <div
+                            key={nivel.grau}
+                            style={{ width: `${larguraPct}%` }}
+                            className={`h-full transition-all duration-200 flex items-center justify-center relative cursor-pointer select-none rounded-lg ${visual.bg} ${visual.border} border ${
+                              isAtivo
+                                ? 'ring-2 ring-primary ring-offset-1 z-10 brightness-105 shadow-sm'
+                                : 'hover:brightness-95'
+                            }`}
+                            onClick={() =>
+                              setSimuladorPontos((nivel.valor_min + nivel.valor_max) / 2)
+                            }
+                            title={`G${nivel.grau}: ${nivel.rotulo} (${nivel.valor_min} a ${nivel.valor_max} pts)\nClique para simular`}
+                          >
+                            <span className={`text-xs font-mono font-bold ${visual.text} tracking-wider`}>
+                              G{nivel.grau}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Régua Numérica: Marcas de Corte Perfeitamente Alinhadas */}
+                    <div className="relative w-full h-5 text-[11px] font-mono tabular-nums text-muted-foreground select-none">
+                      <span className="absolute left-0 text-left font-semibold">0.00 pts</span>
+                      {escalaEmFoco.niveis.slice(0, -1).map((n) => {
+                        const posPct = n.valor_max;
+                        return (
+                          <span
+                            key={n.grau}
+                            className="absolute -translate-x-1/2 flex flex-col items-center"
+                            style={{ left: `${posPct}%` }}
+                          >
+                            <span className="h-1.5 w-0.5 bg-border -mt-1 mb-0.5" />
+                            <span className="font-semibold">{n.valor_max}</span>
+                          </span>
+                        );
+                      })}
+                      <span className="absolute right-0 text-right font-semibold">100.00 pts</span>
+                    </div>
+                  </div>
+
+                  {/* Grade de Cartões de Níveis Estruturados (Layout Equalizado e Altamente Legível) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2">
+                    {escalaEmFoco.niveis.map((n) => {
+                      const visual = getGrauVisualConfig(n.grau, escalaEmFoco.qtd_niveis);
+                      const isSimulado = enquadramentoSimulador?.nivel.grau === n.grau;
+                      const notaEscalar = ((n.grau - 1) * 2.5).toFixed(1);
+
+                      return (
+                        <div
+                          key={n.grau}
+                          onClick={() => setSimuladorPontos((n.valor_min + n.valor_max) / 2)}
+                          className={`p-3.5 rounded-xl border flex flex-col justify-between gap-2.5 transition-all duration-200 cursor-pointer ${
+                            isSimulado
+                              ? 'border-primary ring-2 ring-primary/40 bg-primary/5 shadow-sm -translate-y-0.5'
+                              : 'border-border/80 bg-card hover:border-primary/50 hover:bg-muted/10'
+                          }`}
+                        >
+                          {/* Topo do Card: Badge de Grau + Trava CIT */}
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-md font-mono font-bold text-xs ${visual.badgeBg}`}
+                            >
+                              Grau {n.grau}
+                            </span>
+                            {visual.isExtremo ? (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10 font-medium flex items-center gap-1"
+                              >
+                                <ShieldAlert className="h-3 w-3" />
+                                Exige CIT
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] text-emerald-600 border-emerald-500/30 bg-emerald-500/10 font-medium flex items-center gap-1"
+                              >
+                                <CheckCircle2 className="h-3 w-3" />
+                                Dispensada
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Rótulo e Pontuação */}
+                          <div className="space-y-1">
+                            <div className="font-bold text-sm text-foreground truncate">
+                              {n.rotulo}
+                            </div>
+                            <div className="flex items-center justify-between text-xs font-mono tabular-nums">
+                              <span className="font-semibold text-foreground bg-muted/60 px-2 py-0.5 rounded border border-border/60">
+                                {n.valor_min} – {n.valor_max} pts
+                              </span>
+                              <span className="text-muted-foreground text-[11px]">
+                                Nf: {notaEscalar}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Descrição Comportamental */}
+                          <div className="text-[11px] text-muted-foreground leading-relaxed min-h-[48px] line-clamp-3 bg-muted/20 p-2 rounded-lg border border-border/40">
+                            {n.descricao_comportamental || 'Sem descrição comportamental cadastrada.'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                /* Visão Tabela Regimental */
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/10">
+                      <TableHead className="w-16 text-xs text-center font-bold">Grau</TableHead>
+                      <TableHead className="w-44 text-xs font-bold">Rótulo Conceitual</TableHead>
+                      <TableHead className="w-40 text-xs font-bold">Faixa de Pontuação</TableHead>
+                      <TableHead className="w-32 text-xs font-bold">Nota Escalar (Nf)</TableHead>
+                      <TableHead className="text-xs font-bold">Descrição Comportamental do Grau</TableHead>
+                      <TableHead className="w-32 text-xs text-center font-bold">Trava CIT</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {escalaEmFoco.niveis.map((nivel) => {
+                      const visual = getGrauVisualConfig(nivel.grau, escalaEmFoco.qtd_niveis);
+                      const notaConvertida = ((nivel.grau - 1) * 2.5).toFixed(1);
+                      return (
+                        <TableRow key={nivel.grau} className="hover:bg-muted/15">
+                          <TableCell className="font-mono text-xs font-bold text-center">
+                            <span
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-full font-bold text-xs ${visual.badgeBg}`}
+                            >
+                              G{nivel.grau}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm font-semibold text-foreground">
+                            {nivel.rotulo}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs tabular-nums text-foreground font-semibold">
+                            <span className="px-2.5 py-1 rounded bg-muted/60 border border-border/80">
+                              {nivel.valor_min} – {nivel.valor_max} pts
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs tabular-nums font-bold text-foreground">
+                            {notaConvertida} / 10.0
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground leading-relaxed">
+                            {nivel.descricao_comportamental || '—'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {visual.isExtremo ? (
+                              <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10">
+                                Exige CIT
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground font-mono">Dispensada</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
             </Card>
           )}
 
@@ -875,7 +1064,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
                   </div>
 
                   {/* Atalhos rápidos de teste */}
-                  <div className="flex items-center gap-1.5 pt-1">
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
                     <span className="text-[11px] text-muted-foreground">Testar notas de corte:</span>
                     <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] font-mono" onClick={() => setSimuladorPontos(25)}>
                       G1 (25 pts)
@@ -1130,7 +1319,22 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
             ? `Editar Escala Gráfica — ${modeloSelecionado?.nome ?? ''}`
             : `Nova Escala Gráfica — ${modeloSelecionado?.nome ?? ''}`
         }
-        size="lg"
+        icon={<Scale className="h-5 w-5 text-primary" />}
+        size="2xl"
+        footer={
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" size="sm" onClick={salvar} disabled={saving}>
+              {saving
+                ? 'Salvando...'
+                : editingEscalaId
+                ? 'Atualizar Escala Gráfica'
+                : 'Salvar e Ativar Escala'}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-5">
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -1138,60 +1342,72 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
           </p>
 
           {/* Atalhos de Presets */}
-          <div className="bg-muted/20 p-3.5 rounded-xl border border-border space-y-2">
+          <div className="bg-muted/20 p-3.5 rounded-xl border border-border space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <Sparkles className="h-4 w-4 text-primary" />
                 Templates Canônicos de Chiavenato
               </span>
               <span className="text-[11px] text-muted-foreground">Clique para preencher automaticamente</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                className="text-xs justify-start h-auto py-2 px-3 border-border hover:border-primary"
+                className="text-xs justify-start h-auto py-2.5 px-3 border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
                 onClick={() =>
                   aplicarPreset(PRESET_5_GRAUS, 'Escala Padrão Chiavenato (5 Graus)')
                 }
               >
                 <div>
-                  <div className="font-bold text-foreground">5 Graus (Canônico)</div>
-                  <div className="text-[10px] text-muted-foreground">Insuficiente a Excelente</div>
+                  <div className="font-bold text-foreground flex items-center gap-1.5">
+                    <span>5 Graus (Canônico)</span>
+                    <Badge variant="outline" className="text-[10px] font-mono py-0 px-1">G1–G5</Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Insuficiente a Excelente (0–100 pts)</div>
                 </div>
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                className="text-xs justify-start h-auto py-2 px-3 border-border hover:border-primary"
+                className="text-xs justify-start h-auto py-2.5 px-3 border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
                 onClick={() =>
                   aplicarPreset(PRESET_4_GRAUS, 'Escala de Desempenho (4 Graus)')
                 }
               >
                 <div>
-                  <div className="font-bold text-foreground">4 Graus</div>
-                  <div className="text-[10px] text-muted-foreground">Insuficiente a Excelente</div>
+                  <div className="font-bold text-foreground flex items-center gap-1.5">
+                    <span>4 Graus</span>
+                    <Badge variant="outline" className="text-[10px] font-mono py-0 px-1">G1–G4</Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Insuficiente a Excelente</div>
                 </div>
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                className="text-xs justify-start h-auto py-2 px-3 border-border hover:border-primary"
+                className="text-xs justify-start h-auto py-2.5 px-3 border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
                 onClick={() =>
                   aplicarPreset(PRESET_3_GRAUS, 'Escala Simplificada (3 Graus)')
                 }
               >
                 <div>
-                  <div className="font-bold text-foreground">3 Graus</div>
-                  <div className="text-[10px] text-muted-foreground">Insuficiente, Regular, Excelente</div>
+                  <div className="font-bold text-foreground flex items-center gap-1.5">
+                    <span>3 Graus</span>
+                    <Badge variant="outline" className="text-[10px] font-mono py-0 px-1">G1–G3</Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Insuficiente, Regular, Excelente</div>
                 </div>
               </Button>
             </div>
           </div>
 
           {/* Identificação */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div className="md:col-span-6">
               <label className="text-xs font-semibold text-foreground block mb-1">
                 Nome da Escala *
               </label>
@@ -1200,9 +1416,10 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Ex: Escala Padrão Chiavenato (5 Graus)"
                 required
+                className="h-9 text-xs"
               />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-6">
               <label className="text-xs font-semibold text-foreground block mb-1">
                 Descrição ou Fundamentação Legal
               </label>
@@ -1210,105 +1427,136 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
                 placeholder="Ex: Régua contínua de 0 a 100 pontos para cômputo dos graus nos termos da Lei nº 1.704/2006."
+                className="h-9 text-xs"
               />
             </div>
           </div>
 
           {/* Controle de Níveis */}
           <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between border-b border-border pb-2">
+            <div className="flex items-center justify-between border-b border-border pb-2.5">
               <div className="flex items-center gap-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  Graus de Desempenho ({niveis.length} de 5 Níveis)
+                  Graus de Desempenho ({niveis.length} Níveis)
                 </label>
                 <Badge variant="outline" className="text-[10px] font-mono">
-                  Min: 3 • Max: 5
+                  Regulamentar: 3 a 5 Graus
                 </Badge>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={removerNivel}
                   disabled={niveis.length <= 3}
-                  className="h-7 px-2 text-xs"
+                  className="h-7 px-2.5 text-xs"
                 >
                   - Remover Nível
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={adicionarNivel}
                   disabled={niveis.length >= 5}
-                  className="h-7 px-2 text-xs text-primary"
+                  className="h-7 px-2.5 text-xs text-primary font-medium"
                 >
                   + Adicionar Nível
                 </Button>
               </div>
             </div>
 
-            {/* Cabeçalho das colunas do formulário */}
-            <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-muted-foreground uppercase px-2">
-              <span className="col-span-1 text-center">Grau</span>
-              <span className="col-span-3">Rótulo Conceitual</span>
-              <span className="col-span-2">Mín (pts)</span>
-              <span className="col-span-2">Máx (pts)</span>
-              <span className="col-span-4">Descrição Comportamental</span>
-            </div>
-
-            {/* Linhas de parametrização */}
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {/* Linhas de parametrização em cards estruturados e espaçosos */}
+            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
               {niveis.map((nivel, idx) => {
                 const visual = getGrauVisualConfig(nivel.grau, niveis.length);
                 return (
                   <div
                     key={nivel.grau}
-                    className={`grid grid-cols-12 gap-2 items-center p-2.5 rounded-lg border ${visual.bg} ${visual.border}`}
+                    className={`p-3 rounded-xl border transition-all ${visual.bg} ${visual.border}`}
                   >
-                    <span className="col-span-1 font-mono font-bold text-center text-xs text-foreground">
-                      G{nivel.grau}
-                    </span>
-                    <div className="col-span-3">
-                      <Input
-                        value={nivel.rotulo}
-                        onChange={(e) => atualizarNivel(idx, 'rotulo', e.target.value)}
-                        placeholder="Rótulo"
-                        className="text-xs h-8 bg-background"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={nivel.valor_min}
-                        onChange={(e) =>
-                          atualizarNivel(idx, 'valor_min', parseFloat(e.target.value) || 0)
-                        }
-                        placeholder="Mín"
-                        className="text-xs h-8 font-mono bg-background"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={nivel.valor_max}
-                        onChange={(e) =>
-                          atualizarNivel(idx, 'valor_max', parseFloat(e.target.value) || 0)
-                        }
-                        placeholder="Máx"
-                        className="text-xs h-8 font-mono bg-background"
-                      />
-                    </div>
-                    <div className="col-span-4">
-                      <Input
-                        value={nivel.descricao_comportamental ?? ''}
-                        onChange={(e) =>
-                          atualizarNivel(idx, 'descricao_comportamental', e.target.value)
-                        }
-                        placeholder="Descrição comportamental do grau..."
-                        className="text-xs h-8 bg-background"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                      {/* Grau Tag */}
+                      <div className="md:col-span-1 flex flex-col items-center justify-center">
+                        <span
+                          className={`h-8 w-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs ${visual.badgeBg}`}
+                        >
+                          G{nivel.grau}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                          Nf {((nivel.grau - 1) * 2.5).toFixed(1)}
+                        </span>
+                      </div>
+
+                      {/* Rótulo Conceitual */}
+                      <div className="md:col-span-3">
+                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                          Rótulo Conceitual
+                        </label>
+                        <Input
+                          value={nivel.rotulo}
+                          onChange={(e) => atualizarNivel(idx, 'rotulo', e.target.value)}
+                          placeholder="Ex: Bom"
+                          className="h-9 text-xs bg-background font-medium"
+                        />
+                      </div>
+
+                      {/* Faixa de Pontuação (Mín e Máx) */}
+                      <div className="md:col-span-3">
+                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                          Faixa de Pontuação (pts)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <div className="relative flex-1">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={nivel.valor_min}
+                              onChange={(e) =>
+                                atualizarNivel(idx, 'valor_min', parseFloat(e.target.value) || 0)
+                              }
+                              placeholder="0.00"
+                              className="h-9 text-xs font-mono tabular-nums text-center bg-background"
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground font-mono font-medium">a</span>
+                          <div className="relative flex-1">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={nivel.valor_max}
+                              onChange={(e) =>
+                                atualizarNivel(idx, 'valor_max', parseFloat(e.target.value) || 0)
+                              }
+                              placeholder="100.00"
+                              className="h-9 text-xs font-mono tabular-nums text-center bg-background"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Descrição Comportamental */}
+                      <div className="md:col-span-5">
+                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1 flex items-center justify-between">
+                          <span>Descrição Comportamental</span>
+                          {visual.isExtremo ? (
+                            <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                              <ShieldAlert className="h-3 w-3" /> Trava CIT Ativa
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono text-muted-foreground">Regular</span>
+                          )}
+                        </label>
+                        <Input
+                          value={nivel.descricao_comportamental ?? ''}
+                          onChange={(e) =>
+                            atualizarNivel(idx, 'descricao_comportamental', e.target.value)
+                          }
+                          placeholder="Padrão observável de comportamento esperado..."
+                          className="h-9 text-xs bg-background"
+                        />
+                      </div>
                     </div>
                   </div>
                 );
@@ -1320,32 +1568,19 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
               const erroMatematico = validarContinuidadedaEscala(niveis);
               if (erroMatematico) {
                 return (
-                  <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 p-2 bg-amber-500/10 rounded-md border border-amber-500/20">
+                  <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 p-2.5 bg-amber-500/10 rounded-md border border-amber-500/20">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>{erroMatematico}</span>
                   </div>
                 );
               }
               return (
-                <div className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 p-2 bg-emerald-500/10 rounded-md border border-emerald-500/20">
+                <div className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 p-2.5 bg-emerald-500/10 rounded-md border border-emerald-500/20">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span>Régua válida: cobertura de 0.0 a 100.0 pontos sem sobreposições nem lacunas.</span>
+                  <span>Régua válida: cobertura perfeita de 0.0 a 100.0 pontos sem sobreposições nem lacunas.</span>
                 </div>
               );
             })()}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
-            <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="primary" size="sm" onClick={salvar} disabled={saving}>
-              {saving
-                ? 'Salvando...'
-                : editingEscalaId
-                ? 'Atualizar Escala Gráfica'
-                : 'Salvar e Ativar Escala'}
-            </Button>
           </div>
         </div>
       </Modal>

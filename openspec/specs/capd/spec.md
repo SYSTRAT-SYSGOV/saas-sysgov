@@ -572,6 +572,219 @@ A aba de Escalas Gráficas SHALL exibir visualização gráfica de régua contí
 - **WHEN** o usuário simula uma pontuação que enquadre no Grau 1 (Insuficiente), Grau 2 (Regular) ou Grau 5 (Excelente)
 - **THEN** o simulador exibe alerta visual informativo destacando que a nota acionará a Trava Antileniência regimental (Art. 24 da Lei nº 1.704/2006), exigindo lançamento tempestivo de Incidente Crítico fundamentado no Diário de Bordo
 
+### Requirement: Apresentação Dedicada e Redesign da Régua Contínua de Escala Gráfica no Portal da CAD
+<!-- id: Capd.EscalaGrafica.RedesignRegua -->
+<!-- entities: EscalaGrafica, EscalaNivel -->
+<!-- enforced: PortalCadView, EscalaGraficaPanel -->
+
+A aba de Escalas Gráficas no Portal da CAD SHALL possuir apresentação visual dedicada sem duplicação de cards de KPIs, suprimindo os cards gerais do órgão no nível do portal. A régua contínua de desempenho SHALL exibir uma trilha gráfica com proporções semânticas sem sobreposição de textos internos, contendo marcas numéricas de corte legíveis e cursor/marcador dinâmico refletindo em tempo real o ponto simulado.
+
+#### Scenario: Supressão de cards globais redundantes na aba de Escalas Gráficas
+- **WHEN** o usuário seleciona a aba "Escalas Gráficas (Chiavenato)" no Portal da CAD
+- **THEN** o container pai (`PortalCadView`) não renderiza os cards de governança geral (recursos, sessões, portarias, ciclos), deixando visíveis unicamente os StatCards específicos da parametrização de escalas
+
+#### Scenario: Renderização limpa e não sobreposta da régua contínua
+- **WHEN** uma escala gráfica com quaisquer amplitudes de faixas (mesmo desiguais ou estreitas) é renderizada na tela
+- **THEN** a trilha da régua gráfica contínua exibe os blocos coloridos com divisores e marcas de corte sem quebra de layout ou colisão de texto interno, e os cartões de detalhamento de graus são dispostos em grade balanceada com alturas equalizadas
+
+---
+
+### Requirement: Gestão e Indicadores Exclusivos na Aba de Pesos dos Fatores do Portal da CAD
+<!-- id: Capd.PesosFatores.GestaoKpiExclusiva -->
+<!-- entities: ModeloFatorPeso, ModeloFormulario -->
+<!-- enforced: PortalCadView, FatoresPesosPanel -->
+
+A aba de Pesos dos Fatores no Portal da CAD SHALL gerenciar seus próprios indicadores estatísticos de parametrização ponderada (Soma Total dos Pesos, Total de Fatores Ativos, Situação do Fator H Redistribuível e Média Ponderada por Fator) e SHALL suprimir a exibição dos cards gerais de governança institucional no nível do portal para eliminar poluição visual e duplicidade de informações.
+
+#### Scenario: Visualização da aba de pesos sem cards de outras áreas
+- **WHEN** o usuário seleciona a aba "Pesos dos Fatores (100%)" no Portal da CAD
+- **THEN** o sistema oculta os cards gerais de governança (Recursos, Sessões, Portarias e Ciclo Vigente) e exibe os cards exclusivos de parametrização de pesos da aba
+
+#### Scenario: Atualização em tempo real dos indicadores de conformidade
+- **WHEN** o usuário altera o peso de um fator na interface
+- **THEN** o card de Soma Total atualiza instantaneamente a soma calculada, sinalizando conformidade com badge de sucesso quando atingir exatamente 100,00% ou aviso de divergência caso contrário
+
+---
+
+### Requirement: Visualização Gráfica Empilhada da Distribuição de Pesos (0% a 100%)
+<!-- id: Capd.PesosFatores.VisualizacaoDistribuicao -->
+<!-- entities: ModeloFatorPeso, ModeloFormulario -->
+<!-- enforced: FatoresPesosPanel -->
+
+A aba de Pesos dos Fatores SHALL exibir uma barra visual contínua empilhada de 0% a 100% (Visual Stacked Distribution Bar) refletindo a proporção de peso atribuída a cada fator de avaliação ativo no modelo de formulário selecionado, utilizando dados numéricos formatados em `font-mono tabular-nums`.
+
+#### Scenario: Renderização gráfica da partição dos 100%
+- **WHEN** um modelo de formulário com fatores cadastrados é carregado
+- **THEN** a barra empilhada exibe segmentos proporcionais a cada fator com suas respectivas siglas, nomes e percentuais, garantindo distinção visual clara entre eles
+
+---
+
+### Requirement: Utilitários de Auto-Balanceamento e Presets de Ponderação
+<!-- id: Capd.PesosFatores.BalanceamentoPresets -->
+<!-- entities: ModeloFatorPeso, ModeloFormulario -->
+<!-- enforced: FatoresPesosPanel -->
+
+O painel de Pesos dos Fatores SHALL disponibilizar ferramentas de produtividade para balanceamento rápido da soma dos pesos em exatamente 100,00%, incluindo botão de auto-balanceamento proporcional e presets de distribuição (Distribuição Equitativa e Foco em Competências Técnicas).
+
+#### Scenario: Auto-balanceamento de pesos com ajuste fino
+- **WHEN** o usuário aciona o botão de auto-balanceamento com fatores ativos cuja soma diverge de 100%
+- **THEN** o sistema recalcula e ajusta os pesos proporcionalmente de modo que a soma total resulte exatamente em 100,00%, marcando o formulário como alterado para posterior persistência
+
+### Requirement: Capd.PesosFatores.GestaoKpiExclusiva
+A aba de Pesos dos Fatores no Portal da CAD SHALL gerenciar seus próprios indicadores estatísticos de parametrização ponderada (Soma Total dos Pesos, Total de Fatores Ativos, Situação do Fator H Redistribuível e Média Ponderada por Fator) e SHALL suprimir a exibição dos cards gerais de governança institucional no nível do portal para eliminar poluição visual e duplicidade de informações.
+
+#### Scenario: Visualização da aba de pesos sem cards de outras áreas
+- **WHEN** o usuário seleciona a aba "Pesos dos Fatores (100%)" no Portal da CAD
+- **THEN** o sistema oculta os cards gerais de governança (Recursos, Sessões, Portarias e Ciclo Vigente) e exibe os cards exclusivos de parametrização de pesos da aba
+
+#### Scenario: Atualização em tempo real dos indicadores de conformidade
+- **WHEN** o usuário altera o peso de um fator na interface
+- **THEN** o card de Soma Total atualiza instantaneamente a soma calculada, sinalizando conformidade com badge de sucesso quando atingir exatamente 100,00% ou aviso de divergência caso contrário
+
+### Requirement: Capd.PesosFatores.VisualizacaoDistribuicao
+A aba de Pesos dos Fatores SHALL exibir uma barra visual contínua empilhada de 0% a 100% (Visual Stacked Distribution Bar) refletindo a proporção de peso atribuída a cada fator de avaliação ativo no modelo de formulário selecionado, utilizando dados numéricos formatados em `font-mono tabular-nums`.
+
+#### Scenario: Renderização gráfica da partição dos 100%
+- **WHEN** um modelo de formulário com fatores cadastrados é carregado
+- **THEN** a barra empilhada exibe segmentos proporcionais a cada fator com suas respectivas siglas, nomes e percentuais, garantindo distinção visual clara entre eles
+
+---
+
+### Requirement: Gestão e Indicadores Exclusivos na Aba de Consolidação NFC Trienal no Portal da CAD
+<!-- id: Capd.ConsolidacaoNfc.GestaoKpiExclusiva -->
+<!-- entities: ConsolidacaoTrienal, CicloAvaliacao -->
+<!-- enforced: PortalCadView, ConsolidacaoPanel -->
+
+A aba de Consolidação NFC Trienal & Ranking no Portal da CAD SHALL gerenciar seus próprios indicadores estatísticos especializados (Total de Servidores no Triênio, Servidores Aptos com Taxa de Sucesso, Inaptos Encaminhados ao PMD e Nota de Corte com Média Global) e SHALL suprimir a exibição dos cards gerais de governança do órgão no nível do portal para eliminar poluição visual e duplicidade de informações.
+
+#### Scenario: Visualização da aba de consolidação sem cards gerais do órgão
+- **WHEN** o usuário seleciona a aba "Consolidação NFC Trienal & Ranking" no Portal da CAD
+- **THEN** o container pai (`PortalCadView`) omite os cards gerais de governança (Recursos, Sessões, Portarias e Ciclo Vigente), exibindo unicamente os StatCards dedicados da consolidação trienal
+
+#### Scenario: Apresentação analítica de servidores aptos e inaptos
+- **WHEN** os dados de consolidação de um ciclo trienal são carregados
+- **THEN** os StatCards exibem o quantitativo de servidores aptos com sua respectiva taxa percentual (`font-mono tabular-nums`) e destacam os inaptos com aviso sobre o encaminhamento compulsório ao Plano de Melhoria de Desempenho (PMD)
+
+---
+
+### Requirement: Distribuição Visual dos Conceitos Avaliativos do Triênio
+<!-- id: Capd.ConsolidacaoNfc.DistribuicaoConceitos -->
+<!-- entities: ConsolidacaoTrienal -->
+<!-- enforced: ConsolidacaoPanel -->
+
+A aba de Consolidação NFC Trienal & Ranking SHALL exibir uma barra visual contínua empilhada de 0% a 100% (Concept Distribution Bar) demonstrando a proporção de servidores classificados em cada conceito regulamentar (Excelente, Bom, Regular e Insuficiente), acompanhada de badges semânticas do Design System SYSGOV.
+
+#### Scenario: Distribuição visual dos conceitos avaliativos
+- **WHEN** a consolidação trienal é exibida
+- **THEN** a barra gráfica empilhada apresenta as fatias correspondentes a cada conceito com cores semânticas oficiais, indicando a quantidade e a porcentagem de servidores em cada faixa
+
+---
+
+### Requirement: Transparência Regimental dos Critérios Legais de Desempate
+<!-- id: Capd.ConsolidacaoNfc.CriteriosDesempateLegal -->
+<!-- entities: ConsolidacaoTrienal, RankingItem -->
+<!-- enforced: ConsolidacaoPanel -->
+
+O painel de Consolidação NFC Trienal & Ranking SHALL fornecer painel instrutivo e transparente sobre as regras legais de desempate aplicadas na ordenação do ranking de progressão funcional, conforme estipulado no Art. 39 da Lei nº 1.704/2006.
+
+#### Scenario: Consulta às regras de desempate da progressão
+- **WHEN** o gestor ou membro da CAD acessa a aba do Ranking de Progressão
+- **THEN** o sistema exibe os 3 critérios de desempate regimentais em ordem estrita de precedência (1º Maior NFC, 2º Tempo de serviço público e 3º Idade mais avançada)
+
+### Requirement: Capd.ConsolidacaoNfc.GestaoKpiExclusiva
+A aba de Consolidação NFC Trienal & Ranking no Portal da CAD SHALL gerenciar seus próprios indicadores estatísticos especializados (Total de Servidores no Triênio, Servidores Aptos com Taxa de Sucesso, Inaptos Encaminhados ao PMD e Nota de Corte com Média Global) e SHALL suprimir a exibição dos cards gerais de governança do órgão no nível do portal para eliminar poluição visual e duplicidade de informações.
+
+#### Scenario: Visualização da aba de consolidação sem cards gerais do órgão
+- **WHEN** o usuário seleciona a aba "Consolidação NFC Trienal & Ranking" no Portal da CAD
+- **THEN** o container pai (`PortalCadView`) omite os cards gerais de governança (Recursos, Sessões, Portarias e Ciclo Vigente), exibindo unicamente os StatCards dedicados da consolidação trienal
+
+#### Scenario: Apresentação analítica de servidores aptos e inaptos
+- **WHEN** os dados de consolidação de um ciclo trienal são carregados
+- **THEN** os StatCards exibem o quantitativo de servidores aptos com sua respectiva taxa percentual (`font-mono tabular-nums`) e destacam os inaptos com aviso sobre o encaminhamento compulsório ao Plano de Melhoria de Desempenho (PMD)
+
+### Requirement: Capd.ConsolidacaoNfc.DistribuicaoConceitos
+A aba de Consolidação NFC Trienal & Ranking SHALL exibir uma barra visual contínua empilhada de 0% a 100% (Concept Distribution Bar) demonstrando a proporção de servidores classificados em cada conceito regulamentar (Excelente, Bom, Regular e Insuficiente), acompanhada de badges semânticas do Design System SYSGOV.
+
+#### Scenario: Distribuição visual dos conceitos avaliativos
+- **WHEN** a consolidação trienal é exibida
+- **THEN** a barra gráfica empilhada apresenta as fatias correspondentes a cada conceito com cores semânticas oficiais, indicando a quantidade e a porcentagem de servidores em cada faixa
+
+---
+
+### Requirement: Gestão e Indicadores Exclusivos na Aba de Homologação Final no Portal da CAD
+<!-- id: Capd.HomologacaoFinal.GestaoKpiExclusiva -->
+<!-- entities: CicloAvaliacao -->
+<!-- enforced: PortalCadView -->
+
+A aba de Homologação Final no Portal da CAD SHALL gerenciar seus próprios indicadores estatísticos especializados (Situação Regimental do Ciclo, Conclusão de Avaliações pelas Chefias, Deliberação Total da Fila Recursal e Atas Seladas com SHA-256) e SHALL suprimir a exibição dos cards gerais de governança do órgão no nível do portal para eliminar poluição visual e duplicidade de informações.
+
+#### Scenario: Visualização da aba de homologação sem cards gerais do órgão
+- **WHEN** o usuário seleciona a aba "Homologação Final" no Portal da CAD
+- **THEN** o container pai (`PortalCadView`) omite os cards gerais de governança (Recursos, Sessões, Portarias e Ciclo Vigente), exibindo unicamente os StatCards dedicados da homologação final
+
+#### Scenario: Atualização dos indicadores ao alternar o ciclo
+- **WHEN** o usuário seleciona um ciclo diferente no seletor de homologação
+- **THEN** os StatCards atualizam instantaneamente a situação do ciclo, as avaliações concluídas, os recursos associados e as atas vinculadas
+
+---
+
+### Requirement: Painel Dinâmico de Portões de Validação Regimental
+<!-- id: Capd.HomologacaoFinal.PortoesValidacao -->
+<!-- entities: CicloAvaliacao, Recurso, Sessao -->
+<!-- enforced: PortalCadView -->
+
+A aba de Homologação Final SHALL exibir painel dinâmico de Portões de Validação Regimental (Audit Gates RN-C07 a RN-C09) inspecionando em tempo real: (1) Conclusão de 100% das avaliações, (2) Inexistência de recursos pendentes de julgamento, (3) Selamento de atas colegiadas com hash SHA-256 e (4) Regularidade do quórum de membros da CAD.
+
+#### Scenario: Bloqueio da ação com portão pendente
+- **WHEN** o ciclo selecionado possuir avaliações incompletas ou recursos pendentes de julgamento
+- **THEN** o respectivo portão de validação exibe estado de bloqueio em cor semântica de alerta com o quantitativo pendente, e o botão de homologação permanece bloqueado
+
+#### Scenario: Liberação da ação com conformidade integral
+- **WHEN** todos os portões de validação estiverem 100% satisfeitos
+- **THEN** os portões exibem indicadores verdes de conformidade e o botão de homologação final é habilitado
+
+---
+
+### Requirement: Despacho Outbox e Fé Pública da Homologação Definitiva
+<!-- id: Capd.HomologacaoFinal.DespachoOutboxImutabilidade -->
+<!-- entities: CicloAvaliacao -->
+<!-- enforced: PortalCadView, HomologacaoLoteService -->
+
+O painel de Homologação Final SHALL fornecer detalhamento sobre o despacho assíncrono do evento `capd.ciclo_homologado` via tabela `outbox_events` e sobre a imutabilidade definitiva das notas atribuídas, exigindo confirmação através de `Modal` institucional do `@sysgov/ui` sem o uso de `window.confirm` ou `alert`.
+
+#### Scenario: Confirmação segura de homologação definitiva
+- **WHEN** o usuário clica para homologar um ciclo apto
+- **THEN** o sistema exibe `Modal` institucional com aviso de irretratabilidade jurídica das notas e, após confirmação, dispara a transação de homologação, registrando auditoria e publicando o evento no Outbox
+
+### Requirement: Capd.HomologacaoFinal.GestaoKpiExclusiva
+A aba de Homologação Final no Portal da CAD SHALL gerenciar seus próprios indicadores estatísticos especializados (Situação Regimental do Ciclo, Conclusão de Avaliações pelas Chefias, Deliberação Total da Fila Recursal e Atas Seladas com SHA-256) e SHALL suprimir a exibição dos cards gerais de governança do órgão no nível do portal para eliminar poluição visual e duplicidade de informações.
+
+#### Scenario: Visualização da aba de homologação sem cards gerais do órgão
+- **WHEN** o usuário seleciona a aba "Homologação Final" no Portal da CAD
+- **THEN** o container pai (`PortalCadView`) omite os cards gerais de governança (Recursos, Sessões, Portarias e Ciclo Vigente), exibindo unicamente os StatCards dedicados da homologação final
+
+#### Scenario: Atualização dos indicadores ao alternar o ciclo
+- **WHEN** o usuário seleciona um ciclo diferente no seletor de homologação
+- **THEN** os StatCards atualizam instantaneamente a situação do ciclo, as avaliações concluídas, os recursos associados e as atas vinculadas
+
+### Requirement: Capd.HomologacaoFinal.PortoesValidacao
+A aba de Homologação Final SHALL exibir painel dinâmico de Portões de Validação Regimental (Audit Gates RN-C07 a RN-C09) inspecionando em tempo real: (1) Conclusão de 100% das avaliações, (2) Inexistência de recursos pendentes de julgamento, (3) Selamento de atas colegiadas com hash SHA-256 e (4) Regularidade do quórum de membros da CAD.
+
+#### Scenario: Bloqueio da ação com portão pendente
+- **WHEN** o ciclo selecionado possuir avaliações incompletas ou recursos pendentes de julgamento
+- **THEN** o respectivo portão de validação exibe estado de bloqueio em cor semântica de alerta com o quantitativo pendente, e o botão de homologação permanece bloqueado
+
+#### Scenario: Liberação da ação com conformidade integral
+- **WHEN** todos os portões de validação estiverem 100% satisfeitos
+- **THEN** os portões exibem indicadores verdes de conformidade e o botão de homologação final é habilitado
+
+### Requirement: Capd.HomologacaoFinal.DespachoOutboxImutabilidade
+O painel de Homologação Final SHALL fornecer detalhamento sobre o despacho assíncrono do evento `capd.ciclo_homologado` via tabela `outbox_events` e sobre a imutabilidade definitiva das notas atribuídas, exigindo confirmação através de `Modal` institucional do `@sysgov/ui` sem o uso de `window.confirm` ou `alert`.
+
+#### Scenario: Confirmação segura de homologação definitiva
+- **WHEN** o usuário clica para homologar um ciclo apto
+- **THEN** o sistema exibe `Modal` institucional com aviso de irretratabilidade jurídica das notas e, após confirmação, dispara a transação de homologação, registrando auditoria e publicando o evento no Outbox
+
 ## Invariants
 
 ### Invariant: Avaliação homologada é imutável

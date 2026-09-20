@@ -1718,8 +1718,8 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
             valueClassName="text-amber-600 dark:text-amber-400"
           />
         </div>
-      ) : activeTab === 'perguntas' ? (
-        /* SEM CARDS AQUI: o Banco de Perguntas já exibe seus próprios KPIs internamente */
+      ) : activeTab === 'perguntas' || activeTab === 'escalas' || activeTab === 'pesos' || activeTab === 'consolidacao' || activeTab === 'homologacao' ? (
+        /* SEM CARDS AQUI: Perguntas, Escalas, Pesos, Consolidação e Homologação exibem seus próprios KPIs internamente */
         null
       ) : (
         /* CARDS GERAIS DE GOVERNANÇA DO ÓRGÃO */
@@ -2863,89 +2863,232 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
       )}
 
       {/* ── SUB-ABA 9: HOMOLOGAÇÃO FINAL DO CICLO (SEM ALERT/CONFIRM) ───── */}
-      {activeTab === 'homologacao' && (
-        <Card className="border-primary/30 p-5 space-y-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
-              <Lock className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">
-                Homologação Final em Lote & Despacho Outbox (RN-C07 a RN-C09)
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Encerramento oficial do ciclo com selamento de atas, definitividade das notas e despacho via Outbox para folha de pagamento e progressões.
-              </p>
-            </div>
-          </div>
+      {activeTab === 'homologacao' && (() => {
+        const cicloAlvo = ciclos.find((c) => c.id === cicloParaHomologarId) || cicloAtivo || ciclos[0];
+        const isHomologado = cicloAlvo?.status === 'homologado';
+        const temRecursosPendentes = recursosPendentes.length > 0;
+        const podeHomologar = !isHomologado && !temRecursosPendentes;
 
-          <div className="p-4 rounded-lg bg-muted/40 border border-border text-xs space-y-3">
-            <div className="font-semibold text-foreground flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Checklist Institucional de Validação para Homologação:
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="p-3 rounded border border-border bg-background space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  Preenchimento das Chefias
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Todas as avaliações com notas atribuídas no período legal.
-                </p>
-              </div>
-              <div className="p-3 rounded border border-border bg-background space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                  {recursosPendentes.length === 0 ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  ) : (
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                  )}
-                  Recursos Deliberados
-                </div>
-                <p className="text-[11px] text-muted-foreground font-mono tabular-nums">
-                  {recursosPendentes.length === 0
-                    ? '100% dos recursos julgados pela comissão'
-                    : `${recursosPendentes.length} recurso(s) ainda pendente(s)`}
-                </p>
-              </div>
-              <div className="p-3 rounded border border-border bg-background space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  Atas Seladas com Hash
-                </div>
-                <p className="text-[11px] text-muted-foreground font-mono tabular-nums">
-                  {sessoesSeladas} atas deliberativas com SHA-256
-                </p>
-              </div>
-            </div>
-          </div>
+        return (
+          <div className="space-y-6">
+            {/* ── 4 STATCARDS DEDICADOS EXCLUSIVAMENTE À HOMOLOGAÇÃO FINAL ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="Situação do Ciclo Selecionado"
+                value={cicloAlvo?.status ? cicloAlvo.status.toUpperCase() : 'ABERTO'}
+                caption={
+                  cicloAlvo
+                    ? `Ano-Base ${cicloAlvo.ano_competencia || cicloAlvo.ano_referencia || '—'} • Etapa ${cicloAlvo.etapa_cadencia || 1} de 3`
+                    : 'Sem ciclo selecionado'
+                }
+                accentClassName={isHomologado ? 'border-l-emerald-500' : 'border-l-amber-500'}
+                valueClassName={
+                  isHomologado
+                    ? 'text-emerald-600 dark:text-emerald-400 font-mono font-bold'
+                    : 'text-amber-600 dark:text-amber-400 font-mono font-bold'
+                }
+              />
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-foreground">Ciclo a Homologar:</label>
-              <Select
-                value={String(cicloParaHomologarId)}
-                onChange={(v) => setCicloParaHomologarId(Number(v))}
-                options={ciclos.map((c) => ({
-                  value: String(c.id),
-                  label: `${c.nome} (${c.status ? c.status.toUpperCase() : 'ABERTO'})`,
-                }))}
-                className="w-64"
+              <StatCard
+                label="Avaliações do Ciclo (RN-C08)"
+                value={isHomologado ? '100% Concluídas' : 'Fase Conclusiva'}
+                caption="Notas consolidadas pelas chefias imediatas"
+                accentClassName="border-l-indigo-500"
+                valueClassName="text-indigo-600 dark:text-indigo-400 font-mono tabular-nums"
+              />
+
+              <StatCard
+                label="Fila Recursal (Trava RN-C07)"
+                value={temRecursosPendentes ? `${recursosPendentes.length} Pendente(s)` : '0 Pendentes'}
+                caption={
+                  temRecursosPendentes
+                    ? 'Bloqueia homologação até deliberação'
+                    : '100% dos recursos julgados pela CAD'
+                }
+                accentClassName={temRecursosPendentes ? 'border-l-rose-500' : 'border-l-emerald-500'}
+                valueClassName={
+                  temRecursosPendentes
+                    ? 'text-rose-600 dark:text-rose-400 font-mono tabular-nums'
+                    : 'text-emerald-600 dark:text-emerald-400 font-mono tabular-nums'
+                }
+                captionClassName={temRecursosPendentes ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}
+              />
+
+              <StatCard
+                label="Atas Colegiadas com SHA-256"
+                value={`${sessoesSeladas}/${sessoes.length} Atas`}
+                caption="Fé pública criptográfica garantida"
+                accentClassName="border-l-cyan-500"
+                valueClassName="text-cyan-600 dark:text-cyan-400 font-mono tabular-nums"
               />
             </div>
 
-            <Button
-              size="md"
-              className="font-bold shadow-sm"
-              onClick={() => setModalHomologacaoOpen(true)}
-            >
-              <Lock className="h-4 w-4 mr-2" />
-              Homologar Ciclo e Selar Atas da Comissão
-            </Button>
+            {/* ── CARD PRINCIPAL: PORTÕES DE AUDITORIA E DESPACHO OUTBOX ── */}
+            <Card className="border-border p-5 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
+                    <Lock className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground">
+                      Homologação Final em Lote & Despacho Outbox (RN-C07 a RN-C09)
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Encerramento solene do ciclo avaliativo, selamento definitivo de notas com fé pública e publicação de evento assíncrono para Folha de Pagamento.
+                    </p>
+                  </div>
+                </div>
+
+                <Badge
+                  variant={isHomologado ? 'success' : podeHomologar ? 'primary' : 'warning'}
+                  className="font-mono text-xs px-3 py-1 self-start sm:self-auto"
+                >
+                  {isHomologado ? 'Ciclo Homologado' : podeHomologar ? 'Pronto para Homologar' : 'Pendências Regimentais'}
+                </Badge>
+              </div>
+
+              {/* ── PORTÕES DE AUDITORIA REGIMENTAL (AUDIT GATES) ── */}
+              <div className="space-y-3">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <span>Portões Obrigatórios de Validação Institucional (RN-C07 / RN-C08 / RN-C09)</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  {/* Gate 1: Preenchimento Chefias */}
+                  <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground">Portão 1: Chefias</span>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      Concluído
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      Avaliações do período regular devidamente submetidas pelos avaliadores.
+                    </p>
+                  </div>
+
+                  {/* Gate 2: Fila Recursal */}
+                  <div
+                    className={`p-3.5 rounded-lg border space-y-1.5 ${
+                      temRecursosPendentes
+                        ? 'border-rose-300 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20'
+                        : 'border-border bg-muted/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground">Portão 2: Recursos</span>
+                      {temRecursosPendentes ? (
+                        <AlertTriangle className="h-4 w-4 text-rose-500" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      )}
+                    </div>
+                    <div
+                      className={`text-xs font-bold font-mono ${
+                        temRecursosPendentes
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-emerald-600 dark:text-emerald-400'
+                      }`}
+                    >
+                      {temRecursosPendentes
+                        ? `${recursosPendentes.length} Pendente(s)`
+                        : 'Fila 100% Julgada'}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      {temRecursosPendentes
+                        ? 'A Lei nº 1.704/2006 (RN-C07) veda homologar com recursos não julgados.'
+                        : 'Inexistência de recursos pendentes de deliberação colegiada.'}
+                    </p>
+                  </div>
+
+                  {/* Gate 3: Atas Seladas */}
+                  <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground">Portão 3: Atas da CAD</span>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <div className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                      {sessoesSeladas} Atas Seladas
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      Atas de sessões assinadas com hash SHA-256 e fé pública oficial.
+                    </p>
+                  </div>
+
+                  {/* Gate 4: Despacho Outbox */}
+                  <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground">Portão 4: Outbox</span>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <div className="text-xs font-bold text-foreground">
+                      capd.ciclo_homologado
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      Despacho assíncrono garantido para Folha e Progressões de Carreira.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── NOTA DE IMUTABILIDADE JURÍDICA ── */}
+              <div className="p-4 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p className="font-semibold text-foreground">
+                    Efeitos Jurídicos da Homologação Definitiva:
+                  </p>
+                  <p>
+                    Ao homologar o ciclo, todas as notas finais atribuídas aos servidores tornam-se <strong className="text-foreground">rigorosamente definitivas e imutáveis</strong> no banco de dados (Invariant RN-C07). O ciclo é transicionado para o status <strong className="text-foreground">HOMOLOGADO</strong> e, caso a cadência automática esteja ativa, o próximo ciclo do estágio probatório (N+1) é agendado com deslocamento exato de 12 meses de interstício.
+                  </p>
+                </div>
+              </div>
+
+              {/* ── SELETOR E AÇÕES ── */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2 border-t border-border">
+                <div className="flex items-center gap-3">
+                  <label className="text-xs font-semibold text-foreground shrink-0">
+                    Ciclo a Homologar:
+                  </label>
+                  <Select
+                    value={String(cicloParaHomologarId)}
+                    onChange={(v) => setCicloParaHomologarId(Number(v))}
+                    options={ciclos.map((c) => ({
+                      value: String(c.id),
+                      label: `${c.nome} (${c.status ? c.status.toUpperCase() : 'ABERTO'})`,
+                    }))}
+                    className="w-72"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {isHomologado ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-status-success-bg border border-status-success-border text-status-success text-xs font-semibold">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Ciclo Homologado com Sucesso
+                    </div>
+                  ) : (
+                    <Button
+                      size="md"
+                      className="font-bold shadow-sm"
+                      onClick={() => setModalHomologacaoOpen(true)}
+                      disabled={!podeHomologar || homologandoCiclo}
+                    >
+                      <Lock className="h-4 w-4 mr-2" />
+                      {homologandoCiclo
+                        ? 'Homologando Ciclo...'
+                        : 'Homologar Ciclo e Selar Atas da Comissão'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Card>
           </div>
-        </Card>
-      )}
+        );
+      })()}
 
       {/* ── MODAL 1: JULGAMENTO COMPARATIVO EM 3 COLUNAS ─────────────── */}
       <Modal
