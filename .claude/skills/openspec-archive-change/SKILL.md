@@ -201,3 +201,5 @@ In both branches, never create the root as a side effect: do not run `openspec i
 - Existing CLI checks, resolved paths, prompts, and command contracts are unchanged
 - Artifact rules constrain only the specs being written and are never operation guidance
 - Never copy runtime context, operation guidance, or artifact-rule text verbatim into output files
+- **MANDATÓRIO — IDIOMA (Português do Brasil - pt-BR)**: Resumos de arquivamento, mensagens ao usuário e quaisquer atualizações de especificações principais DEVEM ser em Português do Brasil (pt-BR).
+

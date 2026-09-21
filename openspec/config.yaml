@@ -1,32 +1,31 @@
 schema: spec-driven
+githubCopilot:
+  cloudAgent: true
 
-# Project context (optional)
+# Project context (mandatory for AI)
 # This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  REGRA MANDATÓRIA DE IDIOMA:
+  Todos os documentos gerados ou atualizados pelo OpenSpec (proposal.md, specs/**/*.md, design.md, tasks.md, etc.)
+  DEVEM ser redigidos obrigatoriamente em Português do Brasil (pt-BR).
+  Tech stack: Laravel 13 (Backend), React 19 + TypeScript + Tailwind CSS v4 (Frontend), @sysgov/ui.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+# Per-artifact rules
+rules:
+  proposal:
+    - "OBRIGATÓRIO: Redigir a proposta inteiramente em Português do Brasil (pt-BR) — contextualização (Why), o que muda (What Changes), capacidades (Capabilities) e impactos (Impact)."
+  specs:
+    - "OBRIGATÓRIO: Redigir todos os requisitos (Requirements), cenários (Scenarios), condições (WHEN, THEN, GIVEN) e descrições em Português do Brasil (pt-BR). Manter as palavras-chave estruturais do OpenSpec."
+  design:
+    - "OBRIGATÓRIO: Redigir todo o documento de design (decisões técnicas, arquitetura, justificativas e trade-offs) em Português do Brasil (pt-BR)."
+  tasks:
+    - "OBRIGATÓRIO: Redigir todas as tarefas, subtarefas, checklists e procedimentos de verificação em Português do Brasil (pt-BR)."
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+# Per-operation guidance
+operations:
+  apply:
+    guidance:
+      - Todas as atualizações de tarefas, anotações de progresso e relatórios de verificação DEVEM ser em Português do Brasil (pt-BR).
+  archive:
+    guidance:
+      - O resumo de arquivamento e consolidação de especificações DEVEM ser em Português do Brasil (pt-BR).

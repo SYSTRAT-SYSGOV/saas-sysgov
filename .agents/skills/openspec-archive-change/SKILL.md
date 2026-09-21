@@ -41,7 +41,7 @@ In both branches, never create the root as a side effect: do not run `openspec i
    When prompting, show only active changes (not already archived).
    Include the schema used for each change if available.
 
-   Always announce: "Using change: <name>" and how to override (e.g., `/opsx-archive <other>`).
+   Always announce: "Using change: <name>" and how to override (e.g., `$openspec-archive-change (Codex) or /openspec-archive-change (other agents) <other>`).
 
    **Load current archive inputs before the existing archive checks:**
 
@@ -201,3 +201,5 @@ In both branches, never create the root as a side effect: do not run `openspec i
 - Existing CLI checks, resolved paths, prompts, and command contracts are unchanged
 - Artifact rules constrain only the specs being written and are never operation guidance
 - Never copy runtime context, operation guidance, or artifact-rule text verbatim into output files
+- **MANDATÓRIO — IDIOMA (Português do Brasil - pt-BR)**: Resumos de arquivamento, mensagens ao usuário e quaisquer atualizações de especificações principais DEVEM ser em Português do Brasil (pt-BR).
+

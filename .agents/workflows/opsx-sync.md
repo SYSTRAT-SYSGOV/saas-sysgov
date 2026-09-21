@@ -280,3 +280,5 @@ Main specs are now updated. The change remains active - archive when implementat
 - Fetch specs instructions once for direct sync, or reuse the archive-supplied snapshot inline
 - Stop before every main-spec write on a non-zero or invalid JSON specs-instruction response
 - Artifact rules constrain only the specs being written and are never copied into output files
+- **MANDATÓRIO — IDIOMA (Português do Brasil - pt-BR)**: Todos os requisitos, cenários, descrições e modificações incorporados às especificações principais (main specs) DEVEM ser redigidos em Português do Brasil (pt-BR). Nunca sincronizar textos em inglês.
+

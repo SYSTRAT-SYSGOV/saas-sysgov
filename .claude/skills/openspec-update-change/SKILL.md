@@ -101,3 +101,5 @@ After each invocation, show:
 - Do not advance the build frontier: no new artifacts, no new files under glob artifacts - creating them is a separate step, outside this workflow.
 - Confirm every edit with the user before writing.
 - If the request changes the change's *intent* rather than refining it, ask for a distinct unused change name and recommend `openspec new change "<new-change-name>"` instead (the "Update vs. Start Fresh" heuristic).
+- **MANDATÓRIO — IDIOMA (Português do Brasil - pt-BR)**: Toda atualização, revisão ou novos textos nos artefatos (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`) DEVEM ser redigidos obrigatoriamente em Português do Brasil (pt-BR). Nunca gerar ou manter textos em inglês.
+

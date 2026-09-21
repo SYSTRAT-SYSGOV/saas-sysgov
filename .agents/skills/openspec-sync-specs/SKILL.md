@@ -42,7 +42,7 @@ In both branches, never create the root as a side effect: do not run `openspec i
 
    When prompting, show changes that have delta specs (under `specs/` directory).
 
-   Always announce: "Using change: <name>" and how to override (e.g., `/opsx-sync <other>`).
+   Always announce: "Using change: <name>" and how to override (e.g., `$openspec-sync-specs (Codex) or /openspec-sync-specs (other agents) <other>`).
 
 2. **Resolve change context**
 
@@ -288,3 +288,5 @@ Main specs are now updated. The change remains active - archive when implementat
 - Fetch specs instructions once for direct sync, or reuse the archive-supplied snapshot inline
 - Stop before every main-spec write on a non-zero or invalid JSON specs-instruction response
 - Artifact rules constrain only the specs being written and are never copied into output files
+- **MANDATÓRIO — IDIOMA (Português do Brasil - pt-BR)**: Todos os requisitos, cenários, descrições e modificações incorporados às especificações principais (main specs) DEVEM ser redigidos em Português do Brasil (pt-BR). Nunca sincronizar textos em inglês.
+

@@ -352,3 +352,5 @@ But this summary is optional. Sometimes the thinking IS the value.
 - **Do visualize** - A good diagram is worth many paragraphs
 - **Do explore the codebase** - Ground discussions in reality
 - **Do question assumptions** - Including the user's and your own
+- **MANDATÓRIO — IDIOMA (Português do Brasil - pt-BR)**: Todas as anotações, propostas de artefatos, resumos de decisões e discussões documentadas DEVEM ser em Português do Brasil (pt-BR).
+

@@ -152,7 +152,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions, plus any conditional artifact you skipped and why
 - What's ready: "All artifacts needed for implementation are ready."
-- Prompt: "The artifacts are ready for review. When you are ready, run `/opsx-apply` or ask me to apply this change."
+- Prompt: "The artifacts are ready for review. When you are ready, run `$openspec-apply-change (Codex) or /openspec-apply-change (other agents)` or ask me to apply this change."
 
 **Artifact Creation Guidelines**
 
@@ -164,6 +164,7 @@ After completing all artifacts, summarize:
 - **IMPORTANT**: `context` and `rules` are constraints for YOU, not content for the file
   - Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into the artifact
   - These guide what you write, but should never appear in the output
+- **MANDATÓRIO — IDIOMA (Português do Brasil - pt-BR)**: Todos os documentos gerados (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, etc.) DEVEM ser redigidos em Português do Brasil (pt-BR). Manter as palavras-chave estruturais do OpenSpec (`## ADDED Requirements`, `### Requirement: ...`, `#### Scenario: ...`, `- **WHEN**`, `- **THEN**`), mas todo o texto explicativo, títulos de requisitos, descrições, cenários e tarefas devem ser em pt-BR. Nunca gerar artefatos em inglês.
 
 **Guardrails**
 - The request that invoked this workflow authorizes planning only. Any implementation or apply instruction in that request does not carry forward. Do NOT implement the change, start the apply workflow, or edit project code during this workflow. After presenting the artifacts, stop and wait for a new user request to start the apply workflow

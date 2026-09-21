@@ -93,3 +93,11 @@ Ao implementar ou manter funcionalidades no módulo CAPD (`Modules/Capd` e `web-
 5. **Parametrização Dinâmica**: Os instrumentos são versionados nas tabelas `capd_modelos_formulario` e `capd_perguntas` com validação de soma de pesos dos grupos em 100%.
 6. **Interface e Modais**: Usar exclusivamente componentes de `@sysgov/ui` (`Modal`, `Button`, `Badge`, `KpiCard`). Nunca usar `alert()` ou `window.confirm()` nativos do navegador.
 
+---
+
+## 🌐 7. OpenSpec — Documentação e Artefatos em Português do Brasil (pt-BR)
+Todos os documentos gerados, mantidos ou atualizados através do OpenSpec (`openspec/changes/*`, `openspec/specs/*`, `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `archive`, etc.) **DEVEM ser redigidos obrigatoriamente em Português do Brasil (pt-BR)**.
+1. **Conteúdo e Descrições**: Títulos de requisitos, cenários, descrições funcionais, passos de tarefas, justificativas e notas técnicas DEVEM ser redigidos sempre em pt-BR.
+2. **Palavras-chave Estruturais**: Manter as palavras-chave necessárias para o parser da CLI do OpenSpec (`## ADDED Requirements`, `### Requirement: ...`, `#### Scenario: ...`, `- **WHEN**`, `- **THEN**`, etc.), porém todo o conteúdo descritivo e semântico DEVE ser em Português do Brasil.
+3. **NUNCA** redigir propostas, especificações, decisões de arquitetura ou tarefas em inglês.
+

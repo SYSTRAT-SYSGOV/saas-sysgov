@@ -193,6 +193,7 @@ What would you like to do?
 - Consider every guidance entry; explain any inapplicable or conflicting advice
 - Do not copy runtime context or operation guidance into implementation files or planning artifacts
 - Preserve CLI-controlled blocked/ready/all-done behavior and completion criteria
+- **MANDATÓRIO — IDIOMA (Português do Brasil - pt-BR)**: Todas as atualizações de tarefas, anotações de progresso e relatórios de verificação DEVEM ser redigidos em Português do Brasil (pt-BR).
 
 **Fluid Workflow Integration**
 

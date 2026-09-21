@@ -129,3 +129,9 @@ When modifying or adding features to the CAPD module (`apps/api/Modules/Capd`, `
 - **12-Month Cadence**: Probationary evaluations occur annually across 3 years with a minimum 12-month interstice, automatic $N \to N+1$ cycle roll-over via `CicloService`, and strict homologation guards against open appeals or pending evaluations.
 - **Dynamic Parametrization**: Forms and factors are configured dynamically in `capd_modelos_formulario` and `capd_perguntas` with 100% group weight validation.
 - **UI Standards**: Use `@sysgov/ui` primitives exclusively (`Modal`, `Button`, `Badge`, `KpiCard`). Never use native `alert()` or `window.confirm()`.
+
+### OpenSpec Guidelines
+All documents generated, maintained, or updated via OpenSpec (`openspec/changes/*`, `openspec/specs/*`, `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `archive`, etc.) **MUST be written in Brazilian Portuguese (pt-BR)**.
+- Structural keywords recognized by the OpenSpec parser (`## ADDED Requirements`, `### Requirement: ...`, `#### Scenario: ...`, `- **WHEN**`, `- **THEN**`) are kept, but all requirement names, descriptions, scenarios, design decisions, and tasks must be in Brazilian Portuguese.
+- NEVER write OpenSpec artifacts or tasks in English.
+
