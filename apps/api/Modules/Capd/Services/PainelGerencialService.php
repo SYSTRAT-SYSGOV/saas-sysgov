@@ -294,15 +294,17 @@ final class PainelGerencialService
             ->orderBy('ano_referencia')
             ->get()
             ->map(function (CicloAvaliacao $ciclo) use ($porCiclo): array {
-                $dados = $porCiclo->get($ciclo->id);
-                $total = (int) ($dados->total ?? 0);
-                $concluidas = (int) ($dados->concluidas ?? 0);
+                /** @var array{total?: int|string, concluidas?: int|string, media_nota?: string|null} $dados */
+                $dados = $porCiclo->get($ciclo->id)?->toArray() ?? [];
+                $total = (int) ($dados['total'] ?? 0);
+                $concluidas = (int) ($dados['concluidas'] ?? 0);
+                $mediaNota = $dados['media_nota'] ?? null;
 
                 return [
                     'ciclo_id'         => $ciclo->id,
                     'ano_referencia'   => $ciclo->ano_referencia,
                     'nome'             => $ciclo->nome,
-                    'media_nota'       => $dados && $dados->media_nota !== null ? round((float) $dados->media_nota, 2) : 0.0,
+                    'media_nota'       => $mediaNota !== null ? round((float) $mediaNota, 2) : 0.0,
                     'taxa_conclusao'   => $total > 0 ? round(($concluidas / $total) * 100, 1) : 0.0,
                     'total_avaliacoes' => $total,
                 ];
