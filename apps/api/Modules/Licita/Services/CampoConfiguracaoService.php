@@ -46,6 +46,23 @@ final class CampoConfiguracaoService
             ['key' => 'conteudo', 'label' => 'Estudo Técnico Preliminar', 'tipo' => 'texto_longo', 'obrigatorio_padrao' => true],
             ['key' => 'equipe_planejamento', 'label' => 'Equipe de Planejamento', 'tipo' => 'equipe'],
         ],
+        // `equipe_planejamento` e `itens` do DFD ficam FORA deste mapa de
+        // propósito: a equipe tem mínimo legal de 2 pessoas (segregação de
+        // funções, art. 7º da Lei 14.133/2021), imposto por uma regra
+        // própria (min:2 no DfdController) que independe do "obrigatório"
+        // genérico daqui — expor um toggle "obrigatório" que na prática não
+        // consegue desligar o mínimo de 2 seria enganoso. `itens` já tem seu
+        // próprio esquema de campos configuráveis por tipo
+        // (dfd_item_material/dfd_item_servico), não é um campo único.
+        'dfd' => [
+            ['key' => 'objeto', 'label' => 'Objeto', 'tipo' => 'texto', 'obrigatorio_padrao' => true],
+            ['key' => 'justificativa', 'label' => 'Justificativa', 'tipo' => 'texto_longo', 'obrigatorio_padrao' => true],
+            ['key' => 'data_previsao', 'label' => 'Data Prevista da Contratação', 'tipo' => 'data', 'obrigatorio_padrao' => true],
+            ['key' => 'grau_prioridade', 'label' => 'Grau de Prioridade', 'tipo' => 'selecao_fixa', 'obrigatorio_padrao' => true],
+            ['key' => 'area_requisitante', 'label' => 'Área Requisitante', 'tipo' => 'texto'],
+            ['key' => 'numero_pca', 'label' => 'Nº no PCA', 'tipo' => 'texto'],
+            ['key' => 'previsao_pca', 'label' => 'Previsão no Plano de Contratações Anual (PCA)', 'tipo' => 'booleano'],
+        ],
     ];
 
     public function __construct(

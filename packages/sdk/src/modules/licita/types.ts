@@ -184,10 +184,10 @@ export interface Dfd {
   id: number;
   tenant_id: number;
   processo_id: number;
-  data_previsao: string;
-  grau_prioridade: GrauPrioridade;
-  justificativa: string;
-  objeto: string;
+  data_previsao: string | null;
+  grau_prioridade: GrauPrioridade | null;
+  justificativa: string | null;
+  objeto: string | null;
   previsao_pca: boolean;
   numero_pca: string | null;
   area_requisitante: string | null;
@@ -489,10 +489,10 @@ export interface CreateProcessoInput {
 }
 
 export interface CreateDfdInput {
-  data_previsao: string;
-  grau_prioridade: GrauPrioridade;
-  justificativa: string;
-  objeto: string;
+  data_previsao?: string | null;
+  grau_prioridade?: GrauPrioridade | null;
+  justificativa?: string | null;
+  objeto?: string | null;
   previsao_pca?: boolean;
   numero_pca?: string | null;
   area_requisitante?: string | null;

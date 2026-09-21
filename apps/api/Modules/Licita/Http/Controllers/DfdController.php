@@ -150,26 +150,28 @@ final class DfdController extends Controller
      */
     private function validatedData(Request $request, bool $partial = false): array
     {
-        // No update (partial), o campo pode faltar do payload ("sometimes")
-        // — o formulário do front sempre manda todos os campos, mas outros
-        // clientes da API podem enviar só o que mudou. O que NÃO pode
-        // acontecer é o campo vir presente e vazio: só "sometimes" (sem
-        // "required" junto) deixava passar objeto/justificativa em branco
-        // no update, porque uma string vazia já satisfaz a regra "string"
-        // sozinha — "sometimes" só pula a validação quando o campo está
-        // AUSENTE, não quando está vazio.
+        // Ver comentário equivalente em EtpController::validatedData —
+        // objeto/justificativa/data_previsao/grau_prioridade são opcionais
+        // na validação de request; a obrigatoriedade real é decidida pelo
+        // tenant (ver CampoConfiguracaoService::CAMPOS_NATIVOS['dfd'],
+        // obrigatorio_padrao=true por padrão pros quatro) e checada em
+        // DfdService::criar/atualizar via validarRespostas.
+        //
+        // `equipe_planejamento` continua com `required`/`min:2` — RN-005
+        // (segregação de funções, art. 7º da Lei 14.133/2021) não é
+        // configurável, ver comentário no registro de campos nativos.
         $required = $partial ? ['sometimes', 'required'] : ['required'];
 
         return $request->validate([
-            'data_previsao' => [...$required, 'date'],
-            'grau_prioridade' => [...$required, 'in:' . implode(',', array_column(GrauPrioridade::cases(), 'value'))],
+            'data_previsao' => ['sometimes', 'nullable', 'date'],
+            'grau_prioridade' => ['sometimes', 'nullable', 'in:' . implode(',', array_column(GrauPrioridade::cases(), 'value'))],
             // 8000, não 3000: o campo é HTML rico (RichTextEditor/TinyMCE),
             // não texto puro — tags de parágrafo/negrito/lista e a citação
             // de dispositivos legais (comum no texto sugerido por IA, ver
             // DfdIaService) inflam a contagem de caracteres bem além do que
             // um limite pensado para texto puro comportaria.
-            'justificativa' => [...$required, 'string', 'max:8000'],
-            'objeto' => [...$required, 'string', 'max:500'],
+            'justificativa' => ['sometimes', 'nullable', 'string', 'max:8000'],
+            'objeto' => ['sometimes', 'nullable', 'string', 'max:500'],
             'previsao_pca' => ['sometimes', 'boolean'],
             'numero_pca' => ['nullable', 'string', 'max:50'],
             'area_requisitante' => ['nullable', 'string', 'max:255'],

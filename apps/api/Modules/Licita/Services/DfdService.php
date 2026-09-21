@@ -59,7 +59,10 @@ final class DfdService
             throw new DomainException('Este processo já possui um DFD. Edite o existente em vez de criar outro.');
         }
 
-        $this->camposConfiguracao->validarRespostas('dfd', $data['campos_extras'] ?? []);
+        $this->camposConfiguracao->validarRespostas('dfd', [
+            ...$this->valoresNativos($data),
+            ...($data['campos_extras'] ?? []),
+        ]);
         $this->validarItens($data['itens'] ?? []);
         $data = $this->sanitizarCamposRicos($data);
 
@@ -89,7 +92,10 @@ final class DfdService
         }
 
         $camposExtras = array_key_exists('campos_extras', $data) ? $data['campos_extras'] : ($dfd->campos_extras ?? []);
-        $this->camposConfiguracao->validarRespostas('dfd', $camposExtras ?? []);
+        $this->camposConfiguracao->validarRespostas('dfd', [
+            ...$this->valoresNativos($data, $dfd),
+            ...($camposExtras ?? []),
+        ]);
         $itens = array_key_exists('itens', $data) ? $data['itens'] : ($dfd->itens ?? []);
         $this->validarItens($itens ?? []);
         $data = $this->sanitizarCamposRicos($data);
@@ -222,6 +228,27 @@ final class DfdService
 
             return $dfd->load(['elaborador', 'aprovador', 'versoes.usuario']);
         });
+    }
+
+    /**
+     * Monta, para validarRespostas, o valor atual de cada seção nativa
+     * configurável do DFD — o que está em `$data` (o que o request enviou)
+     * e, faltando lá, o que já está salvo em `$dfd` (update parcial) ou
+     * `null` (criação). Mesmo raciocínio do TrService::valoresNativos.
+     * `equipe_planejamento`/`itens` ficam fora de propósito (ver
+     * CampoConfiguracaoService::CAMPOS_NATIVOS).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function valoresNativos(array $data, ?Dfd $dfd = null): array
+    {
+        $valores = [];
+        foreach (['objeto', 'justificativa', 'data_previsao', 'grau_prioridade', 'area_requisitante', 'numero_pca', 'previsao_pca'] as $campo) {
+            $valores[$campo] = array_key_exists($campo, $data) ? $data[$campo] : $dfd?->{$campo};
+        }
+
+        return $valores;
     }
 
     /**

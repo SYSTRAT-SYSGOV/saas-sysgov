@@ -16,10 +16,10 @@ use Modules\Licita\Enums\StatusDfd;
  * @property int $id
  * @property int $tenant_id
  * @property int $processo_id
- * @property \Illuminate\Support\Carbon $data_previsao
- * @property string $grau_prioridade
- * @property string $justificativa
- * @property string $objeto
+ * @property \Illuminate\Support\Carbon|null $data_previsao
+ * @property string|null $grau_prioridade
+ * @property string|null $justificativa
+ * @property string|null $objeto
  * @property bool $previsao_pca
  * @property string|null $numero_pca
  * @property string|null $area_requisitante

@@ -311,4 +311,101 @@ final class DfdWorkflowTest extends TestCase
         self::assertSame(3, $dfd->versoes()->count());
         self::assertSame([1, 2, 3], $dfd->versoes()->pluck('versao')->all());
     }
+
+    /**
+     * Objeto/Justificativa/Data Prevista/Grau de Prioridade sempre foram
+     * obrigatórios antes de virarem seções nativas configuráveis (ver
+     * CampoConfiguracaoService::CAMPOS_NATIVOS) — `obrigatorio_padrao=true`
+     * garante que essa migração não afrouxa o comportamento pra quem nunca
+     * reconfigurou o DFD.
+     */
+    public function test_cria_dfd_falha_por_padrao_quando_objeto_esta_vazio(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        $dados = $this->dadosDfd();
+        unset($dados['objeto']);
+
+        try {
+            app(DfdService::class)->criar($processo, $dados, $elaborador);
+            self::fail('Deveria ter lançado ValidationException pelo objeto obrigatório vazio (obrigatorio_padrao).');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('objeto', $e->errors());
+        }
+    }
+
+    /**
+     * O órgão pode desligar a obrigatoriedade de fábrica de uma seção
+     * nativa do DFD — aqui, a Área Requisitante (já opcional hoje) e o
+     * Objeto (obrigatório hoje) tratados de formas diferentes: um nasce
+     * livre, o outro precisa ser desligado explicitamente.
+     */
+    public function test_org_pode_desligar_obrigatoriedade_padrao_do_objeto_do_dfd(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        app(CampoConfiguracaoService::class)->salvar('dfd', [
+            ['key' => 'objeto', 'label' => 'Objeto', 'tipo' => 'texto', 'obrigatorio' => false, 'ordem' => 0],
+        ]);
+
+        $dados = $this->dadosDfd();
+        unset($dados['objeto']);
+        $dfd = app(DfdService::class)->criar($processo, $dados, $elaborador);
+
+        self::assertNull($dfd->objeto);
+        self::assertSame(StatusDfd::Rascunho->value, $dfd->status);
+    }
+
+    /**
+     * O órgão pode renomear e mover a seção nativa "justificativa" do DFD
+     * pra uma aba própria — mesmo mecanismo já usado por TR e ETP. A
+     * equipe de planejamento não entra nesse mapa (ver comentário no
+     * registro de campos nativos), então continua com o rótulo/obrigação
+     * padrão mesmo depois de configurar outros campos.
+     */
+    public function test_org_pode_renomear_e_mover_secao_nativa_do_dfd(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+
+        app(CampoConfiguracaoService::class)->salvar('dfd', [
+            ['key' => 'justificativa', 'label' => 'Justificativa Técnica e Econômica', 'tipo' => 'texto_longo', 'obrigatorio' => true, 'ordem' => 2, 'aba' => 'Fundamentação'],
+        ]);
+
+        $mesclada = app(CampoConfiguracaoService::class)->getConfigMesclada('dfd');
+        $justificativa = collect($mesclada)->firstWhere('key', 'justificativa');
+
+        self::assertNotNull($justificativa);
+        self::assertTrue($justificativa['nativo']);
+        self::assertSame('Justificativa Técnica e Econômica', $justificativa['label']);
+        self::assertSame('Fundamentação', $justificativa['aba']);
+        self::assertSame('texto_longo', $justificativa['tipo']);
+
+        // equipe_planejamento/itens não fazem parte do mapa de campos nativos.
+        self::assertNull(collect($mesclada)->firstWhere('key', 'equipe_planejamento'));
+        self::assertNull(collect($mesclada)->firstWhere('key', 'itens'));
+
+        $areaRequisitante = collect($mesclada)->firstWhere('key', 'area_requisitante');
+        self::assertFalse($areaRequisitante['obrigatorio']);
+    }
+
+    public function test_atualiza_dfd_falha_quando_justificativa_obrigatoria_fica_vazia(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+        $processo = $this->criarProcesso($elaborador);
+
+        $dfd = app(DfdService::class)->criar($processo, $this->dadosDfd(), $elaborador);
+
+        try {
+            app(DfdService::class)->atualizar($dfd, ['justificativa' => ''], $elaborador);
+            self::fail('Deveria ter lançado ValidationException pela justificativa obrigatória esvaziada.');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('justificativa', $e->errors());
+        }
+
+        // Não mexer no campo continua passando.
+        $dfd = app(DfdService::class)->atualizar($dfd, ['area_requisitante' => 'Secretaria de Obras'], $elaborador);
+        self::assertSame($this->dadosDfd()['justificativa'], $dfd->justificativa);
+    }
 }
