@@ -14,6 +14,7 @@ import { EtpDetailPage } from './pages/EtpDetailPage';
 import { MapaRiscoDetailPage } from './pages/MapaRiscoDetailPage';
 import { PesquisaPrecoDetailPage } from './pages/PesquisaPrecoDetailPage';
 import { TrDetailPage } from './pages/TrDetailPage';
+import { EditalDetailPage } from './pages/EditalDetailPage';
 import { AprovacaoOrdenadorPage } from './pages/AprovacaoOrdenadorPage';
 import { FasesLicitaStepper, type FaseLicitaImplementada } from './components/FasesLicitaStepper';
 import { LegislacaoPage } from './pages/LegislacaoPage';
@@ -24,6 +25,7 @@ import { gerarEtpPdf } from './utils/gerarEtpPdf';
 import { gerarMapaRiscoPdf } from './utils/gerarMapaRiscoPdf';
 import { gerarPesquisaPrecoPdf } from './utils/gerarPesquisaPrecoPdf';
 import { gerarTrPdf } from './utils/gerarTrPdf';
+import { gerarEditalPdf } from './utils/gerarEditalPdf';
 
 const FASE_LABEL: Record<FaseLicita, string> = {
   dfd: 'DFD',
@@ -76,7 +78,7 @@ const ProcessosTab: React.FC<{
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   const handleGerarPdf = useCallback(
-    async (processoId: number, tipo: 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'tr') => {
+    async (processoId: number, tipo: 'dfd' | 'etp' | 'mapa_riscos' | 'pesquisa_precos' | 'tr' | 'edital') => {
       // Precisa abrir a janela AQUI, síncrono, ainda dentro do clique — se
       // abrirmos só depois do await abaixo, o navegador já não reconhece
       // como resposta direta a um gesto do usuário e bloqueia o popup
@@ -108,8 +110,10 @@ const ProcessosTab: React.FC<{
           gerarMapaRiscoPdf(janela, processoCompleto, tenant, config?.campos ?? []);
         } else if (tipo === 'pesquisa_precos') {
           gerarPesquisaPrecoPdf(janela, processoCompleto, tenant, config?.campos ?? []);
-        } else {
+        } else if (tipo === 'tr') {
           gerarTrPdf(janela, processoCompleto, tenant, config?.campos ?? []);
+        } else {
+          gerarEditalPdf(janela, processoCompleto, tenant, config?.campos ?? []);
         }
       } catch (err: any) {
         janela.close();
@@ -160,11 +164,13 @@ const ProcessosTab: React.FC<{
           const mapaRisco = row.original.mapa_risco;
           const pesquisaPreco = row.original.pesquisa_preco;
           const tr = row.original.tr;
+          const edital = row.original.edital;
           const gerandoDfd = gerandoPdfId === `${row.original.id}:dfd`;
           const gerandoEtp = gerandoPdfId === `${row.original.id}:etp`;
           const gerandoMapaRisco = gerandoPdfId === `${row.original.id}:mapa_riscos`;
           const gerandoPesquisaPreco = gerandoPdfId === `${row.original.id}:pesquisa_precos`;
           const gerandoTr = gerandoPdfId === `${row.original.id}:tr`;
+          const gerandoEdital = gerandoPdfId === `${row.original.id}:edital`;
 
           const items: ActionsMenuItem[] = [
             {
@@ -217,6 +223,15 @@ const ProcessosTab: React.FC<{
               icon: <FileDown className="h-3.5 w-3.5" />,
               loading: gerandoTr,
               onSelect: () => handleGerarPdf(row.original.id, 'tr'),
+            });
+          }
+          if (edital) {
+            items.push({
+              key: 'pdf-edital',
+              label: 'Baixar PDF do Edital',
+              icon: <FileDown className="h-3.5 w-3.5" />,
+              loading: gerandoEdital,
+              onSelect: () => handleGerarPdf(row.original.id, 'edital'),
             });
           }
 
@@ -447,6 +462,7 @@ const ProcessoDocumentoPage: React.FC<ProcessoDocumentoPageProps> = ({ processoI
     <div className="space-y-4">
       <FasesLicitaStepper processo={processo} faseAtiva={documento} onSelecionar={setDocumento} />
       {documento === 'aprovacao_ordenador' && <AprovacaoOrdenadorPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
+      {documento === 'edital' && <EditalDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'tr' && <TrDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'pesquisa_precos' && <PesquisaPrecoDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}
       {documento === 'mapa_riscos' && <MapaRiscoDetailPage processoId={processoId} onBack={onBack} onChanged={handleChanged} />}

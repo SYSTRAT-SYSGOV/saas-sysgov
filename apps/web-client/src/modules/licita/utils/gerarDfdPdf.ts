@@ -1,4 +1,4 @@
-import type { CampoConfig, Dfd, ItemDfd, Processo, Tenant } from '@sysgov/sdk';
+import type { CampoConfig, Dfd, GrauPrioridade, ItemDfd, Processo, Tenant } from '@sysgov/sdk';
 import { CSS_CABECALHO_ORGAO, escapeHtml, renderCabecalhoOrgao } from './pdfCabecalho';
 
 const TIPO_ITEM_LABEL: Record<ItemDfd['tipo'], string> = {
@@ -17,7 +17,7 @@ const STATUS_LABEL: Record<Dfd['status'], string> = {
   rejeitado: 'Rejeitado',
 };
 
-const GRAU_PRIORIDADE_LABEL: Record<Dfd['grau_prioridade'], string> = {
+const GRAU_PRIORIDADE_LABEL: Record<GrauPrioridade, string> = {
   baixa: 'Baixa',
   media: 'Média',
   alta: 'Alta',
@@ -210,21 +210,23 @@ export function gerarDfdPdf(janela: Window, processo: Processo, tenant: Tenant, 
     </div>
   </div>
 
+  ${dfd.objeto ? `
   <section>
     <h2>${tituloSecao('Objeto')}</h2>
     <div class="campo valor">${escapeHtml(dfd.objeto)}</div>
-  </section>
+  </section>` : ''}
 
+  ${dfd.justificativa ? `
   <section>
     <h2>${tituloSecao('Justificativa')}</h2>
     <div class="rich">${dfd.justificativa}</div>
-  </section>
+  </section>` : ''}
 
   <section>
     <h2>${tituloSecao('Dados do Planejamento')}</h2>
     <div class="grid-2">
       <div class="campo"><span class="label">Data Prevista da Contratação</span><span class="valor">${formatarData(dfd.data_previsao)}</span></div>
-      <div class="campo"><span class="label">Grau de Prioridade</span><span class="valor">${GRAU_PRIORIDADE_LABEL[dfd.grau_prioridade]}</span></div>
+      <div class="campo"><span class="label">Grau de Prioridade</span><span class="valor">${dfd.grau_prioridade ? GRAU_PRIORIDADE_LABEL[dfd.grau_prioridade] : '—'}</span></div>
       <div class="campo"><span class="label">Previsão no PCA</span><span class="valor">${dfd.previsao_pca ? `Sim${dfd.numero_pca ? ` — ${escapeHtml(dfd.numero_pca)}` : ''}` : 'Não'}</span></div>
       <div class="campo"><span class="label">Área Requisitante</span><span class="valor">${escapeHtml(dfd.area_requisitante ?? '—')}</span></div>
     </div>

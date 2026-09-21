@@ -55,7 +55,6 @@ final class EtpService
             throw new DomainException('Este processo já possui um ETP. Edite o existente em vez de criar outro.');
         }
 
-        $this->camposConfiguracao->validarRespostas('etp', $data['campos_extras'] ?? []);
         $data = $this->sanitizarCamposRicos($data);
 
         // Equipe de planejamento nasce como cópia da equipe já cadastrada no
@@ -65,6 +64,13 @@ final class EtpService
         if (!array_key_exists('equipe_planejamento', $data) || $data['equipe_planejamento'] === null) {
             $data['equipe_planejamento'] = $dfd->equipe_planejamento;
         }
+
+        // Validado só depois do preenchimento automático da equipe acima —
+        // mesmo raciocínio do TrService::criar.
+        $this->camposConfiguracao->validarRespostas('etp', [
+            ...$this->valoresNativos($data),
+            ...($data['campos_extras'] ?? []),
+        ]);
 
         return DB::transaction(function () use ($processo, $data, $user): Etp {
             $etp = Etp::create([
@@ -92,7 +98,10 @@ final class EtpService
         }
 
         $camposExtras = array_key_exists('campos_extras', $data) ? $data['campos_extras'] : ($etp->campos_extras ?? []);
-        $this->camposConfiguracao->validarRespostas('etp', $camposExtras ?? []);
+        $this->camposConfiguracao->validarRespostas('etp', [
+            ...$this->valoresNativos($data, $etp),
+            ...($camposExtras ?? []),
+        ]);
         $data = $this->sanitizarCamposRicos($data);
 
         return DB::transaction(function () use ($etp, $data, $user): Etp {
@@ -109,6 +118,28 @@ final class EtpService
 
             return $etp->load(['elaborador', 'aprovador', 'versoes.usuario']);
         });
+    }
+
+    /**
+     * Monta, para validarRespostas, o valor atual de cada seção nativa do
+     * ETP — o que está em `$data` (o que o request enviou) e, faltando lá,
+     * o que já está salvo em `$etp` (update parcial) ou `null` (criação).
+     * Necessário porque a obrigatoriedade dessas seções é configurável pelo
+     * tenant (ver CampoConfiguracaoService::CAMPOS_NATIVOS) e o request de
+     * update é `sometimes` — omitir um campo não pode ser lido como "campo
+     * apagado". Mesmo raciocínio do TrService::valoresNativos.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function valoresNativos(array $data, ?Etp $etp = null): array
+    {
+        $valores = [];
+        foreach (['conteudo', 'equipe_planejamento'] as $campo) {
+            $valores[$campo] = array_key_exists($campo, $data) ? $data[$campo] : $etp?->{$campo};
+        }
+
+        return $valores;
     }
 
     /**

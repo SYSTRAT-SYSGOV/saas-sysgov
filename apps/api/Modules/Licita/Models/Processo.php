@@ -98,6 +98,14 @@ final class Processo extends Model
     }
 
     /**
+     * @return HasOne<Edital, $this>
+     */
+    public function edital(): HasOne
+    {
+        return $this->hasOne(Edital::class, 'processo_id');
+    }
+
+    /**
      * @return HasOne<AprovacaoFinal, $this>
      */
     public function aprovacaoFinal(): HasOne

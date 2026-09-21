@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Button, Select } from '@sysgov/ui';
 import { Plus, Sparkles, Trash2 } from 'lucide-react';
 import { sysgovApi, type CampoConfig, type CreateDfdInput, type GrauPrioridade, type ItemDfd, type MembroEquipePlanejamento, type TipoItemDfd } from '@sysgov/sdk';
-import { CamposExtrasFields } from './CamposExtrasFields';
+import { CampoExtraField, CamposExtrasFields } from './CamposExtrasFields';
 import { RichTextEditorWithIa } from './RichTextEditorWithIa';
 import { ValidationErrorModal } from '@/components/ui';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
@@ -51,7 +51,14 @@ interface DfdFormProps {
   submitLabel: string;
   onSubmit: (data: CreateDfdInput) => Promise<void> | void;
   onCancel?: () => void;
-  /** Campos extras configurados pelo órgão para o DFD (ver CamposConfiguracaoPage). */
+  /**
+   * Configuração de campos do DFD — tanto as seções nativas (`nativo: true`,
+   * ver CampoConfiguracaoService::CAMPOS_NATIVOS) quanto os campos extras
+   * cadastrados pelo órgão, já mescladas pelo backend (getCamposConfiguracao)
+   * e livremente reorganizáveis em abas pelo tenant (ver CamposConfiguracaoPage).
+   * Equipe de planejamento e itens NÃO entram aqui — ver comentário em
+   * CampoConfiguracaoService::CAMPOS_NATIVOS sobre por quê.
+   */
   camposExtras?: CampoConfig[];
   /** Campos extras configurados pelo órgão para itens de material (ver CamposConfiguracaoPage). */
   camposExtrasItemMaterial?: CampoConfig[];
@@ -86,7 +93,7 @@ export const DfdForm: React.FC<DfdFormProps> = ({
   camposExtrasItemServico = [],
 }) => {
   const [dataPrevisao, setDataPrevisao] = useState(toDateInputValue(initialValue?.data_previsao));
-  const [grauPrioridade, setGrauPrioridade] = useState<GrauPrioridade>(initialValue?.grau_prioridade ?? 'media');
+  const [grauPrioridade, setGrauPrioridade] = useState<GrauPrioridade | null>(initialValue?.grau_prioridade ?? null);
   const [justificativa, setJustificativa] = useState(initialValue?.justificativa ?? '');
   const [objeto, setObjeto] = useState(initialValue?.objeto ?? '');
   const [previsaoPca, setPrevisaoPca] = useState(initialValue?.previsao_pca ?? false);
@@ -128,11 +135,146 @@ export const DfdForm: React.FC<DfdFormProps> = ({
     setJustificativaGeradaPorIa(false);
   };
 
-  // Agrupa os campos extras por aba (definida pelo órgão em Campos por Tipo
-  // de Documento) — campos sem aba caem na aba padrão. A ordem de impressão
-  // no PDF não muda: continua seguindo `ordem` normalmente, independente de
-  // em qual aba o campo está.
-  const camposExtrasPorAba = useMemo(() => {
+  const setCampoExtraValor = (key: string, valor: unknown) => {
+    setCamposExtrasValores((prev) => ({ ...prev, [key]: valor }));
+  };
+
+  /** Renderiza a seção nativa `campo` (rótulo/ajuda configuráveis, widget fixo por chave). */
+  const renderCampoNativo = (campo: CampoConfig): React.ReactNode => {
+    if (campo.key === 'objeto') {
+      return (
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            {campo.label} {campo.obrigatorio && '*'}
+          </label>
+          <textarea
+            // Sem `required` nativo de propósito: o atributo HTML bloqueia o
+            // submit no navegador (um balão nativo, fora do nosso controle
+            // visual) ANTES do handleSubmit rodar — a ValidationErrorModal
+            // padrão do sistema nunca chegava a aparecer. A obrigatoriedade
+            // já é garantida pelo backend (DfdController/DfdService) e cai
+            // na mesma modal que qualquer outro erro de validação.
+            disabled={disabled}
+            value={objeto}
+            onChange={(e) => setObjeto(e.target.value)}
+            rows={2}
+            maxLength={500}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Ex.: Contratação de empresa especializada em serviços de limpeza predial."
+          />
+        </div>
+      );
+    }
+
+    if (campo.key === 'justificativa') {
+      return (
+        <RichTextEditorWithIa
+          label={`${campo.label}${campo.obrigatorio ? ' *' : ''}`}
+          value={justificativa}
+          onChange={handleJustificativaChange}
+          disabled={disabled}
+          minHeight={200}
+          placeholder="Demonstre a necessidade e conveniência da contratação (art. 18, I da Lei 14.133/2021)."
+          onSugerir={handleSugerirJustificativa}
+          sugerirDesabilitado={!objeto.trim()}
+          sugerirDesabilitadoTitulo="Preencha o Objeto para gerar a sugestão."
+        />
+      );
+    }
+
+    if (campo.key === 'data_previsao') {
+      return (
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            {campo.label} {campo.obrigatorio && '*'}
+          </label>
+          <input
+            type="date"
+            disabled={disabled}
+            value={dataPrevisao}
+            onChange={(e) => setDataPrevisao(e.target.value)}
+            className="w-full max-w-sm rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono tabular-nums text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+      );
+    }
+
+    if (campo.key === 'grau_prioridade') {
+      return (
+        <div className="max-w-sm">
+          <label className="block text-sm font-medium text-foreground mb-1">
+            {campo.label} {campo.obrigatorio && '*'}
+          </label>
+          <Select
+            value={grauPrioridade}
+            onChange={(v) => setGrauPrioridade(v as GrauPrioridade)}
+            options={GRAU_PRIORIDADE_OPTIONS}
+            disabled={disabled}
+            placeholder="Selecione o grau..."
+          />
+        </div>
+      );
+    }
+
+    if (campo.key === 'area_requisitante') {
+      return (
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            {campo.label} {campo.obrigatorio && '*'}
+          </label>
+          <input
+            type="text"
+            disabled={disabled}
+            value={areaRequisitante ?? ''}
+            onChange={(e) => setAreaRequisitante(e.target.value)}
+            className="w-full max-w-sm rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+      );
+    }
+
+    if (campo.key === 'numero_pca') {
+      return (
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">
+            {campo.label} {campo.obrigatorio && '*'}
+          </label>
+          <input
+            type="text"
+            disabled={disabled}
+            value={numeroPca ?? ''}
+            onChange={(e) => setNumeroPca(e.target.value)}
+            className="w-full max-w-sm rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono tabular-nums text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+      );
+    }
+
+    if (campo.key === 'previsao_pca') {
+      return (
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            disabled={disabled}
+            checked={previsaoPca}
+            onChange={(e) => setPrevisaoPca(e.target.checked)}
+            className="rounded border-input text-primary focus:ring-primary"
+          />
+          {campo.label}
+        </label>
+      );
+    }
+
+    return null;
+  };
+
+  // Agrupa os campos nativos (objeto/justificativa/data_previsao/
+  // grau_prioridade/area_requisitante/numero_pca/previsao_pca) e os campos
+  // extras por aba — intercalados na mesma lista, na ordem que o órgão
+  // definir (ver TrForm/EtpForm, mesmo padrão). Equipe de planejamento e
+  // itens NÃO entram aqui: continuam fixos ("Geral" e "Itens" respectivamente),
+  // ver CampoConfiguracaoService::CAMPOS_NATIVOS.
+  const camposPorAba = useMemo(() => {
     const ordenados = [...camposExtras].sort((a, b) => a.ordem - b.ordem);
     const porAba = new Map<string, CampoConfig[]>();
     for (const campo of ordenados) {
@@ -148,16 +290,17 @@ export const DfdForm: React.FC<DfdFormProps> = ({
   // Campos por Tipo de Documento.
   const nomesAbas = useMemo(() => {
     const nomes = [ABA_PADRAO, ABA_ITENS];
-    for (const aba of camposExtrasPorAba.keys()) {
+    for (const aba of camposPorAba.keys()) {
       if (!nomes.includes(aba)) nomes.push(aba);
     }
     return nomes;
-  }, [camposExtrasPorAba]);
+  }, [camposPorAba]);
 
   // Protege contra abaAtiva apontando pra uma aba custom que deixou de
   // existir (ex.: o órgão removeu os campos daquela aba desde a última vez
   // que este formulário foi aberto).
   const abaAtivaSegura = nomesAbas.includes(abaAtiva) ? abaAtiva : ABA_PADRAO;
+  const camposDaAbaAtiva = camposPorAba.get(abaAtivaSegura) ?? [];
 
   const updateMembro = (index: number, patch: Partial<MembroEquipePlanejamento>) => {
     setEquipe((prev) => prev.map((m, i) => (i === index ? { ...m, ...patch } : m)));
@@ -212,10 +355,10 @@ export const DfdForm: React.FC<DfdFormProps> = ({
     setSaving(true);
     try {
       await onSubmit({
-        data_previsao: dataPrevisao,
+        data_previsao: dataPrevisao || null,
         grau_prioridade: grauPrioridade,
-        justificativa,
-        objeto,
+        justificativa: justificativa || null,
+        objeto: objeto || null,
         previsao_pca: previsaoPca,
         numero_pca: numeroPca || null,
         area_requisitante: areaRequisitante || null,
@@ -253,10 +396,11 @@ export const DfdForm: React.FC<DfdFormProps> = ({
 
       {/* Abas do formulário inteiro — "Geral" e "Itens" são fixas; as demais
           só aparecem quando o órgão de fato criou alguma aba nomeada em
-          Campos por Tipo de Documento. "Geral" reúne Objeto, Justificativa
-          e os campos fixos do DFD, junto com os campos extras sem aba;
-          "Itens" reúne os materiais/serviços; as demais abas mostram só os
-          campos extras daquele agrupamento. */}
+          Campos por Tipo de Documento. "Geral" reúne os campos nativos
+          (objeto, justificativa etc., na ordem/aba que o órgão definir) e a
+          equipe de planejamento (sempre fixa); "Itens" reúne os
+          materiais/serviços; as demais abas mostram só os campos daquele
+          agrupamento. */}
       <div className="flex gap-1 border-b border-border">
         {nomesAbas.map((aba) => (
           <button
@@ -274,159 +418,87 @@ export const DfdForm: React.FC<DfdFormProps> = ({
         ))}
       </div>
 
-      {abaAtivaSegura === ABA_PADRAO && (
-        <>
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Objeto *</label>
-          <textarea
-            // Sem `required` nativo de propósito: o atributo HTML bloqueia o
-            // submit no navegador (um balão nativo, fora do nosso controle
-            // visual) ANTES do handleSubmit rodar — a ValidationErrorModal
-            // padrão do sistema nunca chegava a aparecer. A obrigatoriedade
-            // já é garantida pelo backend (DfdController::validatedData) e
-            // cai na mesma modal que qualquer outro erro de validação.
-            disabled={disabled}
-            value={objeto}
-            onChange={(e) => setObjeto(e.target.value)}
-            rows={2}
-            maxLength={500}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Ex.: Contratação de empresa especializada em serviços de limpeza predial."
-          />
-        </div>
+      {abaAtivaSegura !== ABA_ITENS && (
+        <div className="space-y-4">
+          {camposDaAbaAtiva.map((campo) =>
+            campo.nativo ? (
+              <React.Fragment key={campo.key}>{renderCampoNativo(campo)}</React.Fragment>
+            ) : (
+              <CampoExtraField
+                key={campo.key}
+                campo={campo}
+                valor={camposExtrasValores[campo.key]}
+                onChange={setCampoExtraValor}
+                disabled={disabled}
+              />
+            ),
+          )}
 
-        <div>
-          <RichTextEditorWithIa
-            label="Justificativa *"
-            value={justificativa}
-            onChange={handleJustificativaChange}
-            disabled={disabled}
-            minHeight={200}
-            placeholder="Demonstre a necessidade e conveniência da contratação (art. 18, I da Lei 14.133/2021)."
-            onSugerir={handleSugerirJustificativa}
-            sugerirDesabilitado={!objeto.trim()}
-            sugerirDesabilitadoTitulo="Preencha o Objeto para gerar a sugestão."
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Data Prevista da Contratação *</label>
-            <input
-              // Ver comentário no campo Objeto acima — sem `required` nativo,
-              // de propósito.
-              type="date"
-              disabled={disabled}
-              value={dataPrevisao}
-              onChange={(e) => setDataPrevisao(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono tabular-nums text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Grau de Prioridade *</label>
-            <Select
-              value={grauPrioridade}
-              onChange={(v) => setGrauPrioridade(v as GrauPrioridade)}
-              options={GRAU_PRIORIDADE_OPTIONS}
-              disabled={disabled}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Área Requisitante</label>
-            <input
-              type="text"
-              disabled={disabled}
-              value={areaRequisitante ?? ''}
-              onChange={(e) => setAreaRequisitante(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Nº no PCA</label>
-            <input
-              type="text"
-              disabled={disabled}
-              value={numeroPca ?? ''}
-              onChange={(e) => setNumeroPca(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono tabular-nums text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-        </div>
-
-        <label className="flex items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            disabled={disabled}
-            checked={previsaoPca}
-            onChange={(e) => setPrevisaoPca(e.target.checked)}
-            className="rounded border-input text-primary focus:ring-primary"
-          />
-          Contratação prevista no Plano de Contratações Anual (PCA)
-        </label>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-foreground">
-              Equipe de Planejamento * <span className="font-normal text-muted-foreground">(mínimo 2 pessoas)</span>
-            </label>
-            {!disabled && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                leftIcon={<Plus className="h-3.5 w-3.5" />}
-                onClick={() => setEquipe((prev) => [...prev, { ...emptyMembro }])}
-              >
-                Adicionar
-              </Button>
-            )}
-          </div>
-          <div className="space-y-2">
-            {equipe.map((membro, index) => (
-              <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_120px_auto] gap-2 items-center">
-                <input
-                  type="text"
-                  disabled={disabled}
-                  placeholder="Nome"
-                  value={membro.nome}
-                  onChange={(e) => updateMembro(index, { nome: e.target.value })}
-                  className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <input
-                  type="text"
-                  disabled={disabled}
-                  placeholder="Cargo/Função"
-                  value={membro.cargo}
-                  onChange={(e) => updateMembro(index, { cargo: e.target.value })}
-                  className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <input
-                  type="text"
-                  disabled={disabled}
-                  placeholder="Matrícula"
-                  value={membro.matricula}
-                  onChange={(e) => updateMembro(index, { matricula: e.target.value })}
-                  className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                {/* Nunca deixa remover abaixo de 2 — mínimo exigido pelo backend (ver DfdController). */}
-                {!disabled && equipe.length > 2 && (
+          {/* Equipe de planejamento fica sempre na aba "Geral", não é
+              reorganizável — ver CampoConfiguracaoService::CAMPOS_NATIVOS
+              (mínimo legal de 2 pessoas, RN-005). */}
+          {abaAtivaSegura === ABA_PADRAO && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-foreground">
+                  Equipe de Planejamento * <span className="font-normal text-muted-foreground">(mínimo 2 pessoas)</span>
+                </label>
+                {!disabled && (
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setEquipe((prev) => prev.filter((_, i) => i !== index))}
+                    size="sm"
+                    leftIcon={<Plus className="h-3.5 w-3.5" />}
+                    onClick={() => setEquipe((prev) => [...prev, { ...emptyMembro }])}
                   >
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    Adicionar
                   </Button>
                 )}
               </div>
-            ))}
-          </div>
+              <div className="space-y-2">
+                {equipe.map((membro, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_120px_auto] gap-2 items-center">
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      placeholder="Nome"
+                      value={membro.nome}
+                      onChange={(e) => updateMembro(index, { nome: e.target.value })}
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      placeholder="Cargo/Função"
+                      value={membro.cargo}
+                      onChange={(e) => updateMembro(index, { cargo: e.target.value })}
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <input
+                      type="text"
+                      disabled={disabled}
+                      placeholder="Matrícula"
+                      value={membro.matricula}
+                      onChange={(e) => updateMembro(index, { matricula: e.target.value })}
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {/* Nunca deixa remover abaixo de 2 — mínimo exigido pelo backend (ver DfdController). */}
+                    {!disabled && equipe.length > 2 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setEquipe((prev) => prev.filter((_, i) => i !== index))}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        </>
       )}
 
       {abaAtivaSegura === ABA_ITENS && (
@@ -563,22 +635,21 @@ export const DfdForm: React.FC<DfdFormProps> = ({
               );
             })}
           </div>
-        </div>
-      )}
 
-      {/* Campos extras da aba ativa — sem título de seção de propósito: esses
-          campos não são "extras do órgão", são campos que o próprio órgão
-          define e nomeia em Campos por Tipo de Documento, então já aparecem
-          com o rótulo que ele escolheu (ver CamposExtrasFields). Na aba
-          "Geral" ficam junto dos campos fixos acima; nas demais abas
-          (inclusive "Itens") aparecem sozinhos. */}
-      {(camposExtrasPorAba.get(abaAtivaSegura)?.length ?? 0) > 0 && (
-        <CamposExtrasFields
-          campos={camposExtrasPorAba.get(abaAtivaSegura) ?? []}
-          valores={camposExtrasValores}
-          onChange={setCamposExtrasValores}
-          disabled={disabled}
-        />
+          {/* Campos extras configurados especificamente para a aba "Itens"
+              (ex.: um campo geral sobre a lista, não por item) — mesmo
+              comportamento anterior. */}
+          {(camposPorAba.get(ABA_ITENS)?.length ?? 0) > 0 && (
+            <div className="mt-4">
+              <CamposExtrasFields
+                campos={camposPorAba.get(ABA_ITENS) ?? []}
+                valores={camposExtrasValores}
+                onChange={setCamposExtrasValores}
+                disabled={disabled}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {!disabled && (

@@ -20,7 +20,7 @@ const TIPO_DOCUMENTO_OPTIONS: { value: TipoDocumentoConfiguravel; label: string;
   { value: 'mapa_riscos', label: 'Mapa de Riscos', disponivel: true },
   { value: 'pesquisa_precos', label: 'Pesquisa de Preços', disponivel: true },
   { value: 'tr', label: 'Termo de Referência', disponivel: true },
-  { value: 'edital', label: 'Edital', disponivel: false },
+  { value: 'edital', label: 'Edital', disponivel: true },
 ];
 
 const TIPO_CAMPO_OPTIONS: { value: TipoCampoConfiguravel; label: string }[] = [
@@ -31,6 +31,18 @@ const TIPO_CAMPO_OPTIONS: { value: TipoCampoConfiguravel; label: string }[] = [
   { value: 'booleano', label: 'Sim/Não' },
   { value: 'selecao', label: 'Seleção (opções)' },
 ];
+
+/** Rótulo de exibição (somente leitura) do tipo de um campo nativo — inclui os `TipoCampoNativo` que não aparecem em `TIPO_CAMPO_OPTIONS`. */
+const TIPO_NATIVO_LABEL: Record<string, string> = {
+  texto: 'Texto curto',
+  texto_longo: 'Texto rico (editor)',
+  numero: 'Número',
+  data: 'Data',
+  booleano: 'Sim/Não',
+  selecao: 'Seleção (opções)',
+  selecao_fixa: 'Seleção (opções fixas do sistema)',
+  equipe: 'Lista estruturada (equipe)',
+};
 
 /**
  * A "Chave" é um identificador técnico (snake_case) sem nenhum valor pro
@@ -196,7 +208,7 @@ export const CamposConfiguracaoPage: React.FC = () => {
       <PageHeader
         icon={<Settings2 className="h-6 w-6" />}
         title="Campos Obrigatórios por Documento"
-        subtitle="Adicione campos extras exigidos pela legislação local em cada tipo de artefato."
+        subtitle="Adicione campos extras e reorganize (rótulo, aba, obrigatoriedade) as seções de cada tipo de artefato."
       />
 
       <Card className="p-6 space-y-4">
@@ -315,21 +327,39 @@ export const CamposConfiguracaoPage: React.FC = () => {
                         onChange={(e) => updateCampo(index, { label: e.target.value })}
                         className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
                       />
-                      <Select
-                        value={campo.tipo}
-                        onChange={(v) => updateCampo(index, { tipo: v as TipoCampoConfiguravel })}
-                        options={TIPO_CAMPO_OPTIONS}
-                        disabled={!podeGerenciar}
-                      />
+                      {campo.nativo ? (
+                        <div
+                          title="Seção nativa do documento — o tipo é fixo, mas rótulo, aba e obrigatoriedade são livres."
+                          className="flex items-center rounded-lg border border-dashed border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
+                        >
+                          {TIPO_NATIVO_LABEL[campo.tipo] ?? campo.tipo}
+                        </div>
+                      ) : (
+                        <Select
+                          value={campo.tipo}
+                          onChange={(v) => updateCampo(index, { tipo: v as TipoCampoConfiguravel })}
+                          options={TIPO_CAMPO_OPTIONS}
+                          disabled={!podeGerenciar}
+                        />
+                      )}
                     </div>
-                    {podeGerenciar && (
-                      <Button size="icon-sm" variant="ghost" onClick={() => removeCampo(index)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                    {campo.nativo ? (
+                      <span
+                        title="Seção nativa do documento — não pode ser excluída, só reorganizada."
+                        className="mt-2 shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                      >
+                        Nativo
+                      </span>
+                    ) : (
+                      podeGerenciar && (
+                        <Button size="icon-sm" variant="ghost" onClick={() => removeCampo(index)}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      )
                     )}
                   </div>
 
-                  {campo.tipo === 'selecao' && (
+                  {!campo.nativo && campo.tipo === 'selecao' && (
                     <input
                       type="text"
                       disabled={!podeGerenciar}

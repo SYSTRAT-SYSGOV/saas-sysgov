@@ -1,9 +1,17 @@
-import type { CampoConfig, Etp, Processo, Tenant } from '@sysgov/sdk';
+import type { CampoConfig, CriterioJulgamentoTr, Edital, Processo, Tenant } from '@sysgov/sdk';
 import { CSS_CABECALHO_ORGAO, escapeHtml, renderCabecalhoOrgao } from './pdfCabecalho';
 
-const STATUS_LABEL: Record<Etp['status'], string> = {
+const STATUS_LABEL: Record<Edital['status'], string> = {
   rascunho: 'Rascunho',
   aprovado: 'Aprovado',
+};
+
+const CRITERIO_JULGAMENTO_LABEL: Record<CriterioJulgamentoTr, string> = {
+  menor_preco: 'Menor Preço',
+  maior_desconto: 'Maior Desconto',
+  melhor_tecnica: 'Melhor Técnica ou Conteúdo Artístico',
+  tecnica_e_preco: 'Técnica e Preço',
+  maior_lance: 'Maior Lance (leilão)',
 };
 
 function formatarDataHora(iso: string | null | undefined): string {
@@ -26,32 +34,48 @@ function formatarValorCampoExtra(campo: CampoConfig, valor: unknown): string {
   }
 }
 
+interface SecaoRica {
+  titulo: string;
+  valor: string | null;
+}
+
 /**
- * Monta o HTML de impressão de um ETP e escreve na janela já aberta (ver
- * `abrirJanelaPdf` em gerarDfdPdf.ts, reaproveitado para o ETP também) —
- * mesma estratégia de "imprimir para PDF" do DFD, sem biblioteca de geração
- * de PDF no backend.
+ * Monta o HTML de impressão de um Edital e escreve na janela já aberta (ver
+ * `abrirJanelaPdf` em gerarDfdPdf.ts, reaproveitado aqui também) — mesma
+ * estratégia de "imprimir para PDF" das demais fases. Cada seção só entra
+ * no PDF se tiver conteúdo preenchido, mesmo espírito do gerarTrPdf.
  */
-export function gerarEtpPdf(janela: Window, processo: Processo, tenant: Tenant, camposConfig: CampoConfig[] = []): void {
-  const etp = processo.etp;
-  if (!etp) {
+export function gerarEditalPdf(janela: Window, processo: Processo, tenant: Tenant, camposConfig: CampoConfig[] = []): void {
+  const edital = processo.edital;
+  if (!edital) {
     janela.close();
     return;
   }
 
-  const equipe = etp.equipe_planejamento ?? [];
+  const equipe = edital.equipe_planejamento ?? [];
   const camposOrdenados = [...camposConfig].sort((a, b) => a.ordem - b.ordem);
-  const camposComValor = camposOrdenados.filter((c) => etp.campos_extras && c.key in etp.campos_extras);
+  const camposComValor = camposOrdenados.filter((c) => edital.campos_extras && c.key in edital.campos_extras);
 
   let numeroSecao = 0;
   const proximoNumero = () => ++numeroSecao;
   const tituloSecao = (texto: string) => `<span class="num">${proximoNumero()}</span> ${texto}`;
 
+  const secoesRicas: SecaoRica[] = [
+    { titulo: 'Preâmbulo', valor: edital.preambulo },
+    { titulo: 'Objeto', valor: edital.objeto },
+    { titulo: 'Condições de Participação', valor: edital.condicoes_participacao },
+    { titulo: 'Requisitos de Habilitação', valor: edital.requisitos_habilitacao },
+    { titulo: 'Procedimento da Sessão Pública', valor: edital.procedimento_sessao_publica },
+    { titulo: 'Prazo e Forma de Recursos', valor: edital.prazo_recursal },
+    { titulo: 'Sanções Administrativas', valor: edital.sancoes_administrativas },
+    { titulo: 'Disposições Gerais', valor: edital.disposicoes_gerais },
+  ].filter((s): s is { titulo: string; valor: string } => !!s.valor);
+
   const html = `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
-<title>ETP ${escapeHtml(processo.numero)}/${processo.ano}</title>
+<title>Edital ${escapeHtml(processo.numero)}/${processo.ano}</title>
 <style>
   @page { size: A4; margin: 22mm 18mm; }
   * { box-sizing: border-box; }
@@ -77,8 +101,6 @@ export function gerarEtpPdf(janela: Window, processo: Processo, tenant: Tenant, 
   }
   .status { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
   .status-aprovado { background: #e6f4ea; color: #1e7e34; }
-  .status-rejeitado { background: #fdecea; color: #b3261e; }
-  .status-em_revisao { background: #fff4e5; color: #a15c00; }
   .status-rascunho { background: #eceff1; color: #444; }
   .assinaturas { font-size: 11px; color: #555; text-align: right; line-height: 1.5; }
   section { margin-bottom: 18px; }
@@ -121,22 +143,28 @@ export function gerarEtpPdf(janela: Window, processo: Processo, tenant: Tenant, 
 <body>
   <header>
     ${renderCabecalhoOrgao(tenant)}
-    <h1>Estudo Técnico Preliminar (ETP)</h1>
-    <div class="subtitulo">Processo ${escapeHtml(processo.numero)}/${processo.ano} — Lei nº 14.133/2021, art. 18</div>
+    <h1>Edital</h1>
+    <div class="subtitulo">Processo ${escapeHtml(processo.numero)}/${processo.ano} — Lei nº 14.133/2021, art. 25</div>
   </header>
 
   <div class="meta">
-    <span class="status status-${etp.status}">${STATUS_LABEL[etp.status]}</span>
+    <span class="status status-${edital.status}">${STATUS_LABEL[edital.status]}</span>
     <div class="assinaturas">
-      Elaborado por <strong>${escapeHtml(etp.elaborador?.name ?? '—')}</strong>
-      ${etp.aprovador ? `<br/>Aprovado por <strong>${escapeHtml(etp.aprovador.name)}</strong> em ${formatarDataHora(etp.aprovado_em)}` : ''}
+      Elaborado por <strong>${escapeHtml(edital.elaborador?.name ?? '—')}</strong>
+      ${edital.aprovador ? `<br/>Aprovado por <strong>${escapeHtml(edital.aprovador.name)}</strong> em ${formatarDataHora(edital.aprovado_em)}` : ''}
     </div>
   </div>
 
-  ${etp.conteudo ? `
+  ${secoesRicas.map((s) => `
   <section>
-    <h2>${tituloSecao('Estudo Técnico Preliminar')}</h2>
-    <div class="rich">${etp.conteudo}</div>
+    <h2>${tituloSecao(s.titulo)}</h2>
+    <div class="rich">${s.valor}</div>
+  </section>`).join('')}
+
+  ${edital.criterio_julgamento ? `
+  <section>
+    <h2>${tituloSecao('Critério de Julgamento')}</h2>
+    <div class="campo"><span class="label">Critério de Julgamento</span>${CRITERIO_JULGAMENTO_LABEL[edital.criterio_julgamento]}</div>
   </section>` : ''}
 
   ${equipe.length > 0 ? `
@@ -155,13 +183,13 @@ export function gerarEtpPdf(janela: Window, processo: Processo, tenant: Tenant, 
     ${camposComValor.map((c) => `
       <div class="campo campo-extra">
         <span class="label"><span class="num">${proximoNumero()}</span> ${escapeHtml(c.label)}</span>
-        <span class="valor${c.tipo === 'texto_longo' ? ' rich' : ''}">${formatarValorCampoExtra(c, etp.campos_extras?.[c.key])}</span>
+        <span class="valor${c.tipo === 'texto_longo' ? ' rich' : ''}">${formatarValorCampoExtra(c, edital.campos_extras?.[c.key])}</span>
       </div>
     `).join('')}
   </section>` : ''}
 
   <footer>
-    Documento gerado pelo SYSGOV em ${new Date().toLocaleString('pt-BR')} — válido como registro do ETP conforme dados cadastrados no sistema.
+    Documento gerado pelo SYSGOV em ${new Date().toLocaleString('pt-BR')} — válido como registro do Edital conforme dados cadastrados no sistema.
   </footer>
 </body>
 </html>`;

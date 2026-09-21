@@ -10,57 +10,57 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Modules\Licita\Enums\StatusDfd;
+use Modules\Licita\Enums\StatusEdital;
 
 /**
  * @property int $id
  * @property int $tenant_id
  * @property int $processo_id
- * @property \Illuminate\Support\Carbon|null $data_previsao
- * @property string|null $grau_prioridade
- * @property string|null $justificativa
- * @property string|null $objeto
- * @property bool $previsao_pca
- * @property string|null $numero_pca
- * @property string|null $area_requisitante
  * @property array<int, array{nome: string, cargo: string, matricula: string}>|null $equipe_planejamento
+ * @property string|null $preambulo
+ * @property string|null $objeto
+ * @property string|null $criterio_julgamento
+ * @property string|null $condicoes_participacao
+ * @property string|null $requisitos_habilitacao
+ * @property string|null $procedimento_sessao_publica
+ * @property string|null $prazo_recursal
+ * @property string|null $sancoes_administrativas
+ * @property string|null $disposicoes_gerais
  * @property array<string, mixed>|null $campos_extras
- * @property array<int, array{tipo: string, codigo: string, descricao: string, unidade_medida: string, quantidade: float, valor_unitario: float, campos_extras?: array<string, mixed>}>|null $itens
  * @property string $status
- * @property bool $gerado_por_ia
- * @property int $elaborado_por
+ * @property int|null $elaborado_por
  * @property int|null $aprovado_por
  * @property \Illuminate\Support\Carbon|null $aprovado_em
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
  * @property-read Processo $processo
- * @property-read \Illuminate\Database\Eloquent\Collection<int, DfdVersao> $versoes
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, EditalVersao> $versoes
  * @property-read User|null $elaborador
  * @property-read User|null $aprovador
  */
-final class Dfd extends Model
+final class Edital extends Model
 {
     use TenantAware;
     use SoftDeletes;
 
-    protected $table = 'licita_dfds';
+    protected $table = 'licita_editais';
 
     protected $fillable = [
         'tenant_id',
         'processo_id',
-        'data_previsao',
-        'grau_prioridade',
-        'justificativa',
-        'objeto',
-        'previsao_pca',
-        'numero_pca',
-        'area_requisitante',
         'equipe_planejamento',
+        'preambulo',
+        'objeto',
+        'criterio_julgamento',
+        'condicoes_participacao',
+        'requisitos_habilitacao',
+        'procedimento_sessao_publica',
+        'prazo_recursal',
+        'sancoes_administrativas',
+        'disposicoes_gerais',
         'campos_extras',
-        'itens',
         'status',
-        'gerado_por_ia',
         'elaborado_por',
         'aprovado_por',
         'aprovado_em',
@@ -69,20 +69,16 @@ final class Dfd extends Model
     protected $casts = [
         'tenant_id' => 'integer',
         'processo_id' => 'integer',
-        'data_previsao' => 'date',
-        'previsao_pca' => 'boolean',
         'equipe_planejamento' => 'array',
         'campos_extras' => 'array',
-        'itens' => 'array',
-        'gerado_por_ia' => 'boolean',
         'elaborado_por' => 'integer',
         'aprovado_por' => 'integer',
         'aprovado_em' => 'datetime',
     ];
 
-    public function statusEnum(): StatusDfd
+    public function statusEnum(): StatusEdital
     {
-        return StatusDfd::from($this->status);
+        return StatusEdital::from($this->status);
     }
 
     /**
@@ -94,11 +90,11 @@ final class Dfd extends Model
     }
 
     /**
-     * @return HasMany<DfdVersao, $this>
+     * @return HasMany<EditalVersao, $this>
      */
     public function versoes(): HasMany
     {
-        return $this->hasMany(DfdVersao::class, 'dfd_id')->orderBy('versao');
+        return $this->hasMany(EditalVersao::class, 'edital_id')->orderBy('versao');
     }
 
     /**

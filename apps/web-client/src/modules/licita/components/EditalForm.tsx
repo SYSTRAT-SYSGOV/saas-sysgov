@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Button, Select } from '@sysgov/ui';
 import { Plus, Trash2 } from 'lucide-react';
-import type { CampoConfig, CreateTrInput, CriterioJulgamentoTr, MembroEquipePlanejamento } from '@sysgov/sdk';
+import type { CampoConfig, CreateEditalInput, CriterioJulgamentoTr, MembroEquipePlanejamento } from '@sysgov/sdk';
 import { CampoExtraField } from './CamposExtrasFields';
 import { RichTextEditorWithIa } from './RichTextEditorWithIa';
 import { ValidationErrorModal } from '@/components/ui';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 
-/** Aba usada por campos sem `aba` definida — sempre a primeira (ver DfdForm/EtpForm/PesquisaPrecoForm, mesmo padrão). */
+/** Aba usada por campos sem `aba` definida — sempre a primeira (ver TrForm/EtpForm/DfdForm, mesmo padrão). */
 const ABA_PADRAO = 'Geral';
 
 const emptyMembro: MembroEquipePlanejamento = { nome: '', cargo: '', matricula: '' };
@@ -24,38 +24,37 @@ const CRITERIO_JULGAMENTO_OPTIONS: { value: CriterioJulgamentoTr; label: string 
   ['menor_preco', 'maior_desconto', 'melhor_tecnica', 'tecnica_e_preco', 'maior_lance'] as CriterioJulgamentoTr[]
 ).map((value) => ({ value, label: CRITERIO_JULGAMENTO_LABEL[value] }));
 
-/** Placeholder/ajuda de cada seção nativa — o rótulo em si vem de `campo.label` (configurável, ver CamposConfiguracaoPage). */
+/** Placeholder de cada seção nativa — o rótulo em si vem de `campo.label` (configurável, ver CamposConfiguracaoPage). */
 const PLACEHOLDER_NATIVO: Partial<Record<string, string>> = {
-  fundamentacao_contratacao: 'Justificativa técnica e econômica da contratação, alinhamento com o planejamento do órgão.',
-  descricao_solucao: 'Descrição de todas as fases da contratação, considerando o ciclo de vida do objeto.',
-  requisitos_contratacao: 'Requisitos técnicos, de sustentabilidade, de garantia e de manutenção exigidos.',
-  modelo_execucao: 'Condições de execução, prazos, local de entrega/prestação, forma de recebimento.',
-  modelo_gestao_contrato: 'Fiscalização, gestão, critérios de medição e forma de pagamento.',
-  sancoes_administrativas: 'Penalidades aplicáveis em caso de inexecução total ou parcial do contrato.',
-  vigencia_contrato: 'Ex.: 12 meses, prorrogável até 60 meses',
-  adequacao_orcamentaria: 'Dotação orçamentária e fonte de recursos previstas para a contratação.',
+  preambulo: 'Modalidade, tipo de julgamento, número do processo, data/hora/local da sessão pública.',
+  objeto: 'Objeto detalhado da licitação — nasce copiado do DFD, mas pode ser reescrito para o edital.',
+  condicoes_participacao: 'Quem pode participar, impedimentos e vedações (art. 14 da Lei 14.133/2021).',
+  requisitos_habilitacao: 'Habilitação jurídica, fiscal, social e trabalhista, técnica e econômico-financeira (art. 62 a 70).',
+  procedimento_sessao_publica: 'Etapas da sessão pública: credenciamento, envio de propostas, disputa, julgamento, habilitação.',
+  prazo_recursal: 'Prazo, forma de interposição e efeitos dos recursos administrativos (art. 165 a 168).',
+  sancoes_administrativas: 'Penalidades aplicáveis em caso de inexecução total ou parcial do contrato — nasce copiado do TR.',
+  disposicoes_gerais: 'Foro, anexos do edital (minuta de contrato, TR, planilhas) e demais disposições finais.',
 };
 
 /** Chave nativa cujo valor é HTML rico via RichTextEditorWithIa (as demais nativas têm renderer próprio abaixo). */
 const NATIVOS_TEXTO_LONGO = new Set([
-  'fundamentacao_contratacao',
-  'descricao_solucao',
-  'requisitos_contratacao',
-  'modelo_execucao',
-  'modelo_gestao_contrato',
-  'obrigacoes_contratante',
-  'obrigacoes_contratada',
+  'preambulo',
+  'objeto',
+  'condicoes_participacao',
+  'requisitos_habilitacao',
+  'procedimento_sessao_publica',
+  'prazo_recursal',
   'sancoes_administrativas',
-  'adequacao_orcamentaria',
+  'disposicoes_gerais',
 ]);
 
-interface TrFormProps {
-  initialValue?: Partial<CreateTrInput>;
+interface EditalFormProps {
+  initialValue?: Partial<CreateEditalInput>;
   disabled?: boolean;
   submitLabel: string;
-  onSubmit: (data: CreateTrInput) => Promise<void> | void;
+  onSubmit: (data: CreateEditalInput) => Promise<void> | void;
   /**
-   * Configuração de campos do TR — tanto as seções nativas (`nativo: true`,
+   * Configuração de campos do Edital — tanto as seções nativas (`nativo: true`,
    * ver CampoConfiguracaoService::CAMPOS_NATIVOS) quanto os campos extras
    * cadastrados pelo órgão, já mescladas pelo backend (getCamposConfiguracao)
    * e livremente reorganizáveis em abas pelo tenant (ver CamposConfiguracaoPage).
@@ -64,32 +63,30 @@ interface TrFormProps {
 }
 
 /**
- * Formulário do Termo de Referência — diferente do ETP (texto único), o TR
- * é dividido em seções estruturadas (art. 6º, XXIII da Lei 14.133/2021).
- * Rótulo, aba e obrigatoriedade de cada seção nativa são configuráveis pelo
- * órgão (CamposConfiguracaoPage) e intercaladas livremente com os campos
- * extras na mesma aba, na ordem que o órgão definir — só `tipo`/existência
- * da seção são fixos (o schema do banco não muda). Todas as seções nascem
- * opcionais (obrigatorio=false) até o órgão marcar o contrário.
+ * Formulário do Edital (art. 25 da Lei 14.133/2021) — mesmo espírito
+ * estrutural do TrForm: seções nativas configuráveis pelo órgão (rótulo,
+ * aba, obrigatoriedade), intercaladas com campos extras na mesma aba/ordem.
+ * Objeto, Critério de Julgamento e Sanções Administrativas costumam chegar
+ * já preenchidos (copiados do DFD/TR pelo backend na criação, ver
+ * EditalService::criar) — o elaborador só ajusta o que for específico do
+ * edital em si.
  */
-export const TrForm: React.FC<TrFormProps> = ({
+export const EditalForm: React.FC<EditalFormProps> = ({
   initialValue,
   disabled,
   submitLabel,
   onSubmit,
   camposExtras = [],
 }) => {
-  const [fundamentacaoContratacao, setFundamentacaoContratacao] = useState(initialValue?.fundamentacao_contratacao ?? '');
-  const [descricaoSolucao, setDescricaoSolucao] = useState(initialValue?.descricao_solucao ?? '');
-  const [requisitosContratacao, setRequisitosContratacao] = useState(initialValue?.requisitos_contratacao ?? '');
-  const [modeloExecucao, setModeloExecucao] = useState(initialValue?.modelo_execucao ?? '');
-  const [modeloGestaoContrato, setModeloGestaoContrato] = useState(initialValue?.modelo_gestao_contrato ?? '');
+  const [preambulo, setPreambulo] = useState(initialValue?.preambulo ?? '');
+  const [objeto, setObjeto] = useState(initialValue?.objeto ?? '');
   const [criterioJulgamento, setCriterioJulgamento] = useState<CriterioJulgamentoTr | null>(initialValue?.criterio_julgamento ?? null);
-  const [obrigacoesContratante, setObrigacoesContratante] = useState(initialValue?.obrigacoes_contratante ?? '');
-  const [obrigacoesContratada, setObrigacoesContratada] = useState(initialValue?.obrigacoes_contratada ?? '');
+  const [condicoesParticipacao, setCondicoesParticipacao] = useState(initialValue?.condicoes_participacao ?? '');
+  const [requisitosHabilitacao, setRequisitosHabilitacao] = useState(initialValue?.requisitos_habilitacao ?? '');
+  const [procedimentoSessaoPublica, setProcedimentoSessaoPublica] = useState(initialValue?.procedimento_sessao_publica ?? '');
+  const [prazoRecursal, setPrazoRecursal] = useState(initialValue?.prazo_recursal ?? '');
   const [sancoesAdministrativas, setSancoesAdministrativas] = useState(initialValue?.sancoes_administrativas ?? '');
-  const [vigenciaContrato, setVigenciaContrato] = useState(initialValue?.vigencia_contrato ?? '');
-  const [adequacaoOrcamentaria, setAdequacaoOrcamentaria] = useState(initialValue?.adequacao_orcamentaria ?? '');
+  const [disposicoesGerais, setDisposicoesGerais] = useState(initialValue?.disposicoes_gerais ?? '');
   const [equipe, setEquipe] = useState<MembroEquipePlanejamento[]>(
     initialValue?.equipe_planejamento && initialValue.equipe_planejamento.length > 0
       ? initialValue.equipe_planejamento
@@ -115,15 +112,14 @@ export const TrForm: React.FC<TrFormProps> = ({
   const renderCampoNativo = (campo: CampoConfig): React.ReactNode => {
     if (NATIVOS_TEXTO_LONGO.has(campo.key)) {
       const valorPorChave: Record<string, [string, (v: string) => void]> = {
-        fundamentacao_contratacao: [fundamentacaoContratacao, setFundamentacaoContratacao],
-        descricao_solucao: [descricaoSolucao, setDescricaoSolucao],
-        requisitos_contratacao: [requisitosContratacao, setRequisitosContratacao],
-        modelo_execucao: [modeloExecucao, setModeloExecucao],
-        modelo_gestao_contrato: [modeloGestaoContrato, setModeloGestaoContrato],
-        obrigacoes_contratante: [obrigacoesContratante, setObrigacoesContratante],
-        obrigacoes_contratada: [obrigacoesContratada, setObrigacoesContratada],
+        preambulo: [preambulo, setPreambulo],
+        objeto: [objeto, setObjeto],
+        condicoes_participacao: [condicoesParticipacao, setCondicoesParticipacao],
+        requisitos_habilitacao: [requisitosHabilitacao, setRequisitosHabilitacao],
+        procedimento_sessao_publica: [procedimentoSessaoPublica, setProcedimentoSessaoPublica],
+        prazo_recursal: [prazoRecursal, setPrazoRecursal],
         sancoes_administrativas: [sancoesAdministrativas, setSancoesAdministrativas],
-        adequacao_orcamentaria: [adequacaoOrcamentaria, setAdequacaoOrcamentaria],
+        disposicoes_gerais: [disposicoesGerais, setDisposicoesGerais],
       };
       const [valor, setValor] = valorPorChave[campo.key];
       return (
@@ -134,7 +130,7 @@ export const TrForm: React.FC<TrFormProps> = ({
           disabled={disabled}
           minHeight={200}
           placeholder={PLACEHOLDER_NATIVO[campo.key]}
-          campo={`${campo.label} (TR)`}
+          campo={`${campo.label} (Edital)`}
         />
       );
     }
@@ -151,24 +147,6 @@ export const TrForm: React.FC<TrFormProps> = ({
             options={CRITERIO_JULGAMENTO_OPTIONS}
             disabled={disabled}
             placeholder="Selecione o critério..."
-          />
-        </div>
-      );
-    }
-
-    if (campo.key === 'vigencia_contrato') {
-      return (
-        <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground/70">
-            {campo.label} {campo.obrigatorio && '*'}
-          </label>
-          <input
-            type="text"
-            disabled={disabled}
-            placeholder={PLACEHOLDER_NATIVO.vigencia_contrato}
-            value={vigenciaContrato}
-            onChange={(e) => setVigenciaContrato(e.target.value)}
-            className="w-full max-w-sm rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
       );
@@ -258,17 +236,15 @@ export const TrForm: React.FC<TrFormProps> = ({
     setSaving(true);
     try {
       await onSubmit({
-        fundamentacao_contratacao: fundamentacaoContratacao || null,
-        descricao_solucao: descricaoSolucao || null,
-        requisitos_contratacao: requisitosContratacao || null,
-        modelo_execucao: modeloExecucao || null,
-        modelo_gestao_contrato: modeloGestaoContrato || null,
+        preambulo: preambulo || null,
+        objeto: objeto || null,
         criterio_julgamento: criterioJulgamento,
-        obrigacoes_contratante: obrigacoesContratante || null,
-        obrigacoes_contratada: obrigacoesContratada || null,
+        condicoes_participacao: condicoesParticipacao || null,
+        requisitos_habilitacao: requisitosHabilitacao || null,
+        procedimento_sessao_publica: procedimentoSessaoPublica || null,
+        prazo_recursal: prazoRecursal || null,
         sancoes_administrativas: sancoesAdministrativas || null,
-        vigencia_contrato: vigenciaContrato || null,
-        adequacao_orcamentaria: adequacaoOrcamentaria || null,
+        disposicoes_gerais: disposicoesGerais || null,
         equipe_planejamento: equipe.filter((m) => m.nome && m.cargo && m.matricula),
         campos_extras: camposExtrasValores,
       });
@@ -277,7 +253,7 @@ export const TrForm: React.FC<TrFormProps> = ({
       if (fieldErrors) {
         setValidationErrors(fieldErrors);
       } else {
-        setError(getApiErrorMessage(err, 'Erro ao salvar o Termo de Referência.'));
+        setError(getApiErrorMessage(err, 'Erro ao salvar o Edital.'));
       }
     } finally {
       setSaving(false);
@@ -343,4 +319,4 @@ export const TrForm: React.FC<TrFormProps> = ({
   );
 };
 
-export default TrForm;
+export default EditalForm;
