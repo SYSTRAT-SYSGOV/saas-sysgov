@@ -22,20 +22,27 @@ final class CampoConfiguracaoController extends Controller
     {
         $this->authorize('view', CampoConfiguracao::class);
 
-        $configuracao = $this->campos->getAtiva($tipoDocumento);
-
-        return response()->json($configuracao ?? ['tipo_documento' => $tipoDocumento, 'campos' => []]);
+        return response()->json([
+            'tipo_documento' => $tipoDocumento,
+            'campos' => $this->campos->getConfigMesclada($tipoDocumento),
+        ]);
     }
 
     public function update(Request $request, string $tipoDocumento): JsonResponse
     {
         $this->authorize('manage', CampoConfiguracao::class);
 
+        // `tipo` não é restrito ao enum aqui: para um campo nativo (ex.:
+        // seções do TR) o tipo é fixo pelo registro do backend e o serviço
+        // ignora o que o cliente mandar (ver CampoConfiguracaoService::
+        // validarSchema); só campos extras (nativo=false) de fato precisam
+        // de um `tipo` dentro do enum, checado lá também.
         $data = $request->validate([
             'campos' => ['required', 'array'],
             'campos.*.key' => ['required', 'string', 'max:100'],
             'campos.*.label' => ['required', 'string', 'max:255'],
-            'campos.*.tipo' => ['required', 'in:texto,texto_longo,numero,data,booleano,selecao'],
+            'campos.*.tipo' => ['required', 'string', 'max:40'],
+            'campos.*.nativo' => ['sometimes', 'boolean'],
             'campos.*.opcoes' => ['sometimes', 'array'],
             'campos.*.obrigatorio' => ['required', 'boolean'],
             'campos.*.ordem' => ['required', 'integer'],

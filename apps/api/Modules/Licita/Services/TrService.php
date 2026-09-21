@@ -75,7 +75,6 @@ final class TrService
             throw new DomainException('Este processo já possui um Termo de Referência. Edite o existente em vez de criar outro.');
         }
 
-        $this->camposConfiguracao->validarRespostas('tr', $data['campos_extras'] ?? []);
         $data = $this->sanitizarCamposRicos($data);
 
         // Equipe de planejamento nasce como cópia da equipe já cadastrada na
@@ -85,6 +84,15 @@ final class TrService
         if (!array_key_exists('equipe_planejamento', $data) || $data['equipe_planejamento'] === null) {
             $data['equipe_planejamento'] = $pesquisaPreco->equipe_planejamento;
         }
+
+        // Validado só depois do preenchimento automático da equipe acima,
+        // pra um tenant que marque "Equipe de Planejamento" como obrigatória
+        // não travar a criação por causa de um valor que o próprio sistema
+        // ainda ia preencher.
+        $this->camposConfiguracao->validarRespostas('tr', [
+            ...$this->valoresNativos($data),
+            ...($data['campos_extras'] ?? []),
+        ]);
 
         return DB::transaction(function () use ($processo, $data, $user): Tr {
             $tr = Tr::create([
@@ -112,7 +120,10 @@ final class TrService
         }
 
         $camposExtras = array_key_exists('campos_extras', $data) ? $data['campos_extras'] : ($tr->campos_extras ?? []);
-        $this->camposConfiguracao->validarRespostas('tr', $camposExtras ?? []);
+        $this->camposConfiguracao->validarRespostas('tr', [
+            ...$this->valoresNativos($data, $tr),
+            ...($camposExtras ?? []),
+        ]);
         $data = $this->sanitizarCamposRicos($data);
 
         return DB::transaction(function () use ($tr, $data, $user): Tr {
@@ -129,6 +140,31 @@ final class TrService
 
             return $tr->load(['elaborador', 'aprovador', 'versoes.usuario']);
         });
+    }
+
+    /**
+     * Monta, para validarRespostas, o valor atual de cada seção nativa do
+     * TR — o que está em `$data` (o que o request enviou) e, faltando lá,
+     * o que já está salvo em `$tr` (update parcial) ou `null` (criação).
+     * Necessário porque a obrigatoriedade dessas seções é configurável pelo
+     * tenant (ver CampoConfiguracaoService::CAMPOS_NATIVOS) e o request de
+     * update é `sometimes` — omitir um campo não pode ser lido como "campo
+     * apagado".
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function valoresNativos(array $data, ?Tr $tr = null): array
+    {
+        $valores = [];
+        foreach (self::CAMPOS_DIFF as $campo) {
+            if ($campo === 'campos_extras') {
+                continue;
+            }
+            $valores[$campo] = array_key_exists($campo, $data) ? $data[$campo] : $tr?->{$campo};
+        }
+
+        return $valores;
     }
 
     /**

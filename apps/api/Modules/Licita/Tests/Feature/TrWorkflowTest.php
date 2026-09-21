@@ -9,9 +9,11 @@ use App\Models\User;
 use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Modules\Licita\Enums\GrauPrioridade;
 use Modules\Licita\Enums\StatusTr;
 use Modules\Licita\Models\Processo;
+use Modules\Licita\Services\CampoConfiguracaoService;
 use Modules\Licita\Services\DfdService;
 use Modules\Licita\Services\EtpService;
 use Modules\Licita\Services\MapaRiscoService;
@@ -173,5 +175,85 @@ final class TrWorkflowTest extends TestCase
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('já possui um Termo de Referência');
         $service->criar($processo->fresh(), [], $elaborador);
+    }
+
+    /**
+     * O órgão pode reorganizar as seções nativas do TR como se fossem
+     * campos extras: renomear o rótulo, mover para outra aba e marcar como
+     * obrigatória — sem alterar o schema do banco (ver
+     * CampoConfiguracaoService::CAMPOS_NATIVOS/getConfigMesclada).
+     */
+    public function test_org_pode_renomear_reordenar_e_marcar_secao_nativa_do_tr_como_obrigatoria(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+
+        app(CampoConfiguracaoService::class)->salvar('tr', [
+            [
+                'key' => 'fundamentacao_contratacao',
+                'label' => 'Justificativa da Contratação (nome do órgão)',
+                'tipo' => 'texto_longo', // ignorado pelo backend: tipo de campo nativo é fixo pelo registro.
+                'obrigatorio' => true,
+                'ordem' => 5,
+                'aba' => 'Justificativa',
+            ],
+        ]);
+
+        $mesclada = app(CampoConfiguracaoService::class)->getConfigMesclada('tr');
+        $fundamentacao = collect($mesclada)->firstWhere('key', 'fundamentacao_contratacao');
+
+        self::assertNotNull($fundamentacao);
+        self::assertTrue($fundamentacao['nativo']);
+        self::assertSame('Justificativa da Contratação (nome do órgão)', $fundamentacao['label']);
+        self::assertSame('Justificativa', $fundamentacao['aba']);
+        self::assertSame(5, $fundamentacao['ordem']);
+        self::assertTrue($fundamentacao['obrigatorio']);
+        // `tipo` continua o nativo do registro (texto_longo aqui é coincidência —
+        // o ponto é que o backend nunca aceita o cliente sobrescrever esse valor).
+        self::assertSame('texto_longo', $fundamentacao['tipo']);
+
+        // Outras seções nativas não tocadas continuam com os defaults de fábrica.
+        $descricao = collect($mesclada)->firstWhere('key', 'descricao_solucao');
+        self::assertFalse($descricao['obrigatorio']);
+        self::assertNull($descricao['aba']);
+    }
+
+    public function test_cria_tr_falha_quando_secao_nativa_obrigatoria_configurada_esta_vazia(): void
+    {
+        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
+        $processo = $this->processoComPesquisaPreco($elaborador, $aprovador);
+
+        app(CampoConfiguracaoService::class)->salvar('tr', [
+            ['key' => 'fundamentacao_contratacao', 'label' => 'Fundamentação da Contratação', 'tipo' => 'texto_longo', 'obrigatorio' => true, 'ordem' => 0],
+        ]);
+
+        try {
+            app(TrService::class)->criar($processo, [], $elaborador);
+            self::fail('Deveria ter lançado ValidationException pela seção nativa obrigatória vazia.');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('fundamentacao_contratacao', $e->errors());
+        }
+    }
+
+    public function test_atualiza_tr_falha_quando_secao_nativa_obrigatoria_configurada_fica_vazia(): void
+    {
+        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
+        $processo = $this->processoComPesquisaPreco($elaborador, $aprovador);
+
+        $tr = app(TrService::class)->criar($processo, ['fundamentacao_contratacao' => 'Justificativa inicial.'], $elaborador);
+
+        app(CampoConfiguracaoService::class)->salvar('tr', [
+            ['key' => 'fundamentacao_contratacao', 'label' => 'Fundamentação da Contratação', 'tipo' => 'texto_longo', 'obrigatorio' => true, 'ordem' => 0],
+        ]);
+
+        try {
+            app(TrService::class)->atualizar($tr, ['fundamentacao_contratacao' => ''], $elaborador);
+            self::fail('Deveria ter lançado ValidationException pela seção nativa obrigatória esvaziada.');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('fundamentacao_contratacao', $e->errors());
+        }
+
+        // Não mexer no campo continua passando — obrigatoriedade só barra quando o valor final fica vazio.
+        $tr = app(TrService::class)->atualizar($tr, ['descricao_solucao' => 'Descrição da solução.'], $elaborador);
+        self::assertSame('Justificativa inicial.', $tr->fundamentacao_contratacao);
     }
 }

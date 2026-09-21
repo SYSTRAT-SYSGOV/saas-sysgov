@@ -93,10 +93,20 @@ export interface DfdVersao {
 
 export type TipoCampoConfiguravel = 'texto' | 'texto_longo' | 'numero' | 'data' | 'booleano' | 'selecao';
 
+/**
+ * `tipo` de um campo nativo (`nativo: true`) que não corresponde a nenhum
+ * `TipoCampoConfiguravel` genérico porque tem um renderer próprio e fixo no
+ * formulário do documento (ex.: `equipe_planejamento` do TR é uma lista
+ * estruturada, `criterio_julgamento` é um select com opções fixas do
+ * enum) — nunca aparece como opção no seletor "Tipo" da tela de
+ * configuração, que fica desabilitado para campos nativos.
+ */
+export type TipoCampoNativo = 'equipe' | 'selecao_fixa';
+
 export interface CampoConfig {
   key: string;
   label: string;
-  tipo: TipoCampoConfiguravel;
+  tipo: TipoCampoConfiguravel | TipoCampoNativo;
   opcoes?: string[];
   obrigatorio: boolean;
   ordem: number;
@@ -109,6 +119,14 @@ export interface CampoConfig {
    * segue `ordem` normalmente, independente da aba.
    */
   aba?: string;
+  /**
+   * true para uma seção nativa do documento (ex.: as seções legais do TR,
+   * que já existem como coluna própria) que o tenant pode reorganizar
+   * (rótulo/aba/obrigatoriedade), mas não excluir nem trocar o tipo —
+   * `tipo`/`key` nesse caso vêm sempre do backend, nunca editáveis aqui.
+   * Ausente/false para um campo extra normal, livremente criado pelo tenant.
+   */
+  nativo?: boolean;
 }
 
 /**
@@ -121,11 +139,16 @@ export interface CampoConfig {
 export type TipoDocumentoConfiguravel = FaseLicita | 'dfd_item_material' | 'dfd_item_servico';
 
 export interface CampoConfiguracao {
-  id: number;
-  tenant_id: number;
+  /**
+   * Ausentes quando a configuração retornada é só a mesclagem de defaults
+   * nativos (ver `nativo` em CampoConfig) — o tenant ainda não salvou nada
+   * para este tipo de documento, então não existe uma linha persistida.
+   */
+  id?: number;
+  tenant_id?: number;
   tipo_documento: TipoDocumentoConfiguravel;
   campos: CampoConfig[];
-  ativo: boolean;
+  ativo?: boolean;
 }
 
 export type TipoLegalDocumento = 'lei' | 'decreto' | 'instrucao_normativa' | 'jurisprudencia' | 'outro';

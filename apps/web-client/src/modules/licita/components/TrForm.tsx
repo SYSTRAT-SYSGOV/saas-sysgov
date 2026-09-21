@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Button, Select } from '@sysgov/ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CampoConfig, CreateTrInput, CriterioJulgamentoTr, MembroEquipePlanejamento } from '@sysgov/sdk';
-import { CamposExtrasFields } from './CamposExtrasFields';
+import { CampoExtraField } from './CamposExtrasFields';
 import { RichTextEditorWithIa } from './RichTextEditorWithIa';
 import { ValidationErrorModal } from '@/components/ui';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
@@ -24,22 +24,53 @@ const CRITERIO_JULGAMENTO_OPTIONS: { value: CriterioJulgamentoTr; label: string 
   ['menor_preco', 'maior_desconto', 'melhor_tecnica', 'tecnica_e_preco', 'maior_lance'] as CriterioJulgamentoTr[]
 ).map((value) => ({ value, label: CRITERIO_JULGAMENTO_LABEL[value] }));
 
+/** Placeholder/ajuda de cada seção nativa — o rótulo em si vem de `campo.label` (configurável, ver CamposConfiguracaoPage). */
+const PLACEHOLDER_NATIVO: Partial<Record<string, string>> = {
+  fundamentacao_contratacao: 'Justificativa técnica e econômica da contratação, alinhamento com o planejamento do órgão.',
+  descricao_solucao: 'Descrição de todas as fases da contratação, considerando o ciclo de vida do objeto.',
+  requisitos_contratacao: 'Requisitos técnicos, de sustentabilidade, de garantia e de manutenção exigidos.',
+  modelo_execucao: 'Condições de execução, prazos, local de entrega/prestação, forma de recebimento.',
+  modelo_gestao_contrato: 'Fiscalização, gestão, critérios de medição e forma de pagamento.',
+  sancoes_administrativas: 'Penalidades aplicáveis em caso de inexecução total ou parcial do contrato.',
+  vigencia_contrato: 'Ex.: 12 meses, prorrogável até 60 meses',
+  adequacao_orcamentaria: 'Dotação orçamentária e fonte de recursos previstas para a contratação.',
+};
+
+/** Chave nativa cujo valor é HTML rico via RichTextEditorWithIa (as demais nativas têm renderer próprio abaixo). */
+const NATIVOS_TEXTO_LONGO = new Set([
+  'fundamentacao_contratacao',
+  'descricao_solucao',
+  'requisitos_contratacao',
+  'modelo_execucao',
+  'modelo_gestao_contrato',
+  'obrigacoes_contratante',
+  'obrigacoes_contratada',
+  'sancoes_administrativas',
+  'adequacao_orcamentaria',
+]);
+
 interface TrFormProps {
   initialValue?: Partial<CreateTrInput>;
   disabled?: boolean;
   submitLabel: string;
   onSubmit: (data: CreateTrInput) => Promise<void> | void;
-  /** Campos extras configurados pelo órgão para o TR (ver CamposConfiguracaoPage). */
+  /**
+   * Configuração de campos do TR — tanto as seções nativas (`nativo: true`,
+   * ver CampoConfiguracaoService::CAMPOS_NATIVOS) quanto os campos extras
+   * cadastrados pelo órgão, já mescladas pelo backend (getCamposConfiguracao)
+   * e livremente reorganizáveis em abas pelo tenant (ver CamposConfiguracaoPage).
+   */
   camposExtras?: CampoConfig[];
 }
 
 /**
  * Formulário do Termo de Referência — diferente do ETP (texto único), o TR
- * é dividido em seções estruturadas (art. 6º, XXIII da Lei 14.133/2021):
- * fundamentação, descrição da solução, requisitos, modelo de execução,
- * modelo de gestão do contrato, critério de julgamento, obrigações das
- * partes, sanções, vigência e adequação orçamentária. Todas as seções são
- * opcionais — o documento nasce vazio e a equipe preenche progressivamente.
+ * é dividido em seções estruturadas (art. 6º, XXIII da Lei 14.133/2021).
+ * Rótulo, aba e obrigatoriedade de cada seção nativa são configuráveis pelo
+ * órgão (CamposConfiguracaoPage) e intercaladas livremente com os campos
+ * extras na mesma aba, na ordem que o órgão definir — só `tipo`/existência
+ * da seção são fixos (o schema do banco não muda). Todas as seções nascem
+ * opcionais (obrigatorio=false) até o órgão marcar o contrário.
  */
 export const TrForm: React.FC<TrFormProps> = ({
   initialValue,
@@ -76,7 +107,129 @@ export const TrForm: React.FC<TrFormProps> = ({
     setEquipe((prev) => prev.map((m, i) => (i === index ? { ...m, ...patch } : m)));
   };
 
-  const camposExtrasPorAba = useMemo(() => {
+  const setCampoExtraValor = (key: string, valor: unknown) => {
+    setCamposExtrasValores((prev) => ({ ...prev, [key]: valor }));
+  };
+
+  /** Renderiza a seção nativa `campo` (rótulo/ajuda configuráveis, widget fixo por chave). */
+  const renderCampoNativo = (campo: CampoConfig): React.ReactNode => {
+    if (NATIVOS_TEXTO_LONGO.has(campo.key)) {
+      const valorPorChave: Record<string, [string, (v: string) => void]> = {
+        fundamentacao_contratacao: [fundamentacaoContratacao, setFundamentacaoContratacao],
+        descricao_solucao: [descricaoSolucao, setDescricaoSolucao],
+        requisitos_contratacao: [requisitosContratacao, setRequisitosContratacao],
+        modelo_execucao: [modeloExecucao, setModeloExecucao],
+        modelo_gestao_contrato: [modeloGestaoContrato, setModeloGestaoContrato],
+        obrigacoes_contratante: [obrigacoesContratante, setObrigacoesContratante],
+        obrigacoes_contratada: [obrigacoesContratada, setObrigacoesContratada],
+        sancoes_administrativas: [sancoesAdministrativas, setSancoesAdministrativas],
+        adequacao_orcamentaria: [adequacaoOrcamentaria, setAdequacaoOrcamentaria],
+      };
+      const [valor, setValor] = valorPorChave[campo.key];
+      return (
+        <RichTextEditorWithIa
+          label={`${campo.label}${campo.obrigatorio ? ' *' : ''}`}
+          value={valor}
+          onChange={setValor}
+          disabled={disabled}
+          minHeight={200}
+          placeholder={PLACEHOLDER_NATIVO[campo.key]}
+          campo={`${campo.label} (TR)`}
+        />
+      );
+    }
+
+    if (campo.key === 'criterio_julgamento') {
+      return (
+        <div className="max-w-sm">
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground/70">
+            {campo.label} {campo.obrigatorio && '*'}
+          </label>
+          <Select
+            value={criterioJulgamento}
+            onChange={(v) => setCriterioJulgamento(v as CriterioJulgamentoTr)}
+            options={CRITERIO_JULGAMENTO_OPTIONS}
+            disabled={disabled}
+            placeholder="Selecione o critério..."
+          />
+        </div>
+      );
+    }
+
+    if (campo.key === 'vigencia_contrato') {
+      return (
+        <div>
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground/70">
+            {campo.label} {campo.obrigatorio && '*'}
+          </label>
+          <input
+            type="text"
+            disabled={disabled}
+            placeholder={PLACEHOLDER_NATIVO.vigencia_contrato}
+            value={vigenciaContrato}
+            onChange={(e) => setVigenciaContrato(e.target.value)}
+            className="w-full max-w-sm rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+      );
+    }
+
+    if (campo.key === 'equipe_planejamento') {
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-foreground">
+              {campo.label} <span className="font-normal text-muted-foreground">(mínimo 2 pessoas)</span>{campo.obrigatorio && ' *'}
+            </label>
+            {!disabled && (
+              <Button type="button" variant="ghost" size="sm" leftIcon={<Plus className="h-3.5 w-3.5" />} onClick={() => setEquipe((prev) => [...prev, { ...emptyMembro }])}>
+                Adicionar
+              </Button>
+            )}
+          </div>
+          <div className="space-y-2">
+            {equipe.map((membro, index) => (
+              <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_120px_auto] gap-2 items-center">
+                <input
+                  type="text"
+                  disabled={disabled}
+                  placeholder="Nome"
+                  value={membro.nome}
+                  onChange={(e) => updateMembro(index, { nome: e.target.value })}
+                  className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="text"
+                  disabled={disabled}
+                  placeholder="Cargo/Função"
+                  value={membro.cargo}
+                  onChange={(e) => updateMembro(index, { cargo: e.target.value })}
+                  className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="text"
+                  disabled={disabled}
+                  placeholder="Matrícula"
+                  value={membro.matricula}
+                  onChange={(e) => updateMembro(index, { matricula: e.target.value })}
+                  className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                {!disabled && equipe.length > 2 && (
+                  <Button type="button" variant="ghost" size="icon-sm" onClick={() => setEquipe((prev) => prev.filter((_, i) => i !== index))}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const camposPorAba = useMemo(() => {
     const ordenados = [...camposExtras].sort((a, b) => a.ordem - b.ordem);
     const porAba = new Map<string, CampoConfig[]>();
     for (const campo of ordenados) {
@@ -89,13 +242,14 @@ export const TrForm: React.FC<TrFormProps> = ({
 
   const nomesAbas = useMemo(() => {
     const nomes = [ABA_PADRAO];
-    for (const aba of camposExtrasPorAba.keys()) {
+    for (const aba of camposPorAba.keys()) {
       if (!nomes.includes(aba)) nomes.push(aba);
     }
     return nomes;
-  }, [camposExtrasPorAba]);
+  }, [camposPorAba]);
 
   const abaAtivaSegura = nomesAbas.includes(abaAtiva) ? abaAtiva : ABA_PADRAO;
+  const camposDaAbaAtiva = camposPorAba.get(abaAtivaSegura) ?? [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,184 +316,21 @@ export const TrForm: React.FC<TrFormProps> = ({
         </div>
       )}
 
-      {abaAtivaSegura === ABA_PADRAO && (
-        <>
-          <RichTextEditorWithIa
-            label="Fundamentação da Contratação"
-            value={fundamentacaoContratacao}
-            onChange={setFundamentacaoContratacao}
-            disabled={disabled}
-            minHeight={200}
-            placeholder="Justificativa técnica e econômica da contratação, alinhamento com o planejamento do órgão."
-            campo="Fundamentação da Contratação (TR)"
-          />
-
-          <RichTextEditorWithIa
-            label="Descrição da Solução como um Todo"
-            value={descricaoSolucao}
-            onChange={setDescricaoSolucao}
-            disabled={disabled}
-            minHeight={200}
-            placeholder="Descrição de todas as fases da contratação, considerando o ciclo de vida do objeto."
-            campo="Descrição da Solução (TR)"
-          />
-
-          <RichTextEditorWithIa
-            label="Requisitos da Contratação"
-            value={requisitosContratacao}
-            onChange={setRequisitosContratacao}
-            disabled={disabled}
-            minHeight={200}
-            placeholder="Requisitos técnicos, de sustentabilidade, de garantia e de manutenção exigidos."
-            campo="Requisitos da Contratação (TR)"
-          />
-
-          <RichTextEditorWithIa
-            label="Modelo de Execução do Objeto"
-            value={modeloExecucao}
-            onChange={setModeloExecucao}
-            disabled={disabled}
-            minHeight={200}
-            placeholder="Condições de execução, prazos, local de entrega/prestação, forma de recebimento."
-            campo="Modelo de Execução do Objeto (TR)"
-          />
-
-          <RichTextEditorWithIa
-            label="Modelo de Gestão do Contrato"
-            value={modeloGestaoContrato}
-            onChange={setModeloGestaoContrato}
-            disabled={disabled}
-            minHeight={200}
-            placeholder="Fiscalização, gestão, critérios de medição e forma de pagamento."
-            campo="Modelo de Gestão do Contrato (TR)"
-          />
-
-          <div className="max-w-sm">
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground/70">
-              Critério de Julgamento
-            </label>
-            <Select
-              value={criterioJulgamento}
-              onChange={(v) => setCriterioJulgamento(v as CriterioJulgamentoTr)}
-              options={CRITERIO_JULGAMENTO_OPTIONS}
+      <div className="space-y-4">
+        {camposDaAbaAtiva.map((campo) =>
+          campo.nativo ? (
+            <React.Fragment key={campo.key}>{renderCampoNativo(campo)}</React.Fragment>
+          ) : (
+            <CampoExtraField
+              key={campo.key}
+              campo={campo}
+              valor={camposExtrasValores[campo.key]}
+              onChange={setCampoExtraValor}
               disabled={disabled}
-              placeholder="Selecione o critério..."
             />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <RichTextEditorWithIa
-              label="Obrigações da Contratante"
-              value={obrigacoesContratante}
-              onChange={setObrigacoesContratante}
-              disabled={disabled}
-              minHeight={160}
-              campo="Obrigações da Contratante (TR)"
-            />
-            <RichTextEditorWithIa
-              label="Obrigações da Contratada"
-              value={obrigacoesContratada}
-              onChange={setObrigacoesContratada}
-              disabled={disabled}
-              minHeight={160}
-              campo="Obrigações da Contratada (TR)"
-            />
-          </div>
-
-          <RichTextEditorWithIa
-            label="Sanções Administrativas"
-            value={sancoesAdministrativas}
-            onChange={setSancoesAdministrativas}
-            disabled={disabled}
-            minHeight={160}
-            placeholder="Penalidades aplicáveis em caso de inexecução total ou parcial do contrato."
-            campo="Sanções Administrativas (TR)"
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground/70">
-                Vigência do Contrato
-              </label>
-              <input
-                type="text"
-                disabled={disabled}
-                placeholder="Ex.: 12 meses, prorrogável até 60 meses"
-                value={vigenciaContrato}
-                onChange={(e) => setVigenciaContrato(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          </div>
-
-          <RichTextEditorWithIa
-            label="Adequação Orçamentária"
-            value={adequacaoOrcamentaria}
-            onChange={setAdequacaoOrcamentaria}
-            disabled={disabled}
-            minHeight={160}
-            placeholder="Dotação orçamentária e fonte de recursos previstas para a contratação."
-            campo="Adequação Orçamentária (TR)"
-          />
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-foreground">
-                Equipe de Planejamento <span className="font-normal text-muted-foreground">(mínimo 2 pessoas)</span>
-              </label>
-              {!disabled && (
-                <Button type="button" variant="ghost" size="sm" leftIcon={<Plus className="h-3.5 w-3.5" />} onClick={() => setEquipe((prev) => [...prev, { ...emptyMembro }])}>
-                  Adicionar
-                </Button>
-              )}
-            </div>
-            <div className="space-y-2">
-              {equipe.map((membro, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_120px_auto] gap-2 items-center">
-                  <input
-                    type="text"
-                    disabled={disabled}
-                    placeholder="Nome"
-                    value={membro.nome}
-                    onChange={(e) => updateMembro(index, { nome: e.target.value })}
-                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <input
-                    type="text"
-                    disabled={disabled}
-                    placeholder="Cargo/Função"
-                    value={membro.cargo}
-                    onChange={(e) => updateMembro(index, { cargo: e.target.value })}
-                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <input
-                    type="text"
-                    disabled={disabled}
-                    placeholder="Matrícula"
-                    value={membro.matricula}
-                    onChange={(e) => updateMembro(index, { matricula: e.target.value })}
-                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  {!disabled && equipe.length > 2 && (
-                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => setEquipe((prev) => prev.filter((_, i) => i !== index))}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {(camposExtrasPorAba.get(abaAtivaSegura)?.length ?? 0) > 0 && (
-        <CamposExtrasFields
-          campos={camposExtrasPorAba.get(abaAtivaSegura) ?? []}
-          valores={camposExtrasValores}
-          onChange={setCamposExtrasValores}
-          disabled={disabled}
-        />
-      )}
+          ),
+        )}
+      </div>
 
       {!disabled && (
         <div className="flex justify-end gap-2 pt-2">
