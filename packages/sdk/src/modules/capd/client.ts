@@ -4,6 +4,7 @@ import type {
   ApiCiclo,
   ApiComissao,
   ApiDashboardMetricas,
+  ApiEvolucaoCiclo,
   ApiKpisEquipe,
   ApiDiarioBordo,
   ApiModeloFormulario,
@@ -63,6 +64,10 @@ export class CapdModuleClient {
   async getMetricas(cicloId?: number): Promise<ApiDashboardMetricas> {
     const query = cicloId ? `?ciclo_id=${cicloId}` : '';
     return this.api.request(`/capd/dashboard/metricas${query}`);
+  }
+
+  async getEvolucaoCiclos(): Promise<ApiEvolucaoCiclo[]> {
+    return this.api.request('/capd/dashboard/evolucao-ciclos');
   }
 
   async getKpisEquipe(params?: { ciclo_id?: number; avaliador_id?: number }): Promise<ApiKpisEquipe> {

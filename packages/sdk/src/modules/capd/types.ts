@@ -217,6 +217,15 @@ export type ApiDashboardMetricas = {
   }>;
 };
 
+export type ApiEvolucaoCiclo = {
+  ciclo_id: number;
+  ano_referencia: number;
+  nome: string;
+  media_nota: number;
+  taxa_conclusao: number;
+  total_avaliacoes: number;
+};
+
 export type ApiKpisEquipe = {
   total_equipe: number;
   pendentes: number;

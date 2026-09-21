@@ -127,6 +127,7 @@ Route::post('ciclos/{id}/homologar', [HomologacaoController::class, 'homologarCi
 
 // ── BI & Dashboard Analytics ──────────────────────────────────────────
 Route::get('dashboard/metricas', [DashboardController::class, 'metricas'])->name('capd.dashboard.metricas');
+Route::get('dashboard/evolucao-ciclos', [DashboardController::class, 'evolucaoCiclos'])->name('capd.dashboard.evolucao-ciclos');
 
 // ── Gestão de Servidores Públicos (RH Universal) ──────────────────────
 Route::prefix('servidores')->group(function (): void {

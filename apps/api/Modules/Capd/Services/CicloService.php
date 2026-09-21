@@ -209,7 +209,10 @@ final class CicloService
                 ->first();
 
             if ($avaliacao) {
-                $notasCiclos[$ciclo->ano_competencia] = (string) $avaliacao->nota_final;
+                // nota_final é produzida por CalculadoraNotaService em escala 0-10 (NFD); a NFC
+                // (RN-02) e a nota de corte do ciclo (RN-04) são expressas em escala 0-100, então
+                // convertemos aqui — mesmo padrão de ConsolidacaoController::nfc().
+                $notasCiclos[$ciclo->ano_competencia] = bcmul((string) $avaliacao->nota_final, '10', 2);
             }
         }
 

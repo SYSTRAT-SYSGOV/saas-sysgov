@@ -941,7 +941,10 @@ final class AvaliacaoController extends Controller
             ->limit(3)
             ->get();
 
-        $notasCiclos = $avaliacoes->pluck('nota_final')->filter()->map(fn ($n) => (string) $n)->values()->all();
+        // nota_final é produzida por CalculadoraNotaService em escala 0-10 (NFD); a NFC projetada
+        // e a nota de corte são expressas em escala 0-100 (mesmo padrão de
+        // ConsolidacaoController::nfc()), então convertemos aqui antes de calcularNfc().
+        $notasCiclos = $avaliacoes->pluck('nota_final')->filter()->map(fn ($n) => bcmul((string) $n, '10', 2))->values()->all();
         $calcService = new \Modules\Capd\Services\NotaCalculoService();
         $nfcProjetada = !empty($notasCiclos) ? $calcService->calcularNfc($notasCiclos) : '0.00';
         $elegivel = (float) $nfcProjetada >= 70.0;

@@ -833,6 +833,8 @@ final class CapdDadosDemonstracaoSeeder extends Seeder
 
                     // Mapeia nota de 0 a 100 para Grau 1 a 5 da escala Chiavenato
                     $grau = $notaNum >= 95 ? 5 : ($notaNum >= 85 ? 4 : ($notaNum >= 75 ? 3 : ($notaNum >= 60 ? 2 : 1)));
+                    // Nf = (grau - 1) x 2,5 — mesma fórmula de CalculadoraNotaService, produz NFD 0-10
+                    $nfdReal = number_format(($grau - 1) * 2.5, 2, '.', '');
 
                     $respostas = [
                         'F1' => ['grau' => $grau, 'pontos' => $notaNum],
@@ -860,8 +862,8 @@ final class CapdDadosDemonstracaoSeeder extends Seeder
                         'status_avaliacao'    => Avaliacao::STATUS_ATIVA,
                         'modelo_formulario_id'=> $modeloGeral->id,
                         'respostas_fatores'   => $respostas,
-                        'nota_final'          => $notaStr,
-                        'elegivel_progressao' => $notaNum >= 70.00,
+                        'nota_final'          => $nfdReal,
+                        'elegivel_progressao' => (float) $nfdReal >= 7.00,
                         'data_conclusao'      => $ano < 2026 ? Carbon::create($ano, 10, 15, 14, 30) : null,
                         'ciencia_servidor_em' => $ano < 2026 ? Carbon::create($ano, 10, 20, 10, 0) : null,
                         'homologada'          => $ano < 2026,

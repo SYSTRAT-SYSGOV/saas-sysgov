@@ -42,6 +42,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  LineChart,
   PieChart,
   Pie,
   Cell,
@@ -51,7 +52,11 @@ import type {
   ApiAvaliacao,
   ApiCiclo,
   ApiDashboardMetricas,
+  ApiEvolucaoCiclo,
+  ApiQuinquenioResumo,
   ApiServidor,
+  OrgUnitResponsible,
+  OrgUnitTreeNode,
 } from '@sysgov/sdk';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs, type TabsItem } from '@/components/ui/Tabs';
@@ -120,203 +125,111 @@ interface RankingDesempateItem {
   salario_projetado_cents?: number;
 }
 
-export interface EstruturaDepartamento {
-  codigo: string;
+export interface DepartamentoOrg {
+  id: number;
   nome: string;
-  diretor: {
-    nome: string;
-    matricula: string;
-    cargo: string;
-    email: string;
-  };
+  codigo: string;
+  responsavel: OrgUnitResponsible | null;
 }
 
-export interface EstruturaSecretaria {
-  codigo: string;
+export interface SecretariaOrg {
+  id: number;
   nome: string;
-  sigla: string;
-  cor: string;
-  secretario: {
-    nome: string;
-    matricula: string;
-    cargo: string;
-    email: string;
-  };
-  departamentos: EstruturaDepartamento[];
+  codigo: string;
+  sigla: string | null;
+  responsavel: OrgUnitResponsible | null;
+  departamentos: DepartamentoOrg[];
 }
 
-const ESTRUTURA_ORGANIZACIONAL_CANONICA: EstruturaSecretaria[] = [
-  {
-    codigo: 'SMAD',
-    sigla: 'SMAD',
-    nome: 'Secretaria Municipal de Administração',
-    cor: 'border-blue-500/40 bg-blue-500/5 text-blue-400',
-    secretario: {
-      nome: 'Dr. Paulo Roberto Guimarães',
-      matricula: 'SEC-001',
-      cargo: 'Secretário Municipal de Administração',
-      email: 'paulo.guimaraes@araucaria.pr.gov.br',
-    },
-    departamentos: [
-      {
-        codigo: 'SMAD-DRH',
-        nome: 'Departamento de Recursos Humanos e Gestão de Pessoas',
-        diretor: {
-          nome: 'Beatriz Rocha Albuquerque',
-          matricula: 'DIR-001',
-          cargo: 'Analista de RH (Diretora)',
-          email: 'beatriz.rh@araucaria.pr.gov.br',
-        },
-      },
-      {
-        codigo: 'SMAD-DLOG',
-        nome: 'Departamento de Logística, Frotas e Patrimônio',
-        diretor: {
-          nome: 'Cláudio Márcio Fonseca',
-          matricula: 'DIR-002',
-          cargo: 'Especialista Logístico (Diretor)',
-          email: 'claudio.fonseca@araucaria.pr.gov.br',
-        },
-      },
-    ],
-  },
-  {
-    codigo: 'SMF',
-    sigla: 'SMF',
-    nome: 'Secretaria Municipal de Finanças e Orçamento',
-    cor: 'border-emerald-500/40 bg-emerald-500/5 text-emerald-400',
-    secretario: {
-      nome: 'Dra. Helena Vasconcellos Moura',
-      matricula: 'SEC-002',
-      cargo: 'Secretária Municipal de Finanças',
-      email: 'helena.moura@araucaria.pr.gov.br',
-    },
-    departamentos: [
-      {
-        codigo: 'SMF-CONT',
-        nome: 'Departamento de Contabilidade e Finanças',
-        diretor: {
-          nome: 'Rodrigo Prado Antunes',
-          matricula: 'DIR-003',
-          cargo: 'Contador Geral (Diretor)',
-          email: 'rodrigo.cont@araucaria.pr.gov.br',
-        },
-      },
-      {
-        codigo: 'SMF-TRIB',
-        nome: 'Departamento de Arrecadação e Fiscalização Tributária',
-        diretor: {
-          nome: 'Patrícia Lins Cavalcanti',
-          matricula: 'DIR-004',
-          cargo: 'Auditora Fiscal Chefe (Diretora)',
-          email: 'patricia.trib@araucaria.pr.gov.br',
-        },
-      },
-    ],
-  },
-  {
-    codigo: 'SMED',
-    sigla: 'SMED',
-    nome: 'Secretaria Municipal de Educação',
-    cor: 'border-purple-500/40 bg-purple-500/5 text-purple-400',
-    secretario: {
-      nome: 'Profa. Maria Aparecida Diniz',
-      matricula: 'SEC-003',
-      cargo: 'Secretária Municipal de Educação',
-      email: 'maria.diniz@araucaria.pr.gov.br',
-    },
-    departamentos: [
-      {
-        codigo: 'SMED-DEP',
-        nome: 'Departamento de Ensino Fundamental e Pedagógico',
-        diretor: {
-          nome: 'Sandra Valéria Nogueira',
-          matricula: 'DIR-005',
-          cargo: 'Pedagoga Coordenadora (Diretora)',
-          email: 'sandra.nogueira@araucaria.pr.gov.br',
-        },
-      },
-      {
-        codigo: 'SMED-DGA',
-        nome: 'Departamento de Gestão Administrativa Escolar',
-        diretor: {
-          nome: 'Valmir Ferreira Sobrinho',
-          matricula: 'DIR-006',
-          cargo: 'Gestor Escolar (Diretor)',
-          email: 'valmir.sobrinho@araucaria.pr.gov.br',
-        },
-      },
-    ],
-  },
-  {
-    codigo: 'SMS',
-    sigla: 'SMS',
-    nome: 'Secretaria Municipal de Saúde',
-    cor: 'border-cyan-500/40 bg-cyan-500/5 text-cyan-400',
-    secretario: {
-      nome: 'Dr. Fernando Siqueira Prado',
-      matricula: 'SEC-004',
-      cargo: 'Secretário Municipal de Saúde',
-      email: 'fernando.prado@araucaria.pr.gov.br',
-    },
-    departamentos: [
-      {
-        codigo: 'SMS-DAS',
-        nome: 'Departamento de Atenção Básica e Saúde da Família',
-        diretor: {
-          nome: 'Dr. Luciano Meireles Cordeiro',
-          matricula: 'DIR-007',
-          cargo: 'Médico Coordenador (Diretor)',
-          email: 'luciano.cordeiro@araucaria.pr.gov.br',
-        },
-      },
-      {
-        codigo: 'SMS-DVS',
-        nome: 'Departamento de Vigilância em Saúde e Epidemiologia',
-        diretor: {
-          nome: 'Camila Fontana Vianna',
-          matricula: 'DIR-008',
-          cargo: 'Especialista Sanitária (Diretora)',
-          email: 'camila.vianna@araucaria.pr.gov.br',
-        },
-      },
-    ],
-  },
-  {
-    codigo: 'SMOSP',
-    sigla: 'SMOSP',
-    nome: 'Secretaria Municipal de Obras e Serviços Públicos',
-    cor: 'border-amber-500/40 bg-amber-500/5 text-amber-400',
-    secretario: {
-      nome: 'Eng. Rogério Antunes Maciel',
-      matricula: 'SEC-005',
-      cargo: 'Secretário Municipal de Obras',
-      email: 'rogerio.maciel@araucaria.pr.gov.br',
-    },
-    departamentos: [
-      {
-        codigo: 'SMOSP-DOP',
-        nome: 'Departamento de Obras Públicas e Infraestrutura',
-        diretor: {
-          nome: 'Eng. Marcelo Telles Pinheiro',
-          matricula: 'DIR-009',
-          cargo: 'Engenheiro Civil Chefe (Diretor)',
-          email: 'marcelo.pinheiro@araucaria.pr.gov.br',
-        },
-      },
-      {
-        codigo: 'SMOSP-DSU',
-        nome: 'Departamento de Serviços Urbanos e Manutenção Viária',
-        diretor: {
-          nome: 'Marcos Aurélio Rezende',
-          matricula: 'DIR-010',
-          cargo: 'Encarregado Operacional Geral (Diretor)',
-          email: 'marcos.rezende@araucaria.pr.gov.br',
-        },
-      },
-    ],
-  },
-];
+/**
+ * Extrai secretarias (nível 1) e seus departamentos diretos (nível 2) da árvore
+ * organizacional real do tenant (`api.org.getTree()`), ignorando níveis mais
+ * profundos (divisão/setor) — fora do escopo desta aba.
+ */
+/**
+ * Determina se um servidor pertence a um departamento: vínculo direto por
+ * `org_unit_id` tem prioridade; na ausência dele, cai para o mesmo fallback
+ * textual já usado no backend (`PerguntaService.identificarGrupoFuncional`).
+ */
+export function servidorPertenceAoDepartamento(servidor: ApiServidor, departamento: DepartamentoOrg): boolean {
+  if (servidor.org_unit_id != null) {
+    return servidor.org_unit_id === departamento.id;
+  }
+
+  const lotFisica = (servidor.lotacao_fisica || '').toLowerCase();
+  const depNome = departamento.nome.toLowerCase();
+
+  if (lotFisica && (lotFisica.includes(depNome) || depNome.includes(lotFisica))) {
+    return true;
+  }
+
+  const siglaDep = departamento.codigo.split('-')[1]?.toLowerCase();
+  if (siglaDep && (lotFisica.includes(siglaDep) || (servidor.cargo_efetivo || '').toLowerCase().includes(siglaDep))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Coleta todos os nós `type === 'secretaria'` da árvore em qualquer profundidade — algumas
+ * árvores têm secretarias soltas no nível 1, outras aninhadas sob um nó `raiz`/`prefeitura`.
+ */
+function coletarSecretarias(nos: OrgUnitTreeNode[]): OrgUnitTreeNode[] {
+  const secretarias: OrgUnitTreeNode[] = [];
+  for (const no of nos) {
+    if (no.type === 'secretaria') {
+      secretarias.push(no);
+      continue; // departamento é sempre filho direto de secretaria — não descer além dela
+    }
+    if (no.children?.length) {
+      secretarias.push(...coletarSecretarias(no.children));
+    }
+  }
+  return secretarias;
+}
+
+interface DistribuicaoParaClassificacao {
+  nome: string;
+  departamentos: Array<{ nome: string; servidores: Array<{ id: number }> }>;
+}
+
+/**
+ * Constrói o mapa `servidorId -> {secretaria, departamento}` a partir do resultado já
+ * classificado de `dadosDistribuicao`, para leitura O(1) nas colunas do Quadro de Servidores.
+ */
+export function construirClassificacaoPorServidor(
+  distribuicao: DistribuicaoParaClassificacao[],
+): Map<number, { secretaria: string; departamento: string }> {
+  const mapa = new Map<number, { secretaria: string; departamento: string }>();
+  for (const sec of distribuicao) {
+    for (const dep of sec.departamentos) {
+      for (const s of dep.servidores) {
+        mapa.set(s.id, { secretaria: sec.nome, departamento: dep.nome });
+      }
+    }
+  }
+  return mapa;
+}
+
+export function extrairSecretariasEDepartamentos(tree: OrgUnitTreeNode[]): SecretariaOrg[] {
+  return coletarSecretarias(tree)
+    .map((sec) => ({
+      id: sec.id,
+      nome: sec.name,
+      codigo: sec.code,
+      sigla: sec.acronym ?? null,
+      responsavel: sec.responsibles?.[0] ?? null,
+      departamentos: (sec.children || [])
+        .filter((filho) => filho.type === 'departamento')
+        .map((dep) => ({
+          id: dep.id,
+          nome: dep.name,
+          codigo: dep.code,
+          responsavel: dep.responsibles?.[0] ?? null,
+        })),
+    }));
+}
 
 const COLORS_CONCEITOS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
 
@@ -353,19 +266,39 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
   const [modalEspelhoOpen, setModalEspelhoOpen] = useState<boolean>(false);
   const [avaliacaoEmFocoId, setAvaliacaoEmFocoId] = useState<number | null>(null);
   const [servidores, setServidores] = useState<ApiServidor[]>([]);
+  const [evolucaoCiclos, setEvolucaoCiclos] = useState<ApiEvolucaoCiclo[]>([]);
+  const [secretariaSelecionada, setSecretariaSelecionada] = useState<string | null>(null);
+  const [orgTree, setOrgTree] = useState<OrgUnitTreeNode[]>([]);
+  const [orgTreeErro, setOrgTreeErro] = useState<'sem_permissao' | null>(null);
+  const [servidorDetalheId, setServidorDetalheId] = useState<number | null>(null);
+  const [detalheAvaliacoes, setDetalheAvaliacoes] = useState<ApiAvaliacao[]>([]);
+  const [detalheQuinquenios, setDetalheQuinquenios] = useState<ApiQuinquenioResumo | null>(null);
+  const [detalheLoading, setDetalheLoading] = useState<boolean>(false);
+  const servidorDetalhe = useMemo(
+    () => servidores.find((s) => s.id === servidorDetalheId) ?? null,
+    [servidores, servidorDetalheId],
+  );
 
   const [filtroSecDistribuicao, setFiltroSecDistribuicao] = useState<string>('todas');
   const [buscaDistribuicao, setBuscaDistribuicao] = useState<string>('');
+  const [visualizacaoDistribuicao, setVisualizacaoDistribuicao] = useState<'tabela' | 'cards'>('tabela');
 
   // Carregar dados principais
   const carregarDadosRh = useCallback(async () => {
     setLoading(true);
+    setOrgTreeErro(null);
     try {
-      const [resCic, resMet, resAv, resServ] = await Promise.all([
+      const [resCic, resMet, resAv, resServ, resEvolucao, resOrgTree] = await Promise.all([
         api.capd.listCiclos().catch(() => []),
         api.capd.getMetricas(cicloId).catch(() => null),
         api.capd.listAvaliacoes({ ciclo_id: cicloId }).catch(() => ({ data: [] })),
         api.capd.listServidores({ per_page: 100 }).catch(() => ({ data: [] })),
+        api.capd.getEvolucaoCiclos().catch(() => []),
+        api.org.getTree().catch((err: unknown) => {
+          const status = (err as { response?: { status?: number } } | undefined)?.response?.status;
+          if (status === 403) setOrgTreeErro('sem_permissao');
+          return { data: [] as OrgUnitTreeNode[] };
+        }),
       ]);
 
       const listaCic = Array.isArray(resCic) ? resCic : [];
@@ -376,6 +309,8 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
       setMetricas(resMet);
       setAvaliacoes(resAv.data || []);
       setServidores(Array.isArray(resServ) ? resServ : (resServ.data || []));
+      setEvolucaoCiclos(Array.isArray(resEvolucao) ? resEvolucao : []);
+      setOrgTree(Array.isArray(resOrgTree?.data) ? resOrgTree.data : []);
     } catch (e) {
       console.error('Erro ao carregar dados do RH:', e);
     } finally {
@@ -387,59 +322,146 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
     carregarDadosRh();
   }, [carregarDadosRh]);
 
-  // Transformações para Recharts:
-  // 1. Dados para ScatterChart (Dispersão por Secretaria)
-  const scatterData = useMemo(() => {
-    if (avaliacoes.length === 0) {
-      return [
-        { secretaria: 'SMAD (Administração)', nfd: 85.0, dias_servico: 1500, nome: 'Servidores SMAD' },
-        { secretaria: 'SMF (Finanças)', nfd: 91.0, dias_servico: 3100, nome: 'Servidores SMF' },
-        { secretaria: 'SMED (Educação)', nfd: 83.5, dias_servico: 2400, nome: 'Servidores SMED' },
-        { secretaria: 'SMS (Saúde)', nfd: 82.0, dias_servico: 1800, nome: 'Servidores SMS' },
-        { secretaria: 'SMOSP (Obras)', nfd: 78.5, dias_servico: 1200, nome: 'Servidores SMOSP' },
-      ];
+  // Painel de detalhe do servidor: busca avaliações (todos os ciclos) e quinquênios sob demanda
+  // ao abrir, não no carregamento geral da aba (ver design.md Decisão 2).
+  useEffect(() => {
+    if (servidorDetalheId == null) {
+      setDetalheAvaliacoes([]);
+      setDetalheQuinquenios(null);
+      return;
     }
-    return avaliacoes
-      .filter((av) => av.nota_final !== null && av.nota_final !== undefined)
-      .map((av, idx) => ({
+
+    const servidorAtual = servidores.find((s) => s.id === servidorDetalheId);
+    const idParaAvaliacoes = servidorAtual?.user_id ?? servidorDetalheId;
+
+    let cancelado = false;
+    setDetalheLoading(true);
+    Promise.all([
+      api.capd.listAvaliacoes({ servidor_id: idParaAvaliacoes }).catch(() => ({ data: [] })),
+      api.capd.listarQuinquenios(servidorDetalheId).catch(() => null),
+    ]).then(([resAvaliacoes, resQuinquenios]) => {
+      if (cancelado) return;
+      setDetalheAvaliacoes(resAvaliacoes.data || []);
+      setDetalheQuinquenios(resQuinquenios);
+      setDetalheLoading(false);
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [servidorDetalheId, servidores]);
+
+  // Corte de elegibilidade regimental: nota_final (NFD, escala 0-10) >= 7,00,
+  // o mesmo valor já usado pelo backend para `elegivel_progressao` (CalculadoraNotaService).
+  const CORTE_NFD = 7.0;
+
+  const bandaConceitoNfd = useCallback((nota: number): 'excelente' | 'bom' | 'regular' | 'risco' => {
+    if (nota >= 9.0) return 'excelente';
+    if (nota >= 8.0) return 'bom';
+    if (nota >= CORTE_NFD) return 'regular';
+    return 'risco';
+  }, []);
+
+  // Avaliações concluídas com nota final válida — base real para todos os gráficos abaixo.
+  const avaliacoesConcluidas = useMemo(
+    () => avaliacoes.filter((av) => Boolean(av.data_conclusao) && av.nota_final !== null && av.nota_final !== undefined && !Number.isNaN(parseFloat(String(av.nota_final)))),
+    [avaliacoes],
+  );
+
+  // Transformações para Recharts (todas derivadas de `avaliacoesConcluidas`, nota_final NFD 0-10):
+  // 1. Dados para ScatterChart (Dispersão de Notas x Tempo de Serviço real)
+  const scatterData = useMemo(() => {
+    return avaliacoesConcluidas
+      .filter((av) => Boolean(av.servidor?.data_admissao))
+      .map((av) => ({
         secretaria: av.servidor?.orgao_lotacao || 'Geral',
         nfd: parseFloat(String(av.nota_final)),
-        dias_servico: 365 * ((idx % 10) + 1),
+        dias_servico: Math.floor((Date.now() - new Date(av.servidor!.data_admissao as string).getTime()) / 86_400_000),
         nome: av.servidor?.nome_completo || `Servidor #${av.servidor_id}`,
       }));
-  }, [avaliacoes]);
+  }, [avaliacoesConcluidas]);
 
-  // 2. Dados para Stacked Bar Chart (Clusters pelas 5 Secretarias Oficiais)
+  // 2. Dados para Stacked Bar Chart (Clusters de Desempenho por Secretaria, dado real)
   const stackedBarData = useMemo(() => {
-    return [
-      { orgao: 'SMAD (Administração)', excelente: 4, bom: 5, regular: 1, risco: 0 },
-      { orgao: 'SMF (Finanças)', excelente: 5, bom: 4, regular: 1, risco: 0 },
-      { orgao: 'SMED (Educação)', excelente: 4, bom: 5, regular: 1, risco: 0 },
-      { orgao: 'SMS (Saúde)', excelente: 3, bom: 5, regular: 1, risco: 1 },
-      { orgao: 'SMOSP (Obras)', excelente: 3, bom: 4, regular: 2, risco: 1 },
-    ];
-  }, []);
+    const porSecretaria = new Map<string, { orgao: string; excelente: number; bom: number; regular: number; risco: number }>();
+    for (const av of avaliacoesConcluidas) {
+      const orgao = av.servidor?.orgao_lotacao || 'Não informado';
+      const nota = parseFloat(String(av.nota_final));
+      const entry = porSecretaria.get(orgao) ?? { orgao, excelente: 0, bom: 0, regular: 0, risco: 0 };
+      entry[bandaConceitoNfd(nota)] += 1;
+      porSecretaria.set(orgao, entry);
+    }
+    return Array.from(porSecretaria.values());
+  }, [avaliacoesConcluidas, bandaConceitoNfd]);
 
-  // 3. Dados para ComposedChart (Média pelas 5 Secretarias vs Linha de Corte 70 pts)
+  // 3. Dados para ComposedChart (Média real por Secretaria vs Corte de Elegibilidade)
   const composedData = useMemo(() => {
-    return [
-      { orgao: 'SMAD (Adm)', media: 86.5, corte: 70, servidores: 12 },
-      { orgao: 'SMF (Fin)', media: 88.2, corte: 70, servidores: 12 },
-      { orgao: 'SMED (Edu)', media: 84.4, corte: 70, servidores: 12 },
-      { orgao: 'SMS (Saúde)', media: 81.1, corte: 70, servidores: 12 },
-      { orgao: 'SMOSP (Obras)', media: 77.8, corte: 70, servidores: 12 },
-    ];
-  }, []);
+    const porSecretaria = new Map<string, { total: number; soma: number }>();
+    for (const av of avaliacoesConcluidas) {
+      const orgao = av.servidor?.orgao_lotacao || 'Não informado';
+      const nota = parseFloat(String(av.nota_final));
+      const entry = porSecretaria.get(orgao) ?? { total: 0, soma: 0 };
+      entry.total += 1;
+      entry.soma += nota;
+      porSecretaria.set(orgao, entry);
+    }
+    return Array.from(porSecretaria.entries()).map(([orgao, { total, soma }]) => ({
+      orgao,
+      media: Number((soma / total).toFixed(2)),
+      corte: CORTE_NFD,
+      servidores: total,
+    }));
+  }, [avaliacoesConcluidas]);
 
-  // 4. Dados para Donut / PieChart (Distribuição dos Conceitos)
+  // 4. Dados para Donut / PieChart (Distribuição real dos Conceitos, escala NFD)
   const pieData = useMemo(() => {
+    const contagem = { excelente: 0, bom: 0, regular: 0, risco: 0 };
+    for (const av of avaliacoesConcluidas) {
+      contagem[bandaConceitoNfd(parseFloat(String(av.nota_final)))] += 1;
+    }
     return [
-      { name: 'Excelente (≥ 90 pts)', value: 19, color: '#10b981' },
-      { name: 'Bom (80 a 89 pts)', value: 23, color: '#6366f1' },
-      { name: 'Regular (70 a 79 pts)', value: 6, color: '#f59e0b' },
-      { name: 'Risco / PMD (< 70 pts)', value: 2, color: '#ef4444' },
+      { name: 'Excelente (NFD ≥ 9,0)', value: contagem.excelente, color: '#10b981' },
+      { name: 'Bom (NFD 8,0 a 8,9)', value: contagem.bom, color: '#6366f1' },
+      { name: 'Regular (NFD 7,0 a 7,9)', value: contagem.regular, color: '#f59e0b' },
+      { name: 'Risco / PMD (NFD < 7,0)', value: contagem.risco, color: '#ef4444' },
     ];
-  }, []);
+  }, [avaliacoesConcluidas, bandaConceitoNfd]);
+
+  // 5. Ranking de secretarias por desempenho (ordenação de `composedData` real)
+  const rankingSecretarias = useMemo(() => {
+    return [...composedData].sort((a, b) => b.media - a.media);
+  }, [composedData]);
+
+  // 6. Drill-down por departamento dentro da secretaria selecionada
+  const departamentoDrillDown = useMemo(() => {
+    if (!secretariaSelecionada) return [];
+    const porDepartamento = new Map<string, { total: number; soma: number }>();
+    for (const av of avaliacoesConcluidas) {
+      if ((av.servidor?.orgao_lotacao || 'Não informado') !== secretariaSelecionada) continue;
+      const depto = av.servidor?.lotacao_fisica || 'Não informado';
+      const nota = parseFloat(String(av.nota_final));
+      const entry = porDepartamento.get(depto) ?? { total: 0, soma: 0 };
+      entry.total += 1;
+      entry.soma += nota;
+      porDepartamento.set(depto, entry);
+    }
+    return Array.from(porDepartamento.entries()).map(([departamento, { total, soma }]) => ({
+      departamento,
+      media: Number((soma / total).toFixed(2)),
+      servidores: total,
+    }));
+  }, [avaliacoesConcluidas, secretariaSelecionada]);
+
+  // 7. Destaque de desempenho individual (5 melhores e 5 piores notas do ciclo)
+  const destaqueIndividual = useMemo(() => {
+    const ordenadas = [...avaliacoesConcluidas].sort(
+      (a, b) => parseFloat(String(b.nota_final)) - parseFloat(String(a.nota_final)),
+    );
+    const top = ordenadas.slice(0, 5);
+    const bottomSize = Math.min(5, Math.max(0, ordenadas.length - top.length));
+    const bottom = bottomSize > 0 ? ordenadas.slice(-bottomSize).reverse() : [];
+    return { top, bottom };
+  }, [avaliacoesConcluidas]);
 
   // Relatório oficial de classificação trienal e desempate Art. 39 da Lei 1.704/2006
   const rankingDesempate = useMemo<RankingDesempateItem[]>(() => {
@@ -593,6 +615,103 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
   }, [avaliacoes]);
 
   // Colunas TanStack dedicadas ao Quadro Geral de Servidores com foco na distribuição institucional
+  // Secretarias e departamentos reais do tenant (organograma do OrgChart)
+  const secretariasOrg = useMemo(() => extrairSecretariasEDepartamentos(orgTree), [orgTree]);
+
+  const SEM_UNIDADE_CODIGO = '__nao_classificados__';
+
+  // Mapeamento dos servidores reais agrupados pela estrutura organizacional real.
+  // Vínculo preferencial: servidor.org_unit_id === departamento.id.
+  // Fallback (mesmo padrão do backend em PerguntaService.identificarGrupoFuncional):
+  // correspondência textual entre lotacao_fisica/cargo_efetivo e nome/código do departamento.
+  const dadosDistribuicao = useMemo(() => {
+    const classificados = new Set<number>();
+
+    const secs = secretariasOrg.map((sec) => {
+      const departamentosComServidores = sec.departamentos.map((dep) => {
+        const servs = servidores.filter((s) => servidorPertenceAoDepartamento(s, dep));
+
+        servs.forEach((s) => classificados.add(s.id));
+
+        return {
+          ...dep,
+          servidores: servs,
+          totalServidores: servs.length,
+          totalEstagio: servs.filter((s) => Boolean(s.estagio_probatorio)).length,
+          totalEstaveis: servs.filter((s) => !s.estagio_probatorio).length,
+        };
+      });
+
+      const totalServidoresSec = departamentosComServidores.reduce((acc, d) => acc + d.totalServidores, 0);
+      const totalEstagioSec = departamentosComServidores.reduce((acc, d) => acc + d.totalEstagio, 0);
+
+      return {
+        ...sec,
+        departamentos: departamentosComServidores,
+        totalServidores: totalServidoresSec,
+        totalEstagio: totalEstagioSec,
+        totalEstaveis: totalServidoresSec - totalEstagioSec,
+      };
+    });
+
+    const naoClassificados = servidores.filter((s) => !classificados.has(s.id));
+    if (naoClassificados.length > 0) {
+      secs.push({
+        id: -1,
+        nome: 'Servidores Não Classificados',
+        codigo: SEM_UNIDADE_CODIGO,
+        sigla: 'N/C',
+        responsavel: null,
+        departamentos: [
+          {
+            id: -1,
+            nome: 'Sem unidade organizacional identificada',
+            codigo: SEM_UNIDADE_CODIGO,
+            responsavel: null,
+            servidores: naoClassificados,
+            totalServidores: naoClassificados.length,
+            totalEstagio: naoClassificados.filter((s) => Boolean(s.estagio_probatorio)).length,
+            totalEstaveis: naoClassificados.filter((s) => !s.estagio_probatorio).length,
+          },
+        ],
+        totalServidores: naoClassificados.length,
+        totalEstagio: naoClassificados.filter((s) => Boolean(s.estagio_probatorio)).length,
+        totalEstaveis: naoClassificados.filter((s) => !s.estagio_probatorio).length,
+      });
+    }
+
+    return secs;
+  }, [secretariasOrg, servidores]);
+
+  // Indicadores agregados reais (não hardcoded) para os KPIs e badges da aba de Distribuição.
+  const kpisDistribuicao = useMemo(() => {
+    const totalSecretarias = secretariasOrg.length;
+    const totalDepartamentos = secretariasOrg.reduce((acc, s) => acc + s.departamentos.length, 0);
+    const totalChefias = secretariasOrg.reduce(
+      (acc, s) => acc + (s.responsavel ? 1 : 0) + s.departamentos.filter((d) => d.responsavel).length,
+      0,
+    );
+    const totalServidoresCarregados = servidores.length;
+    const totalNaoClassificados = dadosDistribuicao.find((s) => s.codigo === SEM_UNIDADE_CODIGO)?.totalServidores ?? 0;
+    const totalClassificados = totalServidoresCarregados - totalNaoClassificados;
+
+    return {
+      totalSecretarias,
+      totalDepartamentos,
+      totalChefias,
+      totalServidoresCarregados,
+      totalClassificados,
+      totalNaoClassificados,
+    };
+  }, [secretariasOrg, servidores, dadosDistribuicao]);
+
+  // Classificação real (secretaria + departamento) por servidor, reaproveitando dadosDistribuicao
+  // — usada pelo Quadro Geral de Servidores em vez da heurística de texto getSiglaSecretaria.
+  const classificacaoPorServidor = useMemo(
+    () => construirClassificacaoPorServidor(dadosDistribuicao),
+    [dadosDistribuicao],
+  );
+
   const columnsServidoresGeral = useMemo<ColumnDef<ApiServidor>[]>(
     () => [
       {
@@ -638,38 +757,38 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
         ),
       },
       {
-        accessorKey: 'orgao_lotacao',
+        id: 'secretaria_real',
         header: 'Secretaria (Órgão)',
         size: 190,
         cell: ({ row }) => {
-          const nomeOrg = row.original.orgao_lotacao || 'Não informada';
-          const sigla = getSiglaSecretaria(nomeOrg);
-          const nomeCurto = getNomeCurtoSecretaria(nomeOrg);
+          const classificacao = classificacaoPorServidor.get(row.original.id);
+          const nomeSecretaria = classificacao?.secretaria || 'Não Classificado';
           return (
-            <div className="text-left flex items-center gap-1.5 min-w-[160px] max-w-[195px]" title={nomeOrg}>
-              <Badge variant="outline" className="font-mono text-[10px] font-bold text-primary shrink-0 border-primary/30">
-                {sigla}
+            <div className="text-left flex items-center gap-1.5 min-w-[160px] max-w-[195px]" title={nomeSecretaria}>
+              <Badge
+                variant="outline"
+                className={`font-mono text-[10px] font-bold shrink-0 ${classificacao ? 'text-primary border-primary/30' : 'text-amber-500 border-amber-500/30'}`}
+              >
+                {classificacao ? nomeSecretaria.substring(0, 5).toUpperCase() : 'N/C'}
               </Badge>
               <span className="text-xs text-foreground font-medium truncate">
-                {nomeCurto}
+                {nomeSecretaria}
               </span>
             </div>
           );
         },
       },
       {
-        accessorKey: 'lotacao_fisica',
+        id: 'departamento_real',
         header: 'Departamento (Lotação)',
         size: 220,
         cell: ({ row }) => {
-          const depNome = row.original.lotacao_fisica || 'Sede Geral';
+          const classificacao = classificacaoPorServidor.get(row.original.id);
+          const nomeDepartamento = classificacao?.departamento || 'Sem unidade organizacional identificada';
           return (
-            <div className="text-left space-y-0.5 min-w-[180px] max-w-[225px]" title={depNome}>
+            <div className="text-left space-y-0.5 min-w-[180px] max-w-[225px]" title={nomeDepartamento}>
               <div className="text-xs text-foreground font-medium truncate">
-                {depNome}
-              </div>
-              <div className="text-[10px] text-muted-foreground font-mono">
-                {depNome === 'Sede Geral' ? 'Gabinete / Sede Geral' : 'Unidade Departamental'}
+                {nomeDepartamento}
               </div>
             </div>
           );
@@ -734,7 +853,8 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
               size="sm"
               variant="outline"
               className="text-xs"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setAvaliacaoEmFocoId(av.id);
                 setModalEspelhoOpen(true);
               }}
@@ -746,50 +866,98 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
         },
       },
     ],
-    [ultimaAvaliacaoPorServidor]
+    [ultimaAvaliacaoPorServidor, classificacaoPorServidor]
   );
 
-  // Mapeamento dos servidores agrupados por Secretaria e Departamento
-  const dadosDistribuicao = useMemo(() => {
-    return ESTRUTURA_ORGANIZACIONAL_CANONICA.map((sec) => {
-      const departamentosComServidores = sec.departamentos.map((dep) => {
-        const servs = servidores.filter((s) => {
-          const lotFisica = (s.lotacao_fisica || '').toLowerCase();
-          const depNome = dep.nome.toLowerCase();
+  // Linha por servidor (secretaria + departamento + dados do servidor) para a visualização em tabela.
+  interface LinhaDistribuicao {
+    servidorId: number;
+    matricula: string;
+    nome: string;
+    cargo: string;
+    secretaria: string;
+    departamento: string;
+    situacao: string;
+    estagioProbatorio: boolean;
+    estagioFase: number | null;
+  }
 
-          if (lotFisica && (lotFisica.includes(depNome) || depNome.includes(lotFisica))) {
-            return true;
+  const linhasDistribuicao = useMemo<LinhaDistribuicao[]>(() => {
+    const linhas: LinhaDistribuicao[] = [];
+    for (const sec of dadosDistribuicao) {
+      if (filtroSecDistribuicao !== 'todas' && sec.codigo !== filtroSecDistribuicao) continue;
+      for (const dep of sec.departamentos) {
+        for (const s of dep.servidores) {
+          if (buscaDistribuicao) {
+            const q = buscaDistribuicao.toLowerCase();
+            const bate =
+              s.nome_completo.toLowerCase().includes(q) ||
+              s.matricula.toLowerCase().includes(q) ||
+              s.cargo_efetivo.toLowerCase().includes(q);
+            if (!bate) continue;
           }
+          linhas.push({
+            servidorId: s.id,
+            matricula: s.matricula,
+            nome: s.nome_completo,
+            cargo: s.cargo_efetivo,
+            secretaria: sec.nome,
+            departamento: dep.nome,
+            situacao: s.situacao_funcional,
+            estagioProbatorio: Boolean(s.estagio_probatorio),
+            estagioFase: s.estagio_fase_atual ?? null,
+          });
+        }
+      }
+    }
+    return linhas;
+  }, [dadosDistribuicao, buscaDistribuicao, filtroSecDistribuicao]);
 
-          const siglaDep = dep.codigo.split('-')[1]?.toLowerCase();
-          if (siglaDep && (lotFisica.includes(siglaDep) || (s.cargo_efetivo || '').toLowerCase().includes(siglaDep))) {
-            return true;
-          }
-
-          return false;
-        });
-
-        return {
-          ...dep,
-          servidores: servs,
-          totalServidores: servs.length,
-          totalEstagio: servs.filter((s) => Boolean(s.estagio_probatorio)).length,
-          totalEstaveis: servs.filter((s) => !s.estagio_probatorio).length,
-        };
-      });
-
-      const totalServidoresSec = departamentosComServidores.reduce((acc, d) => acc + d.totalServidores, 0);
-      const totalEstagioSec = departamentosComServidores.reduce((acc, d) => acc + d.totalEstagio, 0);
-
-      return {
-        ...sec,
-        departamentos: departamentosComServidores,
-        totalServidores: totalServidoresSec,
-        totalEstagio: totalEstagioSec,
-        totalEstaveis: totalServidoresSec - totalEstagioSec,
-      };
-    });
-  }, [servidores]);
+  const columnsDistribuicao = useMemo<ColumnDef<LinhaDistribuicao>[]>(
+    () => [
+      {
+        accessorKey: 'matricula',
+        header: 'Matrícula',
+        size: 100,
+        cell: ({ row }) => <span className="font-mono font-bold text-primary text-xs tabular-nums">{row.original.matricula}</span>,
+      },
+      {
+        accessorKey: 'nome',
+        header: 'Servidor',
+        cell: ({ row }) => <span className="text-xs font-medium text-foreground">{row.original.nome}</span>,
+      },
+      {
+        accessorKey: 'cargo',
+        header: 'Cargo',
+        cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.cargo}</span>,
+      },
+      {
+        accessorKey: 'secretaria',
+        header: 'Secretaria',
+        cell: ({ row }) => <Badge variant="outline" className="text-[10px] font-mono">{row.original.secretaria}</Badge>,
+      },
+      {
+        accessorKey: 'departamento',
+        header: 'Departamento',
+        cell: ({ row }) => <span className="text-xs text-foreground">{row.original.departamento}</span>,
+      },
+      {
+        accessorKey: 'situacao',
+        header: 'Situação',
+        cell: ({ row }) =>
+          row.original.estagioProbatorio ? (
+            <Badge variant="outline" className="text-[9px] font-mono text-amber-500 border-amber-500/30">
+              Estágio ({row.original.estagioFase ? `${row.original.estagioFase}ª Fase` : 'Ativo'})
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[9px] font-mono text-emerald-500 border-emerald-500/30">
+              Estável
+            </Badge>
+          ),
+      },
+    ],
+    [],
+  );
 
   // Colunas TanStack para a Exportação Folha de Pagamento
   const columnsFolha = useMemo<ColumnDef<RankingDesempateItem>[]>(
@@ -920,449 +1088,701 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
       {/* ── SUB-ABA 1: DASHBOARD ANALÍTICO & BI COM RECHARTS ─────────── */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
-          {/* GRÁFICOS 1 & 2: DISPERSÃO E CLUSTERS POR PASTA */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Gráfico 1: ScatterChart (Dispersão das Notas x Tempo de Serviço) */}
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-border pb-2">
-                <div>
-                  <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-primary" />
-                    Dispersão das Notas vs Tempo de Serviço (Dias)
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground">Linha de corte regimental em 70 pontos (Art. 16).</p>
-                </div>
-                <Badge variant="outline" className="font-mono text-[10px]">
-                  Corte: 70,00 pts
-                </Badge>
+          {avaliacoesConcluidas.length === 0 ? (
+            <EmptyState
+              title="Sem avaliações concluídas neste ciclo"
+              description="Os gráficos aparecem assim que houver ao menos uma avaliação concluída no ciclo selecionado. Troque o ciclo ou aguarde as chefias concluírem as avaliações."
+              icon={<BarChart3 className="h-8 w-8" />}
+            />
+          ) : (
+            <>
+              {/* GRÁFICOS 1 & 2: DISPERSÃO E CLUSTERS POR PASTA */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Gráfico 1: ScatterChart (Dispersão das Notas x Tempo de Serviço) */}
+                <Card className="p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-primary" />
+                        Dispersão das Notas vs Tempo de Serviço (Dias)
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">Corte de elegibilidade (NFD, mesmo critério de `elegivel_progressao`).</p>
+                    </div>
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      Corte: {CORTE_NFD.toFixed(2)}
+                    </Badge>
+                  </div>
+
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis
+                          type="number"
+                          dataKey="dias_servico"
+                          name="Dias de Serviço"
+                          tick={{ fontSize: 10 }}
+                          unit=" d"
+                        />
+                        <YAxis
+                          type="number"
+                          dataKey="nfd"
+                          name="Nota NFD"
+                          domain={[0, 10]}
+                          tick={{ fontSize: 10 }}
+                        />
+                        <Tooltip
+                          cursor={{ strokeDasharray: '3 3' }}
+                          formatter={(val: any, name: any) => [
+                            String(name) === 'Nota NFD' ? `${val}` : `${val} dias`,
+                            String(name),
+                          ]}
+                        />
+                        <Scatter name="Servidores Avaliados" data={scatterData} fill="#6366f1" />
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+
+                {/* Gráfico 2: Stacked Bar Chart (Clusters por Secretaria) */}
+                <Card className="p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                        <Layers className="h-4 w-4 text-emerald-500" />
+                        Clusters de Desempenho por Pasta Governamental
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">Distribuição: Excelente, Bom, Regular e Risco (PMD).</p>
+                    </div>
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {stackedBarData.length} {stackedBarData.length === 1 ? 'Secretaria' : 'Secretarias'}
+                    </Badge>
+                  </div>
+
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stackedBarData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="orgao" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        <Bar dataKey="excelente" name="Excelente" stackId="a" fill="#10b981" onClick={(d: any) => setSecretariaSelecionada(d.orgao)} cursor="pointer" />
+                        <Bar dataKey="bom" name="Bom" stackId="a" fill="#6366f1" onClick={(d: any) => setSecretariaSelecionada(d.orgao)} cursor="pointer" />
+                        <Bar dataKey="regular" name="Regular" stackId="a" fill="#f59e0b" onClick={(d: any) => setSecretariaSelecionada(d.orgao)} cursor="pointer" />
+                        <Bar dataKey="risco" name="Risco (PMD)" stackId="a" fill="#ef4444" onClick={(d: any) => setSecretariaSelecionada(d.orgao)} cursor="pointer" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
               </div>
 
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis
-                      type="number"
-                      dataKey="dias_servico"
-                      name="Dias de Serviço"
-                      tick={{ fontSize: 10 }}
-                      unit=" d"
-                    />
-                    <YAxis
-                      type="number"
-                      dataKey="nfd"
-                      name="Nota NFD"
-                      domain={[50, 100]}
-                      tick={{ fontSize: 10 }}
-                      unit=" pts"
-                    />
-                    <Tooltip
-                      cursor={{ strokeDasharray: '3 3' }}
-                      formatter={(val: any, name: any) => [
-                        String(name) === 'Nota NFD' ? `${val} pts` : `${val} dias`,
-                        String(name),
-                      ]}
-                    />
-                    <Scatter name="Servidores Avaliados" data={scatterData} fill="#6366f1" />
-                  </ScatterChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Gráfico 2: Stacked Bar Chart (Clusters por Secretaria) */}
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-border pb-2">
-                <div>
-                  <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-emerald-500" />
-                    Clusters de Desempenho por Pasta Governamental
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground">Distribuição: Excelente, Bom, Regular e Risco (PMD).</p>
-                </div>
-                <Badge variant="outline" className="font-mono text-[10px]">
-                  5 Secretarias
-                </Badge>
-              </div>
-
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stackedBarData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="orgao" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: 10 }} />
-                    <Bar dataKey="excelente" name="Excelente" stackId="a" fill="#10b981" />
-                    <Bar dataKey="bom" name="Bom" stackId="a" fill="#6366f1" />
-                    <Bar dataKey="regular" name="Regular" stackId="a" fill="#f59e0b" />
-                    <Bar dataKey="risco" name="Risco (PMD)" stackId="a" fill="#ef4444" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          </div>
-
-          {/* GRÁFICOS 3 & 4: COMPOSED CHART E PIE CHART */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Gráfico 3: ComposedChart (Média por Pasta vs Linha de Corte) */}
-            <Card className="p-4 space-y-3 lg:col-span-2">
-              <div className="flex items-center justify-between border-b border-border pb-2">
-                <div>
-                  <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-cyan-500" />
-                    Média de Notas por Secretaria vs Corte Legal (70 pts)
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground">ComposedChart comparando barras de média e linha regulamentar.</p>
-                </div>
-                <Badge variant="outline" className="font-mono text-[10px] text-emerald-500 border-emerald-500/30">
-                  Todas Acima do Corte
-                </Badge>
-              </div>
-
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={composedData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="orgao" tick={{ fontSize: 10 }} />
-                    <YAxis domain={[50, 100]} tick={{ fontSize: 10 }} />
-                    <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: 10 }} />
-                    <Bar dataKey="media" name="Média da Pasta" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    <Line type="monotone" dataKey="corte" name="Corte Mínimo (70 pts)" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Gráfico 4: Donut / PieChart dos Conceitos */}
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-border pb-2">
-                <div>
-                  <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
-                    <PieIcon className="h-4 w-4 text-purple-500" />
-                    Proporção Geral de Conceitos
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground">Total do Município de Araucária.</p>
-                </div>
-              </div>
-
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={4}
-                      dataKey="value"
+              {/* GRÁFICOS 3 & 4: COMPOSED CHART E PIE CHART */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Gráfico 3: ComposedChart (Média por Pasta vs Linha de Corte) */}
+                <Card className="p-4 space-y-3 lg:col-span-2">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-cyan-500" />
+                        Média de Notas por Secretaria vs Corte de Elegibilidade
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">Clique numa barra para detalhar por departamento.</p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`font-mono text-[10px] ${composedData.every((d) => d.media >= CORTE_NFD) ? 'text-emerald-500 border-emerald-500/30' : 'text-red-500 border-red-500/30'}`}
                     >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: 10 }} />
-                  </PieChart>
-                </ResponsiveContainer>
+                      {composedData.every((d) => d.media >= CORTE_NFD) ? 'Todas Acima do Corte' : 'Secretaria(s) Abaixo do Corte'}
+                    </Badge>
+                  </div>
+
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={composedData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="orgao" tick={{ fontSize: 10 }} />
+                        <YAxis domain={[0, 10]} tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        <Bar dataKey="media" name="Média da Pasta" fill="#3b82f6" radius={[4, 4, 0, 0]} onClick={(d: any) => setSecretariaSelecionada(d.orgao)} cursor="pointer" />
+                        <Line type="monotone" dataKey="corte" name={`Corte Mínimo (${CORTE_NFD.toFixed(2)})`} stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+
+                {/* Gráfico 4: Donut / PieChart dos Conceitos */}
+                <Card className="p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                        <PieIcon className="h-4 w-4 text-purple-500" />
+                        Proporção Geral de Conceitos
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">{ciclos.find((c) => c.id === cicloId)?.nome || 'Ciclo selecionado'}.</p>
+                    </div>
+                  </div>
+
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={4}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
               </div>
-            </Card>
-          </div>
+
+              {/* GRÁFICO 5: EVOLUÇÃO ENTRE CICLOS */}
+              <Card className="p-4 space-y-3">
+                <div className="border-b border-border pb-2">
+                  <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    Evolução de Desempenho Entre Ciclos
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground">Média de nota (NFD) e taxa de conclusão em todos os ciclos avaliativos do tenant.</p>
+                </div>
+
+                {evolucaoCiclos.length === 0 ? (
+                  <EmptyState
+                    title="Sem histórico de ciclos"
+                    description="A evolução aparece quando o tenant tiver mais de um ciclo avaliativo com avaliações concluídas."
+                    icon={<TrendingUp className="h-8 w-8" />}
+                  />
+                ) : (
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={evolucaoCiclos} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="ano_referencia" tick={{ fontSize: 10 }} />
+                        <YAxis yAxisId="nota" domain={[0, 10]} tick={{ fontSize: 10 }} />
+                        <YAxis yAxisId="taxa" orientation="right" domain={[0, 100]} tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        <Line yAxisId="nota" type="monotone" dataKey="media_nota" name="Média de Nota (NFD)" stroke="#3b82f6" strokeWidth={2} />
+                        <Line yAxisId="taxa" type="monotone" dataKey="taxa_conclusao" name="Taxa de Conclusão (%)" stroke="#10b981" strokeWidth={2} strokeDasharray="4 4" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </Card>
+
+              {/* RANKING DE SECRETARIAS + DRILL-DOWN POR DEPARTAMENTO */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="p-4 space-y-3">
+                  <div className="border-b border-border pb-2">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                      <Award className="h-4 w-4 text-amber-500" />
+                      Ranking de Secretarias por Desempenho
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground">Clique numa secretaria para ver o detalhamento por departamento.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {rankingSecretarias.map((item, idx) => {
+                      const isMelhor = idx === 0;
+                      const isMaisPertoDoCorte = item === [...rankingSecretarias].sort(
+                        (a, b) => Math.abs(a.media - CORTE_NFD) - Math.abs(b.media - CORTE_NFD),
+                      )[0];
+                      return (
+                        <button
+                          key={item.orgao}
+                          type="button"
+                          onClick={() => setSecretariaSelecionada(item.orgao)}
+                          className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-left text-xs transition-colors hover:bg-muted/40 ${secretariaSelecionada === item.orgao ? 'border-primary bg-primary/5' : 'border-border'}`}
+                        >
+                          <span className="flex items-center gap-2 font-medium text-foreground">
+                            <span className="font-mono tabular-nums text-muted-foreground">{idx + 1}º</span>
+                            {item.orgao}
+                            {isMelhor && <Badge variant="success">Melhor Desempenho</Badge>}
+                            {isMaisPertoDoCorte && !isMelhor && <Badge variant="warning">Mais Próxima do Corte</Badge>}
+                          </span>
+                          <span className="font-mono tabular-nums text-foreground">{item.media.toFixed(2)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Card>
+
+                <Card className="p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-cyan-500" />
+                        Drill-Down por Departamento
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">{secretariaSelecionada || 'Selecione uma secretaria no ranking ou nos gráficos acima.'}</p>
+                    </div>
+                    {secretariaSelecionada && (
+                      <Button size="sm" variant="ghost" onClick={() => setSecretariaSelecionada(null)}>Limpar</Button>
+                    )}
+                  </div>
+                  {!secretariaSelecionada ? (
+                    <EmptyState
+                      title="Nenhuma secretaria selecionada"
+                      description="Selecione uma secretaria para ver a média de desempenho por departamento."
+                      icon={<Building2 className="h-8 w-8" />}
+                    />
+                  ) : departamentoDrillDown.length === 0 ? (
+                    <EmptyState
+                      title="Sem departamentos identificados"
+                      description="Os servidores desta secretaria não têm lotação física registrada."
+                      icon={<Building2 className="h-8 w-8" />}
+                    />
+                  ) : (
+                    <div className="space-y-1.5">
+                      {departamentoDrillDown.map((depto) => (
+                        <div key={depto.departamento} className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-xs">
+                          <span className="font-medium text-foreground">{depto.departamento}</span>
+                          <span className="flex items-center gap-3">
+                            <span className="text-muted-foreground">{depto.servidores} serv.</span>
+                            <span className="font-mono tabular-nums text-foreground">{depto.media.toFixed(2)}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </div>
+
+              {/* DESTAQUE DE DESEMPENHO INDIVIDUAL (TOP/BOTTOM) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="p-4 space-y-3">
+                  <div className="border-b border-border pb-2">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                      <Award className="h-4 w-4 text-emerald-500" />
+                      Melhores Notas do Ciclo
+                    </h4>
+                  </div>
+                  <div className="space-y-1.5">
+                    {destaqueIndividual.top.map((av) => (
+                      <button
+                        key={av.id}
+                        type="button"
+                        onClick={() => { setAvaliacaoEmFocoId(av.id); setModalEspelhoOpen(true); }}
+                        className="w-full flex items-center justify-between rounded-md border border-border px-3 py-2 text-left text-xs hover:bg-muted/40"
+                      >
+                        <span className="text-foreground">
+                          {av.servidor?.nome_completo || `Servidor #${av.servidor_id}`}
+                          <span className="text-muted-foreground"> — {av.servidor?.orgao_lotacao || 'Geral'}</span>
+                        </span>
+                        <span className="font-mono tabular-nums font-bold text-emerald-500">{parseFloat(String(av.nota_final)).toFixed(2)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+
+                <Card className="p-4 space-y-3">
+                  <div className="border-b border-border pb-2">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      Piores Notas do Ciclo
+                    </h4>
+                  </div>
+                  <div className="space-y-1.5">
+                    {destaqueIndividual.bottom.map((av) => (
+                      <button
+                        key={av.id}
+                        type="button"
+                        onClick={() => { setAvaliacaoEmFocoId(av.id); setModalEspelhoOpen(true); }}
+                        className="w-full flex items-center justify-between rounded-md border border-border px-3 py-2 text-left text-xs hover:bg-muted/40"
+                      >
+                        <span className="text-foreground">
+                          {av.servidor?.nome_completo || `Servidor #${av.servidor_id}`}
+                          <span className="text-muted-foreground"> — {av.servidor?.orgao_lotacao || 'Geral'}</span>
+                        </span>
+                        <span className="font-mono tabular-nums font-bold text-red-500">{parseFloat(String(av.nota_final)).toFixed(2)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            </>
+          )}
         </div>
       )}
 
       {/* ── SUB-ABA: DISTRIBUIÇÃO INSTITUCIONAL POR PASTA & DEPARTAMENTO ── */}
       {activeTab === 'distribuicao' && (
         <div className="space-y-6">
-          {/* CARDS KPI DE COBERTURA INSTITUCIONAL */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <StatCard label="Secretarias" value={5} caption="Pastas municipais ativas" />
-
-            <StatCard
-              label="Departamentos"
-              value={10}
-              caption="2 unidades por secretaria"
-              accentClassName="border-l-blue-500"
+          {orgTreeErro === 'sem_permissao' ? (
+            <EmptyState
+              title="Sem permissão para ver o organograma"
+              description="Esta aba precisa da permissão org.view (ou papel responsável/membro) para exibir a estrutura organizacional real do tenant. Solicite a um administrador."
+              icon={<Shield className="h-8 w-8" />}
             />
-
-            <StatCard
-              label="Chefias Nomeadas"
-              value={15}
-              caption="5 Secretários + 10 Diretores"
-              accentClassName="border-l-amber-500"
+          ) : !loading && secretariasOrg.length === 0 ? (
+            <EmptyState
+              title="Nenhuma secretaria cadastrada no organograma"
+              description="Cadastre a estrutura organizacional (secretarias e departamentos) no módulo Organograma para que esta aba exiba a distribuição real de servidores."
+              icon={<Building2 className="h-8 w-8" />}
             />
+          ) : (
+            <>
+              {/* CARDS KPI DE COBERTURA INSTITUCIONAL */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <StatCard label="Secretarias" value={kpisDistribuicao.totalSecretarias} caption="Pastas municipais ativas" />
 
-            <StatCard
-              label="Servidores Lotados"
-              value={50}
-              caption="5 em cada departamento"
-              accentClassName="border-l-emerald-500"
-            />
+                <StatCard
+                  label="Departamentos"
+                  value={kpisDistribuicao.totalDepartamentos}
+                  caption={`${kpisDistribuicao.totalSecretarias > 0 ? (kpisDistribuicao.totalDepartamentos / kpisDistribuicao.totalSecretarias).toFixed(1) : '0'} por secretaria (média)`}
+                  accentClassName="border-l-blue-500"
+                />
 
-            <StatCard
-              label="Vínculos no Órgão"
-              value="65 / 65"
-              caption="100% em org_unit_user"
-              accentClassName="border-l-emerald-500"
-              valueClassName="text-emerald-600 dark:text-emerald-400"
-            />
-          </div>
+                <StatCard
+                  label="Chefias Nomeadas"
+                  value={kpisDistribuicao.totalChefias}
+                  caption="Responsáveis de secretaria + departamento"
+                  accentClassName="border-l-amber-500"
+                />
 
-          {/* BARRA DE FILTROS E BUSCA */}
-          <Card className="p-4 bg-muted/20 border-border">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-xs font-semibold text-foreground whitespace-nowrap">Filtrar por Pasta:</span>
-                <div className="flex flex-wrap gap-1">
-                  <Button
-                    size="sm"
-                    variant={filtroSecDistribuicao === 'todas' ? 'default' : 'outline'}
-                    className="h-7 text-xs"
-                    onClick={() => setFiltroSecDistribuicao('todas')}
-                  >
-                    Todas (5)
-                  </Button>
-                  {ESTRUTURA_ORGANIZACIONAL_CANONICA.map((s) => (
-                    <Button
-                      key={s.codigo}
-                      size="sm"
-                      variant={filtroSecDistribuicao === s.codigo ? 'default' : 'outline'}
-                      className="h-7 text-xs font-mono"
-                      onClick={() => setFiltroSecDistribuicao(s.codigo)}
-                    >
-                      {s.sigla}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+                <StatCard
+                  label="Servidores Lotados"
+                  value={kpisDistribuicao.totalServidoresCarregados}
+                  caption="Total carregado neste ciclo"
+                  accentClassName="border-l-emerald-500"
+                />
 
-              <div className="w-full sm:w-72">
-                <SearchInput
-                  value={buscaDistribuicao}
-                  onChange={(val) => setBuscaDistribuicao(val)}
-                  placeholder="Buscar servidor, cargo ou matrícula..."
+                <StatCard
+                  label="Vínculos no Órgão"
+                  value={`${kpisDistribuicao.totalClassificados} / ${kpisDistribuicao.totalServidoresCarregados}`}
+                  caption={
+                    kpisDistribuicao.totalNaoClassificados > 0
+                      ? `${kpisDistribuicao.totalNaoClassificados} não classificado(s)`
+                      : '100% classificados'
+                  }
+                  accentClassName="border-l-emerald-500"
+                  valueClassName="text-emerald-600 dark:text-emerald-400"
                 />
               </div>
-            </div>
-          </Card>
 
-          {/* ESTRUTURA VISUAL DAS SECRETARIAS E SEUS DEPARTAMENTOS */}
-          <div className="space-y-6">
-            {dadosDistribuicao
-              .filter((sec) => filtroSecDistribuicao === 'todas' || sec.codigo === filtroSecDistribuicao)
-              .map((sec) => {
-                return (
-                  <Card key={sec.codigo} className="border-border overflow-hidden">
-                    {/* CABEÇALHO DA SECRETARIA */}
-                    <div className="p-4 bg-muted/40 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline" className={`font-mono text-xs font-bold ${sec.cor}`}>
-                            {sec.sigla}
-                          </Badge>
-                          <h3 className="text-sm font-bold text-foreground">{sec.nome}</h3>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                          <Shield className="h-3.5 w-3.5 text-primary" />
-                          <span>Titular da Pasta: <strong className="text-foreground">{sec.secretario.nome}</strong></span>
-                          <span className="font-mono text-[11px] text-primary">({sec.secretario.matricula})</span>
-                          <span>•</span>
-                          <span className="font-mono text-[11px]">{sec.secretario.email}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[11px] font-mono">
-                          2 Departamentos
-                        </Badge>
-                        <Badge variant="default" className="text-[11px] font-mono bg-primary text-primary-foreground">
-                          {sec.totalServidores} Servidores Operacionais
-                        </Badge>
-                      </div>
+              {/* BARRA DE FILTROS E BUSCA */}
+              <Card className="p-4 bg-muted/20 border-border">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-semibold text-foreground whitespace-nowrap">Filtrar por Pasta:</span>
+                    <div className="flex flex-wrap gap-1">
+                      <Button
+                        size="sm"
+                        variant={filtroSecDistribuicao === 'todas' ? 'default' : 'outline'}
+                        className="h-7 text-xs"
+                        onClick={() => setFiltroSecDistribuicao('todas')}
+                      >
+                        Todas ({dadosDistribuicao.length})
+                      </Button>
+                      {dadosDistribuicao.map((s) => (
+                        <Button
+                          key={s.codigo}
+                          size="sm"
+                          variant={filtroSecDistribuicao === s.codigo ? 'default' : 'outline'}
+                          className="h-7 text-xs font-mono"
+                          onClick={() => setFiltroSecDistribuicao(s.codigo)}
+                        >
+                          {s.sigla || s.nome}
+                        </Button>
+                      ))}
                     </div>
+                  </div>
 
-                    {/* GRID DE DEPARTAMENTOS */}
-                    <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {sec.departamentos.map((dep) => {
-                        const servidoresFiltrados = dep.servidores.filter((s) => {
-                          if (!buscaDistribuicao) return true;
-                          const q = buscaDistribuicao.toLowerCase();
-                          return (
-                            s.nome_completo.toLowerCase().includes(q) ||
-                            s.matricula.toLowerCase().includes(q) ||
-                            s.cargo_efetivo.toLowerCase().includes(q)
-                          );
-                        });
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="w-full sm:w-72">
+                      <SearchInput
+                        value={buscaDistribuicao}
+                        onChange={(val) => setBuscaDistribuicao(val)}
+                        placeholder="Buscar servidor, cargo ou matrícula..."
+                      />
+                    </div>
+                    <div className="flex rounded-md border border-border overflow-hidden shrink-0">
+                      <Button
+                        size="sm"
+                        variant={visualizacaoDistribuicao === 'tabela' ? 'default' : 'ghost'}
+                        className="h-7 text-xs rounded-none"
+                        onClick={() => setVisualizacaoDistribuicao('tabela')}
+                      >
+                        Tabela
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={visualizacaoDistribuicao === 'cards' ? 'default' : 'ghost'}
+                        className="h-7 text-xs rounded-none"
+                        onClick={() => setVisualizacaoDistribuicao('cards')}
+                      >
+                        Cards
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
 
-                        return (
-                          <div
-                            key={dep.codigo}
-                            className="rounded-lg border border-border bg-card/60 p-4 space-y-3 flex flex-col justify-between"
-                          >
-                            <div className="space-y-2">
-                              {/* TOPO DO DEPARTAMENTO */}
-                              <div className="flex items-start justify-between gap-2 border-b border-border/60 pb-2.5">
-                                <div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-mono text-[11px] font-bold text-primary">
-                                      [{dep.codigo}]
-                                    </span>
-                                    <h4 className="text-xs font-bold text-foreground line-clamp-1">
-                                      {dep.nome}
-                                    </h4>
-                                  </div>
-                                  <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
-                                    <Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span>Diretor(a): <strong className="text-foreground">{dep.diretor.nome}</strong></span>
-                                    <span className="font-mono text-[10px] text-muted-foreground">({dep.diretor.matricula})</span>
-                                  </div>
-                                </div>
-                                <Badge variant="outline" className="text-[10px] font-mono shrink-0">
-                                  {dep.servidores.length} servidores
-                                </Badge>
-                              </div>
+              {/* VISUALIZAÇÃO EM TABELA (padrão) */}
+              {visualizacaoDistribuicao === 'tabela' && (
+                <Card className="gap-0 py-0">
+                  <div className="p-3">
+                    <DataTable
+                      columns={columnsDistribuicao}
+                      data={linhasDistribuicao}
+                      loading={loading}
+                      emptyText="Nenhum servidor encontrado."
+                      pageSize={15}
+                      pageSizeSelector
+                      exportable
+                      exportFileName="distribuicao-por-pasta-departamento"
+                      exportTitle="Distribuição por Pasta & Departamento"
+                    />
+                  </div>
+                </Card>
+              )}
 
-                              {/* LISTA DE SERVIDORES ALOCADOS NO DEPARTAMENTO */}
-                              <div className="space-y-1.5 pt-1">
-                                <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">
-                                  Equipe Operacional Vinculada:
+              {/* ESTRUTURA VISUAL DAS SECRETARIAS E SEUS DEPARTAMENTOS */}
+              {visualizacaoDistribuicao === 'cards' && (
+              <div className="space-y-6">
+                {dadosDistribuicao
+                  .filter((sec) => filtroSecDistribuicao === 'todas' || sec.codigo === filtroSecDistribuicao)
+                  .map((sec) => {
+                    const isNaoClassificados = sec.codigo === SEM_UNIDADE_CODIGO;
+                    return (
+                      <Card key={sec.codigo} className="border-border overflow-hidden">
+                        {/* CABEÇALHO DA SECRETARIA */}
+                        <div className="p-4 bg-muted/40 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge
+                                variant="outline"
+                                className={`font-mono text-xs font-bold ${isNaoClassificados ? 'border-amber-500/40 bg-amber-500/5 text-amber-500' : 'border-primary/40 bg-primary/5 text-primary'}`}
+                              >
+                                {sec.sigla || sec.nome}
+                              </Badge>
+                              <h3 className="text-sm font-bold text-foreground">{sec.nome}</h3>
+                            </div>
+                            {!isNaoClassificados && (
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                                <Shield className="h-3.5 w-3.5 text-primary" />
+                                <span>
+                                  Titular da Pasta:{' '}
+                                  <strong className="text-foreground">{sec.responsavel?.name || 'Não definido'}</strong>
                                 </span>
-                                {servidoresFiltrados.length === 0 ? (
-                                  <div className="text-xs text-muted-foreground italic py-2">
-                                    {buscaDistribuicao ? 'Nenhum servidor corresponde à busca.' : 'Carregando servidores alocados...'}
-                                  </div>
-                                ) : (
-                                  servidoresFiltrados.map((s) => (
-                                    <div
-                                      key={s.id}
-                                      className="p-2 rounded bg-muted/30 border border-border/40 flex items-center justify-between text-xs hover:bg-muted/50 transition-colors"
-                                    >
-                                      <div className="space-y-0.5 min-w-0 pr-2">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-mono font-bold text-primary text-[11px] tabular-nums">
-                                            {s.matricula}
-                                          </span>
-                                          <span className="font-medium text-foreground text-xs truncate">
-                                            {s.nome_completo}
-                                          </span>
-                                        </div>
-                                        <div className="text-[11px] text-muted-foreground truncate">
-                                          {s.cargo_efetivo} • Estatutário (RPPS)
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center gap-1.5 shrink-0">
-                                        {s.estagio_probatorio ? (
-                                          <Badge variant="outline" className="text-[9px] font-mono text-amber-500 border-amber-500/30">
-                                            Estágio ({s.estagio_fase_atual ? `${s.estagio_fase_atual}ª Fase` : 'Ativo'})
-                                          </Badge>
-                                        ) : (
-                                          <Badge variant="outline" className="text-[9px] font-mono text-emerald-500 border-emerald-500/30">
-                                            Estável
-                                          </Badge>
-                                        )}
-                                        <Badge variant="secondary" className="text-[9px] font-mono">
-                                          Vínculo Ativo
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                  ))
+                                {sec.responsavel?.email && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-mono text-[11px]">{sec.responsavel.email}</span>
+                                  </>
                                 )}
                               </div>
-                            </div>
-
-                            {/* RODAPÉ DO DEPARTAMENTO */}
-                            <div className="pt-2 border-t border-border/50 flex items-center justify-between text-[11px] text-muted-foreground font-mono">
-                              <span>Vínculo: org_unit_user (membro)</span>
-                              <span>Lotação: 100% regular</span>
-                            </div>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </Card>
-                );
-              })}
-          </div>
 
-          {/* TABELA MATRIZ CONSOLIDADA DE OCUPAÇÃO INSTITUCIONAL */}
-          <Card className="p-4 space-y-3 border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" />
-                  Matriz Consolidada de Distribuição por Pasta e Departamento
-                </h4>
-                <p className="text-[11px] text-muted-foreground">
-                  Quadro de lotação institucional de servidores e chefias conforme Decreto e Lei nº 1.704/2006.
-                </p>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[11px] font-mono">
+                              {sec.departamentos.length} {sec.departamentos.length === 1 ? 'Departamento' : 'Departamentos'}
+                            </Badge>
+                            <Badge variant="default" className="text-[11px] font-mono bg-primary text-primary-foreground">
+                              {sec.totalServidores} Servidores Operacionais
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* GRID DE DEPARTAMENTOS */}
+                        <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          {sec.departamentos.map((dep) => {
+                            const servidoresFiltrados = dep.servidores.filter((s) => {
+                              if (!buscaDistribuicao) return true;
+                              const q = buscaDistribuicao.toLowerCase();
+                              return (
+                                s.nome_completo.toLowerCase().includes(q) ||
+                                s.matricula.toLowerCase().includes(q) ||
+                                s.cargo_efetivo.toLowerCase().includes(q)
+                              );
+                            });
+
+                            return (
+                              <div
+                                key={dep.codigo}
+                                className="rounded-lg border border-border bg-card/60 p-4 space-y-3 flex flex-col justify-between"
+                              >
+                                <div className="space-y-2">
+                                  {/* TOPO DO DEPARTAMENTO */}
+                                  <div className="flex items-start justify-between gap-2 border-b border-border/60 pb-2.5">
+                                    <div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-mono text-[11px] font-bold text-primary">
+                                          [{dep.codigo}]
+                                        </span>
+                                        <h4 className="text-xs font-bold text-foreground line-clamp-1">
+                                          {dep.nome}
+                                        </h4>
+                                      </div>
+                                      {!isNaoClassificados && (
+                                        <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
+                                          <Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                          <span>
+                                            Diretor(a):{' '}
+                                            <strong className="text-foreground">{dep.responsavel?.name || 'Não definido'}</strong>
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                                      {dep.servidores.length} servidores
+                                    </Badge>
+                                  </div>
+
+                                  {/* LISTA DE SERVIDORES ALOCADOS NO DEPARTAMENTO */}
+                                  <div className="space-y-1.5 pt-1">
+                                    <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">
+                                      Equipe Operacional Vinculada:
+                                    </span>
+                                    {servidoresFiltrados.length === 0 ? (
+                                      <div className="text-xs text-muted-foreground italic py-2">
+                                        {buscaDistribuicao ? 'Nenhum servidor corresponde à busca.' : 'Nenhum servidor alocado.'}
+                                      </div>
+                                    ) : (
+                                      servidoresFiltrados.map((s) => (
+                                        <div
+                                          key={s.id}
+                                          className="p-2 rounded bg-muted/30 border border-border/40 flex items-center justify-between text-xs hover:bg-muted/50 transition-colors"
+                                        >
+                                          <div className="space-y-0.5 min-w-0 pr-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-mono font-bold text-primary text-[11px] tabular-nums">
+                                                {s.matricula}
+                                              </span>
+                                              <span className="font-medium text-foreground text-xs truncate">
+                                                {s.nome_completo}
+                                              </span>
+                                            </div>
+                                            <div className="text-[11px] text-muted-foreground truncate">
+                                              {s.cargo_efetivo} • Estatutário (RPPS)
+                                            </div>
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            {s.estagio_probatorio ? (
+                                              <Badge variant="outline" className="text-[9px] font-mono text-amber-500 border-amber-500/30">
+                                                Estágio ({s.estagio_fase_atual ? `${s.estagio_fase_atual}ª Fase` : 'Ativo'})
+                                              </Badge>
+                                            ) : (
+                                              <Badge variant="outline" className="text-[9px] font-mono text-emerald-500 border-emerald-500/30">
+                                                Estável
+                                              </Badge>
+                                            )}
+                                            <Badge variant="secondary" className="text-[9px] font-mono">
+                                              Vínculo Ativo
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* RODAPÉ DO DEPARTAMENTO */}
+                                <div className="pt-2 border-t border-border/50 flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                                  <span>Vínculo: org_unit_user (membro)</span>
+                                  <span>Lotação: 100% regular</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </Card>
+                    );
+                  })}
               </div>
-              <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30">
-                Total: 50 Servidores Operacionais + 15 Chefias
-              </Badge>
-            </div>
+              )}
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-mono border-y border-border">
-                  <tr>
-                    <th className="py-2.5 px-3">Secretaria (Pasta)</th>
-                    <th className="py-2.5 px-3">Departamento</th>
-                    <th className="py-2.5 px-3">Diretor(a) Responsável</th>
-                    <th className="py-2.5 px-3 text-center">Servidores</th>
-                    <th className="py-2.5 px-3 text-center">Estágio Probatório</th>
-                    <th className="py-2.5 px-3 text-center">Estáveis</th>
-                    <th className="py-2.5 px-3 text-right">Status do Quadro</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border font-mono">
-                  {dadosDistribuicao.flatMap((sec) =>
-                    sec.departamentos.map((dep, idx) => (
-                      <tr key={dep.codigo} className="hover:bg-muted/20 transition-colors">
-                        {idx === 0 ? (
-                          <td
-                            rowSpan={sec.departamentos.length}
-                            className="py-2.5 px-3 font-semibold text-foreground align-top border-r border-border font-sans"
-                          >
-                            <div className="font-bold text-xs">{sec.sigla}</div>
-                            <div className="text-[11px] text-muted-foreground">{sec.nome}</div>
-                            <div className="text-[10px] text-primary mt-1 font-mono">
-                              Secretário: {sec.secretario.nome}
-                            </div>
-                          </td>
-                        ) : null}
-                        <td className="py-2.5 px-3 text-foreground font-sans">
-                          <div className="font-semibold text-xs">{dep.nome}</div>
-                          <div className="text-[10px] text-muted-foreground font-mono">{dep.codigo}</div>
-                        </td>
-                        <td className="py-2.5 px-3 text-muted-foreground font-sans">
-                          <div>{dep.diretor.nome}</div>
-                          <div className="text-[10px] font-mono text-primary">{dep.diretor.matricula}</div>
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-bold text-foreground tabular-nums">
-                          {dep.servidores.length}
-                        </td>
-                        <td className="py-2.5 px-3 text-center text-amber-500 tabular-nums">
-                          {dep.totalEstagio}
-                        </td>
-                        <td className="py-2.5 px-3 text-center text-emerald-500 tabular-nums">
-                          {dep.totalEstaveis}
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-sans font-medium">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Quadro Completo
-                          </span>
-                        </td>
+              {/* TABELA MATRIZ CONSOLIDADA DE OCUPAÇÃO INSTITUCIONAL */}
+              <Card className="p-4 space-y-3 border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      Matriz Consolidada de Distribuição por Pasta e Departamento
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground">
+                      Quadro de lotação institucional de servidores e chefias conforme Decreto e Lei nº 1.704/2006.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30">
+                    Total: {kpisDistribuicao.totalServidoresCarregados} Servidores + {kpisDistribuicao.totalChefias} Chefias
+                  </Badge>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-mono border-y border-border">
+                      <tr>
+                        <th className="py-2.5 px-3">Secretaria (Pasta)</th>
+                        <th className="py-2.5 px-3">Departamento</th>
+                        <th className="py-2.5 px-3">Diretor(a) Responsável</th>
+                        <th className="py-2.5 px-3 text-center">Servidores</th>
+                        <th className="py-2.5 px-3 text-center">Estágio Probatório</th>
+                        <th className="py-2.5 px-3 text-center">Estáveis</th>
+                        <th className="py-2.5 px-3 text-right">Status do Quadro</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                    </thead>
+                    <tbody className="divide-y divide-border font-mono">
+                      {dadosDistribuicao.flatMap((sec) =>
+                        sec.departamentos.map((dep, idx) => (
+                          <tr key={dep.codigo} className="hover:bg-muted/20 transition-colors">
+                            {idx === 0 ? (
+                              <td
+                                rowSpan={sec.departamentos.length}
+                                className="py-2.5 px-3 font-semibold text-foreground align-top border-r border-border font-sans"
+                              >
+                                <div className="font-bold text-xs">{sec.sigla || sec.nome}</div>
+                                <div className="text-[11px] text-muted-foreground">{sec.nome}</div>
+                                <div className="text-[10px] text-primary mt-1 font-mono">
+                                  Secretário: {sec.responsavel?.name || 'Não definido'}
+                                </div>
+                              </td>
+                            ) : null}
+                            <td className="py-2.5 px-3 text-foreground font-sans">
+                              <div className="font-semibold text-xs">{dep.nome}</div>
+                              <div className="text-[10px] text-muted-foreground font-mono">{dep.codigo}</div>
+                            </td>
+                            <td className="py-2.5 px-3 text-muted-foreground font-sans">
+                              <div>{dep.responsavel?.name || 'Não definido'}</div>
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-bold text-foreground tabular-nums">
+                              {dep.servidores.length}
+                            </td>
+                            <td className="py-2.5 px-3 text-center text-amber-500 tabular-nums">
+                              {dep.totalEstagio}
+                            </td>
+                            <td className="py-2.5 px-3 text-center text-emerald-500 tabular-nums">
+                              {dep.totalEstaveis}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-sans font-medium">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Quadro Completo
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </>
+          )}
         </div>
       )}
 
@@ -1475,6 +1895,7 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
             exportable
             exportFileName="servidores-rh"
             exportTitle="CAPD — Quadro Geral de Servidores"
+            onRowClick={(row) => setServidorDetalheId(row.id)}
           />
         </Card>
       )}
@@ -1544,6 +1965,112 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
           </div>
         </Card>
       )}
+
+      {/* ── Modal: Painel de Detalhe do Servidor (Quadro Geral) ─────────── */}
+      <Modal
+        open={servidorDetalheId != null}
+        onClose={() => setServidorDetalheId(null)}
+        title={servidorDetalhe?.nome_completo || 'Detalhe do Servidor'}
+        icon={<UserCircle className="h-5 w-5" />}
+        size="lg"
+      >
+        {servidorDetalhe && (
+          <div className="space-y-5 p-1">
+            {/* DADOS CADASTRAIS */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Dados Cadastrais</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div><span className="text-muted-foreground">Matrícula: </span><span className="font-mono font-bold text-primary">{servidorDetalhe.matricula}</span></div>
+                <div><span className="text-muted-foreground">CPF: </span><span className="font-mono">{servidorDetalhe.cpf}</span></div>
+                <div><span className="text-muted-foreground">Cargo: </span><span className="text-foreground">{servidorDetalhe.cargo_efetivo}</span></div>
+                <div><span className="text-muted-foreground">Situação: </span><span className="text-foreground">{servidorDetalhe.situacao_funcional}</span></div>
+                <div>
+                  <span className="text-muted-foreground">Secretaria: </span>
+                  <span className="text-foreground">{classificacaoPorServidor.get(servidorDetalhe.id)?.secretaria || 'Não Classificado'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Departamento: </span>
+                  <span className="text-foreground">{classificacaoPorServidor.get(servidorDetalhe.id)?.departamento || '—'}</span>
+                </div>
+                {servidorDetalhe.data_admissao && (
+                  <div><span className="text-muted-foreground">Admissão: </span><span className="font-mono">{servidorDetalhe.data_admissao}</span></div>
+                )}
+              </div>
+            </div>
+
+            {/* HISTÓRICO DE AVALIAÇÕES */}
+            <div className="space-y-2 border-t border-border pt-3">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Histórico de Avaliações (todos os ciclos)</h4>
+              {detalheLoading ? (
+                <p className="text-xs text-muted-foreground">Carregando...</p>
+              ) : detalheAvaliacoes.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">Nenhuma avaliação registrada.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {detalheAvaliacoes.map((av) => (
+                    <button
+                      key={av.id}
+                      type="button"
+                      onClick={() => {
+                        setAvaliacaoEmFocoId(av.id);
+                        setModalEspelhoOpen(true);
+                      }}
+                      className="w-full flex items-center justify-between rounded border border-border px-3 py-1.5 text-xs hover:bg-muted/40 text-left"
+                    >
+                      <span className="text-foreground">{av.ciclo?.nome || `Ciclo #${av.ciclo_id}`}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono tabular-nums text-foreground">{av.nota_final ?? '—'}</span>
+                        <Badge variant={av.elegivel_progressao ? 'success' : 'outline'} className="text-[10px]">
+                          {av.elegivel_progressao ? 'Elegível' : 'Não elegível'}
+                        </Badge>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* QUINQUÊNIOS */}
+            <div className="space-y-2 border-t border-border pt-3">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Quinquênios</h4>
+              {detalheLoading ? (
+                <p className="text-xs text-muted-foreground">Carregando...</p>
+              ) : !detalheQuinquenios || detalheQuinquenios.quinquenios.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">Nenhum quinquênio registrado.</p>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Total: {detalheQuinquenios.total} — {detalheQuinquenios.percentual_total}% de gratificação
+                  </p>
+                  {detalheQuinquenios.quinquenios.map((q) => (
+                    <div key={q.id} className="flex items-center justify-between text-xs px-3 py-1 rounded bg-muted/30">
+                      <span className="font-mono">{q.data_quinquenio}</span>
+                      <span className="font-mono text-emerald-500">+{q.percentual}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* AFASTAMENTOS */}
+            <div className="space-y-2 border-t border-border pt-3">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Afastamentos</h4>
+              {!servidorDetalhe.afastamentos || servidorDetalhe.afastamentos.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">Nenhum afastamento registrado.</p>
+              ) : (
+                <div className="space-y-1">
+                  {servidorDetalhe.afastamentos.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between text-xs px-3 py-1 rounded bg-muted/30">
+                      <span className="text-foreground">{a.tipo_afastamento}</span>
+                      <span className="font-mono text-muted-foreground">{a.data_inicio} — {a.data_fim || 'em andamento'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* ── Modal: Visualização do Espelho da Avaliação ────────────────── */}
       <EspelhoAvaliacaoModal

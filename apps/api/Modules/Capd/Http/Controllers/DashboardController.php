@@ -13,6 +13,7 @@ use Modules\Capd\Models\Avaliacao;
 use Modules\Capd\Models\CicloAvaliacao;
 use Modules\Capd\Models\DiarioBordo;
 use Modules\Capd\Models\Recurso;
+use Modules\Capd\Services\PainelGerencialService;
 
 /**
  * Dashboard Executivo e Painel de Business Intelligence (BI) da CAPD.
@@ -22,6 +23,21 @@ use Modules\Capd\Models\Recurso;
  */
 final class DashboardController extends Controller
 {
+    public function __construct(
+        private readonly PainelGerencialService $painelService,
+    ) {}
+
+    /**
+     * Evolução entre ciclos avaliativos do tenant (média de NFD e taxa de conclusão),
+     * para o gráfico "Evolução Entre Ciclos" da aba Dashboard Analítico & BI.
+     */
+    public function evolucaoCiclos(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->hasPermissionTo('capd.dashboard.view'), 403);
+
+        return response()->json($this->painelService->evolucaoCiclos());
+    }
+
     public function metricas(Request $request): JsonResponse
     {
         $tenantId = (int) app(TenantContext::class)->id();

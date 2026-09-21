@@ -271,6 +271,47 @@ final class PainelGerencialService
     }
 
     /**
+     * Evolução histórica de nota média (NFD, escala 0–10) e taxa de conclusão por ciclo
+     * avaliativo do tenant, para o gráfico "Evolução Entre Ciclos" do Dashboard Analítico & BI.
+     * Query única agrupada por `ciclo_id` — evita N+1 ao cobrir todos os ciclos do tenant de uma vez.
+     *
+     * @return array<int, array{ciclo_id: int, ano_referencia: int, nome: string, media_nota: float, taxa_conclusao: float, total_avaliacoes: int}>
+     */
+    public function evolucaoCiclos(): array
+    {
+        $porCiclo = Avaliacao::query()
+            ->select(
+                'ciclo_id',
+                DB::raw('count(*) as total'),
+                DB::raw('sum(case when data_conclusao is not null then 1 else 0 end) as concluidas'),
+                DB::raw('avg(case when data_conclusao is not null then nota_final else null end) as media_nota')
+            )
+            ->groupBy('ciclo_id')
+            ->get()
+            ->keyBy('ciclo_id');
+
+        return CicloAvaliacao::query()
+            ->orderBy('ano_referencia')
+            ->get()
+            ->map(function (CicloAvaliacao $ciclo) use ($porCiclo): array {
+                $dados = $porCiclo->get($ciclo->id);
+                $total = (int) ($dados->total ?? 0);
+                $concluidas = (int) ($dados->concluidas ?? 0);
+
+                return [
+                    'ciclo_id'         => $ciclo->id,
+                    'ano_referencia'   => $ciclo->ano_referencia,
+                    'nome'             => $ciclo->nome,
+                    'media_nota'       => $dados && $dados->media_nota !== null ? round((float) $dados->media_nota, 2) : 0.0,
+                    'taxa_conclusao'   => $total > 0 ? round(($concluidas / $total) * 100, 1) : 0.0,
+                    'total_avaliacoes' => $total,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * RF-12 — Relatório de Aderência do Ciclo: evolução do preenchimento por
      * secretaria/departamento (orgao_lotacao), destacando os gestores com
      * subordinados pendentes de avaliação.
