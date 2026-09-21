@@ -48,6 +48,7 @@ import { CadastroPerguntasPanel } from '../CadastroPerguntasPanel';
 import { EscalaGraficaPanel } from '../EscalaGraficaPanel';
 import { FatoresPesosPanel } from '../FatoresPesosPanel';
 import { ConsolidacaoPanel } from '../ConsolidacaoPanel';
+import { PainelGerencialPanel } from '../PainelGerencialPanel';
 import { EspelhoAvaliacaoModal } from '../EspelhoAvaliacaoModal';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
@@ -71,6 +72,7 @@ type CadSubTab =
   | 'julgamento'
   | 'sessoes'
   | 'comissao'
+  | 'painel-gerencial'
   | 'ciclos'
   | 'perguntas'
   | 'escalas'
@@ -1496,6 +1498,11 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
       badge: comissoes.length,
     },
     {
+      key: 'painel-gerencial',
+      label: 'Painel Gerencial & Auditoria',
+      icon: <ShieldAlert className="h-4 w-4" />,
+    },
+    {
       key: 'ciclos',
       label: 'Ciclos Anuais (12 Meses)',
       icon: <Calendar className="h-4 w-4" />,
@@ -1718,8 +1725,8 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
             valueClassName="text-amber-600 dark:text-amber-400"
           />
         </div>
-      ) : activeTab === 'perguntas' || activeTab === 'escalas' || activeTab === 'pesos' || activeTab === 'consolidacao' || activeTab === 'homologacao' ? (
-        /* SEM CARDS AQUI: Perguntas, Escalas, Pesos, Consolidação e Homologação exibem seus próprios KPIs internamente */
+      ) : activeTab === 'painel-gerencial' || activeTab === 'perguntas' || activeTab === 'escalas' || activeTab === 'pesos' || activeTab === 'consolidacao' || activeTab === 'homologacao' ? (
+        /* SEM CARDS AQUI: Painel Gerencial, Perguntas, Escalas, Pesos, Consolidação e Homologação exibem seus próprios KPIs internamente */
         null
       ) : (
         /* CARDS GERAIS DE GOVERNANÇA DO ÓRGÃO */
@@ -2834,6 +2841,9 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
           </Card>
         </div>
       )}
+
+      {/* ── SUB-ABA: PAINEL GERENCIAL & AUDITORIA DA COMISSÃO ────────── */}
+      {activeTab === 'painel-gerencial' && <PainelGerencialPanel cicloId={cicloAtivo?.id} />}
 
       {/* ── SUB-ABA 4: GESTÃO DE CICLOS 12 MESES ─────────────────────── */}
       {activeTab === 'ciclos' && <GestaoCiclosPanel />}

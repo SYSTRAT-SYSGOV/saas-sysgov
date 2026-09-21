@@ -65,7 +65,7 @@ final class PmdController extends Controller
     /** Exibe um PMD. */
     public function show(int $id): JsonResponse
     {
-        $pmd = PlanoMelhoria::with(['ciclo', 'cicloVerificacao'])->findOrFail($id);
+        $pmd = PlanoMelhoria::with(['ciclo', 'cicloVerificacao', 'servidor:id,nome_completo,matricula,cargo_efetivo,orgao_lotacao'])->findOrFail($id);
 
         return response()->json($pmd);
     }

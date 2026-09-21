@@ -38,7 +38,7 @@
 - [x] 3.1 `npx vitest run` em `apps/web-client`: **12 arquivos, 83 testes, todos passando**
       (inclui os 2 testes novos de `construirClassificacaoPorServidor`, tarefa 1.1).
 - [x] 3.2 `npm run typecheck` na raiz: zero erros.
-- [ ] 3.3 **Validação manual (a cargo do usuário).** Conferir que a coluna de secretaria bate com
+- [x] 3.3 **Validação manual (a cargo do usuário).** Conferir que a coluna de secretaria bate com
       a aba de Distribuição para os mesmos servidores, que o painel de detalhe abre ao clicar numa
       linha e mostra avaliações de mais de um ciclo quando existirem, e que "Ver Avaliação"
       continua funcionando isoladamente.

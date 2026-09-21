@@ -472,10 +472,13 @@ Somente membros ativos da Comissão ou portadores de `capd.avaliacoes.homologar`
 
 A NFC SHALL ser a média aritmética das notas de ciclo do triênio (`(Nc1 + Nc2 + Nc3) / 3`),
 com 2 casas decimais, apurada sobre os ciclos cujo ano base é `ano_competencia − (etapa − 1)`
-até `+2`, no mesmo tenant. A elegibilidade compara a NFC à `nota_corte_nfc` do ciclo (padrão
-`70.00`, parametrizável pela Comissão) e o conceito sai das faixas configuráveis
-(Excelente/Bom/Regular/Insuficiente). O resultado é publicado assincronamente como
-`capd.nfc.consolidada` via Outbox e auditado.
+até `+2`, no mesmo tenant. As notas de ciclo (Nc) SHALL ser obtidas convertendo
+`Avaliacao.nota_final` (NFD, escala 0,00–10,00) para a escala 0–100 (`Nc = nota_final × 10`,
+calculado com bcmath) — a mesma conversão já usada por `ConsolidacaoController.nfc()` — nunca
+alterando a escala nativa de `CalculadoraNotaService`. A elegibilidade compara a NFC à
+`nota_corte_nfc` do ciclo (padrão `70,00`, parametrizável pela Comissão, escala 0–100) e o
+conceito sai das faixas configuráveis (Excelente/Bom/Regular/Insuficiente), também na escala
+0–100. O resultado é publicado assincronamente como `capd.nfc.consolidada` via Outbox e auditado.
 
 #### Scenario: servidor sem avaliações concluídas no triênio
 - **WHEN** nenhum dos ciclos do triênio tem avaliação com `nota_final`
@@ -506,7 +509,12 @@ até `+2`, no mesmo tenant. A elegibilidade compara a NFC à `nota_corte_nfc` do
 - **WHEN** `ConsolidacaoTrienalService.persistir()` roda de novo para o mesmo (servidor, triênio)
 - **THEN** cria um novo registro com `versao = max(versao) + 1`, preservando o snapshot anterior
 
----
+#### Scenario: NFC apurada a partir de notas de ciclo NFD convertidas corretamente
+- **WHEN** os três ciclos do triênio têm `nota_final` concluído em 7,00, 7,50 e 8,00 (NFD, escala
+  0–10) e o ciclo final usa o corte padrão de 70,00
+- **THEN** cada nota de ciclo é convertida para 70,00 / 75,00 / 80,00, a NFC apurada é 75,00, o
+  servidor é considerado `elegivel = true`, e o conceito é determinado pelas faixas configuráveis
+  na escala 0–100
 
 ### Requirement: Fator de atendimento ao público é redistribuído para cargos sem atendimento
 <!-- id: ModeloFormulario.fatoresComPesosEfetivos -->
@@ -784,6 +792,667 @@ O painel de Homologação Final SHALL fornecer detalhamento sobre o despacho ass
 #### Scenario: Confirmação segura de homologação definitiva
 - **WHEN** o usuário clica para homologar um ciclo apto
 - **THEN** o sistema exibe `Modal` institucional com aviso de irretratabilidade jurídica das notas e, após confirmação, dispara a transação de homologação, registrando auditoria e publicando o evento no Outbox
+
+---
+
+### Requirement: Filtros Especializados de Acompanhamento do Estágio Probatório
+A aba "Acompanhamento do Estágio Probatório" do Portal de RH SHALL disponibilizar uma barra e painel colapsável de filtros avançados estruturados, permitindo aos gestores segmentar simultaneamente os servidores em período probatório por fase avaliativa, órgão de lotação e situação cadastral.
+
+#### Scenario: Filtragem por Fase do Estágio Probatório
+- **WHEN** o gestor seleciona a opção "2ª Fase (24 meses)" no seletor de fases
+- **THEN** a tabela exibe exclusivamente os servidores classificados na 2ª fase do estágio probatório, atualizando imediatamente os contadores visíveis
+
+#### Scenario: Filtragem combinada por Secretaria e Fase do Estágio
+- **WHEN** o gestor seleciona uma secretaria específica e uma fase do estágio
+- **THEN** a listagem exibe apenas servidores lotados na referida secretaria que estejam na fase selecionada
+
+#### Scenario: Filtragem por Status da Avaliação Periódica no Ciclo
+- **WHEN** o gestor seleciona a opção "Sem Avaliação no Ciclo Atual"
+- **THEN** o sistema filtra os servidores em estágio que ainda não tiveram avaliação registrada pelas chefias no ciclo ativo, facilitando a cobrança preventiva pelo DRH
+
+---
+
+### Requirement: Layout Responsivo sem Barra de Rolagem na Tabela de Estágio
+A tabela de Acompanhamento do Estágio Probatório SHALL estruturar suas colunas e larguras de modo a se ajustar perfeitamente ao container, eliminando a barra de rolagem lateral (scroll horizontal) em resoluções de desktop comuns (a partir de 1024px de largura).
+
+#### Scenario: Renderização das colunas com ênfase probatória
+- **WHEN** a tabela de estágio probatório é renderizada no desktop
+- **THEN** exibe colunas agrupadas contendo Servidor Público, Cargo & Regime, Lotação Institucional, Fase do Estágio & Interstício, Chefia Imediata e Ações, ajustando-se à largura disponível sem overflow horizontal
+
+#### Scenario: Tipografia técnica nos prazos e identificadores
+- **WHEN** as informações de matrícula, CPF, fases e datas de término do estágio são exibidas
+- **THEN** a renderização utiliza obrigatoriamente a fonte técnica `JetBrains Mono` (`font-mono tabular-nums`) do Design System SYSGOV
+
+---
+
+### Requirement: Painel de Indicadores Executivos do Estágio Probatório
+A aba de Estágio Probatório SHALL exibir no topo um conjunto de cartões de indicadores executivos (KPIs) específicos da cadência trienal.
+
+#### Scenario: Exibição da distribuição do efetivo em estágio
+- **WHEN** a aba "Acompanhamento do Estágio Probatório" é acessada
+- **THEN** o painel exibe cartões com o Total em Estágio Probatório, Servidores na 1ª Fase (12 meses), Servidores na 2ª Fase (24 meses), Servidores na 3ª Fase (36 meses / Estabilidade Iminente) e Taxa de Avaliação no Ciclo Vigente
+
+#### Scenario: Cores semânticas dos cartões de KPI de estágio
+- **WHEN** os KPIs são renderizados
+- **THEN** utilizam as cores semânticas oficiais do Design System (Âmbar para fases iniciais, Esmeralda para fase conclusiva/aprovação e Primária para o total)
+
+---
+
+### Requirement: Pílulas de Acesso Rápido para Estágio Probatório (Quick Filters)
+A interface de Estágio Probatório SHALL disponibilizar pílulas de navegação rápida com 1 clique para as fases probatórias e pendências de avaliação.
+
+#### Scenario: Alternância rápida de fases probatórias
+- **WHEN** o usuário clica na pílula "3ª Fase"
+- **THEN** o filtro de fase é instantaneamente aplicado e a tabela exibe os servidores em vias de aquisição de estabilidade
+
+---
+
+### Requirement: Filtros Especializados e Busca na Classificação e Desempate Art. 39
+A sub-aba "Classificação Oficial & Desempate Art. 39" do Portal de RH SHALL disponibilizar uma barra de busca rápida multifacetada e um painel colapsável de filtros avançados, permitindo aos gestores segmentar o ranking funcional por órgão de lotação, cargo efetivo, conceito avaliativo e elegibilidade à progressão.
+
+#### Scenario: Filtragem por Secretaria e Departamento do organograma
+- **WHEN** o gestor seleciona uma secretaria específica no painel de filtros
+- **THEN** a tabela de classificação filtra instantaneamente apenas os servidores lotados na referida pasta e reajusta o seletor contextual de departamentos
+
+#### Scenario: Filtragem por Elegibilidade à Progressão Funcional
+- **WHEN** o gestor seleciona a opção "Elegíveis à Progressão (NFC >= 70)"
+- **THEN** o sistema exibe exclusivamente os servidores aptos à evolução na carreira, ocultando os servidores encaminhados para PMD
+
+#### Scenario: Filtragem exclusiva de Servidores com Empate de Notas
+- **WHEN** o gestor seleciona a opção "Apenas Casos de Desempate (Art. 39)"
+- **THEN** a listagem filtra exclusivamente os servidores que compartilham a mesma pontuação na NFC e cuja classificação final foi desempatada por tempo de serviço ou idade
+
+---
+
+### Requirement: Painel de Indicadores Executivos do Ranking de Progressão
+A sub-aba de Classificação e Desempate SHALL exibir no topo um painel com cartões de indicadores executivos (KPIs) consolidados do ciclo de avaliação e progressão.
+
+#### Scenario: Exibição de métricas gerais de ranqueamento e média NFC
+- **WHEN** a aba de Classificação Oficial & Desempate Art. 39 é aberta
+- **THEN** o painel exibe cartões com o Total de Ranqueados, Total e Percentual de Aptos à Progressão, Total de Casos em PMD, Média da NFC Geral e Quantidade de Empates Desempatados pelo Art. 39
+
+#### Scenario: Alerta visual para servidores encaminhados ao PMD
+- **WHEN** o índice ou contagem de servidores com NFC inferior a 70,00 pontos é exibido
+- **THEN** utiliza a cor semântica de alerta/danger do Design System SYSGOV e destaca a necessidade de plano de melhoria
+
+---
+
+### Requirement: Tabela Fluida de Desempate sem Barra de Rolagem Horizontal
+A tabela de Classificação Oficial & Desempate Art. 39 SHALL dimensionar suas colunas proporcionalmente sem travas rígidas de largura mínima, ajustando-se a 100% do container e eliminando a barra de rolagem horizontal em resoluções de desktop (>= 1024px).
+
+#### Scenario: Ajuste responsivo de colunas no desktop
+- **WHEN** a tabela de ranking e desempate é renderizada em desktop
+- **THEN** apresenta as colunas Posição, Servidor Público, Lotação Institucional, 1º NFC, 2º Tempo de Serviço, 3º Idade Civil, Conceito e Status de Elegibilidade sem gerar scroll horizontal
+
+#### Scenario: Tipografia técnica nos critérios legais do Art. 39
+- **WHEN** os dados de posição, NFC, dias de serviço, idade e matrícula são renderizados
+- **THEN** utiliza obrigatoriamente a fonte técnica `JetBrains Mono` (`font-mono tabular-nums`) do Design System SYSGOV
+
+---
+
+### Requirement: Pílulas de Acesso Rápido para Classificação Funcional
+A interface de Classificação Oficial & Desempate Art. 39 SHALL fornecer pílulas de navegação rápida (*Quick Filters*) para filtragem ágil em 1 clique.
+
+#### Scenario: Alternância rápida de faixas de conceito e empates
+- **WHEN** o gestor clica na pílula "Empates Art. 39"
+- **THEN** o filtro é aplicado imediatamente exibindo apenas os servidores cujas posições decorreram da aplicação dos critérios de desempate
+
+---
+
+### Requirement: Painel Executivo e Métricas da Cadeia de Hierarquia Avaliativa
+O sistema SHALL exibir no topo da aba de Configuração de Hierarquia um painel executivo com 4 cartões de indicadores (KPIs) sintetizando a cobertura e a integridade da cadeia de comando avaliativa:
+1. **Total de Níveis Parametrizados**: Contagem de escalões configurados no tenant (ex.: Nível 0 - Setor, Nível 1 - Departamento, Nível 2 - Secretaria, Nível 3 - Gabinete/Prefeitura).
+2. **Nível Topo Homologado**: Indicação se o topo da pirâmide institucional está homologado com avaliador ou papel RBAC vinculado (ex.: Controladoria ou Prefeito).
+3. **Regras de Substituição Ativas**: Distribuição e prevalência das regras de impedimento ("Superior Hierárquico" vs "Substituto Legal").
+4. **Status de Integridade da Cadeia**: Indicador visual (conforme / alerta) que aponta se há lacunas na sequência de níveis ou ausência de nível topo.
+
+#### Scenario: Visualização dos KPIs com hierarquia íntegra
+- **WHEN** o gestor acessa a aba de Configuração de Hierarquia com níveis de 0 a 2 cadastrados e nível 2 definido como topo
+- **THEN** o painel exibe "3 Níveis Ativos", "Nível Topo Configurado (Nível 2)", "Regras de Substituição: 100% Definidas" e status "Cadeia Homologada"
+
+#### Scenario: Visualização de alerta quando inexiste nível topo
+- **WHEN** a listagem de níveis não possui nenhum registro com flag `is_topo = true`
+- **THEN** o cartão de integridade exibe advertência visual destacando a ausência do topo institucional e orientando a definição do nível máximo
+
+---
+
+### Requirement: Gestão de Níveis com DataTable e Diálogo Seguro de Exclusão
+A listagem de níveis hierárquicos SHALL ser estruturada através de um `DataTable` com suporte a ordenação natural por nível numérico ascendente, busca rápida por texto, badges semânticos e diálogo de confirmação seguro:
+1. Não SHALL ser utilizado diálogo nativo do navegador (`window.confirm` ou `alert`) para desativação ou remoção de níveis.
+2. A confirmação de exclusão/desativação DEVE utilizar obrigatoriamente o componente `ConfirmDialog` com título, mensagem descritiva de impacto e botão destrutivo explícito.
+3. A numeração de níveis e identificadores DEVE utilizar tipografia técnica JetBrains Mono (`font-mono tabular-nums`).
+
+#### Scenario: Ordenação por nível e badges de status
+- **WHEN** os níveis são carregados da API
+- **THEN** são apresentados em ordem crescente de nível (Nível 0, 1, 2...), com badge dourado `Crown` no nível topo e badges semânticos para as regras de substituição
+
+#### Scenario: Desativação de nível via ConfirmDialog
+- **WHEN** o usuário clica no botão de desativar/excluir de um nível ativo
+- **THEN** é aberto um `ConfirmDialog` modal informando as consequências na resolução avaliativa e exigindo confirmação explícita antes de chamar a API
+
+---
+
+### Requirement: Simulador Interativo de Resolução de Avaliador da Hierarquia
+A aba SHALL disponibilizar uma ferramenta de simulação interativa ("Quem avalia quem?") permitindo ao gestor de RH validar na prática o algoritmo de subida hierárquica e substituição:
+1. O simulador permite selecionar uma unidade ou cargo de referência.
+2. Apresenta a cadeia resolvida passo a passo: Chefe Imediato (Nível 0) $\to$ Superior Imediato (Nível 1) $\to$ Topo do Órgão.
+3. Oferece um seletor de cenário de "Afastamento/Impedimento da Chefia", demonstrando em tempo real se a avaliação sobe para o superior hierárquico ou é transferida ao substituto legal designado.
+
+#### Scenario: Simulação em fluxo normal de chefia ativa
+- **WHEN** o gestor seleciona um departamento e testa o fluxo padrão
+- **THEN** o simulador exibe a linha do tempo com o chefe imediato como primeiro avaliador competente
+
+#### Scenario: Simulação com chefia imediata afastada
+- **WHEN** o gestor ativa o switch de "Chefe Imediato em Licença/Afastado"
+- **THEN** o simulador aplica a regra cadastrada no nível (sobe para o Diretor/Secretário ou direciona para o Substituto Legal) e destaca a fundamentação regimental
+
+---
+
+### Requirement: Visualização Esquemática em Árvore e Fluxo da Pirâmide Avaliativa
+O painel SHALL fornecer uma visualização gráfica ou esquemática em pirâmide/árvore conectada dos níveis hierárquicos da organização:
+1. Apresenta os cartões dos níveis em sequência visual da base ao ápice.
+2. Cada cartão exibe o nível, nome, cargo de referência e ícone correspondente.
+3. Mostra as setas ou conexões de fluxo de subida regimental da avaliação.
+
+#### Scenario: Alternância entre visualização em Tabela e em Árvore
+- **WHEN** o usuário clica no seletor de modo de visualização ("Tabela" vs "Estrutura em Árvore")
+- **THEN** a interface alterna fluidamente entre o grid detalhado do `DataTable` e os cartões conectados da pirâmide institucional
+
+### Requirement: Painel de Indicadores Executivos e Impacto Financeiro da Folha
+A sub-aba "Exportação Folha de Pagamento" do Portal de RH SHALL exibir no topo um painel executivo com cartões de indicadores (KPIs) orçamentários consolidados da evolução funcional decorrente da cadência avaliativa.
+
+#### Scenario: Exibição do impacto mensal e anualizado com encargos
+- **WHEN** a aba de Exportação Folha de Pagamento é acessada
+- **THEN** o painel exibe cartões com o Total da Folha Mensal Base, Impacto Financeiro Mensal do Reajuste (+10%), Impacto Anual Projetado (considerando 13º salário e terço constitucional de férias) e Quantitativo de Servidores Homologados vs Retidos em PMD
+
+#### Scenario: Tipografia técnica e representação monetária
+- **WHEN** os valores salariais, percentuais de reajuste e impactos orçamentários são renderizados
+- **THEN** utiliza obrigatoriamente a fonte técnica `JetBrains Mono` (`font-mono tabular-nums`) do Design System SYSGOV e cálculos baseados em centavos inteiros (`int $cents`)
+
+---
+
+### Requirement: Filtros Avançados e Busca Multifacetada de Folha de Pagamento
+A sub-aba de Exportação Folha de Pagamento SHALL fornecer campo de busca rápida por texto e um painel colapsável de filtros avançados para segmentação orçamentária e cadastral.
+
+#### Scenario: Filtragem por Secretaria e Departamento institucional
+- **WHEN** o gestor seleciona uma secretaria específica nos filtros avançados
+- **THEN** a tabela e o sumário financeiro filtram os dados apenas para a pasta selecionada e atualizam o seletor contextual de departamentos
+
+#### Scenario: Filtragem por Situação de Concessão Funcional
+- **WHEN** o gestor filtra por servidores com status "Apto ao Reajuste (+10%)"
+- **THEN** a interface exibe apenas os servidores que atingiram a nota de corte (NFC >= 70,00 pts), omitindo servidores em PMD
+
+#### Scenario: Filtragem por Faixa Salarial e Magnitude do Impacto
+- **WHEN** o gestor define critérios de faixa de remuneração ou impacto financeiro
+- **THEN** a listagem isola os servidores pertencentes aos intervalos monetários informados
+
+---
+
+### Requirement: Pílulas de Acesso Rápido para Gestão da Folha (Quick Filters)
+A interface de folha de pagamento SHALL disponibilizar botões de filtro rápido (*Quick Filters*) para consultas imediatas em 1 clique.
+
+#### Scenario: Filtragem instantânea de servidores retidos em PMD
+- **WHEN** o gestor clica na pílula "Retidos (PMD)"
+- **THEN** a visualização é imediatamente restrita aos servidores cuja evolução salarial está sobrestada por nota insuficiente
+
+---
+
+### Requirement: Exportação Especializada para Múltiplos ERPs Municipais
+O sistema SHALL disponibilizar opções de exportação parametrizadas para os principais sistemas integrados de gestão pública municipal (Betha Sistemas, IPM Atende.Net, Governa/CECAM e CSV Padrão Universal).
+
+#### Scenario: Exportação para o conector Betha Sistemas
+- **WHEN** o operador de RH seleciona o leiaute Betha Sistemas
+- **THEN** o arquivo é gerado com delimitador ponto-e-vírgula, cabeçalhos padronizados do leiaute de importação de eventos e identificadores de rubrica salarial correspondentes
+
+#### Scenario: Exportação para o conector IPM Atende.Net
+- **WHEN** o operador seleciona o leiaute IPM Atende.Net
+- **THEN** o arquivo é gerado com a formatação e campos compatíveis com a rotina de progressão por mérito da IPM
+
+---
+
+### Requirement: Grid Fluido de Folha de Pagamento sem Barra de Rolagem Lateral
+A tabela de homologação financeira da folha de pagamento SHALL dimensionar suas colunas responsivamente sem travas fixas rígidas de largura mínima, ajustando-se a 100% do container e eliminando a barra de rolagem horizontal em resoluções de desktop (>= 1024px).
+
+#### Scenario: Renderização fluida da tabela de impacto salarial
+- **WHEN** a tabela de folha de pagamento é exibida em monitores desktop
+- **THEN** apresenta todas as colunas essenciais (Servidor/Matrícula, Lotação, NFC, Salário Atual, Reajuste e Salário Projetado) com legibilidade completa e sem scroll horizontal lateral
+
+### Requirement: Estrutura Organizacional Real na Aba de Distribuição
+A aba "Distribuição por Pasta & Departamento" do Portal de RH e Secretaria Municipal de Gestão de
+Pessoas SHALL exibir as secretarias e departamentos reais cadastrados no organograma do tenant
+(módulo OrgChart), incluindo seus responsáveis reais, em vez de uma estrutura organizacional fixa
+não vinculada ao tenant autenticado.
+
+#### Scenario: Tenant com organograma próprio cadastrado
+- **WHEN** o usuário abre a aba de Distribuição por Pasta & Departamento de um tenant com
+  secretarias e departamentos cadastrados no OrgChart
+- **THEN** a aba exibe exatamente as secretarias e departamentos daquele tenant, com o nome do
+  responsável real de cada unidade, e não a estrutura de nenhum outro tenant
+
+### Requirement: Indicadores Agregados Reais na Distribuição
+Os indicadores agregados no topo da aba de Distribuição (total de secretarias, total de
+departamentos, total de chefias nomeadas, total de servidores lotados e percentual de vínculos
+institucionais) SHALL ser calculados a partir dos dados reais carregados pela aba, não a partir de
+valores fixos.
+
+#### Scenario: Contagens batem com os dados exibidos
+- **WHEN** o usuário visualiza os indicadores agregados do topo da aba de Distribuição
+- **THEN** o total de secretarias e departamentos exibido corresponde exatamente à quantidade de
+  cards renderizados abaixo, e o total de servidores lotados corresponde à soma dos servidores
+  listados em todos os departamentos
+
+### Requirement: Classificação de Servidores por Unidade Organizacional
+Cada servidor SHALL ser associado à sua unidade organizacional preferencialmente pelo vínculo
+direto (`org_unit_id`); na ausência desse vínculo, o sistema SHALL usar correspondência textual
+como alternativa. Um servidor que não corresponder a nenhuma unidade organizacional conhecida
+SHALL ser exibido em uma categoria explícita de "não classificados", nunca descartado
+silenciosamente.
+
+#### Scenario: Servidor sem vínculo organizacional direto e sem correspondência textual
+- **WHEN** um servidor não possui `org_unit_id` preenchido e seus dados textuais de lotação não
+  correspondem a nenhuma unidade organizacional cadastrada
+- **THEN** esse servidor aparece na categoria "não classificados" da aba de Distribuição, e é
+  contabilizado no indicador agregado de servidores lotados
+
+### Requirement: Filtros Avançados Multivariados no Quadro de Servidores
+A aba "Quadro de Servidores" do Portal de RH e Gestão de Pessoas SHALL disponibilizar uma barra e painel de filtros avançados multivariados, permitindo aos gestores segmentar simultaneamente o conjunto de servidores públicos por múltiplos critérios administrativos.
+
+#### Scenario: Filtragem simultânea por Secretaria e Condição Probatória
+- **WHEN** o gestor seleciona a secretaria "Secretaria Municipal de Educação" no seletor de órgãos e a opção "Em Estágio Probatório" no seletor de condição funcional
+- **THEN** a listagem de servidores exibe apenas os servidores pertencentes a essa secretaria que estão em estágio probatório, atualizando imediatamente o contador de registros visíveis
+
+#### Scenario: Filtragem por Departamento contextual à Secretaria
+- **WHEN** o gestor seleciona uma secretaria específica
+- **THEN** o seletor de departamento passa a listar exclusivamente as unidades departamentais vinculadas à referida secretaria conforme a árvore organizacional real
+
+#### Scenario: Busca textual combinada com filtros avançados
+- **WHEN** o gestor digita um termo de busca (matrícula, nome, CPF ou cargo) mantendo filtros avançados selecionados
+- **THEN** o sistema aplica a busca como critério aditivo (interseção lógica E), exibindo apenas servidores que atendem aos filtros selecionados e contenham o termo digitado
+
+#### Scenario: Limpeza de todos os filtros ativos
+- **WHEN** o gestor clica no botão "Limpar Filtros"
+- **THEN** todos os seletores e o campo de busca são redefinidos para os valores padrão, e a listagem volta a exibir a totalidade dos servidores cadastrados
+
+### Requirement: Layout Responsivo sem Barra de Rolagem Horizontal na Listagem
+A tabela do Quadro de Servidores SHALL estruturar suas colunas e larguras de modo a se ajustar perfeitamente à largura disponível do container, sem produzir barra de rolagem lateral (scroll horizontal) em resoluções de tela desktop comuns (a partir de 1024px de largura).
+
+#### Scenario: Renderização das colunas agrupadas em tela padrão
+- **WHEN** a tabela do Quadro Geral de Servidores é renderizada em uma resolução desktop típica de trabalho
+- **THEN** as colunas agrupam harmoniosamente dados cadastrais (Servidor com Matrícula e CPF), dados de lotação (Secretaria e Departamento unificados) e dados de vínculo (Estágio e Situação Funcional), mantendo a tabela integralmente visível sem overflow horizontal
+
+#### Scenario: Preservação de dados técnicos e formatação mono
+- **WHEN** os dados dos servidores são exibidos nas colunas agrupadas
+- **THEN** matrículas, CPFs, códigos de unidade e datas continuam renderizados obrigatoriamente com a tipografia `JetBrains Mono` (`font-mono tabular-nums`) do Design System SYSGOV
+
+### Requirement: Painel de Indicadores Executivos do Quadro de Servidores
+A aba do Quadro de Servidores SHALL exibir no topo um painel executivo com cards de indicadores (KPIs) dinâmicos sintetizando a distribuição do efetivo municipal.
+
+#### Scenario: Exibição dos indicadores panorâmicos de pessoal
+- **WHEN** a aba "Quadro de Servidores" é acessada
+- **THEN** o painel exibe cartões de KPI com o Total de Servidores, Servidores em Estágio Probatório (com percentual), Servidores Estáveis (com percentual), Total Alocado em Unidades Organizacionais e Servidores com Avaliação Registrada no Ciclo Ativo
+
+#### Scenario: Formatação e cores semânticas dos cartões de KPI
+- **WHEN** os KPIs são renderizados
+- **THEN** os valores numéricos utilizam a fonte técnica `JetBrains Mono`, com cores semânticas padronizadas pelo Design System (Primária para Total, Âmbar para Estágio Probatório, Esmeralda para Estáveis e Ciano para Lotação Regular)
+
+### Requirement: Pílulas de Acesso Rápido (Quick Filters)
+A interface do Quadro de Servidores SHALL disponibilizar botões de filtro rápido em formato de pílulas (chips) para alternância imediata entre os segmentos de consulta mais frequentes.
+
+#### Scenario: Seleção rápida de servidores em estágio probatório
+- **WHEN** o usuário clica na pílula rápida "Estágio Probatório"
+- **THEN** o filtro de condição funcional é automaticamente ajustado para "Em Estágio Probatório" e a tabela exibe instantaneamente apenas servidores nessa condição
+
+#### Scenario: Seleção rápida de servidores sem lotação definida
+- **WHEN** o usuário clica na pílula rápida "Sem Lotação"
+- **THEN** a tabela filtra exclusivamente servidores que não possuem vínculo registrado no organograma institucional, facilitando a identificação de pendências de alocação pelo DRH
+
+### Requirement: Classificação Organizacional Real no Quadro de Servidores
+A aba "Quadro Geral de Servidores" SHALL exibir a secretaria e o departamento reais de cada
+servidor, derivados do organograma cadastrado no OrgChart (mesma classificação por `org_unit_id`
+com fallback textual já usada na aba de Distribuição por Pasta & Departamento), em vez de uma
+heurística de texto genérica. Um servidor sem unidade organizacional correspondente SHALL ser
+exibido como "Não Classificado", nunca com uma sigla inventada a partir do texto livre de lotação.
+
+#### Scenario: Servidor vinculado a uma unidade real do organograma
+- **WHEN** o usuário visualiza o Quadro Geral de Servidores de um tenant com organograma
+  cadastrado
+- **THEN** a coluna de secretaria/departamento de cada servidor corresponde exatamente à unidade
+  organizacional real à qual ele está classificado, igual à aba de Distribuição
+
+#### Scenario: Servidor sem correspondência no organograma
+- **WHEN** um servidor não possui `org_unit_id` nem lotação textual reconhecível por nenhuma
+  unidade cadastrada
+- **THEN** a coluna de secretaria/departamento exibe "Não Classificado"
+
+### Requirement: Painel de Detalhe do Servidor no Quadro Geral
+Ao clicar numa linha do Quadro Geral de Servidores, o sistema SHALL abrir um painel de detalhe
+exibindo os dados cadastrais básicos do servidor, o histórico de avaliações de todos os ciclos
+avaliativos (não apenas o ciclo ativo), os quinquênios registrados e os afastamentos do servidor.
+
+#### Scenario: Consulta de detalhe de um servidor com histórico
+- **WHEN** o usuário clica na linha de um servidor que possui avaliações em mais de um ciclo
+- **THEN** o painel de detalhe lista as avaliações de todos os ciclos em que o servidor foi
+  avaliado, não somente a do ciclo selecionado na aba
+
+### Requirement: Dashboard Analítico com Dados Reais do Tenant
+A aba "Dashboard Analítico & BI" do Portal de RH e Secretaria Municipal de Gestão de Pessoas
+SHALL derivar todos os seus gráficos (dispersão de notas, clusters por secretaria, média por
+secretaria e proporção de conceitos) exclusivamente de dados reais do tenant autenticado
+(avaliações, servidores e métricas do ciclo selecionado), sem valores estáticos fabricados. O
+tempo de serviço exibido no gráfico de dispersão SHALL ser calculado a partir da data de admissão
+real do servidor. Quando o ciclo selecionado não possuir avaliações concluídas, a aba SHALL exibir
+um estado vazio explícito em vez de dados fictícios de exemplo.
+
+#### Scenario: Ciclo com avaliações concluídas
+- **WHEN** o usuário abre a aba Dashboard Analítico & BI com um ciclo que possui avaliações
+  concluídas
+- **THEN** os gráficos de dispersão, clusters, média por secretaria e proporção de conceitos
+  refletem os valores reais de `nota_final`, `orgao_lotacao` e `data_admissao` dos servidores
+  avaliados naquele ciclo e tenant
+
+#### Scenario: Ciclo sem avaliações concluídas
+- **WHEN** o usuário abre a aba Dashboard Analítico & BI com um ciclo que ainda não possui
+  avaliações concluídas
+- **THEN** a aba exibe um estado vazio explícito informando a ausência de dados, sem preencher os
+  gráficos com valores de exemplo
+
+### Requirement: Evolução de Desempenho Entre Ciclos
+A aba Dashboard Analítico & BI SHALL exibir um gráfico de série histórica mostrando a média de
+notas e a taxa de conclusão de avaliações por ciclo avaliativo do tenant, cobrindo todos os ciclos
+já encerrados ou em andamento, não apenas o ciclo ativo selecionado.
+
+#### Scenario: Tenant com múltiplos ciclos históricos
+- **WHEN** o tenant possui dois ou mais ciclos avaliativos com avaliações concluídas
+- **THEN** o gráfico de evolução exibe um ponto por ciclo, ordenado cronologicamente, com a média
+  de notas e a taxa de conclusão daquele ciclo
+
+### Requirement: Ranking de Secretarias por Desempenho
+A aba Dashboard Analítico & BI SHALL exibir um ranking das secretarias municipais ordenado pela
+média de notas de seus servidores no ciclo selecionado, destacando visualmente a secretaria com
+melhor desempenho e a secretaria mais próxima do corte regimental de elegibilidade.
+
+#### Scenario: Ranking com secretarias abaixo e acima do corte
+- **WHEN** o ciclo selecionado possui secretarias com médias acima e abaixo do corte regimental
+- **THEN** o ranking lista todas as secretarias em ordem decrescente de média, com indicação visual
+  distinta para a secretaria de melhor desempenho e para a que está mais próxima do corte
+
+### Requirement: Drill-Down por Departamento
+Ao selecionar uma secretaria no Dashboard Analítico & BI, o sistema SHALL permitir o
+detalhamento do desempenho por departamento/lotação física pertencente àquela secretaria, sem
+navegação para fora da aba.
+
+#### Scenario: Seleção de secretaria com múltiplos departamentos
+- **WHEN** o usuário seleciona uma secretaria que possui mais de um departamento com servidores
+  avaliados
+- **THEN** o sistema exibe o detalhamento de desempenho por departamento daquela secretaria,
+  calculado a partir das mesmas avaliações já carregadas
+
+### Requirement: Destaque de Desempenho Individual (Top/Bottom)
+A aba Dashboard Analítico & BI SHALL exibir os servidores com maior e menor nota final no ciclo
+selecionado, com acesso direto ao espelho de avaliação de cada um.
+
+#### Scenario: Consulta do destaque individual
+- **WHEN** o usuário visualiza a seção de destaque de desempenho individual no ciclo selecionado
+- **THEN** o sistema lista os servidores de maior e de menor nota final daquele ciclo, cada um com
+  um atalho que abre o espelho de avaliação correspondente
+
+### Requirement: Simulação de progressão converte NFD para a escala da NFC
+<!-- id: AvaliacaoController.simularProgressao -->
+<!-- entities: Servidor, Avaliacao, CicloAvaliacao -->
+<!-- enforced: AvaliacaoController.simularProgressao() -->
+
+A simulação de progressão de um servidor (`GET /servidores/{id}/simular-progressao`) SHALL
+calcular a NFC projetada convertendo cada `Avaliacao.nota_final` (NFD, escala 0–10) das até 3
+avaliações mais recentes para a escala 0–100 (mesma conversão de `ConsolidacaoController.nfc()`)
+antes de calculá-la e compará-la ao corte de elegibilidade padrão, para que o resultado da
+simulação seja consistente com o resultado da consolidação oficial.
+
+#### Scenario: Servidor com notas NFD reais e elegíveis
+- **WHEN** um servidor tem avaliações concluídas com `nota_final` 7,00 / 7,50 / 8,00 (NFD)
+- **THEN** a NFC projetada retornada é 75,00 (não 7,50) e `elegivel_progressao = true`
+
+### Requirement: Painel Executivo e Indicadores de Pendências de Hierarquia
+O sistema SHALL exibir no topo do painel de Pendências de Hierarquia um conjunto de 4 cartões de indicadores (KPIs) sintetizando o estado de bloqueios e inconsistências avaliativas:
+1. **Total de Pendências Abertas**: Quantidade de inconsistências pendentes de resolução manual, com destaque semântico em cor de alerta (âmbar) caso o valor seja superior a zero.
+2. **Total de Pendências Resolvidas**: Quantidade acumulada de pendências já sanadas pelo DRH.
+3. **Taxa de Saneamento**: Percentual de pendências resolvidas em relação ao total acumulado, formatado em `font-mono tabular-nums`.
+4. **Distribuição por Tipo de Inconsistência**: Contagem segmentada entre "Sem Superior Resolvido", "Afastamento sem Substituto" e "Topo da Hierarquia sem Configuração".
+
+#### Scenario: Visualização dos KPIs com pendências ativas
+- **WHEN** o gestor de RH acessa a aba com 5 pendências em aberto e 15 já resolvidas
+- **THEN** o painel exibe "5 Pendências Abertas" com borda de destaque em âmbar, "15 Resolvidas", taxa de saneamento de "75,0%" e a contagem por cada uma das categorias de bloqueio
+
+#### Scenario: Visualização quando não há pendências abertas
+- **WHEN** não existem pendências com status "aberta" no tenant
+- **THEN** o cartão de pendências abertas exibe valor "0" com indicador positivo de integridade cadastral plena
+
+### Requirement: Listagem Analítica com DataTable, Filtros Multifacetados e Busca
+A visualização das pendências de hierarquia SHALL ser estruturada através do componente `DataTable` de `@sysgov/ui`, provendo busca textual, filtros avançados, ordenação e tipografia técnica:
+1. **Busca Textual**: Campo de pesquisa rápida que filtra dinamicamente por nome completo do servidor, matrícula funcional ou texto descritivo do motivo/diagnóstico.
+2. **Filtros Multifacetados**:
+   - Filtro de Status: "Abertas", "Resolvidas" ou "Todas";
+   - Filtro de Tipo de Pendência: "Todos", "Sem superior resolvido", "Afastamento sem substituto" e "Topo sem configuração";
+   - Filtro por Ciclo Avaliativo.
+3. **Colunas Estruturadas**:
+   - Servidor (Nome em destaque e matrícula em `font-mono tabular-nums`);
+   - Ciclo Avaliativo (Nome e ano de referência);
+   - Categoria da Inconsistência (com badge semântico colorido e ícone alusivo);
+   - Diagnóstico do Motor de Hierarquia (motivo detalhado com tooltip);
+   - Status (`StatusChip` com variação warning para Aberta e success para Resolvida);
+   - Resolução/Auditoria (identificação do avaliador designado e data/hora em `font-mono tabular-nums` quando resolvida);
+   - Ações (botão "Resolver" para pendências abertas e "Ver Detalhes" para histórico).
+4. **Controle de Paginação**: Suporte nativo a paginação com seleção de registros por página (`pageSizeSelector`).
+
+#### Scenario: Filtragem por categoria de inconsistência
+- **WHEN** o operador do RH seleciona o filtro "Afastamento sem substituto"
+- **THEN** a tabela exibe exclusivamente os servidores cujo chefe imediato entrou em licença/férias e para os quais não foi cadastrado substituto legal no sistema
+
+#### Scenario: Busca rápida por matrícula
+- **WHEN** o usuário digita a matrícula "10234" no campo de busca
+- **THEN** a listagem filtra instantaneamente o servidor correspondente, mantendo a paginação e os totais contextualizados
+
+### Requirement: Modal de Resolução Assistido e Seguro com Seleção Qualificada
+Ao acionar a resolução de uma pendência aberta, o sistema SHALL abrir um modal interativo que substitui a inserção cega de IDs por uma experiência assistida e segura:
+1. **Ficha de Contexto do Servidor**: Exibe dados cadastrais do servidor avaliado (nome, matrícula, ciclo de avaliação) e o diagnóstico completo emitido pelo motor de hierarquia.
+2. **Seleção Amigável do Avaliador Designado**:
+   - Permite selecionar o avaliador por meio de seletor ou busca contextual (nome, cargo ou matrícula);
+   - Impede submissão sem seleção explícita de um usuário válido.
+3. **Alerta de Impacto**: Informa de maneira transparente que a confirmação redirecionará automaticamente as avaliações não-homologadas em aberto do servidor para o avaliador designado.
+4. **Registro e Atualização Imediata**: Ao confirmar com sucesso, a pendência é marcada como resolvida, os dados de auditoria (`resolvido_por` e `resolvido_em`) são atualizados e a listagem reflete imediatamente o novo estado sem necessidade de recarregar a página inteira.
+
+#### Scenario: Resolução assistida com sucesso
+- **WHEN** o gestor do RH abre a resolução para o servidor "Carlos Silva", seleciona o Diretor de Divisão "Marcos Souza" como avaliador e clica em "Confirmar Designação"
+- **THEN** o sistema envia a requisição para a API, fecha o modal, atualiza a pendência para "Resolvida", transfere a avaliação em andamento para Marcos Souza e exibe notificação de êxito
+
+#### Scenario: Tentativa de resolução sem selecionar avaliador
+- **WHEN** o operador abre o modal e tenta submeter sem selecionar um avaliador
+- **THEN** o botão de confirmação permanece desabilitado ou validação visual orienta a seleção de um gestor válido
+
+### Requirement: Exportação Tabular de Inconsistências para Saneamento Cadastral
+O painel de pendências SHALL disponibilizar funcionalidade de exportação de dados para planilha CSV, permitindo que a equipe de Recursos Humanos audite as inconsistências estruturais e notifique os setores competentes:
+1. A exportação contempla todos os registros filtrados na visão ativa ou a totalidade das pendências.
+2. O arquivo gerado deve conter cabeçalhos em português (ex.: ID, Servidor, Matrícula, Ciclo, Tipo de Pendência, Diagnóstico, Status, Avaliador Designado, Data Resolução).
+3. O conteúdo deve ser formatado com codificação UTF-8 com BOM (`\uFEFF`) para abertura direta e correta no Excel sem distorção de caracteres acentuados.
+
+#### Scenario: Exportação do relatório de pendências
+- **WHEN** o gestor clica no botão "Exportar CSV"
+- **THEN** o navegador efetua o download imediato do arquivo `pendencias_hierarquia_capd_{data}.csv` com os dados sanitizados e prontos para conferência
+
+### Requirement: Painel Executivo e Indicadores do Plano de Melhoria de Desempenho (PMD)
+O sistema SHALL exibir no topo da aba de Acompanhamento de PMD um conjunto de 4 cartões de indicadores executivos (KPIs) sintetizando a situação dos servidores sob plano de recuperação funcional:
+1. **Total de PMDs Ativos / Em Risco**: Contagem de servidores com planos em situação "Aberto" ou "Em Andamento", com destaque semântico em cor de alerta (âmbar) caso o valor seja maior que zero.
+2. **Total de Planos Superados / Verificados**: Contagem acumulada de planos cuja reavaliação registrou evolução satisfatória do servidor.
+3. **Taxa de Recuperação Funcional**: Percentual de servidores que comprovaram superação da nota de corte em relação ao total de planos concluídos/verificados, formatado em `font-mono tabular-nums`.
+4. **Alertas de Prazos Críticos**: Contagem de planos com data limite expirada ou com vencimento nos próximos 30 dias, sinalizando a urgência de intervenção da chefia imediata ou da Comissão CAD.
+
+#### Scenario: Visualização dos KPIs com planos ativos e vencidos
+- **WHEN** o gestor de RH acessa a aba com 6 planos ativos, 2 planos com prazo expirado e 14 planos já verificados
+- **THEN** o painel exibe "6 PMDs em Acompanhamento" com borda de destaque em âmbar, "14 Superados", taxa de recuperação calculada e alerta destacando "2 Planos Vencidos"
+
+#### Scenario: Visualização quando inexistem servidores sob PMD
+- **WHEN** não existem servidores com planos abertos no tenant
+- **THEN** o cartão de PMDs ativos exibe valor "0" com indicador positivo de plena conformidade de notas do quadro funcional
+
+### Requirement: Listagem Analítica do PMD com Identificação do Servidor e Gestão de Prazos
+A tabela de acompanhamento de PMD SHALL ser estruturada através do componente `DataTable` de `@sysgov/ui`, provendo identificação clara dos servidores, progresso de ações pactuadas, alertas temporais e busca multifacetada:
+1. **Identificação do Servidor**: Exibição em destaque do nome completo do servidor avaliado, com matrícula funcional e cargo em tipografia técnica `JetBrains Mono` (`font-mono tabular-nums`).
+2. **NFC Gatilho de Origem**: Exibição da nota consolidada que motivou a abertura do plano, com valor numérico em `font-mono tabular-nums` e cor de destaque.
+3. **Acompanhamento de Ações Acordadas**: Exibição da quantidade e percentual de ações já cumpridas em relação ao total pactuado no plano.
+4. **Alertas Semânticos de Prazos**:
+   - Prazos expirados são identificados com badge vermelho ("Vencido");
+   - Prazos com vencimento em até 30 dias são identificados com badge âmbar ("Vence em breve");
+   - Prazos regulares são identificados com badge neutro/informativo.
+5. **Filtros e Paginação**:
+   - Busca textual por nome do servidor, matrícula, objetivos ou ciclo;
+   - Filtro por status (Aberto, Em Andamento, Concluído, Verificado, Cancelado ou Todos);
+   - Filtro por urgência de prazo (Todos, Vencidos, A Vencer em 30 dias, No Prazo);
+   - Paginação configurável com seletor de registros por página (`pageSizeSelector`).
+
+#### Scenario: Filtragem por planos com prazo vencido
+- **WHEN** o gestor seleciona o filtro de urgência "Vencidos"
+- **THEN** a tabela exibe exclusivamente os planos cuja data limite é anterior à data corrente e cujo status não seja "verificado" ou "cancelado"
+
+#### Scenario: Busca textual por matrícula do servidor
+- **WHEN** o usuário digita a matrícula funcional "10042" no campo de busca
+- **THEN** a listagem filtra instantaneamente o plano correspondente ao referido servidor, exibindo seus objetivos e status atual
+
+### Requirement: Modal de Verificação de Evolução com Comparativo e Análise de Superação
+Ao acionar o registro de verificação de evolução de um PMD, o sistema SHALL abrir um modal assistido que apresenta comparativo analítico entre a nota anterior e a nova nota apurada:
+1. **Painel Comparativo**: Exibe a NFC Gatilho de origem ao lado da Nova NFC informada pelo usuário.
+2. **Cálculo Automático de Variação (Delta)**: O sistema calcula e exibe em tempo real a diferença de pontuação em `font-mono tabular-nums` com sinalização positiva ou negativa.
+3. **Diagnóstico de Superação**: Informa claramente se a nova nota atinge o patamar mínimo regulamentar (≥ 70,00 pontos na escala 0–100 ou ≥ 7,0 na escala 0–10) para desobstrução da progressão funcional.
+4. **Parecer Circunstanciado**: Campo estruturado para registro formal das justificativas, observações da chefia imediata e evidências de desenvolvimento.
+
+#### Scenario: Registro de evolução com superação da nota de corte
+- **WHEN** o gestor informa a nova nota "76,50" para um PMD cuja nota gatilho era "62,00"
+- **THEN** o modal exibe indicador em verde "+14,50 pts", confirma o status "Apto à Superação (NFC ≥ 70,00)" e habilita a conclusão da verificação
+
+#### Scenario: Registro de evolução sem atingimento da nota de corte
+- **WHEN** o gestor informa a nova nota "66,00" para um PMD cuja nota gatilho era "60,00"
+- **THEN** o modal exibe o delta "+6,00 pts", porém adverte que a pontuação permanece abaixo da nota de corte, orientando a continuidade das medidas de apoio funcional
+
+### Requirement: Exportação de Relatório de PMD para Auditoria e Comissão CAD
+O painel de acompanhamento de PMD SHALL disponibilizar ferramenta de exportação de dados em formato CSV, permitindo que a Comissão CAD e a gestão de pessoal auditem as intervenções realizadas:
+1. A exportação contempla todos os registros filtrados na visão ativa.
+2. O arquivo gerado deve conter cabeçalhos em português (ex.: ID, Servidor, Matrícula, Cargo, Ciclo de Origem, NFC Gatilho, Objetivos, Prazo, Status, Ações Concluídas, Nova NFC, Data Verificação).
+3. O arquivo DEVE ser formatado com codificação UTF-8 com BOM (`\uFEFF`) para compatibilidade nativa com o Excel e suítes de escritório.
+
+#### Scenario: Download da planilha de acompanhamento
+- **WHEN** o gestor clica no botão "Exportar CSV"
+- **THEN** o sistema realiza o download automático do arquivo `acompanhamento_pmd_capd_{data}.csv` com os dados sanitizados e prontos para conferência
+
+### Requirement: Painel Executivo e Métricas de Integração RH
+O sistema DEVE apresentar no topo da aba "Integrações RH & Embed" um painel executivo composto por cartões de métricas analíticas (`StatCard` do `@sysgov/ui`), consolidando a saúde das integrações com os sistemas legados de folha e portais embutidos.
+
+#### Scenario: Visualização consolidada de indicadores de integração
+- **WHEN** o gestor de RH acessa a sub-aba "Integrações RH & Embed" do Portal do RH
+- **THEN** o sistema exibe os cartões com o total de conectores ativos por driver, o total acumulado de sincronizações, a taxa percentual de sucesso das operações e o número de tokens de embed ativos, formatando valores e percentuais em `JetBrains Mono`.
+
+#### Scenario: Tratamento de ausência de conexões configuradas
+- **WHEN** o município ainda não possui nenhum conector ERP cadastrado
+- **THEN** o sistema exibe os contadores zerados de forma graciosa e um estado descritivo orientando a inclusão do primeiro conector.
+
+---
+
+### Requirement: Gestão e Configuração de Conectores ERP
+O sistema DEVE permitir a listagem, criação, edição, teste de conectividade e rotação segura de chave de API para conectores de sistemas de RH e folha de pagamento municipais (Betha, IPM, Senior, TOTVS e REST Genérico).
+
+#### Scenario: Listagem e status operacional dos conectores
+- **WHEN** o usuário visualiza a seção de conectores cadastrados
+- **THEN** o sistema lista cada conector com seu nome amigável, driver correspondente, URL base, status (Ativo/Inativo), contagem de registros processados e indicador de última sincronização.
+
+#### Scenario: Cadastro de novo conector com validação
+- **WHEN** o usuário aciona "Novo Conector" e submete os dados de configuração obrigatórios (nome, driver, URL base, periodicidade)
+- **THEN** o conector é cadastrado com credenciais criptografadas e passa a figurar na listagem de integrações disponíveis.
+
+#### Scenario: Rotação segura de API Key
+- **WHEN** o usuário solicita a regeneração da chave de autenticação de um conector existente
+- **THEN** o sistema exige confirmação explícita através de diálogo modal (`ConfirmDialog`), gera uma nova chave aleatória, invalida a anterior e exibe a nova credencial com opção de cópia imediata.
+
+---
+
+### Requirement: Trilha de Auditoria e Logs de Sincronização
+O sistema DEVE registrar e exibir o histórico cronológico de execuções de sincronização (`RhSyncLog`), permitindo filtragem multicritério e inspeção detalhada do payload processado.
+
+#### Scenario: Filtragem analítica do histórico de logs
+- **WHEN** o gestor pesquisa logs de sincronização aplicando filtros por tipo de dado (servidores, frequência, afastamentos, homologação), direção (inbound/outbound) ou status de execução
+- **THEN** o sistema filtra os registros na tabela analítica (`DataTable`), exibindo data/hora, quantidade de registros afetados em `JetBrains Mono` e o status da rotina.
+
+#### Scenario: Inspeção do detalhe do log
+- **WHEN** o gestor clica para inspecionar um log que resultou em falha ou inconsistência
+- **THEN** o sistema abre um modal apresentando o traceback do erro, a mensagem retornada pelo conector e o payload recebido formatado.
+
+---
+
+### Requirement: Emissão, Gerenciamento e Simulação de Tokens de Embed
+O sistema DEVE fornecer ferramenta visual para o DRH emitir tokens seguros de incorporação headless (`CapdEmbedController`), gerando snippets prontos para `<iframe>` e simulador sandbox para teste em tempo real.
+
+#### Scenario: Geração de token de embed parametrizado
+- **WHEN** o operador escolhe o módulo de incorporação (autoavaliação, diário de bordo, espelho avaliativo ou recurso), define o tempo de expiração (TTL em minutos) e solicita a emissão do token
+- **THEN** o sistema gera o token criptográfico, monta a URL pública segura e gera o código HTML do `<iframe>` com atributos de sandbox recomendados.
+
+#### Scenario: Cópia rápida do snippet de incorporação
+- **WHEN** o operador clica no botão "Copiar Código HTML"
+- **THEN** o código do snippet é transferido para a área de transferência do navegador e um alerta visual de sucesso é exibido.
+
+#### Scenario: Pré-visualização e teste no simulador sandbox
+- **WHEN** o operador alterna para a aba "Simulador Sandbox"
+- **THEN** o sistema carrega a URL de embed em um container simulado, permitindo validar a responsividade e o comportamento da interface incorporada sem sair do Portal do RH.
+
+### Requirement: Painel de Indicadores e KPIs de Controle Interno
+O Portal de Auditoria e Controle Interno DEVE exibir, no topo da interface, uma esteira consolidada de indicadores de conformidade administrativa através de cartões analíticos (`StatCard` do `@sysgov/ui`), com métricas formatadas em `JetBrains Mono` (`font-mono tabular-nums`).
+
+#### Scenario: Visualização do panorama geral de controle interno
+- **WHEN** o auditor municipal ou analista de controle interno acessa o portal
+- **THEN** o sistema exibe os cartões com o total de impedimentos ativos, registros gravados na trilha forense, total de avaliações em escrutínio amostral/notas extremas e índice de integridade das assinaturas criptográficas (100%).
+
+---
+
+### Requirement: Gestão e Homologação de Impedimentos e Conflitos de Interesse
+O sistema DEVE permitir a fiscalização, declaração, homologação e eventual desativação fundamentada de impedimentos e suspeições por parentesco até o 3º grau (Art. 31 da Lei nº 1.704/2006).
+
+#### Scenario: Listagem analítica de impedimentos cadastrados
+- **WHEN** o auditor consulta a aba "Impedimentos & Parentesco"
+- **THEN** o sistema exibe tabela analítica (`DataTable`) contendo o servidor avaliado, o substituto legal designado, o tipo de parentesco/impedimento, a data de lavratura e o status operacional.
+
+#### Scenario: Homologação e desativação com justificativa do controle interno
+- **WHEN** o auditor altera o status de um impedimento (ex: cessação do vínculo ou erro formal)
+- **THEN** o sistema exige justificativa administrativa formal e registra o evento na trilha de auditoria imutável sem diálogos nativos do navegador.
+
+---
+
+### Requirement: Fila de Amostragem Regulatória e Trava Anti-Leniência
+O sistema DEVE disponibilizar uma fila analítica de fiscalização para avaliações selecionadas por sorteio amostral (percentual mínimo de 10%) ou por enquadramento na trava anti-leniência (notas extremas de Grau 1 ou Grau 5 / pontuação < 4.00 ou >= 9.50).
+
+#### Scenario: Inspeção de notas extremas contra o Diário de Bordo (CIT)
+- **WHEN** o auditor inspeciona uma avaliação da fila de amostragem que recebeu nota extrema
+- **THEN** o sistema apresenta a árvore de fatores avaliados e cruza com os incidentes críticos lançados previamente no Diário de Bordo daquele servidor, acusando se há fundamentação fática satisfatória.
+
+#### Scenario: Emissão de parecer de auditoria
+- **WHEN** o auditor conclui a análise de uma avaliação da amostra
+- **THEN** o sistema permite registrar o parecer formal (Aprovado / Reavaliação Solicitada / Diligência Aberta), arquivando o despacho com assinatura eletrônica.
+
+---
+
+### Requirement: Trilha Forense Imutável e Verificador Criptográfico SHA-256
+O sistema DEVE registrar de forma contínua todos os eventos críticos do ciclo de avaliação com carimbo UTC-3, IP do agente e assinatura em hash SHA-256, disponibilizando ferramenta visual de validação de autenticidade documental.
+
+#### Scenario: Validação de hash criptográfico de documentos e atas
+- **WHEN** o auditor submete um hash SHA-256 no campo de verificação de autenticidade
+- **THEN** o sistema localiza a assinatura correspondente na base imutável, atesta a validade do registro e exibe o selo digital de conformidade com os metadados do evento.
+
+#### Scenario: Exportação de dossiê de auditoria para Tribunais de Contas
+- **WHEN** o auditor aciona a exportação da trilha forense
+- **THEN** o sistema gera arquivo estruturado (CSV/JSON) com todas as evidências, assinaturas e carimbos de tempo para instrução perante órgãos de controle externo.
+
+---
+
+### Requirement: Trilha de Acessos a Dados Pessoais e Conformidade LGPD
+O sistema DEVE monitorar e registrar as consultas aos prontuários e notas individuais dos servidores públicos, prevenindo vazamentos e garantindo a observância da Lei Geral de Proteção de Dados (LGPD).
+
+#### Scenario: Consulta aos registros de visualização de notas
+- **WHEN** o auditor acessa a aba "Conformidade LGPD & Acessos"
+- **THEN** o sistema exibe o histórico de operadores que visualizaram notas, relatórios ou espelhos de servidores com data, horário e justificativa de acesso.
 
 ## Invariants
 

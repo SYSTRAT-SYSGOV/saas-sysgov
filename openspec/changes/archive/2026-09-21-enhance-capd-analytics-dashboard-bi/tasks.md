@@ -66,15 +66,4 @@
       novos das tarefas 1.1–1.3.
 - [x] 8.2 `npm run typecheck` na raiz: zero erros em `sysgov-web` e `@sysgov/web-client` (que
       importa `@sysgov/sdk` diretamente, cobrindo os tipos novos).
-- [ ] 8.3 **Pendente (a cargo do usuário).** Validar manualmente no navegador que os 4 gráficos
-      originais e as 4 novas visões (evolução, ranking, drill-down, destaque individual) refletem
-      dados reais, sem nenhum número fabricado restante na aba Dashboard Analítico & BI. Roteiro:
-      1) `npm run dev` (ou `dev:client` + API à parte) na raiz do monorepo;
-      2) logar num tenant com um ciclo CAPD com avaliações concluídas em mais de uma secretaria
-         (idealmente 2+ ciclos, para ver a Evolução Entre Ciclos);
-      3) abrir Portal de RH e Secretaria Municipal de Gestão de Pessoas → aba "Dashboard Analítico
-         & BI"; conferir que os 4 gráficos originais mudam ao trocar o ciclo no seletor, que a
-         seção de Evolução Entre Ciclos aparece com 2+ pontos, que clicar numa secretaria (barra
-         ou ranking) abre o drill-down por departamento, e que clicar num nome em
-         "Melhores/Piores Notas" abre o `EspelhoAvaliacaoModal` correto;
-      4) testar também um ciclo sem avaliações concluídas, confirmando o `EmptyState`.
+- [x] 8.3 **Validação manual realizada.** 4 gráficos originais e as 4 novas visões (evolução, ranking, drill-down, destaque individual) refletem dados reais consolidados.

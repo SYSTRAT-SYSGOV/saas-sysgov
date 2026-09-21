@@ -113,6 +113,14 @@ final class PlanoMelhoria extends Model
         return $this->belongsTo(CicloAvaliacao::class, 'ciclo_verificacao_id');
     }
 
+    /**
+     * @return BelongsTo<Servidor, $this>
+     */
+    public function servidor(): BelongsTo
+    {
+        return $this->belongsTo(Servidor::class, 'servidor_id');
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────
 
     /** PMDs ainda não verificados (aberto, em andamento ou com ações concluídas). */

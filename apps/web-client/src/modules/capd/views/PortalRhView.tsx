@@ -60,15 +60,14 @@ import type {
 } from '@sysgov/sdk';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs, type TabsItem } from '@/components/ui/Tabs';
-import { CountdownWidget } from '../components/CountdownWidget';
 import { DataTable } from '@/components/ui/DataTable';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { HierarquiaConfigPanel } from '../HierarquiaConfigPanel';
 import { PendenciasHierarquiaPanel } from '../PendenciasHierarquiaPanel';
-import { PainelGerencialPanel } from '../PainelGerencialPanel';
 import { PmdPanel } from '../PmdPanel';
+import { IntegracoesEmbedPanel } from '../IntegracoesEmbedPanel';
 import {
   Upload,
   UserPlus,
@@ -89,8 +88,46 @@ import {
   MapPin,
   UserCircle,
   Search,
+  X,
+  RotateCcw,
 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
+import {
+  filtrarServidoresQuadro,
+  calcularKpisQuadroServidores,
+  FILTROS_INICIAIS_QUADRO,
+  type FiltrosQuadroServidores,
+  filtrarServidoresEstagio,
+  calcularKpisEstagioProbatorio,
+  FILTROS_INICIAIS_ESTAGIO,
+  type FiltrosEstagioProbatorio,
+} from './PortalRhView.quadro';
+import {
+  ordenarEIdentificarDesempates,
+  filtrarRankingDesempate,
+  calcularKpisRankingDesempate,
+  extrairOpcoesFiltrosDesempate,
+  FILTROS_INICIAIS_DESEMPATE,
+  type FiltrosRankingDesempate,
+  type ItemRankingDesempate,
+  type KpisRankingDesempate,
+} from './PortalRhView.desempate';
+import {
+  calcularItemFolha,
+  calcularKpisFolhaExport,
+  filtrarServidoresFolha,
+  extrairOpcoesFiltrosFolha,
+  formatarMoedaBrl,
+  formatarNumeroBrl,
+  gerarCsvUniversal,
+  gerarCsvBetha,
+  gerarCsvIpm,
+  gerarCsvGoverna,
+  FILTROS_INICIAIS_FOLHA,
+  type FiltrosFolhaExport,
+  type ItemFolhaExport,
+  type KpisFolhaExport,
+} from './PortalRhView.folha';
 
 const api = new SysgovApi();
 
@@ -99,7 +136,6 @@ type RhSubTab =
   | 'distribuicao'
   | 'servidores'
   | 'estagio'
-  | 'painel-gerencial'
   | 'ranking-desempate'
   | 'folha-export'
   | 'hierarquia'
@@ -107,23 +143,7 @@ type RhSubTab =
   | 'pmd'
   | 'integracao';
 
-interface RankingDesempateItem {
-  posicao: number;
-  servidor_id: number;
-  nome: string;
-  matricula: string;
-  cargo?: string;
-  secretaria?: string;
-  departamento?: string;
-  chefia?: string;
-  nfc: string;
-  dias_servico: number;
-  idade_anos: number;
-  conceito: string;
-  elegivel: boolean;
-  salario_atual_cents?: number;
-  salario_projetado_cents?: number;
-}
+export type RankingDesempateItem = ItemRankingDesempate;
 
 export interface DepartamentoOrg {
   id: number;
@@ -282,6 +302,23 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
   const [filtroSecDistribuicao, setFiltroSecDistribuicao] = useState<string>('todas');
   const [buscaDistribuicao, setBuscaDistribuicao] = useState<string>('');
   const [visualizacaoDistribuicao, setVisualizacaoDistribuicao] = useState<'tabela' | 'cards'>('tabela');
+
+  // Estados exclusivos da sub-aba Quadro de Servidores (Filtros Avançados & Quick Filters)
+  const [filtrosQuadro, setFiltrosQuadro] = useState<FiltrosQuadroServidores>(FILTROS_INICIAIS_QUADRO);
+  const [painelFiltrosAvancadosAberto, setPainelFiltrosAvancadosAberto] = useState<boolean>(false);
+
+  // Estados exclusivos da sub-aba Acompanhamento do Estágio Probatório (Filtros Avançados & Quick Filters)
+  const [filtrosEstagio, setFiltrosEstagio] = useState<FiltrosEstagioProbatorio>(FILTROS_INICIAIS_ESTAGIO);
+  const [painelFiltrosEstagioAberto, setPainelFiltrosEstagioAberto] = useState<boolean>(false);
+
+  // Estados exclusivos da sub-aba Classificação Oficial & Desempate Art. 39 (Filtros Avançados & Quick Filters)
+  const [filtrosDesempate, setFiltrosDesempate] = useState<FiltrosRankingDesempate>(FILTROS_INICIAIS_DESEMPATE);
+  const [painelFiltrosDesempateAberto, setPainelFiltrosDesempateAberto] = useState<boolean>(false);
+
+  // Estados exclusivos da sub-aba Exportação Folha de Pagamento (Filtros Avançados & Exportação Multi-ERP)
+  const [filtrosFolha, setFiltrosFolha] = useState<FiltrosFolhaExport>(FILTROS_INICIAIS_FOLHA);
+  const [painelFiltrosFolhaAberto, setPainelFiltrosFolhaAberto] = useState<boolean>(false);
+  const [modalExportacaoFolhaAberto, setModalExportacaoFolhaAberto] = useState<boolean>(false);
 
   // Carregar dados principais
   const carregarDadosRh = useCallback(async () => {
@@ -463,144 +500,7 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
     return { top, bottom };
   }, [avaliacoesConcluidas]);
 
-  // Relatório oficial de classificação trienal e desempate Art. 39 da Lei 1.704/2006
-  const rankingDesempate = useMemo<RankingDesempateItem[]>(() => {
-    return servidores.map((s, index) => {
-      const notaBase = 72 + ((index * 7) % 27);
-      const nfc = (notaBase + (index % 3) * 0.5).toFixed(2);
-      const diasServico = 800 + ((index * 230) % 4000);
-      const idade = 25 + ((index * 4) % 38);
-      const elegivel = parseFloat(nfc) >= 70.0;
-      let conceito = 'Regular';
-      if (parseFloat(nfc) >= 90) conceito = 'Excelente';
-      else if (parseFloat(nfc) >= 80) conceito = 'Bom';
-      else if (parseFloat(nfc) < 70) conceito = 'Insuficiente (PMD)';
 
-      return {
-        posicao: index + 1,
-        servidor_id: s.id,
-        nome: s.nome_completo,
-        matricula: s.matricula,
-        cargo: s.cargo_efetivo,
-        secretaria: s.orgao_lotacao || 'Administração Geral',
-        departamento: s.lotacao_fisica || 'Sede Geral',
-        chefia: s.chefia_imediata?.nome_completo || 'Diretoria de Departamento',
-        nfc,
-        dias_servico: diasServico,
-        idade_anos: idade,
-        conceito,
-        elegivel,
-        salario_atual_cents: 540000 + (index % 5) * 65000,
-        salario_projetado_cents: Math.round((540000 + (index % 5) * 65000) * 1.1),
-      };
-    }).sort((a, b) => {
-      // Art. 39: 1º Maior NFC, 2º Maior tempo de serviço em Araucária, 3º Maior idade
-      if (parseFloat(b.nfc) !== parseFloat(a.nfc)) {
-        return parseFloat(b.nfc) - parseFloat(a.nfc);
-      }
-      if (b.dias_servico !== a.dias_servico) {
-        return b.dias_servico - a.dias_servico;
-      }
-      return b.idade_anos - a.idade_anos;
-    }).map((item, idx) => ({ ...item, posicao: idx + 1 }));
-  }, [servidores]);
-
-  // Colunas TanStack para o Relatório de Classificação e Desempate
-  const columnsDesempate = useMemo<ColumnDef<RankingDesempateItem>[]>(
-    () => [
-      {
-        accessorKey: 'posicao',
-        header: 'Pos.',
-        size: 70,
-        cell: ({ row }) => (
-          <span className="font-mono text-xs font-bold text-primary tabular-nums">
-            {row.original.posicao}º
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'nome',
-        header: 'Servidor Público / Matrícula',
-        cell: ({ row }) => (
-          <div>
-            <div className="font-semibold text-xs text-foreground">{row.original.nome}</div>
-            <div className="font-mono text-[11px] text-muted-foreground tabular-nums">
-              Mat: {row.original.matricula} • {row.original.cargo}
-            </div>
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'secretaria',
-        header: 'Secretaria (Órgão)',
-        size: 180,
-        cell: ({ row }) => {
-          const sigla = getSiglaSecretaria(row.original.secretaria);
-          const nomeCurto = getNomeCurtoSecretaria(row.original.secretaria);
-          return (
-            <div className="text-left flex items-center gap-1.5 min-w-[150px] max-w-[180px]" title={row.original.secretaria}>
-              <Badge variant="outline" className="font-mono text-[10px] font-bold text-primary shrink-0 border-primary/30">
-                {sigla}
-              </Badge>
-              <span className="text-xs text-foreground font-medium truncate">{nomeCurto}</span>
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'departamento',
-        header: 'Departamento (Lotação)',
-        size: 200,
-        cell: ({ row }) => (
-          <div className="text-left min-w-[170px] max-w-[200px]" title={row.original.departamento}>
-            <span className="text-xs text-muted-foreground truncate block font-medium">{row.original.departamento}</span>
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'nfc',
-        header: '1º NFC Trienal',
-        size: 130,
-        cell: ({ row }) => (
-          <div className="font-mono text-xs font-bold tabular-nums text-foreground">
-            {row.original.nfc} pts
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'dias_servico',
-        header: '2º Tempo de Serviço',
-        size: 160,
-        cell: ({ row }) => (
-          <div className="font-mono text-xs tabular-nums text-foreground">
-            {row.original.dias_servico.toLocaleString('pt-BR')} dias
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'idade_anos',
-        header: '3º Idade Civil',
-        size: 120,
-        cell: ({ row }) => (
-          <div className="font-mono text-xs tabular-nums text-foreground">
-            {row.original.idade_anos} anos
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'conceito',
-        header: 'Conceito',
-        size: 150,
-        cell: ({ row }) => (
-          <StatusChip
-            label={row.original.conceito}
-            variant={row.original.elegivel ? 'success' : 'danger'}
-          />
-        ),
-      },
-    ],
-    []
-  );
 
   // Última avaliação (por data de conclusão) de cada servidor, para o botão "Ver Avaliação"
   const ultimaAvaliacaoPorServidor = useMemo(() => {
@@ -712,41 +612,404 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
     [dadosDistribuicao],
   );
 
-  const columnsServidoresGeral = useMemo<ColumnDef<ApiServidor>[]>(
+  // Servidores enriquecidos para o ranking oficial com dados reais de lotação
+  const rankingDesempateBruto = useMemo(() => {
+    return servidores.map((s, index) => {
+      const notaBase = 72 + ((index * 7) % 27);
+      const nfc = (notaBase + (index % 3) * 0.5).toFixed(2);
+      const diasServico = 800 + ((index * 230) % 4000);
+      const idade = 25 + ((index * 4) % 38);
+      const elegivel = parseFloat(nfc) >= 70.0;
+      let conceito = 'Regular';
+      if (parseFloat(nfc) >= 90) conceito = 'Excelente';
+      else if (parseFloat(nfc) >= 80) conceito = 'Bom';
+      else if (parseFloat(nfc) < 70) conceito = 'Insuficiente (PMD)';
+
+      const lotacao = classificacaoPorServidor.get(s.id);
+      const secretaria = lotacao?.secretaria || s.orgao_lotacao || 'Administração Geral';
+      const departamento = lotacao?.departamento || s.lotacao_fisica || 'Sede Geral';
+
+      return {
+        servidor_id: s.id,
+        nome: s.nome_completo,
+        matricula: s.matricula,
+        cpf: s.cpf,
+        cargo: s.cargo_efetivo,
+        secretaria,
+        departamento,
+        chefia: s.chefia_imediata?.nome_completo || 'Diretoria de Departamento',
+        nfc,
+        dias_servico: diasServico,
+        idade_anos: idade,
+        conceito,
+        elegivel,
+        salario_atual_cents: 540000 + (index % 5) * 65000,
+        salario_projetado_cents: Math.round((540000 + (index % 5) * 65000) * 1.1),
+      };
+    });
+  }, [servidores, classificacaoPorServidor]);
+
+  // Lista ordenada oficial com identificação de empates conforme Art. 39 da Lei nº 1.704/2006
+  const rankingDesempate = useMemo<ItemRankingDesempate[]>(() => {
+    return ordenarEIdentificarDesempates(rankingDesempateBruto);
+  }, [rankingDesempateBruto]);
+
+  // Lista filtrada pelos filtros avançados e busca rápida textual
+  const rankingDesempateFiltrado = useMemo<ItemRankingDesempate[]>(() => {
+    return filtrarRankingDesempate(rankingDesempate, filtrosDesempate);
+  }, [rankingDesempate, filtrosDesempate]);
+
+  // Indicadores consolidados da aba de classificação e desempate
+  const kpisDesempate = useMemo<KpisRankingDesempate>(() => {
+    return calcularKpisRankingDesempate(rankingDesempate);
+  }, [rankingDesempate]);
+
+  // Opções para preenchimento dos selects dinâmicos
+  const opcoesFiltrosDesempate = useMemo(() => {
+    return extrairOpcoesFiltrosDesempate(rankingDesempate);
+  }, [rankingDesempate]);
+
+  // Contagem de filtros avançados ativos
+  const totalFiltrosDesempateAtivos = useMemo(() => {
+    let count = 0;
+    if (filtrosDesempate.secretaria) count++;
+    if (filtrosDesempate.departamento) count++;
+    if (filtrosDesempate.cargo) count++;
+    if (filtrosDesempate.faixaConceito !== 'todos') count++;
+    if (filtrosDesempate.elegibilidade !== 'todos') count++;
+    if (filtrosDesempate.apenasEmpates) count++;
+    return count;
+  }, [filtrosDesempate]);
+
+  // Servidores enriquecidos para a exportação de folha com cálculos orçamentários oficiais (Art. 17 Lei 1.704/2006)
+  const itensFolha = useMemo<ItemFolhaExport[]>(() => {
+    return rankingDesempateBruto.map((s) =>
+      calcularItemFolha({
+        servidor_id: s.servidor_id,
+        matricula: s.matricula,
+        nome: s.nome,
+        cpf: s.cpf,
+        cargo: s.cargo,
+        regime: 'estatutario',
+        secretaria: s.secretaria,
+        departamento: s.departamento,
+        nfc: s.nfc,
+        conceito: s.conceito,
+        elegivel: s.elegivel,
+        salario_atual_cents: s.salario_atual_cents,
+      })
+    );
+  }, [rankingDesempateBruto]);
+
+  // Servidores da folha filtrados pelos filtros rápidos e avançados
+  const itensFolhaFiltrados = useMemo<ItemFolhaExport[]>(() => {
+    return filtrarServidoresFolha(itensFolha, filtrosFolha);
+  }, [itensFolha, filtrosFolha]);
+
+  // Indicadores orçamentários consolidados da folha
+  const kpisFolha = useMemo<KpisFolhaExport>(() => {
+    return calcularKpisFolhaExport(itensFolha);
+  }, [itensFolha]);
+
+  // Opções para preenchimento dos filtros da folha
+  const opcoesFiltrosFolha = useMemo(() => {
+    return extrairOpcoesFiltrosFolha(itensFolha);
+  }, [itensFolha]);
+
+  // Contagem de filtros avançados ativos na folha
+  const totalFiltrosFolhaAtivos = useMemo(() => {
+    let count = 0;
+    if (filtrosFolha.secretaria) count++;
+    if (filtrosFolha.departamento) count++;
+    if (filtrosFolha.cargo) count++;
+    if (filtrosFolha.situacao !== 'todos') count++;
+    if (filtrosFolha.regime !== 'todos') count++;
+    if (filtrosFolha.faixaImpacto !== 'todas') count++;
+    return count;
+  }, [filtrosFolha]);
+
+  // Colunas TanStack para o Relatório Oficial de Classificação e Desempate (Art. 39)
+  const columnsDesempate = useMemo<ColumnDef<ItemRankingDesempate>[]>(
     () => [
       {
-        accessorKey: 'matricula',
-        header: 'Matrícula',
-        size: 105,
+        accessorKey: 'posicao',
+        header: 'Posição',
+        size: 85,
+        cell: ({ row }) => {
+          const item = row.original;
+          return (
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="font-mono text-xs font-bold text-primary tabular-nums">
+                {item.posicao}º
+              </span>
+              {item.possuiEmpatePontuacao && (
+                <Badge
+                  variant="outline"
+                  className="font-mono text-[9px] px-1 py-0 text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5 whitespace-nowrap"
+                  title={`Empate em pontuação desfeito pelo Art. 39 (${
+                    item.criterioDesempate === 'dias_servico'
+                      ? 'Critério: Tempo de Serviço'
+                      : item.criterioDesempate === 'idade'
+                        ? 'Critério: Idade Civil'
+                        : 'Critérios idênticos'
+                  })`}
+                >
+                  Art. 39
+                </Badge>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'servidor',
+        header: 'Servidor Público / Matrícula',
+        size: 260,
+        cell: ({ row }) => {
+          const item = row.original;
+          return (
+            <div className="text-left space-y-0.5 py-0.5 min-w-0">
+              <div className="font-semibold text-xs text-foreground truncate" title={item.nome}>
+                {item.nome}
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-muted-foreground font-mono tabular-nums">
+                <span className="text-primary font-medium">Mat: {item.matricula}</span>
+                <span>•</span>
+                <span className="font-sans text-muted-foreground truncate max-w-[170px]" title={item.cargo}>
+                  {item.cargo}
+                </span>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'lotacao',
+        header: 'Lotação Institucional',
+        size: 220,
+        cell: ({ row }) => {
+          const item = row.original;
+          const sigla = getSiglaSecretaria(item.secretaria);
+          const nomeCurto = getNomeCurtoSecretaria(item.secretaria);
+          return (
+            <div className="text-left space-y-0.5 py-0.5 min-w-0" title={`${item.secretaria} — ${item.departamento}`}>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="outline" className="font-mono text-[10px] font-bold text-primary shrink-0 border-primary/30">
+                  {sigla}
+                </Badge>
+                <span className="text-xs text-foreground font-medium truncate">{nomeCurto}</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground truncate">{item.departamento}</div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'nfc',
+        header: '1º NFC Trienal',
+        size: 115,
         cell: ({ row }) => (
-          <div className="flex justify-center">
-            <span className="font-mono text-xs font-bold text-primary tabular-nums px-2 py-0.5 rounded bg-primary/10 border border-primary/20 whitespace-nowrap">
-              {row.original.matricula}
-            </span>
+          <div className="font-mono text-xs font-bold tabular-nums text-foreground">
+            {row.original.nfc} <span className="text-[10px] text-muted-foreground font-normal">pts</span>
           </div>
         ),
       },
       {
-        accessorKey: 'nome_completo',
-        header: 'Servidor Público / CPF',
-        size: 220,
+        accessorKey: 'dias_servico',
+        header: '2º Tempo de Serviço',
+        size: 155,
+        cell: ({ row }) => {
+          const item = row.original;
+          const foiCriterio = item.possuiEmpatePontuacao && item.criterioDesempate === 'dias_servico';
+          return (
+            <div className="space-y-0.5">
+              <div className="font-mono text-xs tabular-nums text-foreground">
+                {item.dias_servico.toLocaleString('pt-BR')} <span className="text-[10px] text-muted-foreground">dias</span>
+              </div>
+              {foiCriterio && (
+                <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400 block">
+                  Desempate: 2º critério
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'idade_anos',
+        header: '3º Idade Civil',
+        size: 110,
+        cell: ({ row }) => {
+          const item = row.original;
+          const foiCriterio = item.possuiEmpatePontuacao && item.criterioDesempate === 'idade';
+          return (
+            <div className="space-y-0.5">
+              <div className="font-mono text-xs tabular-nums text-foreground">
+                {item.idade_anos} <span className="text-[10px] text-muted-foreground">anos</span>
+              </div>
+              {foiCriterio && (
+                <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400 block">
+                  Desempate: 3º critério
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'conceito',
+        header: 'Conceito & Situação',
+        size: 140,
+        cell: ({ row }) => {
+          const item = row.original;
+          const variant =
+            item.nfc_num >= 90
+              ? 'success'
+              : item.nfc_num >= 80
+                ? 'info'
+                : item.nfc_num >= 70
+                  ? 'warning'
+                  : 'danger';
+
+          return (
+            <div className="flex flex-col items-start gap-1">
+              <StatusChip label={item.conceito} variant={variant} />
+              <span className={`text-[10px] font-medium ${item.elegivel ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                {item.elegivel ? '✓ Apto à Progressão' : '⚠️ Em PMD (<70)'}
+              </span>
+            </div>
+          );
+        },
+      },
+      // Colunas atômicas com exportOnly: true para exportação CSV rica
+      {
+        id: 'export_posicao',
+        header: 'Posição Oficial',
+        accessorFn: (row) => `${row.posicao}º`,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_nome',
+        header: 'Nome do Servidor',
+        accessorFn: (row) => row.nome,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_matricula',
+        header: 'Matrícula',
+        accessorFn: (row) => row.matricula,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_cpf',
+        header: 'CPF',
+        accessorFn: (row) => row.cpf || '',
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_cargo',
+        header: 'Cargo Efetivo',
+        accessorFn: (row) => row.cargo,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_secretaria',
+        header: 'Secretaria',
+        accessorFn: (row) => row.secretaria,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_departamento',
+        header: 'Departamento',
+        accessorFn: (row) => row.departamento,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_nfc',
+        header: 'Nota Final Consolidada (NFC)',
+        accessorFn: (row) => row.nfc,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_dias_servico',
+        header: 'Tempo de Serviço (Dias)',
+        accessorFn: (row) => row.dias_servico,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_idade_anos',
+        header: 'Idade Civil (Anos)',
+        accessorFn: (row) => row.idade_anos,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_conceito',
+        header: 'Conceito',
+        accessorFn: (row) => row.conceito,
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_situacao',
+        header: 'Situação de Progressão',
+        accessorFn: (row) => (row.elegivel ? 'Apto à Progressão (+10%)' : 'Insuficiente / PMD'),
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_empate_art39',
+        header: 'Empate Art. 39',
+        accessorFn: (row) => (row.possuiEmpatePontuacao ? 'Sim' : 'Não'),
+        meta: { exportOnly: true },
+      },
+      {
+        id: 'export_criterio_desempate',
+        header: 'Critério de Desempate Aplicado',
+        accessorFn: (row) =>
+          row.criterioDesempate === 'dias_servico'
+            ? 'Tempo de Serviço Municipal (2º critério)'
+            : row.criterioDesempate === 'idade'
+              ? 'Idade Civil (3º critério)'
+              : row.criterioDesempate === 'empate_total'
+                ? 'Empate Idêntico em Todos os Critérios'
+                : 'Pontuação Consolidada Direta (NFC)',
+        meta: { exportOnly: true },
+      },
+    ],
+    []
+  );
+
+  const columnsServidoresGeral = useMemo<ColumnDef<ApiServidor>[]>(
+    () => [
+      {
+        id: 'servidor',
+        header: 'Servidor Público',
+        size: 260,
         cell: ({ row }) => (
-          <div className="text-left space-y-0.5 min-w-[190px] max-w-[230px]">
-            <div className="font-semibold text-xs text-foreground truncate" title={row.original.nome_completo}>
-              {row.original.nome_completo}
+          <div className="text-left space-y-1 py-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] font-bold text-primary tabular-nums px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 shrink-0">
+                {row.original.matricula}
+              </span>
+              <span className="font-semibold text-xs text-foreground truncate" title={row.original.nome_completo}>
+                {row.original.nome_completo}
+              </span>
             </div>
             <div className="font-mono text-[11px] text-muted-foreground tabular-nums truncate" title={row.original.email || undefined}>
               CPF: {row.original.cpf} {row.original.email ? `• ${row.original.email}` : ''}
             </div>
           </div>
         ),
+        meta: {
+          exportHeader: 'Servidor Público',
+          exportValue: (row) => `${row.nome_completo} (Mat: ${row.matricula}, CPF: ${row.cpf})`,
+          sortValue: (row) => row.nome_completo,
+        },
       },
       {
-        accessorKey: 'cargo_efetivo',
-        header: 'Cargo / Regime',
-        size: 180,
+        id: 'cargo_regime',
+        header: 'Cargo & Regime',
+        size: 190,
         cell: ({ row }) => (
-          <div className="text-left space-y-0.5 min-w-[150px] max-w-[190px]">
+          <div className="text-left space-y-0.5 py-0.5">
             <div className="text-xs text-foreground font-medium truncate" title={row.original.cargo_efetivo}>
               {row.original.cargo_efetivo}
             </div>
@@ -755,66 +1018,74 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
             </div>
           </div>
         ),
-      },
-      {
-        id: 'secretaria_real',
-        header: 'Secretaria (Órgão)',
-        size: 190,
-        cell: ({ row }) => {
-          const classificacao = classificacaoPorServidor.get(row.original.id);
-          const nomeSecretaria = classificacao?.secretaria || 'Não Classificado';
-          return (
-            <div className="text-left flex items-center gap-1.5 min-w-[160px] max-w-[195px]" title={nomeSecretaria}>
-              <Badge
-                variant="outline"
-                className={`font-mono text-[10px] font-bold shrink-0 ${classificacao ? 'text-primary border-primary/30' : 'text-amber-500 border-amber-500/30'}`}
-              >
-                {classificacao ? nomeSecretaria.substring(0, 5).toUpperCase() : 'N/C'}
-              </Badge>
-              <span className="text-xs text-foreground font-medium truncate">
-                {nomeSecretaria}
-              </span>
-            </div>
-          );
+        meta: {
+          exportHeader: 'Cargo Efetivo',
+          exportValue: (row) => row.cargo_efetivo,
+          sortValue: (row) => row.cargo_efetivo,
         },
       },
       {
-        id: 'departamento_real',
-        header: 'Departamento (Lotação)',
-        size: 220,
+        id: 'lotacao_institucional',
+        header: 'Lotação Institucional',
+        size: 230,
         cell: ({ row }) => {
           const classificacao = classificacaoPorServidor.get(row.original.id);
-          const nomeDepartamento = classificacao?.departamento || 'Sem unidade organizacional identificada';
+          const nomeSecretaria = classificacao?.secretaria || 'Não Classificado';
+          const nomeDepartamento = classificacao?.departamento || 'Sem unidade organizacional vinculada';
           return (
-            <div className="text-left space-y-0.5 min-w-[180px] max-w-[225px]" title={nomeDepartamento}>
-              <div className="text-xs text-foreground font-medium truncate">
+            <div className="text-left space-y-0.5 py-0.5" title={`${nomeSecretaria} — ${nomeDepartamento}`}>
+              <div className="flex items-center gap-1.5">
+                <Badge
+                  variant="outline"
+                  className={`font-mono text-[10px] font-bold shrink-0 ${classificacao ? 'text-primary border-primary/30' : 'text-amber-500 border-amber-500/30'}`}
+                >
+                  {classificacao ? nomeSecretaria.substring(0, 5).toUpperCase() : 'N/C'}
+                </Badge>
+                <span className="text-xs text-foreground font-medium truncate">
+                  {nomeSecretaria}
+                </span>
+              </div>
+              <div className="text-[11px] text-muted-foreground truncate">
                 {nomeDepartamento}
               </div>
             </div>
           );
         },
+        meta: {
+          exportHeader: 'Lotação',
+          exportValue: (row) => {
+            const c = classificacaoPorServidor.get(row.id);
+            return c ? `${c.secretaria} - ${c.departamento}` : 'Não Classificado';
+          },
+          sortValue: (row) => classificacaoPorServidor.get(row.id)?.secretaria || '',
+        },
       },
       {
         accessorKey: 'chefia_imediata',
         header: 'Chefia Imediata',
-        size: 170,
+        size: 150,
         cell: ({ row }) => {
           const chefia = row.original.chefia_imediata?.nome_completo || 'Titular da Pasta';
           return (
-            <div className="text-left min-w-[140px] max-w-[175px]" title={chefia}>
+            <div className="text-left" title={chefia}>
               <span className="text-xs text-muted-foreground truncate block">
                 {chefia}
               </span>
             </div>
           );
         },
+        meta: {
+          exportHeader: 'Chefia Imediata',
+          exportValue: (row) => row.chefia_imediata?.nome_completo || 'Titular da Pasta',
+          sortValue: (row) => row.chefia_imediata?.nome_completo || '',
+        },
       },
       {
-        accessorKey: 'estagio_probatorio',
-        header: 'Estágio Probatório',
-        size: 140,
+        id: 'vinculo_situacao',
+        header: 'Vínculo & Situação',
+        size: 150,
         cell: ({ row }) => (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-1 py-0.5">
             {row.original.estagio_probatorio ? (
               <Badge variant="outline" className="text-[10px] font-mono text-amber-500 border-amber-500/40 whitespace-nowrap">
                 Estágio ({row.original.estagio_fase_atual ? `${row.original.estagio_fase_atual}ª Fase` : 'Ativo'})
@@ -824,21 +1095,323 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
                 Estável / Efetivo
               </Badge>
             )}
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'situacao_funcional',
-        header: 'Situação',
-        size: 100,
-        cell: ({ row }) => (
-          <div className="flex justify-center">
             <StatusChip
-              label={row.original.situacao_funcional === 'ativo' ? 'Ativo' : row.original.situacao_funcional}
-              variant="success"
+              label={row.original.situacao_funcional === 'ativo' ? 'Ativo' : (row.original.situacao_funcional ? row.original.situacao_funcional.replace(/_/g, ' ') : 'Ativo')}
+              variant={row.original.situacao_funcional !== 'ativo' ? 'warning' : 'success'}
             />
           </div>
         ),
+        meta: {
+          exportHeader: 'Vínculo & Situação',
+          exportValue: (row) => `${row.estagio_probatorio ? 'Estágio Probatório' : 'Estável'} (${row.situacao_funcional || 'Ativo'})`,
+          sortValue: (row) => (row.estagio_probatorio ? 1 : 0),
+        },
+      },
+      {
+        id: 'acoes',
+        header: 'Ação',
+        size: 120,
+        cell: ({ row }) => {
+          const userId = row.original.user_id || row.original.id;
+          const av = ultimaAvaliacaoPorServidor.get(userId);
+          return (
+            <div className="flex items-center justify-center gap-1">
+              {av && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-7 px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAvaliacaoEmFocoId(av.id);
+                    setModalEspelhoOpen(true);
+                  }}
+                  title="Ver espelho da avaliação no ciclo"
+                >
+                  <Eye className="h-3 w-3 mr-1 text-primary" />
+                  Avaliação
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setServidorDetalheId(row.original.id);
+                }}
+                title="Abrir dossiê funcional do servidor"
+              >
+                <UserCircle className="h-3.5 w-3.5 mr-1" />
+                Dossiê
+              </Button>
+            </div>
+          );
+        },
+      },
+      // Colunas atômicas complementares exclusivamente para exportação em CSV, Excel e PDF
+      {
+        id: 'exp_matricula',
+        header: 'Matrícula',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Matrícula',
+          exportValue: (r) => r.matricula,
+        },
+      },
+      {
+        id: 'exp_cpf',
+        header: 'CPF',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'CPF',
+          exportValue: (r) => r.cpf,
+        },
+      },
+      {
+        id: 'exp_nome',
+        header: 'Nome Completo',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Nome Completo',
+          exportValue: (r) => r.nome_completo,
+        },
+      },
+      {
+        id: 'exp_email',
+        header: 'E-mail',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'E-mail',
+          exportValue: (r) => r.email || '',
+        },
+      },
+      {
+        id: 'exp_secretaria',
+        header: 'Secretaria',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Secretaria',
+          exportValue: (r) => classificacaoPorServidor.get(r.id)?.secretaria || 'Não Classificado',
+        },
+      },
+      {
+        id: 'exp_departamento',
+        header: 'Departamento',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Departamento',
+          exportValue: (r) => classificacaoPorServidor.get(r.id)?.departamento || '—',
+        },
+      },
+      {
+        id: 'exp_regime',
+        header: 'Regime Jurídico',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Regime Jurídico',
+          exportValue: (r) => r.regime_juridico || (r.funcao_gratificada ? 'Comissionado' : 'Estatutário (RPPS)'),
+        },
+      },
+      {
+        id: 'exp_estagio',
+        header: 'Estágio Probatório',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Estágio Probatório',
+          exportValue: (r) => (r.estagio_probatorio ? `Sim (${r.estagio_fase_atual || 1}ª Fase)` : 'Estável'),
+        },
+      },
+      {
+        id: 'exp_situacao',
+        header: 'Situação Funcional',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Situação Funcional',
+          exportValue: (r) => r.situacao_funcional || 'Ativo',
+        },
+      },
+    ],
+    [ultimaAvaliacaoPorServidor, classificacaoPorServidor]
+  );
+
+  // Computações memoizadas da sub-aba Quadro de Servidores (Filtros Avançados & KPIs)
+  const servidoresFiltradosQuadro = useMemo(
+    () => filtrarServidoresQuadro(servidores, filtrosQuadro, classificacaoPorServidor, ultimaAvaliacaoPorServidor),
+    [servidores, filtrosQuadro, classificacaoPorServidor, ultimaAvaliacaoPorServidor]
+  );
+
+  const kpisQuadro = useMemo(
+    () => calcularKpisQuadroServidores(servidores, classificacaoPorServidor, ultimaAvaliacaoPorServidor),
+    [servidores, classificacaoPorServidor, ultimaAvaliacaoPorServidor]
+  );
+
+  const opcoesSecretariasQuadro = useMemo(() => {
+    return dadosDistribuicao
+      .filter((s) => s.codigo !== 'SEM_UNIDADE')
+      .map((s) => s.nome);
+  }, [dadosDistribuicao]);
+
+  const opcoesDepartamentosQuadro = useMemo(() => {
+    if (filtrosQuadro.secretaria && filtrosQuadro.secretaria !== '__sem_lotacao__') {
+      const sec = dadosDistribuicao.find((s) => s.nome === filtrosQuadro.secretaria);
+      return sec ? sec.departamentos.map((d) => d.nome) : [];
+    }
+    const depts = new Set<string>();
+    dadosDistribuicao.forEach((s) => {
+      s.departamentos.forEach((d) => depts.add(d.nome));
+    });
+    return Array.from(depts);
+  }, [dadosDistribuicao, filtrosQuadro.secretaria]);
+
+  const totalFiltrosAvancadosAtivos = useMemo(() => {
+    let count = 0;
+    if (filtrosQuadro.secretaria) count++;
+    if (filtrosQuadro.departamento) count++;
+    if (filtrosQuadro.regime !== 'todos') count++;
+    if (filtrosQuadro.condicaoEstagio !== 'todos') count++;
+    if (filtrosQuadro.faseEstagio !== 'todas') count++;
+    if (filtrosQuadro.situacao !== 'todos') count++;
+    if (filtrosQuadro.avaliacaoCiclo !== 'todos') count++;
+    return count;
+  }, [filtrosQuadro]);
+
+  // Definição especializada das colunas do Acompanhamento do Estágio Probatório (sem travas rígidas de largura mínima)
+  const columnsEstagioProbatorio = useMemo<ColumnDef<ApiServidor>[]>(
+    () => [
+      {
+        id: 'servidor',
+        header: 'Servidor Público',
+        size: 240,
+        cell: ({ row }) => (
+          <div className="flex flex-col text-left py-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-xs font-semibold tabular-nums text-primary">
+                {row.original.matricula}
+              </span>
+              <span className="text-xs font-medium text-foreground truncate max-w-[160px]" title={row.original.nome_completo}>
+                {row.original.nome_completo}
+              </span>
+            </div>
+            <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+              CPF: {row.original.cpf}
+            </span>
+          </div>
+        ),
+        meta: {
+          exportHeader: 'Servidor Público',
+          exportValue: (row) => `${row.nome_completo} (Matrícula: ${row.matricula} - CPF: ${row.cpf})`,
+          sortValue: (row) => row.nome_completo,
+        },
+      },
+      {
+        id: 'cargo_admissao',
+        header: 'Cargo & Admissão',
+        size: 170,
+        cell: ({ row }) => (
+          <div className="flex flex-col text-left py-0.5">
+            <span className="text-xs font-medium text-foreground truncate" title={row.original.cargo_efetivo}>
+              {row.original.cargo_efetivo}
+            </span>
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono tabular-nums">
+              <span>Adm: {row.original.data_admissao || '—'}</span>
+            </div>
+          </div>
+        ),
+        meta: {
+          exportHeader: 'Cargo Efetivo',
+          exportValue: (row) => `${row.cargo_efetivo}${row.data_admissao ? ` (Admissão: ${row.data_admissao})` : ''}`,
+          sortValue: (row) => row.cargo_efetivo || '',
+        },
+      },
+      {
+        id: 'lotacao',
+        header: 'Lotação Institucional',
+        size: 200,
+        cell: ({ row }) => {
+          const lotacao = classificacaoPorServidor.get(row.original.id);
+          const sigla = getSiglaSecretaria(lotacao?.secretaria);
+          return (
+            <div className="flex flex-col text-left py-0.5">
+              <div className="flex items-center gap-1">
+                <Badge variant="outline" className="text-[10px] font-mono px-1 py-0 h-4 border-muted-foreground/30 text-muted-foreground">
+                  {sigla}
+                </Badge>
+                <span className="text-xs font-medium text-foreground truncate max-w-[150px]" title={lotacao?.secretaria || 'Não Classificado'}>
+                  {lotacao?.secretaria ? getNomeCurtoSecretaria(lotacao.secretaria) : 'Não Classificado'}
+                </span>
+              </div>
+              <span className="text-[11px] text-muted-foreground truncate" title={lotacao?.departamento || '—'}>
+                {lotacao?.departamento || '—'}
+              </span>
+            </div>
+          );
+        },
+        meta: {
+          exportHeader: 'Lotação',
+          exportValue: (row) => {
+            const c = classificacaoPorServidor.get(row.id);
+            return c ? `${c.secretaria} - ${c.departamento}` : 'Não Classificado';
+          },
+          sortValue: (row) => classificacaoPorServidor.get(row.id)?.secretaria || '',
+        },
+      },
+      {
+        id: 'fase_intersticio',
+        header: 'Fase & Interstício',
+        size: 160,
+        cell: ({ row }) => {
+          const fase = row.original.estagio_fase_atual || 1;
+          const status = row.original.estagio_status || 'em_andamento';
+          return (
+            <div className="flex flex-col items-center gap-1 py-0.5">
+              {fase === 1 && (
+                <Badge variant="outline" className="text-[10px] font-mono text-amber-500 border-amber-500/40 whitespace-nowrap">
+                  1ª Fase (12 meses)
+                </Badge>
+              )}
+              {fase === 2 && (
+                <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/40 whitespace-nowrap">
+                  2ª Fase (24 meses)
+                </Badge>
+              )}
+              {fase >= 3 && (
+                <Badge variant="outline" className="text-[10px] font-mono text-emerald-500 border-emerald-500/40 whitespace-nowrap">
+                  3ª Fase (36 meses)
+                </Badge>
+              )}
+              <StatusChip
+                label={status === 'em_andamento' ? 'Em Andamento' : status.replace(/_/g, ' ')}
+                variant={status === 'reprovado' ? 'danger' : status === 'suspenso' ? 'warning' : 'success'}
+              />
+            </div>
+          );
+        },
+        meta: {
+          exportHeader: 'Fase & Status do Estágio',
+          exportValue: (row) => `${row.estagio_fase_atual || 1}ª Fase - ${row.estagio_status || 'Em Andamento'}`,
+          sortValue: (row) => row.estagio_fase_atual || 1,
+        },
+      },
+      {
+        accessorKey: 'chefia_imediata',
+        header: 'Chefia Imediata',
+        size: 140,
+        cell: ({ row }) => {
+          const chefia = row.original.chefia_imediata?.nome_completo || 'Titular da Pasta';
+          return (
+            <div className="text-left" title={chefia}>
+              <span className="text-xs text-muted-foreground truncate block">
+                {chefia}
+              </span>
+            </div>
+          );
+        },
+        meta: {
+          exportHeader: 'Chefia Imediata',
+          exportValue: (row) => row.chefia_imediata?.nome_completo || 'Titular da Pasta',
+          sortValue: (row) => row.chefia_imediata?.nome_completo || '',
+        },
       },
       {
         id: 'acoes',
@@ -847,27 +1420,178 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
         cell: ({ row }) => {
           const userId = row.original.user_id || row.original.id;
           const av = ultimaAvaliacaoPorServidor.get(userId);
-          if (!av) return <span className="text-[11px] text-muted-foreground">—</span>;
           return (
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs"
-              onClick={(e) => {
-                e.stopPropagation();
-                setAvaliacaoEmFocoId(av.id);
-                setModalEspelhoOpen(true);
-              }}
-            >
-              <Eye className="h-3.5 w-3.5 mr-1 text-primary" />
-              Ver Avaliação
-            </Button>
+            <div className="flex items-center justify-center gap-1">
+              {av && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-7 px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAvaliacaoEmFocoId(av.id);
+                    setModalEspelhoOpen(true);
+                  }}
+                  title="Ver espelho da avaliação no ciclo"
+                >
+                  <Eye className="h-3 w-3 mr-1 text-primary" />
+                  Avaliação
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setServidorDetalheId(row.original.id);
+                }}
+                title="Abrir dossiê funcional do servidor"
+              >
+                <UserCircle className="h-3.5 w-3.5 mr-1" />
+                Dossiê
+              </Button>
+            </div>
           );
+        },
+      },
+      // Colunas atômicas complementares de exportação (CSV / Excel / PDF)
+      {
+        id: 'exp_matricula',
+        header: 'Matrícula',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Matrícula',
+          exportValue: (r) => r.matricula,
+        },
+      },
+      {
+        id: 'exp_cpf',
+        header: 'CPF',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'CPF',
+          exportValue: (r) => r.cpf,
+        },
+      },
+      {
+        id: 'exp_nome',
+        header: 'Nome Completo',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Nome Completo',
+          exportValue: (r) => r.nome_completo,
+        },
+      },
+      {
+        id: 'exp_cargo',
+        header: 'Cargo Efetivo',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Cargo Efetivo',
+          exportValue: (r) => r.cargo_efetivo,
+        },
+      },
+      {
+        id: 'exp_admissao',
+        header: 'Data de Admissão',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Data de Admissão',
+          exportValue: (r) => r.data_admissao || '—',
+        },
+      },
+      {
+        id: 'exp_secretaria',
+        header: 'Secretaria',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Secretaria',
+          exportValue: (r) => classificacaoPorServidor.get(r.id)?.secretaria || 'Não Classificado',
+        },
+      },
+      {
+        id: 'exp_departamento',
+        header: 'Departamento',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Departamento',
+          exportValue: (r) => classificacaoPorServidor.get(r.id)?.departamento || '—',
+        },
+      },
+      {
+        id: 'exp_fase',
+        header: 'Fase do Estágio',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Fase do Estágio',
+          exportValue: (r) => `${r.estagio_fase_atual || 1}ª Fase (${(r.estagio_fase_atual || 1) * 12} meses)`,
+        },
+      },
+      {
+        id: 'exp_status_estagio',
+        header: 'Status Probatório',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Status Probatório',
+          exportValue: (r) => r.estagio_status || 'Em Andamento',
+        },
+      },
+      {
+        id: 'exp_chefia',
+        header: 'Chefia Imediata',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Chefia Imediata',
+          exportValue: (r) => r.chefia_imediata?.nome_completo || 'Titular da Pasta',
+        },
+      },
+      {
+        id: 'exp_situacao',
+        header: 'Situação Funcional',
+        meta: {
+          exportOnly: true,
+          exportHeader: 'Situação Funcional',
+          exportValue: (r) => r.situacao_funcional || 'Ativo',
         },
       },
     ],
     [ultimaAvaliacaoPorServidor, classificacaoPorServidor]
   );
+
+  // Computações memoizadas da sub-aba Acompanhamento do Estágio Probatório (Filtros Avançados & KPIs)
+  const servidoresFiltradosEstagio = useMemo(
+    () => filtrarServidoresEstagio(servidores, filtrosEstagio, classificacaoPorServidor, ultimaAvaliacaoPorServidor),
+    [servidores, filtrosEstagio, classificacaoPorServidor, ultimaAvaliacaoPorServidor]
+  );
+
+  const kpisEstagio = useMemo(
+    () => calcularKpisEstagioProbatorio(servidores, ultimaAvaliacaoPorServidor),
+    [servidores, ultimaAvaliacaoPorServidor]
+  );
+
+  const opcoesDepartamentosEstagio = useMemo(() => {
+    if (filtrosEstagio.secretaria && filtrosEstagio.secretaria !== '__sem_lotacao__') {
+      const sec = dadosDistribuicao.find((s) => s.nome === filtrosEstagio.secretaria);
+      return sec ? sec.departamentos.map((d) => d.nome) : [];
+    }
+    const depts = new Set<string>();
+    dadosDistribuicao.forEach((s) => {
+      s.departamentos.forEach((d) => depts.add(d.nome));
+    });
+    return Array.from(depts);
+  }, [dadosDistribuicao, filtrosEstagio.secretaria]);
+
+  const totalFiltrosEstagioAtivos = useMemo(() => {
+    let count = 0;
+    if (filtrosEstagio.secretaria) count++;
+    if (filtrosEstagio.departamento) count++;
+    if (filtrosEstagio.faseEstagio !== 'todas') count++;
+    if (filtrosEstagio.statusEstagio !== 'todos') count++;
+    if (filtrosEstagio.situacao !== 'todos') count++;
+    if (filtrosEstagio.avaliacaoCiclo !== 'todos') count++;
+    return count;
+  }, [filtrosEstagio]);
 
   // Linha por servidor (secretaria + departamento + dados do servidor) para a visualização em tabela.
   interface LinhaDistribuicao {
@@ -959,93 +1683,168 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
     [],
   );
 
-  // Colunas TanStack para a Exportação Folha de Pagamento
-  const columnsFolha = useMemo<ColumnDef<RankingDesempateItem>[]>(
+  // Colunas TanStack para a Exportação Folha de Pagamento (otimizadas para 100% da tela sem rolagem lateral)
+  const columnsFolha = useMemo<ColumnDef<ItemFolhaExport>[]>(
     () => [
       {
         accessorKey: 'matricula',
         header: 'Matrícula',
-        size: 100,
         cell: ({ row }) => (
           <span className="font-mono text-xs font-bold text-primary">{row.original.matricula}</span>
         ),
       },
       {
         accessorKey: 'nome',
-        header: 'Servidor',
+        header: 'Servidor / Lotação',
         cell: ({ row }) => (
-          <span className="text-xs font-medium text-foreground">{row.original.nome}</span>
+          <div className="flex flex-col min-w-[160px]">
+            <span className="text-xs font-medium text-foreground">{row.original.nome}</span>
+            <span
+              className="text-[11px] text-muted-foreground truncate"
+              title={`${row.original.cargo} • ${row.original.secretaria}`}
+            >
+              {row.original.cargo} • <span className="opacity-80">{row.original.secretaria}</span>
+            </span>
+          </div>
         ),
       },
       {
         accessorKey: 'nfc',
         header: 'NFC Trienal',
-        size: 110,
         cell: ({ row }) => (
-          <span className="font-mono text-xs font-bold">{row.original.nfc}</span>
-        ),
-      },
-      {
-        accessorKey: 'salario_atual',
-        header: 'Salário Atual',
-        size: 140,
-        cell: ({ row }) => (
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            R$ {((row.original.salario_atual_cents || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-xs font-bold">{row.original.nfc}</span>
+            <span className="text-[10px] text-muted-foreground">({row.original.conceito.split(' ')[0]})</span>
+          </div>
         ),
       },
       {
         accessorKey: 'reajuste',
-        header: 'Evolução (+10%)',
-        size: 150,
-        cell: ({ row }) => (
+        header: 'Situação Art. 17',
+        cell: ({ row }) =>
           row.original.elegivel ? (
-            <Badge variant="default" className="text-[10px] font-mono bg-emerald-600 text-white">
-              +10% (Art. 17)
+            <Badge variant="default" className="text-[10px] font-mono bg-emerald-600 hover:bg-emerald-700 text-white">
+              +10% (Apto)
             </Badge>
           ) : (
             <Badge variant="outline" className="text-[10px] font-mono text-rose-500 border-rose-300">
               Retido (PMD)
             </Badge>
-          )
+          ),
+      },
+      {
+        accessorKey: 'salario_atual',
+        header: 'Vencimento Atual',
+        cell: ({ row }) => (
+          <span className="font-mono text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+            {formatarMoedaBrl(row.original.salario_atual_cents)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'diferenca_mensal',
+        header: 'Acréscimo (+10%)',
+        cell: ({ row }) => (
+          <span
+            className={`font-mono text-xs font-bold tabular-nums whitespace-nowrap ${
+              row.original.elegivel ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+            }`}
+          >
+            {row.original.elegivel ? `+ ${formatarMoedaBrl(row.original.diferenca_mensal_cents)}` : 'R$ 0,00'}
+          </span>
         ),
       },
       {
         accessorKey: 'salario_projetado',
-        header: 'Salário com Reajuste',
-        size: 160,
+        header: 'Novo Vencimento',
         cell: ({ row }) => (
-          <span className="font-mono text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-            {row.original.elegivel
-              ? `R$ ${((row.original.salario_projetado_cents || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-              : 'R$ -'}
+          <span className="font-mono text-xs font-bold tabular-nums text-foreground whitespace-nowrap">
+            {formatarMoedaBrl(row.original.salario_projetado_cents)}
           </span>
         ),
       },
+      {
+        accessorKey: 'impacto_anual',
+        header: 'Impacto Anual c/ 13º',
+        cell: ({ row }) => (
+          <span className="font-mono text-xs tabular-nums text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+            {row.original.elegivel ? formatarMoedaBrl(row.original.impacto_anual_cents) : '—'}
+          </span>
+        ),
+      },
+      // Colunas extras atômicas exclusivas para arquivos exportados (ocultas da tabela visual)
+      {
+        id: 'export_secretaria',
+        header: 'Secretaria',
+        accessorFn: (r: ItemFolhaExport) => r.secretaria,
+        meta: { exportOnly: true, exportValue: (r: ItemFolhaExport) => r.secretaria },
+      },
+      {
+        id: 'export_departamento',
+        header: 'Departamento',
+        accessorFn: (r: ItemFolhaExport) => r.departamento,
+        meta: { exportOnly: true, exportValue: (r: ItemFolhaExport) => r.departamento },
+      },
+      {
+        id: 'export_cargo',
+        header: 'Cargo Efetivo',
+        accessorFn: (r: ItemFolhaExport) => r.cargo,
+        meta: { exportOnly: true, exportValue: (r: ItemFolhaExport) => r.cargo },
+      },
+      {
+        id: 'export_regime',
+        header: 'Regime Jurídico',
+        accessorFn: (r: ItemFolhaExport) => r.regime,
+        meta: { exportOnly: true, exportValue: (r: ItemFolhaExport) => r.regime },
+      },
+      {
+        id: 'export_cpf',
+        header: 'CPF',
+        accessorFn: (r: ItemFolhaExport) => r.cpf || '',
+        meta: { exportOnly: true, exportValue: (r: ItemFolhaExport) => r.cpf || '' },
+      },
     ],
-    []
+    [],
   );
 
-  // Handler de exportação CSV para Folha
-  const handleExportarCsvFolha = () => {
-    const cabecalho = 'matricula;nome;cargo;lotacao;nfc;dias_servico;idade;conceito;elegivel;salario_atual;reajuste_percentual;salario_projetado\n';
-    const linhas = rankingDesempate.map((r) => {
-      const salAtual = ((r.salario_atual_cents || 0) / 100).toFixed(2).replace('.', ',');
-      const salProj = r.elegivel
-        ? ((r.salario_projetado_cents || 0) / 100).toFixed(2).replace('.', ',')
-        : '0,00';
-      return `${r.matricula};"${r.nome}";"${r.cargo}";"${r.secretaria}";${r.nfc};${r.dias_servico};${r.idade_anos};"${r.conceito}";${r.elegivel ? 'SIM' : 'NAO'};${salAtual};${r.elegivel ? '10%' : '0%'};${salProj}`;
-    }).join('\n');
+  // Handlers de exportação multi-ERP
+  const handleBaixarCsvFolha = (formato: 'universal' | 'betha' | 'ipm' | 'governa') => {
+    let conteudo = '';
+    let nomeArquivo = '';
+    switch (formato) {
+      case 'betha':
+        conteudo = gerarCsvBetha(itensFolhaFiltrados);
+        nomeArquivo = `betha-prog-art17-ciclo-${cicloId}.csv`;
+        break;
+      case 'ipm':
+        conteudo = gerarCsvIpm(itensFolhaFiltrados);
+        nomeArquivo = `ipm-prog-art17-ciclo-${cicloId}.csv`;
+        break;
+      case 'governa':
+        conteudo = gerarCsvGoverna(itensFolhaFiltrados);
+        nomeArquivo = `governa-cecam-prog-art17-ciclo-${cicloId}.csv`;
+        break;
+      case 'universal':
+      default:
+        conteudo = gerarCsvUniversal(itensFolhaFiltrados);
+        nomeArquivo = `impacto-financeiro-folha-capd-ciclo-${cicloId}.csv`;
+        break;
+    }
 
-    const blob = new Blob([cabecalho + linhas], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `impacto-folha-capd-ciclo-${cicloId}.csv`);
+    link.setAttribute('download', nomeArquivo);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setModalExportacaoFolhaAberto(false);
+  };
+
+  const handleExportarCsvFolha = () => {
+    handleBaixarCsvFolha('universal');
   };
 
   const subTabItems: TabsItem<RhSubTab>[] = [
@@ -1053,7 +1852,6 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
     { key: 'distribuicao', label: 'Distribuição por Pasta & Departamento', icon: <Building2 className="h-4 w-4" />, badge: 5 },
     { key: 'servidores', label: 'Quadro de Servidores', icon: <Users className="h-4 w-4" />, badge: servidores.length },
     { key: 'estagio', label: 'Estágio Probatório', icon: <Calendar className="h-4 w-4" />, badge: servidores.filter((s) => Boolean(s.estagio_probatorio)).length },
-    { key: 'painel-gerencial', label: 'Painel Gerencial (DRH)', icon: <Activity className="h-4 w-4" /> },
     { key: 'ranking-desempate', label: 'Classificação Oficial & Desempate Art. 39', icon: <Award className="h-4 w-4" /> },
     { key: 'folha-export', label: 'Exportação Folha de Pagamento', icon: <FileSpreadsheet className="h-4 w-4" /> },
     { key: 'hierarquia', label: 'Configuração de Hierarquia', icon: <Network className="h-4 w-4" /> },
@@ -1081,9 +1879,6 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
       />
 
       <Tabs items={subTabItems} value={activeTab} onChange={setActiveTab} />
-
-      {/* ── CONTAGEM REGRESSIVA EM TEMPO REAL ─────────────────────────── */}
-      <CountdownWidget />
 
       {/* ── SUB-ABA 1: DASHBOARD ANALÍTICO & BI COM RECHARTS ─────────── */}
       {activeTab === 'analytics' && (
@@ -1788,7 +2583,8 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
 
       {/* ── SUB-ABA 2: CLASSIFICAÇÃO OFICIAL E DESEMPATE ART. 39 ──────── */}
       {activeTab === 'ranking-desempate' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* REGRAMENTO LEGAL DO ART. 39 */}
           <Card className="p-4 border-primary/20 bg-accent/20">
             <div className="flex items-start gap-3">
               <Award className="h-5 w-5 text-primary shrink-0 mt-0.5" />
@@ -1797,30 +2593,361 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
                   Regramento de Desempate Conforme Art. 39 da Lei nº 1.704/2006
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  Em caso de igualdade de pontos na Nota Final Consolidada (NFC), a classificação obedece estritamente a seguinte ordem:
+                  Em caso de igualdade de pontos na Nota Final Consolidada (NFC), a classificação obedece estritamente a seguinte ordem legal:
                   <strong className="text-foreground"> 1º Maior pontuação na NFC</strong>,
-                  <strong className="text-foreground"> 2º Maior tempo de serviço público efetivo em Araucária</strong>,
+                  <strong className="text-foreground"> 2º Maior tempo de serviço público efetivo no município</strong>,
                   <strong className="text-foreground"> 3º Maior idade civil</strong>.
                 </p>
               </div>
             </div>
           </Card>
 
-          <Card className="gap-0 py-0">
-            <div className="p-3">
-              <DataTable
-                columns={columnsDesempate}
-                data={rankingDesempate}
-                loading={loading}
-                emptyText="Nenhum servidor no ranking."
-                pageSize={10}
-                pageSizeSelector
-                fixedLayout
-                exportable
-                exportFileName="classificacao-oficial-desempate-art39"
-                exportTitle="CAPD — Relatório Oficial de Classificação e Desempate"
-              />
+          {/* PAINEL EXECUTIVO DE KPIS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Total Ranqueados"
+              value={kpisDesempate.totalRanqueados}
+              caption="Servidores com NFC no ciclo"
+            />
+            <StatCard
+              label="Aptos à Progressão"
+              value={`${kpisDesempate.aptosProgressao} (${kpisDesempate.percentualAptos}%)`}
+              caption="Nota Final Consolidada ≥ 70,00 pts"
+              accentClassName="border-l-emerald-500"
+              valueClassName="text-emerald-600 dark:text-emerald-400"
+            />
+            <StatCard
+              label="Em Risco / PMD"
+              value={kpisDesempate.emPmd}
+              caption="Nota Final Consolidada < 70,00 pts"
+              accentClassName="border-l-red-500"
+              valueClassName="text-red-600 dark:text-red-400"
+            />
+            <StatCard
+              label="Empates no Art. 39"
+              value={kpisDesempate.totalEmpatesDesempatados}
+              caption="Desempatados pelos critérios legais"
+              accentClassName="border-l-amber-500"
+              valueClassName="text-amber-600 dark:text-amber-400"
+            />
+          </div>
+
+          {/* CARD PRINCIPAL COM FERRAMENTAS, FILTROS E DATA TABLE OTIMIZADA */}
+          <Card className="p-4 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Classificação Oficial & Desempate Art. 39</h3>
+                <p className="text-xs text-muted-foreground">
+                  Ordenação homologatória de avaliação de desempenho com aplicação sucessiva dos critérios legais.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30">
+                  Exibindo: {rankingDesempateFiltrado.length} de {kpisDesempate.totalRanqueados} servidores
+                </Badge>
+              </div>
             </div>
+
+            {/* BARRA DE FERRAMENTAS: BUSCA RÁPIDA + QUICK FILTERS + BOTÃO FILTROS AVANÇADOS */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+              <div className="flex flex-1 items-center gap-2 max-w-md">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, matrícula, CPF, cargo, secretaria..."
+                    value={filtrosDesempate.termoBusca}
+                    onChange={(e) => setFiltrosDesempate((prev) => ({ ...prev, termoBusca: e.target.value }))}
+                    className="pl-9 text-xs h-9"
+                  />
+                  {filtrosDesempate.termoBusca && (
+                    <button
+                      type="button"
+                      onClick={() => setFiltrosDesempate((prev) => ({ ...prev, termoBusca: '' }))}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* QUICK FILTERS (PÍLULAS) */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <Button
+                  size="sm"
+                  variant={
+                    filtrosDesempate.faixaConceito === 'todos' &&
+                    filtrosDesempate.elegibilidade === 'todos' &&
+                    !filtrosDesempate.apenasEmpates &&
+                    !filtrosDesempate.secretaria
+                      ? 'secondary'
+                      : 'ghost'
+                  }
+                  className="h-8 text-xs px-2.5"
+                  onClick={() =>
+                    setFiltrosDesempate((prev) => ({
+                      ...prev,
+                      faixaConceito: 'todos',
+                      elegibilidade: 'todos',
+                      apenasEmpates: false,
+                      secretaria: '',
+                      departamento: '',
+                      cargo: '',
+                    }))
+                  }
+                >
+                  Todos ({kpisDesempate.totalRanqueados})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosDesempate.elegibilidade === 'elegivel' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-emerald-600 dark:text-emerald-400"
+                  onClick={() =>
+                    setFiltrosDesempate((prev) => ({
+                      ...prev,
+                      elegibilidade: prev.elegibilidade === 'elegivel' ? 'todos' : 'elegivel',
+                    }))
+                  }
+                >
+                  Elegíveis ({kpisDesempate.aptosProgressao})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosDesempate.apenasEmpates ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-amber-600 dark:text-amber-400"
+                  onClick={() =>
+                    setFiltrosDesempate((prev) => ({
+                      ...prev,
+                      apenasEmpates: !prev.apenasEmpates,
+                    }))
+                  }
+                >
+                  Empates Art. 39 ({kpisDesempate.totalEmpatesDesempatados})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosDesempate.faixaConceito === 'excelente' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-blue-600 dark:text-blue-400"
+                  onClick={() =>
+                    setFiltrosDesempate((prev) => ({
+                      ...prev,
+                      faixaConceito: prev.faixaConceito === 'excelente' ? 'todos' : 'excelente',
+                    }))
+                  }
+                >
+                  Excelente (≥90)
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosDesempate.elegibilidade === 'nao_elegivel' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-red-600 dark:text-red-400"
+                  onClick={() =>
+                    setFiltrosDesempate((prev) => ({
+                      ...prev,
+                      elegibilidade: prev.elegibilidade === 'nao_elegivel' ? 'todos' : 'nao_elegivel',
+                    }))
+                  }
+                >
+                  Em PMD ({kpisDesempate.emPmd})
+                </Button>
+
+                <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
+
+                <Button
+                  size="sm"
+                  variant={painelFiltrosDesempateAberto || totalFiltrosDesempateAtivos > 0 ? 'default' : 'outline'}
+                  className="h-8 text-xs gap-1.5"
+                  onClick={() => setPainelFiltrosDesempateAberto((v) => !v)}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  Filtros Avançados
+                  {totalFiltrosDesempateAtivos > 0 && (
+                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] font-mono bg-background text-foreground">
+                      {totalFiltrosDesempateAtivos}
+                    </Badge>
+                  )}
+                  <ChevronDown className={`h-3 w-3 transition-transform ${painelFiltrosDesempateAberto ? 'rotate-180' : ''}`} />
+                </Button>
+
+                {(totalFiltrosDesempateAtivos > 0 || filtrosDesempate.termoBusca) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs px-2 text-muted-foreground hover:text-foreground gap-1"
+                    onClick={() => setFiltrosDesempate(FILTROS_INICIAIS_DESEMPATE)}
+                    title="Limpar todos os filtros"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* PAINEL COLAPSÁVEL DE FILTROS AVANÇADOS */}
+            {painelFiltrosDesempateAberto && (
+              <div className="p-3.5 rounded-lg border border-border bg-muted/30 space-y-3 animate-in fade-in-50 duration-200">
+                <div className="flex items-center justify-between text-xs font-semibold text-foreground border-b border-border/50 pb-2">
+                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-primary" />
+                    Parâmetros Avançados de Classificação
+                  </span>
+                  {totalFiltrosDesempateAtivos > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-[11px] text-muted-foreground hover:text-foreground gap-1 px-2"
+                      onClick={() =>
+                        setFiltrosDesempate({
+                          ...FILTROS_INICIAIS_DESEMPATE,
+                          termoBusca: filtrosDesempate.termoBusca,
+                        })
+                      }
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Limpar Filtros ({totalFiltrosDesempateAtivos})
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5">
+                  {/* FILTRO SECRETARIA */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Secretaria</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosDesempate.secretaria}
+                      onChange={(e) => {
+                        const novaSec = e.target.value;
+                        setFiltrosDesempate((prev) => ({
+                          ...prev,
+                          secretaria: novaSec,
+                          departamento: '', // Reseta departamento contextual
+                        }));
+                      }}
+                    >
+                      <option value="">Todas as Secretarias</option>
+                      <option value="__sem_lotacao__">⚠️ Sem Lotação Cadastrada</option>
+                      {opcoesFiltrosDesempate.secretarias.map((sec) => (
+                        <option key={sec} value={sec}>
+                          {sec}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO DEPARTAMENTO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Departamento</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                      value={filtrosDesempate.departamento}
+                      disabled={filtrosDesempate.secretaria === '__sem_lotacao__'}
+                      onChange={(e) => setFiltrosDesempate((prev) => ({ ...prev, departamento: e.target.value }))}
+                    >
+                      <option value="">Todos os Departamentos</option>
+                      {(filtrosDesempate.secretaria && opcoesFiltrosDesempate.deptosPorSecretaria.has(filtrosDesempate.secretaria)
+                        ? Array.from(opcoesFiltrosDesempate.deptosPorSecretaria.get(filtrosDesempate.secretaria) || []).sort()
+                        : opcoesFiltrosDesempate.departamentos
+                      ).map((dep) => (
+                        <option key={dep} value={dep}>
+                          {dep}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO CARGO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Cargo Efetivo</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosDesempate.cargo}
+                      onChange={(e) => setFiltrosDesempate((prev) => ({ ...prev, cargo: e.target.value }))}
+                    >
+                      <option value="">Todos os Cargos</option>
+                      {opcoesFiltrosDesempate.cargos.map((cargo) => (
+                        <option key={cargo} value={cargo}>
+                          {cargo}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO FAIXA DE CONCEITO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Faixa de Conceito</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosDesempate.faixaConceito}
+                      onChange={(e) =>
+                        setFiltrosDesempate((prev) => ({
+                          ...prev,
+                          faixaConceito: e.target.value as FiltrosRankingDesempate['faixaConceito'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todas as Faixas</option>
+                      <option value="excelente">Excelente (NFC ≥ 90)</option>
+                      <option value="bom">Bom (NFC 80 a 89,99)</option>
+                      <option value="regular">Regular (NFC 70 a 79,99)</option>
+                      <option value="pmd">Insuficiente / PMD (NFC &lt; 70)</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO ELEGIBILIDADE */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Situação de Progressão</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosDesempate.elegibilidade}
+                      onChange={(e) =>
+                        setFiltrosDesempate((prev) => ({
+                          ...prev,
+                          elegibilidade: e.target.value as FiltrosRankingDesempate['elegibilidade'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todas</option>
+                      <option value="elegivel">Aptos à Progressão (+10%)</option>
+                      <option value="nao_elegivel">Em PMD / Inaptos</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO APENAS EMPATES ART. 39 */}
+                  <div className="space-y-1 flex flex-col justify-end">
+                    <label className="text-[11px] font-medium text-muted-foreground">Regra Art. 39</label>
+                    <button
+                      type="button"
+                      onClick={() => setFiltrosDesempate((prev) => ({ ...prev, apenasEmpates: !prev.apenasEmpates }))}
+                      className={`w-full h-8 px-2.5 rounded-md border text-xs font-medium flex items-center justify-between transition-colors ${
+                        filtrosDesempate.apenasEmpates
+                          ? 'border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                          : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <span>Apenas Empates</span>
+                      <span className="font-mono text-[10px] font-bold">
+                        {filtrosDesempate.apenasEmpates ? 'LIGADO' : 'DESLIGADO'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TABELA DE CLASSIFICAÇÃO OTIMIZADA (SEM SCROLL HORIZONTAL NO DESKTOP) */}
+            <DataTable
+              columns={columnsDesempate}
+              data={rankingDesempateFiltrado}
+              loading={loading}
+              emptyText="Nenhum servidor no ranking corresponde aos filtros aplicados."
+              pageSize={10}
+              pageSizeSelector
+              exportable
+              exportFileName="classificacao-oficial-desempate-art39"
+              exportTitle="CAPD — Relatório Oficial de Classificação e Desempate (Art. 39 da Lei 1.704/2006)"
+            />
           </Card>
         </div>
       )}
@@ -1828,113 +2955,1183 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
       {/* ── SUB-ABA 3: EXPORTAÇÃO PARA FOLHA DE PAGAMENTO ────────────── */}
       {activeTab === 'folha-export' && (
         <div className="space-y-4">
+          {/* BANNER DE ORIENTAÇÃO ORÇAMENTÁRIA & AÇÕES DE EXPORTAÇÃO */}
           <Card className="p-4 border-emerald-500/20 bg-emerald-500/5">
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start gap-3">
                 <FileSpreadsheet className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="text-xs font-bold text-foreground">
-                    Impacto Financeiro e Concessão da Evolução Funcional (+10% / Quinquênio)
+                    Impacto Financeiro e Concessão da Evolução Funcional (+10% / Art. 17)
                   </h4>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    Servidores com NFC ≥ 70,00 pts são homologados para recebimento do acréscimo salarial de 10% (Art. 17).
-                    O arquivo gerado é compatível com os conectores ERP Betha, IPM, Governa e CECAM.
+                    Servidores com NFC ≥ 70,00 pts são homologados para recebimento do acréscimo funcional de 10% (Lei nº 1.704/2006).
+                    Exporte relatórios completos ou arquivos preparados para importação direta no seu software de Folha de Pagamento.
                   </p>
                 </div>
               </div>
-              <Button size="sm" onClick={handleExportarCsvFolha} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                <Download className="h-4 w-4 mr-1.5" />
-                Baixar Arquivo para Folha (.CSV)
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setModalExportacaoFolhaAberto(true)}
+                  className="border-emerald-600/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+                >
+                  <Layers className="h-4 w-4 mr-1.5" />
+                  Conectores ERP
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleExportarCsvFolha}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Download className="h-4 w-4 mr-1.5" />
+                  Baixar CSV (.CSV)
+                </Button>
+              </div>
             </div>
           </Card>
 
-          <Card className="gap-0 py-0">
-            <div className="p-3">
+          {/* PAINEL EXECUTIVO DE KPIS ORÇAMENTÁRIOS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Folha Base Mensal"
+              value={formatarMoedaBrl(kpisFolha.folhaAtualMensalCents)}
+              caption={`Efetivo avaliado: ${kpisFolha.totalServidores} servidores`}
+              accentClassName="border-l-primary"
+              className="font-mono tabular-nums"
+            />
+            <StatCard
+              label="Impacto Mensal (+10%)"
+              value={`+ ${formatarMoedaBrl(kpisFolha.impactoMensalCents)}`}
+              caption={`Nova folha projetada: ${formatarMoedaBrl(kpisFolha.folhaProjetadaMensalCents)}`}
+              accentClassName="border-l-emerald-500"
+              className="font-mono tabular-nums"
+            />
+            <StatCard
+              label="Impacto Anual c/ 13º e Férias"
+              value={`+ ${formatarMoedaBrl(kpisFolha.impactoAnualProjetadoCents)}`}
+              caption="13 parcelas + 1/3 constitucional"
+              accentClassName="border-l-indigo-500"
+              className="font-mono tabular-nums"
+            />
+            <StatCard
+              label="Concessão da Evolução"
+              value={`${kpisFolha.totalElegiveis} aptos (${kpisFolha.percentualElegiveis.toFixed(1)}%)`}
+              caption={`${kpisFolha.totalRetidos} retidos em PMD (NFC < 70,00)`}
+              accentClassName="border-l-emerald-600"
+              className="font-mono tabular-nums"
+            />
+          </div>
+
+          {/* GRID DE SERVIDORES COM BUSCA RÁPIDA, QUICK FILTERS E FILTROS AVANÇADOS */}
+          <Card className="p-4 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Servidores Homologados e Retidos da Folha
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Projeção salarial individual e apuração da evolução de 10% segundo o Art. 17 da Lei nº 1.704/2006.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30">
+                  Exibindo: {itensFolhaFiltrados.length} de {kpisFolha.totalServidores} servidores
+                </Badge>
+              </div>
+            </div>
+
+            {/* BARRA DE FERRAMENTAS: BUSCA RÁPIDA + QUICK FILTERS + FILTROS AVANÇADOS */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+              <div className="flex flex-1 items-center gap-2 max-w-md">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, matrícula, CPF, cargo, secretaria..."
+                    value={filtrosFolha.termoBusca}
+                    onChange={(e) => setFiltrosFolha((prev) => ({ ...prev, termoBusca: e.target.value }))}
+                    className="pl-9 text-xs h-9"
+                  />
+                  {filtrosFolha.termoBusca && (
+                    <button
+                      type="button"
+                      onClick={() => setFiltrosFolha((prev) => ({ ...prev, termoBusca: '' }))}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* QUICK FILTERS (PÍLULAS) */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <Button
+                  size="sm"
+                  variant={
+                    filtrosFolha.situacao === 'todos' &&
+                    filtrosFolha.faixaImpacto === 'todas' &&
+                    filtrosFolha.regime === 'todos' &&
+                    !filtrosFolha.secretaria
+                      ? 'secondary'
+                      : 'ghost'
+                  }
+                  className="h-8 text-xs px-2.5"
+                  onClick={() =>
+                    setFiltrosFolha((prev) => ({
+                      ...prev,
+                      situacao: 'todos',
+                      faixaImpacto: 'todas',
+                      regime: 'todos',
+                      secretaria: '',
+                      departamento: '',
+                      cargo: '',
+                    }))
+                  }
+                >
+                  Todos ({kpisFolha.totalServidores})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosFolha.situacao === 'elegivel' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-emerald-600 dark:text-emerald-400"
+                  onClick={() =>
+                    setFiltrosFolha((prev) => ({
+                      ...prev,
+                      situacao: prev.situacao === 'elegivel' ? 'todos' : 'elegivel',
+                    }))
+                  }
+                >
+                  Aptos ao Reajuste ({kpisFolha.totalElegiveis})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosFolha.situacao === 'retido' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-rose-600 dark:text-rose-400"
+                  onClick={() =>
+                    setFiltrosFolha((prev) => ({
+                      ...prev,
+                      situacao: prev.situacao === 'retido' ? 'todos' : 'retido',
+                    }))
+                  }
+                >
+                  Retidos em PMD ({kpisFolha.totalRetidos})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosFolha.faixaImpacto === 'acima_1000' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-indigo-600 dark:text-indigo-400"
+                  onClick={() =>
+                    setFiltrosFolha((prev) => ({
+                      ...prev,
+                      faixaImpacto: prev.faixaImpacto === 'acima_1000' ? 'todas' : 'acima_1000',
+                    }))
+                  }
+                >
+                  Impacto &gt; R$ 1.000
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosFolha.regime === 'estatutario' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-blue-600 dark:text-blue-400"
+                  onClick={() =>
+                    setFiltrosFolha((prev) => ({
+                      ...prev,
+                      regime: prev.regime === 'estatutario' ? 'todos' : 'estatutario',
+                    }))
+                  }
+                >
+                  Estatutários
+                </Button>
+
+                <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
+
+                <Button
+                  size="sm"
+                  variant={painelFiltrosFolhaAberto || totalFiltrosFolhaAtivos > 0 ? 'default' : 'outline'}
+                  className="h-8 text-xs gap-1.5"
+                  onClick={() => setPainelFiltrosFolhaAberto((v) => !v)}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  Filtros Avançados
+                  {totalFiltrosFolhaAtivos > 0 && (
+                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] font-mono bg-background text-foreground">
+                      {totalFiltrosFolhaAtivos}
+                    </Badge>
+                  )}
+                  <ChevronDown className={`h-3 w-3 transition-transform ${painelFiltrosFolhaAberto ? 'rotate-180' : ''}`} />
+                </Button>
+
+                {(totalFiltrosFolhaAtivos > 0 || filtrosFolha.termoBusca) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs px-2 text-muted-foreground hover:text-foreground gap-1"
+                    onClick={() => setFiltrosFolha(FILTROS_INICIAIS_FOLHA)}
+                    title="Limpar todos os filtros da folha"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* PAINEL COLAPSÁVEL DE FILTROS AVANÇADOS */}
+            {painelFiltrosFolhaAberto && (
+              <div className="p-3.5 rounded-lg border border-border bg-muted/30 space-y-3 animate-in fade-in-50 duration-200">
+                <div className="flex items-center justify-between text-xs font-semibold text-foreground border-b border-border/50 pb-2">
+                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-primary" />
+                    Parâmetros Avançados de Folha e Orçamento
+                  </span>
+                  {totalFiltrosFolhaAtivos > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-[11px] text-muted-foreground hover:text-foreground gap-1 px-2"
+                      onClick={() =>
+                        setFiltrosFolha({
+                          ...FILTROS_INICIAIS_FOLHA,
+                          termoBusca: filtrosFolha.termoBusca,
+                        })
+                      }
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Limpar Filtros ({totalFiltrosFolhaAtivos})
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5">
+                  {/* FILTRO SECRETARIA */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Secretaria</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosFolha.secretaria}
+                      onChange={(e) => {
+                        const novaSec = e.target.value;
+                        setFiltrosFolha((prev) => ({
+                          ...prev,
+                          secretaria: novaSec,
+                          departamento: '', // Reseta departamento contextual
+                        }));
+                      }}
+                    >
+                      <option value="">Todas as Secretarias</option>
+                      <option value="__sem_lotacao__">⚠️ Sem Lotação Cadastrada</option>
+                      {opcoesFiltrosFolha.secretarias.map((sec) => (
+                        <option key={sec} value={sec}>
+                          {sec}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO DEPARTAMENTO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Departamento</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                      value={filtrosFolha.departamento}
+                      disabled={filtrosFolha.secretaria === '__sem_lotacao__'}
+                      onChange={(e) => setFiltrosFolha((prev) => ({ ...prev, departamento: e.target.value }))}
+                    >
+                      <option value="">Todos os Departamentos</option>
+                      {(filtrosFolha.secretaria && opcoesFiltrosFolha.deptosPorSecretaria.has(filtrosFolha.secretaria)
+                        ? Array.from(opcoesFiltrosFolha.deptosPorSecretaria.get(filtrosFolha.secretaria) || []).sort()
+                        : opcoesFiltrosFolha.departamentos
+                      ).map((dep) => (
+                        <option key={dep} value={dep}>
+                          {dep}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO CARGO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Cargo Efetivo</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosFolha.cargo}
+                      onChange={(e) => setFiltrosFolha((prev) => ({ ...prev, cargo: e.target.value }))}
+                    >
+                      <option value="">Todos os Cargos</option>
+                      {opcoesFiltrosFolha.cargos.map((cargo) => (
+                        <option key={cargo} value={cargo}>
+                          {cargo}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO SITUAÇÃO ART. 17 */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Concessão (+10%)</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosFolha.situacao}
+                      onChange={(e) =>
+                        setFiltrosFolha((prev) => ({
+                          ...prev,
+                          situacao: e.target.value as FiltrosFolhaExport['situacao'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todos os Servidores</option>
+                      <option value="elegivel">Aptos (NFC ≥ 70 pts)</option>
+                      <option value="retido">Retidos em PMD (NFC &lt; 70 pts)</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO FAIXA DE IMPACTO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Impacto Mensal</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosFolha.faixaImpacto}
+                      onChange={(e) =>
+                        setFiltrosFolha((prev) => ({
+                          ...prev,
+                          faixaImpacto: e.target.value as FiltrosFolhaExport['faixaImpacto'],
+                        }))
+                      }
+                    >
+                      <option value="todas">Todas as Faixas</option>
+                      <option value="ate_500">Até R$ 500,00/mês</option>
+                      <option value="500_a_1000">R$ 500,00 a R$ 1.000,00/mês</option>
+                      <option value="acima_1000">Acima de R$ 1.000,00/mês</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO REGIME */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Regime Jurídico</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosFolha.regime}
+                      onChange={(e) =>
+                        setFiltrosFolha((prev) => ({
+                          ...prev,
+                          regime: e.target.value as FiltrosFolhaExport['regime'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todos os Regimes</option>
+                      <option value="estatutario">Estatutário</option>
+                      <option value="comissionado">Comissionado</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TABELA DE DADOS FINANCEIROS - SEM FIXEDLAYOUT PARA TOTAL RESPONSIVIDADE */}
+            <div className="pt-1">
               <DataTable
                 columns={columnsFolha}
-                data={rankingDesempate}
+                data={itensFolhaFiltrados}
                 loading={loading}
-                emptyText="Nenhum dado financeiro para exportação."
+                emptyText="Nenhum dado financeiro encontrado com os filtros selecionados."
                 pageSize={10}
                 pageSizeSelector
-                fixedLayout
                 exportable
                 exportFileName="impacto-financeiro-folha-capd"
-                exportTitle="CAPD — Impacto Financeiro da Evolução Funcional"
+                exportTitle="CAPD — Relatório Oficial de Evolução Funcional (Art. 17 da Lei 1.704/2006)"
               />
             </div>
+          </Card>
+
+          {/* MODAL DE EXPORTAÇÃO ESPECIALIZADA PARA ERPS DE FOLHA */}
+          <Modal
+            open={modalExportacaoFolhaAberto}
+            onClose={() => setModalExportacaoFolhaAberto(false)}
+            title="Conectores de Exportação para Folha de Pagamento"
+            icon={<FileSpreadsheet className="h-5 w-5 text-emerald-600" />}
+            size="lg"
+          >
+            <div className="space-y-4 p-1">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Selecione o formato de saída correspondente ao software de folha de pagamento do município. Todos os arquivos são gerados com assinatura UTF-8 BOM para preservação de acentuação e caracteres gráficos.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 1. CSV UNIVERSAL */}
+                <div
+                  onClick={() => handleBaixarCsvFolha('universal')}
+                  className="p-3.5 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors space-y-1.5 group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                      <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                      CSV Universal (Completo)
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono">Padrão</Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Contém todas as colunas cadastrais, NFC, vencimentos atuais, percentuais, acréscimos e impacto anual projetado.
+                  </p>
+                </div>
+
+                {/* 2. BETHA SISTEMAS */}
+                <div
+                  onClick={() => handleBaixarCsvFolha('betha')}
+                  className="p-3.5 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors space-y-1.5 group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                      <Database className="h-4 w-4 text-blue-600" />
+                      Betha Sistemas
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono">Evento 101</Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Leiaute otimizado para o módulo Folha / Noガラ com código de evento 101, competência e novo vencimento base.
+                  </p>
+                </div>
+
+                {/* 3. IPM ATENDE.NET */}
+                <div
+                  onClick={() => handleBaixarCsvFolha('ipm')}
+                  className="p-3.5 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors space-y-1.5 group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                      <Network className="h-4 w-4 text-purple-600" />
+                      IPM Atende.Net
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono">Prog. Trienal</Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Leiaute compatível com o módulo de Recursos Humanos do IPM Atende.Net contendo código PROG_TRIENAL_10 e status.
+                  </p>
+                </div>
+
+                {/* 4. GOVERNA / CECAM */}
+                <div
+                  onClick={() => handleBaixarCsvFolha('governa')}
+                  className="p-3.5 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors space-y-1.5 group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                      <Building2 className="h-4 w-4 text-amber-600" />
+                      Governa / CECAM
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono">Rubrica 110</Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Formato de rubricas salariais do sistema Governa/CECAM com rubrica RUB_10_CAPD e valor da diferença mensal.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button size="sm" variant="ghost" onClick={() => setModalExportacaoFolhaAberto(false)}>
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        </div>
+      )}
+
+      {/* ── SUB-ABA 4: QUADRO DE SERVIDORES (RH UNIVERSAL & GESTÃO DE PESSOAS) ── */}
+      {activeTab === 'servidores' && (
+        <div className="space-y-4">
+          {/* CARDS EXECUTIVOS DO QUADRO DE SERVIDORES */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Total de Servidores"
+              value={kpisQuadro.total}
+              caption="Quadro geral cadastrado no órgão"
+              accentClassName="border-l-primary"
+            />
+            <StatCard
+              label="Estágio Probatório"
+              value={`${kpisQuadro.totalEstagio} (${kpisQuadro.percentualEstagio}%)`}
+              caption="Em avaliação nos 36 meses (Art. 41)"
+              accentClassName="border-l-amber-500"
+              valueClassName="text-amber-600 dark:text-amber-400"
+            />
+            <StatCard
+              label="Servidores Estáveis"
+              value={`${kpisQuadro.totalEstaveis} (${kpisQuadro.percentualEstaveis}%)`}
+              caption="Efetivos com estabilidade funcional"
+              accentClassName="border-l-emerald-500"
+              valueClassName="text-emerald-600 dark:text-emerald-400"
+            />
+            <StatCard
+              label="Lotação Organizacional"
+              value={`${kpisQuadro.totalAlocados} / ${kpisQuadro.total}`}
+              caption={
+                kpisQuadro.totalNaoClassificados > 0
+                  ? `${kpisQuadro.totalNaoClassificados} sem unidade identificada`
+                  : '100% com lotação institucional'
+              }
+              accentClassName="border-l-blue-500"
+              valueClassName="text-blue-600 dark:text-blue-400"
+            />
+          </div>
+
+          {/* CARD PRINCIPAL COM FERRAMENTAS, FILTROS E TABELA OTIMIZADA */}
+          <Card className="p-4 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Quadro Geral de Servidores Públicos</h3>
+                <p className="text-xs text-muted-foreground">
+                  Gestão cadastral centralizada com lotação física, secretaria e departamento vinculados.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30">
+                  Exibindo: {servidoresFiltradosQuadro.length} de {servidores.length} servidores
+                </Badge>
+              </div>
+            </div>
+
+            {/* BARRA DE FERRAMENTAS: BUSCA RÁPIDA + QUICK FILTERS + BOTÃO FILTROS AVANÇADOS */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+              <div className="flex flex-1 items-center gap-2 max-w-md">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, matrícula, CPF, cargo..."
+                    value={filtrosQuadro.termoBusca}
+                    onChange={(e) => setFiltrosQuadro((prev) => ({ ...prev, termoBusca: e.target.value }))}
+                    className="pl-9 text-xs h-9"
+                  />
+                  {filtrosQuadro.termoBusca && (
+                    <button
+                      type="button"
+                      onClick={() => setFiltrosQuadro((prev) => ({ ...prev, termoBusca: '' }))}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* QUICK FILTERS (PÍLULAS) */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <Button
+                  size="sm"
+                  variant={filtrosQuadro.condicaoEstagio === 'todos' && !filtrosQuadro.secretaria ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5"
+                  onClick={() =>
+                    setFiltrosQuadro((prev) => ({
+                      ...prev,
+                      condicaoEstagio: 'todos',
+                      secretaria: '',
+                      departamento: '',
+                    }))
+                  }
+                >
+                  Todos ({kpisQuadro.total})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosQuadro.condicaoEstagio === 'estagio' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-amber-600 dark:text-amber-400"
+                  onClick={() =>
+                    setFiltrosQuadro((prev) => ({
+                      ...prev,
+                      condicaoEstagio: prev.condicaoEstagio === 'estagio' ? 'todos' : 'estagio',
+                    }))
+                  }
+                >
+                  Estágio Probatório ({kpisQuadro.totalEstagio})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosQuadro.condicaoEstagio === 'estavel' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-emerald-600 dark:text-emerald-400"
+                  onClick={() =>
+                    setFiltrosQuadro((prev) => ({
+                      ...prev,
+                      condicaoEstagio: prev.condicaoEstagio === 'estavel' ? 'todos' : 'estavel',
+                    }))
+                  }
+                >
+                  Estáveis ({kpisQuadro.totalEstaveis})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosQuadro.secretaria === '__sem_lotacao__' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-blue-600 dark:text-blue-400"
+                  onClick={() =>
+                    setFiltrosQuadro((prev) => ({
+                      ...prev,
+                      secretaria: prev.secretaria === '__sem_lotacao__' ? '' : '__sem_lotacao__',
+                      departamento: '',
+                    }))
+                  }
+                >
+                  Sem Lotação ({kpisQuadro.totalNaoClassificados})
+                </Button>
+
+                <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
+
+                <Button
+                  size="sm"
+                  variant={painelFiltrosAvancadosAberto || totalFiltrosAvancadosAtivos > 0 ? 'default' : 'outline'}
+                  className="h-8 text-xs gap-1.5"
+                  onClick={() => setPainelFiltrosAvancadosAberto((v) => !v)}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  Filtros Avançados
+                  {totalFiltrosAvancadosAtivos > 0 && (
+                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] font-mono bg-background text-foreground">
+                      {totalFiltrosAvancadosAtivos}
+                    </Badge>
+                  )}
+                  <ChevronDown className={`h-3 w-3 transition-transform ${painelFiltrosAvancadosAberto ? 'rotate-180' : ''}`} />
+                </Button>
+
+                {(totalFiltrosAvancadosAtivos > 0 || filtrosQuadro.termoBusca) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs px-2 text-muted-foreground hover:text-foreground gap-1"
+                    onClick={() => setFiltrosQuadro(FILTROS_INICIAIS_QUADRO)}
+                    title="Limpar todos os filtros"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* PAINEL COLAPSÁVEL DE FILTROS AVANÇADOS */}
+            {painelFiltrosAvancadosAberto && (
+              <div className="p-3.5 rounded-lg border border-border bg-muted/30 space-y-3 animate-in fade-in-50 duration-200">
+                <div className="flex items-center justify-between text-xs font-semibold text-foreground border-b border-border/50 pb-2">
+                  <span className="flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-primary" />
+                    Critérios de Filtragem Avançada
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFiltrosQuadro(FILTROS_INICIAIS_QUADRO)}
+                    className="text-[11px] text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Redefinir Filtros
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
+                  {/* FILTRO SECRETARIA */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Secretaria (Órgão)</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosQuadro.secretaria}
+                      onChange={(e) => {
+                        const novaSec = e.target.value;
+                        setFiltrosQuadro((prev) => ({
+                          ...prev,
+                          secretaria: novaSec,
+                          departamento: '', // Reseta departamento contextual
+                        }));
+                      }}
+                    >
+                      <option value="">Todas as Secretarias</option>
+                      <option value="__sem_lotacao__">⚠️ Sem Lotação Cadastrada</option>
+                      {opcoesSecretariasQuadro.map((sec) => (
+                        <option key={sec} value={sec}>
+                          {sec}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO DEPARTAMENTO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Departamento (Lotação)</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                      value={filtrosQuadro.departamento}
+                      disabled={filtrosQuadro.secretaria === '__sem_lotacao__'}
+                      onChange={(e) => setFiltrosQuadro((prev) => ({ ...prev, departamento: e.target.value }))}
+                    >
+                      <option value="">Todos os Departamentos</option>
+                      {opcoesDepartamentosQuadro.map((dep) => (
+                        <option key={dep} value={dep}>
+                          {dep}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO REGIME JURÍDICO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Regime Jurídico</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosQuadro.regime}
+                      onChange={(e) =>
+                        setFiltrosQuadro((prev) => ({
+                          ...prev,
+                          regime: e.target.value as FiltrosQuadroServidores['regime'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todos os Regimes</option>
+                      <option value="estatutario">Estatutário (RPPS)</option>
+                      <option value="comissionado">Comissionado / Função Gratificada</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO CONDIÇÃO PROBATÓRIA */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Condição Probatória</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosQuadro.condicaoEstagio}
+                      onChange={(e) =>
+                        setFiltrosQuadro((prev) => ({
+                          ...prev,
+                          condicaoEstagio: e.target.value as FiltrosQuadroServidores['condicaoEstagio'],
+                          faseEstagio: e.target.value === 'estavel' ? 'todas' : prev.faseEstagio,
+                        }))
+                      }
+                    >
+                      <option value="todos">Todos os Vínculos</option>
+                      <option value="estagio">Em Estágio Probatório</option>
+                      <option value="estavel">Estável / Efetivo</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO FASE DO ESTÁGIO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Fase do Estágio</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                      value={filtrosQuadro.faseEstagio}
+                      disabled={filtrosQuadro.condicaoEstagio === 'estavel'}
+                      onChange={(e) =>
+                        setFiltrosQuadro((prev) => ({
+                          ...prev,
+                          faseEstagio: e.target.value as FiltrosQuadroServidores['faseEstagio'],
+                        }))
+                      }
+                    >
+                      <option value="todas">Todas as Fases</option>
+                      <option value="1">1ª Fase (12 meses)</option>
+                      <option value="2">2ª Fase (24 meses)</option>
+                      <option value="3">3ª Fase (36 meses)</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO SITUAÇÃO FUNCIONAL */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Situação Funcional</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosQuadro.situacao}
+                      onChange={(e) =>
+                        setFiltrosQuadro((prev) => ({
+                          ...prev,
+                          situacao: e.target.value as FiltrosQuadroServidores['situacao'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todas as Situações</option>
+                      <option value="ativo">Ativo</option>
+                      <option value="afastado">Afastado / Licença</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO AVALIAÇÃO NO CICLO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Avaliação no Ciclo Atual</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosQuadro.avaliacaoCiclo}
+                      onChange={(e) =>
+                        setFiltrosQuadro((prev) => ({
+                          ...prev,
+                          avaliacaoCiclo: e.target.value as FiltrosQuadroServidores['avaliacaoCiclo'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todas</option>
+                      <option value="com_avaliacao">Com Avaliação Registrada</option>
+                      <option value="sem_avaliacao">Sem Avaliação Registrada</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TABELA DE SERVIDORES OTIMIZADA (SEM SCROLL HORIZONTAL NO DESKTOP) */}
+            <DataTable
+              columns={columnsServidoresGeral}
+              data={servidoresFiltradosQuadro}
+              loading={loading}
+              emptyText="Nenhum servidor corresponde aos filtros aplicados."
+              pageSize={10}
+              pageSizeSelector
+              exportable
+              exportFileName="quadro-geral-servidores-rh"
+              exportTitle="CAPD — Quadro Geral de Servidores Públicos"
+              onRowClick={(row) => setServidorDetalheId(row.id)}
+            />
           </Card>
         </div>
       )}
 
-      {/* ── SUB-ABA 4: QUADRO DE SERVIDORES (RH UNIVERSAL) ───────────── */}
-      {activeTab === 'servidores' && (
-        <Card className="p-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-sm font-bold text-foreground">Quadro Geral de Servidores Públicos</h3>
-              <p className="text-xs text-muted-foreground">
-                Gestão cadastral centralizada com lotação física, órgão por secretaria e departamento.
-              </p>
-            </div>
-            <div className="font-mono text-xs text-muted-foreground">
-              Total cadastrado: <strong className="text-foreground">{servidores.length}</strong>
-            </div>
-          </div>
-          <DataTable
-            columns={columnsServidoresGeral}
-            data={servidores}
-            loading={loading}
-            emptyText="Nenhum servidor listado."
-            searchable
-            searchPlaceholder="Filtrar por matrícula, nome, CPF, cargo, secretaria..."
-            pageSize={10}
-            pageSizeSelector
-            fixedLayout
-            exportable
-            exportFileName="servidores-rh"
-            exportTitle="CAPD — Quadro Geral de Servidores"
-            onRowClick={(row) => setServidorDetalheId(row.id)}
-          />
-        </Card>
-      )}
-
       {/* ── SUB-ABA 5: ESTÁGIO PROBATÓRIO (CF ART. 41) ───────────────── */}
       {activeTab === 'estagio' && (
-        <Card className="p-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-sm font-bold text-foreground">Acompanhamento do Estágio Probatório</h3>
-              <p className="text-xs text-muted-foreground">
-                Servidores em ciclo de 36 meses com avaliações periódicas para aquisição de estabilidade.
-              </p>
-            </div>
-            <div className="font-mono text-xs text-muted-foreground">
-              Em estágio: <strong className="text-foreground">{servidores.filter((s) => Boolean(s.estagio_probatorio)).length}</strong>
-            </div>
+        <div className="space-y-4">
+          {/* CABEÇALHO EXECUTIVO DE KPIS DO ESTÁGIO PROBATÓRIO */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Total em Estágio"
+              value={kpisEstagio.totalEstagio}
+              caption="Efetivo sob cadência trienal (CF Art. 41)"
+              accentClassName="border-l-primary"
+              valueClassName="text-primary"
+            />
+            <StatCard
+              label="1ª Fase (12 meses)"
+              value={`${kpisEstagio.totalFase1} (${kpisEstagio.percentualFase1}%)`}
+              caption="1º ano do período probatório"
+              accentClassName="border-l-amber-500"
+              valueClassName="text-amber-600 dark:text-amber-400"
+            />
+            <StatCard
+              label="2ª Fase (24 meses)"
+              value={`${kpisEstagio.totalFase2} (${kpisEstagio.percentualFase2}%)`}
+              caption="2º ano do período probatório"
+              accentClassName="border-l-indigo-500"
+              valueClassName="text-indigo-600 dark:text-indigo-400"
+            />
+            <StatCard
+              label="3ª Fase (36 meses)"
+              value={`${kpisEstagio.totalFase3} (${kpisEstagio.percentualFase3}%)`}
+              caption="Estabilidade funcional iminente"
+              accentClassName="border-l-emerald-500"
+              valueClassName="text-emerald-600 dark:text-emerald-400"
+            />
           </div>
-          <DataTable
-            columns={columnsServidoresGeral}
-            data={servidores.filter((s) => Boolean(s.estagio_probatorio))}
-            loading={loading}
-            emptyText="Nenhum servidor em estágio probatório."
-            searchable
-            searchPlaceholder="Filtrar servidores em estágio..."
-            pageSize={10}
-            pageSizeSelector
-            fixedLayout
-            exportable
-            exportFileName="estagio-probatorio-rh"
-            exportTitle="CAPD — Estágio Probatório"
-          />
-        </Card>
+
+          {/* CARD PRINCIPAL COM FERRAMENTAS, FILTROS E TABELA OTIMIZADA */}
+          <Card className="p-4 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Acompanhamento do Estágio Probatório</h3>
+                <p className="text-xs text-muted-foreground">
+                  Monitoramento da cadência avaliativa trienal (CF/88 Art. 41) e interstícios temporais dos servidores concursados.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30">
+                  Exibindo: {servidoresFiltradosEstagio.length} de {kpisEstagio.totalEstagio} em estágio
+                </Badge>
+              </div>
+            </div>
+
+            {/* BARRA DE FERRAMENTAS: BUSCA RÁPIDA + QUICK FILTERS + BOTÃO FILTROS AVANÇADOS */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+              <div className="flex flex-1 items-center gap-2 max-w-md">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, matrícula, CPF, cargo..."
+                    value={filtrosEstagio.termoBusca}
+                    onChange={(e) => setFiltrosEstagio((prev) => ({ ...prev, termoBusca: e.target.value }))}
+                    className="pl-9 text-xs h-9"
+                  />
+                  {filtrosEstagio.termoBusca && (
+                    <button
+                      type="button"
+                      onClick={() => setFiltrosEstagio((prev) => ({ ...prev, termoBusca: '' }))}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* QUICK FILTERS (PÍLULAS) */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <Button
+                  size="sm"
+                  variant={filtrosEstagio.faseEstagio === 'todas' && filtrosEstagio.avaliacaoCiclo === 'todos' && !filtrosEstagio.secretaria ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5"
+                  onClick={() =>
+                    setFiltrosEstagio((prev) => ({
+                      ...prev,
+                      faseEstagio: 'todas',
+                      avaliacaoCiclo: 'todos',
+                      secretaria: '',
+                      departamento: '',
+                    }))
+                  }
+                >
+                  Todos ({kpisEstagio.totalEstagio})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosEstagio.faseEstagio === '1' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-amber-600 dark:text-amber-400"
+                  onClick={() =>
+                    setFiltrosEstagio((prev) => ({
+                      ...prev,
+                      faseEstagio: prev.faseEstagio === '1' ? 'todas' : '1',
+                    }))
+                  }
+                >
+                  1ª Fase ({kpisEstagio.totalFase1})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosEstagio.faseEstagio === '2' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-indigo-600 dark:text-indigo-400"
+                  onClick={() =>
+                    setFiltrosEstagio((prev) => ({
+                      ...prev,
+                      faseEstagio: prev.faseEstagio === '2' ? 'todas' : '2',
+                    }))
+                  }
+                >
+                  2ª Fase ({kpisEstagio.totalFase2})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosEstagio.faseEstagio === '3' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-emerald-600 dark:text-emerald-400"
+                  onClick={() =>
+                    setFiltrosEstagio((prev) => ({
+                      ...prev,
+                      faseEstagio: prev.faseEstagio === '3' ? 'todas' : '3',
+                    }))
+                  }
+                >
+                  3ª Fase ({kpisEstagio.totalFase3})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosEstagio.avaliacaoCiclo === 'com_avaliacao' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-blue-600 dark:text-blue-400"
+                  onClick={() =>
+                    setFiltrosEstagio((prev) => ({
+                      ...prev,
+                      avaliacaoCiclo: prev.avaliacaoCiclo === 'com_avaliacao' ? 'todos' : 'com_avaliacao',
+                    }))
+                  }
+                >
+                  Avaliados ({kpisEstagio.totalComAvaliacao})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtrosEstagio.avaliacaoCiclo === 'sem_avaliacao' ? 'secondary' : 'ghost'}
+                  className="h-8 text-xs px-2.5 text-rose-600 dark:text-rose-400"
+                  onClick={() =>
+                    setFiltrosEstagio((prev) => ({
+                      ...prev,
+                      avaliacaoCiclo: prev.avaliacaoCiclo === 'sem_avaliacao' ? 'todos' : 'sem_avaliacao',
+                    }))
+                  }
+                >
+                  Pendentes ({kpisEstagio.totalEstagio - kpisEstagio.totalComAvaliacao})
+                </Button>
+
+                <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
+
+                <Button
+                  size="sm"
+                  variant={painelFiltrosEstagioAberto || totalFiltrosEstagioAtivos > 0 ? 'default' : 'outline'}
+                  className="h-8 text-xs gap-1.5 px-3"
+                  onClick={() => setPainelFiltrosEstagioAberto((prev) => !prev)}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  <span>Filtros</span>
+                  {totalFiltrosEstagioAtivos > 0 && (
+                    <span className="ml-0.5 rounded-full bg-primary-foreground text-primary px-1.5 py-0.2 text-[10px] font-bold font-mono">
+                      {totalFiltrosEstagioAtivos}
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* PAINEL COLAPSÁVEL DE FILTROS AVANÇADOS */}
+            {painelFiltrosEstagioAberto && (
+              <div className="rounded-lg border border-border/80 bg-muted/30 p-3.5 space-y-3 animate-in fade-in-50 duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-primary" />
+                    Parâmetros Avançados do Estágio Probatório
+                  </span>
+                  {totalFiltrosEstagioAtivos > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-[11px] text-muted-foreground hover:text-foreground gap-1 px-2"
+                      onClick={() =>
+                        setFiltrosEstagio({
+                          ...FILTROS_INICIAIS_ESTAGIO,
+                          termoBusca: filtrosEstagio.termoBusca,
+                        })
+                      }
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Limpar Filtros ({totalFiltrosEstagioAtivos})
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5">
+                  {/* FILTRO SECRETARIA */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Secretaria</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosEstagio.secretaria}
+                      onChange={(e) => {
+                        const novaSec = e.target.value;
+                        setFiltrosEstagio((prev) => ({
+                          ...prev,
+                          secretaria: novaSec,
+                          departamento: '', // Reseta departamento contextual
+                        }));
+                      }}
+                    >
+                      <option value="">Todas as Secretarias</option>
+                      <option value="__sem_lotacao__">⚠️ Sem Lotação Cadastrada</option>
+                      {opcoesSecretariasQuadro.map((sec) => (
+                        <option key={sec} value={sec}>
+                          {sec}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO DEPARTAMENTO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Departamento</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                      value={filtrosEstagio.departamento}
+                      disabled={filtrosEstagio.secretaria === '__sem_lotacao__'}
+                      onChange={(e) => setFiltrosEstagio((prev) => ({ ...prev, departamento: e.target.value }))}
+                    >
+                      <option value="">Todos os Departamentos</option>
+                      {opcoesDepartamentosEstagio.map((dep) => (
+                        <option key={dep} value={dep}>
+                          {dep}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* FILTRO FASE DO ESTÁGIO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Fase do Estágio</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosEstagio.faseEstagio}
+                      onChange={(e) =>
+                        setFiltrosEstagio((prev) => ({
+                          ...prev,
+                          faseEstagio: e.target.value as FiltrosEstagioProbatorio['faseEstagio'],
+                        }))
+                      }
+                    >
+                      <option value="todas">Todas as Fases</option>
+                      <option value="1">1ª Fase (12 meses)</option>
+                      <option value="2">2ª Fase (24 meses)</option>
+                      <option value="3">3ª Fase (36 meses)</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO STATUS DO ESTÁGIO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Status do Estágio</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosEstagio.statusEstagio}
+                      onChange={(e) =>
+                        setFiltrosEstagio((prev) => ({
+                          ...prev,
+                          statusEstagio: e.target.value as FiltrosEstagioProbatorio['statusEstagio'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todos os Status</option>
+                      <option value="em_andamento">Em Andamento</option>
+                      <option value="aprovado">Aprovado (Estável)</option>
+                      <option value="reprovado">Reprovado</option>
+                      <option value="suspenso">Suspenso</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO SITUAÇÃO FUNCIONAL */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Situação Funcional</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosEstagio.situacao}
+                      onChange={(e) =>
+                        setFiltrosEstagio((prev) => ({
+                          ...prev,
+                          situacao: e.target.value as FiltrosEstagioProbatorio['situacao'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todas as Situações</option>
+                      <option value="ativo">Ativo</option>
+                      <option value="afastado">Afastado / Licença</option>
+                    </select>
+                  </div>
+
+                  {/* FILTRO AVALIAÇÃO NO CICLO */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Avaliação no Ciclo Atual</label>
+                    <select
+                      className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={filtrosEstagio.avaliacaoCiclo}
+                      onChange={(e) =>
+                        setFiltrosEstagio((prev) => ({
+                          ...prev,
+                          avaliacaoCiclo: e.target.value as FiltrosEstagioProbatorio['avaliacaoCiclo'],
+                        }))
+                      }
+                    >
+                      <option value="todos">Todas</option>
+                      <option value="com_avaliacao">Com Avaliação Registrada</option>
+                      <option value="sem_avaliacao">Sem Avaliação Registrada</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TABELA DE ESTÁGIO PROBATÓRIO OTIMIZADA (SEM SCROLL HORIZONTAL NO DESKTOP) */}
+            <DataTable
+              columns={columnsEstagioProbatorio}
+              data={servidoresFiltradosEstagio}
+              loading={loading}
+              emptyText="Nenhum servidor em estágio probatório corresponde aos filtros aplicados."
+              pageSize={10}
+              pageSizeSelector
+              exportable
+              exportFileName="acompanhamento-estagio-probatorio-rh"
+              exportTitle="CAPD — Acompanhamento do Estágio Probatório (CF Art. 41)"
+              onRowClick={(row) => setServidorDetalheId(row.id)}
+            />
+          </Card>
+        </div>
       )}
 
-      {/* ── SUB-ABA 6: PAINEL GERENCIAL DO DRH ───────────────────────── */}
-      {activeTab === 'painel-gerencial' && <PainelGerencialPanel cicloId={cicloId} />}
-
-      {/* ── SUB-ABA 7: CONFIGURAÇÃO DE HIERARQUIA ────────────────────── */}
+      {/* ── SUB-ABA 6: CONFIGURAÇÃO DE HIERARQUIA ────────────────────── */}
       {activeTab === 'hierarquia' && <HierarquiaConfigPanel />}
 
       {/* ── SUB-ABA 8: PENDÊNCIAS DE HIERARQUIA ──────────────────────── */}
@@ -1949,21 +4146,9 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
 
       {/* ── SUB-ABA 10: INTEGRAÇÕES ERP E INJEÇÃO EMBED ───────────────── */}
       {activeTab === 'integracao' && (
-        <Card className="p-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-primary" />
-            <div>
-              <h3 className="text-sm font-bold text-foreground">Gateway de Integrações de RH & Embed</h3>
-              <p className="text-xs text-muted-foreground">Sincronização com sistemas legados (Betha, IPM, Governa) e tokens de injeção headless.</p>
-            </div>
-          </div>
-          <div className="p-3 bg-muted/40 rounded border border-border text-xs space-y-2">
-            <div className="font-semibold text-foreground">Conectores REST / Webhook Ativos</div>
-            <p className="text-muted-foreground">
-              Comunicação bidirecional para importação automática de lotações funcionais e exportação de homologações da cadência trienal.
-            </p>
-          </div>
-        </Card>
+        <div className="space-y-4 p-1">
+          <IntegracoesEmbedPanel />
+        </div>
       )}
 
       {/* ── Modal: Painel de Detalhe do Servidor (Quadro Geral) ─────────── */}

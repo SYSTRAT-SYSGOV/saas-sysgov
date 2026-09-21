@@ -217,8 +217,11 @@ final class PmdService
      */
     public function listar(array $filtros = []): Collection
     {
-        $query = PlanoMelhoria::with(['ciclo', 'cicloVerificacao'])
-            ->orderByDesc('created_at');
+        $query = PlanoMelhoria::with([
+            'ciclo',
+            'cicloVerificacao',
+            'servidor:id,nome_completo,matricula,cargo_efetivo,orgao_lotacao',
+        ])->orderByDesc('created_at');
 
         if (! empty($filtros['status'])) {
             $query->where('status', $filtros['status']);
