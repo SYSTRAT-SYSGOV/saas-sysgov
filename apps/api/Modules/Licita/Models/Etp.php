@@ -16,7 +16,7 @@ use Modules\Licita\Enums\StatusEtp;
  * @property int $id
  * @property int $tenant_id
  * @property int $processo_id
- * @property string $conteudo
+ * @property string|null $conteudo
  * @property array<int, array{nome: string, cargo: string, matricula: string}>|null $equipe_planejamento
  * @property array<string, mixed>|null $campos_extras
  * @property string $status

@@ -227,7 +227,7 @@ export interface Etp {
   id: number;
   tenant_id: number;
   processo_id: number;
-  conteudo: string;
+  conteudo: string | null;
   /** Nasce como cópia da equipe do DFD (ver EtpService::criar), mas é editável independentemente dali em diante. */
   equipe_planejamento: MembroEquipePlanejamento[] | null;
   campos_extras: Record<string, unknown> | null;
@@ -506,7 +506,7 @@ export interface CreateDfdInput {
 export type UpdateDfdInput = Partial<CreateDfdInput>;
 
 export interface CreateEtpInput {
-  conteudo: string;
+  conteudo?: string | null;
   /** Se omitido na criação, o backend copia a equipe do DFD do processo (ver EtpService::criar). */
   equipe_planejamento?: MembroEquipePlanejamento[];
   campos_extras?: Record<string, unknown>;

@@ -133,10 +133,11 @@ export function gerarEtpPdf(janela: Window, processo: Processo, tenant: Tenant, 
     </div>
   </div>
 
+  ${etp.conteudo ? `
   <section>
     <h2>${tituloSecao('Estudo Técnico Preliminar')}</h2>
     <div class="rich">${etp.conteudo}</div>
-  </section>
+  </section>` : ''}
 
   ${equipe.length > 0 ? `
   <section>

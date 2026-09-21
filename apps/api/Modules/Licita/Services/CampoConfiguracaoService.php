@@ -16,12 +16,16 @@ final class CampoConfiguracaoService
      * Campos nativos (colunas reais do model) que o órgão pode reorganizar
      * como se fossem campos extras — rótulo, aba e obrigatoriedade são
      * editáveis pelo tenant; `key`/`tipo` são fixos (o schema do banco não
-     * muda) e nunca aceitos do cliente, só derivados daqui. Hoje só o TR
-     * tem seções nativas configuráveis; os demais tipos de documento não
-     * entram neste mapa e o comportamento fica idêntico ao anterior (só
-     * campos extras, ver validarSchema/getConfigMesclada).
+     * muda) e nunca aceitos do cliente, só derivados daqui.
      *
-     * @var array<string, array<int, array{key: string, label: string, tipo: string}>>
+     * `obrigatorio_padrao` (ausente = false) é o valor de obrigatoriedade
+     * antes de qualquer configuração do tenant — existe porque alguns
+     * campos nativos já eram obrigatórios de fábrica antes de virarem
+     * configuráveis (ex.: o conteúdo do ETP sempre foi `required` na
+     * validação do controller) e a migração pra "configurável" não deve
+     * silenciosamente deixar de exigi-los pra quem nunca reconfigurou nada.
+     *
+     * @var array<string, array<int, array{key: string, label: string, tipo: string, obrigatorio_padrao?: bool}>>
      */
     private const CAMPOS_NATIVOS = [
         'tr' => [
@@ -36,6 +40,10 @@ final class CampoConfiguracaoService
             ['key' => 'sancoes_administrativas', 'label' => 'Sanções Administrativas', 'tipo' => 'texto_longo'],
             ['key' => 'vigencia_contrato', 'label' => 'Vigência do Contrato', 'tipo' => 'texto'],
             ['key' => 'adequacao_orcamentaria', 'label' => 'Adequação Orçamentária', 'tipo' => 'texto_longo'],
+            ['key' => 'equipe_planejamento', 'label' => 'Equipe de Planejamento', 'tipo' => 'equipe'],
+        ],
+        'etp' => [
+            ['key' => 'conteudo', 'label' => 'Estudo Técnico Preliminar', 'tipo' => 'texto_longo', 'obrigatorio_padrao' => true],
             ['key' => 'equipe_planejamento', 'label' => 'Equipe de Planejamento', 'tipo' => 'equipe'],
         ],
     ];
@@ -87,7 +95,7 @@ final class CampoConfiguracaoService
                 'key' => $defaults['key'],
                 'label' => $salvo['label'] ?? $defaults['label'],
                 'tipo' => $defaults['tipo'],
-                'obrigatorio' => $salvo['obrigatorio'] ?? false,
+                'obrigatorio' => $salvo['obrigatorio'] ?? ($defaults['obrigatorio_padrao'] ?? false),
                 'ordem' => $salvo['ordem'] ?? $ordemPadrao,
                 'ajuda' => $salvo['ajuda'] ?? null,
                 'aba' => $salvo['aba'] ?? null,

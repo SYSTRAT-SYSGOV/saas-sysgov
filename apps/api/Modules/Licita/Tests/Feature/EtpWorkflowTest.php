@@ -9,10 +9,12 @@ use App\Models\User;
 use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Modules\Licita\Enums\FaseLicita;
 use Modules\Licita\Enums\GrauPrioridade;
 use Modules\Licita\Enums\StatusEtp;
 use Modules\Licita\Models\Processo;
+use Modules\Licita\Services\CampoConfiguracaoService;
 use Modules\Licita\Services\DfdService;
 use Modules\Licita\Services\EtpService;
 use Modules\Licita\Services\ProcessoService;
@@ -161,5 +163,89 @@ final class EtpWorkflowTest extends TestCase
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('já possui um ETP');
         $etpService->criar($processo->fresh(), ['conteudo' => 'Segundo estudo.'], $elaborador);
+    }
+
+    /**
+     * O conteúdo do ETP sempre foi obrigatório antes de virar uma seção
+     * nativa configurável (ver CampoConfiguracaoService::CAMPOS_NATIVOS) —
+     * `obrigatorio_padrao=true` garante que essa migração não afrouxa o
+     * comportamento pra quem nunca reconfigurou o ETP.
+     */
+    public function test_cria_etp_falha_por_padrao_quando_conteudo_esta_vazio(): void
+    {
+        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
+        $processo = $this->processoComDfdAprovado($elaborador, $aprovador);
+
+        try {
+            app(EtpService::class)->criar($processo, [], $elaborador);
+            self::fail('Deveria ter lançado ValidationException pelo conteúdo obrigatório vazio (obrigatorio_padrao).');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('conteudo', $e->errors());
+        }
+    }
+
+    /**
+     * O órgão pode desligar a obrigatoriedade de fábrica do conteúdo — o
+     * ETP nasce/fica vazio até a equipe preencher, igual às seções do TR.
+     */
+    public function test_org_pode_desligar_obrigatoriedade_padrao_do_conteudo_do_etp(): void
+    {
+        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
+        $processo = $this->processoComDfdAprovado($elaborador, $aprovador);
+
+        app(CampoConfiguracaoService::class)->salvar('etp', [
+            ['key' => 'conteudo', 'label' => 'Estudo Técnico Preliminar', 'tipo' => 'texto_longo', 'obrigatorio' => false, 'ordem' => 0],
+        ]);
+
+        $etp = app(EtpService::class)->criar($processo, [], $elaborador);
+
+        self::assertNull($etp->conteudo);
+        self::assertSame(StatusEtp::Rascunho->value, $etp->status);
+    }
+
+    /**
+     * O órgão pode renomear e mover a seção nativa "conteudo" do ETP pra
+     * uma aba própria, como já é possível no TR (ver TrWorkflowTest
+     * equivalente).
+     */
+    public function test_org_pode_renomear_e_mover_secao_nativa_do_etp(): void
+    {
+        [, $elaborador] = $this->setUpTenantEUsuarios();
+
+        app(CampoConfiguracaoService::class)->salvar('etp', [
+            ['key' => 'conteudo', 'label' => 'Estudo Técnico Preliminar (modelo do órgão)', 'tipo' => 'texto_longo', 'obrigatorio' => true, 'ordem' => 3, 'aba' => 'ETP'],
+        ]);
+
+        $mesclada = app(CampoConfiguracaoService::class)->getConfigMesclada('etp');
+        $conteudo = collect($mesclada)->firstWhere('key', 'conteudo');
+
+        self::assertNotNull($conteudo);
+        self::assertTrue($conteudo['nativo']);
+        self::assertSame('Estudo Técnico Preliminar (modelo do órgão)', $conteudo['label']);
+        self::assertSame('ETP', $conteudo['aba']);
+        self::assertSame(3, $conteudo['ordem']);
+        self::assertSame('texto_longo', $conteudo['tipo']);
+
+        $equipe = collect($mesclada)->firstWhere('key', 'equipe_planejamento');
+        self::assertFalse($equipe['obrigatorio']);
+    }
+
+    public function test_atualiza_etp_falha_quando_conteudo_obrigatorio_fica_vazio(): void
+    {
+        [, $elaborador, $aprovador] = $this->setUpTenantEUsuarios();
+        $processo = $this->processoComDfdAprovado($elaborador, $aprovador);
+
+        $etp = app(EtpService::class)->criar($processo, ['conteudo' => 'Versão inicial.'], $elaborador);
+
+        try {
+            app(EtpService::class)->atualizar($etp, ['conteudo' => ''], $elaborador);
+            self::fail('Deveria ter lançado ValidationException pelo conteúdo obrigatório esvaziado.');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('conteudo', $e->errors());
+        }
+
+        // Não mexer no campo continua passando.
+        $etp = app(EtpService::class)->atualizar($etp, ['equipe_planejamento' => []], $elaborador);
+        self::assertSame('Versão inicial.', $etp->conteudo);
     }
 }

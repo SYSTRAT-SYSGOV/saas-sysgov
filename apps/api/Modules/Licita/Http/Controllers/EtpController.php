@@ -47,7 +47,7 @@ final class EtpController extends Controller
         $etp = Etp::findOrFail($id);
         $this->authorize('update', $etp);
 
-        $data = $this->validatedData($request, partial: true);
+        $data = $this->validatedData($request);
 
         try {
             $etp = $this->etps->atualizar($etp, $data, $request->user());
@@ -61,16 +61,15 @@ final class EtpController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validatedData(Request $request, bool $partial = false): array
+    private function validatedData(Request $request): array
     {
-        // Ver comentário equivalente em DfdController::validatedData — mesma
-        // razão para "sometimes required" em vez de só "sometimes" no update.
-        $required = $partial ? ['sometimes', 'required'] : ['required'];
-
         return $request->validate([
-            // 8000: campo de texto rico (TinyMCE), não texto puro — mesmo
-            // raciocínio da Justificativa do DFD.
-            'conteudo' => [...$required, 'string', 'max:20000'],
+            // Opcional na validação de request — a obrigatoriedade real é
+            // decidida pelo tenant (ver CampoConfiguracaoService::
+            // CAMPOS_NATIVOS['etp'], obrigatorio_padrao=true por padrão) e
+            // checada em EtpService::criar/atualizar via validarRespostas,
+            // no mesmo formato de erro dos campos extras.
+            'conteudo' => ['sometimes', 'nullable', 'string', 'max:20000'],
             'equipe_planejamento' => ['sometimes', 'nullable', 'array'],
             'equipe_planejamento.*.nome' => ['required_with:equipe_planejamento', 'string', 'max:255'],
             'equipe_planejamento.*.cargo' => ['required_with:equipe_planejamento', 'string', 'max:255'],
