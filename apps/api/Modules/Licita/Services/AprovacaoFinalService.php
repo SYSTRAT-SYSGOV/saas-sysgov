@@ -11,6 +11,7 @@ use DomainException;
 use Illuminate\Support\Facades\DB;
 use Modules\Licita\Enums\FaseLicita;
 use Modules\Licita\Enums\StatusAprovacaoFinal;
+use Modules\Licita\Enums\StatusEdital;
 use Modules\Licita\Enums\StatusEtp;
 use Modules\Licita\Enums\StatusMapaRisco;
 use Modules\Licita\Enums\StatusPesquisaPreco;
@@ -20,12 +21,12 @@ use Modules\Licita\Models\Processo;
 
 /**
  * Aprovação final do Ordenador de Despesas sobre o pacote inteiro de
- * artefatos do processo (ETP, Mapa de Riscos, Pesquisa de Preços — e TR/
- * Edital quando existirem), de uma vez só, no mesmo padrão de "homologação em
- * lote" já usado por `Modules\Capd\Services\HomologacaoLoteService`. É a
- * única aprovação formal depois do DFD — os documentos individuais não têm
- * mais aprovação/segregação de funções próprias (ver EtpService, MapaRiscoService,
- * PesquisaPrecoService).
+ * artefatos do processo (ETP, Mapa de Riscos, Pesquisa de Preços, TR e
+ * Edital), de uma vez só, no mesmo padrão de "homologação em lote" já usado
+ * por `Modules\Capd\Services\HomologacaoLoteService`. É a única aprovação
+ * formal depois do DFD — os documentos individuais não têm mais
+ * aprovação/segregação de funções próprias (ver EtpService, MapaRiscoService,
+ * PesquisaPrecoService, TrService, EditalService).
  */
 final class AprovacaoFinalService
 {
@@ -42,9 +43,10 @@ final class AprovacaoFinalService
         $mapaRisco = $processo->mapaRisco;
         $pesquisaPreco = $processo->pesquisaPreco;
         $tr = $processo->tr;
+        $edital = $processo->edital;
 
-        if ($etp === null || $mapaRisco === null || $pesquisaPreco === null || $tr === null) {
-            throw new DomainException('Cadastre o ETP, o Mapa de Riscos, a Pesquisa de Preços e o Termo de Referência deste processo antes de solicitar a aprovação final.');
+        if ($etp === null || $mapaRisco === null || $pesquisaPreco === null || $tr === null || $edital === null) {
+            throw new DomainException('Cadastre o ETP, o Mapa de Riscos, a Pesquisa de Preços, o Termo de Referência e o Edital deste processo antes de solicitar a aprovação final.');
         }
 
         // RN-006 migrou pra cá: antes era checado no "enviar para revisão"
@@ -87,6 +89,17 @@ final class AprovacaoFinalService
             throw new DomainException('RN-005: quem solicitou a aprovação final não pode aprová-la (segregação de funções).');
         }
 
+        // Defesa contra uma solicitação pendente criada ANTES de um novo
+        // artefato entrar na lista de exigidos (ex.: pendências abertas
+        // antes do Edital existir no sistema) — sem isso, o foreach abaixo
+        // chamaria update() em null e quebraria com um erro fatal em vez de
+        // uma mensagem acionável. solicitar() já impede criar uma
+        // pendência nova sem todos os artefatos, então isso só deve
+        // acontecer para pendências antigas.
+        if ($processo->etp === null || $processo->mapaRisco === null || $processo->pesquisaPreco === null || $processo->tr === null || $processo->edital === null) {
+            throw new DomainException('Esta solicitação de aprovação final é anterior a um artefato hoje exigido (ETP, Mapa de Riscos, Pesquisa de Preços, Termo de Referência ou Edital). Rejeite-a e peça à equipe de planejamento que cadastre o que faltar antes de solicitar novamente.');
+        }
+
         return DB::transaction(function () use ($processo, $ordenador, $parecer, $aprovacao): AprovacaoFinal {
             $agora = now();
 
@@ -95,6 +108,7 @@ final class AprovacaoFinalService
                 [$processo->mapaRisco, StatusMapaRisco::Aprovado->value, 'mapa_riscos.aprovado', 'licita.MapaRiscoAprovado'],
                 [$processo->pesquisaPreco, StatusPesquisaPreco::Aprovado->value, 'pesquisa_precos.aprovado', 'licita.PesquisaPrecoAprovado'],
                 [$processo->tr, StatusTr::Aprovado->value, 'tr.aprovado', 'licita.TrAprovado'],
+                [$processo->edital, StatusEdital::Aprovado->value, 'edital.aprovado', 'licita.EditalAprovado'],
             ] as [$documento, $statusAprovado, $eventoAudit, $eventoOutbox]) {
                 $documento->update([
                     'status' => $statusAprovado,

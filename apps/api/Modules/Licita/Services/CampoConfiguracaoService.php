@@ -63,6 +63,25 @@ final class CampoConfiguracaoService
             ['key' => 'numero_pca', 'label' => 'Nº no PCA', 'tipo' => 'texto'],
             ['key' => 'previsao_pca', 'label' => 'Previsão no Plano de Contratações Anual (PCA)', 'tipo' => 'booleano'],
         ],
+        // Seções do Edital (art. 25 da Lei 14.133/2021) — documento nasce
+        // vazio, como o TR, nenhuma obrigatória por padrão. `objeto`,
+        // `criterio_julgamento` e `sancoes_administrativas` nascem copiados
+        // do DFD/TR do mesmo processo (ver EditalService::
+        // preencherCopiasDeFasesAnteriores) — o tenant reaproveita o que já
+        // foi elaborado nas fases anteriores em vez de redigitar do zero,
+        // mas edita cada seção do Edital independentemente dali em diante.
+        'edital' => [
+            ['key' => 'preambulo', 'label' => 'Preâmbulo', 'tipo' => 'texto_longo'],
+            ['key' => 'objeto', 'label' => 'Objeto', 'tipo' => 'texto_longo'],
+            ['key' => 'criterio_julgamento', 'label' => 'Critério de Julgamento', 'tipo' => 'selecao_fixa'],
+            ['key' => 'condicoes_participacao', 'label' => 'Condições de Participação', 'tipo' => 'texto_longo'],
+            ['key' => 'requisitos_habilitacao', 'label' => 'Requisitos de Habilitação', 'tipo' => 'texto_longo'],
+            ['key' => 'procedimento_sessao_publica', 'label' => 'Procedimento da Sessão Pública', 'tipo' => 'texto_longo'],
+            ['key' => 'prazo_recursal', 'label' => 'Prazo e Forma de Recursos', 'tipo' => 'texto_longo'],
+            ['key' => 'sancoes_administrativas', 'label' => 'Sanções Administrativas', 'tipo' => 'texto_longo'],
+            ['key' => 'disposicoes_gerais', 'label' => 'Disposições Gerais', 'tipo' => 'texto_longo'],
+            ['key' => 'equipe_planejamento', 'label' => 'Equipe de Planejamento', 'tipo' => 'equipe'],
+        ],
     ];
 
     public function __construct(

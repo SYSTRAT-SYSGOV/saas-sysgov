@@ -5,6 +5,7 @@ import type {
   CampoConfig,
   CampoConfiguracao,
   CreateDfdInput,
+  CreateEditalInput,
   CreateEtpInput,
   CreateLegalDocumentoInput,
   CreateMapaRiscoInput,
@@ -12,6 +13,7 @@ import type {
   CreateProcessoInput,
   CreateTrInput,
   Dfd,
+  Edital,
   Etp,
   LegalDocumento,
   MapaRisco,
@@ -30,6 +32,7 @@ import type {
   TipoDocumentoConfiguravel,
   Tr,
   UpdateDfdInput,
+  UpdateEditalInput,
   UpdateEtpInput,
   UpdateMapaRiscoInput,
   UpdatePesquisaPrecoInput,
@@ -157,6 +160,18 @@ export class LicitaModuleClient implements BaseModuleClient {
 
   async updateTr(id: number, input: UpdateTrInput): Promise<Tr> {
     return this.api.request(`/licita/trs/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async createEdital(processoId: number, input: CreateEditalInput): Promise<Edital> {
+    return this.api.request(`/licita/processos/${processoId}/edital`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async getEdital(id: number): Promise<Edital> {
+    return this.api.request(`/licita/editais/${id}`);
+  }
+
+  async updateEdital(id: number, input: UpdateEditalInput): Promise<Edital> {
+    return this.api.request(`/licita/editais/${id}`, { method: 'PUT', body: JSON.stringify(input) });
   }
 
   async solicitarAprovacaoFinal(processoId: number): Promise<AprovacaoFinal> {

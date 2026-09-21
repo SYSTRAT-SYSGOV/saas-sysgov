@@ -7,6 +7,7 @@ use Modules\Licita\Http\Controllers\CampoConfiguracaoController;
 use Modules\Licita\Http\Controllers\DfdController;
 use Modules\Licita\Http\Controllers\DfdIaController;
 use Modules\Licita\Http\Controllers\AprovacaoFinalController;
+use Modules\Licita\Http\Controllers\EditalController;
 use Modules\Licita\Http\Controllers\EtpController;
 use Modules\Licita\Http\Controllers\LegalDocumentoController;
 use Modules\Licita\Http\Controllers\LicitaIaController;
@@ -60,6 +61,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'bindings', 'module-access:licita']
     Route::post('/processos/{processoId}/tr', [TrController::class, 'store']);
     Route::get('/trs/{id}', [TrController::class, 'show']);
     Route::put('/trs/{id}', [TrController::class, 'update']);
+
+    Route::post('/processos/{processoId}/edital', [EditalController::class, 'store']);
+    Route::get('/editais/{id}', [EditalController::class, 'show']);
+    Route::put('/editais/{id}', [EditalController::class, 'update']);
 
     Route::post('/processos/{id}/aprovacao-final/solicitar', [AprovacaoFinalController::class, 'solicitar']);
     Route::post('/processos/{id}/aprovacao-final/aprovar', [AprovacaoFinalController::class, 'aprovar']);

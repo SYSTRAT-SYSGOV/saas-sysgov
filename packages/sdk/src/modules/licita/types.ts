@@ -32,6 +32,7 @@ export type StatusEtp = 'rascunho' | 'aprovado';
 export type StatusMapaRisco = 'rascunho' | 'aprovado';
 export type StatusPesquisaPreco = 'rascunho' | 'aprovado';
 export type StatusTr = 'rascunho' | 'aprovado';
+export type StatusEdital = 'rascunho' | 'aprovado';
 export type StatusAprovacaoFinal = 'pendente' | 'aprovada' | 'rejeitada';
 export type MetodoReferenciaPreco = 'media' | 'mediana' | 'menor_valor' | 'media_saneada';
 export type GrauPrioridade = 'baixa' | 'media' | 'alta' | 'critica';
@@ -47,6 +48,7 @@ export type AcaoVersaoEtp = 'criado' | 'revisado' | 'aprovado';
 export type AcaoVersaoMapaRisco = 'criado' | 'revisado' | 'aprovado';
 export type AcaoVersaoPesquisaPreco = 'criado' | 'revisado' | 'aprovado';
 export type AcaoVersaoTr = 'criado' | 'revisado' | 'aprovado';
+export type AcaoVersaoEdital = 'criado' | 'revisado' | 'aprovado';
 
 /** Critérios de julgamento das propostas (art. 33 da Lei 14.133/2021). */
 export type CriterioJulgamentoTr = 'menor_preco' | 'maior_desconto' | 'melhor_tecnica' | 'tecnica_e_preco' | 'maior_lance';
@@ -429,12 +431,62 @@ export interface Tr {
   updated_at: string;
 }
 
+export interface EditalVersao {
+  id: number;
+  edital_id: number;
+  versao: number;
+  acao: AcaoVersaoEdital;
+  campos_alterados: Record<string, { de: unknown; para: unknown }> | null;
+  dados: Record<string, unknown> | null;
+  user_id: number;
+  usuario: UsuarioResumo | null;
+  created_at: string;
+}
+
+/**
+ * Edital (art. 25 da Lei 14.133/2021) — mesmo espírito estrutural do TR
+ * (seções como colunas próprias, nenhuma obrigatória por padrão). Só pode
+ * ser criado depois de existir um Termo de Referência no mesmo processo.
+ * `objeto`, `criterio_julgamento` e `sancoes_administrativas` nascem
+ * copiados do DFD/TR do processo (ver EditalService::criar), mas passam a
+ * ser editados de forma totalmente independente a partir daí.
+ */
+export interface Edital {
+  id: number;
+  tenant_id: number;
+  processo_id: number;
+  /** Nasce como cópia da equipe do TR (ver EditalService::criar), mas é editável independentemente dali em diante. */
+  equipe_planejamento: MembroEquipePlanejamento[] | null;
+  preambulo: string | null;
+  /** Nasce copiado do objeto do DFD/processo. */
+  objeto: string | null;
+  /** Nasce copiado do critério de julgamento do TR. */
+  criterio_julgamento: CriterioJulgamentoTr | null;
+  condicoes_participacao: string | null;
+  requisitos_habilitacao: string | null;
+  procedimento_sessao_publica: string | null;
+  prazo_recursal: string | null;
+  /** Nasce copiado das sanções administrativas do TR. */
+  sancoes_administrativas: string | null;
+  disposicoes_gerais: string | null;
+  campos_extras: Record<string, unknown> | null;
+  status: StatusEdital;
+  elaborado_por: number;
+  aprovado_por: number | null;
+  aprovado_em: string | null;
+  elaborador: UsuarioResumo | null;
+  aprovador: UsuarioResumo | null;
+  versoes: EditalVersao[];
+  created_at: string;
+  updated_at: string;
+}
+
 /**
  * Aprovação final do Ordenador de Despesas sobre o pacote inteiro de
- * artefatos do processo (ETP, Mapa de Riscos, Pesquisa de Preços — e TR/
- * Edital quando existirem), de uma vez só — é a única aprovação formal que
- * resta depois do DFD. Uma linha por processo; cada nova solicitação
- * (inclusive após rejeição) atualiza a mesma linha.
+ * artefatos do processo (ETP, Mapa de Riscos, Pesquisa de Preços, TR e
+ * Edital), de uma vez só — é a única aprovação formal que resta depois do
+ * DFD. Uma linha por processo; cada nova solicitação (inclusive após
+ * rejeição) atualiza a mesma linha.
  */
 export interface AprovacaoFinal {
   id: number;
@@ -472,6 +524,7 @@ export interface Processo {
   // no toArray()/toJson() — pesquisaPreco() no model vira "pesquisa_preco" no JSON.
   pesquisa_preco: PesquisaPreco | null;
   tr: Tr | null;
+  edital: Edital | null;
   // snake_case (não aprovacaoFinal): Eloquent serializa relações com
   // Str::snake() no toArray()/toJson() — aprovacaoFinal() no model vira
   // "aprovacao_final" no JSON.
@@ -555,6 +608,23 @@ export interface CreateTrInput {
 }
 
 export type UpdateTrInput = Partial<CreateTrInput>;
+
+export interface CreateEditalInput {
+  preambulo?: string | null;
+  objeto?: string | null;
+  criterio_julgamento?: CriterioJulgamentoTr | null;
+  condicoes_participacao?: string | null;
+  requisitos_habilitacao?: string | null;
+  procedimento_sessao_publica?: string | null;
+  prazo_recursal?: string | null;
+  sancoes_administrativas?: string | null;
+  disposicoes_gerais?: string | null;
+  /** Se omitido na criação, o backend copia a equipe do TR do processo (ver EditalService::criar). */
+  equipe_planejamento?: MembroEquipePlanejamento[];
+  campos_extras?: Record<string, unknown>;
+}
+
+export type UpdateEditalInput = Partial<CreateEditalInput>;
 
 export interface SugerirJustificativaDfdInput {
   objeto: string;

@@ -20,7 +20,7 @@ const TIPO_DOCUMENTO_OPTIONS: { value: TipoDocumentoConfiguravel; label: string;
   { value: 'mapa_riscos', label: 'Mapa de Riscos', disponivel: true },
   { value: 'pesquisa_precos', label: 'Pesquisa de Preços', disponivel: true },
   { value: 'tr', label: 'Termo de Referência', disponivel: true },
-  { value: 'edital', label: 'Edital', disponivel: false },
+  { value: 'edital', label: 'Edital', disponivel: true },
 ];
 
 const TIPO_CAMPO_OPTIONS: { value: TipoCampoConfiguravel; label: string }[] = [

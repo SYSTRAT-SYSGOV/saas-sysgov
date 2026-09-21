@@ -73,7 +73,8 @@ export const AprovacaoOrdenadorPage: React.FC<AprovacaoOrdenadorPageProps> = ({ 
   const concluido = processo?.fase_atual === 'concluido';
   const podeSolicitar = !pendente && !concluido;
   const podeAprovar = can('licita.aprovar_final') && aprovacao?.solicitado_por !== user?.id;
-  const artefatosCompletos = processo?.etp != null && processo?.mapa_risco != null && processo?.pesquisa_preco != null && processo?.tr != null;
+  const artefatosCompletos =
+    processo?.etp != null && processo?.mapa_risco != null && processo?.pesquisa_preco != null && processo?.tr != null && processo?.edital != null;
 
   const artefatos: ArtefatoResumo[] = processo
     ? [
@@ -81,6 +82,7 @@ export const AprovacaoOrdenadorPage: React.FC<AprovacaoOrdenadorPageProps> = ({ 
         { label: 'Mapa de Riscos', status: processo.mapa_risco?.status ?? null },
         { label: 'Pesquisa de Preços', status: processo.pesquisa_preco?.status ?? null },
         { label: 'Termo de Referência', status: processo.tr?.status ?? null },
+        { label: 'Edital', status: processo.edital?.status ?? null },
       ]
     : [];
 
@@ -217,7 +219,7 @@ export const AprovacaoOrdenadorPage: React.FC<AprovacaoOrdenadorPageProps> = ({ 
           requireReason={false}
           confirmLabel="Aprovar"
           title="Aprovar processo"
-          description="Confirma a aprovação final deste processo? ETP, Mapa de Riscos, Pesquisa de Preços e Termo de Referência ficam imutáveis a partir de agora e o processo é concluído."
+          description="Confirma a aprovação final deste processo? ETP, Mapa de Riscos, Pesquisa de Preços, Termo de Referência e Edital ficam imutáveis a partir de agora e o processo é concluído."
           onConfirm={() => {
             setConfirmAprovar(false);
             runAction(() => sysgovApi.licita.aprovarFinal(processo.id), {
@@ -277,7 +279,7 @@ export const AprovacaoOrdenadorPage: React.FC<AprovacaoOrdenadorPageProps> = ({ 
               leftIcon={<Send className="h-4 w-4" />}
               isLoading={actionLoading}
               disabled={!artefatosCompletos}
-              title={!artefatosCompletos ? 'Cadastre ETP, Mapa de Riscos, Pesquisa de Preços e Termo de Referência antes de solicitar.' : undefined}
+              title={!artefatosCompletos ? 'Cadastre ETP, Mapa de Riscos, Pesquisa de Preços, Termo de Referência e Edital antes de solicitar.' : undefined}
               onClick={() =>
                 runAction(() => sysgovApi.licita.solicitarAprovacaoFinal(processo.id), {
                   title: 'Aprovação final solicitada',
