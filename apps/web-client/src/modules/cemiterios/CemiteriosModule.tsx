@@ -1,127 +1,38 @@
-import React, { useState, useMemo } from 'react';
-import { useTenant } from '@/core/tenant/useTenant';
-import { Cross, MapPin, Search, Plus, Calendar } from 'lucide-react';
-import { PageHeader, Card, Button, KpiCard, StatusChip, DataTable, SearchInput } from '@/components/ui';
-import { paraDataOrdenavel } from '@/lib/utils';
-import type { ColumnDef } from '@tanstack/react-table';
+import React, { useMemo, useState } from 'react';
+import { Cross, FileSignature, HardHat, LayoutGrid, Map, Receipt, Camera, ClipboardList } from 'lucide-react';
+import { PageHeader, Tabs } from '@/components/ui';
+import { useCan } from '@/core/rbac/useCan';
+import { InventarioView } from './views/InventarioView';
+import { MapaView } from './views/MapaView';
+import { OperacoesView } from './views/OperacoesView';
+import { ConcessoesView } from './views/ConcessoesView';
+import { FinanceiroView } from './views/FinanceiroView';
+import { EmpreiteirosView } from './views/EmpreiteirosView';
+import { VistoriaView } from './views/VistoriaView';
 
-interface Registro {
-  id: string;
-  cemetery: string;
-  lote: string;
-  falecido: string;
-  dataSepultamento: string;
-  responsavel: string;
-  concessao: string;
-}
+/** Espelha `module.json#menu.children` (mesma ordem e permissões). */
+const ABAS = [
+  { key: 'inventario', label: 'Inventário', icon: LayoutGrid, permissao: 'cemiterios.view', Componente: InventarioView },
+  { key: 'mapa', label: 'Mapa', icon: Map, permissao: 'cemiterios.view', Componente: MapaView },
+  { key: 'operacoes', label: 'Operações', icon: ClipboardList, permissao: 'cemiterios.view', Componente: OperacoesView },
+  { key: 'concessoes', label: 'Concessões', icon: FileSignature, permissao: 'cemiterios.concessoes.manage', Componente: ConcessoesView },
+  { key: 'financeiro', label: 'Financeiro', icon: Receipt, permissao: 'cemiterios.financeiro.manage', Componente: FinanceiroView },
+  { key: 'empreiteiros', label: 'Empreiteiros', icon: HardHat, permissao: 'cemiterios.empreiteiros.manage', Componente: EmpreiteirosView },
+  { key: 'vistorias', label: 'Vistoria e Abandono', icon: Camera, permissao: 'cemiterios.vistoria.create', Componente: VistoriaView },
+] as const;
 
-const registros: Registro[] = [
-  { id: '1', cemetery: 'Cemitério Municipal Central', lote: 'Quadra B • Lote 142', falecido: 'Antônio Carlos da Costa', dataSepultamento: '12/04/2024', responsavel: 'Família Costa', concessao: 'Perpétua' },
-  { id: '2', cemetery: 'Cemitério Municipal Central', lote: 'Quadra C • Lote 087', falecido: 'Maria Aparecida Santos', dataSepultamento: '28/05/2024', responsavel: 'Carlos Santos', concessao: 'Temporária' },
-  { id: '3', cemetery: 'Cemitério São José', lote: 'Bloco A • Nicho 234', falecido: 'João Paulo Oliveira', dataSepultamento: '03/07/2024', responsavel: 'Família Oliveira', concessao: 'Perpétua' },
-  { id: '4', cemetery: 'Cemitério Nossa Senhora Aparecida', lote: 'Quadra D • Lote 015', falecido: 'Ana Rodrigues Lima', dataSepultamento: '15/08/2024', responsavel: 'Roberto Lima', concessao: 'Temporária' },
-];
-
-const concessaoVariant = (c: string): 'success' | 'warning' | 'neutral' => {
-  if (c === 'Perpétua') return 'success';
-  if (c === 'Temporária') return 'warning';
-  return 'neutral';
-};
-
+/** Shell do módulo de Gestão de Cemitérios (SIGCM): abas internas por permissão (mesmo padrão do CapdModule). */
 export const CemiteriosModule: React.FC = () => {
-  const { tenant } = useTenant();
-  const [search, setSearch] = useState('');
-
-  const columns = useMemo<ColumnDef<Registro, any>[]>(() => [
-    {
-      id: 'cemiterio',
-      header: 'Cemitério / Jazigo',
-      accessorKey: 'cemetery',
-      cell: ({ row }) => (
-        <div>
-          <span className="font-bold text-foreground">{row.original.cemetery}</span>
-          <span className="block font-mono text-xs text-muted-foreground">{row.original.lote}</span>
-        </div>
-      ),
-    },
-    {
-      id: 'falecido',
-      header: 'Nome do Falecido',
-      accessorKey: 'falecido',
-      cell: ({ row }) => <span className="font-medium text-foreground">{row.original.falecido}</span>,
-    },
-    {
-      id: 'data',
-      header: 'Data Sepultamento',
-      accessorFn: (row) => paraDataOrdenavel(row.dataSepultamento),
-      cell: ({ row }) => <span className="font-mono text-muted-foreground text-center block">{row.original.dataSepultamento}</span>,
-    },
-    {
-      id: 'responsavel',
-      header: 'Concessionário / Responsável',
-      accessorKey: 'responsavel',
-      cell: ({ row }) => <span className="text-muted-foreground text-xs">{row.original.responsavel}</span>,
-    },
-    {
-      id: 'concessao',
-      header: 'Status da Concessão',
-      accessorKey: 'concessao',
-      cell: ({ row }) => <StatusChip label={row.original.concessao} variant={concessaoVariant(row.original.concessao)} />,
-    },
-  ], []);
-
-  const filtered = useMemo(() => registros.filter((r) =>
-    [r.falecido, r.cemetery, r.responsavel].some((t) => t.toLowerCase().includes(search.toLowerCase()))
-  ), [search]);
+  const { can } = useCan();
+  const abasVisiveis = useMemo(() => ABAS.filter((a) => can(a.permissao)), [can]);
+  const [aba, setAba] = useState<string>(abasVisiveis[0]?.key ?? 'inventario');
+  const atual = abasVisiveis.find((a) => a.key === aba) ?? abasVisiveis[0];
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={<Cross className="h-6 w-6" />}
-        title="Gestão de Cemitérios Municipais & Jazigos"
-        badge="Serviços Funerários"
-        subtitle={`${tenant?.name} — Sepultamentos, concessões de jazigos e certidões`}
-        actions={
-          <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>Novo Registro</Button>
-        }
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          title="Cemitérios Municipais"
-          value="4"
-          icon={<Cross className="w-5 h-5" />}
-          iconBgColor="bg-primary/10 text-primary"
-        />
-        <KpiCard
-          title="Jazigos Ocupados"
-          value="8.420"
-          subtitle="Taxa de ocupação: 82%"
-          icon={<MapPin className="w-5 h-5" />}
-          iconBgColor="bg-warning/10 text-warning"
-        />
-        <KpiCard
-          title="Concessões Vigentes"
-          value="6.110"
-          icon={<Calendar className="w-5 h-5" />}
-          iconBgColor="bg-primary/10 text-primary"
-        />
-        <KpiCard
-          title="Sepultamentos no Mês"
-          value="42"
-          icon={<Cross className="w-5 h-5" />}
-          iconBgColor="bg-success/10 text-success"
-        />
-      </div>
-
-      <Card className="gap-0 py-0">
-        <div className="p-3 border-b border-border">
-          <SearchInput value={search} onChange={setSearch} placeholder="Buscar falecido, jazigo ou responsável..." />
-        </div>
-        <div className="p-3">
-          <DataTable columns={columns} data={filtered} emptyText="Nenhum registro encontrado." pageSize={10} />
-        </div>
-      </Card>
+      <PageHeader title="Gestão de Cemitérios" subtitle="Inventário, GIS, operações, concessões, financeiro, empreiteiros e vistoria/abandono." icon={<Cross className="h-6 w-6" />} />
+      <Tabs items={abasVisiveis.map((a) => ({ key: a.key, label: a.label }))} value={atual?.key ?? ''} onChange={setAba} />
+      {atual ? <atual.Componente /> : <p className="text-sm text-muted-foreground">Sem permissão para nenhuma área deste módulo.</p>}
     </div>
   );
 };

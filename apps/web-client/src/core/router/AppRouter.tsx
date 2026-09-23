@@ -13,6 +13,9 @@ import { ConfiguracoesPage } from '@/pages/ConfiguracoesPage';
 import { Loader2 } from 'lucide-react';
 
 const CapdEmbedPage = React.lazy(() => import('@/modules/capd/CapdEmbedPage'));
+const BuscaPublicaPage = React.lazy(() => import('@/modules/cemiterios/portal/BuscaPublicaPage'));
+const PortalConcessionarioPage = React.lazy(() => import('@/modules/cemiterios/portal/PortalConcessionarioPage'));
+const PortalCallbackPage = React.lazy(() => import('@/modules/cemiterios/portal/PortalCallbackPage'));
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -81,6 +84,32 @@ export const AppRouter: React.FC = () => {
         element={
           <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando módulo CAPD...</div>}>
             <CapdEmbedPage />
+          </React.Suspense>
+        }
+      />
+
+      {/* Portal público e do concessionário de Cemitérios — sem login/AppShell (spec: portal) */}
+      <Route
+        path="/cemiterios/publico/:tenantSlug"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando…</div>}>
+            <BuscaPublicaPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/cemiterios/portal/callback"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando…</div>}>
+            <PortalCallbackPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/cemiterios/portal/:tenantSlug"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando…</div>}>
+            <PortalConcessionarioPage />
           </React.Suspense>
         }
       />

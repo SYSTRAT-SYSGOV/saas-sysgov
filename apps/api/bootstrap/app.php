@@ -16,6 +16,7 @@ use App\Console\Commands\ExpireAccess;
 use App\Console\Commands\NotifyExpiringAccess;
 use Modules\Admin\Providers\AdminServiceProvider;
 use Modules\Capd\Providers\CapdServiceProvider;
+use Modules\Cemiterios\Providers\CemiteriosServiceProvider;
 use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
         AdminServiceProvider::class,
         CapdServiceProvider::class,
+        CemiteriosServiceProvider::class,
         ContractsServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,

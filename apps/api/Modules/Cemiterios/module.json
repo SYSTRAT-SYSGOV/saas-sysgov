@@ -1,0 +1,48 @@
+{
+    "name": "Cemiterios",
+    "alias": "cemiterios",
+    "description": "Gestão de Cemitérios Municipais (SIGCM): inventário e GIS de jazigos, inumação/exumação/trasladação, concessões, financeiro, empreiteiros, vistoria/abandono e portal do munícipe.",
+    "priority": 40,
+    "providers": [
+        "Modules\\Cemiterios\\Providers\\CemiteriosServiceProvider",
+        "Modules\\Cemiterios\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin"
+    ],
+    "menu": {
+        "group": "SERVIÇOS URBANOS",
+        "label": "Gestão de Cemitérios",
+        "icon": "Cross",
+        "order": 60,
+        "permission": "cemiterios.view",
+        "children": [
+            { "label": "Inventário",          "route": "cemiterios.inventario",   "permission": "cemiterios.view",                "icon": "LayoutGrid" },
+            { "label": "Mapa",                "route": "cemiterios.mapa",         "permission": "cemiterios.view",                "icon": "Map" },
+            { "label": "Operações",           "route": "cemiterios.operacoes",    "permission": "cemiterios.view",                "icon": "ClipboardList" },
+            { "label": "Concessões",          "route": "cemiterios.concessoes",   "permission": "cemiterios.concessoes.manage",   "icon": "FileSignature" },
+            { "label": "Financeiro",          "route": "cemiterios.financeiro",   "permission": "cemiterios.financeiro.manage",   "icon": "Receipt" },
+            { "label": "Empreiteiros",        "route": "cemiterios.empreiteiros", "permission": "cemiterios.empreiteiros.manage", "icon": "HardHat" },
+            { "label": "Vistoria e Abandono", "route": "cemiterios.vistorias",    "permission": "cemiterios.vistoria.create",     "icon": "Camera" },
+            { "label": "Parâmetros",          "route": "cemiterios.parametros",   "permission": "cemiterios.parametros.manage",   "icon": "SlidersHorizontal" }
+        ]
+    },
+    "permissions": {
+        "cemiterios.view": "Visualizar Gestão de Cemitérios",
+        "cemiterios.inventario.manage": "Gerenciar cemitérios, quadras e jazigos",
+        "cemiterios.gis.edit": "Editar geometrias e status no mapa",
+        "cemiterios.operacoes.create": "Registrar inumações, exumações e trasladações",
+        "cemiterios.operacoes.historico": "Lançar e revisar inumações históricas",
+        "cemiterios.operacoes.executar": "Executar ordens de serviço em campo",
+        "cemiterios.exumacao.judicial": "Registrar exumação por determinação judicial",
+        "cemiterios.concessoes.manage": "Gerenciar concessionários e concessões",
+        "cemiterios.financeiro.manage": "Gerenciar preços, guias e baixas",
+        "cemiterios.financeiro.reajuste": "Aplicar reajuste da tabela de preços",
+        "cemiterios.empreiteiros.manage": "Gerenciar empreiteiros, alvarás e penalidades",
+        "cemiterios.vistoria.create": "Registrar vistorias",
+        "cemiterios.abandono.manage": "Conduzir processos de abandono",
+        "cemiterios.parametros.manage": "Parametrizar prazos e dimensões legais",
+        "cemiterios.dados-restritos.view": "Ver causa da morte e documentos médicos",
+        "cemiterios.auditoria.view": "Consultar auditoria do módulo"
+    }
+}

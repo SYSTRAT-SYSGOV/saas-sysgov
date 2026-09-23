@@ -82,3 +82,43 @@ jobs:
         run: vendor/bin/phpstan analyse --no-progress
       - name: Run Pest/PHPUnit Test Suite (with Tenant Isolation)
         run: vendor/bin/phpunit
+
+  api-mysql:
+    # Grupo `mysql`: testes que dependem de funções só do MySQL 8 (espaciais,
+    # FULLTEXT ngram). Banco descartável *_testing + TESTS_ALLOW_MYSQL=1 é a única
+    # combinação que a trava Tests/Concerns/GuardAgainstRealDatabase.php aceita.
+    name: Backend API — grupo MySQL 8
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sysgov_testing
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -proot" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: sysgov_testing
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      TESTS_ALLOW_MYSQL: "1"
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, pdo_mysql, pdo_sqlite
+          coverage: none
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Run MySQL-only test group
+        run: vendor/bin/phpunit --group mysql
