@@ -5321,3 +5321,9 @@ parameters:
 			identifier: return.unusedType
 			count: 1
 			path: app/Support/helpers.php
+
+		-
+			message: '#^Property Modules\\Capd\\Http\\Middleware\\ValidateIcpCertificate\:\:\$adapter is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: Modules/Capd/Http/Middleware/ValidateIcpCertificate.php

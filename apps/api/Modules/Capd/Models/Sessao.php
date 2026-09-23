@@ -27,6 +27,9 @@ final class Sessao extends Model
         'quorum_minimo',
         'ata_texto',
         'hash_ata_sha256',
+        'psc_transaction_id',
+        'psc_certificate_serial',
+        'psc_signed_at',
         'finalizada',
         'finalizada_em',
     ];
@@ -41,6 +44,7 @@ final class Sessao extends Model
         'finalizada_em'   => 'datetime',
     ];
 
+    /** @return BelongsTo<Comissao, $this> */
     public function comissao(): BelongsTo
     {
         return $this->belongsTo(Comissao::class, 'comissao_id');

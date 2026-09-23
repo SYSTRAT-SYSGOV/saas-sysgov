@@ -48,6 +48,7 @@ final class Comissao extends Model
     }
 
     /** @return HasMany<ComissaoMembro, $this> */
+    /** @return HasMany<ComissaoMembro, $this> */
     public function membros(): HasMany
     {
         return $this->hasMany(ComissaoMembro::class, 'comissao_id');

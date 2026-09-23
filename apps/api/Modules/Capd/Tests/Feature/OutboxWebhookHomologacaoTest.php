@@ -6,7 +6,6 @@ namespace Modules\Capd\Tests\Feature;
 
 use App\Models\Tenant;
 use App\Models\User;
-use App\Support\OutboxPublisher;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -74,8 +73,7 @@ final class OutboxWebhookHomologacaoTest extends TestCase
             'homologada_em'       => now(),
         ]);
 
-        $outboxPublisher = app(OutboxPublisher::class);
-        $rhService = new RhIntegrationService($outboxPublisher);
+        $rhService = app(RhIntegrationService::class);
 
         // Despacha webhook de homologação
         $rhService->dispatchWebhookHomologacao($avaliacao);
