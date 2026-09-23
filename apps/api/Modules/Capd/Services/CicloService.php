@@ -255,6 +255,41 @@ final class CicloService
         return $resultado;
     }
 
+    /**
+     * Verifica se a data limite para transição de etapa passou e avança automaticamente.
+     *
+     * @return CicloAvaliacao|null Retorna o ciclo atualizado ou null se nenhuma atualização foi necessária
+     */
+    public function verificarETransicionarEtapaAutomaticamente(): ?CicloAvaliacao
+    {
+        // Busca ciclos abertos que devem avançar de etapa baseado na data limite
+        $ciclos = CicloAvaliacao::query()
+            ->where('status', CicloAvaliacao::STATUS_ABERTO)
+            ->where('etapa_cadencia', '<', 3) // Máximo 3 etapas (triênio)
+            ->whereDate('data_limite_preenchimento', '<', today()) // Data limite para transição
+            ->get();
+
+        foreach ($ciclos as $ciclo) {
+            // Avança para a próxima etapa
+            $ciclo->etapa_cadencia += 1;
+
+            // Resetamos algumas datas para a nova etapa (opcional, dependendo da regra de negócio)
+            // Por enquanto, apenas atualizamos a etapa
+
+            $ciclo->save();
+
+            $this->audit->record(
+                'capd',
+                'ciclo.etapa.avancada',
+                "Ciclo #{$ciclo->id} avançou para etapa {$ciclo->etapa_cadencia}",
+                ['etapa_anterior' => $ciclo->etapa_cadencia - 1],
+                $ciclo->toArray()
+            );
+        }
+
+        return $ciclos->first() ?? null;
+    }
+
     // ── Método original de validação de elegibilidade (mantém retrocompatibilidade) ──
 
     /**
