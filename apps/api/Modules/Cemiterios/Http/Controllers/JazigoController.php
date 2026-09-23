@@ -30,9 +30,11 @@ final class JazigoController extends Controller
         $this->autorizar($request, 'cemiterios.view');
 
         $jazigos = Jazigo::query()
+            ->with(['setor', 'cemiterio'])
             ->when($request->query('parque'), fn ($q, $v) => $q->where('park_id', $v))
             ->when($request->query('setor'), fn ($q, $v) => $q->where('sector_id', $v))
             ->when($request->query('estado'), fn ($q, $v) => $q->where('estado', $v))
+            ->when($request->query('tipo'), fn ($q, $v) => $q->where('tipo', $v))
             ->when($request->query('q'), fn ($q, $v) => $q->where('codigo', 'like', "%{$v}%"))
             ->orderBy('codigo')
             ->paginate(min((int) $request->query('per_page', 50), 200));
