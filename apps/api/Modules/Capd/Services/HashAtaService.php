@@ -6,18 +6,21 @@ namespace Modules\Capd\Services;
 
 use App\Support\AuditLogger;
 use Modules\Capd\Models\Sessao;
+use Modules\Capd\Services\Adapters\AssinaturaAdapterFactory;
 
 /**
  * Serviço de Geração e Verificação de Integridade Criptográfica de Atas (RN-C06).
  *
- * Utiliza SHA-256 para selar a ata após deliberação da comissão.
- * Qualquer alteração posterior no texto da ata quebra a correspondência do hash.
+ * Sela a ata via o adapter de assinatura da sessão (SHA-256 interno, padrão,
+ * ou ICP-Brasil quando `capd_ciclos.tipo_assinatura_ata = 'icp_brasil'` —
+ * ver AssinaturaAdapterFactory). Qualquer alteração posterior no texto da
+ * ata quebra a correspondência do hash.
  */
 final class HashAtaService
 {
     public function __construct(
         private readonly AuditLogger $audit,
-        private readonly \Modules\Capd\Services\Adapters\IcpBrasilAdapter $psc,
+        private readonly AssinaturaAdapterFactory $adapters,
     ) {}
 
     /**
@@ -38,14 +41,13 @@ final class HashAtaService
             );
         }
 
-        // Tenta assinar via PSC se configurado, caso contrário usa SHA-256 interno.
         // Nota: comissão sem membro cadastrado é um estado de dados possível em runtime
         // (Eloquent::first() pode devolver null), mesmo quando o PHPStan, com os generics
         // atuais do Larastan, infere a relação como não-nula — por isso o null-check
         // explícito abaixo em vez de `?->`.
         $relator = $sessao->comissao->membros()->first();
         $relatorId = $relator === null ? 0 : $relator->servidor_id;
-        $resultado = $this->psc->assinar($textoAta, $sessao->id, $relatorId, $contexto);
+        $resultado = $this->adapters->paraSessao($sessao)->assinar($textoAta, $sessao->id, $relatorId, $contexto);
         $hash = $resultado->hash;
 
         $sessao->update([

@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Sessão Deliberativa da Comissão CAPD.
+ *
+ * @property-read Comissao|null $comissao
  */
 final class Sessao extends Model
 {
