@@ -145,8 +145,13 @@
       validação abre sem sessão.
       *Nota*: a `LoginPage` passou a aceitar `?voltar=` (só caminho relativo do app, contra
       redirecionamento aberto) para o check-in continuar depois do login.
-- [ ] 8.6 `module:register Cursos` e `npm run generate:registry`; verificar que o módulo aparece
+- [x] 8.6 `module:register Cursos` e `npm run generate:registry`; verificar que o módulo aparece
       no Admin Suite e que o registry gerado contém a rota `cursos`.
+      *Nota*: o `docker-entrypoint` registra o módulo no boot (catálogo, 7 permissões, menus admin e
+      cliente). O gerador buscava o catálogo em `/api/admin/module-catalog/catalog` (exige
+      platform-admin, dava 401) e caía sempre no fallback do filesystem; passou a usar a rota
+      pública `/api/public/module-catalog/catalog`. Regenerado contra a API viva, o registry contém
+      `cursos` e perdeu a entrada órfã `testmodule` (sem módulo no repositório).
 
 ## 9. Dados de demonstração e verificação final
 
@@ -154,7 +159,14 @@
       Services): um curso, um evento e uma formação, turmas em andamento e encerrada, fila de
       espera e certificados emitidos; verificar com teste do seeder.
 - [x] 9.2 Suíte completa do backend (phpunit, Docker) e do frontend (Vitest + typecheck) verdes.
-- [ ] 9.3 Validação manual no navegador: inscrição até a lotação e fila, chamada, check-in por
+- [x] 9.3 Validação manual no navegador: inscrição até a lotação e fila, chamada, check-in por
       QR, encerramento, download do certificado e validação pública numa aba anônima.
+      *Nota*: roteiro executado com Playwright (Chromium) sobre o Docker Compose e os dados de
+      demonstração: participante entra na fila da turma lotada (3º); cancelamento de uma confirmada
+      promove o 1º da fila e reordena os demais; QR da instrutora decodificado e aberto sem sessão
+      (login com `?voltar=` e presença registrada; releitura informa "já registrada"; a chamada
+      mostra "check-in por QR"); turma nova com aula no passado, inscrição direta, chamada e
+      encerramento (1 concluída, 1 abaixo da frequência, 1 certificado); PDF A4 baixado com código e
+      QR; validação pública em contexto anônimo para código válido e inexistente.
 - [x] 9.4 Checklist de qualidade do `sysgov-module-scaffolding` (§9) revisado item a item, e
       `openspec validate add-cursos-fundacao --strict` sem erros.
