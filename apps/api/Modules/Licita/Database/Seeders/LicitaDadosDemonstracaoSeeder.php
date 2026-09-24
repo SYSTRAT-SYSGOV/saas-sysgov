@@ -44,23 +44,24 @@ final class LicitaDadosDemonstracaoSeeder extends Seeder
             : Tenant::where('slug', 'systrat')->first();
 
         if (!$tenant) {
-            $this->command?->warn('Tenant não encontrado — nada a semear no Licita.');
+            $this->informar('Tenant não encontrado — nada a semear no Licita.', aviso: true);
             return;
         }
 
         app(TenantContext::class)->set($tenant);
 
         if (Processo::query()->exists()) {
-            $this->command?->info("Tenant [{$tenant->id}] {$tenant->name} já tem processos do Licita — nada a fazer.");
+            $this->informar("Tenant [{$tenant->id}] {$tenant->name} já tem processos do Licita — nada a fazer.");
             return;
         }
 
         $usuarios = $tenant->users()->orderBy('users.id')->limit(2)->get();
-        if ($usuarios->count() < 2) {
-            $this->command?->warn('O Licita exige dois usuários distintos no tenant (elaborador e aprovador — RN-005).');
+        [$elaborador, $aprovador] = [$usuarios->get(0), $usuarios->get(1)];
+        if (!$elaborador instanceof User || !$aprovador instanceof User) {
+            $this->informar('O Licita exige dois usuários distintos no tenant (elaborador e aprovador — RN-005).', aviso: true);
             return;
         }
-        [$this->elaborador, $this->aprovador] = [$usuarios[0], $usuarios[1]];
+        [$this->elaborador, $this->aprovador] = [$elaborador, $aprovador];
 
         $this->processoMaterialExpediente();
         $this->processoLimpezaPredial();
@@ -71,7 +72,7 @@ final class LicitaDadosDemonstracaoSeeder extends Seeder
         $this->processoMedicamentos();
         $this->processoIluminacaoLed();
 
-        $this->command?->info("8 processos de demonstração do Licita criados no tenant [{$tenant->id}] {$tenant->name}.");
+        $this->informar("8 processos de demonstração do Licita criados no tenant [{$tenant->id}] {$tenant->name}.");
     }
 
     // ---------------------------------------------------------------- cenários
@@ -474,5 +475,14 @@ final class LicitaDadosDemonstracaoSeeder extends Seeder
             'tipo' => $tipo,
             'cotacoes' => $cotacoes,
         ];
+    }
+
+    /** $this->command é null quando o seeder é chamado direto (ex.: nos testes). */
+    private function informar(string $mensagem, bool $aviso = false): void
+    {
+        // @phpstan-ignore isset.property (o Seeder declara $command como não nulo, mas é null fora do artisan)
+        if (isset($this->command)) {
+            $aviso ? $this->command->warn($mensagem) : $this->command->info($mensagem);
+        }
     }
 }
