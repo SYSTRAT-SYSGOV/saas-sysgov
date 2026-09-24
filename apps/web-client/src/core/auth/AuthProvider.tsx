@@ -150,8 +150,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
+      let parsed: LoginResponse;
       try {
-        const parsed: LoginResponse = JSON.parse(storedState);
+        parsed = JSON.parse(storedState);
         setToken(parsed.token || storedToken);
         setUser(parsed.user || null);
         setTenant(parsed.tenant || null);
@@ -171,8 +172,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // (ex.: migrate:fresh --seed apagou os personal_access_tokens), redireciona
       // para /login e limpa a sessão em vez de deixar o usuário preso com um token morto.
       apiClient
-        .get('/auth/me', { timeout: 4000 })
-        .then(() => setIsLoading(false))
+        .get<LoginResponse>('/auth/me', { timeout: 4000 })
+        .then((res) => {
+          // Atualiza módulos, permissões e menu com o estado atual do servidor —
+          // sem isso, um módulo habilitado depois do login só aparecia após sair
+          // e entrar de novo. O /auth/me não devolve o token: mantém o salvo.
+          if (res.data?.tenant) {
+            saveSession({ ...parsed, ...res.data, token: parsed.token || storedToken });
+          }
+          setIsLoading(false);
+        })
         .catch((err: any) => {
           if (err.response?.status === 401) {
             localStorage.removeItem(TOKEN_KEY);
