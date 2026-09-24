@@ -9,6 +9,13 @@
             <directory>Tests</directory>
         </testsuite>
     </testsuites>
+    <!-- Testes que exigem MySQL (ex.: concorrência com lockForUpdate) ficam fora da suíte
+         padrão; rodar com: vendor/bin/phpunit, opção group=mysql -->
+    <groups>
+        <exclude>
+            <group>mysql</group>
+        </exclude>
+    </groups>
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="CACHE_STORE" value="array"/>

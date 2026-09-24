@@ -17,6 +17,7 @@ use App\Console\Commands\NotifyExpiringAccess;
 use Modules\Admin\Providers\AdminServiceProvider;
 use Modules\Capd\Providers\CapdServiceProvider;
 use Modules\Contracts\Providers\ContractsServiceProvider;
+use Modules\Cursos\Providers\CursosServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
 use Modules\OrgChart\Providers\OrgChartServiceProvider;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         AdminServiceProvider::class,
         CapdServiceProvider::class,
         ContractsServiceProvider::class,
+        CursosServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
         OrgChartServiceProvider::class,

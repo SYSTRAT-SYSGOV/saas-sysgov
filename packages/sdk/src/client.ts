@@ -60,6 +60,7 @@ import { ContractsModuleClient } from './modules/contracts';
 import { CatalogModuleClient } from './modules/catalog';
 import { LicitaModuleClient } from './modules/licita';
 import { CapdModuleClient } from './modules/capd';
+import { CursosModuleClient } from './modules/cursos';
 
 export class SysgovApi implements ApiRequester {
   private token: string | null = typeof window !== 'undefined' ? localStorage.getItem('sysgov_token') : null;
@@ -70,6 +71,7 @@ export class SysgovApi implements ApiRequester {
   public readonly catalogApi: CatalogModuleClient;
   public readonly licita: LicitaModuleClient;
   public readonly capd: CapdModuleClient;
+  public readonly cursos: CursosModuleClient;
 
   constructor(private readonly baseUrl = 'http://localhost:8000/api') {
     this.org = new OrgModuleClient(this);
@@ -77,6 +79,7 @@ export class SysgovApi implements ApiRequester {
     this.catalogApi = new CatalogModuleClient(this);
     this.licita = new LicitaModuleClient(this);
     this.capd = new CapdModuleClient(this);
+    this.cursos = new CursosModuleClient(this);
   }
 
   public async request<T>(path: string, init: RequestInit = {}): Promise<T> {
