@@ -100,6 +100,7 @@ final class IsolamentoRotasTest extends TestCase
             ['delete', "/api/cursos/agendamentos/{$agendamentoB->id}"],
             ['get', "/api/cursos/inscricoes/{$inscricaoB->id}"],
             ['post', "/api/cursos/inscricoes/{$inscricaoB->id}/cancelar"],
+            ['get', "/api/cursos/inscricoes/{$inscricaoB->id}/conteudo"],
         ];
 
         foreach ($rotas as [$metodo, $url]) {

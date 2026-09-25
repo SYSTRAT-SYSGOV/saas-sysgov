@@ -79,18 +79,18 @@
 
 ## 5. Nota, apuração e certificado
 
-- [ ] 5.1 `NotaService::notaFinal` (média ponderada da melhor tentativa corrigida, avaliação sem
+- [x] 5.1 `NotaService::notaFinal` (média ponderada da melhor tentativa corrigida, avaliação sem
       tentativa = 0) e nota parcial; testes dos cenários "Média ponderada pela melhor
       tentativa" (8,75) e "Avaliação não feita" (5,00).
-- [ ] 5.2 Migration da coluna `nota_apurada` em `cursos_inscricoes`; `ApuracaoConclusaoService`
+- [x] 5.2 Migration da coluna `nota_apurada` em `cursos_inscricoes`; `ApuracaoConclusaoService`
       passa a devolver `nota` e exigir a nota mínima quando houver (D9); testes dos cenários
       "Nota insuficiente" e "Frequência e nota suficientes", e os testes da Fase 1 de
       apuração por frequência continuam verdes.
-- [ ] 5.3 `EncerramentoService`: recusa com tentativas `aguardando_correcao` (listando-as) e com
+- [x] 5.3 `EncerramentoService`: recusa com tentativas `aguardando_correcao` (listando-as) e com
       nota mínima sem avaliação publicada; finaliza as tentativas em andamento dentro da
       transação; grava `nota_apurada`; testes do cenário "Correção pendente", da recusa sem
       avaliação publicada e da imutabilidade de tentativas e correções depois do encerramento.
-- [ ] 5.4 Placeholder `{{nota}}` no `ModeloCertificadoService` e no snapshot do
+- [x] 5.4 Placeholder `{{nota}}` no `ModeloCertificadoService` e no snapshot do
       `CertificadoService` (D10); testes dos cenários "Nota impressa no certificado" e "Nota
       em curso sem avaliação", e de um certificado antigo sem a chave renderizando "—".
 

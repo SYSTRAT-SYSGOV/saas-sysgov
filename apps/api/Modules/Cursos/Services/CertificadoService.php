@@ -72,6 +72,8 @@ final class CertificadoService
             'carga_horaria_minutos' => $curso->carga_horaria_minutos,
             'inicio' => $turma->data_inicio,
             'fim' => $turma->data_fim,
+            // Só cursos com nota mínima imprimem a nota (spec); nos demais, e nas formações, vale o travessão.
+            'nota' => $curso->nota_minima !== null ? $inscricao->nota_apurada : null,
         ], ['inscricao_id' => $inscricao->id]);
     }
 
@@ -157,6 +159,12 @@ final class CertificadoService
         return config('cursos.url_portal') . '/validar-certificado/' . implode('-', str_split($codigo, 4));
     }
 
+    /** Nota com duas casas e vírgula (8,75), ou travessão quando não há nota a imprimir. */
+    public static function formatarNota(string|float|null $nota): string
+    {
+        return $nota === null ? '—' : number_format((float) $nota, 2, ',', '');
+    }
+
     /** Normaliza um código digitado (com ou sem hífens, minúsculas, O/I/L trocados) para o formato gravado. */
     public static function normalizarCodigo(string $digitado): string
     {
@@ -164,7 +172,7 @@ final class CertificadoService
     }
 
     /**
-     * @param array{curso: string, carga_horaria_minutos: int, inicio: Carbon|null, fim: Carbon|null} $conteudo
+     * @param array{curso: string, carga_horaria_minutos: int, inicio: Carbon|null, fim: Carbon|null, nota?: string|float|null} $conteudo
      * @param array<string, int> $referencia inscricao_id ou formacao_id
      */
     private function emitir(ModeloCertificado $modelo, Participante $participante, TipoCertificado $tipo, array $conteudo, array $referencia): Certificado
@@ -178,6 +186,7 @@ final class CertificadoService
             'periodo' => self::formatarPeriodo($conteudo['inicio'], $conteudo['fim']),
             'data_emissao' => $emissao->format('d/m/Y'),
             'orgao' => (string) $orgao,
+            'nota' => self::formatarNota($conteudo['nota'] ?? null),
         ];
 
         $dados = [

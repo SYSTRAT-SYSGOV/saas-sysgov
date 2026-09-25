@@ -24,6 +24,7 @@ use Modules\Cursos\Enums\StatusInscricao;
  * @property \Illuminate\Support\Carbon|null $cancelada_em
  * @property string|null $motivo_cancelamento
  * @property string|null $frequencia_apurada
+ * @property string|null $nota_apurada
  * @property \Illuminate\Support\Carbon|null $concluida_em
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -39,7 +40,7 @@ final class Inscricao extends Model
 
     protected $fillable = [
         'tenant_id', 'turma_id', 'participante_id', 'status', 'inscrito_por', 'aprovada_por', 'aprovada_em',
-        'cancelada_por', 'cancelada_em', 'motivo_cancelamento', 'frequencia_apurada', 'concluida_em',
+        'cancelada_por', 'cancelada_em', 'motivo_cancelamento', 'frequencia_apurada', 'nota_apurada', 'concluida_em',
     ];
 
     protected $casts = [
@@ -52,6 +53,7 @@ final class Inscricao extends Model
         'cancelada_por' => 'integer',
         'cancelada_em' => 'datetime',
         'frequencia_apurada' => 'decimal:2',
+        'nota_apurada' => 'decimal:2',
         'concluida_em' => 'datetime',
     ];
 

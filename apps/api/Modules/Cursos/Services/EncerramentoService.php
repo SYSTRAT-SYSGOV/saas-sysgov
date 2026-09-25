@@ -10,8 +10,11 @@ use App\Support\OutboxPublisher;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Modules\Cursos\Enums\StatusInscricao;
+use Modules\Cursos\Enums\StatusTentativa;
 use Modules\Cursos\Enums\StatusTurma;
+use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Inscricao;
+use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\Turma;
 
 /**
@@ -24,6 +27,7 @@ final class EncerramentoService
 {
     public function __construct(
         private readonly ApuracaoConclusaoService $apuracao,
+        private readonly TentativaService $tentativas,
         private readonly CertificadoService $certificados,
         private readonly AuditLogger $audit,
         private readonly OutboxPublisher $outbox,
@@ -48,6 +52,7 @@ final class EncerramentoService
 
         $resumo = DB::transaction(function () use ($turma, $autor): array {
             $turma = Turma::query()->whereKey($turma->id)->lockForUpdate()->firstOrFail();
+            $this->garantirAvaliacoesEmDia($turma);
             $resumo = ['concluidas' => 0, 'nao_concluidas' => 0, 'canceladas' => 0, 'certificados_emitidos' => 0, 'certificados_pendentes' => [], 'concluintes' => []];
 
             $inscricoes = $turma->inscricoes()->whereIn('status', StatusInscricao::valoresAtivos())->with(['participante', 'turma.curso'])->get();
@@ -68,6 +73,7 @@ final class EncerramentoService
                 $inscricao->update([
                     'status' => $novo->value,
                     'frequencia_apurada' => $apurado['frequencia'],
+                    'nota_apurada' => $apurado['nota'],
                     'concluida_em' => $apurado['concluiu'] ? now() : null,
                 ]);
 
@@ -100,6 +106,47 @@ final class EncerramentoService
         unset($resumo['concluintes']);
 
         return [...$resumo, 'formacoes_pendentes' => array_values(array_unique($formacoesPendentes))];
+    }
+
+    /**
+     * Com a turma travada: recusa se o curso exige nota mínima sem avaliação
+     * publicada ou se há tentativa aguardando correção; depois, as tentativas
+     * ainda em andamento seguem como enviadas com as respostas salvas (Fase 2, D9).
+     */
+    private function garantirAvaliacoesEmDia(Turma $turma): void
+    {
+        $curso = $turma->curso;
+        if ($curso->nota_minima !== null && !Avaliacao::query()->where('curso_id', $curso->id)->where('publicada', true)->exists()) {
+            throw new DomainException('O curso exige nota mínima, mas não tem avaliação publicada. Publique uma avaliação (ou retire a nota mínima do curso) antes de encerrar a turma.');
+        }
+
+        $daTurma = fn ($q) => $q->where('turma_id', $turma->id);
+        $pendentes = Tentativa::query()
+            ->where('status', StatusTentativa::AguardandoCorrecao->value)
+            ->whereHas('inscricao', $daTurma)
+            ->with(['avaliacao', 'inscricao.participante'])
+            ->orderBy('id')
+            ->get();
+        if ($pendentes->isNotEmpty()) {
+            $lista = $pendentes->take(10)->map(fn (Tentativa $t): string => "{$t->inscricao->participante->nome} ({$t->avaliacao->titulo}, tentativa {$t->numero})")->implode('; ');
+            $restantes = $pendentes->count() - 10;
+
+            throw new DomainException(sprintf(
+                'Há %d tentativa(s) aguardando correção: %s%s. Corrija-as antes de encerrar a turma.',
+                $pendentes->count(),
+                $lista,
+                $restantes > 0 ? " e mais {$restantes}" : '',
+            ));
+        }
+
+        $emAndamento = Tentativa::query()
+            ->where('status', StatusTentativa::EmAndamento->value)
+            ->whereHas('inscricao', $daTurma)
+            ->lockForUpdate()
+            ->get();
+        foreach ($emAndamento as $tentativa) {
+            $this->tentativas->finalizarPorEncerramento($tentativa);
+        }
     }
 
     /**

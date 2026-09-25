@@ -8,11 +8,14 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Testing\TestResponse;
 use Modules\Cursos\Models\Avaliacao;
+use Modules\Cursos\Models\AulaAgendamento;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\Questao;
+use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Services\AvaliacaoService;
+use Modules\Cursos\Services\PresencaService;
 use Modules\Cursos\Services\QuestaoService;
 
 /**
@@ -120,5 +123,56 @@ trait CenarioAvaliacoes
     {
         \Carbon\Carbon::setTestNow();
         \Carbon\CarbonImmutable::setTestNow();
+    }
+
+    /**
+     * Aulas já realizadas da turma (no passado), para poder encerrá-la.
+     *
+     * @return list<AulaAgendamento>
+     */
+    protected function agendarAulasRealizadas(int $aulas = 4): array
+    {
+        $agendamentos = [];
+        for ($i = 1; $i <= $aulas; $i++) {
+            $inicio = now()->subHours(2 * ($aulas - $i) + 3);
+            $agendamentos[] = $this->agendamento($this->tenant, $this->turma, $this->aula($this->tenant, $this->curso, "Aula {$i}"), $inicio, $inicio->copy()->addHour());
+        }
+
+        return $agendamentos;
+    }
+
+    /**
+     * @param list<AulaAgendamento> $agendamentos
+     */
+    protected function registrarPresencas(Inscricao $inscricao, array $agendamentos, int $presencas): void
+    {
+        $this->noTenant($this->tenant, function () use ($inscricao, $agendamentos, $presencas): void {
+            foreach ($agendamentos as $i => $agendamento) {
+                app(PresencaService::class)->registrarChamada($agendamento, [$inscricao->id => $i < $presencas], $this->instrutor);
+            }
+        });
+    }
+
+    /** Avaliação criada direto no banco (sem questões), para testar nota e apuração sem percorrer a prova. */
+    protected function avaliacaoDireta(int $peso = 1, bool $publicada = true, string $titulo = 'Avaliação'): Avaliacao
+    {
+        return $this->noTenant($this->tenant, fn (): Avaliacao => Avaliacao::create([
+            'curso_id' => $this->curso->id, 'titulo' => $titulo, 'peso' => $peso, 'tentativas_max' => 5, 'publicada' => $publicada,
+        ]));
+    }
+
+    protected function tentativaDireta(Avaliacao $avaliacao, Inscricao $inscricao, string $status, ?float $nota = null, int $numero = 1): Tentativa
+    {
+        return $this->noTenant($this->tenant, fn (): Tentativa => Tentativa::create([
+            'avaliacao_id' => $avaliacao->id, 'inscricao_id' => $inscricao->id, 'numero' => $numero, 'status' => $status,
+            'iniciada_em' => now(), 'enviada_em' => $status === 'em_andamento' ? null : now(), 'corrigida_em' => $status === 'corrigida' ? now() : null,
+            'nota' => $nota, 'questoes' => [],
+        ]));
+    }
+
+    /** @return TestResponse<\Symfony\Component\HttpFoundation\Response> */
+    protected function encerrarTurma()
+    {
+        return $this->como($this->instrutor, $this->tenant)->postJson("/api/cursos/turmas/{$this->turma->id}/encerrar");
     }
 }

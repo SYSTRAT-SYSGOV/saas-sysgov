@@ -15,6 +15,7 @@ use Modules\Cursos\Http\Controllers\AvaliacaoController;
 use Modules\Cursos\Http\Controllers\CatalogoController;
 use Modules\Cursos\Http\Controllers\CertificadoController;
 use Modules\Cursos\Http\Controllers\CorrecaoController;
+use Modules\Cursos\Http\Controllers\ConteudoInscricaoController;
 use Modules\Cursos\Http\Controllers\CursoController;
 use Modules\Cursos\Http\Controllers\FormacaoController;
 use Modules\Cursos\Http\Controllers\InscricaoController;
@@ -110,6 +111,7 @@ Route::get('/turmas/{turma}/inscricoes/exportar', [InscricaoController::class, '
 Route::post('/turmas/{turma}/inscricoes', [InscricaoController::class, 'inscrever']);
 Route::post('/turmas/{turma}/inscricoes/direta', [InscricaoController::class, 'inscreverDireto']);
 Route::get('/inscricoes/{inscricao}', [InscricaoController::class, 'show']);
+Route::get('/inscricoes/{inscricao}/conteudo', [ConteudoInscricaoController::class, 'show']);
 Route::post('/inscricoes/{inscricao}/aprovar', [InscricaoController::class, 'aprovar']);
 Route::post('/inscricoes/{inscricao}/recusar', [InscricaoController::class, 'recusar']);
 Route::post('/inscricoes/{inscricao}/cancelar', [InscricaoController::class, 'cancelar']);
