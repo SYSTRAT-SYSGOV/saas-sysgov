@@ -57,10 +57,13 @@ da Fase 1 (`add-cursos-fundacao`, design D1 a D12):
 tentativas.
 
 ### D2. Liberação calculada na leitura por um único serviço
-`LiberacaoService::quando(Material|Avaliacao, Turma): ?CarbonImmutable` devolve a data de
-liberação para a turma (ou `null` = aguardando agendamento), e `liberado()` compara com `now()`.
-Regras: `imediata` → sem data (liberado); `inicio_aula` → `inicio` do agendamento da aula na
-turma; `dias_apos_inicio` → `data_inicio` da turma + N dias às 00:00 em `America/Sao_Paulo`.
+`LiberacaoService::situacao(ComLiberacao, Turma): SituacaoLiberacao` devolve `liberado`, a data
+prevista (`preverEm`, só antes da liberação) e `aguardandoAgendamento`; `liberado()` é um atalho.
+`Material` e `Avaliacao` implementam o contrato `ComLiberacao` (regra, dias e aula). Um `?CarbonImmutable`
+não distinguia "imediata" de "aguardando agendamento", por isso o retorno é um objeto de valor.
+Regras: `imediata` → liberado; `inicio_aula` → `inicio` do agendamento da aula na turma (sem
+agendamento ou sem aula, aguardando); `dias_apos_inicio` → `data_inicio` da turma + N dias às
+00:00 em `America/Sao_Paulo`.
 Materiais e avaliações compartilham a mesma regra (colunas iguais), o que mantém uma só
 implementação e um só componente de formulário.
 - *Por quê*: um material pertence ao curso e vale para todas as turmas; guardar uma data por

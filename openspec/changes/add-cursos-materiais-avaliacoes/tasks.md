@@ -8,13 +8,13 @@
 
 ## 1. Preparação
 
-- [ ] 1.1 Mover `Modules/Licita/Support/HtmlSanitizer` para `app/Support/HtmlSanitizer` e ajustar
+- [x] 1.1 Mover `Modules/Licita/Support/HtmlSanitizer` para `app/Support/HtmlSanitizer` e ajustar
       os imports do Licita (D5); verificar que a suíte do Licita continua verde no phpunit
       (Docker) e o PHPStan sem erros novos.
-- [ ] 1.2 Criar `docker/php/uploads.ini` (`upload_max_filesize=25M`, `post_max_size=26M`) e
+- [x] 1.2 Criar `docker/php/uploads.ini` (`upload_max_filesize=25M`, `post_max_size=26M`) e
       copiá-lo no `Dockerfile` para `$PHP_INI_DIR/conf.d/` (D3); verificar com
       `php -i | grep upload_max_filesize` no container reconstruído.
-- [ ] 1.3 Criar o `LiberacaoService` (D2) com as três regras e testes unitários: imediata,
+- [x] 1.3 Criar o `LiberacaoService` (D2) com as três regras e testes unitários: imediata,
       início da aula (com e sem agendamento), N dias após o início da turma (virada do dia em
       `America/Sao_Paulo`) e o cenário "mesmo material em turmas diferentes".
 
