@@ -115,3 +115,13 @@ export function descreverLiberacao(regra: RegraLiberacao, dias: number | null): 
   if (regra === 'dias_apos_inicio') return dias === 0 ? 'No dia do início da turma' : `${dias} ${dias === 1 ? 'dia' : 'dias'} após o início da turma`;
   return REGRA_LIBERACAO[regra];
 }
+
+/** Milissegundos → "mm:ss" (ou "h:mm:ss"), para o cronômetro da avaliação. */
+export function formatarContagem(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const seg = total % 60;
+  const dois = (n: number) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${dois(m)}:${dois(seg)}` : `${dois(m)}:${dois(seg)}`;
+}

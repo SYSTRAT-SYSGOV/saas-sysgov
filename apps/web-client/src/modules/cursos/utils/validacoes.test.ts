@@ -98,3 +98,26 @@ describe('formatos da Fase 2', () => {
     expect(descreverLiberacao('inicio_aula', null)).toBe('No início da aula');
   });
 });
+
+import { formatarContagem } from './formatos';
+import { diferencaDoServidor, restanteAtePrazo } from './tentativa';
+
+describe('cronômetro da avaliação', () => {
+  it('formata a contagem regressiva', () => {
+    expect(formatarContagem(125_000)).toBe('02:05');
+    expect(formatarContagem(59_001)).toBe('01:00');
+    expect(formatarContagem(0)).toBe('00:00');
+    expect(formatarContagem(-5000)).toBe('00:00');
+    expect(formatarContagem(3_725_000)).toBe('1:02:05');
+  });
+
+  it('o prazo é medido pelo relógio do servidor', () => {
+    const local = Date.parse('2026-10-05T12:00:00Z');
+    const dif = diferencaDoServidor('2026-10-05T12:10:00Z', local);
+
+    expect(dif).toBe(10 * 60_000);
+    // Prazo às 12:15 do servidor: faltam 5 minutos, mesmo com o relógio local atrasado.
+    expect(restanteAtePrazo('2026-10-05T12:15:00Z', dif, local)).toBe(5 * 60_000);
+    expect(restanteAtePrazo(null, dif, local)).toBeNull();
+  });
+});

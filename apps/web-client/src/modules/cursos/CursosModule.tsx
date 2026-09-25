@@ -14,6 +14,7 @@ import { FormacoesPage } from './pages/FormacoesPage';
 import { CertificadosPage } from './pages/CertificadosPage';
 import { ModelosCertificadoPage } from './pages/ModelosCertificadoPage';
 import { InscricaoDetalhePage } from './pages/InscricaoDetalhePage';
+import { TentativaPage } from './pages/TentativaPage';
 
 export type AbaCursos = 'catalogo' | 'meus' | 'turmas' | 'cursos' | 'formacoes' | 'certificados' | 'modelos';
 
@@ -57,7 +58,12 @@ export const CursosModule: React.FC = () => {
   const cursoId = params.get('curso');
   const turmaId = params.get('turma');
   const inscricaoId = params.get('inscricao');
+  const tentativaId = params.get('tentativa');
 
+  // Responder a avaliação: abre por cima da inscrição e volta para ela.
+  if (tentativaId) {
+    return <TentativaPage tentativaId={Number(tentativaId)} onVoltar={() => irPara({ aba: aba ?? 'meus', ...(inscricaoId ? { inscricao: inscricaoId } : {}) })} />;
+  }
   if (turmaId) {
     return <TurmaDetalhePage turmaId={Number(turmaId)} onVoltar={voltar} />;
   }
