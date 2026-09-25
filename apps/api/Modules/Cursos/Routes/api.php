@@ -14,6 +14,7 @@ use Modules\Cursos\Http\Controllers\AulaController;
 use Modules\Cursos\Http\Controllers\AvaliacaoController;
 use Modules\Cursos\Http\Controllers\CatalogoController;
 use Modules\Cursos\Http\Controllers\CertificadoController;
+use Modules\Cursos\Http\Controllers\CorrecaoController;
 use Modules\Cursos\Http\Controllers\CursoController;
 use Modules\Cursos\Http\Controllers\FormacaoController;
 use Modules\Cursos\Http\Controllers\InscricaoController;
@@ -21,6 +22,7 @@ use Modules\Cursos\Http\Controllers\MaterialController;
 use Modules\Cursos\Http\Controllers\ModeloCertificadoController;
 use Modules\Cursos\Http\Controllers\PresencaController;
 use Modules\Cursos\Http\Controllers\QuestaoController;
+use Modules\Cursos\Http\Controllers\TentativaController;
 use Modules\Cursos\Http\Controllers\TurmaController;
 use Modules\Cursos\Http\Controllers\UsuarioOrgaoController;
 
@@ -76,6 +78,15 @@ Route::put('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'update']);
 Route::delete('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'destroy']);
 Route::post('/avaliacoes/{avaliacao}/publicar', [AvaliacaoController::class, 'publicar']);
 Route::post('/avaliacoes/{avaliacao}/despublicar', [AvaliacaoController::class, 'despublicar']);
+
+// Tentativas do participante e correção (Fase 2)
+Route::post('/avaliacoes/{avaliacao}/tentativas', [TentativaController::class, 'iniciar']);
+Route::get('/tentativas/{tentativa}', [TentativaController::class, 'show']);
+Route::put('/tentativas/{tentativa}/respostas/{questao}', [TentativaController::class, 'salvarResposta'])->whereNumber('questao')->middleware('throttle:cursos-respostas');
+Route::post('/tentativas/{tentativa}/enviar', [TentativaController::class, 'enviar']);
+Route::get('/turmas/{turma}/correcoes', [CorrecaoController::class, 'fila']);
+Route::get('/tentativas/{tentativa}/correcao', [CorrecaoController::class, 'show']);
+Route::put('/tentativas/{tentativa}/respostas/{questao}/correcao', [CorrecaoController::class, 'corrigir'])->whereNumber('questao');
 
 // Formações
 Route::get('/formacoes', [FormacaoController::class, 'index']);

@@ -10,6 +10,7 @@ use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Formacao;
 use Modules\Cursos\Models\Material;
 use Modules\Cursos\Models\Questao;
+use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
 
@@ -47,6 +48,10 @@ final class IsolamentoRotasTest extends TestCase
         $questaoB = $this->noTenant($tenantB, fn () => Questao::create(['curso_id' => $cursoB->id, 'tipo' => 'dissertativa', 'enunciado' => '<p>x</p>']));
         $avaliacaoB = $this->noTenant($tenantB, fn () => Avaliacao::create(['curso_id' => $cursoB->id, 'titulo' => 'Prova B']));
 
+        $tentativaB = $this->noTenant($tenantB, fn () => Tentativa::create([
+            'avaliacao_id' => $avaliacaoB->id, 'inscricao_id' => $inscricaoB->id, 'numero' => 1, 'status' => 'aguardando_correcao', 'iniciada_em' => now(), 'questoes' => [],
+        ]));
+
         $rotas = [
             ['get', "/api/cursos/cursos/{$cursoB->id}"],
             ['put', "/api/cursos/cursos/{$cursoB->id}"],
@@ -76,6 +81,13 @@ final class IsolamentoRotasTest extends TestCase
             ['delete', "/api/cursos/avaliacoes/{$avaliacaoB->id}"],
             ['post', "/api/cursos/avaliacoes/{$avaliacaoB->id}/publicar"],
             ['post', "/api/cursos/avaliacoes/{$avaliacaoB->id}/despublicar"],
+            ['post', "/api/cursos/avaliacoes/{$avaliacaoB->id}/tentativas"],
+            ['get', "/api/cursos/tentativas/{$tentativaB->id}"],
+            ['put', "/api/cursos/tentativas/{$tentativaB->id}/respostas/{$questaoB->id}"],
+            ['post', "/api/cursos/tentativas/{$tentativaB->id}/enviar"],
+            ['get', "/api/cursos/tentativas/{$tentativaB->id}/correcao"],
+            ['put', "/api/cursos/tentativas/{$tentativaB->id}/respostas/{$questaoB->id}/correcao"],
+            ['get', "/api/cursos/turmas/{$turmaB->id}/correcoes"],
             ['put', "/api/cursos/aulas/{$aulaB->id}"],
             ['delete', "/api/cursos/aulas/{$aulaB->id}"],
             ['get', "/api/cursos/formacoes/{$formacaoB->id}"],

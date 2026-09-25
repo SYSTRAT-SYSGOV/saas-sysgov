@@ -7,6 +7,7 @@ namespace Modules\Cursos\Policies;
 use App\Models\User;
 use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Curso;
+use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Policies\Concerns\PermissoesCursos;
 
 /**
@@ -27,5 +28,15 @@ final class AvaliacaoPolicy
     public function view(User $user, Avaliacao $avaliacao): bool
     {
         return $this->doTenant($avaliacao) && ($this->administra($user) || $this->instrutorDoCurso($user, $avaliacao->curso_id));
+    }
+
+    /** Iniciar tentativa: só a própria inscrição, numa turma do curso da avaliação. */
+    public function iniciarTentativa(User $user, Avaliacao $avaliacao, Inscricao $inscricao): bool
+    {
+        return $this->doTenant($avaliacao)
+            && $this->doTenant($inscricao)
+            && $this->pode($user, 'cursos.participar')
+            && $inscricao->participante->user_id === (int) $user->id
+            && $inscricao->turma->curso_id === $avaliacao->curso_id;
     }
 }

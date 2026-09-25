@@ -56,22 +56,22 @@
 
 - [x] 4.1 Migrations e models de `cursos_tentativas` e `cursos_respostas` (únicos da D1);
       verificar `migrate` e isolamento A/B.
-- [ ] 4.2 `TentativaService::iniciar` (inscrição confirmada, turma aberta, avaliação publicada
+- [x] 4.2 `TentativaService::iniciar` (inscrição confirmada, turma aberta, avaliação publicada
       e liberada, sem outra em andamento, limite de tentativas, snapshot das questões, `prazo_em`)
       (D6, D7); testes dos cenários "Limite de tentativas", "Avaliação ainda não liberada" e
       "Turma encerrada".
-- [ ] 4.3 `TentativaParticipanteResource` e `TentativaCorrecaoResource` com lista explícita de
+- [x] 4.3 `TentativaParticipanteResource` e `TentativaCorrecaoResource` com lista explícita de
       campos (D6); teste que percorre os estados `em_andamento`, `aguardando_correcao` e
       `corrigida` e confirma que a resposta ao participante nunca contém `correta` nem
       `orientacao_correcao` (cenário "Gabarito não é exposto").
-- [ ] 4.4 Salvamento de resposta (`upsert`, texto puro nas dissertativas, sem auditoria por
+- [x] 4.4 Salvamento de resposta (`upsert`, texto puro nas dissertativas, sem auditoria por
       resposta, `throttle:cursos-respostas`) e fechamento preguiçoso da tentativa vencida (D7,
       D8); testes do cenário "Tempo esgotado" (com `Carbon::setTestNow`) e da tolerância de
       30 s.
-- [ ] 4.5 Envio com correção automática das objetivas, nota com arredondamento (D9), auditoria
+- [x] 4.5 Envio com correção automática das objetivas, nota com arredondamento (D9), auditoria
       do conjunto de respostas e evento `cursos.TentativaEnviada`; testes dos cenários
       "Tentativa só com objetivas" (nota 7,50) e "Tentativa com dissertativa".
-- [ ] 4.6 `TentativaPolicy`, fila `GET turmas/{turma}/correcoes` e correção de dissertativa
+- [x] 4.6 `TentativaPolicy`, fila `GET turmas/{turma}/correcoes` e correção de dissertativa
       (pontos de 0 ao máximo, comentário, revisão até o encerramento, evento
       `cursos.TentativaCorrigida` na última); testes dos cenários "Instrutor de outra turma",
       "Pontos acima do máximo", "Participante tenta ver tentativa de outra pessoa" e
