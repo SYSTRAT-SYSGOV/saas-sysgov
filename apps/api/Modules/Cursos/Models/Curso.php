@@ -32,6 +32,7 @@ use Modules\Cursos\Enums\TipoCurso;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Turma> $turmas
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Aula> $aulas
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Material> $materiais
  * @property-read ModeloCertificado|null $modeloCertificado
  * @property-read string|null $capa_url
  */
@@ -83,6 +84,12 @@ final class Curso extends Model
     public function aulas(): HasMany
     {
         return $this->hasMany(Aula::class, 'curso_id')->orderBy('ordem')->orderBy('id');
+    }
+
+    /** @return HasMany<Material, $this> */
+    public function materiais(): HasMany
+    {
+        return $this->hasMany(Material::class, 'curso_id')->orderBy('ordem')->orderBy('id');
     }
 
     /** @return HasManyThrough<Inscricao, Turma, $this> */

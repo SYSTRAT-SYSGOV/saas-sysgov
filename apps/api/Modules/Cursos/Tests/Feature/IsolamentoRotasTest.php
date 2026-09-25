@@ -7,6 +7,7 @@ namespace Modules\Cursos\Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Modules\Cursos\Models\Formacao;
+use Modules\Cursos\Models\Material;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
 
@@ -38,6 +39,7 @@ final class IsolamentoRotasTest extends TestCase
         $agendamentoB = $this->agendamento($tenantB, $turmaB, $aulaB, now()->addDays(12));
         $inscricaoB = $this->inscrever($tenantB, $turmaB, $participanteB);
         $formacaoB = $this->noTenant($tenantB, fn () => Formacao::create(['titulo' => 'Trilha B']));
+        $materialB = $this->noTenant($tenantB, fn () => Material::create(['curso_id' => $cursoB->id, 'tipo' => 'texto', 'titulo' => 'Material B', 'conteudo' => '<p>x</p>', 'publicado' => true]));
         unset($adminB);
 
         $rotas = [
@@ -47,6 +49,14 @@ final class IsolamentoRotasTest extends TestCase
             ['post', "/api/cursos/cursos/{$cursoB->id}/status"],
             ['get', "/api/cursos/cursos/{$cursoB->id}/aulas"],
             ['get', "/api/cursos/cursos/{$cursoB->id}/turmas"],
+            ['get', "/api/cursos/cursos/{$cursoB->id}/materiais"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/materiais"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/materiais/reordenar"],
+            ['get', "/api/cursos/materiais/{$materialB->id}"],
+            ['put', "/api/cursos/materiais/{$materialB->id}"],
+            ['delete', "/api/cursos/materiais/{$materialB->id}"],
+            ['post', "/api/cursos/materiais/{$materialB->id}/arquivo"],
+            ['get', "/api/cursos/materiais/{$materialB->id}/arquivo"],
             ['put', "/api/cursos/aulas/{$aulaB->id}"],
             ['delete', "/api/cursos/aulas/{$aulaB->id}"],
             ['get', "/api/cursos/formacoes/{$formacaoB->id}"],

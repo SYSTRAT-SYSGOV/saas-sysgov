@@ -20,19 +20,19 @@
 
 ## 2. Materiais
 
-- [ ] 2.1 Migration e model `TenantAware` de `cursos_materiais` (D1); verificar `migrate` no
+- [x] 2.1 Migration e model `TenantAware` de `cursos_materiais` (D1); verificar `migrate` no
       MySQL do Docker e o isolamento com teste A/B.
-- [ ] 2.2 Parser de URL de vídeo (YouTube/Vimeo → provedor + ID) e montagem de `embed_url` (D4);
+- [x] 2.2 Parser de URL de vídeo (YouTube/Vimeo → provedor + ID) e montagem de `embed_url` (D4);
       testes unitários com os formatos aceitos, IDs inválidos e provedores recusados.
-- [ ] 2.3 `MaterialService` + `MaterialController` (CRUD, reordenar, publicar/despublicar) com
+- [x] 2.3 `MaterialService` + `MaterialController` (CRUD, reordenar, publicar/despublicar) com
       validações da spec (tipo, link só `http/https`, regra "início da aula" exige aula do
       mesmo curso, texto sanitizado); testes funcionais dos cenários "Vídeo de provedor não
       suportado", "Texto com script", "Regra início da aula sem aula" e "Material
       despublicado".
-- [ ] 2.4 Upload e substituição do PDF no disco `local` (`mimetypes:application/pdf`,
+- [x] 2.4 Upload e substituição do PDF no disco `local` (`mimetypes:application/pdf`,
       `max:20480`, nome aleatório, remoção do anterior após o commit) (D3); testes do cenário
       "Arquivo que não é PDF" e da substituição.
-- [ ] 2.5 `MaterialPolicy` e `GET materiais/{material}` / `GET materiais/{material}/arquivo`
+- [x] 2.5 `MaterialPolicy` e `GET materiais/{material}` / `GET materiais/{material}/arquivo`
       (D3, D11); testes dos cenários "Participante em lista de espera", "Acesso ao PDF sem
       login", "Consulta depois da conclusão", "Instrutor antes da liberação", "Material
       liberado no início da aula", "Aula vinculada sem agendamento" e "Arquivo de material de

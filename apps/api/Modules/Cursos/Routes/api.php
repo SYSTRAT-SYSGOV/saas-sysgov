@@ -16,6 +16,7 @@ use Modules\Cursos\Http\Controllers\CertificadoController;
 use Modules\Cursos\Http\Controllers\CursoController;
 use Modules\Cursos\Http\Controllers\FormacaoController;
 use Modules\Cursos\Http\Controllers\InscricaoController;
+use Modules\Cursos\Http\Controllers\MaterialController;
 use Modules\Cursos\Http\Controllers\ModeloCertificadoController;
 use Modules\Cursos\Http\Controllers\PresencaController;
 use Modules\Cursos\Http\Controllers\TurmaController;
@@ -46,6 +47,16 @@ Route::get('/cursos/{curso}/aulas', [AulaController::class, 'index']);
 Route::post('/cursos/{curso}/aulas', [AulaController::class, 'store']);
 Route::put('/aulas/{aula}', [AulaController::class, 'update']);
 Route::delete('/aulas/{aula}', [AulaController::class, 'destroy']);
+
+// Materiais do curso (Fase 2)
+Route::get('/cursos/{curso}/materiais', [MaterialController::class, 'index']);
+Route::post('/cursos/{curso}/materiais', [MaterialController::class, 'store']);
+Route::post('/cursos/{curso}/materiais/reordenar', [MaterialController::class, 'reordenar']);
+Route::get('/materiais/{material}', [MaterialController::class, 'show']);
+Route::put('/materiais/{material}', [MaterialController::class, 'update']);
+Route::delete('/materiais/{material}', [MaterialController::class, 'destroy']);
+Route::post('/materiais/{material}/arquivo', [MaterialController::class, 'definirArquivo']);
+Route::get('/materiais/{material}/arquivo', [MaterialController::class, 'arquivo']);
 
 // Formações
 Route::get('/formacoes', [FormacaoController::class, 'index']);

@@ -13,12 +13,14 @@ use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Formacao;
 use Modules\Cursos\Models\Inscricao;
+use Modules\Cursos\Models\Material;
 use Modules\Cursos\Models\ModeloCertificado;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Policies\CertificadoPolicy;
 use Modules\Cursos\Policies\CursoPolicy;
 use Modules\Cursos\Policies\FormacaoPolicy;
 use Modules\Cursos\Policies\InscricaoPolicy;
+use Modules\Cursos\Policies\MaterialPolicy;
 use Modules\Cursos\Policies\ModeloCertificadoPolicy;
 use Modules\Cursos\Policies\TurmaPolicy;
 
@@ -36,6 +38,7 @@ final class CursosServiceProvider extends ServiceProvider
         Gate::policy(Formacao::class, FormacaoPolicy::class);
         Gate::policy(Turma::class, TurmaPolicy::class);
         Gate::policy(Inscricao::class, InscricaoPolicy::class);
+        Gate::policy(Material::class, MaterialPolicy::class);
         Gate::policy(Certificado::class, CertificadoPolicy::class);
         Gate::policy(ModeloCertificado::class, ModeloCertificadoPolicy::class);
 

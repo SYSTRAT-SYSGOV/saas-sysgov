@@ -16,6 +16,7 @@ use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Formacao;
 use Modules\Cursos\Models\Inscricao;
+use Modules\Cursos\Models\Material;
 use Modules\Cursos\Models\ModeloCertificado;
 use Modules\Cursos\Models\Participante;
 use Modules\Cursos\Models\Presenca;
@@ -37,6 +38,7 @@ final class TenantIsolationTest extends TestCase
     private const MODELS = [
         ModeloCertificado::class, Curso::class, Formacao::class, Turma::class, Aula::class,
         AulaAgendamento::class, Participante::class, Inscricao::class, Presenca::class, Certificado::class,
+        Material::class,
     ];
 
     public function test_todos_os_models_do_modulo_sao_isolados_entre_tenants(): void
@@ -93,6 +95,7 @@ final class TenantIsolationTest extends TestCase
         ]);
         $turma->instrutores()->attach($user->id, ['tenant_id' => $turma->tenant_id]);
         $aula = Aula::create(['curso_id' => $curso->id, 'titulo' => 'Aula 1', 'duracao_minutos' => 120]);
+        $material = Material::create(['curso_id' => $curso->id, 'aula_id' => $aula->id, 'tipo' => 'texto', 'titulo' => "Material {$sufixo}", 'conteudo' => '<p>Texto</p>']);
         $agendamento = AulaAgendamento::create(['turma_id' => $turma->id, 'aula_id' => $aula->id, 'inicio' => '2026-10-05 09:00:00', 'fim' => '2026-10-05 11:00:00']);
         $participante = Participante::create(['user_id' => $user->id, 'nome' => $user->name, 'email' => $user->email]);
         $inscricao = Inscricao::create(['turma_id' => $turma->id, 'participante_id' => $participante->id, 'status' => 'confirmada']);
@@ -106,7 +109,7 @@ final class TenantIsolationTest extends TestCase
             ModeloCertificado::class => $modelo->id, Curso::class => $curso->id, Formacao::class => $formacao->id,
             Turma::class => $turma->id, Aula::class => $aula->id, AulaAgendamento::class => $agendamento->id,
             Participante::class => $participante->id, Inscricao::class => $inscricao->id, Presenca::class => $presenca->id,
-            Certificado::class => $certificado->id,
+            Certificado::class => $certificado->id, Material::class => $material->id,
         ];
     }
 }
