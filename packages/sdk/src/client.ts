@@ -288,7 +288,7 @@ export class SysgovApi implements ApiRequester {
   async createContract(input: CreateContractInput): Promise<ApiContract> { return this.request('/contracts', { method: 'POST', body: JSON.stringify(input) }); }
   async updateContract(id: number, input: UpdateContractInput): Promise<ApiContract> { return this.request(`/contracts/${id}`, { method: 'PUT', body: JSON.stringify(input) }); }
   async modules(): Promise<Paginated<ApiModule>> { return this.request('/admin/modules'); }
-  async moduleCatalog(): Promise<{ data: ApiModule[] }> { return this.request('/admin/module-catalog/catalog'); }
+  async moduleCatalog(): Promise<{ data: ApiModule[] }> { return this.request('/public/module-catalog/catalog'); }
   async toggleModule(tenantId: number, moduleId: number, enabled: boolean): Promise<{ enabled: boolean }> { return this.request(`/admin/tenants/${tenantId}/modules/${moduleId}`, { method: 'PUT', body: JSON.stringify({ enabled }) }); }
 
   // --- Módulo Organograma (org_units) ---
