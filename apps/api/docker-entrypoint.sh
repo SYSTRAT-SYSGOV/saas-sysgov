@@ -31,6 +31,17 @@ for module_json in Modules/*/module.json; do
   php artisan module:register "$module_name" || echo "  aviso: falha ao registrar ${module_name} (seguindo o boot)"
 done
 
+# Perfis-template do módulo Cursos (Administrador, Instrutor, Participante) no
+# tenant SYSTRAT — o ModuleRoleProvisioner os clona para cada tenant que
+# habilitar o módulo. Idempotente (updateOrCreate).
+php artisan db:seed --class='Modules\Cursos\Database\Seeders\CursosRbacSeeder' --force
+
+# Libera todos os módulos no tenant SYSTRAT num banco novo — sem isso o
+# Painel do Cliente dá "Acesso Negado" até alguém habilitar os módulos no
+# Admin Suite. Precisa vir depois do module:register (senão capd/client/admin
+# ainda não existem) e só age se o SYSTRAT não tiver nenhum módulo vinculado.
+php artisan db:seed --class='Database\Seeders\SystratModulesSeeder' --force
+
 # sysgov:seed-menus é um comando artisan avulso (não um Seeder de
 # database/Seeders), então não entra no db:seed acima — precisa ser
 # chamado à parte. Também idempotente (updateOrCreate por slug/route).

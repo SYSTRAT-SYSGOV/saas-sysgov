@@ -17,8 +17,8 @@ const ModuleGranularityComponent = lazy(() => import('@/modules/access/ModuleGra
 const PermissionMatrixComponent = lazy(() => import('@/modules/access/PermissionMatrix'));
 const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
+const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
-const TestmoduleComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "TestModule", alias: "testmodule", description: "Módulo de negócio TestModule para a plataforma SYSGOV" }) }));
 
 export interface ModuleDefinition {
   id: string;
@@ -161,6 +161,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     requiredPermission: 'client.view',
     icon: 'Layers',
   },
+  cursos: {
+    id: 'cursos',
+    name: "Cursos",
+    component: CursosComponent,
+    routePath: 'cursos',
+    routes: ['cursos'],
+    requiredPermission: 'cursos.view',
+    icon: 'GraduationCap',
+  },
   licita: {
     id: 'licita',
     name: "Licita",
@@ -169,15 +178,6 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['licita'],
     requiredPermission: 'licita.view',
     icon: 'FileText',
-  },
-  testmodule: {
-    id: 'testmodule',
-    name: "TestModule",
-    component: TestmoduleComponent,
-    routePath: 'testmodule',
-    routes: ['testmodule'],
-    requiredPermission: 'testmodule.view',
-    icon: 'Layers',
   }
 };
 

@@ -13,6 +13,8 @@ import { ConfiguracoesPage } from '@/pages/ConfiguracoesPage';
 import { Loader2 } from 'lucide-react';
 
 const CapdEmbedPage = React.lazy(() => import('@/modules/capd/CapdEmbedPage'));
+const ValidarCertificadoPage = React.lazy(() => import('@/modules/cursos/pages/ValidarCertificadoPage'));
+const CheckInPage = React.lazy(() => import('@/modules/cursos/pages/CheckInPage'));
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -81,6 +83,25 @@ export const AppRouter: React.FC = () => {
         element={
           <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando módulo CAPD...</div>}>
             <CapdEmbedPage />
+          </React.Suspense>
+        }
+      />
+
+      {/* Cursos: validação pública de certificado (sem login) e destino do QR de
+          check-in (fora do AppShell; a própria página manda ao login se preciso) */}
+      <Route
+        path="/validar-certificado/:codigo?"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <ValidarCertificadoPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/cursos/check-in"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <CheckInPage />
           </React.Suspense>
         }
       />

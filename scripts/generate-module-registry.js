@@ -14,7 +14,7 @@ const WEB_MODULES_DIR = path.join(ROOT_DIR, 'apps', 'web-client', 'src', 'module
 const OUTPUT_FILE = path.join(ROOT_DIR, 'apps', 'web-client', 'src', 'config', 'moduleRegistry.generated.ts');
 const REEXPORT_FILE = path.join(ROOT_DIR, 'apps', 'web-client', 'src', 'config', 'moduleRegistry.ts');
 
-const API_URL = process.env.SYSGOV_API_URL || 'http://localhost:8000/api/admin/module-catalog/catalog';
+const API_URL = process.env.SYSGOV_API_URL || 'http://localhost:8000/api/public/module-catalog/catalog';
 
 // Mapeamentos conhecidos e componentes nativos
 const CORE_MODULE_MAP = {
