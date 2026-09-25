@@ -108,7 +108,7 @@
 - [x] 6.4 Tela de responder (`/cursos?tentativa=:id`, na convenção de query string do módulo): responder com autosave, cronômetro pelo relógio do
       servidor, confirmação de envio e tela de resultado sem gabarito; testes Vitest do
       autosave e do bloqueio após o prazo.
-- [ ] 6.5 Aba Correções no `TurmaDetalhePage` e nota parcial na lista de inscritos, com a
+- [x] 6.5 Aba Correções no `TurmaDetalhePage` e nota parcial na lista de inscritos, com a
       mensagem de recusa do encerramento listando as pendentes; teste Vitest da fila de
       correção.
 
