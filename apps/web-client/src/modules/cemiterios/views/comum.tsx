@@ -89,12 +89,13 @@ export interface CampoForm {
 export const FormModal: React.FC<{
   aberto: boolean;
   titulo: string;
+  description?: string;
   campos: CampoForm[];
   iniciais?: Record<string, unknown>;
   rotuloEnviar?: string;
   onFechar: () => void;
   onEnviar: (valores: Record<string, unknown>) => Promise<unknown>;
-}> = ({ aberto, titulo, campos, iniciais = {}, rotuloEnviar = 'Salvar', onFechar, onEnviar }) => {
+}> = ({ aberto, titulo, description, campos, iniciais = {}, rotuloEnviar = 'Salvar', onFechar, onEnviar }) => {
   const [valores, setValores] = useState<Record<string, unknown>>(iniciais);
   const { erro, enviando, executar, setErro } = useAcao();
   const formId = `form-${titulo.replace(/\W+/g, '-').toLowerCase()}`;
@@ -156,6 +157,7 @@ export const FormModal: React.FC<{
       open={aberto}
       onClose={onFechar}
       title={titulo}
+      description={description}
       size="lg"
       footer={
         <div className="flex justify-end gap-2">

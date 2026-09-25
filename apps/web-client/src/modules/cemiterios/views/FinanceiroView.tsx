@@ -5,6 +5,7 @@ import { Button, Card, DataTable, KpiCard, StatusChip, Tabs } from '@/components
 import { useCan } from '@/core/rbac/useCan';
 import { cemiteriosApi, formatarCentavos, formatarData, type Guia, type Preco } from '../api';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
+import { useCemiteriosNavigation } from '../CemiteriosContext';
 
 const SERVICOS: Record<string, string> = {
   concessao_temporaria: 'Concessão temporária', concessao_perpetua: 'Concessão perpétua', renovacao: 'Renovação',
@@ -77,7 +78,11 @@ const Precos: React.FC = () => {
 };
 
 const Guias: React.FC = () => {
-  const guias = useDados(() => cemiteriosApi.guias({ per_page: 100 }), []);
+  const { cemiterioAtivoId } = useCemiteriosNavigation();
+  const guias = useDados(
+    () => cemiteriosApi.guias({ park_id: cemiterioAtivoId ?? undefined, per_page: 100 }),
+    [cemiterioAtivoId]
+  );
   const [baixa, setBaixa] = useState<Guia | null>(null);
   const [lote, setLote] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -130,8 +135,16 @@ const Guias: React.FC = () => {
 };
 
 const Inadimplencia: React.FC = () => {
+  const { cemiterioAtivoId } = useCemiteriosNavigation();
   const [servico, setServico] = useState<string | null>(null);
-  const dados = useDados(() => cemiteriosApi.inadimplencia({ servico: servico ?? undefined }), [servico]);
+  const dados = useDados(
+    () =>
+      cemiteriosApi.inadimplencia({
+        park_id: cemiterioAtivoId ?? undefined,
+        servico: servico ?? undefined,
+      }),
+    [servico, cemiterioAtivoId]
+  );
   const colunas = useMemo<ColumnDef<Guia, unknown>[]>(() => [
     { id: 'numero', header: 'Guia', cell: ({ row }) => <Mono>{row.original.numero}</Mono> },
     { id: 'contribuinte', header: 'Contribuinte', accessorKey: 'contribuinte_nome' },

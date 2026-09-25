@@ -149,4 +149,31 @@ final class ConcessoesTest extends CemiteriosTestCase
         self::assertCount(1, $emails);
         self::assertSame('ana@x.com', $emails->first()->payload['para']);
     }
+
+    public function test_concessao_persiste_processo_administrativo_e_filtra_titular_falecido(): void
+    {
+        $titular = Concessionario::create(['nome' => 'Carlos', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido(), 'titular_falecido' => true]);
+        $jazigo = $this->novoJazigo(2, false);
+        $admin = $this->admin($this->tenant);
+
+        $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', [
+            'plot_id' => $jazigo->id,
+            'holder_id' => $titular->id,
+            'modalidade' => 'perpetua',
+            'processo_administrativo' => 'PROC-2026/00123',
+            'lock_version' => 0,
+        ])->assertCreated()->assertJsonPath('processo_administrativo', 'PROC-2026/00123');
+
+        $this->noTenant($this->tenant);
+        self::assertSame('PROC-2026/00123', $jazigo->refresh()->processo_administrativo);
+
+        // Listagem filtrando por processo administrativo
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?processo_administrativo=00123')
+            ->assertOk()->assertJsonCount(1, 'data');
+
+        // Listagem filtrando por titular falecido
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?titular_falecido=true')
+            ->assertOk()->assertJsonCount(1, 'data');
+    }
 }
+

@@ -12,8 +12,12 @@ use LogicException;
 use Modules\Cemiterios\Models\Cemiterio;
 use Modules\Cemiterios\Models\Concessao;
 use Modules\Cemiterios\Models\Empreiteiro;
+use Modules\Cemiterios\Models\LegadoFalecidoIndice;
+use Modules\Cemiterios\Models\OcupacaoSubLoteLegado;
+use Modules\Cemiterios\Models\OperadorCemiterio;
 use Modules\Cemiterios\Models\ProcessoAbandono;
 use Modules\Cemiterios\Models\SolicitacaoPortal;
+use Modules\Cemiterios\Models\SubLoteLegado;
 use Modules\Cemiterios\Models\Trasladacao;
 use Modules\Cemiterios\Models\Vistoria;
 use Modules\Cemiterios\Services\EmpreiteiroService;
@@ -22,6 +26,7 @@ use Modules\Cemiterios\Services\GuiaService;
 use Modules\Cemiterios\Services\OperacaoService;
 use Modules\Cemiterios\Services\ParametroService;
 use Modules\Cemiterios\Services\PrecoService;
+use Modules\Cemiterios\Services\SucessaoService;
 use Modules\Cemiterios\Support\Geo;
 use Modules\Cemiterios\Tests\CemiteriosTestCase;
 
@@ -126,6 +131,20 @@ final class TenantIsolationTest extends CemiteriosTestCase
         $vistoria = Vistoria::create(['plot_id' => $jazigo->id, 'data' => today()->toDateString(), 'estado_conservacao' => 'em_ruina', 'risco' => 'alto']);
         $vistoria->fotos()->create(['arquivo' => 'f.jpg', 'capturada_em' => now()]);
         $processo = ProcessoAbandono::create(['plot_id' => $jazigo->id, 'concession_id' => $concessao->id, 'inspection_id' => $vistoria->id, 'instaurado_em' => today()->toDateString()]);
+
+        $sucessao = app(SucessaoService::class);
+        $processoSucessao = $sucessao->abrirProcesso([
+            'concession_id' => $concessao->id,
+            'numero_processo' => 'PA-A-01',
+            'tipo_documento' => 'outro',
+        ]);
+        $sucessao->adicionarHerdeiro($processoSucessao, ['nome' => 'Herdeiro A', 'parentesco' => 'filho']);
+
+        OperadorCemiterio::create(['nome' => 'Operador A', 'tipo' => 'coveiro']);
+        LegadoFalecidoIndice::create(['park_id' => $jazigo->park_id, 'quadra_legado' => 'LEG-A', 'lote_legado' => 'L-A']);
+
+        $subLote = SubLoteLegado::create(['plot_id' => $jazigo->id, 'codigo_sublote' => '001A']);
+        OcupacaoSubLoteLegado::create(['sublot_id' => $subLote->id]);
 
         $this->ids = [
             'parque' => $jazigo->park_id, 'setor' => $jazigo->sector_id, 'jazigo' => $jazigo->id, 'falecido' => $inumacao->deceased_id,

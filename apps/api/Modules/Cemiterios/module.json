@@ -42,6 +42,7 @@
         "cemiterios.vistoria.create": "Registrar vistorias",
         "cemiterios.abandono.manage": "Conduzir processos de abandono",
         "cemiterios.parametros.manage": "Parametrizar prazos e dimensões legais",
+        "cemiterios.cadastros.manage": "Gerenciar cadastro de coveiros e pedreiros credenciados",
         "cemiterios.dados-restritos.view": "Ver causa da morte e documentos médicos",
         "cemiterios.auditoria.view": "Consultar auditoria do módulo"
     }

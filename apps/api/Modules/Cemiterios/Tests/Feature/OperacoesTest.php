@@ -369,4 +369,48 @@ final class OperacoesTest extends CemiteriosTestCase
         return $this->como($this->admin($this->tenant), $this->tenant)
             ->postJson('/api/cemiterios/exumacoes', ['tipo' => 'ordinaria', 'burial_id' => $inumacao->id]);
     }
+
+    public function test_sepultamento_bloqueado_quando_titular_concessionario_falecido(): void
+    {
+        $jazigo = $this->novoJazigo();
+        $concessao = $jazigo->concessaoVigente();
+        $titular = $concessao->concessionario;
+        $titular->update(['titular_falecido' => true, 'data_falecimento_titular' => '2025-05-10']);
+
+        // Tentativa de sepultar terceiro sem autorização judicial
+        $this->inumar($jazigo, [
+            'falecido' => ['nome' => 'Terceiro Não Titular'],
+        ])->assertUnprocessable()->assertJsonPath('code', 'concessao.titular_falecido_sucessao_pendente');
+    }
+
+    public function test_sepultamento_permitido_para_o_proprio_titular_concessionario_falecido(): void
+    {
+        $jazigo = $this->novoJazigo();
+        $concessao = $jazigo->concessaoVigente();
+        $titular = $concessao->concessionario;
+        $titular->update(['titular_falecido' => true]);
+
+        // Sepultamento do próprio titular pelo nome
+        $this->inumar($jazigo, [
+            'falecido' => ['nome' => $titular->nome],
+        ])->assertCreated();
+
+        self::assertSame(1, $jazigo->refresh()->ocupacao);
+    }
+
+    public function test_sepultamento_com_coveiro_pedreiro_e_gaveta(): void
+    {
+        $jazigo = $this->novoJazigo();
+        $resposta = $this->inumar($jazigo, [
+            'gaveta_numero' => 2,
+            'coveiro_nome' => 'Sebastião Coveiro',
+            'pedreiro_nome' => 'Antônio Pedreiro',
+        ])->assertCreated();
+
+        $inumacao = Inumacao::findOrFail($resposta->json('id'));
+        self::assertSame(2, $inumacao->gaveta_numero);
+        self::assertSame('Sebastião Coveiro', $inumacao->coveiro_nome);
+        self::assertSame('Antônio Pedreiro', $inumacao->pedreiro_nome);
+    }
 }
+

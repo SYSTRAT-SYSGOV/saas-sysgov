@@ -4,6 +4,7 @@ import { Button, DataTable, StatusChip, Tabs } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import { cemiteriosApi, formatarData, type ProcessoAbandono, type Vistoria } from '../api';
 import { ErroBox, FormModal, Mono, useAcao, useDados, type CampoForm } from './comum';
+import { useCemiteriosNavigation } from '../CemiteriosContext';
 
 const RISCO: Record<string, 'success' | 'warning' | 'danger'> = { baixo: 'success', medio: 'warning', alto: 'danger' };
 const ESTADO_CONSERVACAO: Record<string, string> = {
@@ -32,11 +33,18 @@ const CAMPOS_VISTORIA: CampoForm[] = [
 /** Vistorias com fotos e processo de abandono (spec: vistoria-abandono; RF-33..RF-36). Responsivo para celular. */
 export const VistoriaView: React.FC = () => {
   const { can } = useCan();
+  const { cemiterioAtivoId } = useCemiteriosNavigation();
   const [aba, setAba] = useState<'vistorias' | 'processos'>('vistorias');
   const [modal, setModal] = useState<{ tipo: 'vistoria' | 'instaurar' | 'edital' | 'manifestacao' | 'decisao'; alvo?: ProcessoAbandono } | null>(null);
 
-  const vistorias = useDados(() => cemiteriosApi.vistorias(), []);
-  const processos = useDados(() => cemiteriosApi.processos(), []);
+  const vistorias = useDados(
+    () => cemiteriosApi.vistorias({ park_id: cemiterioAtivoId ?? undefined }),
+    [cemiterioAtivoId]
+  );
+  const processos = useDados(
+    () => cemiteriosApi.processos({ park_id: cemiterioAtivoId ?? undefined }),
+    [cemiterioAtivoId]
+  );
   const { erro, executar } = useAcao();
   const recarregar = () => Promise.all([vistorias.recarregar(), processos.recarregar()]);
 

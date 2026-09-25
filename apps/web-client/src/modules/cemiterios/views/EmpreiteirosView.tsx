@@ -3,15 +3,20 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Button, DataTable, StatusChip, Tabs } from '@/components/ui';
 import { cemiteriosApi, formatarData, type AlvaraObra, type Empreiteiro } from '../api';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
+import { useCemiteriosNavigation } from '../CemiteriosContext';
 
 const SITUACAO: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { apto: 'success', inapto: 'warning', suspenso: 'danger', cancelado: 'neutral' };
 
 /** Empreiteiros com alvará anual, alvarás de obra e penalidades (RF-29..RF-32). */
 export const EmpreiteirosView: React.FC = () => {
+  const { cemiterioAtivoId } = useCemiteriosNavigation();
   const [aba, setAba] = useState<'empreiteiros' | 'obras'>('empreiteiros');
   const [modal, setModal] = useState<{ tipo: 'novo' | 'alvara' | 'penalidade' | 'obra'; alvo?: Empreiteiro } | null>(null);
   const empreiteiros = useDados(() => cemiteriosApi.empreiteiros(), []);
-  const obras = useDados(() => cemiteriosApi.obras({ per_page: 100 }), []);
+  const obras = useDados(
+    () => cemiteriosApi.obras({ park_id: cemiterioAtivoId ?? undefined, per_page: 100 }),
+    [cemiterioAtivoId]
+  );
   const { erro, executar } = useAcao();
   const recarregar = () => Promise.all([empreiteiros.recarregar(), obras.recarregar()]);
 

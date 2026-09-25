@@ -21,7 +21,7 @@ export interface Parque {
   responsavel: string | null; lat: number | null; lng: number | null; setores?: Setor[]; setores_count?: number; jazigos_count?: number;
 }
 export interface Jazigo {
-  id: number; park_id: number; sector_id: number; codigo: string; tipo: string; capacidade: number; ocupacao: number;
+  id: number; park_id: number; sector_id: number; codigo: string; codigo_legado?: string | null; processo_administrativo?: string | null; tipo: string; capacidade: number; ocupacao: number;
   estado: EstadoJazigo; comprimento_m: number | null; largura_m: number | null; lat: number | null; lng: number | null; lock_version: number;
   setor?: Setor; cemiterio?: Parque;
 }
@@ -32,9 +32,10 @@ export interface OrdemServico {
   situacao: string; observacao: string | null; executada_em: string | null; jazigo?: Pick<Jazigo, 'id' | 'codigo'> | null; falecido?: string | null;
 }
 export interface Inumacao {
-  id: number; deceased_id: number; plot_id: number; sepultado_em: string; situacao: string; origem: string; revisao_pendente: boolean;
+  id: number; deceased_id: number; plot_id: number; gaveta_numero?: number | null; sepultado_em: string; situacao: string; origem: string; revisao_pendente: boolean;
   livro_referencia: string | null; carencia_desde: string; service_order_id: number | null;
-  falecido?: Falecido; jazigo?: Pick<Jazigo, 'id' | 'codigo'>; ordem_servico?: OrdemServico | null;
+  coveiro_nome?: string | null; pedreiro_nome?: string | null; cartorio?: string | null; medico?: string | null;
+  falecido?: Falecido; jazigo?: Pick<Jazigo, 'id' | 'codigo'> & { cemiterio?: { nome: string } }; ordem_servico?: OrdemServico | null;
 }
 export interface Exumacao {
   id: number; burial_id: number; tipo: string; situacao: string; prazo_aplicado_anos: number | null; liberada_em: string | null;
@@ -43,12 +44,91 @@ export interface Exumacao {
 export interface Concessionario {
   id: number; nome: string; tipo_doc: 'cpf' | 'cnpj'; documento_mascarado: string; documento?: string;
   email: string | null; telefone: string | null; endereco: string | null; base_legal: string;
+  titular_falecido?: boolean; data_falecimento_titular?: string | null; processo_inventario?: string | null;
 }
 export interface Concessao {
-  id: number; numero: string; plot_id: number; holder_id: number; modalidade: 'temporaria' | 'perpetua'; inicio: string;
-  termino: string | null; situacao: string; pendencia_regularizacao: boolean; jazigo?: Pick<Jazigo, 'id' | 'codigo' | 'estado'>;
-  concessionario?: Pick<Concessionario, 'id' | 'nome'>;
+  id: number; numero: string; processo_administrativo?: string | null; plot_id: number; holder_id: number; modalidade: 'temporaria' | 'perpetua'; inicio: string;
+  termino: string | null; situacao: string; pendencia_regularizacao: boolean; motivo_pendencia?: string | null;
+  jazigo?: Pick<Jazigo, 'id' | 'codigo' | 'estado' | 'processo_administrativo'> & { cemiterio?: { nome: string } };
+  concessionario?: Pick<Concessionario, 'id' | 'nome' | 'titular_falecido' | 'data_falecimento_titular' | 'processo_inventario'> & { documento_mascarado?: string };
 }
+
+export interface HerdeiroSucessao {
+  id: number;
+  process_id: number;
+  nome: string;
+  parentesco: string;
+  documento: string | null;
+  telefone: string | null;
+  email: string | null;
+  titular_indicado: boolean;
+}
+
+export interface ProcessoSucessao {
+  id: number;
+  concession_id: number;
+  numero_processo: string;
+  tipo_documento: 'inventario_judicial' | 'inventario_extrajudicial' | 'alvara_judicial' | 'outro';
+  vara_ou_cartorio: string | null;
+  situacao: 'em_analise' | 'deferido' | 'indeferido' | 'cancelado';
+  despacho_fundamentacao: string | null;
+  novo_titular_id: number | null;
+  termo_numero: string | null;
+  deferido_em: string | null;
+  deferido_por_id: number | null;
+  created_at: string;
+  concessao?: Concessao;
+  herdeiros?: HerdeiroSucessao[];
+  novo_titular?: Concessionario;
+  deferido_por?: { id: number; name: string };
+}
+
+export interface TermoSucessaoDados {
+  termo_numero: string;
+  processo_numero: string;
+  tipo_documento: string;
+  vara_ou_cartorio: string | null;
+  deferido_em: string | null;
+  deferido_por: string | null;
+  despacho_fundamentacao: string | null;
+  titular_anterior: { nome?: string; documento?: string };
+  novo_titular: { nome?: string; documento?: string; telefone?: string | null; endereco?: string | null };
+  jazigo: { codigo?: string; tipo?: string; quadra?: string; necropole?: string };
+  herdeiros: { nome: string; parentesco: string; documento: string | null; titular_indicado: boolean }[];
+}
+
+export interface OperadorCemiterio {
+  id: number;
+  nome: string;
+  tipo: 'coveiro' | 'pedreiro';
+  cpf_cnpj: string | null;
+  matricula_funcional: string | null;
+  alvara_numero: string | null;
+  alvara_validade: string | null;
+  telefone: string | null;
+  email: string | null;
+  situacao: 'ativo' | 'suspenso' | 'inativo';
+  observacoes: string | null;
+  status_alvara?: 'valido' | 'vencendo' | 'vencido' | 'dispensado' | 'sem_alvara';
+  is_alvara_vencido?: boolean;
+  is_alvara_vencendo?: boolean;
+}
+
+export interface HistoricoOperador {
+  operador: {
+    id: number;
+    nome: string;
+    tipo: 'coveiro' | 'pedreiro';
+    matricula_funcional: string | null;
+    alvara_numero: string | null;
+    status_alvara: string;
+  };
+  total_operacoes: number;
+  operacoes: Inumacao[];
+  current_page: number;
+  last_page: number;
+}
+
 export interface Preco { id: number; servico: string; valor_centavos: number; vigencia_inicio: string; vigencia_fim: string | null }
 export interface Reajuste { id: number; competencia: number; percentual: number; origem: string; created_at: string }
 export interface Guia {
@@ -68,7 +148,7 @@ export interface AlvaraObra {
 }
 export interface Vistoria {
   id: number; plot_id: number; data: string; estado_conservacao: string; risco: string; observacoes: string | null;
-  fotos: { id: number; capturada_em: string }[];
+  fotos: { id: number; capturada_em: string; url?: string; caminho?: string }[];
 }
 export interface ProcessoAbandono {
   id: number; plot_id: number; concession_id: number; situacao: string; instaurado_em: string; edital_publicado_em: string | null;
@@ -219,7 +299,7 @@ export const cemiteriosApi = {
   inumarHistorica: (dados: Record<string, unknown>) => post<Inumacao>('/inumacoes/historicas', paraFormData(dados)),
   revisar: (id: number) => post<Inumacao>(`/inumacoes/${id}/revisar`),
   cancelarInumacao: (id: number) => post<Inumacao>(`/inumacoes/${id}/cancelar`),
-  exumacoes: () => get<Paginado<Exumacao>>('/exumacoes'),
+  exumacoes: (filtros: Record<string, unknown> = {}) => get<Paginado<Exumacao>>('/exumacoes', filtros),
   exumar: (dados: Record<string, unknown>) => post<Exumacao>('/exumacoes', paraFormData(dados)),
   trasladar: (dados: Record<string, unknown>) => post('/trasladacoes', dados),
   ordens: (filtros: Record<string, unknown> = {}) => get<Paginado<OrdemServico>>('/ordens-servico', filtros),
@@ -231,8 +311,26 @@ export const cemiteriosApi = {
   titulares: (q?: string) => get<Paginado<Concessionario>>('/concessionarios', { q }),
   criarTitular: (dados: Partial<Concessionario> & { documento: string }) => post<Concessionario>('/concessionarios', dados),
   concessoes: (filtros: Record<string, unknown> = {}) => get<Paginado<Concessao>>('/concessoes', filtros),
-  conceder: (dados: { plot_id: number; holder_id: number; modalidade: string; lock_version: number; inicio?: string }) => post<Concessao>('/concessoes', dados),
+  conceder: (dados: { plot_id: number; holder_id: number; modalidade: string; lock_version: number; inicio?: string; processo_administrativo?: string }) => post<Concessao>('/concessoes', dados),
   renovar: (id: number) => post<{ concessao: Concessao; guia: Guia }>(`/concessoes/${id}/renovar`),
+
+  // Sucessão Hereditária
+  sucessoes: (filtros: Record<string, unknown> = {}) => get<Paginado<ProcessoSucessao>>('/sucessoes', filtros),
+  sucessoesPendencias: (filtros: Record<string, unknown> = {}) => get<Paginado<Concessao>>('/sucessoes/pendencias', filtros),
+  sucessao: (id: number) => get<ProcessoSucessao>(`/sucessoes/${id}`),
+  abrirSucessao: (dados: { concession_id: number; numero_processo: string; tipo_documento: string; vara_ou_cartorio?: string }) => post<ProcessoSucessao>('/sucessoes', dados),
+  adicionarHerdeiro: (id: number, dados: { nome: string; parentesco: string; documento?: string; telefone?: string; email?: string; titular_indicado?: boolean }) => post<HerdeiroSucessao>(`/sucessoes/${id}/herdeiros`, dados),
+  deferirSucessao: (id: number, dados: { despacho_fundamentacao: string; herdeiro_id?: number; novo_titular_id?: number }) => post<ProcessoSucessao>(`/sucessoes/${id}/deferir`, dados),
+  indeferirSucessao: (id: number, despacho_fundamentacao: string) => post<ProcessoSucessao>(`/sucessoes/${id}/indeferir`, { despacho_fundamentacao }),
+  termoSucessao: (id: number) => get<TermoSucessaoDados>(`/sucessoes/${id}/termo`),
+
+  // Operadores (Coveiros e Pedreiros)
+  operadores: (filtros: Record<string, unknown> = {}) => get<Paginado<OperadorCemiterio> & { stats: { total_coveiros: number; total_pedreiros: number; alvaras_vencendo: number; alvaras_vencidos: number } }>('/operadores', filtros),
+  operador: (id: number) => get<OperadorCemiterio>(`/operadores/${id}`),
+  criarOperador: (dados: Partial<OperadorCemiterio>) => post<OperadorCemiterio>('/operadores', dados),
+  atualizarOperador: (id: number, dados: Partial<OperadorCemiterio>) => put<OperadorCemiterio>(`/operadores/${id}`, dados),
+  historicoOperador: (id: number) => get<HistoricoOperador>(`/operadores/${id}/historico`),
+
 
   // Financeiro
   precos: () => get<{ vigentes: Record<string, Preco | null>; historico: Preco[] }>('/precos'),
@@ -258,9 +356,10 @@ export const cemiteriosApi = {
   encerrarObra: (id: number, situacao: 'concluida' | 'cancelada') => put<AlvaraObra>(`/alvaras-obra/${id}`, { situacao }),
 
   // Vistoria e abandono
-  vistorias: (plotId?: number) => get<Paginado<Vistoria>>('/vistorias', { plot_id: plotId }),
+  vistorias: (filtros: Record<string, unknown> | number = {}) =>
+    get<Paginado<Vistoria>>('/vistorias', typeof filtros === 'number' ? { plot_id: filtros } : filtros),
   registrarVistoria: (dados: Record<string, unknown>) => post<Vistoria>('/vistorias', paraFormData(dados)),
-  processos: () => get<Paginado<ProcessoAbandono>>('/processos-abandono'),
+  processos: (filtros: Record<string, unknown> = {}) => get<Paginado<ProcessoAbandono>>('/processos-abandono', filtros),
   instaurar: (plotId: number) => post<ProcessoAbandono>('/processos-abandono', { plot_id: plotId }),
   etapaProcesso: (id: number, etapa: 'edital' | 'manifestacao' | 'decisao', dados: Record<string, unknown>) =>
     post<ProcessoAbandono>(`/processos-abandono/${id}/${etapa}`, dados),

@@ -25,6 +25,8 @@ use Modules\Cemiterios\Support\EstadoJazigo;
  * @property int $park_id
  * @property int $sector_id
  * @property string $codigo
+ * @property string|null $codigo_legado
+ * @property string|null $processo_administrativo
  * @property string $tipo
  * @property float|null $comprimento_m
  * @property float|null $largura_m

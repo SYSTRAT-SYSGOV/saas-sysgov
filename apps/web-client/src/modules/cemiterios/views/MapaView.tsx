@@ -16,6 +16,7 @@ import { cemiteriosApi, erroApi, ESTADOS, type ErroApi, type FeatureCollection, 
 import { caixaDe, estiloFeicao, limitesDoEnvelope, ZOOM_MINIMO_JAZIGOS, type Caixa } from '../mapa.utils';
 import { DetalheJazigo } from './InventarioView';
 import { ErroBox, FormModal, Mono, useDados } from './comum';
+import { useCemiteriosNavigation } from '../CemiteriosContext';
 
 type Camada = 'parques' | 'setores' | 'jazigos';
 const CAMADAS: { key: Camada; rotulo: string }[] = [
@@ -30,6 +31,8 @@ export const MapaView: React.FC = () => {
   const base = useDados(() => cemiteriosApi.mapaBase(), []);
   const parques = useDados(() => cemiteriosApi.parques(), []);
 
+  const { focoMapa, limparFocoMapa, cemiterioAtivoId, cemiterioAtivo } = useCemiteriosNavigation();
+
   const [visiveis, setVisiveis] = useState<Record<Camada, boolean>>({ parques: true, setores: true, jazigos: true });
   const [feicoes, setFeicoes] = useState<Partial<Record<Camada, FeatureCollection>>>({});
   const [versao, setVersao] = useState(0);
@@ -40,17 +43,68 @@ export const MapaView: React.FC = () => {
   const [grade, setGrade] = useState<{ capturando: boolean; pontos: [number, number][] }>({ capturando: false, pontos: [] });
   const [caixaAtual, setCaixaAtual] = useState<{ caixa: Caixa; zoom: number } | null>(null);
 
+  // Sincroniza foco vindo da navegação cruzada do inventário
+  useEffect(() => {
+    if (!focoMapa) return;
+
+    setSelecionado(focoMapa.jazigoId);
+
+    if (
+      focoMapa.lat !== null &&
+      focoMapa.lng !== null &&
+      focoMapa.lat !== undefined &&
+      focoMapa.lng !== undefined
+    ) {
+      setEnvelope([focoMapa.lng, focoMapa.lat, focoMapa.lng, focoMapa.lat]);
+      limparFocoMapa();
+    } else if (focoMapa.codigo) {
+      void cemiteriosApi.buscar(focoMapa.codigo).then((resultados) => {
+        const achado = resultados.find((r) => r.jazigo_id === focoMapa.jazigoId) ?? resultados[0];
+        if (achado?.envelope) {
+          setEnvelope(achado.envelope);
+        }
+        limparFocoMapa();
+      }).catch(() => {
+        limparFocoMapa();
+      });
+    }
+  }, [focoMapa, limparFocoMapa]);
+
   const carregar = useCallback(async (caixa: Caixa, zoom: number) => {
     setCaixaAtual({ caixa, zoom });
     try {
       const pedidos = CAMADAS.filter((c) => visiveis[c.key] && (c.key !== 'jazigos' || zoom >= ZOOM_MINIMO_JAZIGOS))
         .map(async (c) => [c.key, await cemiteriosApi.camada(c.key, caixa)] as const);
-      setFeicoes(Object.fromEntries(await Promise.all(pedidos)));
+      const resultados = Object.fromEntries(await Promise.all(pedidos));
+
+      // Se houver cemiterioAtivoId, isola as features estritamente da necrópole ativa
+      if (cemiterioAtivoId) {
+        (Object.keys(resultados) as Camada[]).forEach((chave) => {
+          const fc = resultados[chave];
+          if (fc && Array.isArray(fc.features)) {
+            fc.features = fc.features.filter((f) => {
+              const props = (f.properties ?? {}) as Record<string, unknown>;
+              if (chave === 'parques') {
+                return Number(props.id) === cemiterioAtivoId;
+              }
+              if (props.park_id !== undefined && props.park_id !== null) {
+                return Number(props.park_id) === cemiterioAtivoId;
+              }
+              if (props.cemiterio_id !== undefined && props.cemiterio_id !== null) {
+                return Number(props.cemiterio_id) === cemiterioAtivoId;
+              }
+              return true;
+            });
+          }
+        });
+      }
+
+      setFeicoes(resultados);
       setVersao((v) => v + 1);
     } catch (e) {
       setErro(erroApi(e));
     }
-  }, [visiveis]);
+  }, [visiveis, cemiterioAtivoId]);
 
   const recarregar = () => {
     if (caixaAtual) void carregar(caixaAtual.caixa, caixaAtual.zoom);
@@ -71,7 +125,12 @@ export const MapaView: React.FC = () => {
     }
   }, [alvo, caixaAtual, carregar]);
 
-  const centro = parques.dados?.find((p) => p.lat !== null);
+  const centro =
+    cemiterioAtivo?.lat != null && cemiterioAtivo?.lng != null
+      ? { lat: cemiterioAtivo.lat, lng: cemiterioAtivo.lng }
+      : (parques.dados ?? []).find((p) =>
+          cemiterioAtivoId ? p.id === cemiterioAtivoId && p.lat !== null : p.lat !== null
+        );
   const inicial: [number, number] = centro ? [centro.lat as number, centro.lng as number] : [-15.78, -47.93];
 
   return (

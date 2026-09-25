@@ -118,4 +118,20 @@ describe('InventarioFiltros Component', () => {
     fireEvent.click(btnLimpar);
     expect(onLimparFiltros).toHaveBeenCalledTimes(1);
   });
+
+  it('renderiza o campo de filtro de alerta regulatório', () => {
+    render(
+      <InventarioFiltros
+        filtros={estadoInicial}
+        onFiltrosChange={vi.fn()}
+        onLimparFiltros={vi.fn()}
+        parques={mockParques}
+        setoresDisponiveis={mockSetores}
+        totalRegistros={50}
+        totalFiltrados={42}
+      />
+    );
+
+    expect(screen.getByText(/Alerta Regulatório/i)).toBeInTheDocument();
+  });
 });

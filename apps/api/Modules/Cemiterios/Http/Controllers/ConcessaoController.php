@@ -83,11 +83,13 @@ final class ConcessaoController extends Controller
         $this->autorizar($request, 'cemiterios.view');
 
         return response()->json(
-            Concessao::with(['jazigo:id,codigo,park_id,estado', 'concessionario:id,nome'])
+            Concessao::with(['jazigo:id,codigo,park_id,estado,processo_administrativo', 'concessionario:id,nome,titular_falecido'])
                 ->when($request->query('situacao'), fn ($q, $v) => $q->where('situacao', $v))
                 ->when($request->query('holder_id'), fn ($q, $v) => $q->where('holder_id', $v))
                 ->when($request->query('plot_id'), fn ($q, $v) => $q->where('plot_id', $v))
                 ->when($request->query('numero'), fn ($q, $v) => $q->where('numero', 'like', "%{$v}%"))
+                ->when($request->query('processo_administrativo'), fn ($q, $v) => $q->where('processo_administrativo', 'like', "%{$v}%"))
+                ->when($request->query('titular_falecido') !== null, fn ($q) => $q->whereHas('concessionario', fn ($cq) => $cq->where('titular_falecido', filter_var($request->query('titular_falecido'), FILTER_VALIDATE_BOOLEAN))))
                 ->orderByDesc('id')
                 ->paginate(min((int) $request->query('per_page', 30), 100))
         );
@@ -109,6 +111,7 @@ final class ConcessaoController extends Controller
             'holder_id' => ['required', 'integer'],
             'modalidade' => ['required', Rule::in(['temporaria', 'perpetua'])],
             'inicio' => ['nullable', 'date'],
+            'processo_administrativo' => ['nullable', 'string', 'max:50'],
             'lock_version' => ['required', 'integer'],
             'sujeita_taxa_anual' => ['sometimes', 'boolean'],
         ]);
@@ -124,9 +127,13 @@ final class ConcessaoController extends Controller
     {
         $this->autorizar($request, 'cemiterios.concessoes.manage');
 
+        $request->validate([
+            'processo_administrativo' => ['nullable', 'string', 'max:50'],
+        ]);
+
         $concessao = Concessao::findOrFail($id);
         $antes = $concessao->toArray();
-        $resultado = $this->concessoes->renovar($concessao);
+        $resultado = $this->concessoes->renovar($concessao, $request->input('processo_administrativo'));
         $this->audit->record('cemiterios', 'concessao.renovada', "Concessao #{$id}", $antes, $resultado['concessao']->toArray());
 
         return response()->json($resultado);
@@ -157,6 +164,9 @@ final class ConcessaoController extends Controller
             'telefone' => ['nullable', 'string', 'max:30'],
             'endereco' => ['nullable', 'string', 'max:255'],
             'base_legal' => ['sometimes', Rule::in(['execucao_contrato', 'obrigacao_legal', 'consentimento'])],
+            'titular_falecido' => ['sometimes', 'boolean'],
+            'data_falecimento_titular' => ['nullable', 'date'],
+            'processo_inventario' => ['nullable', 'string', 'max:50'],
         ]);
     }
 }

@@ -18,9 +18,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $modalidade
  * @property \Illuminate\Support\Carbon $inicio
  * @property \Illuminate\Support\Carbon|null $termino
+ * @property string|null $processo_administrativo
  * @property string $situacao
  * @property \Illuminate\Support\Carbon|null $notificado_para_termino
  * @property bool $pendencia_regularizacao
+ * @property string|null $motivo_pendencia
  * @property bool $sujeita_taxa_anual
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -54,4 +56,11 @@ final class Concessao extends Model
     {
         return $this->belongsTo(Concessionario::class, 'holder_id');
     }
+
+    /** @return \Illuminate\Database\Eloquent\Relations\HasMany<ProcessoSucessao, $this> */
+    public function processosSucessao(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProcessoSucessao::class, 'concession_id');
+    }
 }
+

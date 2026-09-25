@@ -50,7 +50,11 @@ final class CemiteriosServiceProvider extends ServiceProvider
             return;
         }
 
-        $this->commands([...array_keys(self::AGENDA), Console\ReajustarPrecos::class]);
+        $this->commands([
+            ...array_keys(self::AGENDA),
+            Console\ReajustarPrecos::class,
+            Console\MigrarClipperCommand::class,
+        ]);
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
             foreach (self::AGENDA as $comando => $frequencia) {

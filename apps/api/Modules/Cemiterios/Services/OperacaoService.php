@@ -54,19 +54,37 @@ final readonly class OperacaoService
         $jazigo = Jazigo::findOrFail($dados['plot_id']);
         $this->exigirAceitaSepultamento($jazigo);
         $this->exigirCertidaoLivre((string) $falecido['certidao_numero']);
+        $this->exigirSucessaoRegularizada($jazigo, $falecido, (bool) ($dados['autorizado_judicial'] ?? false));
 
         return DB::transaction(function () use ($jazigo, $falecido, $dados): Inumacao {
             $registro = Falecido::create($falecido);
             $this->estados->alterarOcupacao($jazigo, 1, 'Inumação confirmada');
             $ordem = $this->emitirOrdem('inumacao', $jazigo->id, $dados['agendada_para'] ?? null, $dados['equipe'] ?? null);
 
+            // Se o falecido for o titular da concessão, atualiza o concessionário
+            $concessao = $jazigo->concessaoVigente();
+            if ($concessao !== null) {
+                $titular = $concessao->concessionario;
+                if ($titular && Falecido::normalizar($registro->nome) === Falecido::normalizar($titular->nome)) {
+                    $titular->update([
+                        'titular_falecido' => true,
+                        'data_falecimento_titular' => $registro->falecimento,
+                    ]);
+                }
+            }
+
             return Inumacao::create([
                 'deceased_id' => $registro->id,
                 'plot_id' => $jazigo->id,
                 'tipo' => $dados['tipo'] ?? null,
+                'gaveta_numero' => $dados['gaveta_numero'] ?? null,
                 'sepultado_em' => $dados['sepultado_em'],
                 'carencia_desde' => CarbonImmutable::parse($dados['sepultado_em'])->toDateString(),
                 'service_order_id' => $ordem->id,
+                'coveiro_nome' => $dados['coveiro_nome'] ?? null,
+                'pedreiro_nome' => $dados['pedreiro_nome'] ?? null,
+                'cartorio' => $dados['cartorio'] ?? null,
+                'medico' => $dados['medico'] ?? null,
                 'situacao' => 'confirmada',
             ]);
         });
@@ -378,5 +396,41 @@ final readonly class OperacaoService
         if ($aberta) {
             throw new RegraNegocioException('exumacao.em_andamento', 'Já existe exumação ou trasladação em andamento para estes restos.');
         }
+    }
+
+    /**
+     * Trava anti-sepultamento de terceiros quando o titular da concessão faleceu sem
+     * sucessão hereditária ou autorização judicial (Regra Legado Clipper / Código de Posturas).
+     *
+     * @param array<string, mixed> $falecido
+     */
+    private function exigirSucessaoRegularizada(Jazigo $jazigo, array $falecido, bool $autorizadoJudicial = false): void
+    {
+        if ($autorizadoJudicial) {
+            return;
+        }
+
+        $concessao = $jazigo->concessaoVigente();
+        if ($concessao === null) {
+            return;
+        }
+
+        $titular = $concessao->concessionario;
+        if ($titular === null || !$titular->titular_falecido) {
+            return;
+        }
+
+        // Permite o sepultamento se o falecido sendo inumado for o próprio titular
+        $nomeFalecido = Falecido::normalizar((string) ($falecido['nome'] ?? ''));
+        $nomeTitular = Falecido::normalizar((string) $titular->nome);
+
+        if ($nomeFalecido === $nomeTitular) {
+            return;
+        }
+
+        throw new RegraNegocioException(
+            'concessao.titular_falecido_sucessao_pendente',
+            'Jazigo com titular falecido e sucessão hereditária pendente. Sepultamento de terceiros bloqueado.'
+        );
     }
 }

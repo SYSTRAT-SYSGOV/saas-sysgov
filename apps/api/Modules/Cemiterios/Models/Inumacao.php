@@ -15,10 +15,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $deceased_id
  * @property int $plot_id
  * @property string|null $tipo
+ * @property int|null $gaveta_numero
  * @property \Illuminate\Support\Carbon $sepultado_em
  * @property string $situacao
  * @property string $origem
  * @property string|null $livro_referencia
+ * @property string|null $coveiro_nome
+ * @property string|null $pedreiro_nome
+ * @property string|null $cartorio
+ * @property string|null $medico
  * @property bool $revisao_pendente
  * @property \Illuminate\Support\Carbon $carencia_desde
  * @property int|null $service_order_id
@@ -36,6 +41,7 @@ final class Inumacao extends Model
     protected $guarded = ['id', 'tenant_id'];
 
     protected $casts = [
+        'gaveta_numero' => 'integer',
         'sepultado_em' => 'datetime',
         'carencia_desde' => 'date',
         'revisao_pendente' => 'boolean',

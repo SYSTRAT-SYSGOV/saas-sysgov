@@ -25,6 +25,9 @@ use Modules\Cemiterios\Support\Documento;
  * @property string|null $telefone
  * @property string|null $endereco
  * @property string $base_legal
+ * @property bool $titular_falecido
+ * @property \Illuminate\Support\Carbon|null $data_falecimento_titular
+ * @property string|null $processo_inventario
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
@@ -47,6 +50,8 @@ final class Concessionario extends Model
         'documento' => 'encrypted',
         'email' => 'encrypted',
         'telefone' => 'encrypted',
+        'titular_falecido' => 'boolean',
+        'data_falecimento_titular' => 'date',
     ];
 
     protected static function booted(): void

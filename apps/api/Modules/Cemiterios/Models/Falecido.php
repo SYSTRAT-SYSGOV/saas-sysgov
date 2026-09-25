@@ -53,9 +53,11 @@ final class Falecido extends Model
     {
         static::saving(function (self $falecido): void {
             $falecido->nome_normalizado = self::normalizar((string) $falecido->nome);
-            $falecido->idade_obito = $falecido->nascimento
-                ? (int) $falecido->nascimento->diffInYears($falecido->falecimento)
-                : null;
+            if ($falecido->nascimento && $falecido->falecimento && $falecido->falecimento->greaterThanOrEqualTo($falecido->nascimento)) {
+                $falecido->idade_obito = (int) $falecido->nascimento->diffInYears($falecido->falecimento);
+            } else {
+                $falecido->idade_obito = null;
+            }
         });
     }
 

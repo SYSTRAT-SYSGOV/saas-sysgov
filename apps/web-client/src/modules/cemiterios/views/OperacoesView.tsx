@@ -5,6 +5,7 @@ import { Button, Card, ConfirmDialog, DataTable, StatusChip, Tabs } from '@/comp
 import { useCan } from '@/core/rbac/useCan';
 import { cemiteriosApi, formatarData, type Exumacao, type Inumacao, type OrdemServico } from '../api';
 import { aninhar, ErroBox, FormModal, Mono, useAcao, useDados, type CampoForm } from './comum';
+import { useCemiteriosNavigation } from '../CemiteriosContext';
 
 type Aba = 'ordens' | 'inumacoes' | 'exumacoes';
 type Acao = 'iniciar' | 'concluir' | 'suspender' | 'cancelar';
@@ -55,6 +56,11 @@ export const OperacoesView: React.FC = () => {
           { nome: 'falecido.certidao_cartorio', rotulo: 'Cartório emissor', obrigatorio: true },
           { nome: 'certidao_arquivo', rotulo: 'Certidão (PDF/imagem)', tipo: 'file', aceitar: '.pdf,image/*', obrigatorio: true },
           { nome: 'plot_id', rotulo: 'ID do jazigo', tipo: 'number', obrigatorio: true },
+          { nome: 'gaveta_numero', rotulo: 'Nº da Gaveta / Nicho', tipo: 'number', dica: 'Identificação da gaveta ocupada na carneira' },
+          { nome: 'coveiro_nome', rotulo: 'Nome do Coveiro', dica: 'Profissional responsável pela abertura/fechamento' },
+          { nome: 'pedreiro_nome', rotulo: 'Nome do Pedreiro', dica: 'Profissional da alvenaria (se houver obra/reparo)' },
+          { nome: 'cartorio', rotulo: 'Cartório do Registro', dica: 'Cartório de registro do óbito' },
+          { nome: 'medico', rotulo: 'Médico Atestante', dica: 'Médico que assinou o atestado de óbito' },
           { nome: 'sepultado_em', rotulo: 'Data/hora do sepultamento', tipo: 'datetime-local', obrigatorio: true },
           { nome: 'equipe', rotulo: 'Equipe' },
           { nome: 'falecido.causa_morte', rotulo: 'Causa da morte (sigilosa)', tipo: 'textarea', dica: 'Cifrada; visível só com permissão restrita.' },
@@ -64,6 +70,11 @@ export const OperacoesView: React.FC = () => {
         campos={[
           ...CAMPOS_FALECIDO,
           { nome: 'plot_id', rotulo: 'ID do jazigo', tipo: 'number', obrigatorio: true },
+          { nome: 'gaveta_numero', rotulo: 'Nº da Gaveta / Nicho', tipo: 'number' },
+          { nome: 'coveiro_nome', rotulo: 'Nome do Coveiro' },
+          { nome: 'pedreiro_nome', rotulo: 'Nome do Pedreiro' },
+          { nome: 'cartorio', rotulo: 'Cartório do Registro' },
+          { nome: 'medico', rotulo: 'Médico Atestante' },
           { nome: 'sepultado_em', rotulo: 'Data do sepultamento', tipo: 'date', obrigatorio: true },
           { nome: 'livro_referencia', rotulo: 'Livro/folha', obrigatorio: true },
           { nome: 'falecido.certidao_numero', rotulo: 'Nº da certidão (opcional)' },
@@ -97,7 +108,16 @@ export const OperacoesView: React.FC = () => {
 const OrdensServico: React.FC = () => {
   const { can } = useCan();
   const [filtro, setFiltro] = useState<'abertas' | 'todas'>('abertas');
-  const ordens = useDados(() => cemiteriosApi.ordens({ situacao: filtro === 'abertas' ? ['emitida', 'em_execucao'] : undefined, per_page: 50 }), [filtro]);
+  const { cemiterioAtivoId } = useCemiteriosNavigation();
+  const ordens = useDados(
+    () =>
+      cemiteriosApi.ordens({
+        park_id: cemiterioAtivoId ?? undefined,
+        situacao: filtro === 'abertas' ? ['emitida', 'em_execucao'] : undefined,
+        per_page: 50,
+      }),
+    [filtro, cemiterioAtivoId]
+  );
   const [pendente, setPendente] = useState<{ ordem: OrdemServico; acao: Acao } | null>(null);
   const { erro, executar } = useAcao();
   const executa = can('cemiterios.operacoes.executar');
@@ -160,15 +180,44 @@ const OrdensServico: React.FC = () => {
 
 const Inumacoes: React.FC = () => {
   const { can } = useCan();
+  const { cemiterioAtivoId } = useCemiteriosNavigation();
   const [pendentes, setPendentes] = useState(false);
-  const lista = useDados(() => cemiteriosApi.inumacoes({ revisao_pendente: pendentes ? 1 : undefined, per_page: 100 }), [pendentes]);
+  const lista = useDados(
+    () =>
+      cemiteriosApi.inumacoes({
+        park_id: cemiterioAtivoId ?? undefined,
+        revisao_pendente: pendentes ? 1 : undefined,
+        per_page: 100,
+      }),
+    [pendentes, cemiterioAtivoId]
+  );
   const [cancelar, setCancelar] = useState<Inumacao | null>(null);
   const { erro, executar } = useAcao();
 
   const colunas = useMemo<ColumnDef<Inumacao, unknown>[]>(() => [
     { id: 'falecido', header: 'Falecido', accessorFn: (r) => r.falecido?.nome ?? '' },
     { id: 'jazigo', header: 'Jazigo', cell: ({ row }) => <Mono>{row.original.jazigo?.codigo}</Mono> },
+    {
+      id: 'gaveta',
+      header: 'Gaveta',
+      cell: ({ row }) => row.original.gaveta_numero ? <Mono className="text-xs">G{row.original.gaveta_numero}</Mono> : <span className="text-muted-foreground">—</span>,
+    },
     { id: 'data', header: 'Sepultamento', cell: ({ row }) => <Mono>{formatarData(row.original.sepultado_em)}</Mono> },
+    {
+      id: 'profissionais',
+      header: 'Coveiro / Pedreiro',
+      cell: ({ row }) => {
+        const partes = [
+          row.original.coveiro_nome ? `Cov: ${row.original.coveiro_nome}` : null,
+          row.original.pedreiro_nome ? `Ped: ${row.original.pedreiro_nome}` : null,
+        ].filter(Boolean);
+        return partes.length > 0 ? (
+          <span className="text-xs text-muted-foreground">{partes.join(' · ')}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
+    },
     { id: 'carencia', header: 'Carência desde', cell: ({ row }) => <Mono>{formatarData(row.original.carencia_desde)}</Mono> },
     {
       id: 'situacao', header: 'Situação', cell: ({ row }) => (
@@ -205,7 +254,11 @@ const Inumacoes: React.FC = () => {
 };
 
 const Exumacoes: React.FC = () => {
-  const lista = useDados(() => cemiteriosApi.exumacoes(), []);
+  const { cemiterioAtivoId } = useCemiteriosNavigation();
+  const lista = useDados(
+    () => cemiteriosApi.exumacoes({ park_id: cemiterioAtivoId ?? undefined }),
+    [cemiterioAtivoId]
+  );
   const colunas = useMemo<ColumnDef<Exumacao, unknown>[]>(() => [
     { id: 'falecido', header: 'Falecido', accessorFn: (r) => r.inumacao?.falecido?.nome ?? '' },
     { id: 'tipo', header: 'Tipo', accessorKey: 'tipo' },

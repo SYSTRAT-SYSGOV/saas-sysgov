@@ -49,8 +49,14 @@ final class OperacaoController extends Controller
             'plot_id' => ['required', 'integer'],
             'sepultado_em' => ['required', 'date'],
             'tipo' => ['nullable', 'string', 'max:20'],
+            'gaveta_numero' => ['nullable', 'integer', 'min:1'],
             'agendada_para' => ['nullable', 'date'],
             'equipe' => ['nullable', 'string', 'max:255'],
+            'coveiro_nome' => ['nullable', 'string', 'max:150'],
+            'pedreiro_nome' => ['nullable', 'string', 'max:150'],
+            'cartorio' => ['nullable', 'string', 'max:200'],
+            'medico' => ['nullable', 'string', 'max:200'],
+            'autorizado_judicial' => ['sometimes', 'boolean'],
         ]);
 
         $falecido = $dados['falecido'] + ['certidao_arquivo' => Arquivo::guardar($request->file('certidao_arquivo'), 'certidoes')];

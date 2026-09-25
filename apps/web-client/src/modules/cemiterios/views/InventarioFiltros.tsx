@@ -18,12 +18,21 @@ export const FAIXAS_OCUPACAO = [
   { value: 'lotado', label: 'Capacidade Esgotada (100%)' },
 ];
 
+export const OPCOES_REGULATORIAS = [
+  { value: 'todos', label: 'Todos os status' },
+  { value: 'exumacao_elegivel', label: 'Elegível p/ Exumação' },
+  { value: 'concessao_vencida', label: 'Concessão Vencida' },
+  { value: 'concessao_a_vencer', label: 'Concessão a Vencer' },
+  { value: 'critico', label: 'Crítico / Manutenção' },
+];
+
 export interface InventarioFiltrosState {
   parqueId: string | null;
   setorId: string | null;
   tipo: string | null;
   estado: string | null;
   faixaOcupacao: 'todas' | 'vazio' | 'parcial' | 'lotado';
+  criterioRegulatorio?: 'todos' | 'exumacao_elegivel' | 'concessao_vencida' | 'concessao_a_vencer' | 'critico';
   busca: string;
 }
 
@@ -36,6 +45,7 @@ export interface InventarioFiltrosProps {
   totalRegistros: number;
   totalFiltrados: number;
   carregando?: boolean;
+  ocultarFiltroCemiterio?: boolean;
 }
 
 export const InventarioFiltros: React.FC<InventarioFiltrosProps> = ({
@@ -47,6 +57,7 @@ export const InventarioFiltros: React.FC<InventarioFiltrosProps> = ({
   totalRegistros,
   totalFiltrados,
   carregando = false,
+  ocultarFiltroCemiterio = false,
 }) => {
   const opcoesParques = [
     { value: 'todos', label: 'Todos os cemitérios' },
@@ -78,6 +89,7 @@ export const InventarioFiltros: React.FC<InventarioFiltrosProps> = ({
     (Boolean(filtros.tipo) && filtros.tipo !== 'todos') ||
     (Boolean(filtros.estado) && filtros.estado !== 'todos') ||
     filtros.faixaOcupacao !== 'todas' ||
+    (Boolean(filtros.criterioRegulatorio) && filtros.criterioRegulatorio !== 'todos') ||
     Boolean(filtros.busca.trim());
 
   return (
@@ -116,20 +128,22 @@ export const InventarioFiltros: React.FC<InventarioFiltrosProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        {/* Filtro: Cemitério */}
-        <div>
-          <Select
-            label="Cemitério / Necrópole"
-            value={filtros.parqueId ?? 'todos'}
-            onChange={(val) => {
-              const novoParque = !val || val === 'todos' ? null : val;
-              // Ao mudar de cemitério, reseta setor se ele não pertencer ao novo parque
-              onFiltrosChange({ parqueId: novoParque, setorId: null });
-            }}
-            options={opcoesParques}
-          />
-        </div>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${ocultarFiltroCemiterio ? 'xl:grid-cols-6' : 'xl:grid-cols-7'} gap-3`}>
+        {/* Filtro: Cemitério (Oculto se necrópole ativa fixada no contexto) */}
+        {!ocultarFiltroCemiterio && (
+          <div>
+            <Select
+              label="Cemitério / Necrópole"
+              value={filtros.parqueId ?? 'todos'}
+              onChange={(val) => {
+                const novoParque = !val || val === 'todos' ? null : val;
+                // Ao mudar de cemitério, reseta setor se ele não pertencer ao novo parque
+                onFiltrosChange({ parqueId: novoParque, setorId: null });
+              }}
+              options={opcoesParques}
+            />
+          </div>
+        )}
 
         {/* Filtro: Setor/Quadra */}
         <div>
@@ -179,6 +193,20 @@ export const InventarioFiltros: React.FC<InventarioFiltrosProps> = ({
               });
             }}
             options={FAIXAS_OCUPACAO}
+          />
+        </div>
+
+        {/* Filtro: Inteligência Regulatória */}
+        <div>
+          <Select
+            label="Alerta Regulatório"
+            value={filtros.criterioRegulatorio ?? 'todos'}
+            onChange={(val) => {
+              onFiltrosChange({
+                criterioRegulatorio: (val as InventarioFiltrosState['criterioRegulatorio']) || 'todos',
+              });
+            }}
+            options={OPCOES_REGULATORIAS}
           />
         </div>
 

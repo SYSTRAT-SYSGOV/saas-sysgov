@@ -11,9 +11,11 @@ use Modules\Cemiterios\Http\Controllers\FalecidoController;
 use Modules\Cemiterios\Http\Controllers\FinanceiroController;
 use Modules\Cemiterios\Http\Controllers\GisController;
 use Modules\Cemiterios\Http\Controllers\JazigoController;
+use Modules\Cemiterios\Http\Controllers\OperadorCemiterioController;
 use Modules\Cemiterios\Http\Controllers\OperacaoController;
 use Modules\Cemiterios\Http\Controllers\OrdemServicoController;
 use Modules\Cemiterios\Http\Controllers\ParametroController;
+use Modules\Cemiterios\Http\Controllers\ProcessoSucessaoController;
 use Modules\Cemiterios\Http\Controllers\VistoriaController;
 
 /*
@@ -120,3 +122,21 @@ Route::post('/processos-abandono', [VistoriaController::class, 'instaurar']);
 Route::get('/processos-abandono/{id}', [VistoriaController::class, 'processo']);
 Route::post('/processos-abandono/{id}/{etapa}', [VistoriaController::class, 'etapa'])
     ->whereIn('etapa', ['edital', 'manifestacao', 'decisao']);
+
+// Regularização de Sucessão Hereditária
+Route::get('/sucessoes/pendencias', [ProcessoSucessaoController::class, 'pendencias']);
+Route::get('/sucessoes', [ProcessoSucessaoController::class, 'index']);
+Route::post('/sucessoes', [ProcessoSucessaoController::class, 'store']);
+Route::get('/sucessoes/{id}', [ProcessoSucessaoController::class, 'show']);
+Route::post('/sucessoes/{id}/herdeiros', [ProcessoSucessaoController::class, 'adicionarHerdeiro']);
+Route::post('/sucessoes/{id}/deferir', [ProcessoSucessaoController::class, 'deferir']);
+Route::post('/sucessoes/{id}/indeferir', [ProcessoSucessaoController::class, 'indeferir']);
+Route::get('/sucessoes/{id}/termo', [ProcessoSucessaoController::class, 'termoDados']);
+
+// Gestão de Operadores (Coveiros e Pedreiros Credenciados)
+Route::get('/operadores', [OperadorCemiterioController::class, 'index']);
+Route::post('/operadores', [OperadorCemiterioController::class, 'store']);
+Route::get('/operadores/{id}', [OperadorCemiterioController::class, 'show']);
+Route::put('/operadores/{id}', [OperadorCemiterioController::class, 'update']);
+Route::get('/operadores/{id}/historico', [OperadorCemiterioController::class, 'historico']);
+

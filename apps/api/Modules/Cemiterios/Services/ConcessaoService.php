@@ -23,7 +23,7 @@ final readonly class ConcessaoService
         private GuiaService $guias,
     ) {}
 
-    /** @param array{plot_id: int, holder_id: int, modalidade: string, inicio?: string|null, lock_version: int, sujeita_taxa_anual?: bool} $dados */
+    /** @param array{plot_id: int, holder_id: int, modalidade: string, inicio?: string|null, lock_version: int, sujeita_taxa_anual?: bool, processo_administrativo?: string|null} $dados */
     public function conceder(array $dados): Concessao
     {
         $jazigo = Jazigo::findOrFail($dados['plot_id']);
@@ -47,6 +47,7 @@ final readonly class ConcessaoService
 
             $concessao = Concessao::create([
                 'numero' => "{$sequencia}/{$ano}",
+                'processo_administrativo' => $dados['processo_administrativo'] ?? null,
                 'plot_id' => $jazigo->id,
                 'holder_id' => $dados['holder_id'],
                 'modalidade' => $dados['modalidade'],
@@ -56,6 +57,10 @@ final readonly class ConcessaoService
                 'situacao' => 'vigente',
             ]);
 
+            if (!empty($dados['processo_administrativo'])) {
+                $jazigo->update(['processo_administrativo' => $dados['processo_administrativo']]);
+            }
+
             $this->estados->recalcular($jazigo, "Concessão {$concessao->numero} ativada", (int) $dados['lock_version']);
 
             return $concessao;
@@ -63,18 +68,22 @@ final readonly class ConcessaoService
     }
 
     /** @return array{concessao: Concessao, guia: Guia} */
-    public function renovar(Concessao $concessao): array
+    public function renovar(Concessao $concessao, ?string $processoAdministrativo = null): array
     {
         if ($concessao->modalidade !== 'temporaria' || $concessao->situacao !== 'vigente') {
             throw new RegraNegocioException('concessao.nao_renovavel', 'Somente concessão temporária vigente pode ser renovada.');
         }
 
-        return DB::transaction(function () use ($concessao): array {
+        return DB::transaction(function () use ($concessao, $processoAdministrativo): array {
             $base = CarbonImmutable::parse(max($concessao->termino->toDateString(), today()->toDateString()));
-            $concessao->update([
+            $updateData = [
                 'termino' => $base->addYearsNoOverflow($this->parametros->vigente()->concessao_temporaria_anos)->toDateString(),
                 'notificado_para_termino' => null,
-            ]);
+            ];
+            if ($processoAdministrativo !== null) {
+                $updateData['processo_administrativo'] = $processoAdministrativo;
+            }
+            $concessao->update($updateData);
 
             return ['concessao' => $concessao, 'guia' => $this->guias->emitirParaConcessao($concessao, 'renovacao')];
         });

@@ -4,25 +4,50 @@ import { Button, ConfirmDialog, DataTable, StatusChip, Tabs } from '@/components
 import { useCan } from '@/core/rbac/useCan';
 import { cemiteriosApi, formatarCentavos, formatarData, type Concessao, type Concessionario } from '../api';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
+import { useCemiteriosNavigation } from '../CemiteriosContext';
 
 const SITUACAO: Record<string, 'success' | 'warning' | 'danger'> = { vigente: 'success', expirada: 'warning', extinta: 'danger' };
 
 /** Concessionários (CPF mascarado) e concessões temporárias/perpétuas (RF-11..RF-14). */
 export const ConcessoesView: React.FC = () => {
   const { can } = useCan();
+  const { cemiterioAtivoId } = useCemiteriosNavigation();
   const gerencia = can('cemiterios.concessoes.manage');
   const [aba, setAba] = useState<'concessoes' | 'titulares'>('concessoes');
   const [modal, setModal] = useState<'concessao' | 'titular' | null>(null);
   const [renovar, setRenovar] = useState<Concessao | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const concessoes = useDados(() => cemiteriosApi.concessoes({ per_page: 100 }), []);
+  const concessoes = useDados(
+    () => cemiteriosApi.concessoes({ park_id: cemiterioAtivoId ?? undefined, per_page: 100 }),
+    [cemiterioAtivoId]
+  );
   const titulares = useDados(() => (gerencia ? cemiteriosApi.titulares() : Promise.resolve(null)), [gerencia]);
   const { erro, executar } = useAcao();
 
   const colunasConcessoes = useMemo<ColumnDef<Concessao, unknown>[]>(() => [
     { id: 'numero', header: 'Número', accessorKey: 'numero', cell: ({ row }) => <Mono className="font-bold">{row.original.numero}</Mono> },
+    {
+      id: 'processo',
+      header: 'Proc. Adm.',
+      accessorKey: 'processo_administrativo',
+      cell: ({ row }) => row.original.processo_administrativo ? <Mono className="text-xs">{row.original.processo_administrativo}</Mono> : <span className="text-muted-foreground">—</span>,
+    },
     { id: 'jazigo', header: 'Jazigo', accessorFn: (r) => r.jazigo?.codigo ?? '', cell: ({ row }) => <Mono>{row.original.jazigo?.codigo}</Mono> },
-    { id: 'titular', header: 'Concessionário', accessorFn: (r) => r.concessionario?.nome ?? '' },
+    {
+      id: 'titular',
+      header: 'Concessionário',
+      accessorFn: (r) => r.concessionario?.nome ?? '',
+      cell: ({ row }) => (
+        <div>
+          <span className="font-medium text-foreground">{row.original.concessionario?.nome ?? '—'}</span>
+          {row.original.concessionario?.titular_falecido && (
+            <span className="ml-2 inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+              ⚠️ Titular Falecido
+            </span>
+          )}
+        </div>
+      ),
+    },
     { id: 'modalidade', header: 'Modalidade', accessorKey: 'modalidade' },
     { id: 'termino', header: 'Término', cell: ({ row }) => <Mono>{row.original.termino ? formatarData(row.original.termino) : 'Perpétua'}</Mono> },
     {
@@ -42,6 +67,17 @@ export const ConcessoesView: React.FC = () => {
   const colunasTitulares = useMemo<ColumnDef<Concessionario, unknown>[]>(() => [
     { id: 'nome', header: 'Nome', accessorKey: 'nome' },
     { id: 'doc', header: 'CPF/CNPJ', accessorKey: 'documento_mascarado', cell: ({ row }) => <Mono>{row.original.documento_mascarado}</Mono> },
+    {
+      id: 'situacao_titular',
+      header: 'Sucessão / Status',
+      cell: ({ row }) => row.original.titular_falecido ? (
+        <span className="inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+          Falecido {row.original.data_falecimento_titular ? `(${formatarData(row.original.data_falecimento_titular)})` : ''}
+        </span>
+      ) : (
+        <span className="text-xs text-muted-foreground">Vivo / Regular</span>
+      ),
+    },
     { id: 'base', header: 'Base legal (LGPD)', accessorKey: 'base_legal' },
   ], []);
 
@@ -89,12 +125,20 @@ export const ConcessoesView: React.FC = () => {
           { nome: 'holder_id', rotulo: 'Concessionário', tipo: 'select', obrigatorio: true,
             opcoes: (titulares.dados?.data ?? []).map((t) => ({ value: String(t.id), label: `${t.nome} — ${t.documento_mascarado}` })) },
           { nome: 'modalidade', rotulo: 'Modalidade', tipo: 'select', obrigatorio: true, opcoes: [{ value: 'temporaria', label: 'Temporária' }, { value: 'perpetua', label: 'Perpétua' }] },
+          { nome: 'processo_administrativo', rotulo: 'Processo Administrativo', dica: 'Ex.: Proc. 1024/2026' },
           { nome: 'inicio', rotulo: 'Início', tipo: 'date' },
         ]}
         onEnviar={async (v) => {
           // A versão lida do jazigo segue na requisição: concessão simultânea recebe 409 (RNF-06).
           const jazigo = await cemiteriosApi.jazigo(Number(v.plot_id));
-          await cemiteriosApi.conceder({ plot_id: jazigo.id, holder_id: Number(v.holder_id), modalidade: String(v.modalidade), inicio: (v.inicio as string) || undefined, lock_version: jazigo.lock_version });
+          await cemiteriosApi.conceder({
+            plot_id: jazigo.id,
+            holder_id: Number(v.holder_id),
+            modalidade: String(v.modalidade),
+            processo_administrativo: (v.processo_administrativo as string) || undefined,
+            inicio: (v.inicio as string) || undefined,
+            lock_version: jazigo.lock_version,
+          });
           await concessoes.recarregar();
         }} />
       <ConfirmDialog open={renovar !== null} onClose={() => setRenovar(null)} onConfirm={() => void confirmarRenovacao()}
