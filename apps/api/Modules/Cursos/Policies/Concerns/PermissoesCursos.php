@@ -7,6 +7,7 @@ namespace Modules\Cursos\Policies\Concerns;
 use App\Models\User;
 use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Model;
+use Modules\Cursos\Models\Turma;
 
 /**
  * Permissões do módulo sempre avaliadas no tenant da requisição
@@ -36,5 +37,12 @@ trait PermissoesCursos
     private function administra(User $user): bool
     {
         return $this->pode($user, 'cursos.manage');
+    }
+
+    /** Instrutor designado em alguma turma do curso. */
+    private function instrutorDoCurso(User $user, int $cursoId): bool
+    {
+        return $this->pode($user, 'cursos.instrutor')
+            && Turma::query()->where('curso_id', $cursoId)->whereHas('instrutores', fn ($q) => $q->where('users.id', $user->id))->exists();
     }
 }

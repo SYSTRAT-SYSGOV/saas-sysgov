@@ -4,26 +4,38 @@ import type {
   Aula,
   AulaAgendamento,
   AulaInput,
+  Avaliacao,
+  AvaliacaoInput,
   CatalogoCurso,
   Certificado,
   Chamada,
   CheckInResultado,
+  ConteudoInscricao,
   Curso,
   CursoDetalhe,
   CursoFiltros,
   CursoInput,
+  FilaCorrecaoItem,
   Formacao,
   FormacaoInput,
   Inscricao,
   InscricaoDetalhe,
   InscritoTurma,
   InstrutorResumo,
+  Material,
+  MaterialInput,
   MinhaInscricao,
   ModeloCertificado,
   ModeloCertificadoInput,
   QrCheckIn,
+  Questao,
+  QuestaoInput,
+  RespostaSalva,
   ResumoEncerramento,
   StatusCurso,
+  StatusTentativa,
+  TentativaCorrecao,
+  TentativaParticipante,
   Turma,
   TurmaDetalhe,
   TurmaInput,
@@ -278,6 +290,140 @@ export class CursosModuleClient implements BaseModuleClient {
     const form = new FormData();
     form.append('imagem', arquivo);
     return this.api.request(`/cursos/modelos-certificado/${id}/assinaturas/${indice}/imagem`, { method: 'POST', body: form as unknown as string });
+  }
+
+  // ---------------------------------------------------------------- materiais (Fase 2)
+
+  listarMateriais(cursoId: number): Promise<Material[]> {
+    return this.api.request(`/cursos/cursos/${cursoId}/materiais`);
+  }
+
+  criarMaterial(cursoId: number, input: MaterialInput): Promise<Material> {
+    return this.api.request(`/cursos/cursos/${cursoId}/materiais`, { method: 'POST', ...json(input) });
+  }
+
+  getMaterial(id: number): Promise<Material> {
+    return this.api.request(`/cursos/materiais/${id}`);
+  }
+
+  atualizarMaterial(id: number, input: MaterialInput): Promise<Material> {
+    return this.api.request(`/cursos/materiais/${id}`, { method: 'PUT', ...json(input) });
+  }
+
+  excluirMaterial(id: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/cursos/materiais/${id}`, { method: 'DELETE' });
+  }
+
+  /** `ids` = todos os materiais do curso, na nova ordem. */
+  reordenarMateriais(cursoId: number, ids: number[]): Promise<Material[]> {
+    return this.api.request(`/cursos/cursos/${cursoId}/materiais/reordenar`, { method: 'POST', ...json({ ids }) });
+  }
+
+  /** Envia ou substitui o PDF (até 20 MB) de um material do tipo arquivo. */
+  enviarArquivoMaterial(id: number, arquivo: File): Promise<Material> {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    return this.api.request(`/cursos/materiais/${id}/arquivo`, { method: 'POST', body: form as unknown as string });
+  }
+
+  /** O PDF só sai autenticado: baixa como blob para abrir numa aba (`URL.createObjectURL`). */
+  baixarArquivoMaterial(id: number): Promise<Blob> {
+    if (!this.api.requestBlob) throw new Error('Este cliente não suporta download de arquivos.');
+    return this.api.requestBlob(`/cursos/materiais/${id}/arquivo`);
+  }
+
+  // ---------------------------------------------------------------- banco de questões (Fase 2)
+
+  listarQuestoes(cursoId: number, filtros: { somenteAtivas?: boolean } = {}): Promise<Questao[]> {
+    return this.api.request(`/cursos/cursos/${cursoId}/questoes${filtros.somenteAtivas ? '?somente_ativas=1' : ''}`);
+  }
+
+  criarQuestao(cursoId: number, input: QuestaoInput): Promise<Questao> {
+    return this.api.request(`/cursos/cursos/${cursoId}/questoes`, { method: 'POST', ...json(input) });
+  }
+
+  atualizarQuestao(id: number, input: QuestaoInput): Promise<Questao> {
+    return this.api.request(`/cursos/questoes/${id}`, { method: 'PUT', ...json(input) });
+  }
+
+  excluirQuestao(id: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/cursos/questoes/${id}`, { method: 'DELETE' });
+  }
+
+  desativarQuestao(id: number): Promise<Questao> {
+    return this.api.request(`/cursos/questoes/${id}/desativar`, { method: 'POST' });
+  }
+
+  ativarQuestao(id: number): Promise<Questao> {
+    return this.api.request(`/cursos/questoes/${id}/ativar`, { method: 'POST' });
+  }
+
+  // ---------------------------------------------------------------- avaliações (Fase 2)
+
+  listarAvaliacoes(cursoId: number): Promise<Avaliacao[]> {
+    return this.api.request(`/cursos/cursos/${cursoId}/avaliacoes`);
+  }
+
+  criarAvaliacao(cursoId: number, input: AvaliacaoInput): Promise<Avaliacao> {
+    return this.api.request(`/cursos/cursos/${cursoId}/avaliacoes`, { method: 'POST', ...json(input) });
+  }
+
+  getAvaliacao(id: number): Promise<Avaliacao> {
+    return this.api.request(`/cursos/avaliacoes/${id}`);
+  }
+
+  atualizarAvaliacao(id: number, input: AvaliacaoInput): Promise<Avaliacao> {
+    return this.api.request(`/cursos/avaliacoes/${id}`, { method: 'PUT', ...json(input) });
+  }
+
+  excluirAvaliacao(id: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/cursos/avaliacoes/${id}`, { method: 'DELETE' });
+  }
+
+  publicarAvaliacao(id: number): Promise<Avaliacao> {
+    return this.api.request(`/cursos/avaliacoes/${id}/publicar`, { method: 'POST' });
+  }
+
+  despublicarAvaliacao(id: number): Promise<Avaliacao> {
+    return this.api.request(`/cursos/avaliacoes/${id}/despublicar`, { method: 'POST' });
+  }
+
+  // ---------------------------------------------------------------- tentativas do participante (Fase 2)
+
+  /** Materiais, avaliações (com tentativas restantes) e nota da inscrição. */
+  getConteudoInscricao(inscricaoId: number): Promise<ConteudoInscricao> {
+    return this.api.request(`/cursos/inscricoes/${inscricaoId}/conteudo`);
+  }
+
+  iniciarTentativa(avaliacaoId: number, inscricaoId: number): Promise<TentativaParticipante> {
+    return this.api.request(`/cursos/avaliacoes/${avaliacaoId}/tentativas`, { method: 'POST', ...json({ inscricao_id: inscricaoId }) });
+  }
+
+  getTentativa(id: number): Promise<TentativaParticipante> {
+    return this.api.request(`/cursos/tentativas/${id}`);
+  }
+
+  /** Objetiva: `alternativa_id` (nulo limpa a resposta). Dissertativa: `texto`, em texto puro. */
+  salvarResposta(tentativaId: number, questaoId: number, resposta: { alternativa_id?: number | null; texto?: string | null }): Promise<RespostaSalva> {
+    return this.api.request(`/cursos/tentativas/${tentativaId}/respostas/${questaoId}`, { method: 'PUT', ...json(resposta) });
+  }
+
+  enviarTentativa(id: number): Promise<TentativaParticipante> {
+    return this.api.request(`/cursos/tentativas/${id}/enviar`, { method: 'POST' });
+  }
+
+  // ---------------------------------------------------------------- correção (Fase 2)
+
+  filaCorrecao(turmaId: number, status: StatusTentativa = 'aguardando_correcao'): Promise<FilaCorrecaoItem[]> {
+    return this.api.request(`/cursos/turmas/${turmaId}/correcoes?status=${status}`);
+  }
+
+  getCorrecao(tentativaId: number): Promise<TentativaCorrecao> {
+    return this.api.request(`/cursos/tentativas/${tentativaId}/correcao`);
+  }
+
+  corrigirResposta(tentativaId: number, questaoId: number, correcao: { pontos: number; comentario?: string | null }): Promise<TentativaCorrecao> {
+    return this.api.request(`/cursos/tentativas/${tentativaId}/respostas/${questaoId}/correcao`, { method: 'PUT', ...json(correcao) });
   }
 
   // ---------------------------------------------------------------- público (sem login)

@@ -2,21 +2,29 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ArrowLeft, CalendarPlus, ClipboardCheck, Download, Lock, Pencil, QrCode, Trash2, UserPlus, Users } from 'lucide-react';
 import { ActionsMenu, Button, Card, Input, Modal, Select, type ActionsMenuItem } from '@sysgov/ui';
-import { ConfirmDialog, DataTable, PageHeader, ScreenState, StatusChip } from '@/components/ui';
+import { ConfirmDialog, DataTable, PageHeader, ScreenState, StatusChip, Tabs, type TabsItem } from '@/components/ui';
 import { sysgovApi, type AulaAgendamento, type InscritoTurma, type InstrutorResumo, type ResumoEncerramento, type TurmaDetalhe } from '@sysgov/sdk';
 import { useCan } from '@/core/rbac/useCan';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { ChamadaModal } from '../components/ChamadaModal';
+import { CorrecoesTab } from '../components/CorrecoesTab';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { QrCheckInModal } from '../components/QrCheckInModal';
 import { TurmaFormModal } from '../components/TurmaFormModal';
 import { UsuarioPicker } from '../components/UsuarioPicker';
-import { MODALIDADE, STATUS_INSCRICAO, STATUS_TURMA, baixarBlob, formatarData, formatarDataHora, formatarHora, formatarPercentual } from '../utils/formatos';
+import { MODALIDADE, STATUS_INSCRICAO, STATUS_TURMA, baixarBlob, formatarData, formatarDataHora, formatarHora, formatarNota, formatarPercentual } from '../utils/formatos';
 
 interface Props {
   turmaId: number;
   onVoltar: () => void;
 }
+
+type AbaTurma = 'turma' | 'correcoes';
+
+const ABAS_TURMA: TabsItem<AbaTurma>[] = [
+  { key: 'turma', label: 'Aulas e inscritos' },
+  { key: 'correcoes', label: 'Correções' },
+];
 
 type Confirmacao =
   | { tipo: 'encerrar' }
@@ -41,6 +49,7 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
   const [chamada, setChamada] = useState<AulaAgendamento | null>(null);
   const [qr, setQr] = useState<AulaAgendamento | null>(null);
   const [editando, setEditando] = useState(false);
+  const [aba, setAba] = useState<AbaTurma>('turma');
   const [agendando, setAgendando] = useState(false);
   const [inscrevendo, setInscrevendo] = useState(false);
   const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null);
@@ -95,6 +104,13 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
         size: 110,
         meta: { exportValue: (i) => i.frequencia.percentual, sortValue: (i) => i.frequencia.percentual },
         cell: ({ row }) => <span className="font-mono tabular-nums">{formatarPercentual(row.original.frequencia.percentual)}</span>,
+      },
+      {
+        id: 'nota',
+        header: 'Nota',
+        size: 90,
+        meta: { exportValue: (i) => i.nota ?? '', sortValue: (i) => i.nota ?? -1 },
+        cell: ({ row }) => <span className="font-mono tabular-nums">{formatarNota(row.original.nota)}</span>,
       },
       {
         id: 'acoes',
@@ -163,6 +179,13 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
       />
 
       <ErroFormulario mensagem={erro} />
+      {erro?.includes('aguardando correção') && (
+        <div>
+          <Button size="sm" variant="outline" onClick={() => setAba('correcoes')}>
+            Ir para as correções
+          </Button>
+        </div>
+      )}
       {aviso && <div role="status" className="rounded-lg border border-status-success-border bg-status-success-bg px-3 py-2 text-sm text-status-success">{aviso}</div>}
 
       {resumo && (
@@ -182,86 +205,94 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
         </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Vagas ocupadas</p>
-          <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">
-            {turma.vagas_ocupadas}/{turma.vagas}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Lista de espera</p>
-          <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{turma.lista_espera}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Inscrições</p>
-          <p className="font-mono text-sm tabular-nums text-foreground">
-            {formatarDataHora(turma.inscricoes_inicio)} a {formatarDataHora(turma.inscricoes_fim)}
-          </p>
-        </Card>
-      </div>
+      <Tabs items={ABAS_TURMA} value={aba} onChange={setAba} />
 
-      <Card className="space-y-3 p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Aulas agendadas</h2>
-          {aberta && (
-            <Button size="sm" variant="outline" onClick={() => setAgendando(true)}>
-              <CalendarPlus className="h-4 w-4" /> Agendar aula
-            </Button>
-          )}
-        </div>
-        {turma.agendamentos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhuma aula agendada. A frequência é calculada sobre as aulas agendadas da turma.</p>
-        ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border">
-            {turma.agendamentos.map((a) => {
-              const emAndamento = new Date(a.inicio) <= new Date() && new Date() <= new Date(a.fim);
-              const comecou = new Date(a.inicio) <= new Date();
-              return (
-                <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{a.aula?.titulo}</p>
-                    <p className="font-mono text-xs tabular-nums text-muted-foreground">
-                      {formatarDataHora(a.inicio)} – {formatarHora(a.fim)}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    {emAndamento && aberta && (
-                      <Button size="sm" onClick={() => setQr(a)}>
-                        <QrCode className="h-4 w-4" /> QR de check-in
-                      </Button>
-                    )}
-                    {comecou && (
-                      <Button size="sm" variant="outline" onClick={() => setChamada(a)}>
-                        <ClipboardCheck className="h-4 w-4" /> {aberta ? 'Chamada' : 'Ver chamada'}
-                      </Button>
-                    )}
-                    {aberta && !comecou && (
-                      <Button size="icon-sm" variant="ghost" aria-label={`Desagendar ${a.aula?.titulo ?? 'aula'}`} onClick={() => void executar(() => sysgovApi.cursos.desagendarAula(a.id), 'Não foi possível desagendar a aula.')}>
-                        <Trash2 />
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
+      {aba === 'correcoes' && <CorrecoesTab turmaId={turma.id} aberta={aberta} onMudou={() => void carregar()} />}
 
-      <Card className="space-y-3 p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Inscritos</h2>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void executar(async () => baixarBlob(await sysgovApi.cursos.exportarInscritos(turma.id), `inscritos-turma-${turma.id}.csv`), 'Não foi possível exportar.')}
-          >
-            <Download className="h-4 w-4" /> Exportar CSV
-          </Button>
-        </div>
-        <DataTable columns={colunas} data={inscritos} searchable searchPlaceholder="Buscar participante..." emptyText="Nenhuma inscrição ainda." />
-      </Card>
+      {aba === 'turma' && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card className="p-4">
+              <p className="text-xs text-muted-foreground">Vagas ocupadas</p>
+              <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">
+                {turma.vagas_ocupadas}/{turma.vagas}
+              </p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-muted-foreground">Lista de espera</p>
+              <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{turma.lista_espera}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-muted-foreground">Inscrições</p>
+              <p className="font-mono text-sm tabular-nums text-foreground">
+                {formatarDataHora(turma.inscricoes_inicio)} a {formatarDataHora(turma.inscricoes_fim)}
+              </p>
+            </Card>
+          </div>
+
+          <Card className="space-y-3 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Aulas agendadas</h2>
+              {aberta && (
+                <Button size="sm" variant="outline" onClick={() => setAgendando(true)}>
+                  <CalendarPlus className="h-4 w-4" /> Agendar aula
+                </Button>
+              )}
+            </div>
+            {turma.agendamentos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma aula agendada. A frequência é calculada sobre as aulas agendadas da turma.</p>
+            ) : (
+              <ul className="divide-y divide-border rounded-lg border border-border">
+                {turma.agendamentos.map((a) => {
+                  const emAndamento = new Date(a.inicio) <= new Date() && new Date() <= new Date(a.fim);
+                  const comecou = new Date(a.inicio) <= new Date();
+                  return (
+                    <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{a.aula?.titulo}</p>
+                        <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                          {formatarDataHora(a.inicio)} – {formatarHora(a.fim)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {emAndamento && aberta && (
+                          <Button size="sm" onClick={() => setQr(a)}>
+                            <QrCode className="h-4 w-4" /> QR de check-in
+                          </Button>
+                        )}
+                        {comecou && (
+                          <Button size="sm" variant="outline" onClick={() => setChamada(a)}>
+                            <ClipboardCheck className="h-4 w-4" /> {aberta ? 'Chamada' : 'Ver chamada'}
+                          </Button>
+                        )}
+                        {aberta && !comecou && (
+                          <Button size="icon-sm" variant="ghost" aria-label={`Desagendar ${a.aula?.titulo ?? 'aula'}`} onClick={() => void executar(() => sysgovApi.cursos.desagendarAula(a.id), 'Não foi possível desagendar a aula.')}>
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="space-y-3 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Inscritos</h2>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void executar(async () => baixarBlob(await sysgovApi.cursos.exportarInscritos(turma.id), `inscritos-turma-${turma.id}.csv`), 'Não foi possível exportar.')}
+              >
+                <Download className="h-4 w-4" /> Exportar CSV
+              </Button>
+            </div>
+            <DataTable columns={colunas} data={inscritos} searchable searchPlaceholder="Buscar participante..." emptyText="Nenhuma inscrição ainda." />
+          </Card>
+        </>
+      )}
 
       <ChamadaModal agendamento={chamada} somenteLeitura={!aberta} onClose={() => { setChamada(null); void carregar(); }} />
       <QrCheckInModal agendamento={qr} onClose={() => { setQr(null); void carregar(); }} />

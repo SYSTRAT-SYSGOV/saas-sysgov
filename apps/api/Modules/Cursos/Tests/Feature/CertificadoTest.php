@@ -105,8 +105,8 @@ final class CertificadoTest extends TestCase
 
         $this->noTenant($this->tenant, function () use ($a, $b): void {
             $apuracao = app(ApuracaoConclusaoService::class);
-            $this->assertSame(['concluiu' => true, 'frequencia' => 75.0], $apuracao->apurar($a->refresh()));
-            $this->assertSame(['concluiu' => false, 'frequencia' => 50.0], $apuracao->apurar($b->refresh()));
+            $this->assertSame(['concluiu' => true, 'frequencia' => 75.0, 'nota' => null], $apuracao->apurar($a->refresh()));
+            $this->assertSame(['concluiu' => false, 'frequencia' => 50.0, 'nota' => null], $apuracao->apurar($b->refresh()));
         });
     }
 
@@ -116,7 +116,7 @@ final class CertificadoTest extends TestCase
         $turma = $this->turmaAberta($this->tenant, $curso, $this->instrutor);
         $inscricao = $this->inscrever($this->tenant, $turma, $this->usuario($this->tenant));
 
-        $this->assertSame(['concluiu' => false, 'frequencia' => 0.0], $this->noTenant($this->tenant, fn () => app(ApuracaoConclusaoService::class)->apurar($inscricao)));
+        $this->assertSame(['concluiu' => false, 'frequencia' => 0.0, 'nota' => null], $this->noTenant($this->tenant, fn () => app(ApuracaoConclusaoService::class)->apurar($inscricao)));
         $this->assertErroDeNegocio($this->encerrar($turma), 'não tem aulas agendadas');
     }
 

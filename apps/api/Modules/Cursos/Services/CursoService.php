@@ -24,10 +24,12 @@ final class CursoService
     ) {}
 
     /**
-     * @param array{tipo?: string, titulo: string, descricao?: string|null, carga_horaria_minutos: int, frequencia_minima?: int, modelo_certificado_id?: int|null} $dados
+     * @param array{tipo?: string, titulo: string, descricao?: string|null, carga_horaria_minutos: int, frequencia_minima?: int, nota_minima?: float|int|string|null, modelo_certificado_id?: int|null} $dados
      */
     public function criar(array $dados, User $user): Curso
     {
+        $this->garantirEventoSemAvaliacao(TipoCurso::from($dados['tipo'] ?? TipoCurso::Curso->value), $dados['nota_minima'] ?? null);
+
         return DB::transaction(function () use ($dados, $user): Curso {
             $curso = Curso::create([
                 ...$dados,
@@ -54,6 +56,13 @@ final class CursoService
 
         if (($dados['tipo'] ?? null) === TipoCurso::Evento->value && $this->turmasNaoCanceladas($curso) > 1) {
             throw new DomainException('Este curso tem mais de uma turma e não pode virar evento — eventos têm turma única.');
+        }
+
+        $tipo = TipoCurso::from($dados['tipo'] ?? $curso->tipo);
+        $notaMinima = array_key_exists('nota_minima', $dados) ? $dados['nota_minima'] : $curso->nota_minima;
+        $this->garantirEventoSemAvaliacao($tipo, $notaMinima);
+        if ($tipo === TipoCurso::Evento && $curso->avaliacoes()->exists()) {
+            throw new DomainException('Este curso tem avaliações e não pode virar evento — eventos não têm avaliação.');
         }
 
         return DB::transaction(function () use ($curso, $dados): Curso {
@@ -134,6 +143,14 @@ final class CursoService
         $this->audit->record('cursos', 'curso.capa_removida', "Curso #{$curso->id}", ['capa_path' => $antes], ['capa_path' => null]);
 
         return $curso;
+    }
+
+    /** Evento não tem avaliação, então não aceita nota mínima (spec: Evento é um curso de turma única). */
+    private function garantirEventoSemAvaliacao(TipoCurso $tipo, mixed $notaMinima): void
+    {
+        if ($tipo === TipoCurso::Evento && $notaMinima !== null) {
+            throw new DomainException('Eventos não têm avaliação e não aceitam nota mínima.');
+        }
     }
 
     private function turmasNaoCanceladas(Curso $curso): int

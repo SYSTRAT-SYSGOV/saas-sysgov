@@ -11,14 +11,21 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use LogicException;
 use Modules\Cursos\Models\Aula;
+use Modules\Cursos\Models\Avaliacao;
+use Modules\Cursos\Models\AvaliacaoQuestao;
 use Modules\Cursos\Models\AulaAgendamento;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Formacao;
 use Modules\Cursos\Models\Inscricao;
+use Modules\Cursos\Models\Material;
 use Modules\Cursos\Models\ModeloCertificado;
 use Modules\Cursos\Models\Participante;
 use Modules\Cursos\Models\Presenca;
+use Modules\Cursos\Models\Questao;
+use Modules\Cursos\Models\QuestaoAlternativa;
+use Modules\Cursos\Models\Resposta;
+use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
@@ -37,6 +44,8 @@ final class TenantIsolationTest extends TestCase
     private const MODELS = [
         ModeloCertificado::class, Curso::class, Formacao::class, Turma::class, Aula::class,
         AulaAgendamento::class, Participante::class, Inscricao::class, Presenca::class, Certificado::class,
+        Material::class, Questao::class, QuestaoAlternativa::class, Avaliacao::class, AvaliacaoQuestao::class,
+        Tentativa::class, Resposta::class,
     ];
 
     public function test_todos_os_models_do_modulo_sao_isolados_entre_tenants(): void
@@ -93,10 +102,17 @@ final class TenantIsolationTest extends TestCase
         ]);
         $turma->instrutores()->attach($user->id, ['tenant_id' => $turma->tenant_id]);
         $aula = Aula::create(['curso_id' => $curso->id, 'titulo' => 'Aula 1', 'duracao_minutos' => 120]);
+        $material = Material::create(['curso_id' => $curso->id, 'aula_id' => $aula->id, 'tipo' => 'texto', 'titulo' => "Material {$sufixo}", 'conteudo' => '<p>Texto</p>']);
         $agendamento = AulaAgendamento::create(['turma_id' => $turma->id, 'aula_id' => $aula->id, 'inicio' => '2026-10-05 09:00:00', 'fim' => '2026-10-05 11:00:00']);
         $participante = Participante::create(['user_id' => $user->id, 'nome' => $user->name, 'email' => $user->email]);
         $inscricao = Inscricao::create(['turma_id' => $turma->id, 'participante_id' => $participante->id, 'status' => 'confirmada']);
         $presenca = Presenca::create(['agendamento_id' => $agendamento->id, 'inscricao_id' => $inscricao->id, 'presente' => true, 'origem' => 'manual']);
+        $questao = Questao::create(['curso_id' => $curso->id, 'tipo' => 'objetiva', 'enunciado' => "<p>Questão {$sufixo}</p>", 'pontuacao' => 1]);
+        $alternativa = QuestaoAlternativa::create(['questao_id' => $questao->id, 'texto' => 'A', 'correta' => true, 'ordem' => 1]);
+        $avaliacao = Avaliacao::create(['curso_id' => $curso->id, 'titulo' => "Avaliação {$sufixo}"]);
+        $avaliacaoQuestao = AvaliacaoQuestao::create(['avaliacao_id' => $avaliacao->id, 'questao_id' => $questao->id, 'ordem' => 1]);
+        $tentativa = Tentativa::create(['avaliacao_id' => $avaliacao->id, 'inscricao_id' => $inscricao->id, 'numero' => 1, 'status' => 'em_andamento', 'iniciada_em' => now(), 'questoes' => []]);
+        $resposta = Resposta::create(['tentativa_id' => $tentativa->id, 'questao_id' => $questao->id, 'alternativa_id' => $alternativa->id]);
         $certificado = Certificado::create([
             'codigo' => $codigo ?? strtoupper(substr(md5($sufixo), 0, 12)), 'tipo' => 'curso', 'participante_id' => $participante->id,
             'inscricao_id' => $inscricao->id, 'modelo_id' => $modelo->id, 'dados' => ['participante' => $user->name], 'emitido_em' => now(),
@@ -106,7 +122,9 @@ final class TenantIsolationTest extends TestCase
             ModeloCertificado::class => $modelo->id, Curso::class => $curso->id, Formacao::class => $formacao->id,
             Turma::class => $turma->id, Aula::class => $aula->id, AulaAgendamento::class => $agendamento->id,
             Participante::class => $participante->id, Inscricao::class => $inscricao->id, Presenca::class => $presenca->id,
-            Certificado::class => $certificado->id,
+            Certificado::class => $certificado->id, Material::class => $material->id,
+            Questao::class => $questao->id, QuestaoAlternativa::class => $alternativa->id, Avaliacao::class => $avaliacao->id,
+            AvaliacaoQuestao::class => $avaliacaoQuestao->id, Tentativa::class => $tentativa->id, Resposta::class => $resposta->id,
         ];
     }
 }

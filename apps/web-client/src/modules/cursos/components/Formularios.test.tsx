@@ -42,6 +42,40 @@ describe('CursoFormModal', () => {
     expect(cursosApi.criarCurso).toHaveBeenCalledWith(expect.objectContaining({ titulo: 'Gestão de Contratos', carga_horaria_minutos: 510, frequencia_minima: 75, tipo: 'curso' }));
   });
 
+  it('envia a nota mínima como número e recusa fora da escala de 0 a 10', async () => {
+    cursosApi.criarCurso.mockResolvedValue({ id: 8 });
+    const onSalvo = vi.fn();
+    render(<CursoFormModal open onClose={() => undefined} onSalvo={onSalvo} />);
+    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Com nota' } });
+    fireEvent.change(screen.getByLabelText('Carga horária (horas)'), { target: { value: '4' } });
+
+    fireEvent.change(screen.getByLabelText('Nota mínima (0 a 10)'), { target: { value: '11' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+    expect(await screen.findByText('A nota mínima deve estar na escala de 0 a 10.')).toBeInTheDocument();
+    expect(cursosApi.criarCurso).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Nota mínima (0 a 10)'), { target: { value: '7.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+    await waitFor(() => expect(onSalvo).toHaveBeenCalled());
+    expect(cursosApi.criarCurso).toHaveBeenCalledWith(expect.objectContaining({ nota_minima: 7.5 }));
+  });
+
+  it('sem nota mínima envia nulo; evento não tem o campo', async () => {
+    cursosApi.criarCurso.mockResolvedValue({ id: 9 });
+    render(<CursoFormModal open onClose={() => undefined} onSalvo={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Sem nota' } });
+    fireEvent.change(screen.getByLabelText('Carga horária (horas)'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    await waitFor(() => expect(cursosApi.criarCurso).toHaveBeenCalledWith(expect.objectContaining({ nota_minima: null })));
+  });
+
+  it('edição de curso carrega a nota mínima existente', () => {
+    render(<CursoFormModal open curso={{ id: 1, tipo: 'curso', titulo: 'C', descricao: null, carga_horaria_minutos: 60, frequencia_minima: 75, nota_minima: '7.00' } as unknown as import('@sysgov/sdk').Curso} onClose={() => undefined} onSalvo={() => undefined} />);
+
+    expect(screen.getByLabelText('Nota mínima (0 a 10)')).toHaveValue(7);
+  });
+
   it('não envia sem carga horária', async () => {
     render(<CursoFormModal open onClose={() => undefined} onSalvo={() => undefined} />);
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Sem carga' } });

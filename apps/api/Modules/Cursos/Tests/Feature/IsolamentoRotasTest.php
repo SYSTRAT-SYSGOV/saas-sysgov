@@ -6,7 +6,11 @@ namespace Modules\Cursos\Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Formacao;
+use Modules\Cursos\Models\Material;
+use Modules\Cursos\Models\Questao;
+use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
 
@@ -38,7 +42,15 @@ final class IsolamentoRotasTest extends TestCase
         $agendamentoB = $this->agendamento($tenantB, $turmaB, $aulaB, now()->addDays(12));
         $inscricaoB = $this->inscrever($tenantB, $turmaB, $participanteB);
         $formacaoB = $this->noTenant($tenantB, fn () => Formacao::create(['titulo' => 'Trilha B']));
+        $materialB = $this->noTenant($tenantB, fn () => Material::create(['curso_id' => $cursoB->id, 'tipo' => 'texto', 'titulo' => 'Material B', 'conteudo' => '<p>x</p>', 'publicado' => true]));
         unset($adminB);
+
+        $questaoB = $this->noTenant($tenantB, fn () => Questao::create(['curso_id' => $cursoB->id, 'tipo' => 'dissertativa', 'enunciado' => '<p>x</p>']));
+        $avaliacaoB = $this->noTenant($tenantB, fn () => Avaliacao::create(['curso_id' => $cursoB->id, 'titulo' => 'Prova B']));
+
+        $tentativaB = $this->noTenant($tenantB, fn () => Tentativa::create([
+            'avaliacao_id' => $avaliacaoB->id, 'inscricao_id' => $inscricaoB->id, 'numero' => 1, 'status' => 'aguardando_correcao', 'iniciada_em' => now(), 'questoes' => [],
+        ]));
 
         $rotas = [
             ['get', "/api/cursos/cursos/{$cursoB->id}"],
@@ -47,6 +59,35 @@ final class IsolamentoRotasTest extends TestCase
             ['post', "/api/cursos/cursos/{$cursoB->id}/status"],
             ['get', "/api/cursos/cursos/{$cursoB->id}/aulas"],
             ['get', "/api/cursos/cursos/{$cursoB->id}/turmas"],
+            ['get', "/api/cursos/cursos/{$cursoB->id}/materiais"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/materiais"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/materiais/reordenar"],
+            ['get', "/api/cursos/materiais/{$materialB->id}"],
+            ['put', "/api/cursos/materiais/{$materialB->id}"],
+            ['delete', "/api/cursos/materiais/{$materialB->id}"],
+            ['post', "/api/cursos/materiais/{$materialB->id}/arquivo"],
+            ['get', "/api/cursos/materiais/{$materialB->id}/arquivo"],
+            ['get', "/api/cursos/cursos/{$cursoB->id}/questoes"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/questoes"],
+            ['get', "/api/cursos/questoes/{$questaoB->id}"],
+            ['put', "/api/cursos/questoes/{$questaoB->id}"],
+            ['delete', "/api/cursos/questoes/{$questaoB->id}"],
+            ['post', "/api/cursos/questoes/{$questaoB->id}/desativar"],
+            ['post', "/api/cursos/questoes/{$questaoB->id}/ativar"],
+            ['get', "/api/cursos/cursos/{$cursoB->id}/avaliacoes"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/avaliacoes"],
+            ['get', "/api/cursos/avaliacoes/{$avaliacaoB->id}"],
+            ['put', "/api/cursos/avaliacoes/{$avaliacaoB->id}"],
+            ['delete', "/api/cursos/avaliacoes/{$avaliacaoB->id}"],
+            ['post', "/api/cursos/avaliacoes/{$avaliacaoB->id}/publicar"],
+            ['post', "/api/cursos/avaliacoes/{$avaliacaoB->id}/despublicar"],
+            ['post', "/api/cursos/avaliacoes/{$avaliacaoB->id}/tentativas"],
+            ['get', "/api/cursos/tentativas/{$tentativaB->id}"],
+            ['put', "/api/cursos/tentativas/{$tentativaB->id}/respostas/{$questaoB->id}"],
+            ['post', "/api/cursos/tentativas/{$tentativaB->id}/enviar"],
+            ['get', "/api/cursos/tentativas/{$tentativaB->id}/correcao"],
+            ['put', "/api/cursos/tentativas/{$tentativaB->id}/respostas/{$questaoB->id}/correcao"],
+            ['get', "/api/cursos/turmas/{$turmaB->id}/correcoes"],
             ['put', "/api/cursos/aulas/{$aulaB->id}"],
             ['delete', "/api/cursos/aulas/{$aulaB->id}"],
             ['get', "/api/cursos/formacoes/{$formacaoB->id}"],
@@ -59,6 +100,7 @@ final class IsolamentoRotasTest extends TestCase
             ['delete', "/api/cursos/agendamentos/{$agendamentoB->id}"],
             ['get', "/api/cursos/inscricoes/{$inscricaoB->id}"],
             ['post', "/api/cursos/inscricoes/{$inscricaoB->id}/cancelar"],
+            ['get', "/api/cursos/inscricoes/{$inscricaoB->id}/conteudo"],
         ];
 
         foreach ($rotas as [$metodo, $url]) {

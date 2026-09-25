@@ -4,15 +4,17 @@ import { Button, Card } from '@sysgov/ui';
 import { PageHeader, ScreenState, StatusChip } from '@/components/ui';
 import { sysgovApi, type InscricaoDetalhe } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
+import { ConteudoInscricaoSection } from '../components/ConteudoInscricaoSection';
 import { SITUACAO_AULA, STATUS_INSCRICAO, formatarData, formatarDataHora, formatarHora, formatarPercentual } from '../utils/formatos';
 
 interface Props {
   inscricaoId: number;
   onVoltar: () => void;
+  onAbrirTentativa: (tentativaId: number) => void;
 }
 
-/** Frequência do participante numa turma, aula a aula. */
-export const InscricaoDetalhePage: React.FC<Props> = ({ inscricaoId, onVoltar }) => {
+/** Frequência, materiais e avaliações do participante numa turma. */
+export const InscricaoDetalhePage: React.FC<Props> = ({ inscricaoId, onVoltar, onAbrirTentativa }) => {
   const [inscricao, setInscricao] = useState<InscricaoDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -87,6 +89,8 @@ export const InscricaoDetalhePage: React.FC<Props> = ({ inscricaoId, onVoltar })
           </ul>
         )}
       </Card>
+
+      <ConteudoInscricaoSection inscricaoId={inscricao.id} onAbrirTentativa={onAbrirTentativa} />
     </div>
   );
 };

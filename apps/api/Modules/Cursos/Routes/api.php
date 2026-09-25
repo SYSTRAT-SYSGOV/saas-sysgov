@@ -11,13 +11,19 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Cursos\Http\Controllers\AulaController;
+use Modules\Cursos\Http\Controllers\AvaliacaoController;
 use Modules\Cursos\Http\Controllers\CatalogoController;
 use Modules\Cursos\Http\Controllers\CertificadoController;
+use Modules\Cursos\Http\Controllers\CorrecaoController;
+use Modules\Cursos\Http\Controllers\ConteudoInscricaoController;
 use Modules\Cursos\Http\Controllers\CursoController;
 use Modules\Cursos\Http\Controllers\FormacaoController;
 use Modules\Cursos\Http\Controllers\InscricaoController;
+use Modules\Cursos\Http\Controllers\MaterialController;
 use Modules\Cursos\Http\Controllers\ModeloCertificadoController;
 use Modules\Cursos\Http\Controllers\PresencaController;
+use Modules\Cursos\Http\Controllers\QuestaoController;
+use Modules\Cursos\Http\Controllers\TentativaController;
 use Modules\Cursos\Http\Controllers\TurmaController;
 use Modules\Cursos\Http\Controllers\UsuarioOrgaoController;
 
@@ -47,6 +53,42 @@ Route::post('/cursos/{curso}/aulas', [AulaController::class, 'store']);
 Route::put('/aulas/{aula}', [AulaController::class, 'update']);
 Route::delete('/aulas/{aula}', [AulaController::class, 'destroy']);
 
+// Materiais do curso (Fase 2)
+Route::get('/cursos/{curso}/materiais', [MaterialController::class, 'index']);
+Route::post('/cursos/{curso}/materiais', [MaterialController::class, 'store']);
+Route::post('/cursos/{curso}/materiais/reordenar', [MaterialController::class, 'reordenar']);
+Route::get('/materiais/{material}', [MaterialController::class, 'show']);
+Route::put('/materiais/{material}', [MaterialController::class, 'update']);
+Route::delete('/materiais/{material}', [MaterialController::class, 'destroy']);
+Route::post('/materiais/{material}/arquivo', [MaterialController::class, 'definirArquivo']);
+Route::get('/materiais/{material}/arquivo', [MaterialController::class, 'arquivo']);
+
+// Banco de questões e avaliações (Fase 2)
+Route::get('/cursos/{curso}/questoes', [QuestaoController::class, 'index']);
+Route::post('/cursos/{curso}/questoes', [QuestaoController::class, 'store']);
+Route::get('/questoes/{questao}', [QuestaoController::class, 'show']);
+Route::put('/questoes/{questao}', [QuestaoController::class, 'update']);
+Route::delete('/questoes/{questao}', [QuestaoController::class, 'destroy']);
+Route::post('/questoes/{questao}/desativar', [QuestaoController::class, 'desativar']);
+Route::post('/questoes/{questao}/ativar', [QuestaoController::class, 'ativar']);
+
+Route::get('/cursos/{curso}/avaliacoes', [AvaliacaoController::class, 'index']);
+Route::post('/cursos/{curso}/avaliacoes', [AvaliacaoController::class, 'store']);
+Route::get('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'show']);
+Route::put('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'update']);
+Route::delete('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'destroy']);
+Route::post('/avaliacoes/{avaliacao}/publicar', [AvaliacaoController::class, 'publicar']);
+Route::post('/avaliacoes/{avaliacao}/despublicar', [AvaliacaoController::class, 'despublicar']);
+
+// Tentativas do participante e correção (Fase 2)
+Route::post('/avaliacoes/{avaliacao}/tentativas', [TentativaController::class, 'iniciar']);
+Route::get('/tentativas/{tentativa}', [TentativaController::class, 'show']);
+Route::put('/tentativas/{tentativa}/respostas/{questao}', [TentativaController::class, 'salvarResposta'])->whereNumber('questao')->middleware('throttle:cursos-respostas');
+Route::post('/tentativas/{tentativa}/enviar', [TentativaController::class, 'enviar']);
+Route::get('/turmas/{turma}/correcoes', [CorrecaoController::class, 'fila']);
+Route::get('/tentativas/{tentativa}/correcao', [CorrecaoController::class, 'show']);
+Route::put('/tentativas/{tentativa}/respostas/{questao}/correcao', [CorrecaoController::class, 'corrigir'])->whereNumber('questao');
+
 // Formações
 Route::get('/formacoes', [FormacaoController::class, 'index']);
 Route::post('/formacoes', [FormacaoController::class, 'store']);
@@ -69,6 +111,7 @@ Route::get('/turmas/{turma}/inscricoes/exportar', [InscricaoController::class, '
 Route::post('/turmas/{turma}/inscricoes', [InscricaoController::class, 'inscrever']);
 Route::post('/turmas/{turma}/inscricoes/direta', [InscricaoController::class, 'inscreverDireto']);
 Route::get('/inscricoes/{inscricao}', [InscricaoController::class, 'show']);
+Route::get('/inscricoes/{inscricao}/conteudo', [ConteudoInscricaoController::class, 'show']);
 Route::post('/inscricoes/{inscricao}/aprovar', [InscricaoController::class, 'aprovar']);
 Route::post('/inscricoes/{inscricao}/recusar', [InscricaoController::class, 'recusar']);
 Route::post('/inscricoes/{inscricao}/cancelar', [InscricaoController::class, 'cancelar']);
