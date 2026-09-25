@@ -53,6 +53,15 @@ final class HtmlSanitizer
         'span' => [],
     ];
 
+    /**
+     * Tags cujo conteúdo não é texto para exibir (código, estilos, objetos
+     * embutidos): saem inteiras, com os filhos. As demais tags não permitidas
+     * perdem só a marcação e mantêm o texto.
+     *
+     * @var list<string>
+     */
+    private const DROP_WITH_CONTENT = ['script', 'style', 'noscript', 'template', 'iframe', 'object', 'embed'];
+
     public function sanitize(string $html): string
     {
         if (trim($html) === '') {
@@ -87,6 +96,11 @@ final class HtmlSanitizer
         foreach (iterator_to_array($node->childNodes) as $child) {
             if ($child instanceof DOMElement) {
                 $tag = strtolower($child->tagName);
+
+                if (in_array($tag, self::DROP_WITH_CONTENT, true)) {
+                    $node->removeChild($child);
+                    continue;
+                }
 
                 if (!array_key_exists($tag, self::ALLOWED_TAGS)) {
                     // Tag não permitida: preserva o texto/filhos, remove só a tag.
