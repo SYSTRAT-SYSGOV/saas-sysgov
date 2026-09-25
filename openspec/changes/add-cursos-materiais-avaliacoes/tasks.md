@@ -102,7 +102,7 @@
 - [x] 6.2 Abas Materiais, Questões e Avaliações no `CursoDetalhePage`, com modais e o componente
       `RegraLiberacaoFields` (D13) e o `RichTextEditor` de `@sysgov/ui`; testes de formulário
       (Vitest) para a validação da regra de liberação e das alternativas da objetiva.
-- [ ] 6.3 Seções Materiais e Avaliações no `InscricaoDetalhePage` (vídeo em iframe com
+- [x] 6.3 Seções Materiais e Avaliações no `InscricaoDetalhePage` (vídeo em iframe com
       `sandbox`, PDF por blob, texto com `DOMPurify`, link com `noopener`), com situação de
       liberação e tentativas restantes; teste do cenário "Consulta de materiais e avaliações".
 - [ ] 6.4 Tela de responder (`/cursos?tentativa=:id`, na convenção de query string do módulo): responder com autosave, cronômetro pelo relógio do

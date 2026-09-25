@@ -65,7 +65,13 @@ export const CursosModule: React.FC = () => {
     return <CursoDetalhePage cursoId={Number(cursoId)} onVoltar={voltar} onAbrirTurma={(id) => irPara({ aba: aba ?? 'cursos', turma: String(id) })} />;
   }
   if (inscricaoId) {
-    return <InscricaoDetalhePage inscricaoId={Number(inscricaoId)} onVoltar={voltar} />;
+    return (
+      <InscricaoDetalhePage
+        inscricaoId={Number(inscricaoId)}
+        onVoltar={voltar}
+        onAbrirTentativa={(id) => irPara({ aba: aba ?? 'meus', inscricao: inscricaoId, tentativa: String(id) })}
+      />
+    );
   }
 
   return (
