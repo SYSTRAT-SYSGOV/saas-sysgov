@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Licita\Enums\StatusMapaRisco;
 use Modules\Licita\Models\MapaRisco;
 use Modules\Licita\Models\Processo;
-use Modules\Licita\Support\HtmlSanitizer;
+use App\Support\HtmlSanitizer;
 
 final class MapaRiscoService
 {

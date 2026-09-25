@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Licita\Enums\StatusTr;
 use Modules\Licita\Models\Processo;
 use Modules\Licita\Models\Tr;
-use Modules\Licita\Support\HtmlSanitizer;
+use App\Support\HtmlSanitizer;
 
 final class TrService
 {

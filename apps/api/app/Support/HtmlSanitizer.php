@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Modules\Licita\Support;
+namespace App\Support;
 
 use DOMDocument;
 use DOMElement;
