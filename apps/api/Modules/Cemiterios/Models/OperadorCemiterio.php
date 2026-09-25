@@ -40,19 +40,19 @@ final class OperadorCemiterio extends Model
         'alvara_validade' => 'date',
     ];
 
-    /** @param Builder<$this> $query */
+    /** @param Builder<OperadorCemiterio> $query */
     public function scopeCoveiros(Builder $query): Builder
     {
         return $query->where('tipo', 'coveiro');
     }
 
-    /** @param Builder<$this> $query */
+    /** @param Builder<OperadorCemiterio> $query */
     public function scopePedreiros(Builder $query): Builder
     {
         return $query->where('tipo', 'pedreiro');
     }
 
-    /** @param Builder<$this> $query */
+    /** @param Builder<OperadorCemiterio> $query */
     public function scopeAtivos(Builder $query): Builder
     {
         return $query->where('situacao', 'ativo');

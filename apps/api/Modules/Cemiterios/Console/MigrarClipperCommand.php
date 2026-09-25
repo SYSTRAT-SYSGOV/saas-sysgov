@@ -40,6 +40,7 @@ final class MigrarClipperCommand extends Command
 
     private const CAMINHO_PADRAO = 'D:/SYSTRAT/Novos Projetos/Gestão Cemitérios/cemiterio/exported_data';
 
+    /** @var array<string, int> */
     private array $estatisticas = [
         'cemiterios' => 0,
         'setores' => 0,
