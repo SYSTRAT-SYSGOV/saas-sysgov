@@ -114,7 +114,7 @@
 
 ## 7. Fechamento
 
-- [ ] 7.1 Estender o `CursosDadosDemonstracaoSeeder` com materiais dos quatro tipos, uma
+- [x] 7.1 Estender o `CursosDadosDemonstracaoSeeder` com materiais dos quatro tipos, uma
       avaliação mista e tentativas de exemplo; verificar que o `CursosDadosDemonstracaoSeederTest`
       continua verde.
 - [ ] 7.2 Suíte completa verde: phpunit (Docker), PHPStan, typecheck e testes de `apps/web` e
