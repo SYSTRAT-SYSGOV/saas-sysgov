@@ -12,9 +12,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Modules\Cursos\Enums\RegraLiberacao;
 use Modules\Cursos\Enums\TipoMaterial;
-use Modules\Cursos\Models\Aula;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Material;
 use Modules\Cursos\Support\VideoUrl;
@@ -32,6 +30,7 @@ final class MaterialService
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly HtmlSanitizer $sanitizer,
+        private readonly LiberacaoAtributos $liberacao,
     ) {}
 
     /**
@@ -173,7 +172,7 @@ final class MaterialService
         }
 
         $atributos += $this->conteudoDoTipo($tipo, $dados, $atual);
-        $atributos += $this->liberacao($curso, $dados, $atual);
+        $atributos += $this->liberacao->montar($curso, $dados, $atual);
 
         if (array_key_exists('publicado', $dados)) {
             $atributos['publicado'] = (bool) $dados['publicado'];
@@ -237,34 +236,5 @@ final class MaterialService
             case TipoMaterial::Arquivo:
                 return [];
         }
-    }
-
-    /**
-     * @param array<string, mixed> $dados
-     * @return array<string, mixed>
-     */
-    private function liberacao(Curso $curso, array $dados, ?Material $atual): array
-    {
-        $regra = isset($dados['liberacao_regra'])
-            ? RegraLiberacao::from((string) $dados['liberacao_regra'])
-            : ($atual?->regraLiberacao() ?? RegraLiberacao::Imediata);
-        $aulaId = array_key_exists('aula_id', $dados) ? ($dados['aula_id'] !== null ? (int) $dados['aula_id'] : null) : $atual?->aula_id;
-        $dias = array_key_exists('liberacao_dias', $dados) ? ($dados['liberacao_dias'] !== null ? (int) $dados['liberacao_dias'] : null) : $atual?->liberacao_dias;
-
-        if ($aulaId !== null && !Aula::query()->where('curso_id', $curso->id)->whereKey($aulaId)->exists()) {
-            throw new DomainException('A aula informada não pertence a este curso.');
-        }
-        if ($regra === RegraLiberacao::InicioAula && $aulaId === null) {
-            throw new DomainException('A liberação "no início da aula" exige uma aula vinculada ao material.');
-        }
-        if ($regra === RegraLiberacao::DiasAposInicio && ($dias === null || $dias < 0 || $dias > 365)) {
-            throw new DomainException('Informe de 0 a 365 dias para a liberação após o início da turma.');
-        }
-
-        return [
-            'aula_id' => $aulaId,
-            'liberacao_regra' => $regra->value,
-            'liberacao_dias' => $regra === RegraLiberacao::DiasAposInicio ? $dias : null,
-        ];
     }
 }

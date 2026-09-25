@@ -6,8 +6,10 @@ namespace Modules\Cursos\Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Formacao;
 use Modules\Cursos\Models\Material;
+use Modules\Cursos\Models\Questao;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
 
@@ -42,6 +44,9 @@ final class IsolamentoRotasTest extends TestCase
         $materialB = $this->noTenant($tenantB, fn () => Material::create(['curso_id' => $cursoB->id, 'tipo' => 'texto', 'titulo' => 'Material B', 'conteudo' => '<p>x</p>', 'publicado' => true]));
         unset($adminB);
 
+        $questaoB = $this->noTenant($tenantB, fn () => Questao::create(['curso_id' => $cursoB->id, 'tipo' => 'dissertativa', 'enunciado' => '<p>x</p>']));
+        $avaliacaoB = $this->noTenant($tenantB, fn () => Avaliacao::create(['curso_id' => $cursoB->id, 'titulo' => 'Prova B']));
+
         $rotas = [
             ['get', "/api/cursos/cursos/{$cursoB->id}"],
             ['put', "/api/cursos/cursos/{$cursoB->id}"],
@@ -57,6 +62,20 @@ final class IsolamentoRotasTest extends TestCase
             ['delete', "/api/cursos/materiais/{$materialB->id}"],
             ['post', "/api/cursos/materiais/{$materialB->id}/arquivo"],
             ['get', "/api/cursos/materiais/{$materialB->id}/arquivo"],
+            ['get', "/api/cursos/cursos/{$cursoB->id}/questoes"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/questoes"],
+            ['get', "/api/cursos/questoes/{$questaoB->id}"],
+            ['put', "/api/cursos/questoes/{$questaoB->id}"],
+            ['delete', "/api/cursos/questoes/{$questaoB->id}"],
+            ['post', "/api/cursos/questoes/{$questaoB->id}/desativar"],
+            ['post', "/api/cursos/questoes/{$questaoB->id}/ativar"],
+            ['get', "/api/cursos/cursos/{$cursoB->id}/avaliacoes"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/avaliacoes"],
+            ['get', "/api/cursos/avaliacoes/{$avaliacaoB->id}"],
+            ['put', "/api/cursos/avaliacoes/{$avaliacaoB->id}"],
+            ['delete', "/api/cursos/avaliacoes/{$avaliacaoB->id}"],
+            ['post', "/api/cursos/avaliacoes/{$avaliacaoB->id}/publicar"],
+            ['post', "/api/cursos/avaliacoes/{$avaliacaoB->id}/despublicar"],
             ['put', "/api/cursos/aulas/{$aulaB->id}"],
             ['delete', "/api/cursos/aulas/{$aulaB->id}"],
             ['get', "/api/cursos/formacoes/{$formacaoB->id}"],

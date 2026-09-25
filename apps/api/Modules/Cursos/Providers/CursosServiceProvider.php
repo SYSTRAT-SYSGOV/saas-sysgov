@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Formacao;
@@ -16,6 +17,7 @@ use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\Material;
 use Modules\Cursos\Models\ModeloCertificado;
 use Modules\Cursos\Models\Turma;
+use Modules\Cursos\Policies\AvaliacaoPolicy;
 use Modules\Cursos\Policies\CertificadoPolicy;
 use Modules\Cursos\Policies\CursoPolicy;
 use Modules\Cursos\Policies\FormacaoPolicy;
@@ -39,6 +41,7 @@ final class CursosServiceProvider extends ServiceProvider
         Gate::policy(Turma::class, TurmaPolicy::class);
         Gate::policy(Inscricao::class, InscricaoPolicy::class);
         Gate::policy(Material::class, MaterialPolicy::class);
+        Gate::policy(Avaliacao::class, AvaliacaoPolicy::class);
         Gate::policy(Certificado::class, CertificadoPolicy::class);
         Gate::policy(ModeloCertificado::class, ModeloCertificadoPolicy::class);
 

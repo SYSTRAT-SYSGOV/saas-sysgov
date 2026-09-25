@@ -9,7 +9,6 @@ use Modules\Cursos\Enums\StatusInscricao;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\Material;
-use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Policies\Concerns\PermissoesCursos;
 use Modules\Cursos\Services\LiberacaoService;
 
@@ -41,12 +40,6 @@ final class MaterialPolicy
         return $this->administra($user)
             || $this->instrutorDoCurso($user, $material->curso_id)
             || $this->participanteComAcesso($user, $material);
-    }
-
-    private function instrutorDoCurso(User $user, int $cursoId): bool
-    {
-        return $this->pode($user, 'cursos.instrutor')
-            && Turma::query()->where('curso_id', $cursoId)->whereHas('instrutores', fn ($q) => $q->where('users.id', $user->id))->exists();
     }
 
     /** Inscrição confirmada ou já apurada, em turma do curso onde o material está publicado e liberado. */

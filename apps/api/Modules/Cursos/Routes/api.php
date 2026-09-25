@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Cursos\Http\Controllers\AulaController;
+use Modules\Cursos\Http\Controllers\AvaliacaoController;
 use Modules\Cursos\Http\Controllers\CatalogoController;
 use Modules\Cursos\Http\Controllers\CertificadoController;
 use Modules\Cursos\Http\Controllers\CursoController;
@@ -19,6 +20,7 @@ use Modules\Cursos\Http\Controllers\InscricaoController;
 use Modules\Cursos\Http\Controllers\MaterialController;
 use Modules\Cursos\Http\Controllers\ModeloCertificadoController;
 use Modules\Cursos\Http\Controllers\PresencaController;
+use Modules\Cursos\Http\Controllers\QuestaoController;
 use Modules\Cursos\Http\Controllers\TurmaController;
 use Modules\Cursos\Http\Controllers\UsuarioOrgaoController;
 
@@ -57,6 +59,23 @@ Route::put('/materiais/{material}', [MaterialController::class, 'update']);
 Route::delete('/materiais/{material}', [MaterialController::class, 'destroy']);
 Route::post('/materiais/{material}/arquivo', [MaterialController::class, 'definirArquivo']);
 Route::get('/materiais/{material}/arquivo', [MaterialController::class, 'arquivo']);
+
+// Banco de questões e avaliações (Fase 2)
+Route::get('/cursos/{curso}/questoes', [QuestaoController::class, 'index']);
+Route::post('/cursos/{curso}/questoes', [QuestaoController::class, 'store']);
+Route::get('/questoes/{questao}', [QuestaoController::class, 'show']);
+Route::put('/questoes/{questao}', [QuestaoController::class, 'update']);
+Route::delete('/questoes/{questao}', [QuestaoController::class, 'destroy']);
+Route::post('/questoes/{questao}/desativar', [QuestaoController::class, 'desativar']);
+Route::post('/questoes/{questao}/ativar', [QuestaoController::class, 'ativar']);
+
+Route::get('/cursos/{curso}/avaliacoes', [AvaliacaoController::class, 'index']);
+Route::post('/cursos/{curso}/avaliacoes', [AvaliacaoController::class, 'store']);
+Route::get('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'show']);
+Route::put('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'update']);
+Route::delete('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'destroy']);
+Route::post('/avaliacoes/{avaliacao}/publicar', [AvaliacaoController::class, 'publicar']);
+Route::post('/avaliacoes/{avaliacao}/despublicar', [AvaliacaoController::class, 'despublicar']);
 
 // Formações
 Route::get('/formacoes', [FormacaoController::class, 'index']);
