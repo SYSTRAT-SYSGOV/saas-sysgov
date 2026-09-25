@@ -1,4 +1,4 @@
-import type { Modalidade, StatusCurso, StatusInscricao, StatusTurma, SituacaoAula, TipoCurso } from '@sysgov/sdk';
+import type { Modalidade, RegraLiberacao, StatusCurso, StatusInscricao, StatusTentativa, StatusTurma, SituacaoAula, TipoCurso, TipoMaterial, TipoQuestao } from '@sysgov/sdk';
 import type { StatusVariant } from '@/components/ui';
 
 export function formatarCargaHoraria(minutos: number): string {
@@ -79,4 +79,39 @@ export function baixarBlob(blob: Blob, nomeArquivo: string): void {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+export const TIPO_MATERIAL: Record<TipoMaterial, string> = { arquivo: 'Arquivo PDF', video: 'Vídeo', link: 'Link externo', texto: 'Texto' };
+
+export const REGRA_LIBERACAO: Record<RegraLiberacao, string> = {
+  imediata: 'Imediata',
+  inicio_aula: 'No início da aula',
+  dias_apos_inicio: 'Dias após o início da turma',
+};
+
+export const TIPO_QUESTAO: Record<TipoQuestao, string> = { objetiva: 'Objetiva', dissertativa: 'Dissertativa' };
+
+export const STATUS_TENTATIVA: Record<StatusTentativa, { label: string; variant: StatusVariant }> = {
+  em_andamento: { label: 'Em andamento', variant: 'info' },
+  aguardando_correcao: { label: 'Aguardando correção', variant: 'warning' },
+  corrigida: { label: 'Corrigida', variant: 'success' },
+};
+
+/** Nota de 0 a 10 com duas casas e vírgula ("8,75"); "—" quando não há nota. */
+export function formatarNota(valor: number | string | null | undefined): string {
+  if (valor === null || valor === undefined || valor === '') return '—';
+  return Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+export function formatarTamanho(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} KB`;
+  return `${(bytes / (1024 * 1024)).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`;
+}
+
+/** Texto curto de uma regra de liberação ("7 dias após o início da turma"). */
+export function descreverLiberacao(regra: RegraLiberacao, dias: number | null): string {
+  if (regra === 'dias_apos_inicio') return dias === 0 ? 'No dia do início da turma' : `${dias} ${dias === 1 ? 'dia' : 'dias'} após o início da turma`;
+  return REGRA_LIBERACAO[regra];
 }

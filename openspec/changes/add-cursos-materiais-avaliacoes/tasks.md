@@ -96,16 +96,16 @@
 
 ## 6. SDK e frontend
 
-- [ ] 6.1 Tipos e métodos novos em `packages/sdk/src/modules/cursos` (materiais, questões,
+- [x] 6.1 Tipos e métodos novos em `packages/sdk/src/modules/cursos` (materiais, questões,
       avaliações, tentativas, correções, conteúdo da inscrição, download do PDF como blob);
       verificar o typecheck do web-client.
-- [ ] 6.2 Abas Materiais, Questões e Avaliações no `CursoDetalhePage`, com modais e o componente
+- [x] 6.2 Abas Materiais, Questões e Avaliações no `CursoDetalhePage`, com modais e o componente
       `RegraLiberacaoFields` (D13) e o `RichTextEditor` de `@sysgov/ui`; testes de formulário
       (Vitest) para a validação da regra de liberação e das alternativas da objetiva.
 - [ ] 6.3 Seções Materiais e Avaliações no `InscricaoDetalhePage` (vídeo em iframe com
       `sandbox`, PDF por blob, texto com `DOMPurify`, link com `noopener`), com situação de
       liberação e tentativas restantes; teste do cenário "Consulta de materiais e avaliações".
-- [ ] 6.4 Rota `/cursos/tentativas/:id`: responder com autosave, cronômetro pelo relógio do
+- [ ] 6.4 Tela de responder (`/cursos?tentativa=:id`, na convenção de query string do módulo): responder com autosave, cronômetro pelo relógio do
       servidor, confirmação de envio e tela de resultado sem gabarito; testes Vitest do
       autosave e do bloqueio após o prazo.
 - [ ] 6.5 Aba Correções no `TurmaDetalhePage` e nota parcial na lista de inscritos, com a

@@ -8,6 +8,10 @@ export type StatusInscricao = 'pendente' | 'confirmada' | 'lista_espera' | 'canc
 export type OrigemPresenca = 'manual' | 'qr_code';
 export type SituacaoAula = 'presente' | 'falta' | 'em_andamento' | 'nao_realizada';
 export type TipoCertificado = 'curso' | 'formacao';
+export type TipoMaterial = 'arquivo' | 'video' | 'link' | 'texto';
+export type RegraLiberacao = 'imediata' | 'inicio_aula' | 'dias_apos_inicio';
+export type TipoQuestao = 'objetiva' | 'dissertativa';
+export type StatusTentativa = 'em_andamento' | 'aguardando_correcao' | 'corrigida';
 
 export interface Curso {
   id: number;
@@ -38,6 +42,8 @@ export interface CursoInput {
   descricao?: string | null;
   carga_horaria_minutos: number;
   frequencia_minima?: number;
+  /** 0 a 10; nulo/ausente = sem nota mínima. Eventos não aceitam. */
+  nota_minima?: number | null;
   modelo_certificado_id?: number | null;
 }
 
@@ -179,6 +185,7 @@ export interface Inscricao {
   cancelada_em: string | null;
   motivo_cancelamento: string | null;
   frequencia_apurada: string | null;
+  nota_apurada: string | null;
   concluida_em: string | null;
   created_at: string;
 }
@@ -188,6 +195,8 @@ export interface MinhaInscricao extends Inscricao {
   certificado: { id: number; inscricao_id: number; codigo: string; revogado_em: string | null } | null;
   posicao_fila: number | null;
   frequencia: Frequencia;
+  /** Nota parcial (turma aberta) ou apurada (encerrada); nulo sem avaliações publicadas. */
+  nota: number | null;
 }
 
 export interface AulaFrequencia {
@@ -214,6 +223,7 @@ export interface InscritoTurma {
   inscrito_em: string;
   posicao_fila: number | null;
   frequencia: Frequencia;
+  nota: number | null;
 }
 
 export interface ItemChamada {
@@ -313,4 +323,244 @@ export interface CursoFiltros {
   busca?: string;
   page?: number;
   per_page?: number;
+}
+
+// ------------------------------------------------------------------ Fase 2: conteúdo e avaliação
+
+export interface Material {
+  id: number;
+  curso_id: number;
+  aula_id: number | null;
+  tipo: TipoMaterial;
+  titulo: string;
+  descricao: string | null;
+  ordem: number;
+  publicado: boolean;
+  conteudo: string | null;
+  url: string | null;
+  video_provedor: string | null;
+  video_id: string | null;
+  /** Endereço do player, montado no servidor a partir de provedor + ID. */
+  embed_url: string | null;
+  arquivo_nome: string | null;
+  arquivo_tamanho: number | null;
+  liberacao_regra: RegraLiberacao;
+  liberacao_dias: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LiberacaoInput {
+  aula_id?: number | null;
+  liberacao_regra?: RegraLiberacao;
+  liberacao_dias?: number | null;
+}
+
+export interface MaterialInput extends LiberacaoInput {
+  tipo?: TipoMaterial;
+  titulo?: string;
+  descricao?: string | null;
+  ordem?: number;
+  publicado?: boolean;
+  /** Tipo texto. */
+  conteudo?: string | null;
+  /** Tipos link e vídeo. */
+  url?: string | null;
+}
+
+export interface Alternativa {
+  id: number;
+  questao_id: number;
+  texto: string;
+  correta: boolean;
+  ordem: number;
+}
+
+export interface Questao {
+  id: number;
+  curso_id: number;
+  tipo: TipoQuestao;
+  enunciado: string;
+  pontuacao: string;
+  orientacao_correcao: string | null;
+  ativa: boolean;
+  alternativas: Alternativa[];
+  avaliacoes_count?: number;
+}
+
+export interface QuestaoInput {
+  tipo?: TipoQuestao;
+  enunciado?: string;
+  pontuacao?: number;
+  orientacao_correcao?: string | null;
+  /** Objetiva: de 2 a 6, exatamente uma correta. */
+  alternativas?: { texto: string; correta?: boolean }[];
+}
+
+export interface AvaliacaoQuestao {
+  questao_id: number;
+  ordem: number;
+  questao: Questao;
+}
+
+export interface Avaliacao {
+  id: number;
+  curso_id: number;
+  aula_id: number | null;
+  titulo: string;
+  instrucoes: string | null;
+  peso: number;
+  tentativas_max: number;
+  tempo_limite_minutos: number | null;
+  publicada: boolean;
+  liberacao_regra: RegraLiberacao;
+  liberacao_dias: number | null;
+  questoes_count: number;
+  tentativas_count: number;
+  /** Só o Administrador recebe as questões (com gabarito). */
+  questoes?: AvaliacaoQuestao[];
+}
+
+export interface AvaliacaoInput extends LiberacaoInput {
+  titulo?: string;
+  instrucoes?: string | null;
+  peso?: number;
+  tentativas_max?: number;
+  tempo_limite_minutos?: number | null;
+  /** Ids do banco de questões do curso, na ordem da prova. */
+  questoes?: number[];
+}
+
+/** Questão como o participante a recebe: nunca traz `correta` nem a orientação de correção. */
+export interface TentativaQuestaoParticipante {
+  questao_id: number;
+  ordem: number;
+  tipo: TipoQuestao;
+  enunciado: string;
+  pontuacao: number;
+  alternativas: { id: number; texto: string; ordem: number }[];
+  resposta: { alternativa_id: number | null; texto: string | null };
+  /** Só depois de corrigida. `acertou` existe nas objetivas. */
+  resultado?: { pontos: number | null; comentario: string | null; acertou?: boolean };
+}
+
+export interface TentativaParticipante {
+  id: number;
+  avaliacao: { id: number; titulo: string; instrucoes: string | null; tempo_limite_minutos: number | null; tentativas_max: number };
+  inscricao_id: number;
+  numero: number;
+  status: StatusTentativa;
+  iniciada_em: string;
+  prazo_em: string | null;
+  enviada_em: string | null;
+  corrigida_em: string | null;
+  /** Hora do servidor: o cronômetro usa esta, não o relógio do navegador. */
+  servidor_agora: string;
+  nota: string | null;
+  questoes: TentativaQuestaoParticipante[];
+}
+
+export interface RespostaSalva {
+  questao_id: number;
+  alternativa_id: number | null;
+  texto: string | null;
+  prazo_em: string | null;
+  servidor_agora: string;
+}
+
+export interface FilaCorrecaoItem {
+  id: number;
+  avaliacao: { id: number; titulo: string };
+  participante: { id: number; nome: string };
+  inscricao_id: number;
+  numero: number;
+  status: StatusTentativa;
+  enviada_em: string | null;
+  nota: string | null;
+  pendentes: number;
+}
+
+export interface TentativaCorrecao {
+  id: number;
+  avaliacao: { id: number; titulo: string };
+  inscricao_id: number;
+  turma_id: number;
+  participante: { id: number; nome: string; email: string };
+  numero: number;
+  status: StatusTentativa;
+  iniciada_em: string;
+  enviada_em: string | null;
+  corrigida_em: string | null;
+  nota: string | null;
+  questoes: {
+    questao_id: number;
+    ordem: number;
+    tipo: TipoQuestao;
+    enunciado: string;
+    pontuacao: number;
+    orientacao_correcao: string | null;
+    alternativas: { id: number; texto: string; ordem: number; correta: boolean }[];
+    resposta: { alternativa_id: number | null; texto: string | null };
+    correcao: { pontos: number | null; comentario: string | null; corrigida_por: number | null; corrigida_em: string | null; pendente: boolean };
+  }[];
+}
+
+export interface SituacaoLiberacao {
+  liberado: boolean;
+  /** ISO da liberação prevista; nulo quando já liberado ou aguardando agendamento. */
+  prevista_em: string | null;
+  aguardando_agendamento: boolean;
+}
+
+/** Material na área do participante: o que não foi liberado vem só com título e data prevista. */
+export interface ConteudoMaterial extends SituacaoLiberacao {
+  id: number;
+  tipo: TipoMaterial;
+  titulo: string;
+  ordem: number;
+  aula_id: number | null;
+  descricao?: string | null;
+  conteudo?: string | null;
+  url?: string | null;
+  embed_url?: string | null;
+  arquivo_nome?: string | null;
+  arquivo_tamanho?: number | null;
+}
+
+export interface ConteudoTentativa {
+  id: number;
+  numero: number;
+  status: StatusTentativa;
+  iniciada_em: string;
+  prazo_em: string | null;
+  enviada_em: string | null;
+  nota: string | null;
+}
+
+export interface ConteudoAvaliacao extends SituacaoLiberacao {
+  id: number;
+  titulo: string;
+  peso: number;
+  tentativas_max: number;
+  tempo_limite_minutos: number | null;
+  questoes_total: number;
+  instrucoes?: string | null;
+  tentativas_usadas: number;
+  tentativas_restantes: number;
+  melhor_nota: number | null;
+  tentativa_em_andamento_id: number | null;
+  pode_iniciar: boolean;
+  tentativas: ConteudoTentativa[];
+}
+
+export interface ConteudoInscricao {
+  inscricao_id: number;
+  turma_id: number;
+  status: StatusInscricao;
+  /** Falso em inscrição pendente, em lista de espera ou cancelada: sem materiais nem avaliações. */
+  acesso: boolean;
+  nota: number | null;
+  nota_tipo: 'parcial' | 'final' | null;
+  materiais: ConteudoMaterial[];
+  avaliacoes: ConteudoAvaliacao[];
 }
