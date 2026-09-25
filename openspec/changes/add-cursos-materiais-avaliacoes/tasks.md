@@ -40,21 +40,21 @@
 
 ## 3. Banco de questões e avaliações
 
-- [ ] 3.1 Migrations e models de `cursos_questoes`, `cursos_questao_alternativas`,
+- [x] 3.1 Migrations e models de `cursos_questoes`, `cursos_questao_alternativas`,
       `cursos_avaliacoes` e `cursos_avaliacao_questoes` (D1); verificar `migrate` e isolamento
       A/B.
-- [ ] 3.2 `QuestaoService` + controller (CRUD, desativar; objetiva com 2 a 6 alternativas e
+- [x] 3.2 `QuestaoService` + controller (CRUD, desativar; objetiva com 2 a 6 alternativas e
       exatamente uma correta; enunciado e orientação sanitizados); testes dos cenários
       "Objetiva sem alternativa correta" e "Exclusão de questão respondida".
-- [ ] 3.3 `AvaliacaoService` + controller (CRUD, publicar/despublicar, questões do próprio curso
+- [x] 3.3 `AvaliacaoService` + controller (CRUD, publicar/despublicar, questões do próprio curso
       e ativas, travas depois da primeira tentativa, recusa em evento); testes dos cenários
       "Avaliação em evento", "Questão de outro curso" e "Alterar questões após tentativa".
-- [ ] 3.4 Validar `nota_minima` no cadastro do curso (0 a 10, proibida em evento); testes dos
+- [x] 3.4 Validar `nota_minima` no cadastro do curso (0 a 10, proibida em evento); testes dos
       cenários "Nota mínima fora da escala" e "Nota mínima em evento".
 
 ## 4. Tentativas e correção
 
-- [ ] 4.1 Migrations e models de `cursos_tentativas` e `cursos_respostas` (únicos da D1);
+- [x] 4.1 Migrations e models de `cursos_tentativas` e `cursos_respostas` (únicos da D1);
       verificar `migrate` e isolamento A/B.
 - [ ] 4.2 `TentativaService::iniciar` (inscrição confirmada, turma aberta, avaliação publicada
       e liberada, sem outra em andamento, limite de tentativas, snapshot das questões, `prazo_em`)
