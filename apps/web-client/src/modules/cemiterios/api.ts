@@ -88,9 +88,29 @@ export interface Concessionario {
 }
 export interface Concessao {
   id: number; numero: string; processo_administrativo?: string | null; plot_id: number; holder_id: number; modalidade: 'temporaria' | 'perpetua'; inicio: string;
-  termino: string | null; situacao: string; pendencia_regularizacao: boolean; motivo_pendencia?: string | null;
-  jazigo?: Pick<Jazigo, 'id' | 'codigo' | 'estado' | 'processo_administrativo'> & { cemiterio?: { nome: string } };
+  termino: string | null; situacao: string; motivo_extincao?: 'renuncia' | 'abandono' | null; extinta_em?: string | null;
+  pendencia_regularizacao: boolean; motivo_pendencia?: string | null;
+  guias_count?: number; inadimplente?: boolean;
+  jazigo?: Pick<Jazigo, 'id' | 'codigo' | 'estado' | 'processo_administrativo'> & { cemiterio?: { nome: string }; setor?: { codigo: string } };
   concessionario?: Partial<Concessionario> & { id: number; nome: string };
+}
+
+export interface FiltrosConcessoesAvancados {
+  setorId?: string | null;
+  modalidade?: 'todas' | 'temporaria' | 'perpetua';
+  situacao?: 'todas' | 'vigente' | 'expirada' | 'extinta';
+  pendenciaRegularizacao?: boolean;
+  financeiro?: 'todas' | 'adimplente' | 'inadimplente' | 'sem_guias';
+  venceEm?: 'todas' | '30' | '60' | '90';
+  busca: string;
+}
+
+export interface EventoAuditoria {
+  id: number;
+  user_id: number | null;
+  action: string;
+  resource: string;
+  created_at: string;
 }
 
 export interface HerdeiroSucessao {
@@ -440,6 +460,8 @@ export const cemiteriosApi = {
   concessoes: (filtros: Record<string, unknown> = {}) => get<Paginado<Concessao>>('/concessoes', filtros),
   conceder: (dados: { plot_id: number; holder_id: number; modalidade: string; lock_version: number; inicio?: string; processo_administrativo?: string }) => post<Concessao>('/concessoes', dados),
   renovar: (id: number) => post<{ concessao: Concessao; guia: Guia }>(`/concessoes/${id}/renovar`),
+  renunciarConcessao: (id: number, dados: { motivo: string; processo_administrativo?: string }) => post<Concessao>(`/concessoes/${id}/renunciar`, dados),
+  historicoConcessao: (id: number) => get<Paginado<EventoAuditoria>>(`/concessoes/${id}/historico`),
 
   // Sucessão Hereditária
   sucessoes: (filtros: Record<string, unknown> = {}) => get<Paginado<ProcessoSucessao>>('/sucessoes', filtros),

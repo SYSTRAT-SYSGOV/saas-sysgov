@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property \Illuminate\Support\Carbon|null $termino
  * @property string|null $processo_administrativo
  * @property string $situacao
+ * @property string|null $motivo_extincao
+ * @property \Illuminate\Support\Carbon|null $extinta_em
  * @property \Illuminate\Support\Carbon|null $notificado_para_termino
  * @property bool $pendencia_regularizacao
  * @property string|null $motivo_pendencia
@@ -40,6 +42,7 @@ final class Concessao extends Model
     protected $casts = [
         'inicio' => 'date',
         'termino' => 'date',
+        'extinta_em' => 'date',
         'notificado_para_termino' => 'date',
         'pendencia_regularizacao' => 'boolean',
         'sujeita_taxa_anual' => 'boolean',

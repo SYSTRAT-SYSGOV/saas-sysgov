@@ -2,24 +2,61 @@ import React, { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button, ConfirmDialog, DataTable, StatusChip, Tabs } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
-import { cemiteriosApi, formatarCentavos, formatarData, type Concessao, type Concessionario } from '../api';
+import { cemiteriosApi, formatarCentavos, formatarData, type Concessao, type Concessionario, type FiltrosConcessoesAvancados } from '../api';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
 import { useCemiteriosNavigation } from '../CemiteriosContext';
+import { ConcessoesFiltros } from './ConcessoesFiltros';
+import { DrawerHistoricoConcessao } from './DrawerHistoricoConcessao';
 
 const SITUACAO: Record<string, 'success' | 'warning' | 'danger'> = { vigente: 'success', expirada: 'warning', extinta: 'danger' };
+const MOTIVO_EXTINCAO_LABEL: Record<string, string> = { renuncia: 'Renúncia voluntária', abandono: 'Abandono (processo administrativo)' };
+
+const FILTROS_INICIAIS: FiltrosConcessoesAvancados = {
+  setorId: null,
+  modalidade: 'todas',
+  situacao: 'todas',
+  pendenciaRegularizacao: false,
+  financeiro: 'todas',
+  venceEm: 'todas',
+  busca: '',
+};
+
+/** Converte o estado dos filtros avançados nos parâmetros aceitos por `ConcessaoController@index`. */
+function paraParametrosApi(filtros: FiltrosConcessoesAvancados, parkId: number | null): Record<string, unknown> {
+  const params: Record<string, unknown> = { per_page: 100 };
+  if (parkId) params.park_id = parkId;
+  if (filtros.setorId) params.setor_id = filtros.setorId;
+  if (filtros.modalidade && filtros.modalidade !== 'todas') params.modalidade = filtros.modalidade;
+  if (filtros.situacao && filtros.situacao !== 'todas') params.situacao = filtros.situacao;
+  if (filtros.pendenciaRegularizacao) params.pendencia_regularizacao = true;
+  if (filtros.financeiro && filtros.financeiro !== 'todas') params.financeiro = filtros.financeiro;
+  if (filtros.venceEm && filtros.venceEm !== 'todas') {
+    const data = new Date();
+    data.setDate(data.getDate() + Number(filtros.venceEm));
+    params.vence_ate = data.toISOString().slice(0, 10);
+  }
+  if (filtros.busca.trim()) params.busca = filtros.busca.trim();
+  return params;
+}
 
 /** Concessionários (CPF mascarado) e concessões temporárias/perpétuas (RF-11..RF-14). */
 export const ConcessoesView: React.FC = () => {
   const { can } = useCan();
-  const { cemiterioAtivoId } = useCemiteriosNavigation();
+  const { cemiterioAtivoId, cemiterioAtivo } = useCemiteriosNavigation();
   const gerencia = can('cemiterios.concessoes.manage');
   const [aba, setAba] = useState<'concessoes' | 'titulares'>('concessoes');
   const [modal, setModal] = useState<'concessao' | 'titular' | null>(null);
   const [renovar, setRenovar] = useState<Concessao | null>(null);
+  const [renunciar, setRenunciar] = useState<Concessao | null>(null);
+  const [historico, setHistorico] = useState<Concessao | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [filtros, setFiltros] = useState<FiltrosConcessoesAvancados>(FILTROS_INICIAIS);
+
+  const setoresDisponiveis = cemiterioAtivo?.setores ?? [];
+
   const concessoes = useDados(
-    () => cemiteriosApi.concessoes({ park_id: cemiterioAtivoId ?? undefined, per_page: 100 }),
-    [cemiterioAtivoId]
+    () => cemiteriosApi.concessoes(paraParametrosApi(filtros, cemiterioAtivoId)),
+    [cemiterioAtivoId, filtros]
   );
   const titulares = useDados(
     () => (gerencia && (aba === 'titulares' || modal === 'concessao') ? cemiteriosApi.titulares({ per_page: 50 }) : Promise.resolve(null)),
@@ -28,14 +65,25 @@ export const ConcessoesView: React.FC = () => {
   const { erro, executar } = useAcao();
 
   const colunasConcessoes = useMemo<ColumnDef<Concessao, unknown>[]>(() => [
-    { id: 'numero', header: 'Número', accessorKey: 'numero', cell: ({ row }) => <Mono className="font-bold">{row.original.numero}</Mono> },
+    {
+      id: 'numero', header: 'Número', accessorKey: 'numero', cell: ({ row }) => <Mono className="font-bold">{row.original.numero}</Mono>,
+      meta: { exportHeader: 'Número', exportValue: (r) => r.numero, sortValue: (r) => r.numero },
+    },
     {
       id: 'processo',
       header: 'Proc. Adm.',
       accessorKey: 'processo_administrativo',
       cell: ({ row }) => row.original.processo_administrativo ? <Mono className="text-xs">{row.original.processo_administrativo}</Mono> : <span className="text-muted-foreground">—</span>,
+      meta: { exportHeader: 'Processo Administrativo', exportValue: (r) => r.processo_administrativo ?? '', sortValue: (r) => r.processo_administrativo ?? '' },
     },
-    { id: 'jazigo', header: 'Jazigo', accessorFn: (r) => r.jazigo?.codigo ?? '', cell: ({ row }) => <Mono>{row.original.jazigo?.codigo}</Mono> },
+    {
+      id: 'jazigo', header: 'Jazigo', accessorFn: (r) => r.jazigo?.codigo ?? '', cell: ({ row }) => <Mono>{row.original.jazigo?.codigo}</Mono>,
+      meta: { exportHeader: 'Jazigo', exportValue: (r) => r.jazigo?.codigo ?? '' },
+    },
+    {
+      id: 'setor', header: 'Setor', cell: ({ row }) => <Mono className="text-xs">{row.original.jazigo?.setor?.codigo ?? '—'}</Mono>,
+      meta: { exportHeader: 'Setor/Quadra', exportValue: (r) => r.jazigo?.setor?.codigo ?? '', sortValue: (r) => r.jazigo?.setor?.codigo ?? '' },
+    },
     {
       id: 'titular',
       header: 'Concessionário',
@@ -50,20 +98,58 @@ export const ConcessoesView: React.FC = () => {
           )}
         </div>
       ),
+      meta: { exportHeader: 'Concessionário', exportValue: (r) => r.concessionario?.nome ?? '' },
     },
-    { id: 'modalidade', header: 'Modalidade', accessorKey: 'modalidade' },
-    { id: 'termino', header: 'Término', cell: ({ row }) => <Mono>{row.original.termino ? formatarData(row.original.termino) : 'Perpétua'}</Mono> },
+    {
+      id: 'modalidade', header: 'Modalidade', accessorKey: 'modalidade',
+      meta: { exportHeader: 'Modalidade', exportValue: (r) => r.modalidade, sortValue: (r) => r.modalidade },
+    },
+    {
+      id: 'termino', header: 'Término', cell: ({ row }) => <Mono>{row.original.termino ? formatarData(row.original.termino) : 'Perpétua'}</Mono>,
+      meta: { exportHeader: 'Término', exportValue: (r) => r.termino ?? 'Perpétua', sortValue: (r) => r.termino ?? '' },
+    },
+    {
+      id: 'financeiro',
+      header: 'Situação Financeira',
+      cell: ({ row }) => row.original.inadimplente
+        ? <StatusChip label="Inadimplente" variant="danger" />
+        : (row.original.guias_count ?? 0) > 0
+          ? <StatusChip label="Adimplente" variant="success" />
+          : <span className="text-xs text-muted-foreground">Sem guias</span>,
+      meta: {
+        exportHeader: 'Situação Financeira',
+        exportValue: (r) => (r.inadimplente ? 'Inadimplente' : (r.guias_count ?? 0) > 0 ? 'Adimplente' : 'Sem guias'),
+        sortValue: (r) => (r.inadimplente ? 2 : (r.guias_count ?? 0) > 0 ? 0 : 1),
+      },
+    },
     {
       id: 'situacao', header: 'Situação', cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1">
-          <StatusChip label={row.original.situacao} variant={SITUACAO[row.original.situacao] ?? 'neutral'} />
-          {row.original.pendencia_regularizacao && <StatusChip label="regularizar" variant="danger" />}
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap gap-1">
+            <StatusChip label={row.original.situacao} variant={SITUACAO[row.original.situacao] ?? 'neutral'} />
+            {row.original.pendencia_regularizacao && <StatusChip label="regularizar" variant="danger" />}
+          </div>
+          {row.original.situacao === 'extinta' && row.original.motivo_extincao && (
+            <span className="text-[10px] text-muted-foreground" title={row.original.extinta_em ? `Extinta em ${formatarData(row.original.extinta_em)}` : undefined}>
+              {MOTIVO_EXTINCAO_LABEL[row.original.motivo_extincao] ?? row.original.motivo_extincao}
+            </span>
+          )}
         </div>
       ),
+      meta: { exportHeader: 'Situação', exportValue: (r) => r.situacao, sortValue: (r) => r.situacao },
     },
     {
-      id: 'acoes', header: '', cell: ({ row }) => gerencia && row.original.modalidade === 'temporaria' && row.original.situacao === 'vigente'
-        ? <Button size="xs" variant="outline" onClick={() => setRenovar(row.original)}>Renovar</Button> : null,
+      id: 'acoes', header: '', cell: ({ row }) => (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <Button size="xs" variant="ghost" onClick={() => setHistorico(row.original)}>Histórico</Button>
+          {gerencia && row.original.modalidade === 'temporaria' && row.original.situacao === 'vigente' && (
+            <Button size="xs" variant="outline" onClick={() => setRenovar(row.original)}>Renovar</Button>
+          )}
+          {gerencia && row.original.situacao === 'vigente' && (
+            <Button size="xs" variant="outline" onClick={() => setRenunciar(row.original)}>Renunciar</Button>
+          )}
+        </div>
+      ),
     },
   ], [gerencia]);
 
@@ -108,8 +194,34 @@ export const ConcessoesView: React.FC = () => {
       </div>
       {aviso && <p className="rounded-md border border-border bg-accent/50 p-3 text-sm" role="status">{aviso}</p>}
       <ErroBox erro={erro ?? concessoes.erro ?? titulares.erro} />
+
+      {aba === 'concessoes' && (
+        <ConcessoesFiltros
+          filtros={filtros}
+          onFiltrosChange={(novos) => setFiltros((f) => ({ ...f, ...novos }))}
+          onLimparFiltros={() => setFiltros(FILTROS_INICIAIS)}
+          setoresDisponiveis={setoresDisponiveis}
+          totalRegistros={concessoes.dados?.total ?? 0}
+          carregando={concessoes.carregando}
+        />
+      )}
+
       {aba === 'concessoes'
-        ? <DataTable columns={colunasConcessoes} data={concessoes.dados?.data ?? []} loading={concessoes.carregando} searchable emptyText="Nenhuma concessão." />
+        ? (
+          <DataTable
+            columns={colunasConcessoes}
+            data={concessoes.dados?.data ?? []}
+            loading={concessoes.carregando}
+            searchable={false}
+            exportable
+            exportFileName="concessoes"
+            exportTitle="Concessões"
+            pageSizeSelector
+            pageSizeOptions={[10, 25, 50, 100]}
+            resizableColumns
+            emptyText="Nenhuma concessão encontrada para os filtros selecionados."
+          />
+        )
         : <DataTable columns={colunasTitulares} data={titulares.dados?.data ?? []} loading={titulares.carregando} searchable emptyText="Nenhum concessionário." />}
 
       <FormModal aberto={modal === 'titular'} titulo="Novo concessionário" onFechar={() => setModal(null)} iniciais={{ base_legal: 'execucao_contrato' }}
@@ -146,6 +258,28 @@ export const ConcessoesView: React.FC = () => {
         }} />
       <ConfirmDialog open={renovar !== null} onClose={() => setRenovar(null)} onConfirm={() => void confirmarRenovacao()}
         title={`Renovar concessão ${renovar?.numero ?? ''}`} description="A renovação estende o término pelo prazo vigente e emite a guia pelo preço atual." confirmLabel="Renovar" />
+
+      <FormModal
+        aberto={renunciar !== null}
+        titulo={`Renunciar concessão ${renunciar?.numero ?? ''}`}
+        description="A renúncia extingue a concessão vigente por devolução voluntária do concessionário e libera o jazigo para nova concessão."
+        campos={[
+          { nome: 'motivo', rotulo: 'Motivo / justificativa', tipo: 'textarea', obrigatorio: true, dica: 'Registrado na auditoria da concessão.' },
+          { nome: 'processo_administrativo', rotulo: 'Processo administrativo de baixa (opcional)' },
+        ]}
+        rotuloEnviar="Confirmar renúncia"
+        onFechar={() => setRenunciar(null)}
+        onEnviar={async (v) => {
+          if (!renunciar) return;
+          await cemiteriosApi.renunciarConcessao(renunciar.id, {
+            motivo: String(v.motivo ?? ''),
+            processo_administrativo: (v.processo_administrativo as string) || undefined,
+          });
+          await concessoes.recarregar();
+        }}
+      />
+
+      <DrawerHistoricoConcessao concessao={historico} onFechar={() => setHistorico(null)} />
     </div>
   );
 };

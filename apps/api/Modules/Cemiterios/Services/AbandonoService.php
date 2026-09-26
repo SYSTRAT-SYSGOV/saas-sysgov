@@ -89,7 +89,7 @@ final readonly class AbandonoService
         }
 
         return DB::transaction(function () use ($processo, $decisao): ProcessoAbandono {
-            $processo->concessao()->update(['situacao' => 'extinta']);
+            $processo->concessao()->update(['situacao' => 'extinta', 'motivo_extincao' => 'abandono', 'extinta_em' => today()->toDateString()]);
             $jazigo = $processo->jazigo()->firstOrFail();
 
             if ($jazigo->estado !== EstadoJazigo::Manutencao) {

@@ -8,6 +8,7 @@ use App\Models\OutboxEvent;
 use App\Models\Tenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Modules\Cemiterios\Models\Concessao;
 use Modules\Cemiterios\Models\Concessionario;
 use Modules\Cemiterios\Models\Guia;
@@ -174,6 +175,147 @@ final class ConcessoesTest extends CemiteriosTestCase
         // Listagem filtrando por titular falecido
         $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?titular_falecido=true')
             ->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    // cemiterio/concessoes-gestao — filtros avançados combináveis
+
+    public function test_filtros_avancados_de_modalidade_setor_e_vencimento(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $temporario = $this->novoJazigo(2, true); // concessão temporária padrão (+5 anos)
+
+        $perpetuo = $this->novoJazigo(2, false);
+        $titular = Concessionario::create(['nome' => 'Perp', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
+        $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', [
+            'plot_id' => $perpetuo->id, 'holder_id' => $titular->id, 'modalidade' => 'perpetua', 'lock_version' => 0,
+        ])->assertCreated();
+        $this->noTenant($this->tenant); // ResolveTenant limpa o contexto ao fim de cada requisição HTTP simulada
+
+        $vencendo = $this->novoJazigo(2, false);
+        $this->concessao($vencendo, null, '+10 days');
+
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?modalidade=perpetua')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.plot_id', $perpetuo->id);
+
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?setor_id=' . $temporario->sector_id)
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.plot_id', $temporario->id);
+
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?vence_ate=' . today()->addDays(30)->toDateString())
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.plot_id', $vencendo->id);
+    }
+
+    public function test_busca_textual_combinada_localiza_por_jazigo_e_concessionario(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $titular = Concessionario::create(['nome' => 'Fulano da Busca', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
+        $jazigo = $this->novoJazigo(2, false);
+        $this->concessao($jazigo, $titular);
+        $this->novoJazigo(2, true); // ruído: outro jazigo/concessão que não deve aparecer na busca
+
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?busca=' . urlencode($jazigo->codigo))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.plot_id', $jazigo->id);
+
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?busca=' . urlencode('Fulano da Busca'))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.plot_id', $jazigo->id);
+    }
+
+    public function test_filtro_pendencia_regularizacao(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $comPendencia = $this->novoJazigo(2, true);
+        Concessao::where('plot_id', $comPendencia->id)->update(['pendencia_regularizacao' => true]);
+        $this->novoJazigo(2, true); // sem pendência
+
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?pendencia_regularizacao=true')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.plot_id', $comPendencia->id);
+    }
+
+    public function test_filtro_financeiro_classifica_adimplencia(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $comDebito = $this->novoJazigo(2, true);
+        $semGuia = $this->novoJazigo(2, true);
+        $concessaoComDebito = Concessao::where('plot_id', $comDebito->id)->firstOrFail();
+
+        Guia::create([
+            'numero' => 'G-' . Str::random(6), 'origem_type' => 'concessao', 'origem_id' => $concessaoComDebito->id,
+            'contribuinte_nome' => 'Teste', 'servico' => 'anual', 'valor_centavos' => 10000,
+            'vencimento' => today()->subDay()->toDateString(), 'situacao' => 'emitida',
+        ]);
+
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?financeiro=inadimplente')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.plot_id', $comDebito->id);
+
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes?financeiro=sem_guias')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.plot_id', $semGuia->id);
+    }
+
+    // cemiterio/regras-concessao-sucessao — extinção por renúncia voluntária
+
+    public function test_renuncia_extingue_concessao_vigente_e_libera_jazigo(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $jazigo = $this->novoJazigo(2, true);
+        $concessao = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
+
+        $this->como($admin, $this->tenant)->postJson("/api/cemiterios/concessoes/{$concessao->id}/renunciar", [
+            'motivo' => 'Concessionário devolveu o jazigo espontaneamente.',
+        ])->assertOk()->assertJsonPath('situacao', 'extinta')->assertJsonPath('motivo_extincao', 'renuncia');
+
+        $this->noTenant($this->tenant);
+        self::assertSame(EstadoJazigo::Disponivel, $jazigo->refresh()->estado);
+    }
+
+    public function test_renuncia_exige_motivo(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $jazigo = $this->novoJazigo(2, true);
+        $concessao = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
+
+        $this->como($admin, $this->tenant)->postJson("/api/cemiterios/concessoes/{$concessao->id}/renunciar", [])
+            ->assertUnprocessable()->assertJsonValidationErrors('motivo');
+    }
+
+    public function test_renuncia_rejeita_concessao_nao_vigente(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $jazigo = $this->novoJazigo(2, true);
+        $concessao = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
+        $concessao->update(['situacao' => 'expirada']);
+
+        $this->como($admin, $this->tenant)->postJson("/api/cemiterios/concessoes/{$concessao->id}/renunciar", ['motivo' => 'x'])
+            ->assertStatus(422)->assertJsonPath('code', 'concessao.nao_renunciavel');
+    }
+
+    // cemiterio/concessoes-gestao — histórico auditável
+
+    public function test_historico_lista_eventos_de_criacao_e_renovacao(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $jazigo = $this->novoJazigo(2, false);
+        $titular = Concessionario::create(['nome' => 'Hist', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
+        app(PrecoService::class)->novaVigencia('renovacao', 30000, CarbonImmutable::today());
+
+        $concessaoId = $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', [
+            'plot_id' => $jazigo->id, 'holder_id' => $titular->id, 'modalidade' => 'temporaria', 'lock_version' => 0,
+        ])->assertCreated()->json('id');
+        $this->como($admin, $this->tenant)->postJson("/api/cemiterios/concessoes/{$concessaoId}/renovar")->assertOk();
+
+        $acoes = $this->como($admin, $this->tenant)->getJson("/api/cemiterios/concessoes/{$concessaoId}/historico")
+            ->assertOk()->json('data.*.action');
+        self::assertContains('concessao.created', $acoes);
+        self::assertContains('concessao.renovada', $acoes);
+    }
+
+    public function test_historico_de_concessao_de_outro_tenant_retorna_404(): void
+    {
+        $jazigo = $this->novoJazigo(2, true);
+        $concessao = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
+
+        $outroTenant = $this->criarTenant('pref-b');
+        $this->como($this->admin($outroTenant), $outroTenant)
+            ->getJson("/api/cemiterios/concessoes/{$concessao->id}/historico")
+            ->assertNotFound();
     }
 }
 

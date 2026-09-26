@@ -90,6 +90,8 @@ Route::get('/concessoes', [ConcessaoController::class, 'index']);
 Route::post('/concessoes', [ConcessaoController::class, 'store']);
 Route::get('/concessoes/{id}', [ConcessaoController::class, 'show']);
 Route::post('/concessoes/{id}/renovar', [ConcessaoController::class, 'renovar']);
+Route::post('/concessoes/{id}/renunciar', [ConcessaoController::class, 'renunciar']);
+Route::get('/concessoes/{id}/historico', [ConcessaoController::class, 'historico']);
 
 // Financeiro
 Route::get('/precos', [FinanceiroController::class, 'precos']);

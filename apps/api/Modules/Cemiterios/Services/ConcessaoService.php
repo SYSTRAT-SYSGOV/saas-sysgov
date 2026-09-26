@@ -90,6 +90,30 @@ final readonly class ConcessaoService
     }
 
     /**
+     * Extingue por renúncia voluntária do concessionário (distinta de
+     * abandono e de expiração automática por decurso de prazo).
+     */
+    public function renunciar(Concessao $concessao, string $motivo, ?string $processoAdministrativo = null): Concessao
+    {
+        if ($concessao->situacao !== 'vigente') {
+            throw new RegraNegocioException('concessao.nao_renunciavel', 'Somente concessão vigente pode ser objeto de renúncia.');
+        }
+
+        return DB::transaction(function () use ($concessao, $motivo, $processoAdministrativo): Concessao {
+            $jazigo = $concessao->jazigo()->firstOrFail();
+            $concessao->update([
+                'situacao' => 'extinta',
+                'motivo_extincao' => 'renuncia',
+                'extinta_em' => today()->toDateString(),
+                'processo_administrativo' => $processoAdministrativo ?? $concessao->processo_administrativo,
+            ]);
+            $this->estados->recalcular($jazigo, "Concessão {$concessao->numero} renunciada: {$motivo}");
+
+            return $concessao->refresh();
+        });
+    }
+
+    /**
      * Expira concessões temporárias vencidas (idempotente). Com restos no
      * jazigo, a concessão fica com pendência de regularização (RF-14).
      */
