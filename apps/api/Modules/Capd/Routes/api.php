@@ -116,7 +116,9 @@ Route::prefix('sessoes')->group(function (): void {
     Route::get('/{id}', [SessaoController::class, 'show'])->name('capd.sessoes.show');
     Route::post('/{id}/pauta', [SessaoController::class, 'adicionarPauta'])->name('capd.sessoes.pauta.adicionar');
     Route::post('/{id}/presenca', [SessaoController::class, 'registrarPresenca'])->name('capd.sessoes.presenca.registrar');
-    Route::post('/{id}/selar-ata', [SessaoController::class, 'selarAta'])->name('capd.sessoes.ata.selar');
+    Route::post('/{id}/selar-ata', [SessaoController::class, 'selarAta'])
+        ->middleware(\Modules\Capd\Http\Middleware\ValidateIcpCertificate::class)
+        ->name('capd.sessoes.ata.selar');
 });
 
 // ── Deliberação e Votação ─────────────────────────────────────────────

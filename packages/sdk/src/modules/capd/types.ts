@@ -178,6 +178,9 @@ export type ApiSessao = {
   quorum_minimo: number;
   ata_texto?: string | null;
   hash_ata_sha256?: string | null;
+  psc_transaction_id?: string | null;
+  psc_certificate_serial?: string | null;
+  psc_signed_at?: string | null;
   finalizada: boolean;
   finalizada_em?: string | null;
   comissao?: { id: number; numero_portaria?: string };

@@ -6,25 +6,30 @@ namespace Modules\Capd\Services;
 
 use App\Support\AuditLogger;
 use Modules\Capd\Models\Sessao;
+use Modules\Capd\Services\Adapters\AssinaturaAdapterFactory;
 
 /**
  * Serviço de Geração e Verificação de Integridade Criptográfica de Atas (RN-C06).
  *
- * Utiliza SHA-256 para selar a ata após deliberação da comissão.
- * Qualquer alteração posterior no texto da ata quebra a correspondência do hash.
+ * Sela a ata via o adapter de assinatura da sessão (SHA-256 interno, padrão,
+ * ou ICP-Brasil quando `capd_ciclos.tipo_assinatura_ata = 'icp_brasil'` —
+ * ver AssinaturaAdapterFactory). Qualquer alteração posterior no texto da
+ * ata quebra a correspondência do hash.
  */
 final class HashAtaService
 {
     public function __construct(
         private readonly AuditLogger $audit,
+        private readonly AssinaturaAdapterFactory $adapters,
     ) {}
 
     /**
      * Gera o hash SHA-256 da ata, sela a sessão e persiste o texto oficial.
      *
+     * @param array<string, mixed> $contexto
      * @throws \DomainException Se a sessão já estiver finalizada ou sem quórum
      */
-    public function selarAta(Sessao $sessao, string $textoAta): string
+    public function selarAta(Sessao $sessao, string $textoAta, array $contexto = []): string
     {
         if ($sessao->finalizada) {
             throw new \DomainException('Esta sessão já foi finalizada e sua ata está selada imutavelmente.');
@@ -36,29 +41,40 @@ final class HashAtaService
             );
         }
 
-        $hashSha256 = hash('sha256', $textoAta);
+        // Nota: comissão sem membro cadastrado é um estado de dados possível em runtime
+        // (Eloquent::first() pode devolver null), mesmo quando o PHPStan, com os generics
+        // atuais do Larastan, infere a relação como não-nula — por isso o null-check
+        // explícito abaixo em vez de `?->`.
+        $relator = $sessao->comissao->membros()->first();
+        $relatorId = $relator === null ? 0 : $relator->servidor_id;
+        $resultado = $this->adapters->paraSessao($sessao)->assinar($textoAta, $sessao->id, $relatorId, $contexto);
+        $hash = $resultado->hash;
 
         $sessao->update([
-            'ata_texto'       => $textoAta,
-            'hash_ata_sha256' => $hashSha256,
-            'finalizada'      => true,
-            'finalizada_em'   => now(),
+            'ata_texto'              => $textoAta,
+            'hash_ata_sha256'        => $hash,
+            'psc_transaction_id'    => $resultado->urlDocumentoAssinado, // Usando URL como ID de transação para simplicidade
+            'psc_certificate_serial' => $resultado->certificadoSerial,
+            'psc_signed_at'          => $resultado->assinadoEm,
+            'finalizada'             => true,
+            'finalizada_em'          => now(),
         ]);
 
         $this->audit->record(
             'capd',
             'sessao.ata_selada',
-            "Sessão #{$sessao->id} — Ata selada com SHA-256 ({$hashSha256})",
+            "Sessão #{$sessao->id} — Ata selada via {$resultado->tipo} ({$hash})",
             null,
             [
                 'sessao_id'   => $sessao->id,
-                'hash_sha256' => $hashSha256,
+                'hash'         => $hash,
+                'tipo'        => $resultado->tipo,
                 'quorum'      => $sessao->quorum_presente,
                 'data_sessao' => $sessao->data_sessao->toIso8601String(),
             ],
         );
 
-        return $hashSha256;
+        return $hash;
     }
 
     /**

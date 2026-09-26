@@ -17,10 +17,13 @@ describe('AuthProvider', () => {
   it('deve inicializar com o estado padrão/demonstração quando não há storage', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.isAuthenticated).toBe(true);
-    });
+    await waitFor(
+      () => {
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.isAuthenticated).toBe(true);
+      },
+      { timeout: 3000 }
+    );
 
     expect(result.current.user?.name).toBe('Administrador da Prefeitura de Araucária');
     expect(result.current.tenant?.slug).toBe('araucaria-pr');

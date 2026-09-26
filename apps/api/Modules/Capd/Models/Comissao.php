@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $ativa
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read CicloAvaliacao|null $ciclo
  */
 final class Comissao extends Model
 {
@@ -42,11 +43,13 @@ final class Comissao extends Model
         'ativa'                    => 'boolean',
     ];
 
+    /** @return BelongsTo<CicloAvaliacao, $this> */
     public function ciclo(): BelongsTo
     {
         return $this->belongsTo(CicloAvaliacao::class, 'ciclo_id');
     }
 
+    /** @return HasMany<ComissaoMembro, $this> */
     /** @return HasMany<ComissaoMembro, $this> */
     public function membros(): HasMany
     {

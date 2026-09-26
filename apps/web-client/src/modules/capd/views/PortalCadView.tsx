@@ -50,6 +50,7 @@ import { FatoresPesosPanel } from '../FatoresPesosPanel';
 import { ConsolidacaoPanel } from '../ConsolidacaoPanel';
 import { PainelGerencialPanel } from '../PainelGerencialPanel';
 import { EspelhoAvaliacaoModal } from '../EspelhoAvaliacaoModal';
+import { SignatureStatus } from '../components';
 import { SysgovApi } from '@sysgov/sdk';
 import type {
   ApiRecurso,
@@ -1010,10 +1011,11 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
       },
       {
         accessorKey: 'hash_ata_sha256',
-        header: 'Selo SHA-256',
-        size: 195,
+        header: 'Selo / Assinatura Digital',
+        size: 260,
         cell: ({ row }) => {
-          const hash = row.original.hash_ata_sha256;
+          const sessao = row.original;
+          const hash = sessao.hash_ata_sha256;
           if (!hash) {
             return (
               <span className="text-[11px] text-muted-foreground italic">
@@ -1021,32 +1023,14 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
               </span>
             );
           }
-          const copiado = hashCopiado === hash;
           return (
-            <div className="flex items-center gap-1.5 bg-muted/40 px-2 py-1 rounded border border-border/80 max-w-[190px]">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-              <span
-                className="font-mono text-[10px] text-primary tabular-nums truncate select-all"
-                title={hash}
-              >
-                {hash.slice(0, 8)}...{hash.slice(-6)}
-              </span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopiarHash(hash);
-                }}
-                className="text-muted-foreground hover:text-primary transition-colors ml-auto shrink-0 p-0.5"
-                title="Copiar Hash SHA-256"
-              >
-                {copiado ? (
-                  <Check className="h-3 w-3 text-emerald-500" />
-                ) : (
-                  <Copy className="h-3 w-3" />
-                )}
-              </button>
-            </div>
+            <SignatureStatus
+              tipo={sessao.psc_transaction_id ? 'icp_brasil' : 'sha256_interno'}
+              hash={hash}
+              urlDocumentoAssinado={sessao.psc_transaction_id || undefined}
+              certificadoSerial={sessao.psc_certificate_serial || undefined}
+              assinadoEm={sessao.psc_signed_at || undefined}
+            />
           );
         },
       },
@@ -2263,34 +2247,19 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
                             </div>
                           </div>
 
-                          {/* SELO HASH SHA-256 */}
+                          {/* SELO DE ASSINATURA DIGITAL (ICP-BRASIL OU SHA-256) */}
                           {sessao.hash_ata_sha256 ? (
-                            <div className="p-2.5 rounded bg-muted/40 border border-border space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-                                  <ShieldCheck className="h-3 w-3 text-emerald-600" /> Selo SHA-256:
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopiarHash(sessao.hash_ata_sha256!)}
-                                  className="text-muted-foreground hover:text-primary transition-colors p-0.5"
-                                  title="Copiar Hash SHA-256"
-                                >
-                                  {hashCopiado === sessao.hash_ata_sha256 ? (
-                                    <Check className="h-3 w-3 text-emerald-500" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </button>
-                              </div>
-                              <div className="font-mono text-[9px] text-primary truncate tabular-nums select-all">
-                                {sessao.hash_ata_sha256}
-                              </div>
-                            </div>
+                            <SignatureStatus
+                              tipo={sessao.psc_transaction_id ? 'icp_brasil' : 'sha256_interno'}
+                              hash={sessao.hash_ata_sha256}
+                              urlDocumentoAssinado={sessao.psc_transaction_id || undefined}
+                              certificadoSerial={sessao.psc_certificate_serial || undefined}
+                              assinadoEm={sessao.psc_signed_at || undefined}
+                            />
                           ) : (
                             <div className="p-2 rounded bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                              <span>Ata ainda não selada com hash SHA-256.</span>
+                              <span>Ata ainda não selada com assinatura digital.</span>
                             </div>
                           )}
                         </div>
@@ -3763,18 +3732,29 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
       >
         {sessaoDetalheAta && (
           <div className="space-y-4">
-            {/* BANNER DE FÉ PÚBLICA CRIPTOGRÁFICA */}
+            {/* BANNER DE FÉ PÚBLICA CRIPTOGRÁFICA / ASSINATURA */}
             {sessaoDetalheAta.hash_ata_sha256 ? (
-              <div className="p-3.5 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 space-y-2">
+              <div className="p-3.5 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-xs">
                     <ShieldCheck className="h-4 w-4 shrink-0" />
-                    Selo Criptográfico Irrevogável (SHA-256) — Fé Pública
+                    {sessaoDetalheAta.psc_transaction_id
+                      ? 'Selo de Validade Jurídica ICP-Brasil — PSC Conforme'
+                      : 'Selo Criptográfico Irrevogável (SHA-256) — Fé Pública'}
                   </div>
                   <Badge variant="outline" className="text-[10px] font-mono text-emerald-600 border-emerald-300">
                     Ata Imutável
                   </Badge>
                 </div>
+
+                <SignatureStatus
+                  tipo={sessaoDetalheAta.psc_transaction_id ? 'icp_brasil' : 'sha256_interno'}
+                  hash={sessaoDetalheAta.hash_ata_sha256}
+                  urlDocumentoAssinado={sessaoDetalheAta.psc_transaction_id || undefined}
+                  certificadoSerial={sessaoDetalheAta.psc_certificate_serial || undefined}
+                  assinadoEm={sessaoDetalheAta.psc_signed_at || undefined}
+                />
+
                 <div className="bg-background/80 p-2.5 rounded border border-emerald-200 dark:border-emerald-900/40 space-y-1">
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
                     <span>Hash SHA-256 da Ata:</span>

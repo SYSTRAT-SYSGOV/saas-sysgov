@@ -9,6 +9,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+/**
+ * Integração do CAPD com o ERP de RH do município (sincronização de servidores,
+ * frequência e afastamentos; exportação de avaliações homologadas via webhook).
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property string $nome
+ * @property string $driver
+ * @property string|null $api_key
+ * @property string|null $api_url
+ * @property string|null $api_token
+ * @property string|null $webhook_url
+ * @property string|null $webhook_secret
+ * @property array<string, mixed>|null $field_mappings
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $ultima_sincronizacao_em
+ */
 final class RhIntegracao extends Model
 {
     use TenantAware;

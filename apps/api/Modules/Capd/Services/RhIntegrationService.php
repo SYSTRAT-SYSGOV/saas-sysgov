@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Services;
 
-use App\Models\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Support\OutboxPublisher;
+use App\Support\AuditLogger;
 use Modules\Capd\Models\Avaliacao;
 use Modules\Capd\Models\CicloAvaliacao;
 use Modules\Capd\Models\DiarioBordo;
@@ -16,11 +16,13 @@ use Modules\Capd\Models\RhIntegracao;
 use Modules\Capd\Models\RhSyncLog;
 use Modules\Capd\Models\Servidor;
 use Modules\Capd\Models\ServidorAfastamento;
+use Modules\OrgChart\Models\OrgUnit;
 
 final class RhIntegrationService
 {
     public function __construct(
         private readonly OutboxPublisher $outbox,
+        private readonly AuditLogger $audit,
     ) {}
     /**
      * Sincronização Inbound de Servidores a partir de payload JSON do ERP de RH.
@@ -52,6 +54,29 @@ final class RhIntegrationService
                 $regime = trim((string) ($item[$mappings['regime'] ?? 'regime_juridico'] ?? 'estatutario'));
                 $situacao = trim((string) ($item[$mappings['situacao'] ?? 'situacao_funcional'] ?? 'ativo'));
 
+                // Processar informações de unidade organizacional para org_unit_id
+                $orgUnitId = null;
+                // Tentar obter ID da unidade organizacional diretamente do payload
+                if (!empty($item[$mappings['org_unit_id'] ?? 'org_unit_id'] ?? '')) {
+                    $orgUnitId = (int) $item[$mappings['org_unit_id'] ?? 'org_unit_id'];
+                }
+                // Tentar obter por código da unidade
+                elseif (!empty($item[$mappings['org_unit_code'] ?? 'org_unit_code'] ?? '')) {
+                    $orgUnit = OrgUnit::where('tenant_id', $tenantId)
+                        ->where('code', $item[$mappings['org_unit_code'] ?? 'org_unit_code'])
+                        ->where('is_active', true)
+                        ->first();
+                    $orgUnitId = $orgUnit ? $orgUnit->id : null;
+                }
+                // Tentar obter por nome da unidade
+                elseif (!empty($item[$mappings['org_unit_name'] ?? 'org_unit_name'] ?? '')) {
+                    $orgUnit = OrgUnit::where('tenant_id', $tenantId)
+                        ->where('name', $item[$mappings['org_unit_name'] ?? 'org_unit_name'])
+                        ->where('is_active', true)
+                        ->first();
+                    $orgUnitId = $orgUnit ? $orgUnit->id : null;
+                }
+
                 if (empty($matricula) || empty($nome)) {
                     $erros[] = "Registro {$processados}: Matrícula ou Nome vazios.";
                     continue;
@@ -70,6 +95,7 @@ final class RhIntegrationService
                     'orgao_lotacao'         => $lotacao,
                     'regime_juridico'       => $regime,
                     'situacao_funcional'    => $situacao,
+                    'org_unit_id'           => $orgUnitId,
                     'origem_sistema'        => $integracao->driver,
                     'metadata'              => $item,
                 ];
@@ -101,6 +127,23 @@ final class RhIntegrationService
                 'detalhes'              => ['erros' => $erros],
                 'ip_origem'             => $ip,
             ]);
+
+            // Também grava no log de auditoria geral
+            $this->audit->record(
+                'capd',
+                'rh.sync_servidores',
+                "Sincronização de servidores com RH: {$processados} processados, {$inseridos} inseridos, {$atualizados} atualizados",
+                null,
+                [
+                    'integracao_id' => $integracao->id,
+                    'registros_processados' => $processados,
+                    'registros_inseridos' => $inseridos,
+                    'registros_atualizados' => $atualizados,
+                    'registros_erro' => count($erros),
+                    'status' => empty($erros) ? 'sucesso' : 'parcial',
+                    'ip_origem' => $ip,
+                ]
+            );
 
             return [
                 'sucesso'     => true,
@@ -195,6 +238,22 @@ final class RhIntegrationService
             'ip_origem'             => $ip,
         ]);
 
+        // Também grava no log de auditoria geral
+        $this->audit->record(
+            'capd',
+            'rh.sync_frequencia',
+            "Sincronização de frequência com RH: {$processados} processados, {$atualizados} atualizados",
+            null,
+            [
+                'integracao_id' => $integracao->id,
+                'registros_processados' => $processados,
+                'registros_atualizados' => $atualizados,
+                'registros_erro' => count($erros),
+                'status' => empty($erros) ? 'sucesso' : 'parcial',
+                'ip_origem' => $ip,
+            ]
+        );
+
         return [
             'sucesso'     => true,
             'processados' => $processados,
@@ -253,6 +312,22 @@ final class RhIntegrationService
             'ip_origem'             => $ip,
         ]);
 
+        // Também grava no log de auditoria geral
+        $this->audit->record(
+            'capd',
+            'rh.sync_afastamentos',
+            "Sincronização de afastamentos com RH: {$processados} processados, {$inseridos} inseridos",
+            null,
+            [
+                'integracao_id' => $integracao->id,
+                'registros_processados' => $processados,
+                'registros_inseridos' => $inseridos,
+                'registros_erro' => count($erros),
+                'status' => empty($erros) ? 'sucesso' : 'parcial',
+                'ip_origem' => $ip,
+            ]
+        );
+
         return [
             'sucesso'     => true,
             'processados' => $processados,
@@ -274,7 +349,7 @@ final class RhIntegrationService
             ->where('tenant_id', $tenantId)
             ->where('ciclo_id', $cicloId)
             ->where('homologada', true)
-            ->with(['servidor', 'avaliador'])
+            ->with(['servidor', 'servidorData', 'avaliador'])
             ->get();
 
         $dadosExportacao = [];
@@ -291,7 +366,7 @@ final class RhIntegrationService
                 'avaliacao_id'        => $av->id,
                 'servidor_id'         => $av->servidor_id,
                 'servidor_nome'       => $av->servidor?->name ?? 'Servidor',
-                'servidor_matricula'  => $av->servidor?->matricula ?? null,
+                'servidor_matricula'  => $av->servidorData?->matricula ?? null,
                 'nota_final'          => $av->nota_final,
                 'conceito'            => $conceito,
                 'elegivel_progressao' => (bool) $av->elegivel_progressao,
@@ -309,6 +384,20 @@ final class RhIntegrationService
             'registros_sucesso'     => count($dadosExportacao),
             'detalhes'              => ['ciclo_id' => $cicloId, 'ano' => $ciclo->ano_referencia],
         ]);
+
+        // Também grava no log de auditoria geral
+        $this->audit->record(
+            'capd',
+            'rh.export_avaliacoes',
+            'Exportação de avaliações homologadas para RH: ' . count($dadosExportacao) . ' avaliações exportadas',
+            null,
+            [
+                'tenant_id' => $tenantId,
+                'ciclo_id' => $cicloId,
+                'registros_exportados' => count($dadosExportacao),
+                'status' => 'sucesso',
+            ]
+        );
 
         return [
             'tenant_id'       => $tenantId,
@@ -365,5 +454,24 @@ final class RhIntegrationService
                 $tenantId
             );
         }
+
+        // Registra log de auditoria para webhook de homologação enviado
+        $this->audit->record(
+            'capd',
+            'rh.webhook_homologacao',
+            "Webhook de homologação enviado para RH: {$integracoes->count()} integrações notificadas",
+            null,
+            [
+                'avaliacao_id' => $avaliacao->id,
+                'ciclo_id' => $avaliacao->ciclo_id,
+                'servidor_id' => $avaliacao->servidor_id,
+                'nota_final' => $avaliacao->nota_final,
+                'elegivel_progressao' => $avaliacao->elegivel_progressao,
+                'homologada_em' => $avaliacao->homologada_em?->toIso8601String(),
+                'integracoes_count' => $integracoes->count(),
+                'tenant_id' => $tenantId
+            ]
+        );
     }
+
 }

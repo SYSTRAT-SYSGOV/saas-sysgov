@@ -13,6 +13,7 @@
     "generate:registry": "node ../../scripts/generate-module-registry.js"
   },
   "dependencies": {
+    "@geoman-io/leaflet-geoman-free": "^2.20.2",
     "@sysgov/sdk": "*",
     "@sysgov/ui": "*",
     "@tanstack/query-sync-storage-persister": "^5.102.8",
@@ -28,10 +29,12 @@
     "dompurify": "^3.4.15",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.475.0",
     "radix-ui": "^1.6.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^6.28.1",
     "recharts": "^3.10.1",
     "tailwind-merge": "^2.6.0",
@@ -44,6 +47,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/dompurify": "^3.0.5",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

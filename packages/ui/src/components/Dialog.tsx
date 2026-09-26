@@ -6,12 +6,15 @@ import {
   DialogHeader,
   DialogFooter,
   DialogTitle,
+  DialogDescription,
 } from './dialog-primitive';
 
 export interface DialogProps {
   open: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  onOpenChange?: (open: boolean) => void;
   title: string;
+  description?: React.ReactNode;
   icon?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -30,16 +33,16 @@ const sizeMap: Record<NonNullable<DialogProps['size']>, string> = {
 };
 
 /**
- * Dialog/Modal "monolítico" (props open/onClose/title/footer/size) usado
- * pelas ~9 telas do painel do cliente — Dialog.tsx e Modal.tsx eram
- * hand-rolled quase idênticos (drift de copy-paste); unificados aqui num
- * único componente, agora sobre o Dialog real do shadcn/ui (Radix: focus
- * trap, scroll lock, Esc, portal — nativos, não mais reimplementados à mão).
+ * Dialog/Modal "monolítico" (props open/onClose/onOpenChange/title/footer/size) usado
+ * pelas telas do sistema — Dialog.tsx e Modal.tsx unificados sobre o Dialog real
+ * do shadcn/ui (Radix: focus trap, scroll lock, Esc, portal — nativos).
  */
 export const Dialog: React.FC<DialogProps> = ({
   open,
   onClose,
+  onOpenChange,
   title,
+  description,
   icon,
   children,
   footer,
@@ -47,8 +50,15 @@ export const Dialog: React.FC<DialogProps> = ({
   size = 'md',
   className,
 }) => {
+  const handleOpenChange = (next: boolean) => {
+    onOpenChange?.(next);
+    if (!next) {
+      onClose?.();
+    }
+  };
+
   return (
-    <DialogPrimitive open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+    <DialogPrimitive open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
           'flex max-h-[90vh] w-full flex-col gap-0 p-0',
@@ -56,12 +66,19 @@ export const Dialog: React.FC<DialogProps> = ({
           className
         )}
       >
-        <DialogHeader className="shrink-0 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 py-4 text-left pr-12">
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            {icon}
-            {title}
-          </DialogTitle>
-          {headerActions && <div className="flex items-center gap-2 mr-2">{headerActions}</div>}
+        <DialogHeader className="shrink-0 flex-col items-start gap-1 space-y-0 border-b px-6 py-4 text-left pr-12">
+          <div className="flex w-full items-center justify-between gap-2">
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              {icon}
+              {title}
+            </DialogTitle>
+            {headerActions && <div className="flex items-center gap-2 mr-2">{headerActions}</div>}
+          </div>
+          {description && (
+            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+              {description}
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         <div className={cn('flex-1 overflow-y-auto custom-scrollbar p-6', !footer && 'pb-6')}>

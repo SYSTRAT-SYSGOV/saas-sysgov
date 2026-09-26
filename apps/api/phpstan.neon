@@ -12,3 +12,8 @@ parameters:
         - */vendor/*
         - Modules/*/app/*
     reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # Config de módulo é mesclada por mergeConfigFrom e entra no config:cache normalmente.
+        -
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: Modules/*/Config/*

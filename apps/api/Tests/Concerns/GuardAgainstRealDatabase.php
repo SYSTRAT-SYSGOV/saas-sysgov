@@ -23,7 +23,13 @@ trait GuardAgainstRealDatabase
         $default = (string) config('database.default');
         $database = (string) config("database.connections.{$default}.database", '');
 
-        $safe = $default === 'sqlite' && $database === ':memory:';
+        // Exceção explícita para o grupo `mysql` (funções espaciais/FULLTEXT): só com
+        // TESTS_ALLOW_MYSQL=1 E um banco descartável cujo nome termina em _testing.
+        $mysqlDescartavel = $default === 'mysql'
+            && getenv('TESTS_ALLOW_MYSQL') === '1'
+            && str_ends_with($database, '_testing');
+
+        $safe = ($default === 'sqlite' && $database === ':memory:') || $mysqlDescartavel;
 
         if (!$safe) {
             throw new \RuntimeException(
