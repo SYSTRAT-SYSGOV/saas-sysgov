@@ -162,6 +162,7 @@ final class MigrarClipperCommand extends Command
         // 1. Processar Lotes e Quadras (Setores)
         $setoresMap = [];
         $jazigosMap = [];
+        $lotesInfoMap = [];
 
         if (file_exists($lotesCsv)) {
             $linhasLotes = $this->lerCsv($lotesCsv);
@@ -170,17 +171,24 @@ final class MigrarClipperCommand extends Command
             // Gravação em lote: cada chunk vira uma única transação, evitando o custo de
             // commit/fsync por linha do autocommit padrão (era o gargalo real da migração).
             foreach (array_chunk($linhasLotes, 500) as $chunk) {
-                DB::transaction(function () use ($chunk, $dryRun, $cemiterio, &$setoresMap, &$jazigosMap): void {
+                DB::transaction(function () use ($chunk, $dryRun, $cemiterio, &$setoresMap, &$jazigosMap, &$lotesInfoMap): void {
                     foreach ($chunk as $linha) {
                         $quadra = trim((string) ($linha['QUADRA'] ?? $linha['quadra'] ?? ''));
                         $lote = trim((string) ($linha['LOTE'] ?? $linha['lote'] ?? ''));
                         $tipo = trim((string) ($linha['TIPO'] ?? $linha['tipo'] ?? '1'));
                         $gavetas = (int) ($linha['GAVETAS'] ?? $linha['gavetas'] ?? 1);
                         $processo = trim((string) ($linha['PROCESSO'] ?? $linha['processo'] ?? ''));
+                        $validade = $this->parseData($linha['VALIDADE'] ?? $linha['validade'] ?? null);
 
                         if ($quadra === '' || $lote === '') {
                             continue;
                         }
+
+                        $lotesInfoMap["{$quadra}_{$lote}"] = [
+                            'tipo' => $tipo,
+                            'processo' => $processo,
+                            'validade' => $validade,
+                        ];
 
                         if (!isset($setoresMap[$quadra])) {
                             if (!$dryRun && $cemiterio) {
@@ -435,13 +443,14 @@ final class MigrarClipperCommand extends Command
             $this->line("Lendo DADOS.csv: " . count($linhasDados) . " registros encontrados...");
 
             foreach (array_chunk($linhasDados, 500) as $chunk) {
-                DB::transaction(function () use ($chunk, $dryRun, $codigo, $jazigosMap, $mapaFuncionarios, $mapaPedreiros): void {
+                DB::transaction(function () use ($chunk, $dryRun, $codigo, $jazigosMap, $lotesInfoMap, $mapaFuncionarios, $mapaPedreiros): void {
                     foreach ($chunk as $linha) {
                         $quadra = trim((string) ($linha['QUADRA'] ?? $linha['quadra'] ?? ''));
                         $lote = trim((string) ($linha['LOTE'] ?? $linha['lote'] ?? ''));
                         $nome = trim((string) ($linha['NOME'] ?? $linha['nome'] ?? ''));
                         $dtNasc = $this->parseData($linha['DT_NASC'] ?? $linha['dt_nasc'] ?? null);
-                        $dtFalec = $this->parseData($linha['DT_FALEC'] ?? $linha['dt_falec'] ?? null) ?: today()->toDateString();
+                        $dtFalecBruta = $this->parseData($linha['DT_FALEC'] ?? $linha['dt_falec'] ?? null);
+                        $dtEmiBruta = $this->parseData($linha['DT_EMI'] ?? $linha['dt_emi'] ?? null);
                         $certidao = trim((string) ($linha['CERTIDAO'] ?? $linha['certidao'] ?? ''));
                         $cartorio = trim((string) ($linha['CARTORIO'] ?? $linha['cartorio'] ?? ''));
                         $medico = trim((string) ($linha['MEDICO'] ?? $linha['medico'] ?? ''));
@@ -458,30 +467,80 @@ final class MigrarClipperCommand extends Command
                         if (isset($jazigosMap["{$quadra}_{$lote}"])) {
                             $jazigo = $jazigosMap["{$quadra}_{$lote}"];
 
-                            if (!$dryRun) {
-                                $falecido = Falecido::create([
-                                    'nome' => $nome,
-                                    'nascimento' => $dtNasc,
-                                    'falecimento' => $dtFalec,
-                                    'certidao_numero' => $certidao ?: null,
-                                    'certidao_cartorio' => $cartorio ?: null,
-                                    'causa_morte' => $causaMortis ?: null,
-                                ]);
+                            // Reconciliação precisa de datas:
+                            $dataFalecimento = null;
+                            $dataSepultamento = null;
+                            $revisaoPendente = false;
+                            $livroRef = "Legado Clipper Cem. {$codigo}";
 
-                                Inumacao::create([
-                                    'deceased_id' => $falecido->id,
-                                    'plot_id' => $jazigo->id,
-                                    'sepultado_em' => "{$dtFalec} 10:00:00",
-                                    'carencia_desde' => $dtFalec,
-                                    'origem' => 'historico',
-                                    'livro_referencia' => "Legado Clipper Cem. {$codigo}",
-                                    'revisao_pendente' => false,
-                                    'coveiro_nome' => $coveiro ?: null,
-                                    'pedreiro_nome' => $pedreiro ?: null,
-                                    'cartorio' => $cartorio ?: null,
-                                    'medico' => $medico ?: null,
-                                    'situacao' => 'confirmada',
-                                ]);
+                            if ($dtFalecBruta && $dtEmiBruta) {
+                                $dataFalecimento = $dtFalecBruta;
+                                $dataSepultamento = $dtEmiBruta;
+                            } elseif ($dtFalecBruta) {
+                                $dataFalecimento = $dtFalecBruta;
+                                $dataSepultamento = $dtFalecBruta;
+                            } elseif ($dtEmiBruta) {
+                                $dataFalecimento = $dtEmiBruta;
+                                $dataSepultamento = $dtEmiBruta;
+                            } else {
+                                // Ambas ausentes no legado Clipper
+                                $revisaoPendente = true;
+                                $loteInfo = $lotesInfoMap["{$quadra}_{$lote}"] ?? null;
+                                $valLote = $loteInfo['validade'] ?? null;
+
+                                if ($valLote && $valLote !== '0000-00-00' && $valLote !== '1911-11-11') {
+                                    try {
+                                        $dtVal = Carbon::parse($valLote);
+                                        $dtEstimada = $dtVal->year >= 1975
+                                            ? $dtVal->subYears(5)->toDateString()
+                                            : '1995-01-01';
+                                        $dataFalecimento = $dtEstimada;
+                                        $dataSepultamento = $dtEstimada;
+                                        $livroRef .= " (Data estimada pela validade do lote - pendente conferência)";
+                                    } catch (\Throwable) {
+                                        $dataFalecimento = '1995-01-01';
+                                        $dataSepultamento = '1995-01-01';
+                                        $livroRef .= " (Sem data original - marco 1995 - pendente conferência)";
+                                    }
+                                } else {
+                                    $dataFalecimento = '1995-01-01';
+                                    $dataSepultamento = '1995-01-01';
+                                    $livroRef .= " (Sem data original - marco 1995 - pendente conferência)";
+                                }
+                            }
+
+                            if (!$dryRun) {
+                                $falecido = Falecido::firstOrCreate(
+                                    [
+                                        'nome' => $nome,
+                                        'falecimento' => $dataFalecimento,
+                                    ],
+                                    [
+                                        'nascimento' => $dtNasc,
+                                        'certidao_numero' => ($certidao && $certidao !== '1' && $certidao !== '111111') ? $certidao : null,
+                                        'certidao_cartorio' => ($cartorio && !str_contains(strtoupper($cartorio), 'FALTA')) ? $cartorio : null,
+                                        'causa_morte' => ($causaMortis && $causaMortis !== '1' && $causaMortis !== '4') ? $causaMortis : null,
+                                    ]
+                                );
+
+                                Inumacao::updateOrCreate(
+                                    [
+                                        'deceased_id' => $falecido->id,
+                                        'plot_id' => $jazigo->id,
+                                    ],
+                                    [
+                                        'sepultado_em' => "{$dataSepultamento} 10:00:00",
+                                        'carencia_desde' => $dataSepultamento,
+                                        'origem' => 'historico',
+                                        'livro_referencia' => $livroRef,
+                                        'revisao_pendente' => $revisaoPendente,
+                                        'coveiro_nome' => $coveiro ?: null,
+                                        'pedreiro_nome' => $pedreiro ?: null,
+                                        'cartorio' => ($cartorio && !str_contains(strtoupper($cartorio), 'FALTA')) ? $cartorio : null,
+                                        'medico' => ($medico && $medico !== '1') ? $medico : null,
+                                        'situacao' => 'confirmada',
+                                    ]
+                                );
                             }
                             $this->estatisticas['falecidos']++;
                             $this->estatisticas['inumacoes']++;
@@ -576,6 +635,7 @@ final class MigrarClipperCommand extends Command
             if (str_starts_with($c, 'CELULAR')) return 'CELULAR';
             if (str_starts_with($c, 'DT_NASC')) return 'DT_NASC';
             if (str_starts_with($c, 'DT_FAL')) return 'DT_FALEC';
+            if (str_starts_with($c, 'DT_EMI')) return 'DT_EMI';
             if (str_starts_with($c, 'CERTIDAO')) return 'CERTIDAO';
             if (str_starts_with($c, 'CARTORIO')) return 'CARTORIO';
             if (str_starts_with($c, 'MEDICO')) return 'MEDICO';

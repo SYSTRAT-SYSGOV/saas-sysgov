@@ -379,7 +379,8 @@ export const InventarioView: React.FC = () => {
           sortValue: (r) => r.concessoes?.[0]?.concessionario?.nome ?? '',
         },
         cell: ({ row }) => {
-          const conc = row.original.concessoes?.[0];
+          const concessoes = row.original.concessoes ?? [];
+          const conc = concessoes[0];
           const titular = conc?.concessionario;
           if (!conc || !titular) {
             return (
@@ -388,17 +389,31 @@ export const InventarioView: React.FC = () => {
               </span>
             );
           }
+          const totalConcessoes = concessoes.length;
+          const outrosTitulares = concessoes.slice(1).map((c) => c.concessionario?.nome).filter(Boolean);
+
           return (
-            <div className="truncate max-w-[170px]">
-              <span className="font-semibold text-foreground text-xs block truncate" title={titular.nome}>
-                {titular.nome}
-              </span>
+            <div className="truncate max-w-[185px]">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-foreground text-xs block truncate" title={titular.nome}>
+                  {titular.nome}
+                </span>
+                {totalConcessoes > 1 && (
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] px-1 py-0 h-4 border-primary/30 text-primary bg-primary/5 shrink-0"
+                    title={`Total de ${totalConcessoes} responsáveis vinculados:\n- ${titular.nome} (Principal)\n${outrosTitulares.map((n, i) => `- ${n} (Cotitular #${i + 2})`).join('\n')}`}
+                  >
+                    +{totalConcessoes - 1}
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[10px] text-muted-foreground font-mono">
+                <span className="text-[10px] text-muted-foreground font-mono truncate" title={`Termo: ${conc.numero}`}>
                   Conc. #{conc.numero}
                 </span>
                 {titular.titular_falecido ? (
-                  <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4">
+                  <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4 shrink-0">
                     Falecido
                   </Badge>
                 ) : null}
@@ -877,13 +892,32 @@ export const InventarioView: React.FC = () => {
             tipo: 'select',
             opcoes: [
               { value: 'municipal', label: 'Municipal' },
+              { value: 'publico', label: 'Público' },
+              { value: 'tradicional', label: 'Tradicional' },
+              { value: 'parque', label: 'Parque / Jardim' },
               { value: 'distrital', label: 'Distrital' },
-              { value: 'outro', label: 'Outro' },
+              { value: 'privado', label: 'Privado / Particular' },
+              { value: 'outro', label: 'Outro / Concessão' },
             ],
           },
+          { nome: 'lat', rotulo: 'Latitude Central (ex: -25.4284)', tipo: 'number' },
+          { nome: 'lng', rotulo: 'Longitude Central (ex: -49.2733)', tipo: 'number' },
+          { nome: 'portaria_lat', rotulo: 'Latitude da Portaria Principal (ex: -25.4280)', tipo: 'number' },
+          { nome: 'portaria_lng', rotulo: 'Longitude da Portaria Principal (ex: -49.2730)', tipo: 'number' },
         ]}
         onEnviar={async (v) => {
-          await cemiteriosApi.criarParque(v as Partial<Parque>);
+          const dados: Partial<Parque> = {
+            codigo: String(v.codigo),
+            nome: String(v.nome),
+            endereco: v.endereco ? String(v.endereco) : undefined,
+            responsavel: v.responsavel ? String(v.responsavel) : undefined,
+            tipo: String(v.tipo),
+            lat: v.lat ? Number(v.lat) : undefined,
+            lng: v.lng ? Number(v.lng) : undefined,
+            portaria_lat: v.portaria_lat ? Number(v.portaria_lat) : undefined,
+            portaria_lng: v.portaria_lng ? Number(v.portaria_lng) : undefined,
+          };
+          await cemiteriosApi.criarParque(dados);
           await recarregarCemiterios();
         }}
       />

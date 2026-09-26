@@ -52,6 +52,7 @@ Route::get('/gis/camadas', [GisController::class, 'camadas']);
 Route::put('/gis/geometrias/{tipo}/{id}', [GisController::class, 'salvarGeometria'])->whereIn('tipo', ['parque', 'setor', 'jazigo']);
 Route::post('/gis/setores/{id}/gerar-grade', [GisController::class, 'gerarGrade']);
 Route::get('/gis/mapa-base/sessao', [GisController::class, 'sessaoMapaBase']);
+Route::get('/gis/exportar', [GisController::class, 'exportar']);
 Route::get('/busca', [GisController::class, 'buscar']);
 
 // Falecidos e operações

@@ -18,8 +18,11 @@ export interface Paginado<T> {
 export interface Setor { id: number; park_id: number; codigo: string; descricao: string | null; tipo_zona: string; area_m2: number | null }
 export interface Parque {
   id: number; codigo: string; nome: string; endereco: string | null; tipo: string; situacao: string;
-  responsavel: string | null; lat: number | null; lng: number | null; setores?: Setor[]; setores_count?: number; jazigos_count?: number;
+  responsavel: string | null; lat: number | null; lng: number | null;
+  portaria_lat?: number | null; portaria_lng?: number | null;
+  setores?: Setor[]; setores_count?: number; jazigos_count?: number;
 }
+export type Cemiterio = Parque;
 export interface Jazigo {
   id: number; park_id: number; sector_id: number; codigo: string; codigo_legado?: string | null; processo_administrativo?: string | null; tipo: string; capacidade: number; ocupacao: number;
   estado: EstadoJazigo; comprimento_m: number | null; largura_m: number | null; lat: number | null; lng: number | null; lock_version: number;
@@ -38,8 +41,19 @@ export interface Falecido {
   documento?: string | null;
 }
 export interface OrdemServico {
-  id: number; ano: number; numero: number; tipo: string; plot_id: number | null; agendada_para: string | null; equipe: string | null;
-  situacao: string; observacao: string | null; executada_em: string | null; jazigo?: Pick<Jazigo, 'id' | 'codigo'> | null; falecido?: string | null;
+  id: number;
+  ano: number;
+  numero: number;
+  tipo: string;
+  plot_id: number | null;
+  agendada_para: string | null;
+  equipe: string | null;
+  situacao: string;
+  observacao: string | null;
+  executada_em: string | null;
+  jazigo?: (Pick<Jazigo, 'id' | 'codigo'> & { cemiterio?: { id: number; nome: string } }) | null;
+  falecido?: string | null;
+  rotulo?: string;
 }
 export interface Inumacao {
   id: number; deceased_id: number; plot_id: number; gaveta_numero?: number | null; sepultado_em: string; situacao: string; origem: string; revisao_pendente: boolean;
@@ -49,7 +63,21 @@ export interface Inumacao {
 }
 export interface Exumacao {
   id: number; burial_id: number; tipo: string; situacao: string; prazo_aplicado_anos: number | null; liberada_em: string | null;
-  motivo_suspensao: string | null; inumacao?: Inumacao; ordem_servico?: OrdemServico | null;
+  motivo_suspensao: string | null; destino?: string | null; inumacao?: Inumacao; ordem_servico?: OrdemServico | null;
+}
+export interface Trasladacao {
+  id: number;
+  burial_id: number;
+  plot_origem_id: number;
+  plot_destino_id: number | null;
+  destino_externo: string | null;
+  documento_destino: string | null;
+  situacao: string;
+  service_order_id: number | null;
+  created_at: string;
+  inumacao?: Inumacao;
+  jazigoOrigem?: Pick<Jazigo, 'id' | 'codigo'>;
+  jazigoDestino?: Pick<Jazigo, 'id' | 'codigo'>;
 }
 export interface Concessionario {
   id: number; nome: string; tipo_doc: 'cpf' | 'cnpj'; documento_mascarado: string; documento?: string;
@@ -204,8 +232,28 @@ export interface FeatureCollection {
   type: 'FeatureCollection';
   features: { type: 'Feature'; id: string; geometry: Polygon; properties: Record<string, unknown> }[];
 }
-export interface ResultadoBusca { tipo: string; rotulo: string; jazigo_id: number; jazigo_codigo: string; envelope: [number, number, number, number] | null }
-export interface MapaBase { provedor: string; url: string; atribuicao: string; max_zoom: number }
+export interface ResultadoBusca {
+  tipo: string;
+  rotulo: string;
+  jazigo_id: number;
+  jazigo_codigo: string;
+  envelope: [number, number, number, number] | null;
+}
+export interface ProvedorMapaBase {
+  id: string;
+  nome: string;
+  tipo: string;
+  url: string;
+  atribuicao: string;
+  max_zoom: number;
+}
+export interface MapaBase {
+  provedor: string;
+  url: string;
+  atribuicao: string;
+  max_zoom: number;
+  catalogo?: ProvedorMapaBase[];
+}
 
 /* ------------------------------------------------------------------ */
 /* Formatação e regras de apresentação (puras — testadas no vitest)     */
@@ -355,6 +403,13 @@ export const cemiteriosApi = {
     post<{ criados: number; descartados: { linha: number; coluna: number; motivo: string }[]; duplicados: string[] }>(`/gis/setores/${setor}/gerar-grade`, dados),
   mapaBase: () => get<MapaBase>('/gis/mapa-base/sessao'),
   buscar: (q: string) => get<ResultadoBusca[]>('/busca', { q }),
+  exportarGis: async (parkId: number, formato: 'geojson' | 'kml') => {
+    const res = await apiClient.get<unknown>('/api/cemiterios/gis/exportar', {
+      params: { park_id: parkId, formato },
+      responseType: formato === 'kml' ? 'text' : 'json',
+    });
+    return res.data;
+  },
 
   // Operações
   falecidos: (q?: string) => get<Paginado<Falecido>>('/falecidos', { q }),
@@ -368,8 +423,10 @@ export const cemiteriosApi = {
   cancelarInumacao: (id: number) => post<Inumacao>(`/inumacoes/${id}/cancelar`),
   exumacoes: (filtros: Record<string, unknown> = {}) => get<Paginado<Exumacao>>('/exumacoes', filtros),
   exumar: (dados: Record<string, unknown>) => post<Exumacao>('/exumacoes', paraFormData(dados)),
+  trasladacoes: (filtros: Record<string, unknown> = {}) => get<Paginado<Trasladacao>>('/trasladacoes', filtros),
   trasladar: (dados: Record<string, unknown>) => post('/trasladacoes', dados),
   ordens: (filtros: Record<string, unknown> = {}) => get<Paginado<OrdemServico>>('/ordens-servico', filtros),
+  ordem: (id: number) => get<OrdemServico>(`/ordens-servico/${id}`),
   transicaoOrdem: (id: number, acao: 'iniciar' | 'concluir' | 'suspender' | 'cancelar', motivo?: string) =>
     post<OrdemServico>(`/ordens-servico/${id}/${acao}`, motivo ? { motivo } : {}),
   pdfOrdem: (o: Pick<OrdemServico, 'id' | 'numero' | 'ano'>) => pdf(`/ordens-servico/${o.id}/pdf`, `os-${o.numero}-${o.ano}.pdf`),

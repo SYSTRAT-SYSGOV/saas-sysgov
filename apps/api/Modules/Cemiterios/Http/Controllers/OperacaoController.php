@@ -122,6 +122,7 @@ final class OperacaoController extends Controller
 
         $dados = $request->validate([
             'gaveta_numero' => ['nullable', 'integer', 'min:1'],
+            'situacao' => ['nullable', 'string', 'max:30'],
             'sepultado_em' => ['sometimes', 'date'],
             'tipo' => ['nullable', 'string', 'max:20'],
             'livro_referencia' => ['nullable', 'string', 'max:255'],
@@ -200,7 +201,19 @@ final class OperacaoController extends Controller
         $this->autorizar($request, 'cemiterios.view');
 
         return response()->json(
-            Trasladacao::with(['inumacao.falecido:id,nome'])->orderByDesc('id')->paginate(min((int) $request->query('per_page', 30), 100))
+            Trasladacao::with([
+                'inumacao.falecido:id,nome',
+                'jazigoOrigem:id,codigo,park_id',
+                'jazigoDestino:id,codigo,park_id',
+            ])
+                ->when($request->query('park_id'), function ($q, $v): void {
+                    $q->where(function ($sub) use ($v): void {
+                        $sub->whereHas('jazigoOrigem', fn ($jq) => $jq->where('park_id', $v))
+                            ->orWhereHas('jazigoDestino', fn ($jq) => $jq->where('park_id', $v));
+                    });
+                })
+                ->orderByDesc('id')
+                ->paginate(min((int) $request->query('per_page', 30), 100))
         );
     }
 

@@ -47,8 +47,43 @@ final class OrdemServico extends Model
         return $this->belongsTo(Jazigo::class, 'plot_id');
     }
 
+    /** @return \Illuminate\Database\Eloquent\Relations\HasOne<Inumacao, $this> */
+    public function inumacao(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Inumacao::class, 'service_order_id');
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Relations\HasOne<Exumacao, $this> */
+    public function exumacao(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Exumacao::class, 'service_order_id');
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Relations\HasOne<Trasladacao, $this> */
+    public function trasladacao(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Trasladacao::class, 'service_order_id');
+    }
+
     public function getRotuloAttribute(): string
     {
         return "{$this->numero}/{$this->ano}";
+    }
+
+    public function getFalecidoNomeAttribute(): ?string
+    {
+        if ($this->relationLoaded('inumacao') && $this->inumacao?->relationLoaded('falecido')) {
+            return $this->inumacao->falecido?->nome;
+        }
+
+        if ($this->relationLoaded('exumacao') && $this->exumacao?->relationLoaded('inumacao') && $this->exumacao->inumacao?->relationLoaded('falecido')) {
+            return $this->exumacao->inumacao->falecido?->nome;
+        }
+
+        if ($this->relationLoaded('trasladacao') && $this->trasladacao?->relationLoaded('inumacao') && $this->trasladacao->inumacao?->relationLoaded('falecido')) {
+            return $this->trasladacao->inumacao->falecido?->nome;
+        }
+
+        return null;
     }
 }

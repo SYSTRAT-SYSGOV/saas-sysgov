@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $responsavel
  * @property float|null $lat
  * @property float|null $lng
+ * @property float|null $portaria_lat
+ * @property float|null $portaria_lng
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
@@ -33,7 +35,12 @@ final class Cemiterio extends Model
 
     protected $guarded = ['id', 'tenant_id'];
 
-    protected $casts = ['lat' => 'float', 'lng' => 'float'];
+    protected $casts = [
+        'lat' => 'float',
+        'lng' => 'float',
+        'portaria_lat' => 'float',
+        'portaria_lng' => 'float',
+    ];
 
     /** @return HasMany<Setor, $this> */
     public function setores(): HasMany

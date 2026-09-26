@@ -8,10 +8,12 @@ import {
   Check,
   Layers,
   LayoutGrid,
+  Pencil,
 } from 'lucide-react';
 import { Card, Badge, Button } from '@sysgov/ui';
 import { useCemiteriosContext } from '../CemiteriosContext';
 import type { Parque } from '../api';
+import { ModalEditarCemiterio } from './ModalEditarCemiterio';
 
 export interface NecropoleHeaderBarProps {
   className?: string;
@@ -29,6 +31,7 @@ export const NecropoleHeaderBar: React.FC<NecropoleHeaderBarProps> = ({ classNam
   } = useCemiteriosContext();
 
   const [menuAberto, setMenuAberto] = useState(false);
+  const [modalEditarAberto, setModalEditarAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Fechar dropdown ao clicar fora
@@ -109,6 +112,17 @@ export const NecropoleHeaderBar: React.FC<NecropoleHeaderBarProps> = ({ classNam
             </Button>
           )}
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setModalEditarAberto(true)}
+            className="gap-1.5 h-9"
+            title="Configurar dados e coordenadas geográficas da necrópole"
+          >
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="hidden lg:inline">Editar Necrópole</span>
+          </Button>
+
           {temMultiplosCemiterios && (
             <div className="relative">
               <Button
@@ -176,6 +190,12 @@ export const NecropoleHeaderBar: React.FC<NecropoleHeaderBarProps> = ({ classNam
           )}
         </div>
       </div>
+
+      <ModalEditarCemiterio
+        aberto={modalEditarAberto}
+        onFechar={() => setModalEditarAberto(false)}
+        parque={cemiterioAtivo}
+      />
     </Card>
   );
 };

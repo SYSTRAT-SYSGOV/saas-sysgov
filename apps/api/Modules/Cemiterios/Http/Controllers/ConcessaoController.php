@@ -97,7 +97,11 @@ final class ConcessaoController extends Controller
             ->when($request->query('numero'), fn ($q, $v) => $q->where('numero', 'like', "%{$v}%"))
             ->when($request->query('processo_administrativo'), fn ($q, $v) => $q->where('processo_administrativo', 'like', "%{$v}%"))
             ->when($request->query('titular_falecido') !== null, fn ($q) => $q->whereHas('concessionario', fn ($cq) => $cq->where('titular_falecido', filter_var($request->query('titular_falecido'), FILTER_VALIDATE_BOOLEAN))))
-            ->orderByDesc('id')
+            ->when(
+                $request->query('plot_id'),
+                fn ($q) => $q->orderBy('numero')->orderBy('id'),
+                fn ($q) => $q->orderByDesc('id')
+            )
             ->paginate(min(max((int) $request->query('per_page', 30), 1), 100));
 
         if ($request->boolean('com_documento') || $request->has('plot_id')) {

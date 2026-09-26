@@ -35,4 +35,16 @@ final class Trasladacao extends Model
     {
         return $this->belongsTo(Inumacao::class, 'burial_id');
     }
+
+    /** @return BelongsTo<Jazigo, $this> */
+    public function jazigoOrigem(): BelongsTo
+    {
+        return $this->belongsTo(Jazigo::class, 'plot_origem_id');
+    }
+
+    /** @return BelongsTo<Jazigo, $this> */
+    public function jazigoDestino(): BelongsTo
+    {
+        return $this->belongsTo(Jazigo::class, 'plot_destino_id');
+    }
 }

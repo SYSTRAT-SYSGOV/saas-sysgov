@@ -73,7 +73,7 @@ final class Jazigo extends Model
     /** @return HasMany<Concessao, $this> */
     public function concessoes(): HasMany
     {
-        return $this->hasMany(Concessao::class, 'plot_id');
+        return $this->hasMany(Concessao::class, 'plot_id')->orderBy('numero')->orderBy('id');
     }
 
     /** @return HasMany<Inumacao, $this> */

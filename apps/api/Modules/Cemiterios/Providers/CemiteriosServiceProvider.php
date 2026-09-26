@@ -54,6 +54,7 @@ final class CemiteriosServiceProvider extends ServiceProvider
             ...array_keys(self::AGENDA),
             Console\ReajustarPrecos::class,
             Console\MigrarClipperCommand::class,
+            Console\CorrigirDatasMigradasCommand::class,
         ]);
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {

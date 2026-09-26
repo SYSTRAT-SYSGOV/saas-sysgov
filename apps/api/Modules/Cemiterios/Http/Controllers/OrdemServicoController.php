@@ -32,13 +32,41 @@ final class OrdemServicoController extends Controller
     {
         $this->autorizar($request, 'cemiterios.view');
 
-        return response()->json(
-            OrdemServico::with('jazigo:id,codigo,park_id')
-                ->when($request->query('situacao'), fn ($q, $v) => $q->whereIn('situacao', (array) $v))
-                ->when($request->query('tipo'), fn ($q, $v) => $q->where('tipo', $v))
-                ->orderByDesc('ano')->orderByDesc('numero')
-                ->paginate(min((int) $request->query('per_page', 30), 100))
-        );
+        $paginador = OrdemServico::with([
+            'jazigo:id,codigo,park_id',
+            'jazigo.cemiterio:id,nome',
+            'inumacao.falecido:id,nome',
+            'exumacao.inumacao.falecido:id,nome',
+            'trasladacao.inumacao.falecido:id,nome',
+        ])
+            ->when($request->query('park_id'), fn ($q, $v) => $q->whereHas('jazigo', fn ($jq) => $jq->where('park_id', $v)))
+            ->when($request->query('situacao'), fn ($q, $v) => $q->whereIn('situacao', (array) $v))
+            ->when($request->query('tipo'), fn ($q, $v) => $q->where('tipo', $v))
+            ->when($request->query('equipe'), fn ($q, $v) => $q->where('equipe', 'like', "%{$v}%"))
+            ->when($request->query('data_inicio'), fn ($q, $v) => $q->whereDate('agendada_para', '>=', $v))
+            ->when($request->query('data_fim'), fn ($q, $v) => $q->whereDate('agendada_para', '<=', $v))
+            ->when($request->query('busca'), function ($q, $termo): void {
+                $termo = trim((string) $termo);
+                $q->where(function ($sub) use ($termo): void {
+                    $sub->where('numero', 'like', "%{$termo}%")
+                        ->orWhere('observacao', 'like', "%{$termo}%")
+                        ->orWhere('equipe', 'like', "%{$termo}%")
+                        ->orWhereHas('jazigo', fn ($jq) => $jq->where('codigo', 'like', "%{$termo}%"))
+                        ->orWhereHas('inumacao.falecido', fn ($fq) => $fq->where('nome', 'like', "%{$termo}%"))
+                        ->orWhereHas('exumacao.inumacao.falecido', fn ($fq) => $fq->where('nome', 'like', "%{$termo}%"))
+                        ->orWhereHas('trasladacao.inumacao.falecido', fn ($fq) => $fq->where('nome', 'like', "%{$termo}%"));
+                });
+            })
+            ->orderByDesc('ano')->orderByDesc('numero')
+            ->paginate(min((int) $request->query('per_page', 30), 100));
+
+        $paginador->through(function (OrdemServico $ordem): array {
+            $dados = $ordem->toArray();
+            $dados['falecido'] = $ordem->falecido_nome ?? $this->falecido($ordem);
+            return $dados;
+        });
+
+        return response()->json($paginador);
     }
 
     public function show(Request $request, int $id): JsonResponse

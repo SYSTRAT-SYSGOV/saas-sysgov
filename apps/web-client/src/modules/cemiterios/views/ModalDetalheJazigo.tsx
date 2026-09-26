@@ -37,7 +37,9 @@ import {
   Search,
   Loader2,
   Compass,
+  FileSignature,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   cemiteriosApi,
   formatarData,
@@ -113,6 +115,41 @@ export function parseEnderecoTexto(end: string | null | undefined) {
   };
 }
 
+export function limparCampoLegado(val: string | null | undefined): string {
+  if (!val) return '';
+  const trimmed = String(val).trim();
+  if (trimmed === '.' || trimmed === '-' || trimmed.toUpperCase() === 'IGNORADO') return '';
+  return trimmed;
+}
+
+export function formatarCampoLegado(val: string | null | undefined, fallback = 'Não informado'): string {
+  if (!val) return fallback;
+  const trimmed = String(val).trim();
+  if (trimmed === '.' || trimmed === '-' || trimmed.toUpperCase() === 'IGNORADO') return fallback;
+  return trimmed;
+}
+
+export function calcularCarenciaInumacao(sepultadoEmStr: string | null | undefined) {
+  if (!sepultadoEmStr) return null;
+  const dataSep = new Date(sepultadoEmStr);
+  if (isNaN(dataSep.getTime())) return null;
+  const hoje = new Date();
+  const diffMeses = (hoje.getFullYear() - dataSep.getFullYear()) * 12 + (hoje.getMonth() - dataSep.getMonth());
+  const anos = Math.floor(diffMeses / 12);
+  const mesesResto = Math.max(0, diffMeses % 12);
+  const tempoDecorrido = anos > 0 ? `${anos}a ${mesesResto}m` : `${Math.max(0, diffMeses)}m`;
+
+  const carenciaCompleta = diffMeses >= 36;
+  const mesesRestantes = Math.max(0, 36 - diffMeses);
+
+  return {
+    diffMeses,
+    tempoDecorrido,
+    carenciaCompleta,
+    mesesRestantes,
+  };
+}
+
 export interface ModalDetalheJazigoProps {
   jazigo: Pick<Jazigo, 'id'> | null;
   onFechar: () => void;
@@ -150,7 +187,14 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
   const j = detalhe.dados;
   const emManutencao = j?.estado === 'manutencao';
   const listaOcupantes: Inumacao[] = inumacoes.dados?.data ?? [];
-  const concessaoAtiva: Concessao | undefined = concessoes.dados?.data?.[0];
+  const todasConcessoes: Concessao[] = concessoes.dados?.data ?? [];
+  const [concessaoIdSelecionada, setConcessaoIdSelecionada] = useState<number | null>(null);
+  const concessaoAtiva: Concessao | undefined =
+    todasConcessoes.find((c) => c.id === concessaoIdSelecionada) ?? todasConcessoes[0];
+
+  React.useEffect(() => {
+    setConcessaoIdSelecionada(null);
+  }, [id]);
   const listaGuias: Guia[] = guiasQuery.dados?.data ?? [];
 
   // Cálculos financeiros consolidados da sepultura
@@ -429,6 +473,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
     certidao_numero: '',
     certidao_cartorio: '',
     gaveta_numero: '',
+    situacao: 'confirmada',
     sepultado_em: '',
     tipo: '',
     livro_referencia: '',
@@ -444,15 +489,16 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
       documento: oc.falecido?.documento ?? '',
       nascimento: oc.falecido?.nascimento ? oc.falecido.nascimento.split('T')[0] : '',
       falecimento: oc.falecido?.falecimento ? oc.falecido.falecimento.split('T')[0] : '',
-      certidao_numero: oc.falecido?.certidao_numero ?? '',
-      certidao_cartorio: oc.falecido?.certidao_cartorio ?? oc.cartorio ?? '',
+      certidao_numero: limparCampoLegado(oc.falecido?.certidao_numero),
+      certidao_cartorio: limparCampoLegado(oc.falecido?.certidao_cartorio || oc.cartorio),
       gaveta_numero: oc.gaveta_numero != null ? String(oc.gaveta_numero) : '',
+      situacao: oc.situacao || 'confirmada',
       sepultado_em: oc.sepultado_em ? oc.sepultado_em.split('T')[0] : '',
-      tipo: oc.tipo ?? '',
-      livro_referencia: oc.livro_referencia ?? '',
-      coveiro_nome: oc.coveiro_nome ?? '',
-      pedreiro_nome: oc.pedreiro_nome ?? '',
-      medico: oc.medico ?? '',
+      tipo: limparCampoLegado(oc.tipo) || 'caixao',
+      livro_referencia: limparCampoLegado(oc.livro_referencia),
+      coveiro_nome: limparCampoLegado(oc.coveiro_nome),
+      pedreiro_nome: limparCampoLegado(oc.pedreiro_nome),
+      medico: limparCampoLegado(oc.medico),
     });
   };
 
@@ -462,6 +508,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
     try {
       await cemiteriosApi.atualizarInumacao(inumacaoEditando.id, {
         gaveta_numero: formInumacao.gaveta_numero ? Number(formInumacao.gaveta_numero) : null,
+        situacao: formInumacao.situacao || 'confirmada',
         sepultado_em: formInumacao.sepultado_em,
         tipo: formInumacao.tipo || null,
         livro_referencia: formInumacao.livro_referencia || null,
@@ -1003,18 +1050,72 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
               {/* ── ABA 2: CONCESSÃO & TITULARES ── */}
               {subAba === 'concessao' && (
                 <div className="space-y-4">
+                  {todasConcessoes.length > 1 && (
+                    <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                          <Users className="h-4 w-4 text-primary" />
+                          <span>Titulares e Co-concessionários Vinculados ({todasConcessoes.length})</span>
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          Selecione o termo abaixo para visualizar ou editar os dados cadastrais
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {todasConcessoes.map((c, idx) => {
+                          const ativa = c.id === concessaoAtiva?.id;
+                          const isPrincipal = idx === 0;
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => setConcessaoIdSelecionada(c.id)}
+                              className={cn(
+                                "px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer border text-left",
+                                ativa
+                                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                  : "bg-card text-foreground hover:bg-muted/80 border-border"
+                              )}
+                            >
+                              <FileSignature className="h-3.5 w-3.5 shrink-0" />
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold">{c.numero}</span>
+                                  <span className={cn(
+                                    "text-[10px] px-1.5 py-0.2 rounded font-normal",
+                                    ativa ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                                  )}>
+                                    {isPrincipal ? 'Titular Principal' : `Cotitular #${idx + 1}`}
+                                  </span>
+                                </div>
+                                <span className={cn("text-[11px] block truncate max-w-[220px]", ativa ? "text-primary-foreground/90" : "text-muted-foreground")}>
+                                  {c.concessionario?.nome ?? 'Sem titular'}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {concessaoAtiva ? (
                     <div className="space-y-4">
                       <Card className="p-4 border-border space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2.5">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <div>
                               <span className="text-[11px] text-muted-foreground block uppercase font-medium">Termo de Concessão</span>
                               <Mono className="text-base font-bold text-foreground">{concessaoAtiva.numero}</Mono>
                             </div>
-                            <Badge variant="outline" className="capitalize text-xs ml-2">
+                            <Badge variant="outline" className="capitalize text-xs ml-1">
                               Modalidade: {concessaoAtiva.modalidade}
                             </Badge>
+                            {todasConcessoes.length > 1 && (
+                              <Badge variant="secondary" className="text-xs">
+                                {todasConcessoes[0]?.id === concessaoAtiva.id ? 'Titular Principal' : 'Co-titular / Sucessor'}
+                              </Badge>
+                            )}
                           </div>
                           {pode && (
                             <Button
@@ -1141,100 +1242,172 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
                 <div className="space-y-3">
                   {listaOcupantes.length > 0 ? (
                     <div className="space-y-3">
-                      {listaOcupantes.map((oc) => (
-                        <Card key={oc.id} className="p-4 border-border bg-card shadow-2xs space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2.5">
-                            <div className="flex items-center gap-2.5">
-                              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                                {oc.gaveta_numero ? `G${oc.gaveta_numero}` : '#'}
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-bold text-foreground">
-                                  {oc.falecido?.nome ?? 'Restos Mortais'}
-                                </h4>
-                                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                  {oc.falecido?.nascimento && (
-                                    <span>Nasc: <Mono>{formatarData(oc.falecido.nascimento)}</Mono></span>
-                                  )}
-                                  {oc.falecido?.falecimento && (
-                                    <span>Óbito: <Mono>{formatarData(oc.falecido.falecimento)}</Mono></span>
-                                  )}
-                                  {oc.falecido?.idade_obito != null && (
-                                    <span className="font-mono">({oc.falecido.idade_obito} anos)</span>
+                      {listaOcupantes.map((oc) => {
+                        const carencia = calcularCarenciaInumacao(oc.sepultado_em);
+                        const situacaoLower = (oc.situacao || 'confirmada').toLowerCase();
+
+                        return (
+                          <Card key={oc.id} className="p-4 border-border bg-card shadow-2xs space-y-3 hover:border-primary/30 transition-colors">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2.5">
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                                  {oc.gaveta_numero ? (
+                                    <span className="font-mono text-xs">G{oc.gaveta_numero}</span>
+                                  ) : (
+                                    <User className="h-5 w-5 text-primary" />
                                   )}
                                 </div>
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-sm font-bold text-foreground">
+                                      {oc.falecido?.nome ?? 'Restos Mortais'}
+                                    </h4>
+                                    {oc.falecido?.documento && (
+                                      <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground">
+                                        CPF: {formatarCpfCnpj(oc.falecido.documento)}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                                    {oc.falecido?.nascimento && (
+                                      <span>Nasc: <Mono>{formatarData(oc.falecido.nascimento)}</Mono></span>
+                                    )}
+                                    {oc.falecido?.falecimento && (
+                                      <span>Óbito: <Mono>{formatarData(oc.falecido.falecimento)}</Mono></span>
+                                    )}
+                                    {oc.falecido?.idade_obito != null && (
+                                      <span className="font-mono text-foreground font-semibold">({oc.falecido.idade_obito} anos)</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                                {/* Identificação da Gaveta / Nicho */}
+                                {oc.gaveta_numero ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="font-mono text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30"
+                                    title="Nicho / Gaveta física no jazigo"
+                                  >
+                                    Gaveta {oc.gaveta_numero}
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs text-muted-foreground bg-muted/30"
+                                    title="Sem gaveta individual numerada. Sepultamento em cova rasa no solo ou registro legado sem compartimento associado"
+                                  >
+                                    Sepultura Geral / Solo
+                                  </Badge>
+                                )}
+
+                                {/* Situação da Inumação */}
+                                {situacaoLower === 'confirmada' ? (
+                                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs gap-1 font-medium">
+                                    <CheckCircle2 className="h-3 w-3" /> Corpo Presente
+                                  </Badge>
+                                ) : situacaoLower === 'exumado' ? (
+                                  <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs gap-1 font-medium">
+                                    <Clock className="h-3 w-3" /> Exumado
+                                  </Badge>
+                                ) : situacaoLower === 'transferido' ? (
+                                  <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30 text-xs gap-1 font-medium">
+                                    Transladado
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="capitalize text-xs">
+                                    {oc.situacao}
+                                  </Badge>
+                                )}
+
+                                {/* Prazo Regulamentar de Carência / Exumação (CONAMA 335) */}
+                                {carencia && (
+                                  carencia.carenciaCompleta ? (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5 text-[11px] gap-1 font-normal"
+                                      title="Prazo regulamentar de repouso sanitário (3 anos / 36 meses) cumprido. Esta sepultura pode ser desocupada por exumação ordinária mediante requerimento da família."
+                                    >
+                                      <CheckCircle2 className="h-3 w-3" /> Apto p/ Exumação (+3 anos)
+                                    </Badge>
+                                  ) : (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5 text-[11px] gap-1 font-normal"
+                                      title={`Período regulamentar obrigatório de descanso cadavérico. Restam ${carencia.mesesRestantes} meses de carência legal antes que qualquer exumação ordinária seja permitida.`}
+                                    >
+                                      <Clock className="h-3 w-3" /> Carência ({carencia.mesesRestantes}m rest.)
+                                    </Badge>
+                                  )
+                                )}
+
+                                {pode && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => abrirEdicaoInumacao(oc)}
+                                    className="h-7 text-xs gap-1.5 font-medium ml-1 border-border"
+                                  >
+                                    <Edit className="h-3 w-3 text-primary" /> Editar Sepultado
+                                  </Button>
+                                )}
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              {oc.gaveta_numero ? (
-                                <Badge variant="secondary" className="font-mono text-xs">
-                                  Gaveta {oc.gaveta_numero}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-xs">Posição Geral</Badge>
-                              )}
-                              <Badge variant="outline" className="capitalize text-xs">
-                                {oc.situacao}
-                              </Badge>
-                              {pode && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => abrirEdicaoInumacao(oc)}
-                                  className="h-7 text-xs gap-1.5 font-medium ml-1"
-                                >
-                                  <Edit className="h-3 w-3" /> Editar Sepultado
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 text-xs">
-                            <div className="space-y-0.5">
-                              <span className="text-[11px] text-muted-foreground block font-medium">Certidão de Óbito:</span>
-                              <Mono className="font-semibold text-foreground text-xs block">
-                                {oc.falecido?.certidao_numero ? `Nº ${oc.falecido.certidao_numero}` : '—'}
-                              </Mono>
-                              <span className="text-[11px] text-muted-foreground block truncate" title={oc.falecido?.certidao_cartorio || oc.cartorio || 'Cartório não informado'}>
-                                Cartório: {oc.falecido?.certidao_cartorio || oc.cartorio || '—'}
-                              </span>
-                            </div>
-
-                            <div className="space-y-0.5">
-                              <span className="text-[11px] text-muted-foreground block font-medium">Médico Atestante (Declaração de Óbito):</span>
-                              <span className="font-semibold text-foreground text-xs block truncate" title={oc.medico || 'Não informado'}>
-                                {oc.medico || 'Não informado'}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground block">
-                                Causa da Morte: Restrita (sigilo médico)
-                              </span>
-                            </div>
-
-                            <div className="space-y-0.5">
-                              <span className="text-[11px] text-muted-foreground block font-medium">Data do Sepultamento:</span>
-                              <Mono className="font-semibold text-foreground text-xs block">
-                                {formatarData(oc.sepultado_em)}
-                              </Mono>
-                              <span className="text-[11px] text-muted-foreground block">
-                                Tipo: {oc.tipo || 'Sepultamento'}
-                              </span>
-                            </div>
-
-                            <div className="space-y-0.5">
-                              <span className="text-[11px] text-muted-foreground block font-medium">Registro Cemiterial & Equipe:</span>
-                              <div title={oc.livro_referencia || 'Livro não registrado'}>
-                                <Mono className="text-[11px] text-foreground block truncate">
-                                  Livro: {oc.livro_referencia || '—'}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 text-xs">
+                              <div className="space-y-0.5">
+                                <span className="text-[11px] text-muted-foreground block font-medium">Certidão de Óbito:</span>
+                                <Mono className="font-semibold text-foreground text-xs block">
+                                  {limparCampoLegado(oc.falecido?.certidao_numero) ? `Nº ${limparCampoLegado(oc.falecido?.certidao_numero)}` : 'Não informada'}
                                 </Mono>
+                                <span className="text-[11px] text-muted-foreground block truncate" title={formatarCampoLegado(oc.falecido?.certidao_cartorio || oc.cartorio, 'Cartório não informado')}>
+                                  Cartório: {formatarCampoLegado(oc.falecido?.certidao_cartorio || oc.cartorio, 'Não informado')}
+                                </span>
                               </div>
-                              <span className="text-[11px] text-muted-foreground block truncate" title={[oc.coveiro_nome ? `Cov: ${oc.coveiro_nome}` : null, oc.pedreiro_nome ? `Ped: ${oc.pedreiro_nome}` : null].filter(Boolean).join(' · ')}>
-                                {[oc.coveiro_nome ? `Cov: ${oc.coveiro_nome}` : null, oc.pedreiro_nome ? `Ped: ${oc.pedreiro_nome}` : null].filter(Boolean).join(' · ') || 'Equipe não informada'}
-                              </span>
+
+                              <div className="space-y-0.5">
+                                <span className="text-[11px] text-muted-foreground block font-medium">Declaração de Óbito & Médico:</span>
+                                <span className="font-semibold text-foreground text-xs block truncate" title={formatarCampoLegado(oc.medico, 'Médico não informado')}>
+                                  {formatarCampoLegado(oc.medico, 'Médico não informado')}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground block">
+                                  Causa da Morte: Restrita (sigilo médico)
+                                </span>
+                              </div>
+
+                              <div className="space-y-0.5">
+                                <span className="text-[11px] text-muted-foreground block font-medium">Data do Sepultamento:</span>
+                                <div className="flex items-center gap-1.5">
+                                  <Mono className="font-semibold text-foreground text-xs block">
+                                    {formatarData(oc.sepultado_em)}
+                                  </Mono>
+                                  {carencia && (
+                                    <span className="text-[10px] text-muted-foreground font-mono">
+                                      (Há {carencia.tempoDecorrido})
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] text-muted-foreground block capitalize">
+                                  Tipo: {formatarCampoLegado(oc.tipo, 'Sepultamento (Caixão)')}
+                                </span>
+                              </div>
+
+                              <div className="space-y-0.5">
+                                <span className="text-[11px] text-muted-foreground block font-medium">Registro Cemiterial & Equipe:</span>
+                                <div title={formatarCampoLegado(oc.livro_referencia, 'Livro não registrado')}>
+                                  <Mono className="text-[11px] text-foreground block truncate">
+                                    Livro: {formatarCampoLegado(oc.livro_referencia, 'Não registrado')}
+                                  </Mono>
+                                </div>
+                                <span className="text-[11px] text-muted-foreground block truncate" title={[limparCampoLegado(oc.coveiro_nome) ? `Coveiro: ${limparCampoLegado(oc.coveiro_nome)}` : null, limparCampoLegado(oc.pedreiro_nome) ? `Pedreiro: ${limparCampoLegado(oc.pedreiro_nome)}` : null].filter(Boolean).join(' · ')}>
+                                  {[limparCampoLegado(oc.coveiro_nome) ? `Coveiro: ${limparCampoLegado(oc.coveiro_nome)}` : null, limparCampoLegado(oc.pedreiro_nome) ? `Pedreiro: ${limparCampoLegado(oc.pedreiro_nome)}` : null].filter(Boolean).join(' · ') || 'Equipe não informada'}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        </Card>
-                      ))}
+                          </Card>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="p-8 text-center border border-dashed border-border rounded-lg space-y-2">
@@ -2027,16 +2200,37 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
               <div className="md:col-span-4">
                 <label className="block text-xs font-semibold text-foreground mb-1">
-                  Gaveta / Posição no Túmulo
+                  Situação do Sepultamento
+                </label>
+                <select
+                  value={formInumacao.situacao}
+                  onChange={(e) => setFormInumacao((p) => ({ ...p, situacao: e.target.value }))}
+                  className="w-full text-xs h-9 rounded-md border border-input bg-background px-3 py-1 text-foreground shadow-2xs focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="confirmada">Confirmada (Corpo Presente no Túmulo)</option>
+                  <option value="exumado">Exumado (Restos Mortais Retirados)</option>
+                  <option value="transferido">Transladado para Outra Sepultura</option>
+                </select>
+                <span className="text-[10px] text-muted-foreground block mt-0.5">
+                  Indica a permanência física dos restos mortais no túmulo.
+                </span>
+              </div>
+
+              <div className="md:col-span-4">
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Gaveta / Nicho no Jazigo
                 </label>
                 <Input
                   type="number"
                   min={1}
                   value={formInumacao.gaveta_numero}
                   onChange={(e) => setFormInumacao((p) => ({ ...p, gaveta_numero: e.target.value }))}
-                  placeholder="Nº da gaveta (ex: 1)"
+                  placeholder="Nº da gaveta (ex: 1, 2, 3)"
                   className="text-xs font-mono h-9"
                 />
+                <span className="text-[10px] text-muted-foreground block mt-0.5">
+                  Vazio = Sepultura geral / cova no solo.
+                </span>
               </div>
 
               <div className="md:col-span-4">

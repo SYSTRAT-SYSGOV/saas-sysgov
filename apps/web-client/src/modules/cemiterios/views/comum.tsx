@@ -90,12 +90,13 @@ export const FormModal: React.FC<{
   aberto: boolean;
   titulo: string;
   description?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   campos: CampoForm[];
   iniciais?: Record<string, unknown>;
   rotuloEnviar?: string;
   onFechar: () => void;
   onEnviar: (valores: Record<string, unknown>) => Promise<unknown>;
-}> = ({ aberto, titulo, description, campos, iniciais = {}, rotuloEnviar = 'Salvar', onFechar, onEnviar }) => {
+}> = ({ aberto, titulo, description, size = 'xl', campos, iniciais = {}, rotuloEnviar = 'Salvar', onFechar, onEnviar }) => {
   const [valores, setValores] = useState<Record<string, unknown>>(iniciais);
   const { erro, enviando, executar, setErro } = useAcao();
   const formId = `form-${titulo.replace(/\W+/g, '-').toLowerCase()}`;
@@ -122,21 +123,43 @@ export const FormModal: React.FC<{
       case 'select':
         return <Select value={valor == null ? null : String(valor)} onChange={(v) => definir(c.nome, v)} options={c.opcoes ?? []} placeholder="Selecione…" />;
       case 'textarea':
-        return <Textarea aria-label={c.rotulo} value={String(valor ?? '')} onChange={(e) => definir(c.nome, e.target.value)} required={c.obrigatorio} />;
+        return <Textarea aria-label={c.rotulo} value={String(valor ?? '')} onChange={(e) => definir(c.nome, e.target.value)} required={c.obrigatorio} rows={3} />;
       case 'switch':
         return <Switch label={c.rotulo} checked={Boolean(valor)} onCheckedChange={(v) => definir(c.nome, v)} />;
-      case 'file':
+      case 'file': {
+        const arquivo = valor as File | undefined;
         return (
-          <Input
-            aria-label={c.rotulo}
-            type="file"
-            accept={c.aceitar}
-            multiple={c.multiplo}
-            capture={c.aceitar?.startsWith('image') ? 'environment' : undefined}
-            onChange={(e) => definir(c.nome, c.multiplo ? Array.from(e.target.files ?? []) : e.target.files?.[0])}
-            required={c.obrigatorio}
-          />
+          <div className="space-y-1.5">
+            <input
+              id={`file-${c.nome}`}
+              type="file"
+              accept={c.aceitar}
+              multiple={c.multiplo}
+              capture={c.aceitar?.startsWith('image') ? 'environment' : undefined}
+              className="sr-only"
+              onChange={(e) => definir(c.nome, c.multiplo ? Array.from(e.target.files ?? []) : e.target.files?.[0])}
+              required={c.obrigatorio && !valor}
+            />
+            <label
+              htmlFor={`file-${c.nome}`}
+              className="flex min-h-[42px] cursor-pointer items-center justify-between rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs transition-colors hover:border-primary/50 hover:bg-muted/40"
+            >
+              <span className="truncate text-muted-foreground font-medium">
+                {arquivo?.name ? (
+                  <span className="font-mono text-foreground font-semibold">
+                    {arquivo.name} ({(arquivo.size / 1024).toFixed(0)} KB)
+                  </span>
+                ) : (
+                  'Clique para selecionar arquivo (PDF, imagem)...'
+                )}
+              </span>
+              <span className="ml-2 shrink-0 rounded bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                {arquivo ? 'Alterar' : 'Procurar'}
+              </span>
+            </label>
+          </div>
         );
+      }
       default:
         return (
           <Input
@@ -158,7 +181,7 @@ export const FormModal: React.FC<{
       onClose={onFechar}
       title={titulo}
       description={description}
-      size="lg"
+      size={size}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onFechar} type="button">Cancelar</Button>

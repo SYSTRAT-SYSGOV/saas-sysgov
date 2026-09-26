@@ -12,6 +12,7 @@ use Modules\Cemiterios\Models\Cemiterio;
 use Modules\Cemiterios\Models\Geometria;
 use Modules\Cemiterios\Models\Jazigo;
 use Modules\Cemiterios\Models\Setor;
+use Modules\Cemiterios\Support\Documento;
 use Modules\Cemiterios\Support\Geo;
 use Modules\Cemiterios\Support\RegraNegocioException;
 
@@ -194,18 +195,54 @@ final readonly class GisService
     }
 
     /**
-     * Camada base: Google Map Tiles (sessão criada no servidor) ou Esri World Imagery (D4).
+     * Camada base: Catálogo de provedores gratuitos e abertos (Esri, OSM, CartoDB, Google XYZ) (RF-15, D4).
      *
-     * @return array{provedor: string, url: string, atribuicao: string, max_zoom: int}
+     * @return array{provedor: string, url: string, atribuicao: string, max_zoom: int, catalogo: list<array{id: string, nome: string, tipo: string, url: string, atribuicao: string, max_zoom: int}>}
      */
     public function sessaoMapaBase(): array
     {
+        $catalogo = [
+            [
+                'id' => 'esri',
+                'nome' => 'Satélite Esri',
+                'tipo' => 'satelite',
+                'url' => 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                'atribuicao' => 'Imagens © Esri, Maxar, Earthstar Geographics',
+                'max_zoom' => 19,
+            ],
+            [
+                'id' => 'osm',
+                'nome' => 'OpenStreetMap',
+                'tipo' => 'ruas',
+                'url' => 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'atribuicao' => '© OpenStreetMap colaboradores',
+                'max_zoom' => 19,
+            ],
+            [
+                'id' => 'cartodb_positron',
+                'nome' => 'CartoDB Positron',
+                'tipo' => 'claro',
+                'url' => 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                'atribuicao' => '© OpenStreetMap, © CARTO',
+                'max_zoom' => 20,
+            ],
+            [
+                'id' => 'google_hibrido',
+                'nome' => 'Google Híbrido XYZ',
+                'tipo' => 'satelite',
+                'url' => 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+                'atribuicao' => 'Imagens © Google',
+                'max_zoom' => 20,
+            ],
+        ];
+
         if (config('cemiterios.mapa_base.provedor') !== 'google') {
             return [
                 'provedor' => 'esri',
                 'url' => 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                 'atribuicao' => 'Imagens © Esri, Maxar, Earthstar Geographics',
                 'max_zoom' => 19,
+                'catalogo' => $catalogo,
             ];
         }
 
@@ -225,7 +262,207 @@ final readonly class GisService
             'url' => "https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}?session={$sessao}&key={$chave}",
             'atribuicao' => 'Imagens © Google',
             'max_zoom' => 22,
+            'catalogo' => $catalogo,
         ];
+    }
+
+    /**
+     * Exporta feições georreferenciadas da necrópole ativa nos formatos GeoJSON ou KML (RF-18).
+     *
+     * @return array{arquivo: string, formato: string, conteudo: array<string, mixed>|string}
+     */
+    public function exportar(int $parkId, string $formato): array
+    {
+        $cemiterio = Cemiterio::with('setores')->findOrFail($parkId);
+        $setorIds = $cemiterio->setores->pluck('id')->all();
+
+        $jazigos = Jazigo::where('park_id', $parkId)
+            ->with([
+                'setor:id,codigo,tipo_zona',
+                'concessoes' => fn ($q) => $q->where('situacao', 'vigente')->with('concessionario:id,nome,documento'),
+                'inumacoes' => fn ($q) => $q->whereNull('data_exumacao')->with('falecido:id,nome,data_sepultamento'),
+            ])
+            ->get();
+
+        $geometriasJazigos = Geometria::where('geometriavel_type', 'jazigo')
+            ->whereIn('geometriavel_id', $jazigos->pluck('id'))
+            ->get()
+            ->keyBy('geometriavel_id');
+
+        $geometriasSetores = Geometria::where('geometriavel_type', 'setor')
+            ->whereIn('geometriavel_id', $setorIds)
+            ->get()
+            ->keyBy('geometriavel_id');
+
+        $features = [];
+
+        // 1. Geometria do parque
+        $geoParque = Geometria::where('geometriavel_type', 'parque')->where('geometriavel_id', $parkId)->first();
+        if ($geoParque) {
+            $features[] = [
+                'type' => 'Feature',
+                'id' => "parque-{$parkId}",
+                'geometry' => $geoParque->geojson,
+                'properties' => [
+                    'camada' => 'parque',
+                    'id' => $cemiterio->id,
+                    'codigo' => $cemiterio->codigo,
+                    'nome' => $cemiterio->nome,
+                    'portaria_lat' => $cemiterio->portaria_lat,
+                    'portaria_lng' => $cemiterio->portaria_lng,
+                ],
+            ];
+        }
+
+        // 2. Setores
+        foreach ($cemiterio->setores as $setor) {
+            $g = $geometriasSetores->get($setor->id);
+            if ($g) {
+                $features[] = [
+                    'type' => 'Feature',
+                    'id' => "setor-{$setor->id}",
+                    'geometry' => $g->geojson,
+                    'properties' => [
+                        'camada' => 'setor',
+                        'id' => $setor->id,
+                        'codigo' => $setor->codigo,
+                        'tipo_zona' => $setor->tipo_zona,
+                        'area_m2' => $setor->area_m2,
+                    ],
+                ];
+            }
+        }
+
+        // 3. Jazigos
+        foreach ($jazigos as $jazigo) {
+            $g = $geometriasJazigos->get($jazigo->id);
+            $geometry = null;
+
+            if ($g) {
+                $geometry = $g->geojson;
+            } elseif ($jazigo->lng !== null && $jazigo->lat !== null) {
+                $geometry = [
+                    'type' => 'Point',
+                    'coordinates' => [(float) $jazigo->lng, (float) $jazigo->lat],
+                ];
+            }
+
+            if (!$geometry) {
+                continue;
+            }
+
+            $concessao = $jazigo->concessoes->first();
+            $titular = $concessao?->concessionario;
+            $sepultados = $jazigo->inumacoes->map(function ($inumacao) {
+                return [
+                    'nome' => $inumacao->falecido?->nome,
+                    'data_sepultamento' => $inumacao->sepultado_em->toDateString(),
+                ];
+            })->filter(fn ($s) => !empty($s['nome']))->values()->all();
+
+            $sepultadosNomes = implode(', ', array_column($sepultados, 'nome'));
+
+            $features[] = [
+                'type' => 'Feature',
+                'id' => "jazigo-{$jazigo->id}",
+                'geometry' => $geometry,
+                'properties' => [
+                    'camada' => 'jazigo',
+                    'id' => $jazigo->id,
+                    'codigo' => $jazigo->codigo,
+                    'setor' => $jazigo->setor ? $jazigo->setor->codigo : '',
+                    'tipo' => $jazigo->tipo,
+                    'estado' => $jazigo->estado->value,
+                    'ocupacao' => $jazigo->ocupacao,
+                    'capacidade' => $jazigo->capacidade,
+                    'titular_nome' => $titular ? $titular->nome : null,
+                    'titular_documento' => $titular?->documento ? Documento::mascarar($titular->documento) : null,
+                    'sepultados' => $sepultadosNomes,
+                    'sepultados_qtd' => count($sepultados),
+                ],
+            ];
+        }
+
+        $slug = \Illuminate\Support\Str::slug($cemiterio->nome ?: "cemiterio-{$parkId}");
+        $dataHora = now()->format('Ymd_His');
+
+        if ($formato === 'kml') {
+            $kml = $this->gerarKml($cemiterio->nome, $features);
+
+            return [
+                'arquivo' => "{$slug}_{$dataHora}.kml",
+                'formato' => 'kml',
+                'conteudo' => $kml,
+            ];
+        }
+
+        return [
+            'arquivo' => "{$slug}_{$dataHora}.geojson",
+            'formato' => 'geojson',
+            'conteudo' => [
+                'type' => 'FeatureCollection',
+                'name' => $cemiterio->nome,
+                'crs' => [
+                    'type' => 'name',
+                    'properties' => ['name' => 'urn:ogc:def:crs:OGC:1.3:CRS84'],
+                ],
+                'features' => $features,
+            ],
+        ];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $features
+     */
+    private function gerarKml(string $nomeCemiterio, array $features): string
+    {
+        $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"/>');
+        $document = $xml->addChild('Document');
+        $document->addChild('name', htmlspecialchars($nomeCemiterio, ENT_XML1, 'UTF-8'));
+        $document->addChild('description', 'SYSGOV - Exportação Cartográfica Municipal');
+
+        $styleJazigo = $document->addChild('Style');
+        $styleJazigo->addAttribute('id', 'estiloJazigo');
+        $lineJ = $styleJazigo->addChild('LineStyle');
+        $lineJ->addChild('color', 'ff00aa00');
+        $lineJ->addChild('width', '2');
+        $polyJ = $styleJazigo->addChild('PolyStyle');
+        $polyJ->addChild('color', '7f00ff00');
+
+        foreach ($features as $f) {
+            $props = $f['properties'] ?? [];
+            $placemark = $document->addChild('Placemark');
+            $placemark->addChild('name', htmlspecialchars((string) ($props['codigo'] ?? $props['nome'] ?? $f['id']), ENT_XML1, 'UTF-8'));
+
+            $desc = [];
+            foreach ($props as $k => $v) {
+                if ($v !== null && $v !== '') {
+                    $desc[] = '<b>' . htmlspecialchars((string) $k, ENT_XML1, 'UTF-8') . ':</b> ' . htmlspecialchars((string) $v, ENT_XML1, 'UTF-8');
+                }
+            }
+            $placemark->addChild('description', implode('<br/>', $desc));
+            $placemark->addChild('styleUrl', '#estiloJazigo');
+
+            $geom = $f['geometry'];
+            $tipoGeom = $geom['type'] ?? '';
+
+            if ($tipoGeom === 'Polygon' && !empty($geom['coordinates'][0])) {
+                $polygon = $placemark->addChild('Polygon');
+                $outer = $polygon->addChild('outerBoundaryIs');
+                $ring = $outer->addChild('LinearRing');
+                $coords = [];
+                foreach ($geom['coordinates'][0] as $pt) {
+                    $coords[] = "{$pt[0]},{$pt[1]},0";
+                }
+                $ring->addChild('coordinates', implode(' ', $coords));
+            } elseif ($tipoGeom === 'Point' && !empty($geom['coordinates'])) {
+                $point = $placemark->addChild('Point');
+                $coords = "{$geom['coordinates'][0]},{$geom['coordinates'][1]},0";
+                $point->addChild('coordinates', $coords);
+            }
+        }
+
+        return $xml->asXML() ?: '';
     }
 
     /**

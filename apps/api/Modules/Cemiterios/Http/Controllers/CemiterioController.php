@@ -148,9 +148,13 @@ final class CemiterioController extends Controller
                 ->ignore($atual?->id)],
             'nome' => [$obrigatorio, 'string', 'max:255'],
             'endereco' => ['nullable', 'string', 'max:255'],
-            'tipo' => ['sometimes', Rule::in(['municipal', 'distrital', 'outro'])],
+            'tipo' => ['sometimes', 'nullable', Rule::in(['municipal', 'publico', 'tradicional', 'parque', 'distrital', 'privado', 'outro'])],
             'situacao' => ['sometimes', Rule::in(['ativo', 'inativo'])],
             'responsavel' => ['nullable', 'string', 'max:255'],
+            'lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180'],
+            'portaria_lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'portaria_lng' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
     }
 }

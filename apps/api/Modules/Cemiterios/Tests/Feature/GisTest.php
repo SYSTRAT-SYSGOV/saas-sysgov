@@ -167,8 +167,39 @@ final class GisTest extends CemiteriosTestCase
 
         config(['cemiterios.mapa_base.provedor' => 'esri']);
         $this->como($this->admin, $this->tenant)->getJson('/api/cemiterios/gis/mapa-base/sessao')
-            ->assertOk()->assertJsonPath('provedor', 'esri');
+            ->assertOk()->assertJsonPath('provedor', 'esri')
+            ->assertJsonCount(4, 'catalogo')
+            ->assertJsonPath('catalogo.0.id', 'esri')
+            ->assertJsonPath('catalogo.1.id', 'osm');
         Http::assertSentCount(1);
+    }
+
+    public function test_exportar_gis_geojson_e_kml(): void
+    {
+        $jazigo = $this->jazigo('J-EXP-1');
+        $this->salvar('jazigo', $jazigo->id, $this->ret(2, 2, 2.5, 1.2))->assertOk();
+
+        // GeoJSON
+        $resGeojson = $this->como($this->admin, $this->tenant)
+            ->getJson("/api/cemiterios/gis/exportar?park_id={$this->parque->id}&formato=geojson");
+        $resGeojson->assertOk()
+            ->assertJsonPath('type', 'FeatureCollection')
+            ->assertJsonPath('name', 'Central');
+
+        /** @var array<int, array<string, mixed>> $features */
+        $features = (array) $resGeojson->json('features');
+        self::assertNotEmpty($features);
+        $jazigoFeature = collect($features)->first(fn (array $f): bool => ($f['id'] ?? '') === "jazigo-{$jazigo->id}");
+        self::assertNotNull($jazigoFeature);
+        self::assertSame('J-EXP-1', $jazigoFeature['properties']['codigo']);
+
+        // KML
+        $resKml = $this->como($this->admin, $this->tenant)
+            ->get("/api/cemiterios/gis/exportar?park_id={$this->parque->id}&formato=kml");
+        $resKml->assertOk();
+        self::assertStringContainsString('application/vnd.google-earth.kml+xml', (string) $resKml->headers->get('Content-Type'));
+        self::assertStringContainsString('<kml xmlns="http://www.opengis.net/kml/2.2">', $resKml->getContent());
+        self::assertStringContainsString('J-EXP-1', $resKml->getContent());
     }
 
     // 4.7

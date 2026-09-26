@@ -94,6 +94,29 @@ final class GisController extends Controller
         return response()->json($this->gis->sessaoMapaBase());
     }
 
+    public function exportar(Request $request): \Symfony\Component\HttpFoundation\Response
+    {
+        $this->autorizar($request, 'cemiterios.view');
+
+        $dados = $request->validate([
+            'park_id' => ['required', 'integer'],
+            'formato' => ['required', Rule::in(['geojson', 'kml'])],
+        ]);
+
+        $resultado = $this->gis->exportar((int) $dados['park_id'], $dados['formato']);
+
+        if ($dados['formato'] === 'kml') {
+            return response($resultado['conteudo'], 200, [
+                'Content-Type' => 'application/vnd.google-earth.kml+xml; charset=utf-8',
+                'Content-Disposition' => "attachment; filename=\"{$resultado['arquivo']}\"",
+            ]);
+        }
+
+        return response()->json($resultado['conteudo'], 200, [
+            'Content-Disposition' => "attachment; filename=\"{$resultado['arquivo']}\"",
+        ]);
+    }
+
     /**
      * Busca unificada (RF-17): falecido, código do jazigo e número da concessão;
      * CPF (exato, por hash) e nome do concessionário só com permissão de concessões.
