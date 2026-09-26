@@ -38,7 +38,7 @@ return [
 
     // Mapa base (D4). Provedor configurável por ambiente; a chave nunca vem do usuário.
     'mapa_base' => [
-        'provedor' => env('CEMITERIO_MAPA_PROVEDOR', 'google'), // google | esri
+        'provedor' => env('CEMITERIO_MAPA_PROVEDOR', 'esri'), // google | esri
         'google_api_key' => env('CEMITERIO_GOOGLE_MAPS_KEY'),
     ],
 

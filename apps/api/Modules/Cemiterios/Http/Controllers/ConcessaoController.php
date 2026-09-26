@@ -30,14 +30,16 @@ final class ConcessaoController extends Controller
     {
         $this->autorizar($request, 'cemiterios.concessoes.manage');
         $q = trim((string) $request->query('q'));
+        $perPage = min(max((int) $request->query('per_page', 30), 1), 100);
 
         return response()->json(
             Concessionario::query()
+                ->select(['id', 'tenant_id', 'nome', 'documento', 'tipo_doc', 'titular_falecido', 'email', 'telefone'])
                 ->when($q !== '', fn ($query) => strlen(Documento::somenteDigitos($q)) >= 11
                     ? $query->where('documento_hash', Documento::hash($q))
                     : $query->where('nome', 'like', "%{$q}%"))
                 ->orderBy('nome')
-                ->paginate(min((int) $request->query('per_page', 30), 100))
+                ->paginate($perPage)
         );
     }
 
@@ -75,6 +77,8 @@ final class ConcessaoController extends Controller
         $titular->update($dados);
         $this->audit->record('cemiterios', 'concessionario.updated', "Concessionario #{$id}", $antes, $titular->toArray());
 
+        $titular->makeVisible(['documento']);
+
         return response()->json($titular);
     }
 
@@ -82,17 +86,29 @@ final class ConcessaoController extends Controller
     {
         $this->autorizar($request, 'cemiterios.view');
 
-        return response()->json(
-            Concessao::with(['jazigo:id,codigo,park_id,estado,processo_administrativo', 'concessionario:id,nome,titular_falecido'])
-                ->when($request->query('situacao'), fn ($q, $v) => $q->where('situacao', $v))
-                ->when($request->query('holder_id'), fn ($q, $v) => $q->where('holder_id', $v))
-                ->when($request->query('plot_id'), fn ($q, $v) => $q->where('plot_id', $v))
-                ->when($request->query('numero'), fn ($q, $v) => $q->where('numero', 'like', "%{$v}%"))
-                ->when($request->query('processo_administrativo'), fn ($q, $v) => $q->where('processo_administrativo', 'like', "%{$v}%"))
-                ->when($request->query('titular_falecido') !== null, fn ($q) => $q->whereHas('concessionario', fn ($cq) => $cq->where('titular_falecido', filter_var($request->query('titular_falecido'), FILTER_VALIDATE_BOOLEAN))))
-                ->orderByDesc('id')
-                ->paginate(min((int) $request->query('per_page', 30), 100))
-        );
+        $paginador = Concessao::with([
+            'jazigo:id,codigo,park_id,estado,processo_administrativo',
+            'concessionario:id,nome,documento,tipo_doc,email,telefone,endereco,titular_falecido,data_falecimento_titular,processo_inventario',
+        ])
+            ->when($request->query('park_id'), fn ($q, $v) => $q->whereHas('jazigo', fn ($jq) => $jq->where('park_id', $v)))
+            ->when($request->query('situacao'), fn ($q, $v) => $q->where('situacao', $v))
+            ->when($request->query('holder_id'), fn ($q, $v) => $q->where('holder_id', $v))
+            ->when($request->query('plot_id'), fn ($q, $v) => $q->where('plot_id', $v))
+            ->when($request->query('numero'), fn ($q, $v) => $q->where('numero', 'like', "%{$v}%"))
+            ->when($request->query('processo_administrativo'), fn ($q, $v) => $q->where('processo_administrativo', 'like', "%{$v}%"))
+            ->when($request->query('titular_falecido') !== null, fn ($q) => $q->whereHas('concessionario', fn ($cq) => $cq->where('titular_falecido', filter_var($request->query('titular_falecido'), FILTER_VALIDATE_BOOLEAN))))
+            ->orderByDesc('id')
+            ->paginate(min(max((int) $request->query('per_page', 30), 1), 100));
+
+        if ($request->boolean('com_documento') || $request->has('plot_id')) {
+            $paginador->getCollection()->each(function (Concessao $c) {
+                if ($c->concessionario) {
+                    $c->concessionario->makeVisible(['documento']);
+                }
+            });
+        }
+
+        return response()->json($paginador);
     }
 
     public function show(Request $request, int $id): JsonResponse
@@ -162,7 +178,7 @@ final class ConcessaoController extends Controller
             }],
             'email' => ['nullable', 'email', 'max:255'],
             'telefone' => ['nullable', 'string', 'max:30'],
-            'endereco' => ['nullable', 'string', 'max:255'],
+            'endereco' => ['nullable', 'string', 'max:500'],
             'base_legal' => ['sometimes', Rule::in(['execucao_contrato', 'obrigacao_legal', 'consentimento'])],
             'titular_falecido' => ['sometimes', 'boolean'],
             'data_falecimento_titular' => ['nullable', 'date'],

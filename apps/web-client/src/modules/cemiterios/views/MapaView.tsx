@@ -14,7 +14,7 @@ import { Button, Card, Input, Select, Switch } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import { cemiteriosApi, erroApi, ESTADOS, type ErroApi, type FeatureCollection, type ResultadoBusca } from '../api';
 import { caixaDe, estiloFeicao, limitesDoEnvelope, ZOOM_MINIMO_JAZIGOS, type Caixa } from '../mapa.utils';
-import { DetalheJazigo } from './InventarioView';
+import { ModalDetalheJazigo } from './ModalDetalheJazigo';
 import { ErroBox, FormModal, Mono, useDados } from './comum';
 import { useCemiteriosNavigation } from '../CemiteriosContext';
 
@@ -191,7 +191,7 @@ export const MapaView: React.FC = () => {
         <ErroBox erro={erro ?? base.erro} />
       </div>
 
-      <DetalheJazigo jazigo={selecionado ? { id: selecionado } : null} onFechar={() => setSelecionado(null)} onAlterado={recarregar} />
+      <ModalDetalheJazigo jazigo={selecionado ? { id: selecionado } : null} onFechar={() => setSelecionado(null)} onAlterado={recarregar} />
 
       <FormModal
         aberto={!grade.capturando && grade.pontos.length === 2}

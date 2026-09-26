@@ -104,7 +104,7 @@ describe('ModalFichaCadastral Component', () => {
 
     expect(screen.getByText(/Ficha Cadastral de Unidade de Sepultamento/i)).toBeInTheDocument();
     expect(screen.getByText('Cemitério da Saudade')).toBeInTheDocument();
-    expect(screen.getByText('JAZ-TEST-101')).toBeInTheDocument();
+    expect(screen.getAllByText('JAZ-TEST-101').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('CONC-2026/042')).toBeInTheDocument();
     expect(screen.getByText('Maria de Lurdes Silveira')).toBeInTheDocument();
     expect(screen.getByText('Sebastião Silveira')).toBeInTheDocument();

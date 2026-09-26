@@ -14,7 +14,7 @@ vi.mock('@/core/rbac/useCan', () => ({
   }),
 }));
 
-const mockOperadores = {
+const mockOperadores: any = {
   data: [
     {
       id: 1,
@@ -58,7 +58,7 @@ const mockOperadores = {
   },
 };
 
-const mockHistorico: HistoricoOperador = {
+const mockHistorico: any = {
   operador: {
     id: 1,
     nome: 'Sebastião Coveiro',
@@ -108,8 +108,8 @@ const mockHistorico: HistoricoOperador = {
 describe('OperadoresView Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(cemiteriosApi, 'operadores').mockResolvedValue(mockOperadores);
-    vi.spyOn(cemiteriosApi, 'historicoOperador').mockResolvedValue(mockHistorico);
+    vi.spyOn(cemiteriosApi, 'operadores').mockResolvedValue(mockOperadores as any);
+    vi.spyOn(cemiteriosApi, 'historicoOperador').mockResolvedValue(mockHistorico as any);
   });
 
   it('renderiza os cards de indicadores operacionais e tabela de profissionais', async () => {

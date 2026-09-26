@@ -64,6 +64,7 @@ Route::get('/falecidos/{id}/dados-restritos', [FalecidoController::class, 'dados
 Route::get('/inumacoes', [OperacaoController::class, 'inumacoes']);
 Route::post('/inumacoes', [OperacaoController::class, 'inumar']);
 Route::post('/inumacoes/historicas', [OperacaoController::class, 'inumarHistorica']);
+Route::put('/inumacoes/{id}', [OperacaoController::class, 'update']);
 Route::post('/inumacoes/{id}/revisar', [OperacaoController::class, 'revisar']);
 Route::post('/inumacoes/{id}/cancelar', [OperacaoController::class, 'cancelarInumacao']);
 

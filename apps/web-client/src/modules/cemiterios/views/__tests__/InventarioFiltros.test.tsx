@@ -134,4 +134,25 @@ describe('InventarioFiltros Component', () => {
 
     expect(screen.getByText(/Alerta Regulatório/i)).toBeInTheDocument();
   });
+
+  it('renderiza o campo de pesquisa livre por sepultado e aciona onFiltrosChange', () => {
+    const onFiltrosChange = vi.fn();
+    render(
+      <InventarioFiltros
+        filtros={estadoInicial}
+        onFiltrosChange={onFiltrosChange}
+        onLimparFiltros={vi.fn()}
+        parques={mockParques}
+        setoresDisponiveis={mockSetores}
+        totalRegistros={50}
+        totalFiltrados={42}
+      />
+    );
+
+    const inputSepultado = screen.getByPlaceholderText(/Digite o nome do falecido, certidão de óbito, cartório, médico\/CRM, coveiro/i);
+    expect(inputSepultado).toBeInTheDocument();
+
+    fireEvent.change(inputSepultado, { target: { value: 'Sebastião' } });
+    expect(onFiltrosChange).toHaveBeenCalledWith({ sepultado: 'Sebastião' });
+  });
 });

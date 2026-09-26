@@ -65,7 +65,11 @@ final class Concessionario extends Model
     /** CPF/CNPJ sempre mascarado nas listagens (RN-05). */
     public function getDocumentoMascaradoAttribute(): string
     {
-        return Documento::mascarar((string) $this->documento);
+        try {
+            return Documento::mascarar((string) $this->documento);
+        } catch (\Throwable) {
+            return '—';
+        }
     }
 
     /** @return HasMany<Concessao, $this> */

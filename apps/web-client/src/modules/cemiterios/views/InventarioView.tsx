@@ -17,12 +17,14 @@ import {
   Upload,
   MapPin,
   UserX,
+  Filter,
 } from 'lucide-react';
-import { Drawer, Card, CardHeader, CardTitle, CardContent, Badge, Button } from '@sysgov/ui';
+import { Accordion, Card, CardHeader, CardTitle, CardContent, Badge, Button } from '@sysgov/ui';
 import { ConfirmDialog, DataTable } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import {
   cemiteriosApi,
+  erroApi,
   ESTADOS,
   formatarData,
   type Jazigo,
@@ -38,6 +40,7 @@ import {
 } from './InventarioFiltros';
 import { ModalQrCodeJazigo } from './ModalQrCodeJazigo';
 import { ModalFichaCadastral } from './ModalFichaCadastral';
+import { ModalDetalheJazigo } from './ModalDetalheJazigo';
 import { BarraAcoesLote } from './BarraAcoesLote';
 import { ModalAcaoLoteManutencao } from './ModalAcaoLoteManutencao';
 import { ModalImpressaoLoteQr } from './ModalImpressaoLoteQr';
@@ -70,8 +73,12 @@ const ESTADO_FILTROS_INICIAL: InventarioFiltrosState = {
   tipo: null,
   estado: null,
   faixaOcupacao: 'todas',
+  concessaoStatus: 'todas',
+  financeiroStatus: 'todas',
+  georreferenciado: 'todos',
   criterioRegulatorio: 'todos',
   busca: '',
+  sepultado: '',
 };
 
 /**
@@ -81,7 +88,14 @@ const ESTADO_FILTROS_INICIAL: InventarioFiltrosState = {
 export const InventarioView: React.FC = () => {
   const { can } = useCan();
   const gerencia = can('cemiterios.inventario.manage');
-  const { navegarParaMapa, cemiterioAtivoId, cemiterioAtivo } = useCemiteriosNavigation();
+  const {
+    navegarParaMapa,
+    cemiterioAtivoId,
+    cemiterioAtivo,
+    cemiteriosDisponiveis,
+    recarregarCemiterios,
+    erroCarregamento,
+  } = useCemiteriosNavigation();
 
   const [filtros, setFiltros] = useState<InventarioFiltrosState>(() => ({
     ...ESTADO_FILTROS_INICIAL,
@@ -96,15 +110,19 @@ export const InventarioView: React.FC = () => {
   const [modalLoteManutencao, setModalLoteManutencao] = useState(false);
   const [modalLoteQr, setModalLoteQr] = useState(false);
 
+  // Se o contexto não tiver parques carregados (ex.: testes isolados), carrega sob demanda
+  const parquesFallback = useDados(
+    () => (cemiteriosDisponiveis.length === 0 ? cemiteriosApi.parques() : Promise.resolve([])),
+    [cemiteriosDisponiveis.length]
+  );
+  const listaParques = cemiteriosDisponiveis.length > 0 ? cemiteriosDisponiveis : (parquesFallback.dados ?? []);
+
   // Necrópole efetiva: prioriza contexto ativo
   const parqueIdEfetivo = cemiterioAtivoId ? String(cemiterioAtivoId) : filtros.parqueId;
-
-  // Carga de dados base
-  const parques = useDados(() => cemiteriosApi.parques(), []);
-  const parque = useDados(
-    () => (parqueIdEfetivo ? cemiteriosApi.parque(Number(parqueIdEfetivo)) : Promise.resolve(null)),
-    [parqueIdEfetivo]
-  );
+  const parqueAtual =
+    cemiterioAtivo ??
+    listaParques.find((p) => String(p.id) === String(parqueIdEfetivo)) ??
+    null;
 
   const jazigosQuery = useDados(
     () =>
@@ -113,34 +131,51 @@ export const InventarioView: React.FC = () => {
         setor: filtros.setorId ?? undefined,
         estado: filtros.estado && filtros.estado !== 'todos' ? filtros.estado : undefined,
         tipo: filtros.tipo && filtros.tipo !== 'todos' ? filtros.tipo : undefined,
+        concessao_status: filtros.concessaoStatus && filtros.concessaoStatus !== 'todas' ? filtros.concessaoStatus : undefined,
+        financeiro_status: filtros.financeiroStatus && filtros.financeiroStatus !== 'todas' ? filtros.financeiroStatus : undefined,
+        faixa_ocupacao: filtros.faixaOcupacao !== 'todas' ? filtros.faixaOcupacao : undefined,
+        georreferenciado: filtros.georreferenciado && filtros.georreferenciado !== 'todos' ? filtros.georreferenciado : undefined,
         q: filtros.busca.trim() || undefined,
-        per_page: 200,
+        sepultado: filtros.sepultado?.trim() || undefined,
+        per_page: 50,
       }),
-    [parqueIdEfetivo, filtros.setorId, filtros.estado, filtros.tipo, filtros.busca]
+    [
+      parqueIdEfetivo,
+      filtros.setorId,
+      filtros.estado,
+      filtros.tipo,
+      filtros.concessaoStatus,
+      filtros.financeiroStatus,
+      filtros.faixaOcupacao,
+      filtros.georreferenciado,
+      filtros.busca,
+      filtros.sepultado,
+    ]
   );
 
   const todosJazigos = jazigosQuery.dados?.data ?? [];
 
   // Setores disponíveis para o filtro (estritamente da necrópole ativa ou agregados)
   const setoresDisponiveis = useMemo(() => {
-    if (parqueIdEfetivo) {
-      const pEncontrado = (parques.dados ?? []).find((p) => String(p.id) === String(parqueIdEfetivo));
-      if (pEncontrado?.setores?.length) return pEncontrado.setores;
-      if (parque.dados?.setores?.length) return parque.dados.setores;
+    if (parqueAtual?.setores?.length) {
+      return parqueAtual.setores;
     }
-    if (parque.dados?.setores) return parque.dados.setores;
-    return (parques.dados ?? []).flatMap((p) => p.setores ?? []);
-  }, [parqueIdEfetivo, parque.dados, parques.dados]);
+    if (parqueIdEfetivo) {
+      const pEncontrado = listaParques.find((p) => String(p.id) === String(parqueIdEfetivo));
+      if (pEncontrado?.setores?.length) return pEncontrado.setores;
+    }
+    return listaParques.flatMap((p) => p.setores ?? []);
+  }, [parqueAtual, parqueIdEfetivo, listaParques]);
 
   // Opções de setores para formulário modal com indicação do cemitério
   const opcoesSetores = useMemo(() => {
-    if (filtros.parqueId && parque.dados?.setores?.length) {
-      return parque.dados.setores.map((s) => ({
+    if (filtros.parqueId && parqueAtual?.setores?.length) {
+      return parqueAtual.setores.map((s) => ({
         value: String(s.id),
         label: s.descricao ? `${s.codigo} (${s.descricao})` : s.codigo,
       }));
     }
-    const mapaParques = new Map((parques.dados ?? []).map((p) => [p.id, p.nome]));
+    const mapaParques = new Map(listaParques.map((p) => [p.id, p.nome]));
     return setoresDisponiveis.map((s) => {
       const nomeCemiterio = mapaParques.get(s.park_id);
       return {
@@ -148,7 +183,7 @@ export const InventarioView: React.FC = () => {
         label: nomeCemiterio ? `${nomeCemiterio} · Setor ${s.codigo}` : s.codigo,
       };
     });
-  }, [filtros.parqueId, parque.dados, parques.dados, setoresDisponiveis]);
+  }, [filtros.parqueId, parqueAtual, listaParques, setoresDisponiveis]);
 
   // Filtragem complementar no cliente (faixa de ocupação e busca aproximada adicional)
   const jazigosFiltrados = useMemo(() => {
@@ -167,6 +202,10 @@ export const InventarioView: React.FC = () => {
 
       // Filtro local de estado caso selecionado
       if (filtros.estado && filtros.estado !== 'todos' && j.estado !== filtros.estado) return false;
+
+      // Filtro de georreferenciamento
+      if (filtros.georreferenciado === 'com_gps' && (j.lat == null || j.lng == null)) return false;
+      if (filtros.georreferenciado === 'sem_gps' && j.lat != null && j.lng != null) return false;
 
       // Filtro de critério regulatório
       if (filtros.criterioRegulatorio && filtros.criterioRegulatorio !== 'todos') {
@@ -243,40 +282,54 @@ export const InventarioView: React.FC = () => {
       },
       {
         id: 'codigo',
-        header: 'Código',
+        header: 'Código & Topografia',
         accessorKey: 'codigo',
-        size: 130,
+        size: 160,
         meta: {
           exportHeader: 'Código',
           exportValue: (r) => r.codigo,
           sortValue: (r) => r.codigo,
         },
         cell: ({ row }) => (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelecionado(row.original);
-            }}
-            className="font-mono font-bold text-primary hover:underline hover:text-primary/80 text-xs inline-flex items-center gap-1.5 cursor-pointer text-left focus:outline-none group"
-            title={`Clique para ver todas as informações do túmulo ${row.original.codigo}`}
-          >
-            <span>{row.original.codigo}</span>
-            <Info className="h-3 w-3 text-muted-foreground/60 group-hover:text-primary transition-colors" />
-          </button>
+          <div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelecionado(row.original);
+              }}
+              className="font-mono font-bold text-primary hover:underline hover:text-primary/80 text-xs inline-flex items-center gap-1.5 cursor-pointer text-left focus:outline-none group"
+              title={`Clique para ver todas as informações do túmulo ${row.original.codigo}`}
+            >
+              <span>{row.original.codigo}</span>
+              <Info className="h-3 w-3 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+            </button>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {row.original.codigo_legado ? (
+                <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[90px]" title={`Código legado: ${row.original.codigo_legado}`}>
+                  Livro: {row.original.codigo_legado}
+                </span>
+              ) : null}
+              {row.original.lat && row.original.lng ? (
+                <span className="inline-flex items-center text-[10px] text-emerald-500 gap-0.5" title="Georreferenciado com GPS">
+                  <MapPin className="h-2.5 w-2.5" />
+                </span>
+              ) : null}
+            </div>
+          </div>
         ),
       },
       {
         id: 'cemiterio',
         header: 'Cemitério',
-        size: 190,
+        size: 160,
         meta: {
           exportHeader: 'Cemitério',
           exportValue: (r) => r.cemiterio?.nome ?? '—',
           sortValue: (r) => r.cemiterio?.nome ?? '',
         },
         cell: ({ row }) => (
-          <div className="truncate max-w-[180px]" title={row.original.cemiterio?.nome}>
+          <div className="truncate max-w-[150px]" title={row.original.cemiterio?.nome}>
             <span className="text-xs font-medium text-foreground">
               {row.original.cemiterio?.nome ?? '—'}
             </span>
@@ -293,14 +346,18 @@ export const InventarioView: React.FC = () => {
           sortValue: (r) => r.setor?.codigo ?? '',
         },
         cell: ({ row }) => (
-          <Mono className="text-xs text-muted-foreground">{row.original.setor?.codigo ?? '—'}</Mono>
+          <span title={row.original.setor?.descricao ?? undefined}>
+            <Mono className="text-xs text-muted-foreground">
+              {row.original.setor?.codigo ?? '—'}
+            </Mono>
+          </span>
         ),
       },
       {
         id: 'tipo',
         header: 'Tipo',
         accessorKey: 'tipo',
-        size: 130,
+        size: 110,
         meta: {
           exportHeader: 'Tipo',
           exportValue: (r) => r.tipo,
@@ -313,20 +370,77 @@ export const InventarioView: React.FC = () => {
         ),
       },
       {
+        id: 'titular',
+        header: 'Titular / Concessão',
+        size: 180,
+        meta: {
+          exportHeader: 'Titular',
+          exportValue: (r) => r.concessoes?.[0]?.concessionario?.nome ?? 'Sem concessão',
+          sortValue: (r) => r.concessoes?.[0]?.concessionario?.nome ?? '',
+        },
+        cell: ({ row }) => {
+          const conc = row.original.concessoes?.[0];
+          const titular = conc?.concessionario;
+          if (!conc || !titular) {
+            return (
+              <span className="text-xs text-muted-foreground/70 italic">
+                Sem concessão (Pública)
+              </span>
+            );
+          }
+          return (
+            <div className="truncate max-w-[170px]">
+              <span className="font-semibold text-foreground text-xs block truncate" title={titular.nome}>
+                {titular.nome}
+              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  Conc. #{conc.numero}
+                </span>
+                {titular.titular_falecido ? (
+                  <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4">
+                    Falecido
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
         id: 'ocupacao',
-        header: 'Ocupação (Restos / Cap)',
+        header: 'Ocupação & Gavetas',
         size: 170,
         meta: {
           exportHeader: 'Ocupação',
-          exportValue: (r) => `${r.ocupacao}/${r.capacidade}`,
-          sortValue: (r) => (r.capacidade > 0 ? r.ocupacao / r.capacidade : 0),
+          exportValue: (r) => `${r.ocupacao}/${Math.max(r.capacidade || 1, r.ocupacao || 0)}`,
+          sortValue: (r) => {
+            const cap = Math.max(r.capacidade || 1, r.ocupacao || 0);
+            return cap > 0 ? (r.ocupacao || 0) / cap : 0;
+          },
         },
         cell: ({ row }) => {
-          const { ocupacao, capacidade } = row.original;
-          const pct = Math.min(100, Math.round((ocupacao / (capacidade || 1)) * 100));
+          const ocupacao = row.original.ocupacao || 0;
+          const capacidade = Math.max(row.original.capacidade || 1, ocupacao);
+          const livres = Math.max(0, capacidade - ocupacao);
+          const pct = Math.min(100, Math.round((ocupacao / capacidade) * 100));
           return (
-            <div className="flex items-center gap-2 min-w-[120px]">
-              <div className="w-14 h-2 rounded-full bg-muted/60 overflow-hidden shrink-0 border border-border/40">
+            <div className="min-w-[125px]">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <Mono className="tabular-nums font-semibold text-foreground">
+                  {ocupacao} / {capacidade} gavetas
+                </Mono>
+                {ocupacao === 0 ? (
+                  <span className="text-[10px] text-emerald-500 font-medium">Livre</span>
+                ) : livres > 0 ? (
+                  <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
+                    {livres} livre(s)
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Lotado</span>
+                )}
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-muted/60 overflow-hidden border border-border/40">
                 <div
                   className={`h-full transition-all ${
                     pct >= 100
@@ -338,9 +452,37 @@ export const InventarioView: React.FC = () => {
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <Mono className="text-xs tabular-nums font-semibold">
-                {ocupacao}/{capacidade}
-              </Mono>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'sepultados',
+        header: 'Sepultados / Inumados',
+        size: 170,
+        meta: {
+          exportHeader: 'Sepultados',
+          exportValue: (r) => r.inumacoes?.map((i) => i.falecido?.nome).filter(Boolean).join(', ') || 'Nenhum',
+          sortValue: (r) => r.inumacoes?.length ?? 0,
+        },
+        cell: ({ row }) => {
+          const inums = row.original.inumacoes ?? [];
+          if (inums.length === 0) {
+            return <span className="text-xs text-muted-foreground/60 italic">Nenhum sepultado</span>;
+          }
+          const maisRecente = inums[0];
+          return (
+            <div className="truncate max-w-[160px]">
+              <span className="text-xs font-medium text-foreground block truncate" title={maisRecente.falecido?.nome}>
+                {maisRecente.falecido?.nome || 'Inumado registrado'}
+              </span>
+              <span className="text-[10px] text-muted-foreground block font-mono">
+                {inums.length > 1
+                  ? `+${inums.length - 1} outro(s) sepultado(s)`
+                  : maisRecente.sepultado_em
+                  ? `Sep. ${formatarData(maisRecente.sepultado_em)}`
+                  : 'Sepultamento ativo'}
+              </span>
             </div>
           );
         },
@@ -354,17 +496,29 @@ export const InventarioView: React.FC = () => {
           exportValue: (r) => `${r.comprimento_m ?? '—'} × ${r.largura_m ?? '—'}`,
           sortValue: (r) => (r.comprimento_m ?? 0) * (r.largura_m ?? 0),
         },
-        cell: ({ row }) => (
-          <Mono className="text-xs text-muted-foreground">
-            {row.original.comprimento_m ?? '—'} × {row.original.largura_m ?? '—'}
-          </Mono>
-        ),
+        cell: ({ row }) => {
+          const c = row.original.comprimento_m;
+          const l = row.original.largura_m;
+          if (c && l) {
+            return (
+              <div>
+                <Mono className="text-xs text-foreground font-semibold">
+                  {c} × {l} m
+                </Mono>
+                <span className="text-[10px] text-muted-foreground block font-mono">
+                  {(c * l).toFixed(2)} m²
+                </span>
+              </div>
+            );
+          }
+          return <span className="text-xs text-muted-foreground/60">—</span>;
+        },
       },
       {
         id: 'estado',
         header: 'Estado',
         accessorKey: 'estado',
-        size: 150,
+        size: 140,
         meta: {
           exportHeader: 'Estado',
           exportValue: (r) => ESTADOS[r.estado]?.rotulo ?? r.estado,
@@ -375,7 +529,7 @@ export const InventarioView: React.FC = () => {
       {
         id: 'alertas',
         header: 'Alertas Regulatórios',
-        size: 170,
+        size: 160,
         meta: {
           exportHeader: 'Alertas Regulatórios',
           exportValue: (r) => {
@@ -486,12 +640,27 @@ export const InventarioView: React.FC = () => {
     [todosJazigos, selecionadosIds]
   );
 
+  const totalFiltrosAtivos = useMemo(() => {
+    return [
+      Boolean(filtros.parqueId && !cemiterioAtivoId),
+      Boolean(filtros.setorId),
+      Boolean(filtros.tipo && filtros.tipo !== 'todos'),
+      Boolean(filtros.estado && filtros.estado !== 'todos'),
+      filtros.faixaOcupacao !== 'todas',
+      Boolean(filtros.concessaoStatus && filtros.concessaoStatus !== 'todas'),
+      Boolean(filtros.financeiroStatus && filtros.financeiroStatus !== 'todas'),
+      Boolean(filtros.georreferenciado && filtros.georreferenciado !== 'todos'),
+      Boolean(filtros.criterioRegulatorio && filtros.criterioRegulatorio !== 'todos'),
+      Boolean(filtros.busca.trim()),
+    ].filter(Boolean).length;
+  }, [filtros, cemiterioAtivoId]);
+
   return (
     <div className="space-y-4">
       {/* ── 1. Painel Superior de Indicadores (KPI Cards no Padrão CAPD) ── */}
       <InventarioKpis
         jazigos={todosJazigos}
-        parqueNome={cemiterioAtivo?.nome ?? parque.dados?.nome ?? null}
+        parqueNome={cemiterioAtivo?.nome ?? parqueAtual?.nome ?? null}
         carregando={jazigosQuery.carregando}
       />
 
@@ -503,9 +672,9 @@ export const InventarioView: React.FC = () => {
               <span>
                 Inventário operacional exclusivo: <strong className="text-foreground">{cemiterioAtivo.nome}</strong> ({cemiterioAtivo.endereco ?? 'Endereço não informado'})
               </span>
-            ) : parque.dados ? (
+            ) : parqueAtual ? (
               <span>
-                Cemitério selecionado: <strong className="text-foreground">{parque.dados.nome}</strong> ({parque.dados.endereco ?? 'Sem endereço'})
+                Cemitério selecionado: <strong className="text-foreground">{parqueAtual.nome}</strong> ({parqueAtual.endereco ?? 'Sem endereço'})
               </span>
             ) : (
               <span>Visão integrada de todos os cemitérios do município</span>
@@ -521,10 +690,10 @@ export const InventarioView: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              disabled={!parques.dados?.length}
+              disabled={!listaParques.length}
               onClick={() => setModal('setor')}
               className="gap-1.5 h-8 text-xs"
-              title={!parques.dados?.length ? 'Cadastre ao menos um cemitério antes de adicionar setores' : undefined}
+              title={!listaParques.length ? 'Cadastre ao menos um cemitério antes de adicionar setores' : undefined}
             >
               <Plus className="h-3.5 w-3.5" /> Novo Setor/Quadra
             </Button>
@@ -549,27 +718,61 @@ export const InventarioView: React.FC = () => {
         </div>
       )}
 
-      {/* ── 3. Painel de Filtros Avançados ── */}
-      <InventarioFiltros
-        filtros={filtros}
-        onFiltrosChange={(novos) => setFiltros((prev) => ({ ...prev, ...novos }))}
-        onLimparFiltros={() =>
-          setFiltros({
-            ...ESTADO_FILTROS_INICIAL,
-            parqueId: cemiterioAtivoId ? String(cemiterioAtivoId) : null,
-          })
-        }
-        parques={parques.dados ?? []}
-        setoresDisponiveis={setoresDisponiveis}
-        totalRegistros={todosJazigos.length}
-        totalFiltrados={jazigosFiltrados.length}
-        carregando={jazigosQuery.carregando}
-        ocultarFiltroCemiterio={Boolean(cemiterioAtivoId)}
+      {/* ── 3. Painel de Filtros Avançados dentro de Accordion (sempre abre a página fechado) ── */}
+      <Accordion
+        items={[
+          {
+            value: 'filtros-inventario',
+            title: (
+              <div className="flex flex-wrap items-center gap-2 w-full">
+                <span className="font-semibold text-xs sm:text-sm text-foreground uppercase tracking-wide">
+                  Filtros de Inventário
+                </span>
+                {totalFiltrosAtivos > 0 ? (
+                  <Badge variant="outline" className="text-[10px] text-primary border-primary/40 font-mono">
+                    {totalFiltrosAtivos} filtro(s) ativo(s)
+                  </Badge>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    (Clique para expandir e filtrar por concessão, status fiscal, ocupação e GPS)
+                  </span>
+                )}
+                <span className="ml-auto text-xs text-muted-foreground font-mono tabular-nums pr-2">
+                  Exibindo <strong className="text-foreground">{jazigosFiltrados.length}</strong> de{' '}
+                  <strong className="text-foreground">{todosJazigos.length}</strong> unidades
+                </span>
+              </div>
+            ),
+            children: (
+              <div className="pt-1">
+                <InventarioFiltros
+                  filtros={filtros}
+                  onFiltrosChange={(novos) => setFiltros((prev) => ({ ...prev, ...novos }))}
+                  onLimparFiltros={() =>
+                    setFiltros({
+                      ...ESTADO_FILTROS_INICIAL,
+                      parqueId: cemiterioAtivoId ? String(cemiterioAtivoId) : null,
+                    })
+                  }
+                  parques={listaParques}
+                  setoresDisponiveis={setoresDisponiveis}
+                  totalRegistros={todosJazigos.length}
+                  totalFiltrados={jazigosFiltrados.length}
+                  carregando={jazigosQuery.carregando}
+                  ocultarFiltroCemiterio={Boolean(cemiterioAtivoId)}
+                />
+              </div>
+            ),
+            defaultOpen: false, // Inicia sempre fechado na abertura da página
+          },
+        ]}
+        icon={<Filter className="h-4 w-4 text-primary shrink-0" />}
+        className="border border-border rounded-lg bg-card shadow-2xs"
       />
 
-      <ErroBox erro={jazigosQuery.erro ?? parques.erro} />
+      <ErroBox erro={jazigosQuery.erro ?? (erroCarregamento ? erroApi(erroCarregamento) : null)} />
 
-      {/* ── 4. DataTable com Ordenação, Paginação Fixa em 10 e Exportação ── */}
+      {/* ── 4. DataTable com Ordenação, Paginação Fixa em 10, Seletor e Exportação ── */}
       <DataTable
         columns={colunas}
         data={jazigosFiltrados}
@@ -578,14 +781,15 @@ export const InventarioView: React.FC = () => {
         exportable
         pagination
         pageSize={10}
-        pageSizeSelector={false}
+        pageSizeOptions={[10, 25, 50, 100]}
+        pageSizeSelector={true}
         fixedLayout
         onRowClick={setSelecionado}
         emptyText="Nenhum jazigo encontrado para os filtros selecionados."
       />
 
-      {/* ── 5. Drawer de Detalhes Completo da Unidade ── */}
-      <DetalheJazigo
+      {/* ── 5. Modal de Detalhes Completo da Unidade com Sub-Abas e Financeiro ── */}
+      <ModalDetalheJazigo
         jazigo={selecionado}
         onFechar={() => setSelecionado(null)}
         onAlterado={() => void jazigosQuery.recarregar()}
@@ -647,13 +851,13 @@ export const InventarioView: React.FC = () => {
 
       <ModalImportadorJazigos
         aberto={modalImportador}
-        parques={parques.dados ?? []}
+        parques={cemiteriosDisponiveis}
         setores={setoresDisponiveis}
         onFechar={() => setModalImportador(false)}
         onSucesso={() => {
           setModalImportador(false);
           void jazigosQuery.recarregar();
-          void parques.recarregar();
+          void recarregarCemiterios();
         }}
       />
 
@@ -680,18 +884,18 @@ export const InventarioView: React.FC = () => {
         ]}
         onEnviar={async (v) => {
           await cemiteriosApi.criarParque(v as Partial<Parque>);
-          await parques.recarregar();
+          await recarregarCemiterios();
         }}
       />
 
       <FormModal
         aberto={modal === 'setor'}
-        titulo={filtros.parqueId ? `Novo Setor/Quadra — ${parque.dados?.nome ?? ''}` : 'Novo Setor/Quadra'}
+        titulo={filtros.parqueId ? `Novo Setor/Quadra — ${parqueAtual?.nome ?? ''}` : 'Novo Setor/Quadra'}
         description="Cadastro de quadra ou setor para delimitação física das sepulturas."
         onFechar={() => setModal(null)}
         iniciais={{
           tipo_zona: 'jazigos',
-          parque_id: filtros.parqueId ?? (parques.dados?.[0] ? String(parques.dados[0].id) : ''),
+          parque_id: filtros.parqueId ?? (cemiteriosDisponiveis[0] ? String(cemiteriosDisponiveis[0].id) : ''),
         }}
         campos={[
           ...(!filtros.parqueId
@@ -701,7 +905,7 @@ export const InventarioView: React.FC = () => {
                   rotulo: 'Cemitério Municipal',
                   tipo: 'select' as const,
                   obrigatorio: true,
-                  opcoes: (parques.dados ?? []).map((p) => ({ value: String(p.id), label: `${p.nome} (${p.codigo})` })),
+                  opcoes: cemiteriosDisponiveis.map((p) => ({ value: String(p.id), label: `${p.nome} (${p.codigo})` })),
                 },
               ]
             : []),
@@ -716,7 +920,7 @@ export const InventarioView: React.FC = () => {
             tipo_zona: String(v.tipo_zona),
             descricao: v.descricao ? String(v.descricao) : null,
           });
-          await Promise.all([parque.recarregar(), parques.recarregar()]);
+          await recarregarCemiterios();
         }}
       />
 
@@ -758,347 +962,7 @@ export const InventarioView: React.FC = () => {
 };
 
 /**
- * Painel lateral detalhado do jazigo: dados físicos, ocupantes atuais, concessão ativa e linha do tempo (RF-19).
+ * Export retrocompatível apontando para o novo ModalDetalheJazigo com sub-abas e dados financeiros.
  */
-export const DetalheJazigo: React.FC<{
-  jazigo: Pick<Jazigo, 'id'> | null;
-  onFechar: () => void;
-  onAlterado?: () => void;
-}> = ({ jazigo, onFechar, onAlterado }) => {
-  const { can } = useCan();
-  const pode = can('cemiterios.inventario.manage') || can('cemiterios.gis.edit');
-  const id = jazigo?.id ?? null;
+export const DetalheJazigo = ModalDetalheJazigo;
 
-  const detalhe = useDados(() => (id ? cemiteriosApi.jazigo(id) : Promise.resolve(null)), [id]);
-  const historico = useDados(() => (id ? cemiteriosApi.historico(id) : Promise.resolve([])), [id]);
-  const inumacoes = useDados(() => (id ? cemiteriosApi.inumacoes({ plot_id: id }) : Promise.resolve(null)), [id]);
-  const concessoes = useDados(() => (id ? cemiteriosApi.concessoes({ plot_id: id }) : Promise.resolve(null)), [id]);
-  const vistorias = useDados(() => (id ? cemiteriosApi.vistorias(id) : Promise.resolve(null)), [id]);
-
-  const [confirmar, setConfirmar] = useState(false);
-  const [abrirQr, setAbrirQr] = useState(false);
-  const [abrirFicha, setAbrirFicha] = useState(false);
-  const [abrirNovaVistoria, setAbrirNovaVistoria] = useState(false);
-  const { erro, executar } = useAcao();
-
-  const j = detalhe.dados;
-  const emManutencao = j?.estado === 'manutencao';
-  const listaOcupantes: Inumacao[] = inumacoes.dados?.data ?? [];
-  const concessaoAtiva: Concessao | undefined = concessoes.dados?.data?.[0];
-
-  const transicionar = async (motivo: string) => {
-    setConfirmar(false);
-    if (!j) return;
-    const ok = await executar(() =>
-      cemiteriosApi.alterarEstado(j.id, emManutencao ? 'restaurar' : 'manutencao', motivo, j.lock_version)
-    );
-    if (ok) {
-      await Promise.all([detalhe.recarregar(), historico.recarregar()]);
-      onAlterado?.();
-    }
-  };
-
-  return (
-    <Drawer
-      open={id !== null}
-      onClose={onFechar}
-      size="lg"
-      className="sm:max-w-lg"
-      title={j ? `Informações do Túmulo — ${j.codigo}` : 'Informações do Túmulo'}
-      icon={<Building2 className="h-5 w-5 text-primary" />}
-      footer={
-        pode && j ? (
-          <Button
-            variant={emManutencao ? 'outline' : 'destructive'}
-            onClick={() => setConfirmar(true)}
-            className="w-full sm:w-auto"
-          >
-            {emManutencao ? 'Restaurar / Liberar Jazigo' : 'Interditar por Ruína / Manutenção'}
-          </Button>
-        ) : undefined
-      }
-    >
-      {j && (
-        <div className="space-y-4">
-          <p className="text-xs text-muted-foreground -mt-1 pb-1 border-b border-border/40">
-            Dados cadastrais completos da sepultura · {j.cemiterio?.nome ?? ''} · Setor <Mono className="font-semibold">{j.setor?.codigo ?? ''}</Mono>
-          </p>
-          <ErroBox erro={erro} />
-
-          {/* Cabeçalho de Status */}
-          <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground font-medium">Estado Operacional:</span>
-              <EstadoChip estado={j.estado} />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground font-medium">Capacidade Física:</span>
-              <Mono className="text-xs font-bold text-foreground">
-                {j.ocupacao} de {j.capacidade} ocupados ({Math.min(100, Math.round((j.ocupacao / j.capacidade) * 100))}%)
-              </Mono>
-            </div>
-            <p className="text-xs text-muted-foreground pt-1 border-t border-border/60">
-              {j.cemiterio?.nome} · Setor <Mono className="font-semibold">{j.setor?.codigo}</Mono> · {j.tipo}
-            </p>
-          </div>
-
-          {/* Botões de Ações de Documentação e Identificação */}
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAbrirQr(true)}
-              className="h-8 text-xs gap-1.5 font-medium"
-            >
-              <QrCode className="h-3.5 w-3.5 text-primary" /> Plaqueta QR Code
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAbrirFicha(true)}
-              className="h-8 text-xs gap-1.5 font-medium"
-            >
-              <FileText className="h-3.5 w-3.5 text-indigo-500" /> Ficha Cadastral
-            </Button>
-          </div>
-
-          {/* Inteligência Regulatória, Sanitária e Concessória */}
-          <PainelRegulatorioDrawer
-            jazigo={j}
-            concessao={concessaoAtiva}
-            inumacoes={listaOcupantes}
-            vistorias={vistorias.dados?.data ?? []}
-          />
-
-          {/* 1. Dados Físicos da Unidade */}
-          <Card className="gap-0 py-0 overflow-hidden shadow-2xs">
-            <CardHeader className="p-3 border-b border-border bg-muted/30">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-primary" /> Dimensões e Localização
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 space-y-2 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-muted-foreground block text-[11px]">Dimensões (m):</span>
-                  <Mono className="font-semibold">
-                    {j.comprimento_m ?? '—'} m × {j.largura_m ?? '—'} m
-                  </Mono>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-[11px]">Área Estimada:</span>
-                  <Mono className="font-semibold">
-                    {j.comprimento_m && j.largura_m ? (j.comprimento_m * j.largura_m).toFixed(2) : '—'} m²
-                  </Mono>
-                </div>
-              </div>
-              {j.lat && j.lng && (
-                <div className="pt-2 border-t border-border/40 text-[11px] text-muted-foreground flex items-center gap-1">
-                  <span>Georreferenciamento:</span>
-                  <Mono className="text-foreground">
-                    {j.lat.toFixed(6)}, {j.lng.toFixed(6)}
-                  </Mono>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Posicionamento Cartográfico & Atalho GIS */}
-          <LocalizacaoGeorreferenciada jazigo={j} onFecharDrawer={onFechar} />
-
-          {/* 2. Concessão Vigente */}
-          <Card className="gap-0 py-0 overflow-hidden shadow-2xs">
-            <CardHeader className="p-3 border-b border-border bg-muted/30">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 text-indigo-500" /> Concessão Vinculada
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 space-y-2 text-xs">
-              {concessaoAtiva ? (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Termo Nº:</span>
-                    <Mono className="font-bold">{concessaoAtiva.numero}</Mono>
-                  </div>
-                  {(concessaoAtiva.processo_administrativo || j.processo_administrativo) && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Proc. Administrativo:</span>
-                      <Mono className="font-semibold text-foreground">
-                        {concessaoAtiva.processo_administrativo ?? j.processo_administrativo}
-                      </Mono>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Titular:</span>
-                    <span className="font-medium text-foreground">{concessaoAtiva.concessionario?.nome ?? '—'}</span>
-                  </div>
-                  {concessaoAtiva.concessionario?.titular_falecido && (
-                    <div className="p-2 rounded-md border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs flex items-center gap-2 mt-1">
-                      <UserX className="h-4 w-4 text-rose-400 shrink-0" />
-                      <div>
-                        <span className="font-semibold block text-[11px] uppercase tracking-wider text-rose-400">
-                          Titular Falecido — Sucessão Pendente
-                        </span>
-                        <span className="text-[11px] text-rose-200/80">
-                          Sepultamentos de terceiros bloqueados até inventário ou autorização judicial.
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Modalidade:</span>
-                    <Badge variant="outline" className="text-[10px] capitalize">
-                      {concessaoAtiva.modalidade}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
-                    <span className="text-muted-foreground">Vigência:</span>
-                    <Mono>
-                      {formatarData(concessaoAtiva.inicio)} até {concessaoAtiva.termino ? formatarData(concessaoAtiva.termino) : 'Perpétua'}
-                    </Mono>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {j.processo_administrativo && (
-                    <div className="flex items-center justify-between pb-1 border-b border-border/40">
-                      <span className="text-muted-foreground">Proc. Administrativo:</span>
-                      <Mono className="font-semibold text-foreground">{j.processo_administrativo}</Mono>
-                    </div>
-                  )}
-                  <p className="text-muted-foreground text-xs italic">
-                    Nenhuma concessão ativa registrada para esta unidade.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 3. Ocupantes Sepultados */}
-          <Card className="gap-0 py-0 overflow-hidden shadow-2xs">
-            <CardHeader className="p-3 border-b border-border bg-muted/30">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-                <span>Restos Mortais Inumados</span>
-                <Badge variant="secondary" className="font-mono text-[10px]">
-                  {listaOcupantes.length} ocupante(s)
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 text-xs">
-              {listaOcupantes.length > 0 ? (
-                <ul className="divide-y divide-border/60">
-                  {listaOcupantes.map((oc) => (
-                    <li key={oc.id} className="py-2 first:pt-0 last:pb-0 space-y-1">
-                      <div className="flex items-center justify-between font-semibold text-foreground">
-                        <span>{oc.falecido?.nome ?? 'Restos não identificados'}</span>
-                        <div className="flex items-center gap-1.5">
-                          {oc.gaveta_numero && (
-                            <Badge variant="secondary" className="font-mono text-[10px] px-1 py-0 h-4">
-                              Gaveta {oc.gaveta_numero}
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className="text-[10px] capitalize">
-                            {oc.situacao}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span>Data do Sepultamento:</span>
-                        <Mono>{formatarData(oc.sepultado_em)}</Mono>
-                      </div>
-                      {(oc.coveiro_nome || oc.pedreiro_nome) && (
-                        <div className="text-[10px] text-muted-foreground/80 flex flex-wrap gap-2 pt-0.5 font-mono">
-                          {oc.coveiro_nome && <span>Coveiro: {oc.coveiro_nome}</span>}
-                          {oc.pedreiro_nome && <span>Pedreiro: {oc.pedreiro_nome}</span>}
-                        </div>
-                      )}
-                      {oc.ordem_servico && (
-                        <div className="text-[10px] text-muted-foreground flex items-center gap-1 font-mono">
-                          <span>OS #{oc.ordem_servico.numero}/{oc.ordem_servico.ano}</span>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground text-xs italic">
-                  Nenhum registro de inumação ativo nesta unidade.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 4. Linha do Tempo / Histórico do Jazigo (RF-19) */}
-          <Card className="gap-0 py-0 overflow-hidden shadow-2xs">
-            <CardHeader className="p-3 border-b border-border bg-muted/30">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <History className="h-3.5 w-3.5 text-primary" /> Linha do Tempo e Trilha Histórica
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 text-xs">
-              <ol className="space-y-3 border-l-2 border-border/80 pl-3.5 ml-1">
-                {(historico.dados ?? []).map((e, i) => (
-                  <li key={i} className="text-xs relative">
-                    <div className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-primary" />
-                    <Mono className="block text-[10px] text-muted-foreground">{formatarData(e.data)}</Mono>
-                    <span className="font-semibold text-foreground capitalize mr-1">{e.tipo}:</span>
-                    <span className="text-muted-foreground">{e.descricao}</span>
-                  </li>
-                ))}
-                {!historico.carregando && historico.dados?.length === 0 && (
-                  <li className="text-xs text-muted-foreground italic">
-                    Sem registros na linha do tempo.
-                  </li>
-                )}
-              </ol>
-            </CardContent>
-          </Card>
-
-          {/* 5. Vistorias Técnicas e Laudos de Conservação */}
-          <SecaoVistoriasJazigo
-            vistorias={vistorias.dados?.data ?? []}
-            onNovaVistoria={() => setAbrirNovaVistoria(true)}
-            podeEditar={pode}
-          />
-        </div>
-      )}
-
-      <ConfirmDialog
-        open={confirmar}
-        onClose={() => setConfirmar(false)}
-        onConfirm={(motivo) => void transicionar(motivo)}
-        requireReason
-        title={emManutencao ? 'Restaurar Jazigo' : 'Interditar por Ruína / Manutenção'}
-        description="Informe formalmente a justificativa técnica. O registro será gravado com fé pública na trilha de auditoria e no histórico do jazigo."
-        confirmLabel="Confirmar Transição"
-        destructive={!emManutencao}
-        reasonPlaceholder="Descreva o motivo da alteração de estado..."
-      />
-
-      {/* Modais de Documentação no Drawer */}
-      <ModalQrCodeJazigo
-        aberto={abrirQr}
-        jazigo={j ?? null}
-        ocupantes={listaOcupantes}
-        onFechar={() => setAbrirQr(false)}
-      />
-      <ModalFichaCadastral
-        aberto={abrirFicha}
-        jazigo={j ?? null}
-        concessao={concessaoAtiva}
-        ocupantes={listaOcupantes}
-        onFechar={() => setAbrirFicha(false)}
-      />
-      <ModalNovaVistoriaJazigo
-        aberto={abrirNovaVistoria}
-        jazigo={j ?? null}
-        onFechar={() => setAbrirNovaVistoria(false)}
-        onSucesso={() => {
-          void vistorias.recarregar();
-          void historico.recarregar();
-          void detalhe.recarregar();
-        }}
-      />
-    </Drawer>
-  );
-};

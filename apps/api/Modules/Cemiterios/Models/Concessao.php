@@ -62,5 +62,11 @@ final class Concessao extends Model
     {
         return $this->hasMany(ProcessoSucessao::class, 'concession_id');
     }
+
+    /** @return \Illuminate\Database\Eloquent\Relations\HasMany<Guia, $this> */
+    public function guias(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Guia::class, 'origem_id')->where('origem_type', 'concessao');
+    }
 }
 

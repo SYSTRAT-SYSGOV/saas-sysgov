@@ -21,7 +21,10 @@ export const ConcessoesView: React.FC = () => {
     () => cemiteriosApi.concessoes({ park_id: cemiterioAtivoId ?? undefined, per_page: 100 }),
     [cemiterioAtivoId]
   );
-  const titulares = useDados(() => (gerencia ? cemiteriosApi.titulares() : Promise.resolve(null)), [gerencia]);
+  const titulares = useDados(
+    () => (gerencia && (aba === 'titulares' || modal === 'concessao') ? cemiteriosApi.titulares({ per_page: 50 }) : Promise.resolve(null)),
+    [gerencia, aba, modal]
+  );
   const { erro, executar } = useAcao();
 
   const colunasConcessoes = useMemo<ColumnDef<Concessao, unknown>[]>(() => [
@@ -104,7 +107,7 @@ export const ConcessoesView: React.FC = () => {
         )}
       </div>
       {aviso && <p className="rounded-md border border-border bg-accent/50 p-3 text-sm" role="status">{aviso}</p>}
-      <ErroBox erro={erro ?? concessoes.erro} />
+      <ErroBox erro={erro ?? concessoes.erro ?? titulares.erro} />
       {aba === 'concessoes'
         ? <DataTable columns={colunasConcessoes} data={concessoes.dados?.data ?? []} loading={concessoes.carregando} searchable emptyText="Nenhuma concessão." />
         : <DataTable columns={colunasTitulares} data={titulares.dados?.data ?? []} loading={titulares.carregando} searchable emptyText="Nenhum concessionário." />}

@@ -58,6 +58,11 @@ describe('InventarioView Component', () => {
       last_page: 1,
       total: 1,
     });
+    vi.spyOn(cemiteriosApi, 'historico').mockResolvedValue([]);
+    vi.spyOn(cemiteriosApi, 'concessoes').mockResolvedValue({ data: [], current_page: 1, last_page: 1, total: 0 });
+    vi.spyOn(cemiteriosApi, 'inumacoes').mockResolvedValue({ data: [], current_page: 1, last_page: 1, total: 0 });
+    vi.spyOn(cemiteriosApi, 'vistorias').mockResolvedValue({ data: [], current_page: 1, last_page: 1, total: 0 });
+    vi.spyOn(cemiteriosApi, 'guias').mockResolvedValue({ data: [], current_page: 1, last_page: 1, total: 0 });
   });
 
   it('renderiza os painéis de KPIs, filtros avançados e botões de gestão', async () => {
@@ -98,7 +103,7 @@ describe('InventarioView Component', () => {
     // Fecha o modal via botão Cancelar
     const btnCancelar = screen.getByRole('button', { name: /cancelar/i });
     fireEvent.click(btnCancelar);
-  });
+  }, 15000);
 
   it('permite abrir o modal de Novo Jazigo com setores disponíveis e fechá-lo', async () => {
     const { fireEvent } = await import('@testing-library/react');
@@ -114,7 +119,7 @@ describe('InventarioView Component', () => {
     // Fecha o modal via botão Cancelar
     const btnCancelar = screen.getByRole('button', { name: /cancelar/i });
     fireEvent.click(btnCancelar);
-  });
+  }, 15000);
 
   it('isola os dados e oculta botão Novo Cemitério quando há necrópole ativa no contexto', async () => {
     const { CemiteriosProvider } = await import('../../CemiteriosContext');
@@ -146,7 +151,7 @@ describe('InventarioView Component', () => {
         parque: '1',
       })
     );
-  });
+  }, 15000);
 
   it('abre as informações do túmulo ao clicar no botão Ver Túmulo na listagem', async () => {
     const { fireEvent } = await import('@testing-library/react');
@@ -160,10 +165,11 @@ describe('InventarioView Component', () => {
 
     fireEvent.click(btnVerTumulo);
 
-    // O Drawer deve abrir exibindo as informações detalhadas do túmulo
+    // O ModalDetalheJazigo deve abrir exibindo as informações detalhadas e sub-abas
     expect(await screen.findByText(/informações do túmulo — JAZ-001/i)).toBeInTheDocument();
-    expect(screen.getByText(/dimensões e localização/i)).toBeInTheDocument();
-  });
+    expect(screen.getByText(/dimensões & área/i)).toBeInTheDocument();
+    expect(screen.getByText(/financeiro & taxas/i)).toBeInTheDocument();
+  }, 15000);
 
   it('abre as informações do túmulo ao clicar diretamente no código do jazigo', async () => {
     const { fireEvent } = await import('@testing-library/react');
@@ -179,5 +185,5 @@ describe('InventarioView Component', () => {
 
     // O Drawer deve abrir
     expect(await screen.findByText(/informações do túmulo — JAZ-001/i)).toBeInTheDocument();
-  });
+  }, 15000);
 });

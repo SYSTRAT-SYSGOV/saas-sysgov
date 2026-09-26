@@ -12,7 +12,7 @@ vi.mock('@/core/rbac/useCan', () => ({
   }),
 }));
 
-const mockPendencias: { data: Concessao[]; total: number; current_page: number; last_page: number } = {
+const mockPendencias: any = {
   data: [
     {
       id: 1,
@@ -60,7 +60,7 @@ const mockPendencias: { data: Concessao[]; total: number; current_page: number; 
   last_page: 1,
 };
 
-const mockProcessos: { data: ProcessoSucessao[]; total: number; current_page: number; last_page: number } = {
+const mockProcessos: any = {
   data: [
     {
       id: 10,

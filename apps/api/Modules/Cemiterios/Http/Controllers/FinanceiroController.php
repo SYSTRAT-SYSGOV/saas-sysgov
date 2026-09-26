@@ -85,13 +85,21 @@ final class FinanceiroController extends Controller
 
     public function guias(Request $request): JsonResponse
     {
-        $this->autorizar($request, 'cemiterios.financeiro.manage');
+        if (!$request->user()->hasPermission('cemiterios.financeiro.manage')) {
+            $this->autorizar($request, 'cemiterios.view');
+        }
 
         return response()->json(
             Guia::query()
                 ->when($request->query('situacao'), fn ($q, $v) => $q->where('situacao', $v))
                 ->when($request->query('servico'), fn ($q, $v) => $q->where('servico', $v))
                 ->when($request->query('exercicio'), fn ($q, $v) => $q->where('exercicio', $v))
+                ->when($request->query('concessao_id'), fn ($q, $v) => $q->where('origem_type', 'concessao')->where('origem_id', $v))
+                ->when($request->query('plot_id'), fn ($q, $v) => $q->where(function ($w) use ($v) {
+                    $w->where(fn ($sub) => $sub->where('origem_type', 'concessao')
+                        ->whereIn('origem_id', Concessao::where('plot_id', $v)->select('id')))
+                    ->orWhere(fn ($sub) => $sub->where('origem_type', 'jazigo')->where('origem_id', $v));
+                }))
                 ->when($request->query('q'), fn ($q, $v) => $q->where(fn ($w) => $w->where('numero', 'like', "%{$v}%")->orWhere('contribuinte_nome', 'like', "%{$v}%")))
                 ->orderByDesc('id')
                 ->paginate(min((int) $request->query('per_page', 30), 100))

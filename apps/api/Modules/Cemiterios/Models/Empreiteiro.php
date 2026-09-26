@@ -49,7 +49,11 @@ final class Empreiteiro extends Model
 
     public function getDocumentoMascaradoAttribute(): string
     {
-        return Documento::mascarar((string) $this->documento);
+        try {
+            return Documento::mascarar((string) $this->documento);
+        } catch (\Throwable) {
+            return '—';
+        }
     }
 
     /** @return HasMany<AlvaraAnual, $this> */

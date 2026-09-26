@@ -23,17 +23,27 @@ export interface Parque {
 export interface Jazigo {
   id: number; park_id: number; sector_id: number; codigo: string; codigo_legado?: string | null; processo_administrativo?: string | null; tipo: string; capacidade: number; ocupacao: number;
   estado: EstadoJazigo; comprimento_m: number | null; largura_m: number | null; lat: number | null; lng: number | null; lock_version: number;
-  setor?: Setor; cemiterio?: Parque;
+  setor?: Setor; cemiterio?: Parque; concessoes?: Concessao[]; inumacoes?: Inumacao[];
 }
 export interface EventoHistorico { data: string; tipo: string; descricao: string }
-export interface Falecido { id: number; nome: string; nascimento: string | null; falecimento: string; idade_obito: number | null; certidao_numero: string | null }
+export interface Falecido {
+  id: number;
+  nome: string;
+  nascimento: string | null;
+  falecimento: string;
+  idade_obito: number | null;
+  certidao_numero: string | null;
+  certidao_cartorio?: string | null;
+  certidao_arquivo?: string | null;
+  documento?: string | null;
+}
 export interface OrdemServico {
   id: number; ano: number; numero: number; tipo: string; plot_id: number | null; agendada_para: string | null; equipe: string | null;
   situacao: string; observacao: string | null; executada_em: string | null; jazigo?: Pick<Jazigo, 'id' | 'codigo'> | null; falecido?: string | null;
 }
 export interface Inumacao {
   id: number; deceased_id: number; plot_id: number; gaveta_numero?: number | null; sepultado_em: string; situacao: string; origem: string; revisao_pendente: boolean;
-  livro_referencia: string | null; carencia_desde: string; service_order_id: number | null;
+  tipo?: string | null; livro_referencia: string | null; carencia_desde: string; service_order_id: number | null;
   coveiro_nome?: string | null; pedreiro_nome?: string | null; cartorio?: string | null; medico?: string | null;
   falecido?: Falecido; jazigo?: Pick<Jazigo, 'id' | 'codigo'> & { cemiterio?: { nome: string } }; ordem_servico?: OrdemServico | null;
 }
@@ -45,12 +55,14 @@ export interface Concessionario {
   id: number; nome: string; tipo_doc: 'cpf' | 'cnpj'; documento_mascarado: string; documento?: string;
   email: string | null; telefone: string | null; endereco: string | null; base_legal: string;
   titular_falecido?: boolean; data_falecimento_titular?: string | null; processo_inventario?: string | null;
+  cep?: string | null; logradouro?: string | null; numero?: string | null; complemento?: string | null;
+  bairro?: string | null; cidade?: string | null; uf?: string | null;
 }
 export interface Concessao {
   id: number; numero: string; processo_administrativo?: string | null; plot_id: number; holder_id: number; modalidade: 'temporaria' | 'perpetua'; inicio: string;
   termino: string | null; situacao: string; pendencia_regularizacao: boolean; motivo_pendencia?: string | null;
   jazigo?: Pick<Jazigo, 'id' | 'codigo' | 'estado' | 'processo_administrativo'> & { cemiterio?: { nome: string } };
-  concessionario?: Pick<Concessionario, 'id' | 'nome' | 'titular_falecido' | 'data_falecimento_titular' | 'processo_inventario'> & { documento_mascarado?: string };
+  concessionario?: Partial<Concessionario> & { id: number; nome: string };
 }
 
 export interface HerdeiroSucessao {
@@ -132,8 +144,34 @@ export interface HistoricoOperador {
 export interface Preco { id: number; servico: string; valor_centavos: number; vigencia_inicio: string; vigencia_fim: string | null }
 export interface Reajuste { id: number; competencia: number; percentual: number; origem: string; created_at: string }
 export interface Guia {
-  id: number; numero: string; contribuinte_nome: string; servico: string; exercicio: number | null; valor_centavos: number;
-  vencimento: string; situacao: 'emitida' | 'paga' | 'cancelada'; vencida: boolean; original_id: number | null; pago_em: string | null;
+  id: number;
+  numero: string;
+  contribuinte_nome: string;
+  servico: string;
+  exercicio: number | null;
+  valor_centavos: number;
+  vencimento: string;
+  situacao: 'emitida' | 'paga' | 'cancelada';
+  vencida: boolean;
+  original_id: number | null;
+  pago_em: string | null;
+  valor_pago_centavos?: number | null;
+  comprovante_arquivo?: string | null;
+}
+
+export interface FiltrosJazigosAvancados {
+  parque?: string | number;
+  setor?: string | number;
+  estado?: string;
+  tipo?: string;
+  q?: string;
+  sepultado?: string;
+  concessao_status?: 'com_concessao' | 'sem_concessao' | 'vencida' | 'sucessao';
+  financeiro_status?: 'adimplente' | 'inadimplente' | 'sem_guias';
+  faixa_ocupacao?: 'vazio' | 'parcial' | 'lotado';
+  georreferenciado?: 'com_gps' | 'sem_gps';
+  per_page?: number;
+  page?: number;
 }
 export interface Empreiteiro {
   id: number; nome: string; tipo_doc: string; documento_mascarado: string; responsavel_tecnico: string | null;
@@ -195,6 +233,32 @@ export function formatarData(valor: string | null | undefined): string {
   const [data] = valor.split('T');
   const [a, m, d] = data.split('-');
   return d && m && a ? `${d}/${m}/${a}` : valor;
+}
+
+export interface ConsultaCepResultado {
+  cep: string;
+  logradouro: string;
+  complemento: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  erro?: boolean;
+}
+
+/** Consulta dados de endereço via ViaCEP com tratamento de fallback */
+export async function consultarCep(cep: string): Promise<ConsultaCepResultado | null> {
+  const digits = cep.replace(/\D/g, '');
+  if (digits.length !== 8) return null;
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as ConsultaCepResultado;
+    if (data.erro) return null;
+    return data;
+  } catch (e) {
+    console.error('Falha ao consultar CEP:', e);
+    return null;
+  }
 }
 
 /** Cores do mapa por estado (spec gis › cores): verde, azul, vermelho, roxo, amarelo. */
@@ -278,6 +342,7 @@ export const cemiteriosApi = {
   jazigos: (filtros: Record<string, unknown> = {}) => get<Paginado<Jazigo>>('/jazigos', filtros),
   jazigo: (id: number) => get<Jazigo>(`/jazigos/${id}`),
   criarJazigo: (dados: Partial<Jazigo>) => post<Jazigo>('/jazigos', dados),
+  atualizarJazigo: (id: number, dados: Partial<Jazigo>) => put<Jazigo>(`/jazigos/${id}`, dados),
   alterarEstado: (id: number, para: 'manutencao' | 'restaurar', motivo: string, lockVersion: number) =>
     post<Jazigo>(`/jazigos/${id}/estado`, { para, motivo, lock_version: lockVersion }),
   historico: (id: number) => get<EventoHistorico[]>(`/jazigos/${id}/historico`),
@@ -293,10 +358,12 @@ export const cemiteriosApi = {
 
   // Operações
   falecidos: (q?: string) => get<Paginado<Falecido>>('/falecidos', { q }),
+  atualizarFalecido: (id: number, dados: Partial<Falecido>) => put<Falecido>(`/falecidos/${id}`, dados),
   dadosRestritos: (id: number) => get<{ causa_morte: string | null; docs_medicos: string[] | null }>(`/falecidos/${id}/dados-restritos`),
   inumacoes: (filtros: Record<string, unknown> = {}) => get<Paginado<Inumacao>>('/inumacoes', filtros),
   inumar: (dados: Record<string, unknown>) => post<Inumacao>('/inumacoes', paraFormData(dados)),
   inumarHistorica: (dados: Record<string, unknown>) => post<Inumacao>('/inumacoes/historicas', paraFormData(dados)),
+  atualizarInumacao: (id: number, dados: Record<string, unknown>) => put<Inumacao>(`/inumacoes/${id}`, dados),
   revisar: (id: number) => post<Inumacao>(`/inumacoes/${id}/revisar`),
   cancelarInumacao: (id: number) => post<Inumacao>(`/inumacoes/${id}/cancelar`),
   exumacoes: (filtros: Record<string, unknown> = {}) => get<Paginado<Exumacao>>('/exumacoes', filtros),
@@ -308,8 +375,11 @@ export const cemiteriosApi = {
   pdfOrdem: (o: Pick<OrdemServico, 'id' | 'numero' | 'ano'>) => pdf(`/ordens-servico/${o.id}/pdf`, `os-${o.numero}-${o.ano}.pdf`),
 
   // Concessões
-  titulares: (q?: string) => get<Paginado<Concessionario>>('/concessionarios', { q }),
+  titulares: (params?: string | Record<string, unknown>) =>
+    get<Paginado<Concessionario>>('/concessionarios', typeof params === 'string' ? { q: params } : (params ?? {})),
+  titular: (id: number) => get<Concessionario & { documento: string }>(`/concessionarios/${id}`),
   criarTitular: (dados: Partial<Concessionario> & { documento: string }) => post<Concessionario>('/concessionarios', dados),
+  atualizarConcessionario: (id: number, dados: Partial<Concessionario>) => put<Concessionario>(`/concessionarios/${id}`, dados),
   concessoes: (filtros: Record<string, unknown> = {}) => get<Paginado<Concessao>>('/concessoes', filtros),
   conceder: (dados: { plot_id: number; holder_id: number; modalidade: string; lock_version: number; inicio?: string; processo_administrativo?: string }) => post<Concessao>('/concessoes', dados),
   renovar: (id: number) => post<{ concessao: Concessao; guia: Guia }>(`/concessoes/${id}/renovar`),

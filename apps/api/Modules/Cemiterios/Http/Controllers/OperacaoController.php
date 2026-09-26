@@ -31,7 +31,11 @@ final class OperacaoController extends Controller
         $this->autorizar($request, 'cemiterios.view');
 
         return response()->json(
-            Inumacao::with(['falecido:id,nome,falecimento', 'jazigo:id,codigo,park_id', 'ordemServico:id,numero,ano,situacao'])
+            Inumacao::with([
+                'falecido:id,nome,nascimento,falecimento,idade_obito,certidao_numero,certidao_cartorio',
+                'jazigo:id,codigo,park_id',
+                'ordemServico:id,numero,ano,situacao',
+            ])
                 ->when($request->query('situacao'), fn ($q, $v) => $q->where('situacao', $v))
                 ->when($request->query('plot_id'), fn ($q, $v) => $q->where('plot_id', $v))
                 ->when($request->boolean('revisao_pendente'), fn ($q) => $q->where('revisao_pendente', true))
@@ -108,6 +112,44 @@ final class OperacaoController extends Controller
         $this->audit->record('cemiterios', 'inumacao.cancelada', "Inumacao #{$id}", $antes, $inumacao->toArray());
 
         return response()->json($inumacao->load('jazigo'));
+    }
+
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.operacoes.create');
+
+        $inumacao = Inumacao::with('falecido')->findOrFail($id);
+
+        $dados = $request->validate([
+            'gaveta_numero' => ['nullable', 'integer', 'min:1'],
+            'sepultado_em' => ['sometimes', 'date'],
+            'tipo' => ['nullable', 'string', 'max:20'],
+            'livro_referencia' => ['nullable', 'string', 'max:255'],
+            'coveiro_nome' => ['nullable', 'string', 'max:150'],
+            'pedreiro_nome' => ['nullable', 'string', 'max:150'],
+            'cartorio' => ['nullable', 'string', 'max:200'],
+            'medico' => ['nullable', 'string', 'max:200'],
+            'falecido' => ['nullable', 'array'],
+            'falecido.nome' => ['sometimes', 'string', 'max:255'],
+            'falecido.nascimento' => ['nullable', 'date'],
+            'falecido.falecimento' => ['sometimes', 'date', 'before_or_equal:today'],
+            'falecido.certidao_numero' => ['nullable', 'string', 'max:60'],
+            'falecido.certidao_cartorio' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $antes = $inumacao->toArray();
+        $falecidoDados = $dados['falecido'] ?? null;
+        unset($dados['falecido']);
+
+        $inumacao->update($dados);
+
+        if ($falecidoDados && $inumacao->falecido) {
+            $inumacao->falecido->update(array_filter($falecidoDados, fn ($v) => $v !== null));
+        }
+
+        $this->audit->record('cemiterios', 'inumacao.updated', "Inumacao #{$id}", $antes, $inumacao->fresh(['falecido'])->toArray());
+
+        return response()->json($inumacao->fresh(['falecido', 'jazigo', 'ordemServico']));
     }
 
     public function exumacoes(Request $request): JsonResponse
