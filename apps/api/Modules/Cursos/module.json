@@ -1,0 +1,25 @@
+{
+    "name": "Cursos",
+    "alias": "cursos",
+    "description": "Cursos, eventos e formações — oferta de turmas, inscrição com vagas e lista de espera, presença por aula (chamada e QR code), conclusão e certificados com validação pública",
+    "priority": 20,
+    "providers": [
+        "Modules\\Cursos\\Providers\\CursosServiceProvider",
+        "Modules\\Cursos\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin"
+    ],
+    "permissions": {
+        "cursos.view": "Acessar o módulo de Cursos e o catálogo publicado",
+        "cursos.manage": "Administrar cursos, formações, turmas, inscrições e certificados (Cursos)",
+        "cursos.instrutor": "Operar as turmas em que é instrutor designado — chamada, QR de check-in e encerramento (Cursos)",
+        "cursos.participar": "Inscrever-se em turmas e acessar os próprios cursos e certificados (Cursos)"
+    },
+    "menu": {
+        "label": "Cursos e Formações",
+        "icon": "GraduationCap",
+        "order": 30,
+        "permission": "cursos.view"
+    }
+}

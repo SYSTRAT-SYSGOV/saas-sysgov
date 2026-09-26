@@ -16,6 +16,8 @@ const CapdEmbedPage = React.lazy(() => import('@/modules/capd/CapdEmbedPage'));
 const BuscaPublicaPage = React.lazy(() => import('@/modules/cemiterios/portal/BuscaPublicaPage'));
 const PortalConcessionarioPage = React.lazy(() => import('@/modules/cemiterios/portal/PortalConcessionarioPage'));
 const PortalCallbackPage = React.lazy(() => import('@/modules/cemiterios/portal/PortalCallbackPage'));
+const ValidarCertificadoPage = React.lazy(() => import('@/modules/cursos/pages/ValidarCertificadoPage'));
+const CheckInPage = React.lazy(() => import('@/modules/cursos/pages/CheckInPage'));
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -110,6 +112,25 @@ export const AppRouter: React.FC = () => {
         element={
           <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando…</div>}>
             <PortalConcessionarioPage />
+          </React.Suspense>
+        }
+      />
+
+      {/* Cursos: validação pública de certificado (sem login) e destino do QR de
+          check-in (fora do AppShell; a própria página manda ao login se preciso) */}
+      <Route
+        path="/validar-certificado/:codigo?"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <ValidarCertificadoPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/cursos/check-in"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <CheckInPage />
           </React.Suspense>
         }
       />

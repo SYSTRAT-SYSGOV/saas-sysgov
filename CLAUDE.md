@@ -58,7 +58,7 @@ Frontend workspaces (`apps/web`, `apps/web-client`) each expose: `dev`, `build`,
 
 ### Backend: modular monolith, not microservices
 Every business domain lives in `apps/api/Modules/{Name}` (current modules: Admin, Capd, Client,
-Contracts, Finance, Licita, OrgChart, Procurement). A module is self-contained: `Config/`,
+Contracts, Cursos, Finance, Licita, OrgChart, Procurement). A module is self-contained: `Config/`,
 `Database/Migrations|Seeders/`, `Http/{Controllers,Middleware,Requests,Resources}/`, `Models/`,
 `Policies/`, `Providers/`, `Routes/api.php` (registered via the module's own `RouteServiceProvider`,
 never in a global `web.php`), `Services/`, `Events/`, `Listeners/`, `Tests/`, `module.json` (name, alias,

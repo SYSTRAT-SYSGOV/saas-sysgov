@@ -226,5 +226,7 @@ export * as LicitaSdk from './modules/licita';
 export * from './modules/licita';
 export * as CapdSdk from './modules/capd';
 export * from './modules/capd';
+export * as CursosSdk from './modules/cursos';
+export * from './modules/cursos';
 export * as ExampleSdk from './modules/template';
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { apiClient } from '@/core/api/client';
@@ -27,8 +27,17 @@ const FALLBACK_TENANTS: LoginTenant[] = [
   { id: 1, name: 'SYSTRAT (Sistema)', slug: 'systrat', type: 'interno' },
 ];
 
+/**
+ * Destino depois do login (?voltar=/caminho). Só aceita caminho relativo do
+ * próprio app — "//outro-site" ou URL absoluta viraria redirecionamento aberto.
+ */
+export function destinoPosLogin(voltar: string | null): string {
+  return voltar && voltar.startsWith('/') && !voltar.startsWith('//') && !voltar.startsWith('/\\') ? voltar : '/';
+}
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, loginWithSSO } = useAuth();
   const { isStandardBranding } = useTenant();
 
@@ -70,7 +79,7 @@ export const LoginPage: React.FC = () => {
         password,
         tenantSlug: selectedTenantSlug,
       });
-      navigate('/');
+      navigate(destinoPosLogin(searchParams.get('voltar')));
     } catch (err: any) {
       const backendMessage = err?.response?.data?.errors
         ? Object.values(err.response.data.errors).flat().join(' ')
