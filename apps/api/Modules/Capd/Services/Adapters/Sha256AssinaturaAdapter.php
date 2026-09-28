@@ -22,15 +22,9 @@ final class Sha256AssinaturaAdapter implements AssinaturaDigitalInterface
         int    $usuarioId,
         array  $contexto = [],
     ): AssinaturaResultado {
-        // Payload canônico: texto + metadados imutáveis
-        $payload = json_encode([
-            'sessao_id'  => $sessaoId,
-            'usuario_id' => $usuarioId,
-            'texto_ata'  => $textoAta,
-            'timestamp'  => now()->toIso8601String(),
-        ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-
-        $hash = hash('sha256', $payload);
+        // Hash direto do texto da ata — recalculável a qualquer momento com o
+        // mesmo texto (é isso que torna a integridade verificável, RN-C06).
+        $hash = hash('sha256', $textoAta);
 
         return new AssinaturaResultado(
             hash:                  $hash,
@@ -43,14 +37,17 @@ final class Sha256AssinaturaAdapter implements AssinaturaDigitalInterface
 
     public function verificar(string $textoAta, string $hash): bool
     {
-        // Apenas verifica que o hash não foi adulterado
-        // (recálculo não é possível sem o payload original completo —
-        //  intencional: a verificação real é feita via trilha de auditoria)
-        return strlen($hash) === 64 && ctype_xdigit($hash);
+        return hash_equals(hash('sha256', $textoAta), $hash);
     }
 
     public function identificador(): string
     {
         return 'sha256';
+    }
+
+    /** Modo gratuito não usa certificado digital — nada a validar. */
+    public function validarCertificado(string $certificado): bool
+    {
+        return true;
     }
 }

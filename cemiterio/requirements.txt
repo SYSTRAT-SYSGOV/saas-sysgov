@@ -1,0 +1,11 @@
+# Requisitos para importação
+# ===========================
+
+# PostgreSQL
+psycopg2-binary>=2.9.0
+
+# MySQL
+pymysql>=1.0.0
+
+# Utilitários
+python-dateutil>=2.8.0

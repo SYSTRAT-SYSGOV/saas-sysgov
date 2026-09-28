@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-09-24T00:00:00Z",
+  "project_root": "D:/SYSTRAT/Novos Projetos/Gestão Cemitérios/cemiterio",
+  "languages": [
+    { "name": "Python", "extensions": [".py"], "file_count": 4 },
+    { "name": "SQL", "extensions": [".sql"], "file_count": 3 },
+    { "name": "Batch", "extensions": [".bat"], "file_count": 3 },
+    { "name": "PowerShell", "extensions": [".ps1"], "file_count": 1 },
+    { "name": "Markdown", "extensions": [".md"], "file_count": 5 }
+  ],
+  "primary_language": "Python",
+  "frameworks": [
+    { "name": "psycopg2-binary", "version": ">=2.9.0", "source": "requirements.txt" },
+    { "name": "pymysql", "version": ">=1.0.0", "source": "requirements.txt" },
+    { "name": "python-dateutil", "version": ">=2.8.0", "source": "requirements.txt" }
+  ],
+  "package_manager": "pip",
+  "entry_points": [
+    { "path": "export_all_dbfs.py", "type": "extraction_entry" },
+    { "path": "import_csv_to_db.py", "type": "import_entry" },
+    { "path": "extract_data.py", "type": "extraction_helper" },
+    { "path": "read_dbf.py", "type": "inspection_util" }
+  ],
+  "config_files": [
+    "requirements.txt",
+    "create_db.sql",
+    "create_db_laragon.bat",
+    "apply_schema2.bat",
+    "apply_schema_laragon.bat"
+  ],
+  "ci_cd": [],
+  "database_hints": [
+    { "path": "postgresql_schema.sql", "type": "target_schema_postgresql" },
+    { "path": "mysql_schema.sql", "type": "target_schema_mysql" },
+    { "path": "Cemiterio Central/*.DBF", "type": "legacy_clipper_dbf" },
+    { "path": "Cemiterio Central/*.NTX", "type": "legacy_clipper_index" },
+    { "path": "Cemiterio Independencia/*.DBF", "type": "legacy_clipper_dbf" },
+    { "path": "Cemiterio Independencia/*.NTX", "type": "legacy_clipper_index" }
+  ],
+  "test_framework": null,
+  "test_file_count": 0,
+  "modules": [
+    "extraction",
+    "import",
+    "schema",
+    "legacy-central",
+    "legacy-independencia"
+  ],
+  "total_files": null,
+  "organization_suggestion": {
+    "granularity": "feature",
+    "rationale": "Não há roteamento centralizado, pastas de domínio sob src/, nem specs BDD/E2E — o projeto é um kit de migração de dados organizado por etapa do pipeline (extração, schema, importação), não por domínio de aplicação.",
+    "signals": [],
+    "features": [
+      "extracao-dbf",
+      "schema-destino",
+      "importacao-csv",
+      "legado-cemiterio-central",
+      "legado-cemiterio-independencia",
+      "seguranca-usuarios-permissoes"
+    ]
+  }
+}

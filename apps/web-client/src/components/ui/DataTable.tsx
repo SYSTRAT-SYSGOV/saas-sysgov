@@ -547,10 +547,44 @@ export function DataTable<TData, TValue>({
                 <ChevronLeft className="h-3.5 w-3.5" /> Anterior
               </button>
 
-              <span className="px-2 font-mono tabular-nums text-xs text-muted-foreground">
-                Página <strong className="text-foreground">{pageIndex + 1}</strong> de{' '}
-                <strong className="text-foreground">{pageCount}</strong>
-              </span>
+              {/* Botões numéricos de marcação de página */}
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const paginas: (number | '...')[] = [];
+                  if (pageCount <= 7) {
+                    for (let i = 1; i <= pageCount; i++) paginas.push(i);
+                  } else if (pageIndex + 1 <= 3) {
+                    paginas.push(1, 2, 3, 4, '...', pageCount);
+                  } else if (pageIndex + 1 >= pageCount - 2) {
+                    paginas.push(1, '...', pageCount - 3, pageCount - 2, pageCount - 1, pageCount);
+                  } else {
+                    paginas.push(1, '...', pageIndex, pageIndex + 1, pageIndex + 2, '...', pageCount);
+                  }
+
+                  return paginas.map((p, idx) =>
+                    p === '...' ? (
+                      <span key={`dots-${idx}`} className="px-1 text-xs text-muted-foreground font-mono">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => table.setPageIndex(Number(p) - 1)}
+                        aria-current={pageIndex + 1 === p ? 'page' : undefined}
+                        className={cn(
+                          'inline-flex items-center justify-center h-8 min-w-8 px-2.5 rounded-lg border text-xs font-mono tabular-nums transition-colors',
+                          pageIndex + 1 === p
+                            ? 'bg-primary text-primary-foreground border-primary font-bold shadow-xs'
+                            : 'border-border hover:bg-accent text-foreground'
+                        )}
+                      >
+                        {p}
+                      </button>
+                    )
+                  );
+                })()}
+              </div>
 
               <button
                 onClick={() => table.nextPage()}

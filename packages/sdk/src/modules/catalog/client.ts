@@ -7,7 +7,7 @@ export class CatalogModuleClient implements BaseModuleClient {
   constructor(private readonly api: ApiRequester) {}
 
   async getCatalog(): Promise<{ data: ApiModule[] }> {
-    return this.api.request('/admin/module-catalog/catalog');
+    return this.api.request('/public/module-catalog/catalog');
   }
 
   async listModules(): Promise<{ data: ApiModule[] }> {

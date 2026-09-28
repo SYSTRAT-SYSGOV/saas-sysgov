@@ -1,0 +1,239 @@
+{
+  "generated_at": "2026-09-24T00:00:00Z",
+  "modules": [
+    {
+      "name": "extracao-dbf",
+      "path": ".",
+      "purpose": "Ler os arquivos .DBF/.NTX do sistema legado Clipper (dois cemitérios) e exportar para CSV/Parquet",
+      "primary_files": [
+        "export_all_dbfs.py",
+        "extract_data.py",
+        "read_dbf.py",
+        "read_dbf.ps1"
+      ],
+      "functions": [
+        { "name": "read_dbf_full", "file": "export_all_dbfs.py", "params": ["filepath: str", "encoding: str = 'cp850'"], "returns": "(fields, records, deleted_count)", "confidence": "confirmed" },
+        { "name": "write_csv", "file": "export_all_dbfs.py", "params": ["fields", "records", "output_path"], "returns": "None", "confidence": "confirmed" },
+        { "name": "write_parquet", "file": "export_all_dbfs.py", "params": ["fields", "records", "output_path"], "returns": "bool", "confidence": "confirmed" },
+        { "name": "process_directory", "file": "export_all_dbfs.py", "params": ["input_dir", "output_base", "format"], "returns": "list[dict]", "confidence": "confirmed" }
+      ],
+      "entities": [],
+      "business_rules": [
+        { "description": "Registro com byte de exclusão física do DBF (0x2A) é descartado na extração", "location": "export_all_dbfs.py:64-67", "confidence": "confirmed" },
+        { "description": "Datas '00000000' e '11111111' são tratadas como NULL", "location": "export_all_dbfs.py:92-100", "confidence": "confirmed" }
+      ],
+      "dependencies": [],
+      "algorithms": [
+        { "name": "Parser binário DBF (dBase III/IV) sem biblioteca externa", "location": "export_all_dbfs.py:7-110", "confidence": "confirmed" }
+      ],
+      "complexity": "medium"
+    },
+    {
+      "name": "schema-destino",
+      "path": ".",
+      "purpose": "DDL do banco relacional alvo da migração, com versões paralelas para PostgreSQL e MySQL",
+      "primary_files": [
+        "postgresql_schema.sql",
+        "mysql_schema.sql",
+        "create_db.sql"
+      ],
+      "functions": [],
+      "entities": [
+        { "name": "cemiterio", "fields": [
+          { "name": "id", "type": "SMALLINT", "required": true },
+          { "name": "codigo_legado", "type": "CHAR(2)", "required": true },
+          { "name": "nome", "type": "VARCHAR(100)", "required": true },
+          { "name": "ativo", "type": "BOOLEAN", "required": false }
+        ], "confidence": "confirmed" },
+        { "name": "quadra", "fields": [
+          { "name": "id", "type": "SERIAL/INT AUTO_INCREMENT", "required": true },
+          { "name": "cemiterio_id", "type": "SMALLINT (FK)", "required": true },
+          { "name": "codigo", "type": "VARCHAR(6)", "required": true },
+          { "name": "descricao", "type": "VARCHAR(200)", "required": false }
+        ], "confidence": "confirmed" },
+        { "name": "tipo_lote", "fields": [
+          { "name": "codigo", "type": "CHAR(1)", "required": true },
+          { "name": "descricao", "type": "VARCHAR(50)", "required": true },
+          { "name": "perpetuo", "type": "BOOLEAN", "required": false }
+        ], "confidence": "confirmed" },
+        { "name": "lote", "fields": [
+          { "name": "id", "type": "BIGSERIAL/BIGINT AUTO_INCREMENT", "required": true },
+          { "name": "quadra_id", "type": "INT (FK)", "required": true },
+          { "name": "codigo", "type": "VARCHAR(6)", "required": true },
+          { "name": "tipo_codigo", "type": "CHAR(1) (FK)", "required": true },
+          { "name": "gavetas", "type": "SMALLINT", "required": false },
+          { "name": "processo", "type": "VARCHAR(30)", "required": false },
+          { "name": "validade", "type": "DATE (NULL = perpétuo)", "required": false }
+        ], "confidence": "confirmed" },
+        { "name": "falecido", "fields": [
+          { "name": "id", "type": "BIGSERIAL/BIGINT AUTO_INCREMENT", "required": true },
+          { "name": "lote_id", "type": "BIGINT (FK)", "required": true },
+          { "name": "item_ordem", "type": "SMALLINT", "required": true },
+          { "name": "nome", "type": "VARCHAR(200)", "required": true },
+          { "name": "dt_falecimento", "type": "DATE", "required": true },
+          { "name": "causa_mortis", "type": "VARCHAR(500)", "required": false },
+          { "name": "coveiro_id", "type": "SMALLINT (FK funcionario)", "required": false },
+          { "name": "pedreiro_id", "type": "SMALLINT (FK pedreiro)", "required": false }
+        ], "confidence": "confirmed" },
+        { "name": "responsavel", "fields": [
+          { "name": "id", "type": "BIGSERIAL/BIGINT AUTO_INCREMENT", "required": true },
+          { "name": "lote_id", "type": "BIGINT (FK)", "required": true },
+          { "name": "nome", "type": "VARCHAR(200)", "required": true },
+          { "name": "cpf_cnpj", "type": "VARCHAR(18)", "required": false },
+          { "name": "falecido_flag", "type": "BOOLEAN", "required": false }
+        ], "confidence": "confirmed" },
+        { "name": "usuario_grupo", "fields": [
+          { "name": "codigo", "type": "CHAR(4)", "required": true },
+          { "name": "nome", "type": "VARCHAR(100)", "required": true }
+        ], "confidence": "confirmed" },
+        { "name": "usuario", "fields": [
+          { "name": "codigo", "type": "CHAR(4)", "required": true },
+          { "name": "grupo_codigo", "type": "CHAR(4) (FK)", "required": true },
+          { "name": "senha_hash", "type": "VARCHAR(255)", "required": true }
+        ], "confidence": "confirmed" },
+        { "name": "permissao", "fields": [
+          { "name": "grupo_codigo", "type": "CHAR(4) (FK, PK composta)", "required": true },
+          { "name": "tabela", "type": "VARCHAR(100) (PK composta)", "required": true },
+          { "name": "pode_incluir", "type": "BOOLEAN", "required": false },
+          { "name": "pode_alterar", "type": "BOOLEAN", "required": false },
+          { "name": "pode_excluir", "type": "BOOLEAN", "required": false },
+          { "name": "pode_consultar", "type": "BOOLEAN", "required": false },
+          { "name": "pode_relatorio", "type": "BOOLEAN", "required": false }
+        ], "confidence": "confirmed" }
+      ],
+      "business_rules": [],
+      "dependencies": [],
+      "algorithms": [],
+      "complexity": "low"
+    },
+    {
+      "name": "importacao-csv",
+      "path": ".",
+      "purpose": "Ler os CSVs exportados e popular o banco relacional alvo (PostgreSQL ou MySQL), resolvendo FKs e aplicando regras de negócio do legado",
+      "primary_files": [
+        "import_csv_to_db.py"
+      ],
+      "functions": [
+        { "name": "CemiterioImporter.run_full_import", "file": "import_csv_to_db.py", "params": [], "returns": "None", "confidence": "confirmed" },
+        { "name": "CemiterioImporter.import_falecidos", "file": "import_csv_to_db.py", "params": ["cem_id: int", "cem_info: dict"], "returns": "None", "confidence": "confirmed" },
+        { "name": "CemiterioImporter.import_responsaveis", "file": "import_csv_to_db.py", "params": ["cem_id: int", "cem_info: dict"], "returns": "None", "confidence": "confirmed" },
+        { "name": "get_csv_field", "file": "import_csv_to_db.py", "params": ["row: dict", "*possible_keys: str"], "returns": "str", "confidence": "confirmed" }
+      ],
+      "entities": [],
+      "business_rules": [
+        { "description": "FLAG_EXCL == '*' em DADOS/RESPONSA exclui o registro da importação (exclusão lógica do legado)", "location": "import_csv_to_db.py:620-621,710-711", "confidence": "confirmed" },
+        { "description": "Nome de responsável contendo '[FALECIDO]' marca falecido_flag=true e é removido do texto do nome", "location": "import_csv_to_db.py:190-196,719-720", "confidence": "confirmed" },
+        { "description": "senha_hash = SHA256(senha) sem salt, migração provisória (comentário do autor pede bcrypt/argon2 na app real)", "location": "import_csv_to_db.py:397-399", "confidence": "confirmed" },
+        { "description": "PW_PERMIS (20 chars) decodificado como 5 blocos de 4 chars = incluir/alterar/excluir/consultar/relatorio, 'S' presente = true", "location": "import_csv_to_db.py:429-435", "confidence": "inferred" },
+        { "description": "Funcionários/pedreiros com id > 3 (funcionário) ou > 1 (pedreiro) têm nome placeholder, não real — FUNCIONA.DBF/PEDREIRO.DBF não puderam ser exportados", "location": "import_csv_to_db.py:303-338", "confidence": "unknown" }
+      ],
+      "dependencies": ["extracao-dbf", "schema-destino"],
+      "algorithms": [
+        { "name": "Pipeline de importação em ordem de dependência de FK, transação única com rollback total em erro", "location": "import_csv_to_db.py:232-269", "confidence": "confirmed" }
+      ],
+      "complexity": "high"
+    },
+    {
+      "name": "legado-cemiterio-central",
+      "path": "Cemiterio Central",
+      "purpose": "Dados de origem (DBF) do cemitério Central: lotes, óbitos, responsáveis, segurança e tabelas auxiliares",
+      "primary_files": [
+        "Cemiterio Central/DADOS.DBF",
+        "Cemiterio Central/RESPONSA.DBF",
+        "Cemiterio Central/LOTES.DBF",
+        "Cemiterio Central/FALECIDO.DBF",
+        "Cemiterio Central/FUNCIONA.DBF",
+        "Cemiterio Central/PEDREIRO.DBF"
+      ],
+      "functions": [],
+      "entities": [
+        { "name": "DADOS.DBF", "fields": [
+          { "name": "CEMITERIO", "type": "C(2)", "required": true },
+          { "name": "QUADRA", "type": "C(4)", "required": true },
+          { "name": "LOTE", "type": "C(4)", "required": true },
+          { "name": "ITEM", "type": "N(2)", "required": true },
+          { "name": "NOME", "type": "C(40)", "required": true },
+          { "name": "DT_FAL", "type": "D(8)", "required": true },
+          { "name": "COD_FUNC", "type": "N(3)", "required": false },
+          { "name": "COD_PED", "type": "N(3)", "required": false },
+          { "name": "FLAG_EXCL", "type": "C(1)", "required": false }
+        ], "confidence": "confirmed" },
+        { "name": "FUNCIONA.DBF", "fields": [
+          { "name": "CODIGO", "type": "N(3)", "required": true },
+          { "name": "NOME", "type": "C(40)", "required": false },
+          { "name": "RG", "type": "C(15)", "required": false }
+        ], "confidence": "confirmed" }
+      ],
+      "business_rules": [],
+      "dependencies": [],
+      "algorithms": [],
+      "complexity": "medium"
+    },
+    {
+      "name": "legado-cemiterio-independencia",
+      "path": "Cemiterio Independencia",
+      "purpose": "Dados de origem (DBF) do cemitério Independência: lotes, óbitos, responsáveis, segurança, mapeamento alternativo (OBA) e histórico de validades (TTT)",
+      "primary_files": [
+        "Cemiterio Independencia/DADOS.DBF",
+        "Cemiterio Independencia/RESPONSA.DBF",
+        "Cemiterio Independencia/LOTES.DBF",
+        "Cemiterio Independencia/OBA.DBF",
+        "Cemiterio Independencia/TTT.DBF"
+      ],
+      "functions": [],
+      "entities": [
+        { "name": "OBA.DBF", "fields": [
+          { "name": "CEMITERIO", "type": "C(9)", "required": false },
+          { "name": "QUADRA", "type": "C(6)", "required": false },
+          { "name": "LOTE", "type": "C(4)", "required": false }
+        ], "confidence": "confirmed" },
+        { "name": "TTT.DBF", "fields": [
+          { "name": "CEMITERIO", "type": "C(9)", "required": false },
+          { "name": "QUADRA", "type": "C(6)", "required": false },
+          { "name": "LOTE", "type": "C(4)", "required": false },
+          { "name": "TIPO", "type": "C(4)", "required": false },
+          { "name": "GAVETA", "type": "N(2)", "required": false },
+          { "name": "PROCESSO", "type": "N(6)", "required": false },
+          { "name": "VALIDADE", "type": "D(8)", "required": false }
+        ], "confidence": "confirmed" }
+      ],
+      "business_rules": [
+        { "description": "OBA.DBF e TTT.DBF existem só nesta unidade, sem equivalente confirmado no Central", "location": "Cemiterio Independencia/OBA.DBF, TTT.DBF", "confidence": "unknown" }
+      ],
+      "dependencies": [],
+      "algorithms": [],
+      "complexity": "medium"
+    },
+    {
+      "name": "seguranca-usuarios-permissoes",
+      "path": ".",
+      "purpose": "Modelo de autenticação/autorização do legado: usuários, grupos e permissões por tabela, replicado de forma independente em cada cemitério",
+      "primary_files": [
+        "Cemiterio Central/PWUSUA.DBF",
+        "Cemiterio Central/PWGRUPOS.DBF",
+        "Cemiterio Central/PWTABELA.DBF",
+        "Cemiterio Independencia/PWUSUA.DBF",
+        "Cemiterio Independencia/PWGRUPOS.DBF",
+        "Cemiterio Independencia/PWTABELA.DBF"
+      ],
+      "functions": [],
+      "entities": [
+        { "name": "PWUSUA.DBF", "fields": [
+          { "name": "PW_GRUPO", "type": "C(4)", "required": true },
+          { "name": "PW_CODIGO", "type": "C(4)", "required": true },
+          { "name": "PW_NOME", "type": "C(15)", "required": true },
+          { "name": "PW_NIVEL", "type": "C(1)", "required": false },
+          { "name": "PW_PASS", "type": "C(6) — texto puro no legado", "required": true },
+          { "name": "FLAG_EXCL", "type": "C(1)", "required": false }
+        ], "confidence": "confirmed" }
+      ],
+      "business_rules": [
+        { "description": "Base de segurança é independente por cemitério; usuario.codigo é PK global no schema alvo (CHAR(4)) — colisão de código entre unidades sobrescreve silenciosamente via upsert", "location": "import_csv_to_db.py:380-412", "confidence": "confirmed" },
+        { "description": "PW_PASS tem no máximo 6 caracteres e é texto puro no DBF legado, sem hash", "location": "PWUSUA.DBF field descriptor", "confidence": "confirmed" }
+      ],
+      "dependencies": ["legado-cemiterio-central", "legado-cemiterio-independencia", "importacao-csv"],
+      "algorithms": [],
+      "complexity": "medium"
+    }
+  ]
+}

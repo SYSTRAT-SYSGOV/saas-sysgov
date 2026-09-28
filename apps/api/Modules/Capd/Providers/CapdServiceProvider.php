@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Providers;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 
 final class CapdServiceProvider extends ServiceProvider
@@ -18,8 +19,26 @@ final class CapdServiceProvider extends ServiceProvider
             \Modules\Capd\Events\AvaliacaoHomologada::class,
             \Modules\Capd\Listeners\RecalcularNotaConsolidada::class,
         );
+        \Illuminate\Support\Facades\Event::listen(
+            \Modules\Capd\Events\CicloOpened::class,
+            \Modules\Capd\Listeners\SendCycleNotification::class,
+        );
 
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Modules\Capd\Console\AlertarPrazoAvaliacao::class,
+                \Modules\Capd\Console\TransicionarEtapaCiclo::class,
+            ]);
+
+            $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
+                $schedule->command(\Modules\Capd\Console\AlertarPrazoAvaliacao::class)
+                    ->dailyAt('07:00')->timezone('America/Sao_Paulo')->withoutOverlapping()->onOneServer();
+                $schedule->command(\Modules\Capd\Console\TransicionarEtapaCiclo::class)
+                    ->dailyAt('00:15')->timezone('America/Sao_Paulo')->withoutOverlapping()->onOneServer();
+            });
+        }
     }
 
     public function register(): void

@@ -3,3 +3,5 @@ export type { FatorItem, RespostaItem, MatrizEscalaGraficaProps } from './Matriz
 export { TopoAvaliacaoServidor } from './TopoAvaliacaoServidor';
 export type { TopoAvaliacaoServidorProps } from './TopoAvaliacaoServidor';
 export { CountdownWidget } from './CountdownWidget';
+export { SignatureStatus } from './SignatureStatus';
+export type { SignatureStatusProps } from './SignatureStatus';

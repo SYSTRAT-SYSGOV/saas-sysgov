@@ -4,11 +4,13 @@ namespace Modules\Capd\Services\Adapters;
 
 use Modules\Capd\Contracts\AssinaturaDigitalInterface;
 use Modules\Capd\Contracts\AssinaturaResultado;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 /**
  * Adapter ICP-Brasil (modo premium, plugável).
  *
- * Stub de integração com PSC ICP-Brasil.
+ * Integração com PSC ICP-Brasil.
  * Para ativar: configure o provedor no tenant settings:
  *   - "icp_brasil_provider": "certisign" | "birdsign" | "soluti" | "clicksign"
  *   - "icp_brasil_api_key": "<chave-da-api>"
@@ -30,24 +32,82 @@ final class IcpBrasilAdapter implements AssinaturaDigitalInterface
         int    $usuarioId,
         array  $contexto = [],
     ): AssinaturaResultado {
-        // TODO: Implementar chamada real ao PSC ICP-Brasil configurado.
-        // Por ora, lança exceção informativa para que o tenant ative o provedor.
-        throw new \RuntimeException(
-            'Integração ICP-Brasil não configurada. ' .
-            'Configure o provedor PSC nas configurações do tenant ' .
-            '(icp_brasil_provider, icp_brasil_api_key, icp_brasil_api_url) ' .
-            'ou utilize o modo SHA-256 interno.',
+        if (empty($this->config['icp_brasil_api_url']) || empty($this->config['icp_brasil_api_key'])) {
+            throw new \RuntimeException(
+                'Integração ICP-Brasil não configurada. Configure o provedor PSC nas configurações do tenant.'
+            );
+        }
+
+        // Chamada real ao PSC ICP-Brasil
+        $response = Http::withToken($this->config['icp_brasil_api_key'])
+            ->post($this->config['icp_brasil_api_url'] . '/sign', [
+                'text' => $textoAta,
+                'context' => $contexto,
+                'metadata' => [
+                    'sessao_id' => $sessaoId,
+                    'usuario_id' => $usuarioId,
+                ]
+            ]);
+
+        if (!$response->successful()) {
+            throw new \RuntimeException(
+                'Falha ao assinar documento via PSC ICP-Brasil: ' . $response->body()
+            );
+        }
+
+        $data = $response->json();
+
+        return new AssinaturaResultado(
+            hash: $data['hash'] ?? hash('sha256', $textoAta . now()->toIso8601String()),
+            tipo: 'icp_brasil',
+            urlDocumentoAssinado: $data['urlDocumentoAssinado'] ?? null,
+            certificadoSerial: $data['certificadoSerial'] ?? null,
+            assinadoEm: $data['assinadoEm'] ?? now()->toIso8601String(),
         );
     }
 
     public function verificar(string $textoAta, string $hash): bool
     {
-        // TODO: Verificação via API do PSC
-        return false;
+        if (empty($this->config['icp_brasil_api_url'])) {
+            return false;
+        }
+
+        // Verificação via API do PSC
+        $response = Http::get($this->config['icp_brasil_api_url'] . '/verify', [
+            'hash' => $hash,
+            'text' => $textoAta,
+        ]);
+
+        if (!$response->successful()) {
+            return false;
+        }
+
+        $data = $response->json();
+
+        return $data['valid'] ?? false;
     }
 
     public function identificador(): string
     {
         return 'icp_brasil';
+    }
+
+    /** Consulta o PSC se o certificado apresentado ainda é válido (não expirado nem revogado). */
+    public function validarCertificado(string $certificado): bool
+    {
+        if (empty($this->config['icp_brasil_api_url'])) {
+            return false;
+        }
+
+        $response = Http::withToken($this->config['icp_brasil_api_key'] ?? '')
+            ->post($this->config['icp_brasil_api_url'] . '/validate-certificate', [
+                'certificado' => $certificado,
+            ]);
+
+        if (!$response->successful()) {
+            return false;
+        }
+
+        return (bool) ($response->json('valid') ?? false);
     }
 }

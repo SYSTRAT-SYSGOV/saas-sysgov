@@ -49,6 +49,10 @@ final class CicloController extends Controller
 
         $ciclo = $this->cicloService->criarCiclo($validated);
 
+        if ($ciclo->status === 'aberto') {
+            event(new \Modules\Capd\Events\CicloOpened($ciclo));
+        }
+
         return response()->json($ciclo, 201);
     }
 

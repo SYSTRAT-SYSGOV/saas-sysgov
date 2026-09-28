@@ -14,7 +14,7 @@ final class ResolveTenant
 {
     public function handle(Request $request, Closure $next): Response
     {
-        abort_unless($request->user(), 401);
+        abort_unless($request->user() !== null, 401);
 
         $slug = $request->header('X-Tenant-Slug');
         $tenantId = $request->header('X-Tenant-ID');

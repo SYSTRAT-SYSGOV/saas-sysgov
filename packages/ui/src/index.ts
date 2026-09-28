@@ -39,6 +39,9 @@ export type { InputProps } from './components/input';
 export { Switch } from './components/switch';
 export type { SwitchProps } from './components/switch';
 
+export { Textarea } from './components/textarea';
+export type { TextareaProps } from './components/textarea';
+
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from './components/table';
 
 export { Accordion } from './components/Accordion';

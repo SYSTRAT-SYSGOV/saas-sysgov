@@ -49,6 +49,9 @@ interface AssinaturaDigitalInterface
     /** Verifica se a assinatura de uma ata ainda é válida. */
     public function verificar(string $textoAta, string $hash): bool;
 
+    /** Verifica se o certificado digital apresentado não está expirado nem revogado. */
+    public function validarCertificado(string $certificado): bool;
+
     /** Identificador do adapter: 'sha256' | 'icp_brasil' */
     public function identificador(): string;
 }

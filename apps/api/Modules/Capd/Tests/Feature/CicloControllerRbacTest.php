@@ -8,6 +8,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
+use Modules\Capd\Events\CicloOpened;
 use Tests\TestCase;
 
 /**
@@ -32,6 +34,11 @@ final class CicloControllerRbacTest extends TestCase
         ]);
 
         app(TenantContext::class)->set($this->tenant);
+
+        // O evento de abertura de ciclo dispara um listener em fila (ShouldQueue);
+        // sem fake, o `sync` driver tenta resolver o Bus e quebra em teste (mesma
+        // convenção usada em todo o resto do projeto para código que toca fila).
+        Event::fake([CicloOpened::class]);
 
         $this->admin = User::create([
             'name'              => 'Admin Ciclos',

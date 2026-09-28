@@ -1,0 +1,48 @@
+RELATÓRIO DE EXTRAÇÃO DBF → CSV/Parquet
+============================================================
+Data: 2026-09-24 15:11:10
+Origem: D:\SYSTRAT\Novos Projetos\Gestão Cemitérios\cemiterio
+Destino: D:\SYSTRAT\Novos Projetos\Gestão Cemitérios\cemiterio\exported_data
+Encoding: CP850 → UTF-8
+
+
+CEMITERIO CENTRAL
+----------------------------------------
+  DADOS: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  DAD_SEQ: ERRO - 'charmap' codec can't encode character '\ufffd' in position 12: character maps to <undefined>
+  ERROS: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  FALECIDO: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  FUNCIONA: ERRO - 'charmap' codec can't encode character '\ufffd' in position 14: character maps to <undefined>
+  FUN_SEQ: ERRO - 'charmap' codec can't encode character '\ufffd' in position 14: character maps to <undefined>
+  LOTES: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  PEDREIRO: ERRO - 'charmap' codec can't encode character '\ufffd' in position 14: character maps to <undefined>
+  PED_SEQ: ERRO - 'charmap' codec can't encode character '\ufffd' in position 14: character maps to <undefined>
+  PRINTERS: ERRO - 'charmap' codec can't encode character '\ufffd' in position 14: character maps to <undefined>
+  PWGRUPOS: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  PWTABELA: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  PWUSUA: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  RESPONSA: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  RES_SEQ: ERRO - 'charmap' codec can't encode character '\ufffd' in position 12: character maps to <undefined>
+
+CEMITERIO INDEPENDENCIA
+----------------------------------------
+  DADOS: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  DAD_SEQ: ERRO - 'charmap' codec can't encode character '\ufffd' in position 14: character maps to <undefined>
+  ERROS: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  FALECIDO: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  FUNCIONA: ERRO - 'charmap' codec can't encode character '\ufffd' in position 14: character maps to <undefined>
+  FUN_SEQ: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  LOTES: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  OBA: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  PEDREIRO: ERRO - 'charmap' codec can't encode character '\ufffd' in position 14: character maps to <undefined>
+  PED_SEQ: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  PRINTERS: ERRO - 'charmap' codec can't encode character '\ufffd' in position 12: character maps to <undefined>
+  PWGRUPOS: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  PWTABELA: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  PWUSUA: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  RESPONSA: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+  RES_SEQ: ERRO - 'charmap' codec can't encode character '\ufffd' in position 14: character maps to <undefined>
+  TTT: ERRO - 'charmap' codec can't encode character '\u26a0' in position 2: character maps to <undefined>
+
+============================================================
+TOTAL: 0 tabelas, 0 registros válidos
