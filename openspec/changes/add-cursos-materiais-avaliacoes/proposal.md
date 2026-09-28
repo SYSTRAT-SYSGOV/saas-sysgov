@@ -35,7 +35,8 @@ conclusão e o certificado.
 - **Correção pelo instrutor**: o instrutor designado (ou o Administrador) corrige as questões
   dissertativas das turmas dele, com nota por questão e comentário opcional.
 - **Nota no critério de conclusão**: o curso passa a aceitar **nota mínima** (0 a 10). A nota
-  final da inscrição é a média ponderada, pelo peso, da melhor tentativa em cada avaliação.
+  final da inscrição é a média ponderada, pelo peso, da melhor tentativa em cada avaliação
+  (avaliações ainda não liberadas para a turma ficam fora da média).
   No encerramento da turma, a conclusão exige frequência **e** nota quando o curso tiver nota
   mínima. O encerramento é recusado enquanto houver tentativa aguardando correção.
 - **Nota no certificado**: novo campo dinâmico `{{nota}}` nos modelos de certificado, gravado

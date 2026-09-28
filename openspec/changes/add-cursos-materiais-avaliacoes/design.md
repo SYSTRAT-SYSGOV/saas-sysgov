@@ -148,6 +148,13 @@ avaliação publicada (spec). `ApuracaoConclusaoService::apurar` passa a devolve
   da transação, com a turma travada, finaliza as tentativas em andamento e só então apura.
 - Como a apuração grava o resultado na inscrição, mudar `nota_minima` ou `frequencia_minima`
   depois não altera turmas encerradas (spec) sem precisar de coluna extra.
+- Avaliação ainda não liberada: `NotaService` considera só as avaliações publicadas em que
+  `LiberacaoService::liberado()` é verdadeiro para a turma da inscrição, avaliado no momento do
+  cálculo. A mesma regra vale para a nota parcial e para a apurada no encerramento. Avaliação
+  liberada e sem tentativa corrigida continua valendo zero. Sem nenhuma avaliação liberada a nota
+  é nula, e o `EncerramentoService` recusa curso com nota mínima nessa situação. Sem essa regra,
+  uma avaliação liberada depois do fim da turma (ex.: prova de recuperação numa turma curta) nunca
+  poderia ser feita e mesmo assim valeria zero.
 - Arredondamento: `round(..., 2)` (meio para cima) na nota de cada tentativa e na nota final,
   e a comparação com `nota_minima` usa o valor já arredondado. Assim, 6,995 vira 7,00 e
   conclui, igual ao que a pessoa lê na tela.

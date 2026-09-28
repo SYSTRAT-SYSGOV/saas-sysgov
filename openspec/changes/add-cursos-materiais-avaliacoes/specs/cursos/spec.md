@@ -189,7 +189,10 @@ alternativa correta.
 ### Requirement: Nota final da inscrição
 A nota final de uma inscrição SHALL ser a média ponderada, pelo peso, da maior nota entre as
 tentativas corrigidas em cada avaliação publicada do curso, numa escala de 0 a 10 com duas
-casas decimais. Avaliação sem tentativa corrigida SHALL contar como nota zero. O participante,
+casas decimais. Avaliação liberada para a turma e sem tentativa corrigida SHALL contar como
+nota zero. Avaliação publicada que ainda não foi liberada para a turma no momento do cálculo
+SHALL ficar fora da média (não entra nos pesos nem na soma). Sem nenhuma avaliação publicada e
+liberada, o curso SHALL ficar sem nota. O participante,
 o Administrador e os instrutores da turma SHALL poder consultar a nota parcial (com as
 tentativas corrigidas até o momento) enquanto a turma estiver aberta, e a nota final fica
 gravada na inscrição no encerramento.
@@ -199,8 +202,12 @@ gravada na inscrição no encerramento.
 - **THEN** a nota final é 8,75
 
 #### Scenario: Avaliação não feita
-- **WHEN** um curso tem duas avaliações de peso 1 e o participante tirou 10 em uma e não fez a outra
+- **WHEN** um curso tem duas avaliações de peso 1, ambas liberadas para a turma, e o participante tirou 10 em uma e não fez a outra
 - **THEN** a nota final é 5,00
+
+#### Scenario: Avaliação ainda não liberada fica fora da média
+- **WHEN** um curso tem a avaliação A (peso 1, liberada), em que o participante tirou 10, e a avaliação B (peso 1) que só é liberada 20 dias após o início da turma, e a turma está no primeiro dia
+- **THEN** a nota parcial é 10,00 e a avaliação B não entra na média
 
 ## MODIFIED Requirements
 
@@ -294,7 +301,7 @@ cursos. Um evento SHALL NOT ter avaliações nem nota mínima.
 O Administrador ou um instrutor designado SHALL poder encerrar a turma após a última aula
 agendada. O encerramento SHALL ser recusado enquanto houver tentativa `aguardando_correcao` na
 turma, listando as pendentes, e SHALL ser recusado quando o curso tiver nota mínima e nenhuma
-avaliação publicada. Tentativas ainda em andamento SHALL ser consideradas enviadas com as
+avaliação publicada e liberada para a turma. Tentativas ainda em andamento SHALL ser consideradas enviadas com as
 respostas salvas. Ao encerrar, o sistema SHALL, para cada inscrição `confirmada`, calcular a
 frequência (aulas com presença ÷ aulas agendadas × 100) e, quando o curso tiver nota mínima, a
 nota final, e SHALL marcar a inscrição como `concluida` quando a frequência for maior ou igual
@@ -322,6 +329,10 @@ presenças, inscrições, tentativas e correções da turma SHALL ser imutáveis
 #### Scenario: Correção pendente
 - **WHEN** o instrutor tenta encerrar a turma e há uma tentativa com dissertativa ainda não corrigida
 - **THEN** o sistema recusa o encerramento e lista as tentativas pendentes de correção
+
+#### Scenario: Nenhuma avaliação liberada no encerramento
+- **WHEN** o instrutor encerra a turma de um curso com nota mínima cujas avaliações publicadas ainda não foram liberadas para a turma
+- **THEN** o sistema recusa o encerramento informando que não há avaliação liberada para apurar a nota
 
 #### Scenario: Encerramento antes da última aula
 - **WHEN** o instrutor tenta encerrar a turma antes do fim da última aula agendada
