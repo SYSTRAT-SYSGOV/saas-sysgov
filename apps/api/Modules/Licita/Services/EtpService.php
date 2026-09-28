@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Licita\Enums\StatusEtp;
 use Modules\Licita\Models\Etp;
 use Modules\Licita\Models\Processo;
-use Modules\Licita\Support\HtmlSanitizer;
+use App\Support\HtmlSanitizer;
 
 final class EtpService
 {

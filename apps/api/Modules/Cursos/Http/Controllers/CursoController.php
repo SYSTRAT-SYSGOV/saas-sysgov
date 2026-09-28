@@ -44,7 +44,7 @@ final class CursoController extends Controller
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', Curso::class);
-        $dados = $request->validate($this->regras());
+        $dados = $request->validate($this->regras(), $this->mensagens());
 
         return $this->executar(fn () => response()->json($this->cursos->criar($dados, $request->user()), 201));
     }
@@ -59,7 +59,7 @@ final class CursoController extends Controller
     public function update(Request $request, Curso $curso): JsonResponse
     {
         $this->authorize('update', $curso);
-        $dados = $request->validate($this->regras(parcial: true));
+        $dados = $request->validate($this->regras(parcial: true), $this->mensagens());
 
         return $this->executar(fn () => response()->json($this->cursos->atualizar($curso, $dados)));
     }
@@ -99,6 +99,17 @@ final class CursoController extends Controller
     }
 
     /**
+     * @return array<string, string>
+     */
+    private function mensagens(): array
+    {
+        return [
+            'nota_minima.numeric' => 'A nota mínima deve ser um número na escala de 0 a 10.',
+            'nota_minima.between' => 'A nota mínima deve estar na escala de 0 a 10.',
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function regras(bool $parcial = false): array
@@ -111,6 +122,7 @@ final class CursoController extends Controller
             'descricao' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'carga_horaria_minutos' => [$obrigatorio, 'integer', 'min:1', 'max:100000'],
             'frequencia_minima' => ['sometimes', 'integer', 'between:0,100'],
+            'nota_minima' => ['sometimes', 'nullable', 'numeric', 'between:0,10'],
             'modelo_certificado_id' => ['sometimes', 'nullable', 'integer', Rule::exists('cursos_modelos_certificado', 'id')->where('tenant_id', app(\App\Support\TenantContext::class)->id())],
         ];
     }

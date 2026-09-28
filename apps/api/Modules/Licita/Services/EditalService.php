@@ -14,7 +14,7 @@ use Modules\Licita\Enums\StatusEdital;
 use Modules\Licita\Models\Edital;
 use Modules\Licita\Models\Processo;
 use Modules\Licita\Models\Tr;
-use Modules\Licita\Support\HtmlSanitizer;
+use App\Support\HtmlSanitizer;
 
 final class EditalService
 {

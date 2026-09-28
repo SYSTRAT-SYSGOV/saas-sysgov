@@ -30,6 +30,7 @@ use RuntimeException;
  * do fluxo: turma encerrada com certificados emitidos, turma lotada com
  * lista de espera, turma com aula acontecendo agora (para testar o QR de
  * check-in), evento com aprovação manual, curso em rascunho e uma formação.
+ * O conteúdo da Fase 2 (materiais e avaliações) vem do CursosConteudoDemonstracaoSeeder.
  *
  * Tudo passa pelos Services (auditoria, outbox e regras valem como no uso
  * real). Cria usuários de demonstração (@demo.sysgov.local) com a senha
@@ -65,7 +66,9 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
         app(TenantContext::class)->set($tenant);
 
         if (Curso::query()->exists()) {
-            $this->informar("Tenant [{$tenant->id}] {$tenant->name} já tem cursos — nada a fazer.");
+            $this->informar("Tenant [{$tenant->id}] {$tenant->name} já tem cursos — nada a fazer nos cursos da Fase 1.");
+            // Ambientes semeados antes da Fase 2 ganham o conteúdo novo (idempotente).
+            $this->semearConteudo($tenant->id);
             return;
         }
 
@@ -101,7 +104,20 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
             ],
         ));
 
+        $this->semearConteudo($tenant->id);
+
         $this->informar("Cursos de demonstração criados no tenant [{$tenant->id}] {$tenant->name}. Usuários @demo.sysgov.local com a senha " . self::SENHA_DEMO . '.');
+    }
+
+    /** Conteúdo da Fase 2, num seeder próprio e idempotente. */
+    private function semearConteudo(int $tenantId): void
+    {
+        $conteudo = new CursosConteudoDemonstracaoSeeder();
+        // @phpstan-ignore isset.property (o Seeder declara $command como não nulo, mas é null fora do artisan)
+        if (isset($this->command)) {
+            $conteudo->setCommand($this->command);
+        }
+        $conteudo->run($tenantId);
     }
 
     // ---------------------------------------------------------------- cenários

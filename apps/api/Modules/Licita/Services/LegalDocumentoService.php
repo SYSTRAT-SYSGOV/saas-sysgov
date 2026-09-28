@@ -11,7 +11,7 @@ use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Database\Eloquent\Collection;
 use Modules\Licita\Models\LegalDocumento;
-use Modules\Licita\Support\HtmlSanitizer;
+use App\Support\HtmlSanitizer;
 
 final class LegalDocumentoService
 {

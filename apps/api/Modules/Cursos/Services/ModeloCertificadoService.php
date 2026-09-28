@@ -22,7 +22,7 @@ use Modules\Cursos\Models\ModeloCertificado;
  */
 final class ModeloCertificadoService
 {
-    public const PLACEHOLDERS = ['participante', 'curso', 'carga_horaria', 'periodo', 'data_emissao', 'orgao'];
+    public const PLACEHOLDERS = ['participante', 'curso', 'carga_horaria', 'periodo', 'data_emissao', 'orgao', 'nota'];
 
     public const MAX_ASSINATURAS = 3;
 

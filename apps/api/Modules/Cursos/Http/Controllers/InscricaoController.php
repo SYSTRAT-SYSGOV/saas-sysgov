@@ -10,12 +10,14 @@ use App\Support\AuditLogger;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Cursos\Enums\StatusInscricao;
 use Modules\Cursos\Http\Controllers\Concerns\RespondeErroDeNegocio;
 use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\Participante;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Services\FrequenciaService;
 use Modules\Cursos\Services\InscricaoService;
+use Modules\Cursos\Services\NotaService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class InscricaoController extends Controller
@@ -25,6 +27,7 @@ final class InscricaoController extends Controller
     public function __construct(
         private readonly InscricaoService $inscricoes,
         private readonly FrequenciaService $frequencia,
+        private readonly NotaService $notas,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -100,6 +103,7 @@ final class InscricaoController extends Controller
             ...$inscricao->toArray(),
             'posicao_fila' => $this->inscricoes->posicaoNaFila($inscricao),
             'frequencia' => $this->frequencia->resumo($inscricao, ateAgora: true),
+            'nota' => $this->nota($inscricao),
             'aulas' => $this->frequencia->detalhe($inscricao),
         ]);
     }
@@ -121,6 +125,7 @@ final class InscricaoController extends Controller
                 ...$i->toArray(),
                 'posicao_fila' => $this->inscricoes->posicaoNaFila($i),
                 'frequencia' => $this->frequencia->resumo($i, ateAgora: true),
+                'nota' => $this->nota($i),
             ]);
 
         return response()->json($inscricoes);
@@ -153,12 +158,12 @@ final class InscricaoController extends Controller
     }
 
     /**
-     * @return list<array{id: int, participante_id: int, nome: string, email: string, status: string, status_label: string, inscrito_em: string, posicao_fila: int|null, frequencia: array{aulas: int, presencas: int, percentual: float}}>
+     * @return list<array{id: int, participante_id: int, nome: string, email: string, status: string, status_label: string, inscrito_em: string, posicao_fila: int|null, frequencia: array{aulas: int, presencas: int, percentual: float}, nota: float|null}>
      */
     private function linhas(Turma $turma): array
     {
         return $turma->inscricoes()
-            ->with('participante')
+            ->with(['participante', 'turma'])
             ->orderBy('id')
             ->get()
             ->map(fn (Inscricao $i): array => [
@@ -171,8 +176,19 @@ final class InscricaoController extends Controller
                 'inscrito_em' => $i->created_at?->format('d/m/Y H:i') ?? '',
                 'posicao_fila' => $this->inscricoes->posicaoNaFila($i),
                 'frequencia' => $this->frequencia->resumo($i, ateAgora: true),
+                'nota' => $this->nota($i),
             ])
             ->values()
             ->all();
+    }
+
+    /** Nota parcial (turma aberta) ou apurada (encerrada); só quem tem acesso ao conteúdo tem nota. */
+    private function nota(Inscricao $inscricao): ?float
+    {
+        if (!$inscricao->statusEnum()->is(StatusInscricao::Confirmada, StatusInscricao::Concluida, StatusInscricao::NaoConcluida)) {
+            return null;
+        }
+
+        return $this->notas->exibida($inscricao);
     }
 }

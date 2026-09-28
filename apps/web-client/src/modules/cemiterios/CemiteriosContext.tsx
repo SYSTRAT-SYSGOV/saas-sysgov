@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Parque } from './api';
 import { cemiteriosApi } from './api';
 import { useCan } from '@/core/rbac/useCan';
@@ -103,11 +103,21 @@ export const CemiteriosNavigationProvider: React.FC<CemiteriosNavigationProvider
   const [modoVisao, setModoVisao] = useState<ModoVisaoCemiterios>(estadoInicial.modo);
   const [cemiterioAtivoId, setCemiterioAtivoId] = useState<number | null>(estadoInicial.ativoId);
 
+  // A resposta de uma carga em andamento é descartada se o provider já foi desmontado.
+  const montado = useRef(true);
+  useEffect(() => {
+    montado.current = true;
+    return () => {
+      montado.current = false;
+    };
+  }, []);
+
   const carregarParques = useCallback(async () => {
     setIsCarregando(true);
     setErro(null);
     try {
       const parques = await cemiteriosApi.parques();
+      if (!montado.current) return;
       const lista = Array.isArray(parques) ? parques : [];
       setCemiterios(lista);
 
@@ -121,9 +131,9 @@ export const CemiteriosNavigationProvider: React.FC<CemiteriosNavigationProvider
         }
       }
     } catch (e: unknown) {
-      setErro('Não foi possível carregar os cemitérios cadastrados.');
+      if (montado.current) setErro('Não foi possível carregar os cemitérios cadastrados.');
     } finally {
-      setIsCarregando(false);
+      if (montado.current) setIsCarregando(false);
     }
   }, [modoVisaoInicial, cemiterioAtivoId]);
 

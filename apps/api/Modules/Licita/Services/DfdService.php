@@ -14,7 +14,7 @@ use Modules\Licita\Enums\FaseLicita;
 use Modules\Licita\Models\Dfd;
 use Modules\Licita\Models\Processo;
 use Modules\Licita\Enums\StatusDfd;
-use Modules\Licita\Support\HtmlSanitizer;
+use App\Support\HtmlSanitizer;
 
 final class DfdService
 {

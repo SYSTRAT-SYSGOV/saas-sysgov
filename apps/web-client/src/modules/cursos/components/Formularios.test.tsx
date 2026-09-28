@@ -13,6 +13,7 @@ const cursosApi = vi.hoisted(() => ({
   criarCurso: vi.fn(),
   atualizarCurso: vi.fn(),
   listarCursos: vi.fn(),
+  listarModelos: vi.fn(),
   atualizarFormacao: vi.fn(),
   criarFormacao: vi.fn(),
 }));
@@ -25,8 +26,53 @@ vi.mock('@sysgov/sdk', async (original) => ({
 import { CursoFormModal } from './CursoFormModal';
 import { FormacaoFormModal } from '../pages/FormacoesPage';
 
+const modelos = [
+  { id: 1, nome: 'Certificado padrão', titulo: 'Certificado', corpo: '', logotipo_path: null, assinaturas: null, padrao: true },
+  { id: 2, nome: 'Certificado com nota', titulo: 'Certificado', corpo: '', logotipo_path: null, assinaturas: null, padrao: false },
+];
+
+/** O Radix repete o valor num <option> escondido; confere o texto do próprio seletor. */
+const seletorMostra = (texto: string) => waitFor(() => expect(screen.getAllByRole('combobox').some((el) => el.textContent?.includes(texto))).toBe(true));
+
 describe('CursoFormModal', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    cursosApi.listarModelos.mockResolvedValue({ modelos, campos_dinamicos: [] });
+  });
+
+  it('sem escolha, o modelo de certificado é o padrão do órgão e vai como nulo', async () => {
+    cursosApi.criarCurso.mockResolvedValue({ id: 10 });
+    render(<CursoFormModal open onClose={() => undefined} onSalvo={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Padrão' } });
+    fireEvent.change(screen.getByLabelText('Carga horária (horas)'), { target: { value: '2' } });
+
+    expect(await screen.findByText('Padrão do órgão')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    await waitFor(() => expect(cursosApi.criarCurso).toHaveBeenCalledWith(expect.objectContaining({ modelo_certificado_id: null })));
+  });
+
+  it('edição mostra o modelo vinculado e o preserva ao salvar', async () => {
+    cursosApi.atualizarCurso.mockResolvedValue({ id: 1 });
+    const curso = { id: 1, tipo: 'curso', titulo: 'C', descricao: null, carga_horaria_minutos: 60, frequencia_minima: 75, nota_minima: '7.00', modelo_certificado_id: 2 } as unknown as import('@sysgov/sdk').Curso;
+    render(<CursoFormModal open curso={curso} onClose={() => undefined} onSalvo={() => undefined} />);
+
+    await seletorMostra('Certificado com nota');
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(cursosApi.atualizarCurso).toHaveBeenCalledWith(1, expect.objectContaining({ modelo_certificado_id: 2 })));
+  });
+
+  it('segue funcionando quando a lista de modelos não carrega', async () => {
+    cursosApi.listarModelos.mockRejectedValue(new Error('falha'));
+    cursosApi.criarCurso.mockResolvedValue({ id: 11 });
+    render(<CursoFormModal open onClose={() => undefined} onSalvo={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Sem lista' } });
+    fireEvent.change(screen.getByLabelText('Carga horária (horas)'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    await waitFor(() => expect(cursosApi.criarCurso).toHaveBeenCalledWith(expect.objectContaining({ modelo_certificado_id: null })));
+  });
 
   it('envia a carga horária em minutos (horas × 60 + minutos)', async () => {
     cursosApi.criarCurso.mockResolvedValue({ id: 7 });
@@ -40,6 +86,40 @@ describe('CursoFormModal', () => {
 
     await waitFor(() => expect(onSalvo).toHaveBeenCalledWith({ id: 7 }));
     expect(cursosApi.criarCurso).toHaveBeenCalledWith(expect.objectContaining({ titulo: 'Gestão de Contratos', carga_horaria_minutos: 510, frequencia_minima: 75, tipo: 'curso' }));
+  });
+
+  it('envia a nota mínima como número e recusa fora da escala de 0 a 10', async () => {
+    cursosApi.criarCurso.mockResolvedValue({ id: 8 });
+    const onSalvo = vi.fn();
+    render(<CursoFormModal open onClose={() => undefined} onSalvo={onSalvo} />);
+    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Com nota' } });
+    fireEvent.change(screen.getByLabelText('Carga horária (horas)'), { target: { value: '4' } });
+
+    fireEvent.change(screen.getByLabelText('Nota mínima (0 a 10)'), { target: { value: '11' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+    expect(await screen.findByText('A nota mínima deve estar na escala de 0 a 10.')).toBeInTheDocument();
+    expect(cursosApi.criarCurso).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Nota mínima (0 a 10)'), { target: { value: '7.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+    await waitFor(() => expect(onSalvo).toHaveBeenCalled());
+    expect(cursosApi.criarCurso).toHaveBeenCalledWith(expect.objectContaining({ nota_minima: 7.5 }));
+  });
+
+  it('sem nota mínima envia nulo; evento não tem o campo', async () => {
+    cursosApi.criarCurso.mockResolvedValue({ id: 9 });
+    render(<CursoFormModal open onClose={() => undefined} onSalvo={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Sem nota' } });
+    fireEvent.change(screen.getByLabelText('Carga horária (horas)'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    await waitFor(() => expect(cursosApi.criarCurso).toHaveBeenCalledWith(expect.objectContaining({ nota_minima: null })));
+  });
+
+  it('edição de curso carrega a nota mínima existente', () => {
+    render(<CursoFormModal open curso={{ id: 1, tipo: 'curso', titulo: 'C', descricao: null, carga_horaria_minutos: 60, frequencia_minima: 75, nota_minima: '7.00' } as unknown as import('@sysgov/sdk').Curso} onClose={() => undefined} onSalvo={() => undefined} />);
+
+    expect(screen.getByLabelText('Nota mínima (0 a 10)')).toHaveValue(7);
   });
 
   it('não envia sem carga horária', async () => {
@@ -56,6 +136,7 @@ describe('FormacaoFormModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     cursosApi.listarCursos.mockResolvedValue({ data: [], current_page: 1, last_page: 1, total: 0 });
+    cursosApi.listarModelos.mockResolvedValue({ modelos, campos_dinamicos: [] });
   });
 
   const formacao = {
@@ -74,6 +155,16 @@ describe('FormacaoFormModal', () => {
 
     expect(await screen.findByText('Marque ao menos um curso como obrigatório.')).toBeInTheDocument();
     expect(cursosApi.atualizarFormacao).not.toHaveBeenCalled();
+  });
+
+  it('mostra o modelo de certificado da formação e o preserva ao salvar', async () => {
+    cursosApi.atualizarFormacao.mockResolvedValue({});
+    render(<FormacaoFormModal formacao={{ ...formacao, modelo_certificado_id: 2 }} onClose={() => undefined} onSalvo={() => undefined} />);
+
+    await seletorMostra('Certificado com nota');
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(cursosApi.atualizarFormacao).toHaveBeenCalledWith(3, expect.objectContaining({ modelo_certificado_id: 2 })));
   });
 
   it('envia a composição com a ordem da lista', async () => {
