@@ -4,29 +4,46 @@ declare(strict_types=1);
 
 namespace Modules\Cursos\Services;
 
+use Illuminate\Support\Collection;
 use Modules\Cursos\Enums\StatusTentativa;
 use Modules\Cursos\Enums\StatusTurma;
 use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\Tentativa;
+use Modules\Cursos\Models\Turma;
 
 /**
  * Nota final da inscrição (Fase 2, design D9): média ponderada, pelo peso, da
- * maior nota entre as tentativas corrigidas em cada avaliação publicada do
- * curso. Avaliação sem tentativa corrigida conta como zero.
+ * maior nota entre as tentativas corrigidas em cada avaliação publicada e
+ * liberada para a turma. Avaliação liberada sem tentativa corrigida conta
+ * como zero; avaliação ainda não liberada fica fora da média.
  */
 final class NotaService
 {
+    public function __construct(private readonly LiberacaoService $liberacao) {}
+
     /**
-     * Nota calculada agora, ou nula quando o curso não tem avaliação publicada.
+     * Avaliações que entram na nota: publicadas e já liberadas para a turma.
+     *
+     * @return Collection<int, Avaliacao>
+     */
+    public function avaliacoesConsideradas(Turma $turma): Collection
+    {
+        return Avaliacao::query()
+            ->where('curso_id', $turma->curso_id)
+            ->where('publicada', true)
+            ->get()
+            ->filter(fn (Avaliacao $avaliacao): bool => $this->liberacao->liberado($avaliacao, $turma))
+            ->values();
+    }
+
+    /**
+     * Nota calculada agora, ou nula quando o curso não tem avaliação publicada e liberada.
      * Enquanto a turma está aberta é a nota parcial; no encerramento vira a nota apurada.
      */
     public function notaFinal(Inscricao $inscricao): ?float
     {
-        $avaliacoes = Avaliacao::query()
-            ->where('curso_id', $inscricao->turma->curso_id)
-            ->where('publicada', true)
-            ->get(['id', 'peso']);
+        $avaliacoes = $this->avaliacoesConsideradas($inscricao->turma);
         if ($avaliacoes->isEmpty()) {
             return null;
         }

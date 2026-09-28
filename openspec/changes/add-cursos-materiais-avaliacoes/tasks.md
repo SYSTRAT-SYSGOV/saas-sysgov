@@ -127,15 +127,15 @@
 
 ## 8. Ajustes depois do teste manual
 
-- [ ] 8.1 `NotaService` considera só as avaliações publicadas e liberadas para a turma da
+- [x] 8.1 `NotaService` considera só as avaliações publicadas e liberadas para a turma da
       inscrição (`LiberacaoService::liberado()` no momento do cálculo), na nota parcial e na
       apurada; sem nenhuma avaliação liberada a nota é nula. Testes dos cenários "Avaliação
       ainda não liberada fica fora da média" e "Avaliação não feita" (liberada e sem tentativa
       vale zero), e do curso sem nenhuma avaliação liberada.
-- [ ] 8.2 `EncerramentoService` recusa curso com nota mínima e nenhuma avaliação publicada e
+- [x] 8.2 `EncerramentoService` recusa curso com nota mínima e nenhuma avaliação publicada e
       liberada para a turma; teste do cenário "Nenhuma avaliação liberada no encerramento".
-- [ ] 8.3 Seletor de modelo de certificado no formulário do curso e no da formação (a API e o SDK
+- [x] 8.3 Seletor de modelo de certificado no formulário do curso e no da formação (a API e o SDK
       já aceitam `modelo_certificado_id`, e o vínculo já é exigido pelo requisito "Modelo de
       certificado configurável"); teste de formulário (Vitest) do envio com e sem modelo.
-- [ ] 8.4 Suíte completa verde (phpunit, PHPStan, typecheck, testes e build do web-client) e nova
+- [x] 8.4 Suíte completa verde (phpunit, PHPStan, typecheck, testes e build do web-client) e nova
       conferência da turma de teste no navegador: nota parcial sem a avaliação não liberada.

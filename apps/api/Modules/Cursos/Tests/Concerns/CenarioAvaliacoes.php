@@ -154,10 +154,11 @@ trait CenarioAvaliacoes
     }
 
     /** Avaliação criada direto no banco (sem questões), para testar nota e apuração sem percorrer a prova. */
-    protected function avaliacaoDireta(int $peso = 1, bool $publicada = true, string $titulo = 'Avaliação'): Avaliacao
+    /** @param array<string, mixed> $extra atributos adicionais, como a regra de liberação */
+    protected function avaliacaoDireta(int $peso = 1, bool $publicada = true, string $titulo = 'Avaliação', array $extra = []): Avaliacao
     {
         return $this->noTenant($this->tenant, fn (): Avaliacao => Avaliacao::create([
-            'curso_id' => $this->curso->id, 'titulo' => $titulo, 'peso' => $peso, 'tentativas_max' => 5, 'publicada' => $publicada,
+            'curso_id' => $this->curso->id, 'titulo' => $titulo, 'peso' => $peso, 'tentativas_max' => 5, 'publicada' => $publicada, ...$extra,
         ]));
     }
 

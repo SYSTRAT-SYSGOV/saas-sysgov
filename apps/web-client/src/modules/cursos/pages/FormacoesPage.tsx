@@ -6,6 +6,7 @@ import { sysgovApi, type Curso, type Formacao } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { CampoTexto } from '../components/CampoTexto';
 import { ErroFormulario } from '../components/ErroFormulario';
+import { ModeloCertificadoSelect } from '../components/ModeloCertificadoSelect';
 import { formatarCargaHoraria } from '../utils/formatos';
 
 /** Formações (trilhas): cursos ordenados, obrigatórios ou optativos. */
@@ -112,6 +113,7 @@ export const FormacaoFormModal: React.FC<{ formacao: Formacao | null | undefined
   const aberto = formacao !== undefined;
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [modeloId, setModeloId] = useState<number | null>(null);
   const [itens, setItens] = useState<ItemComposicao[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [escolhido, setEscolhido] = useState('');
@@ -123,6 +125,7 @@ export const FormacaoFormModal: React.FC<{ formacao: Formacao | null | undefined
     setErro(null);
     setTitulo(formacao?.titulo ?? '');
     setDescricao(formacao?.descricao ?? '');
+    setModeloId(formacao?.modelo_certificado_id ?? null);
     setItens(formacao?.cursos.map((c) => ({ curso_id: c.id, titulo: c.titulo, obrigatorio: c.pivot.obrigatorio })) ?? []);
     sysgovApi.cursos.listarCursos({ per_page: 200 }).then((r) => setCursos(r.data)).catch(() => setCursos([]));
   }, [aberto, formacao]);
@@ -156,6 +159,7 @@ export const FormacaoFormModal: React.FC<{ formacao: Formacao | null | undefined
     const dados = {
       titulo,
       descricao: descricao || null,
+      modelo_certificado_id: modeloId,
       cursos: itens.map((i, ordem) => ({ curso_id: i.curso_id, obrigatorio: i.obrigatorio, ordem: ordem + 1 })),
     };
     try {
@@ -175,6 +179,7 @@ export const FormacaoFormModal: React.FC<{ formacao: Formacao | null | undefined
         <ErroFormulario mensagem={erro} />
         <Input label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} required maxLength={255} />
         <CampoTexto label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={2} />
+        <ModeloCertificadoSelect value={modeloId} onChange={setModeloId} />
         <div className="space-y-2">
           <span className="block text-sm font-medium text-foreground">Cursos da trilha</span>
           {itens.length === 0 && <p className="text-sm text-muted-foreground">Adicione os cursos na ordem da trilha.</p>}

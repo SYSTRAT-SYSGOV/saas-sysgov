@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 use Modules\Cursos\Enums\StatusInscricao;
 use Modules\Cursos\Enums\StatusTentativa;
 use Modules\Cursos\Enums\StatusTurma;
-use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\Turma;
@@ -27,6 +26,7 @@ final class EncerramentoService
 {
     public function __construct(
         private readonly ApuracaoConclusaoService $apuracao,
+        private readonly NotaService $notas,
         private readonly TentativaService $tentativas,
         private readonly CertificadoService $certificados,
         private readonly AuditLogger $audit,
@@ -110,14 +110,14 @@ final class EncerramentoService
 
     /**
      * Com a turma travada: recusa se o curso exige nota mínima sem avaliação
-     * publicada ou se há tentativa aguardando correção; depois, as tentativas
+     * publicada e liberada para a turma ou se há tentativa aguardando correção; depois, as tentativas
      * ainda em andamento seguem como enviadas com as respostas salvas (Fase 2, D9).
      */
     private function garantirAvaliacoesEmDia(Turma $turma): void
     {
         $curso = $turma->curso;
-        if ($curso->nota_minima !== null && !Avaliacao::query()->where('curso_id', $curso->id)->where('publicada', true)->exists()) {
-            throw new DomainException('O curso exige nota mínima, mas não tem avaliação publicada. Publique uma avaliação (ou retire a nota mínima do curso) antes de encerrar a turma.');
+        if ($curso->nota_minima !== null && $this->notas->avaliacoesConsideradas($turma)->isEmpty()) {
+            throw new DomainException('O curso exige nota mínima, mas não tem avaliação publicada e liberada para esta turma. Publique uma avaliação já liberada (ou retire a nota mínima do curso) antes de encerrar a turma.');
         }
 
         $daTurma = fn ($q) => $q->where('turma_id', $turma->id);

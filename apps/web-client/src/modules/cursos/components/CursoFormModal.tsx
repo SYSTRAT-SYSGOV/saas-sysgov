@@ -6,6 +6,7 @@ import { getApiErrorMessage } from '@/lib/apiErrors';
 import { validarNotaMinima, paraNumero } from '../utils/validacoes';
 import { CampoTexto } from './CampoTexto';
 import { ErroFormulario } from './ErroFormulario';
+import { ModeloCertificadoSelect } from './ModeloCertificadoSelect';
 
 interface Props {
   open: boolean;
@@ -19,6 +20,7 @@ const vazio = { tipo: 'curso' as TipoCurso, titulo: '', descricao: '', horas: ''
 /** Criação e edição de curso/evento. Carga horária digitada em horas e minutos, gravada em minutos. */
 export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo }) => {
   const [form, setForm] = useState(vazio);
+  const [modeloId, setModeloId] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -38,6 +40,7 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
           }
         : vazio,
     );
+    setModeloId(curso?.modelo_certificado_id ?? null);
   }, [open, curso]);
 
   const cargaMinutos = (Number(form.horas) || 0) * 60 + (Number(form.minutos) || 0);
@@ -63,6 +66,7 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
       carga_horaria_minutos: cargaMinutos,
       frequencia_minima: Number(form.frequencia_minima),
       nota_minima: form.tipo === 'curso' ? paraNumero(form.nota_minima) : null,
+      modelo_certificado_id: modeloId,
     };
     try {
       onSalvo(curso ? await sysgovApi.cursos.atualizarCurso(curso.id, dados) : await sysgovApi.cursos.criarCurso(dados));
@@ -113,6 +117,7 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
             className="font-mono tabular-nums"
           />
         </div>
+        <ModeloCertificadoSelect value={modeloId} onChange={setModeloId} />
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancelar

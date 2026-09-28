@@ -60,6 +60,42 @@ final class NotaServiceTest extends TestCase
         $this->assertSame(5.0, $this->nota());
     }
 
+    public function test_avaliacao_ainda_nao_liberada_fica_fora_da_media(): void
+    {
+        $liberada = $this->avaliacaoDireta(titulo: 'Liberada');
+        $futura = $this->avaliacaoDireta(titulo: 'Recuperação', extra: ['liberacao_regra' => 'dias_apos_inicio', 'liberacao_dias' => 20]);
+        $this->tentativaDireta($liberada, $this->inscricao, 'corrigida', 10.0);
+
+        // A turma começou ontem: a recuperação só libera daqui a 19 dias e não pesa na nota parcial.
+        $this->assertSame(10.0, $this->nota());
+
+        // Passada a data de liberação, sem tentativa ela passa a valer zero.
+        $this->noTenant($this->tenant, fn () => Turma::query()->whereKey($this->turma->id)->update(['data_inicio' => now()->subDays(21)->toDateString()]));
+        $this->assertSame(5.0, $this->nota());
+
+        $this->tentativaDireta($futura, $this->inscricao, 'corrigida', 6.0);
+        $this->assertSame(8.0, $this->nota());
+    }
+
+    public function test_sem_avaliacao_liberada_nao_ha_nota(): void
+    {
+        $this->avaliacaoDireta(extra: ['liberacao_regra' => 'dias_apos_inicio', 'liberacao_dias' => 20]);
+        $this->avaliacaoDireta(titulo: 'Sem agendamento', extra: ['liberacao_regra' => 'inicio_aula']);
+
+        $this->assertNull($this->nota());
+    }
+
+    public function test_tentativa_em_avaliacao_nao_liberada_nao_puxa_a_nota(): void
+    {
+        $imediata = $this->avaliacaoDireta(peso: 1, titulo: 'Imediata');
+        $futura = $this->avaliacaoDireta(peso: 3, titulo: 'Futura', extra: ['liberacao_regra' => 'dias_apos_inicio', 'liberacao_dias' => 30]);
+        $this->tentativaDireta($imediata, $this->inscricao, 'corrigida', 4.0);
+        $this->tentativaDireta($futura, $this->inscricao, 'corrigida', 10.0);
+
+        // Dado inconsistente (tentativa numa avaliação ainda não liberada): fica fora da conta.
+        $this->assertSame(4.0, $this->nota());
+    }
+
     public function test_so_tentativas_corrigidas_contam(): void
     {
         $a = $this->avaliacaoDireta();

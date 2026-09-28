@@ -88,6 +88,16 @@ final class EncerramentoAvaliacoesTest extends TestCase
         $this->encerrarTurma()->assertOk();
     }
 
+    public function test_nota_minima_com_avaliacao_ainda_nao_liberada_recusa_o_encerramento(): void
+    {
+        $this->turmaEmDia();
+        $this->como($this->admin, $this->tenant)->putJson("/api/cursos/cursos/{$this->curso->id}", ['nota_minima' => 7])->assertOk();
+        $this->avaliacaoDireta(titulo: 'Recuperação', extra: ['liberacao_regra' => 'dias_apos_inicio', 'liberacao_dias' => 30]);
+
+        $this->assertErroDeNegocio($this->encerrarTurma(), 'não tem avaliação publicada e liberada');
+        $this->assertSame('aberta', $this->statusTurma());
+    }
+
     public function test_curso_sem_nota_minima_encerra_mesmo_sem_avaliacao(): void
     {
         $this->turmaEmDia();
