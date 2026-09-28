@@ -1,6 +1,21 @@
 #!/bin/sh
 set -e
 
+# Configura e ativa OPcache para PHP CLI (acelera drasticamente o Laravel no Docker em Windows)
+if [ -d "/usr/local/etc/php/conf.d" ]; then
+  cat << 'EOF' > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
+zend_extension=opcache.so
+opcache.enable=1
+opcache.enable_cli=1
+opcache.memory_consumption=256
+opcache.max_accelerated_files=20000
+opcache.revalidate_freq=2
+opcache.validate_timestamps=1
+EOF
+fi
+
+export PHP_CLI_SERVER_WORKERS="${PHP_CLI_SERVER_WORKERS:-6}"
+
 # Espera o MySQL aceitar conexões antes de migrar — evita falhar de cara
 # quando o container 'api' sobe mais rápido que o 'mysql' (comum em
 # 'docker compose up' logo após um 'down'/rebuild).

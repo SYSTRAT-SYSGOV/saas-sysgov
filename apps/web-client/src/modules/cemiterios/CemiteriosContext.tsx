@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import type { Parque } from './api';
 import { cemiteriosApi } from './api';
 import { useCan } from '@/core/rbac/useCan';
+import type { ModoPlanta } from './mapa.utils';
 
 export type ModoVisaoCemiterios = 'selecao' | 'administracao_geral' | 'gestao_necropole';
 
@@ -33,6 +34,10 @@ export interface CemiteriosContextValue {
   abrirAdministracaoGeral: () => void;
   voltarParaSelecao: () => void;
   recarregarCemiterios: () => Promise<void>;
+
+  // Preferência de apresentação do Mapa GIS (spec: mapa-gis › modo de apresentação)
+  modoPlanta: ModoPlanta;
+  setModoPlanta: (modo: ModoPlanta) => void;
 }
 
 export const CemiteriosContext = createContext<CemiteriosContextValue | null>(null);
@@ -46,6 +51,11 @@ export interface CemiteriosNavigationProviderProps {
   modoVisaoInicial?: ModoVisaoCemiterios;
   cemiterioAtivoIdInicial?: number | null;
 }
+
+// Cache em memória de curta duração para evitar requisições concorrentes e loops entre componentes
+let promessaParquesEmAndamento: Promise<Parque[]> | null = null;
+let cacheParquesMemoria: { timestamp: number; dados: Parque[] } | null = null;
+const TTL_CACHE_PARQUES_MS = 60_000;
 
 export const CemiteriosNavigationProvider: React.FC<CemiteriosNavigationProviderProps> = ({
   children,
@@ -68,6 +78,8 @@ export const CemiteriosNavigationProvider: React.FC<CemiteriosNavigationProvider
 
   const [abaAtiva, setAbaAtivaInterno] = useState<string>(abaInicial);
   const [focoMapa, setFocoMapa] = useState<FocoMapa | null>(null);
+
+  const [modoPlanta, setModoPlanta] = useState<ModoPlanta>('tecnico');
 
   const [cemiterios, setCemiterios] = useState<Parque[]>(cemiteriosIniciais ?? []);
   const [isCarregando, setIsCarregando] = useState<boolean>(!cemiteriosIniciais);
@@ -100,36 +112,67 @@ export const CemiteriosNavigationProvider: React.FC<CemiteriosNavigationProvider
   };
 
   const estadoInicial = calcularEstadoInicial(cemiteriosIniciais ?? []);
+
   const [modoVisao, setModoVisao] = useState<ModoVisaoCemiterios>(estadoInicial.modo);
   const [cemiterioAtivoId, setCemiterioAtivoId] = useState<number | null>(estadoInicial.ativoId);
 
-  const carregarParques = useCallback(async () => {
+  const carregarParques = useCallback(async (forcar = false) => {
     setIsCarregando(true);
     setErro(null);
     try {
-      const parques = await cemiteriosApi.parques();
+      if (!forcar && cacheParquesMemoria && (Date.now() - cacheParquesMemoria.timestamp < TTL_CACHE_PARQUES_MS)) {
+        const lista = cacheParquesMemoria.dados;
+        setCemiterios(lista);
+        if (!modoVisaoInicial) {
+          setCemiterioAtivoId((prev) => {
+            if (prev === null) {
+              if (lista.length === 1) {
+                setModoVisao('gestao_necropole');
+                return lista[0].id;
+              }
+              setModoVisao('selecao');
+            }
+            return prev;
+          });
+        }
+        setIsCarregando(false);
+        return;
+      }
+
+      if (!promessaParquesEmAndamento) {
+        promessaParquesEmAndamento = cemiteriosApi.parques().finally(() => {
+          promessaParquesEmAndamento = null;
+        });
+      }
+
+      const parques = await promessaParquesEmAndamento;
       const lista = Array.isArray(parques) ? parques : [];
+      cacheParquesMemoria = { timestamp: Date.now(), dados: lista };
       setCemiterios(lista);
 
-      // Aplica triagem (gatekeeper)
-      if (!modoVisaoInicial && cemiterioAtivoId === null) {
-        if (lista.length === 1) {
-          setCemiterioAtivoId(lista[0].id);
-          setModoVisao('gestao_necropole');
-        } else {
-          setModoVisao('selecao');
-        }
+      // Aplica triagem (gatekeeper) de forma segura sem dependência cíclica de estado
+      if (!modoVisaoInicial) {
+        setCemiterioAtivoId((prev) => {
+          if (prev === null) {
+            if (lista.length === 1) {
+              setModoVisao('gestao_necropole');
+              return lista[0].id;
+            }
+            setModoVisao('selecao');
+          }
+          return prev;
+        });
       }
     } catch (e: unknown) {
       setErro('Não foi possível carregar os cemitérios cadastrados.');
     } finally {
       setIsCarregando(false);
     }
-  }, [modoVisaoInicial, cemiterioAtivoId]);
+  }, [modoVisaoInicial]);
 
   useEffect(() => {
     if (!cemiteriosIniciais) {
-      carregarParques();
+      void carregarParques();
     }
   }, [cemiteriosIniciais, carregarParques]);
 
@@ -174,6 +217,10 @@ export const CemiteriosNavigationProvider: React.FC<CemiteriosNavigationProvider
 
   const temMultiplosCemiterios = cemiterios.length > 1;
 
+  const recarregarCemiterios = useCallback(async () => {
+    await carregarParques(true);
+  }, [carregarParques]);
+
   const value = useMemo<CemiteriosContextValue>(
     () => ({
       abaAtiva,
@@ -193,7 +240,9 @@ export const CemiteriosNavigationProvider: React.FC<CemiteriosNavigationProvider
       selecionarCemiterio,
       abrirAdministracaoGeral,
       voltarParaSelecao,
-      recarregarCemiterios: carregarParques,
+      recarregarCemiterios,
+      modoPlanta,
+      setModoPlanta,
     }),
     [
       abaAtiva,
@@ -213,6 +262,7 @@ export const CemiteriosNavigationProvider: React.FC<CemiteriosNavigationProvider
       abrirAdministracaoGeral,
       voltarParaSelecao,
       carregarParques,
+      modoPlanta,
     ]
   );
 
@@ -244,6 +294,8 @@ export function useCemiteriosNavigation(): CemiteriosContextValue {
       abrirAdministracaoGeral: () => {},
       voltarParaSelecao: () => {},
       recarregarCemiterios: async () => {},
+      modoPlanta: 'tecnico',
+      setModoPlanta: () => {},
     };
   }
   return context;

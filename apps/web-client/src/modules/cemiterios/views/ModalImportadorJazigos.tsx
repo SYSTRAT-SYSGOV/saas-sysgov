@@ -93,6 +93,9 @@ export const ModalImportadorJazigos: React.FC<ModalImportadorJazigosProps> = ({
       if (!codigo) {
         valido = false;
         erro = 'Código é obrigatório';
+      } else if (codigo === 'Q0000-L0000' || codigo === '0000' || (setorCodigo === '0000' && codigo.includes('0000'))) {
+        valido = false;
+        erro = 'Registro sentinela inválido (quadra/lote zerados)';
       } else if (codigosVistos.has(codigo)) {
         valido = false;
         erro = 'Código duplicado no arquivo';

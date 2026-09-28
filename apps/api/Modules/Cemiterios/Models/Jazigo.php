@@ -84,7 +84,7 @@ final class Jazigo extends Model
 
     public function concessaoVigente(): ?Concessao
     {
-        return $this->concessoes()->where('situacao', 'vigente')->first();
+        return $this->concessoes()->vigentes()->first();
     }
 
     public function aceitaSepultamento(): bool

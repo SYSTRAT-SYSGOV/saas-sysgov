@@ -14,10 +14,11 @@ organograma, integrações PNCP/Siconfi/TCE). Monorepo npm workspaces:
 - `packages/sdk` (`@sysgov/sdk`) — SDK/tipos TypeScript de contrato com a API.
 
 `AGENTS.md` is the primary, mandatory contract for AI agents in this repo — read it before making
-architectural, multi-tenant, security, or design-system decisions. It in turn points to
+architectural, multi-tenant, security, or design-system decisions. All code writing must strictly follow
+`CODING_STANDARD.md` (the canonical architectural and engineering standard). It in turn points to
 `DESIGN_SYSTEM.md` and to two files at repo root (`# PADRÃO SYSGOV — ...md`, `# PADRÃO VISUAL SYSGOV — ...md`)
 that are the canonical, non-negotiable architecture/design contracts — do not invent architecture,
-colors, or components outside of them.
+colors, code conventions or components outside of them.
 
 ## Commands
 

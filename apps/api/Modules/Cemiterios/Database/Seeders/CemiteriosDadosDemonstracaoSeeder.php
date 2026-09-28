@@ -198,10 +198,10 @@ final class CemiteriosDadosDemonstracaoSeeder extends Seeder
             }
             $jazigo = $jazigos[$idx];
             $titular = $concessionarios[$i % count($concessionarios)];
-            $concessoes->conceder([
+            $concessoes->solicitar([
                 'plot_id' => $jazigo->id, 'holder_id' => $titular->id,
-                'modalidade' => $i % 3 === 0 ? 'perpetua' : 'temporaria',
-                'inicio' => now()->subMonths(random_int(1, 36))->toDateString(),
+                'tipo' => $i % 3 === 0 ? 'perpetua' : 'temporaria',
+                'data_inicio' => now()->subMonths(random_int(1, 36))->toDateString(),
                 'lock_version' => $jazigo->lock_version,
             ]);
         }
@@ -230,8 +230,8 @@ final class CemiteriosDadosDemonstracaoSeeder extends Seeder
     private function criarFinanceiroDemo(array $concessionarios): void
     {
         $guias = app(GuiaService::class);
-        $concessoesTemp = $concessionarios[0]->concessoes()->where('modalidade', 'temporaria')->get()
-            ->merge($concessionarios[1]->concessoes()->where('modalidade', 'temporaria')->get());
+        $concessoesTemp = $concessionarios[0]->concessoes()->where('tipo', 'temporaria')->get()
+            ->merge($concessionarios[1]->concessoes()->where('tipo', 'temporaria')->get());
 
         foreach ($concessoesTemp->take(3) as $i => $concessao) {
             $guia = $guias->emitirParaConcessao($concessao, 'taxa_manutencao_anual', now()->year);

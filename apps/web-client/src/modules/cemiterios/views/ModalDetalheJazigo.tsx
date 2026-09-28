@@ -178,7 +178,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
   const { erro, executar } = useAcao();
 
   const detalhe = useDados(() => (id ? cemiteriosApi.jazigo(id) : Promise.resolve(null)), [id]);
-  const historico = useDados(() => (id ? cemiteriosApi.historico(id) : Promise.resolve([])), [id]);
+  const historico = useDados(() => (id ? cemiteriosApi.historicoJazigo(id) : Promise.resolve([])), [id]);
   const inumacoes = useDados(() => (id ? cemiteriosApi.inumacoes({ plot_id: id }) : Promise.resolve(null)), [id]);
   const concessoes = useDados(() => (id ? cemiteriosApi.concessoes({ plot_id: id }) : Promise.resolve(null)), [id]);
   const vistorias = useDados(() => (id ? cemiteriosApi.vistorias(id) : Promise.resolve(null)), [id]);

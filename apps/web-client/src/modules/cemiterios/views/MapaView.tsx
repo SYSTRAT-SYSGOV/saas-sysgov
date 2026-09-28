@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 // O bundle do leaflet-geoman-free é um UMD que espera `window.L` (Leaflet como script
@@ -6,27 +6,35 @@ import 'leaflet/dist/leaflet.css';
 (window as unknown as { L: typeof L }).L = L;
 import '@geoman-io/leaflet-geoman-free';
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
-import type { FeatureCollection as ColecaoGeoJson, Polygon } from 'geojson';
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import type { FeatureCollection as ColecaoGeoJson, LineString, Polygon } from 'geojson';
 import type { Layer, LeafletMouseEvent, Polygon as PoligonoLeaflet } from 'leaflet';
 import { Circle, CircleMarker, GeoJSON, MapContainer, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
-import { Grid3x3, Search, LocateFixed, Navigation, MapPin, AlertTriangle } from 'lucide-react';
-import { Button, Card, Input, Select, Switch } from '@/components/ui';
+import { Grid3x3, LocateFixed, Navigation, MapPin, AlertTriangle, Route, Download } from 'lucide-react';
+import { Button, Card, Input, Select, SearchInput, Switch } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import {
   cemiteriosApi,
   erroApi,
   ESTADOS,
+  type Amenidade,
   type ErroApi,
   type FeatureCollection,
   type Parque,
   type ProvedorMapaBase,
   type ResultadoBusca,
+  type Via,
 } from '../api';
 import {
   caixaDe,
   calcularDistanciaMetros,
   estiloFeicao,
+  estiloVia,
   limitesDoEnvelope,
+  metrosPorPixel,
+  poligonosPodemSobrepor,
   ZOOM_MINIMO_JAZIGOS,
   type Caixa,
 } from '../mapa.utils';
@@ -34,12 +42,18 @@ import { ModalDetalheJazigo } from './ModalDetalheJazigo';
 import { ErroBox, FormModal, Mono, useDados } from './comum';
 import { useCemiteriosNavigation } from '../CemiteriosContext';
 import { ControleCamadasBase, PROVEDORES_PADRAO } from './ControleCamadasBase';
+import { ControleModoPlanta } from './ControleModoPlanta';
 import { ModalComoChegar } from './ModalComoChegar';
 import { ModalGpsCampo } from './ModalGpsCampo';
 import { FerramentaMedicao } from './FerramentaMedicao';
 import { FiltrosRapidosMapa, type FiltroRapidoStatus } from './FiltrosRapidosMapa';
 import { BotaoExportacaoGis } from './BotaoExportacaoGis';
 import { ModalEditarCemiterio } from './ModalEditarCemiterio';
+
+const ZOOM_DETALHE_JAZIGOS = 19; // abaixo disso, jazigos aparecem agrupados (clusterizados)
+const ICONE_AMENIDADE: Record<Amenidade['tipo'], string> = {
+  portaria: '🚪', capela: '⛪', sanitario: '🚻', administracao: '🏢', agua: '💧', vegetacao: '🌳',
+};
 
 type Camada = 'parques' | 'setores' | 'jazigos';
 const CAMADAS: { key: Camada; rotulo: string }[] = [
@@ -60,7 +74,7 @@ export const MapaView: React.FC = () => {
   const base = useDados(() => cemiteriosApi.mapaBase(), []);
   const parques = useDados(() => cemiteriosApi.parques(), []);
 
-  const { focoMapa, limparFocoMapa, cemiterioAtivoId, cemiterioAtivo } = useCemiteriosNavigation();
+  const { focoMapa, limparFocoMapa, cemiterioAtivoId, cemiterioAtivo, modoPlanta, setModoPlanta } = useCemiteriosNavigation();
 
   // Camadas base e vetoriais
   const [provedorAtivo, setProvedorAtivo] = useState<ProvedorMapaBase>(PROVEDORES_PADRAO[0]);
@@ -73,6 +87,15 @@ export const MapaView: React.FC = () => {
   const [alvo, setAlvo] = useState<{ tipo: Camada; id: string }>({ tipo: 'jazigos', id: '' });
   const [grade, setGrade] = useState<{ capturando: boolean; pontos: [number, number][] }>({ capturando: false, pontos: [] });
   const [caixaAtual, setCaixaAtual] = useState<{ caixa: Caixa; zoom: number } | null>(null);
+
+  // Vias e equipamentos da necrópole ativa (spec: mapa-gis › camadas de vias e equipamentos)
+  const [viasVisiveis, setViasVisiveis] = useState(true);
+  const [equipamentosVisiveis, setEquipamentosVisiveis] = useState(true);
+  const [viasFeicoes, setViasFeicoes] = useState<{ id: string; via: Via }[]>([]);
+  const [amenidadesFeicoes, setAmenidadesFeicoes] = useState<Amenidade[]>([]);
+  const [desenhandoVia, setDesenhandoVia] = useState(false);
+  const [novaViaCodigo, setNovaViaCodigo] = useState('');
+  const [alertaSobreposicao, setAlertaSobreposicao] = useState(false);
 
   // Filtros rápidos
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoStatus>(null);
@@ -87,9 +110,14 @@ export const MapaView: React.FC = () => {
 
   // Roteirização / Como Chegar
   const [modalRotaAberto, setModalRotaAberto] = useState(false);
+  const [rotaReal, setRotaReal] = useState<{ trechos: [number, number][][]; distanciaMetros: number } | null>(null);
 
   // Edição de dados/coordenadas da necrópole
   const [modalEditarNecropole, setModalEditarNecropole] = useState(false);
+
+  // Exportação da planta humanizada
+  const [exportando, setExportando] = useState(false);
+  const mapaContainerRef = useRef<HTMLElement | null>(null);
 
   // Sincroniza catálogo base inicial
   useEffect(() => {
@@ -175,6 +203,35 @@ export const MapaView: React.FC = () => {
     if (caixaAtual) void carregar(caixaAtual.caixa, caixaAtual.zoom);
   };
 
+  // Camadas de vias e equipamentos, isoladas pela necrópole ativa (spec: mapa-gis › vias e equipamentos).
+  useEffect(() => {
+    if (!cemiterioAtivoId || !caixaAtual) {
+      setViasFeicoes([]);
+      setAmenidadesFeicoes([]);
+      return;
+    }
+    if (viasVisiveis) {
+      void cemiteriosApi.camadaVias(cemiterioAtivoId, caixaAtual.caixa).then((fc) => {
+        setViasFeicoes(fc.features.map((f) => ({
+          id: f.id,
+          via: { id: f.properties.id, park_id: cemiterioAtivoId, via_codigo: f.properties.via_codigo, geojson: f.geometry },
+        })));
+      }).catch(() => setViasFeicoes([]));
+    } else {
+      setViasFeicoes([]);
+    }
+    if (equipamentosVisiveis) {
+      void cemiteriosApi.camadaAmenidades(cemiterioAtivoId, caixaAtual.caixa).then((fc) => {
+        setAmenidadesFeicoes(fc.features.map((f) => ({
+          id: f.properties.id, park_id: cemiterioAtivoId, tipo: f.properties.tipo, rotulo: f.properties.rotulo,
+          lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0],
+        })));
+      }).catch(() => setAmenidadesFeicoes([]));
+    } else {
+      setAmenidadesFeicoes([]);
+    }
+  }, [cemiterioAtivoId, caixaAtual, viasVisiveis, equipamentosVisiveis, versao]);
+
   const salvarDesenho = useCallback(async (geometria: Polygon) => {
     if (!alvo.id) {
       setErro({ status: 422, mensagem: 'Informe o ID do cemitério, quadra ou jazigo antes de desenhar.' });
@@ -189,6 +246,33 @@ export const MapaView: React.FC = () => {
       setErro(erroApi(e));
     }
   }, [alvo, caixaAtual, carregar]);
+
+  const salvarVia = useCallback(async (geometria: LineString) => {
+    if (!cemiterioAtivoId) return;
+    if (!novaViaCodigo.trim()) {
+      setErro({ status: 422, mensagem: 'Informe o código da via antes de desenhar.' });
+      return;
+    }
+    try {
+      setErro(null);
+      await cemiteriosApi.criarVia({ park_id: cemiterioAtivoId, via_codigo: novaViaCodigo.trim(), geojson: geometria });
+      setNovaViaCodigo('');
+      setDesenhandoVia(false);
+      setVersao((v) => v + 1);
+    } catch (e) {
+      setErro(erroApi(e));
+    }
+  }, [cemiterioAtivoId, novaViaCodigo]);
+
+  // Anéis [lat,lng] dos jazigos já carregados, para o alerta antecipado de sobreposição ao desenhar.
+  const jazigosExistentes = useMemo<[number, number][][]>(
+    () =>
+      (feicoes.jazigos?.features ?? [])
+        .map((f) => f.geometry?.coordinates?.[0])
+        .filter((c): c is [number, number][] => Array.isArray(c))
+        .map((coords) => coords.map(([lng, lat]) => [lat, lng] as [number, number])),
+    [feicoes.jazigos]
+  );
 
   // Encontra dados do jazigo selecionado para rota interna
   const jazigoFeicaoSelecionado = feicoes.jazigos?.features?.find(
@@ -214,7 +298,7 @@ export const MapaView: React.FC = () => {
   const portariaLat = cemiterioAtivo?.portaria_lat ?? null;
   const portariaLng = cemiterioAtivo?.portaria_lng ?? null;
 
-  const rotaPortaria: [number, number][] | null =
+  const rotaRetaFallback: [number, number][] | null =
     portariaLat !== null && portariaLng !== null && latJazigo !== null && lngJazigo !== null
       ? [
           [portariaLat, portariaLng],
@@ -222,9 +306,29 @@ export const MapaView: React.FC = () => {
         ]
       : null;
 
-  const distanciaPortariaMetros =
-    rotaPortaria !== null
-      ? calcularDistanciaMetros(rotaPortaria[0], rotaPortaria[1])
+  // Roteirização real por vias cadastradas, com fallback automático para a linha reta
+  // quando não houver vias ou caminho conectando os dois pontos (spec: mapa-gis › roteirização).
+  useEffect(() => {
+    setRotaReal(null);
+    if (!cemiterioAtivoId || portariaLat === null || portariaLng === null || latJazigo === null || lngJazigo === null) {
+      return;
+    }
+    let cancelado = false;
+    void cemiteriosApi.rota(cemiterioAtivoId, { lat: portariaLat, lng: portariaLng }, { lat: latJazigo, lng: lngJazigo })
+      .then((resposta) => {
+        if (cancelado || !resposta.encontrada || !resposta.rota) return;
+        const trechos = resposta.rota.features.map((f) => f.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]));
+        setRotaReal({ trechos, distanciaMetros: resposta.distancia_metros });
+      })
+      .catch(() => {});
+    return () => { cancelado = true; };
+  }, [cemiterioAtivoId, portariaLat, portariaLng, latJazigo, lngJazigo]);
+
+  const rotaPortaria = rotaReal ? rotaReal.trechos.flat() : rotaRetaFallback;
+  const distanciaPortariaMetros = rotaReal
+    ? rotaReal.distanciaMetros
+    : rotaRetaFallback !== null
+      ? calcularDistanciaMetros(rotaRetaFallback[0], rotaRetaFallback[1])
       : null;
 
   const centro =
@@ -234,6 +338,115 @@ export const MapaView: React.FC = () => {
           cemiterioAtivoId ? p.id === cemiterioAtivoId && p.lat !== null : p.lat !== null
         );
   const inicial: [number, number] = centro ? [centro.lat as number, centro.lng as number] : [-15.78, -47.93];
+
+  /** Exporta a planta humanizada em PNG 2x e PDF, compondo título, legenda, norte e escala (spec: mapa-gis › exportação). */
+  const exportarPlanta = async () => {
+    if (!mapaContainerRef.current) return;
+    setExportando(true);
+    setErro(null);
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrlMapa = await toPng(mapaContainerRef.current, { cacheBust: true, pixelRatio: 2 });
+
+      const imagemMapa = new Image();
+      await new Promise<void>((resolve, reject) => {
+        imagemMapa.onload = () => resolve();
+        imagemMapa.onerror = () => reject(new Error('Falha ao carregar a imagem do mapa.'));
+        imagemMapa.src = dataUrlMapa;
+      });
+
+      const nomeCemiterio = cemiterioAtivo?.nome ?? 'Cemitério Municipal';
+      const zoomAtual = caixaAtual?.zoom ?? 18;
+      const latAtual = centro?.lat ?? inicial[0];
+      const larguraFaixa = 90;
+      const canvas = document.createElement('canvas');
+      canvas.width = imagemMapa.width;
+      canvas.height = imagemMapa.height + larguraFaixa;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas indisponível.');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imagemMapa, 0, larguraFaixa);
+
+      // Título
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.fillText(`Planta — ${nomeCemiterio}`, 20, 36);
+      ctx.font = '14px sans-serif';
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(`Gerado em ${new Date().toLocaleDateString('pt-BR')} — SYSGOV`, 20, 58);
+
+      // Legenda de estados
+      let xLegenda = 20;
+      const yLegenda = 76;
+      ctx.font = '12px sans-serif';
+      Object.values(ESTADOS).forEach((e) => {
+        ctx.fillStyle = e.cor;
+        ctx.fillRect(xLegenda, yLegenda - 10, 12, 12);
+        ctx.fillStyle = '#374151';
+        ctx.fillText(e.rotulo, xLegenda + 16, yLegenda);
+        xLegenda += 16 + ctx.measureText(e.rotulo).width + 20;
+      });
+
+      // Rosa dos ventos (indicador de norte simplificado)
+      const nx = canvas.width - 50;
+      const ny = 45;
+      ctx.strokeStyle = '#374151';
+      ctx.fillStyle = '#374151';
+      ctx.beginPath();
+      ctx.moveTo(nx, ny - 20);
+      ctx.lineTo(nx - 6, ny + 6);
+      ctx.lineTo(nx + 6, ny + 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('N', nx - 4, ny + 22);
+
+      // Barra de escala (100 m reais na latitude/zoom atuais)
+      const metrosPorPx = metrosPorPixel(latAtual, zoomAtual) / 2; // /2 porque a imagem está em pixelRatio 2
+      const larguraEscalaPx = 100 / metrosPorPx;
+      const xEscala = canvas.width - 220;
+      const yEscala = larguraFaixa - 16;
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(xEscala, yEscala);
+      ctx.lineTo(xEscala + larguraEscalaPx, yEscala);
+      ctx.stroke();
+      ctx.font = '11px sans-serif';
+      ctx.fillStyle = '#111827';
+      ctx.fillText('100 m', xEscala, yEscala - 4);
+
+      const dataUrlFinal = canvas.toDataURL('image/png');
+      const dataHoje = new Date().toISOString().slice(0, 10);
+      const slug = nomeCemiterio
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      const nomeArquivo = `planta-${slug || 'cemiterio'}-${dataHoje}`;
+
+      const linkPng = document.createElement('a');
+      linkPng.href = dataUrlFinal;
+      linkPng.download = `${nomeArquivo}.png`;
+      linkPng.click();
+
+      const { default: JsPDF } = await import('jspdf');
+      const orientacao = canvas.width >= canvas.height ? 'landscape' : 'portrait';
+      const pdf = new JsPDF({ orientation: orientacao, format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const escala = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+      pdf.addImage(dataUrlFinal, 'PNG', 0, 0, canvas.width * escala, canvas.height * escala);
+      pdf.save(`${nomeArquivo}.pdf`);
+    } catch (e) {
+      setErro(erroApi(e));
+    } finally {
+      setExportando(false);
+    }
+  };
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
@@ -278,10 +491,17 @@ export const MapaView: React.FC = () => {
               title="Como chegar ao jazigo selecionado"
             >
               <Navigation className="h-3.5 w-3.5" />
-              <span>Como Chegar ({distanciaPortariaMetros?.toFixed(0)}m)</span>
+              <span>Como Chegar ({distanciaPortariaMetros?.toFixed(0)}m{rotaReal ? ' — pelas vias' : ''})</span>
             </Button>
           )}
         </div>
+
+        {/* Alerta antecipado de sobreposição ao desenhar (spec: mapa-gis › validação topológica) */}
+        {alertaSobreposicao && (
+          <div className="absolute left-1/2 top-3 z-[400] -translate-x-1/2 flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/95 px-3 py-1.5 text-xs font-semibold text-white shadow-md">
+            <AlertTriangle className="h-3.5 w-3.5" /> Possível sobreposição com jazigo vizinho
+          </div>
+        )}
 
         <MapContainer
           center={inicial}
@@ -298,20 +518,22 @@ export const MapaView: React.FC = () => {
           />
           <Carregador onMover={carregar} />
 
-          {/* Camadas Vetoriais GeoJSON */}
+          {/* Camadas Vetoriais GeoJSON — jazigos em zoom de detalhe; em zoom baixo, ver ClusterJazigos abaixo */}
           {CAMADAS.map(
             ({ key }) =>
               visiveis[key] &&
-              feicoes[key] && (
+              feicoes[key] &&
+              (key !== 'jazigos' || (caixaAtual?.zoom ?? 0) >= ZOOM_DETALHE_JAZIGOS) && (
                 <GeoJSON
-                  key={`${key}-${versao}-${filtroRapido ?? 'todos'}`}
+                  key={`${key}-${versao}-${filtroRapido ?? 'todos'}-${modoPlanta}`}
                   data={feicoes[key] as unknown as ColecaoGeoJson}
                   style={(f) =>
                     estiloFeicao(
                       key,
                       (f?.properties ?? {}) as Record<string, unknown>,
                       selecionado,
-                      filtroRapido
+                      filtroRapido,
+                      modoPlanta
                     )
                   }
                   onEachFeature={(f, camada) => {
@@ -322,6 +544,40 @@ export const MapaView: React.FC = () => {
                 />
               )
           )}
+
+          {/* Jazigos clusterizados em zoom baixo (spec: mapa-gis › clusterização) */}
+          {visiveis.jazigos && feicoes.jazigos && (caixaAtual?.zoom ?? 0) < ZOOM_DETALHE_JAZIGOS && (
+            <ClusterJazigos feicoes={feicoes.jazigos} onSelecionar={setSelecionado} />
+          )}
+
+          {/* Vias/alamedas da necrópole ativa */}
+          {viasVisiveis && viasFeicoes.map(({ id, via }) => (
+            <Polyline
+              key={id}
+              positions={via.geojson.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])}
+              pathOptions={estiloVia(modoPlanta)}
+            >
+              <Tooltip sticky>{via.via_codigo}</Tooltip>
+            </Polyline>
+          ))}
+
+          {/* Equipamentos da necrópole ativa (vegetação só aparece no modo humanizado) */}
+          {equipamentosVisiveis && amenidadesFeicoes
+            .filter((a) => a.tipo !== 'vegetacao' || modoPlanta === 'humanizado')
+            .map((a) => (
+              <CircleMarker
+                key={a.id}
+                center={[a.lat, a.lng]}
+                radius={a.tipo === 'vegetacao' ? 6 : 9}
+                pathOptions={
+                  a.tipo === 'vegetacao'
+                    ? { color: '#2f6b3a', fillColor: '#4c9a5a', fillOpacity: 0.9, weight: 1 }
+                    : { color: '#ffffff', fillColor: '#334155', fillOpacity: 0.95, weight: 2 }
+                }
+              >
+                <Tooltip>{`${ICONE_AMENIDADE[a.tipo]} ${a.rotulo ?? a.tipo}`}</Tooltip>
+              </CircleMarker>
+            ))}
 
           {/* Rota Interna Portaria -> Jazigo Selecionado */}
           {rotaPortaria && (
@@ -406,7 +662,16 @@ export const MapaView: React.FC = () => {
             </>
           )}
 
-          {edita && <Desenho onCriado={(g) => void salvarDesenho(g)} />}
+          {edita && (
+            <Desenho
+              modoLinha={desenhandoVia}
+              onCriado={(g) => void salvarDesenho(g)}
+              onCriadaLinha={(g) => void salvarVia(g)}
+              jazigosExistentes={jazigosExistentes}
+              onAlertaSobreposicao={setAlertaSobreposicao}
+            />
+          )}
+          <CapturaContainer alvo={mapaContainerRef} />
           <Voar envelope={envelope} />
           <SincronizadorCemiterioAtivo
             cemiterioAtivoId={cemiterioAtivoId}
@@ -434,6 +699,8 @@ export const MapaView: React.FC = () => {
 
       {/* Painel Lateral */}
       <div className="space-y-4">
+        <ControleModoPlanta modo={modoPlanta} onMudar={setModoPlanta} />
+
         <Busca
           onEscolher={(r) => {
             if (r.envelope) setEnvelope(r.envelope);
@@ -487,6 +754,18 @@ export const MapaView: React.FC = () => {
               />
             </div>
           ))}
+          {cemiterioAtivoId && (
+            <>
+              <div className="flex items-center justify-between text-sm pt-1 border-t border-border/50">
+                <span>Vias / Alamedas</span>
+                <Switch label="Vias / Alamedas" checked={viasVisiveis} onCheckedChange={setViasVisiveis} />
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span>Equipamentos</span>
+                <Switch label="Equipamentos" checked={equipamentosVisiveis} onCheckedChange={setEquipamentosVisiveis} />
+              </div>
+            </>
+          )}
         </Card>
 
         {/* Exportação para Engenharia Municipal / QGIS */}
@@ -494,6 +773,19 @@ export const MapaView: React.FC = () => {
           parkId={cemiterioAtivoId}
           nomeCemiterio={cemiterioAtivo?.nome}
         />
+
+        {/* Exportação da planta humanizada (PNG 2x / PDF) — spec: mapa-gis › exportação */}
+        {modoPlanta === 'humanizado' && (
+          <Button
+            variant="outline"
+            className="w-full gap-1.5"
+            disabled={exportando}
+            onClick={() => void exportarPlanta()}
+          >
+            <Download className="h-4 w-4" />
+            {exportando ? 'Exportando planta…' : 'Exportar Planta (PNG/PDF)'}
+          </Button>
+        )}
 
         {/* Desenho e Edição de Polígonos */}
         {edita && (
@@ -523,6 +815,30 @@ export const MapaView: React.FC = () => {
               <p className="text-xs font-semibold text-primary">
                 Clique no mapa: {grade.pontos.length === 0 ? 'ponto de origem' : 'ponto que define a orientação'}.
               </p>
+            )}
+
+            {cemiterioAtivoId && (
+              <div className="space-y-2 border-t border-border/50 pt-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <Route className="h-3.5 w-3.5 text-primary" /> Desenhar via/alameda
+                  </span>
+                  <Switch label="Desenhar via" checked={desenhandoVia} onCheckedChange={setDesenhandoVia} />
+                </div>
+                {desenhandoVia && (
+                  <>
+                    <Input
+                      aria-label="Código da via"
+                      placeholder="Código da via (ex.: AL-01)"
+                      value={novaViaCodigo}
+                      onChange={(e) => setNovaViaCodigo(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Trace a linha da via no mapa; ela vira um trecho do grafo de roteirização.
+                    </p>
+                  </>
+                )}
+              </div>
             )}
           </Card>
         )}
@@ -653,31 +969,64 @@ const Carregador: React.FC<{ onMover: (caixa: Caixa, zoom: number) => void }> = 
 };
 
 /** Ferramentas do Leaflet-Geoman: desenho e edição de polígonos. */
-const Desenho: React.FC<{ onCriado: (g: Polygon) => void }> = ({ onCriado }) => {
+/**
+ * Ferramentas do Leaflet-Geoman: desenho/edição de polígonos (jazigo/setor/parque) ou, no modo de
+ * desenho de via, de linhas — com snap nativo e alerta antecipado de sobreposição (spec: mapa-gis ›
+ * validação topológica em tempo real). O alerta é só feedback do cliente; quem bloqueia de fato é o
+ * backend ao salvar (`Geo::sobrepoe`).
+ */
+const Desenho: React.FC<{
+  modoLinha: boolean;
+  onCriado: (g: Polygon) => void;
+  onCriadaLinha: (g: LineString) => void;
+  jazigosExistentes: [number, number][][];
+  onAlertaSobreposicao: (sobrepoe: boolean) => void;
+}> = ({ modoLinha, onCriado, onCriadaLinha, jazigosExistentes, onAlertaSobreposicao }) => {
   const mapa = useMap();
+
   useEffect(() => {
     mapa.pm.addControls({
       position: 'topleft',
       drawMarker: false,
       drawCircle: false,
       drawCircleMarker: false,
-      drawPolyline: false,
+      drawPolyline: modoLinha,
+      drawPolygon: !modoLinha,
       drawText: false,
       cutPolygon: false,
       rotateMode: false,
     });
     mapa.pm.setLang('pt_br');
+    mapa.pm.setGlobalOptions({ snappable: true, snapDistance: 20 });
+
     const aoCriar = (e: { layer: Layer }) => {
-      const geo = (e.layer as PoligonoLeaflet).toGeoJSON().geometry as Polygon;
+      const geometria = (e.layer as unknown as { toGeoJSON: () => { geometry: Polygon | LineString } }).toGeoJSON().geometry;
       e.layer.remove();
-      onCriado(geo);
+      onAlertaSobreposicao(false);
+      if (geometria.type === 'LineString') onCriadaLinha(geometria as LineString);
+      else onCriado(geometria as Polygon);
     };
+
+    // Checagem antecipada (bounding box) enquanto o vértice é adicionado/arrastado — só para polígonos.
+    const checarSobreposicao = (e: { layer?: Layer }) => {
+      if (modoLinha || !e.layer) return;
+      const anel = (e.layer as PoligonoLeaflet).getLatLngs?.()[0] as { lat: number; lng: number }[] | undefined;
+      if (!anel || anel.length < 3) return;
+      const pontos: [number, number][] = anel.map((p) => [p.lat, p.lng]);
+      onAlertaSobreposicao(jazigosExistentes.some((j) => poligonosPodemSobrepor(pontos, j)));
+    };
+
     mapa.on('pm:create', aoCriar);
+    mapa.on('pm:vertexadded', checarSobreposicao);
+    mapa.on('pm:markerdragend', checarSobreposicao);
     return () => {
       mapa.off('pm:create', aoCriar);
+      mapa.off('pm:vertexadded', checarSobreposicao);
+      mapa.off('pm:markerdragend', checarSobreposicao);
       mapa.pm.removeControls();
+      onAlertaSobreposicao(false);
     };
-  }, [mapa, onCriado]);
+  }, [mapa, modoLinha, onCriado, onCriadaLinha, jazigosExistentes, onAlertaSobreposicao]);
   return null;
 };
 
@@ -687,6 +1036,53 @@ const Voar: React.FC<{ envelope: Caixa | null }> = ({ envelope }) => {
   useEffect(() => {
     if (envelope) mapa.flyToBounds(limitesDoEnvelope(envelope), { duration: 1.2, maxZoom: 21 });
   }, [mapa, envelope]);
+  return null;
+};
+
+/**
+ * Clusteriza os jazigos em zoom baixo (abaixo de `ZOOM_DETALHE_JAZIGOS`) para não renderizar milhares
+ * de polígonos individuais de uma vez (spec: mapa-gis › clusterização), reaproveitando o centroide já
+ * calculado por feição.
+ */
+const ClusterJazigos: React.FC<{ feicoes: FeatureCollection; onSelecionar: (id: number) => void }> = ({ feicoes, onSelecionar }) => {
+  const mapa = useMap();
+
+  useEffect(() => {
+    const grupo = L.markerClusterGroup({ maxClusterRadius: 60, disableClusteringAtZoom: undefined });
+
+    for (const f of feicoes.features) {
+      const coords = f.geometry?.coordinates?.[0];
+      if (!Array.isArray(coords) || coords.length === 0) continue;
+      const somaLat = coords.reduce((s, [, lat]) => s + lat, 0);
+      const somaLng = coords.reduce((s, [lng]) => s + lng, 0);
+      const props = (f.properties ?? {}) as Record<string, unknown>;
+      const marcador = L.circleMarker([somaLat / coords.length, somaLng / coords.length], {
+        radius: 5,
+        color: ESTADOS[props.estado as keyof typeof ESTADOS]?.cor ?? '#6b7280',
+        fillColor: ESTADOS[props.estado as keyof typeof ESTADOS]?.cor ?? '#6b7280',
+        fillOpacity: 0.85,
+        weight: 1,
+      });
+      marcador.bindTooltip(String(props.codigo ?? ''));
+      marcador.on('click', () => onSelecionar(Number(props.id)));
+      grupo.addLayer(marcador);
+    }
+
+    mapa.addLayer(grupo);
+    return () => {
+      mapa.removeLayer(grupo);
+    };
+  }, [mapa, feicoes, onSelecionar]);
+
+  return null;
+};
+
+/** Só existe para expor o container DOM do Leaflet (fora do React) à exportação de planta em PNG/PDF. */
+const CapturaContainer: React.FC<{ alvo: React.MutableRefObject<HTMLElement | null> }> = ({ alvo }) => {
+  const mapa = useMap();
+  useEffect(() => {
+    alvo.current = mapa.getContainer();
+  }, [mapa, alvo]);
   return null;
 };
 
@@ -759,54 +1155,70 @@ const Legenda: React.FC = () => (
   </div>
 );
 
+const ROTULO_TIPO_BUSCA: Record<string, string> = { falecido: 'Falecidos', jazigo: 'Jazigos', concessao: 'Concessões' };
+
+/** Busca unificada com debounce automático (300 ms) e resultados agrupados por tipo (spec: mapa-gis › busca). */
 const Busca: React.FC<{ onEscolher: (r: ResultadoBusca) => void }> = ({ onEscolher }) => {
   const [q, setQ] = useState('');
   const [resultados, setResultados] = useState<ResultadoBusca[]>([]);
   const [erro, setErro] = useState<ErroApi | null>(null);
 
-  const buscar = async (ev: React.FormEvent) => {
-    ev.preventDefault();
-    if (q.trim().length < 2) return;
-    try {
-      setErro(null);
-      setResultados(await cemiteriosApi.buscar(q.trim()));
-    } catch (e) {
-      setErro(erroApi(e));
+  useEffect(() => {
+    if (q.trim().length < 2) {
+      setResultados([]);
+      return;
     }
-  };
+    let cancelado = false;
+    cemiteriosApi.buscar(q.trim())
+      .then((r) => { if (!cancelado) { setErro(null); setResultados(r); } })
+      .catch((e) => { if (!cancelado) setErro(erroApi(e)); });
+    return () => { cancelado = true; };
+  }, [q]);
+
+  const grupos = useMemo(() => {
+    const porTipo = new Map<string, ResultadoBusca[]>();
+    for (const r of resultados) {
+      porTipo.set(r.tipo, [...(porTipo.get(r.tipo) ?? []), r]);
+    }
+    return Array.from(porTipo.entries());
+  }, [resultados]);
 
   return (
     <Card className="space-y-2 p-4">
-      <form onSubmit={buscar} className="flex gap-2">
-        <Input
-          aria-label="Busca"
-          placeholder="Falecido, jazigo, concessão ou CPF"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <Button type="submit" aria-label="Buscar">
-          <Search className="h-4 w-4" />
-        </Button>
-      </form>
+      <SearchInput
+        value={q}
+        onChange={setQ}
+        placeholder="Falecido, jazigo, concessão ou CPF"
+        debounce={300}
+      />
       <ErroBox erro={erro} />
-      <ul className="max-h-64 space-y-1 overflow-auto">
-        {resultados.map((r, i) => (
-          <li key={`${r.jazigo_id}-${i}`}>
-            <Button
-              variant="ghost"
-              className="h-auto w-full justify-start py-1 text-left"
-              onClick={() => onEscolher(r)}
-            >
-              <span className="block">
-                <span className="block text-sm">{r.rotulo}</span>
-                <span className="text-xs text-muted-foreground">
-                  {r.tipo} · jazigo <Mono>{r.jazigo_codigo}</Mono>
-                </span>
-              </span>
-            </Button>
-          </li>
+      <div className="max-h-64 space-y-3 overflow-auto">
+        {grupos.map(([tipo, itens]) => (
+          <div key={tipo}>
+            <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {ROTULO_TIPO_BUSCA[tipo] ?? tipo}
+            </p>
+            <ul className="space-y-1">
+              {itens.map((r, i) => (
+                <li key={`${r.jazigo_id}-${i}`}>
+                  <Button
+                    variant="ghost"
+                    className="h-auto w-full justify-start py-1 text-left"
+                    onClick={() => onEscolher(r)}
+                  >
+                    <span className="block">
+                      <span className="block text-sm">{r.rotulo}</span>
+                      <span className="text-xs text-muted-foreground">
+                        jazigo <Mono>{r.jazigo_codigo}</Mono>
+                      </span>
+                    </span>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
     </Card>
   );
 };

@@ -1,6 +1,7 @@
 {
   "name": "sysgov",
   "private": true,
+  "packageManager": "npm@11.14.1",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -11,13 +12,14 @@
     "dev:admin": "npm --workspace apps/web run dev",
     "dev:client": "npm --workspace apps/web-client run dev",
     "dev:all": "concurrently -n admin,client -c magenta,green \"npm run dev:admin\" \"npm run dev:client\"",
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test --concurrency 1",
     "generate:registry": "node scripts/generate-module-registry.js"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "turbo": "^2.11.5"
   }
 }

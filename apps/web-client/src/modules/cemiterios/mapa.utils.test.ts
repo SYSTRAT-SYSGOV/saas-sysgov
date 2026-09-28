@@ -4,7 +4,10 @@ import {
   calcularAreaPoligonoM2,
   calcularDistanciaMetros,
   estiloFeicao,
+  estiloVia,
   limitesDoEnvelope,
+  metrosPorPixel,
+  poligonosPodemSobrepor,
   recuoMinimoValido,
 } from './mapa.utils';
 
@@ -48,6 +51,61 @@ describe('estiloFeicao e estiloJazigoSemantico', () => {
 
   it('usa cor neutra para estado desconhecido', () => {
     expect(estiloFeicao('jazigos', { estado: 'inexistente' })).toMatchObject({ color: '#6b7280' });
+  });
+});
+
+describe('modo humanizado (planta acolhedora)', () => {
+  it('mantém a mesma cor semântica do estado, mas com preenchimento mais denso e borda branca suave', () => {
+    const tecnico = estiloFeicao('jazigos', { estado: 'disponivel' }, null, null, 'tecnico');
+    const humanizado = estiloFeicao('jazigos', { estado: 'disponivel' }, null, null, 'humanizado');
+    expect(tecnico.fillColor).toBe(humanizado.fillColor);
+    expect(humanizado).toMatchObject({ color: '#ffffff', fillOpacity: 0.85 });
+    expect(humanizado.fillOpacity).toBeGreaterThan(tecnico.fillOpacity as number);
+  });
+
+  it('não altera o resultado do modo técnico (comportamento por default)', () => {
+    expect(estiloFeicao('jazigos', { estado: 'ocupado' })).toEqual(estiloFeicao('jazigos', { estado: 'ocupado' }, null, null, 'tecnico'));
+  });
+
+  it('reestiliza parques e setores com paleta pastel no modo humanizado', () => {
+    expect(estiloFeicao('parques', {}, null, null, 'humanizado')).toMatchObject({ fillColor: '#d8ecd9' });
+    expect(estiloFeicao('setores', {}, null, null, 'humanizado')).toMatchObject({ fillColor: '#eaf6ec' });
+  });
+});
+
+describe('estiloVia', () => {
+  it('usa traço fino tracejado no modo técnico e piso largo no humanizado', () => {
+    expect(estiloVia('tecnico')).toMatchObject({ dashArray: '3 3' });
+    expect(estiloVia('humanizado')).toMatchObject({ color: '#d8cdb8' });
+    expect(estiloVia().weight).toBeLessThan(estiloVia('humanizado').weight);
+  });
+});
+
+describe('metrosPorPixel', () => {
+  it('diminui pela metade a cada nível de zoom a mais, na mesma latitude', () => {
+    const lat = -25.43;
+    const m18 = metrosPorPixel(lat, 18);
+    const m19 = metrosPorPixel(lat, 19);
+    expect(m19).toBeCloseTo(m18 / 2, 5);
+  });
+
+  it('retorna um valor positivo e plausível para zoom 19 perto do equador', () => {
+    expect(metrosPorPixel(0, 19)).toBeGreaterThan(0.1);
+    expect(metrosPorPixel(0, 19)).toBeLessThan(1);
+  });
+});
+
+describe('poligonosPodemSobrepor', () => {
+  it('detecta caixas envolventes que se cruzam', () => {
+    const a: [number, number][] = [[-25.430, -49.270], [-25.430, -49.269], [-25.429, -49.269], [-25.429, -49.270]];
+    const b: [number, number][] = [[-25.4295, -49.2695], [-25.4295, -49.2685], [-25.4285, -49.2685], [-25.4285, -49.2695]];
+    expect(poligonosPodemSobrepor(a, b)).toBe(true);
+  });
+
+  it('não acusa sobreposição para polígonos distantes', () => {
+    const a: [number, number][] = [[-25.430, -49.270], [-25.430, -49.269], [-25.429, -49.269], [-25.429, -49.270]];
+    const b: [number, number][] = [[-25.500, -49.300], [-25.500, -49.299], [-25.499, -49.299], [-25.499, -49.300]];
+    expect(poligonosPodemSobrepor(a, b)).toBe(false);
   });
 });
 

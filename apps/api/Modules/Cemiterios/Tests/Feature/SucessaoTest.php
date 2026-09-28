@@ -39,9 +39,9 @@ final class SucessaoTest extends CemiteriosTestCase
             'numero' => 'CON-TEST-01',
             'plot_id' => $jazigo->id,
             'holder_id' => $titularOriginal->id,
-            'modalidade' => 'perpetua',
-            'inicio' => '2000-01-01',
-            'situacao' => 'vigente',
+            'tipo' => 'perpetua',
+            'data_inicio' => '2000-01-01',
+            'estado' => 'Ativa',
             'pendencia_regularizacao' => true,
             'motivo_pendencia' => 'sucessao_hereditaria',
         ]);
@@ -108,9 +108,9 @@ final class SucessaoTest extends CemiteriosTestCase
             'numero' => 'CON-A-01',
             'plot_id' => $jazigo->id,
             'holder_id' => $titular->id,
-            'modalidade' => 'perpetua',
-            'inicio' => '2000-01-01',
-            'situacao' => 'vigente',
+            'tipo' => 'perpetua',
+            'data_inicio' => '2000-01-01',
+            'estado' => 'Ativa',
         ]);
 
         $proc = ProcessoSucessao::create([

@@ -2,17 +2,45 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCard, Button, Field, Input, Modal, Select, StatusChip, Switch, Textarea } from '@/components/ui';
 import { ESTADOS, erroApi, type EstadoJazigo, type ErroApi } from '../api';
 
-/** Carrega dados de um serviço e expõe estado de carga/erro e recarga. */
+// Cache em memória de curta duração para evitar "flash" de carregamento e acelerar navegação (SWR)
+const cacheDadosMemoria = new Map<string, { dados: unknown; timestamp: number }>();
+const TTL_DADOS_MS = 60_000;
+const IS_TEST = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+
+export function limparCacheDados(): void {
+  cacheDadosMemoria.clear();
+}
+
+/** Carrega dados de um serviço com suporte a SWR (stale-while-revalidate) e expõe estado de carga/erro e recarga. */
 export function useDados<T>(carregar: () => Promise<T>, deps: React.DependencyList = []) {
-  const [dados, setDados] = useState<T | null>(null);
-  const [carregando, setCarregando] = useState(true);
+  const chaveCache = React.useMemo(() => {
+    if (IS_TEST) return '';
+    try {
+      return JSON.stringify(deps);
+    } catch {
+      return '';
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  const entradaCache = (!IS_TEST && chaveCache) ? cacheDadosMemoria.get(chaveCache) : null;
+  const dadosValidosCache = (entradaCache && (Date.now() - entradaCache.timestamp < TTL_DADOS_MS)) ? (entradaCache.dados as T) : null;
+
+  const [dados, setDados] = useState<T | null>(dadosValidosCache);
+  const [carregando, setCarregando] = useState<boolean>(!dadosValidosCache);
   const [erro, setErro] = useState<ErroApi | null>(null);
 
   const recarregar = useCallback(async () => {
-    setCarregando(true);
+    if (!dadosValidosCache) {
+      setCarregando(true);
+    }
     setErro(null);
     try {
-      setDados(await carregar());
+      const resultado = await carregar();
+      setDados(resultado);
+      if (chaveCache) {
+        cacheDadosMemoria.set(chaveCache, { dados: resultado, timestamp: Date.now() });
+      }
     } catch (e) {
       setErro(erroApi(e));
     } finally {

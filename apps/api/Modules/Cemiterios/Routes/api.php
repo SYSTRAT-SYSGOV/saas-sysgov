@@ -16,6 +16,12 @@ use Modules\Cemiterios\Http\Controllers\OperacaoController;
 use Modules\Cemiterios\Http\Controllers\OrdemServicoController;
 use Modules\Cemiterios\Http\Controllers\ParametroController;
 use Modules\Cemiterios\Http\Controllers\ProcessoSucessaoController;
+use Modules\Cemiterios\Http\Controllers\SucessaoController;
+use Modules\Cemiterios\Http\Controllers\SucessaoTransicaoController;
+use Modules\Cemiterios\Http\Controllers\SucessaoHerdeiroController;
+use Modules\Cemiterios\Http\Controllers\SucessaoDocumentoController;
+use Modules\Cemiterios\Http\Controllers\SucessaoHistoricoController;
+use Modules\Cemiterios\Http\Controllers\SucessaoDashboardController;
 use Modules\Cemiterios\Http\Controllers\VistoriaController;
 
 /*
@@ -53,6 +59,13 @@ Route::put('/gis/geometrias/{tipo}/{id}', [GisController::class, 'salvarGeometri
 Route::post('/gis/setores/{id}/gerar-grade', [GisController::class, 'gerarGrade']);
 Route::get('/gis/mapa-base/sessao', [GisController::class, 'sessaoMapaBase']);
 Route::get('/gis/exportar', [GisController::class, 'exportar']);
+Route::get('/gis/rotas', [GisController::class, 'rotas']);
+Route::post('/gis/vias', [GisController::class, 'storeVia']);
+Route::put('/gis/vias/{id}', [GisController::class, 'updateVia']);
+Route::delete('/gis/vias/{id}', [GisController::class, 'destroyVia']);
+Route::post('/gis/amenidades', [GisController::class, 'storeAmenidade']);
+Route::put('/gis/amenidades/{id}', [GisController::class, 'updateAmenidade']);
+Route::delete('/gis/amenidades/{id}', [GisController::class, 'destroyAmenidade']);
 Route::get('/busca', [GisController::class, 'buscar']);
 
 // Falecidos e operações
@@ -128,14 +141,36 @@ Route::post('/processos-abandono/{id}/{etapa}', [VistoriaController::class, 'eta
     ->whereIn('etapa', ['edital', 'manifestacao', 'decisao']);
 
 // Regularização de Sucessão Hereditária
+Route::get('/sucessoes/pendentes', [SucessaoDashboardController::class, 'pendentes']);
+Route::get('/sucessoes/regularizacao', [SucessaoDashboardController::class, 'regularizacao']);
+
+Route::get('/sucessoes', [SucessaoController::class, 'index']);
+Route::post('/sucessoes', [SucessaoController::class, 'store']);
+Route::get('/sucessoes/{id}', [SucessaoController::class, 'show'])->whereNumber('id');
+Route::put('/sucessoes/{id}', [SucessaoController::class, 'update'])->whereNumber('id');
+Route::delete('/sucessoes/{id}', [SucessaoController::class, 'destroy'])->whereNumber('id');
+
+Route::post('/sucessoes/{id}/transicao', [SucessaoTransicaoController::class, 'store'])->whereNumber('id');
+
+Route::post('/sucessoes/{id}/herdeiros', [SucessaoHerdeiroController::class, 'store'])->whereNumber('id');
+Route::delete('/sucessoes/{id}/herdeiros/{herdeiroId}', [SucessaoHerdeiroController::class, 'destroy'])->whereNumber(['id', 'herdeiroId']);
+
+Route::post('/sucessoes/{id}/documentos', [SucessaoDocumentoController::class, 'store'])->whereNumber('id');
+Route::get('/sucessoes/{id}/documentos/{documentoId}', [SucessaoDocumentoController::class, 'show'])->whereNumber(['id', 'documentoId']);
+Route::get('/sucessoes/{id}/documentos/{documentoId}/download', [SucessaoDocumentoController::class, 'download'])->whereNumber(['id', 'documentoId']);
+Route::delete('/sucessoes/{id}/documentos/{documentoId}', [SucessaoDocumentoController::class, 'destroy'])->whereNumber(['id', 'documentoId']);
+
+Route::get('/sucessoes/{id}/historico', [SucessaoHistoricoController::class, 'index'])->whereNumber('id');
+
+// Legado - compatibilidade
 Route::get('/sucessoes/pendencias', [ProcessoSucessaoController::class, 'pendencias']);
-Route::get('/sucessoes', [ProcessoSucessaoController::class, 'index']);
-Route::post('/sucessoes', [ProcessoSucessaoController::class, 'store']);
-Route::get('/sucessoes/{id}', [ProcessoSucessaoController::class, 'show']);
-Route::post('/sucessoes/{id}/herdeiros', [ProcessoSucessaoController::class, 'adicionarHerdeiro']);
-Route::post('/sucessoes/{id}/deferir', [ProcessoSucessaoController::class, 'deferir']);
-Route::post('/sucessoes/{id}/indeferir', [ProcessoSucessaoController::class, 'indeferir']);
-Route::get('/sucessoes/{id}/termo', [ProcessoSucessaoController::class, 'termoDados']);
+Route::get('/sucessoes-legado', [ProcessoSucessaoController::class, 'index']);
+Route::post('/sucessoes-legado', [ProcessoSucessaoController::class, 'store']);
+Route::get('/sucessoes-legado/{id}', [ProcessoSucessaoController::class, 'show']);
+Route::post('/sucessoes-legado/{id}/herdeiros', [ProcessoSucessaoController::class, 'adicionarHerdeiro']);
+Route::post('/sucessoes-legado/{id}/deferir', [ProcessoSucessaoController::class, 'deferir']);
+Route::post('/sucessoes-legado/{id}/indeferir', [ProcessoSucessaoController::class, 'indeferir']);
+Route::get('/sucessoes-legado/{id}/termo', [ProcessoSucessaoController::class, 'termoDados']);
 
 // Gestão de Operadores (Coveiros e Pedreiros Credenciados)
 Route::get('/operadores', [OperadorCemiterioController::class, 'index']);

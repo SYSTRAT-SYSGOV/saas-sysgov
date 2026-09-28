@@ -5,6 +5,9 @@ services:
       dockerfile: Dockerfile
     depends_on: [mysql, redis]
     env_file: ./apps/api/.env.docker
+    environment:
+      PHP_CLI_SERVER_WORKERS: 6
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000", "--no-reload"]
     ports: ["8000:8000"]
     volumes:
       - ./apps/api:/var/www/html

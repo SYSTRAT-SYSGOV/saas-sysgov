@@ -64,13 +64,13 @@ final class ConcessoesTest extends CemiteriosTestCase
         $admin = $this->admin($this->tenant);
 
         $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', [
-            'plot_id' => $temporario->id, 'holder_id' => $titular->id, 'modalidade' => 'temporaria', 'inicio' => '2026-01-01', 'lock_version' => 0,
+            'plot_id' => $temporario->id, 'holder_id' => $titular->id, 'tipo' => 'temporaria', 'inicio' => '2026-01-01', 'lock_version' => 0,
         ])->assertCreated()->assertJsonPath('numero', '1/2026')->assertJsonPath('jazigo.estado', 'concedido')
-            ->assertJsonPath('termino', fn ($v) => str_starts_with((string) $v, '2031-01-01'));
+            ->assertJsonPath('data_fim', fn ($v) => str_starts_with((string) $v, '2031-01-01'));
 
         $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', [
-            'plot_id' => $perpetuo->id, 'holder_id' => $titular->id, 'modalidade' => 'perpetua', 'lock_version' => 0,
-        ])->assertCreated()->assertJsonPath('termino', null);
+            'plot_id' => $perpetuo->id, 'holder_id' => $titular->id, 'tipo' => 'perpetua', 'lock_version' => 0,
+        ])->assertCreated()->assertJsonPath('data_fim', null);
     }
 
     public function test_concessao_concorrente_recebe_409(): void
@@ -80,9 +80,9 @@ final class ConcessoesTest extends CemiteriosTestCase
         $b = Concessionario::create(['nome' => 'B', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
         $admin = $this->admin($this->tenant);
 
-        $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', ['plot_id' => $jazigo->id, 'holder_id' => $a->id, 'modalidade' => 'temporaria', 'lock_version' => 0])
+        $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', ['plot_id' => $jazigo->id, 'holder_id' => $a->id, 'tipo' => 'temporaria', 'lock_version' => 0])
             ->assertCreated();
-        $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', ['plot_id' => $jazigo->id, 'holder_id' => $b->id, 'modalidade' => 'temporaria', 'lock_version' => 0])
+        $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', ['plot_id' => $jazigo->id, 'holder_id' => $b->id, 'tipo' => 'temporaria', 'lock_version' => 0])
             ->assertStatus(409)->assertJsonPath('code', 'jazigo.conflito_versao');
 
         $this->noTenant($this->tenant);
@@ -92,7 +92,7 @@ final class ConcessoesTest extends CemiteriosTestCase
     public function test_coveiro_nao_cadastra_concessao(): void
     {
         $this->como($this->usuario($this->tenant, ['cemiterios.operacoes.executar']), $this->tenant)
-            ->postJson('/api/cemiterios/concessoes', ['plot_id' => 1, 'holder_id' => 1, 'modalidade' => 'temporaria', 'lock_version' => 0])
+            ->postJson('/api/cemiterios/concessoes', ['plot_id' => 1, 'holder_id' => 1, 'tipo' => 'temporaria', 'lock_version' => 0])
             ->assertForbidden();
     }
 
@@ -103,17 +103,40 @@ final class ConcessoesTest extends CemiteriosTestCase
         $vazio = $this->novoJazigo();
         $comRestos = $this->novoJazigo();
         $this->sepultado($comRestos, '2020-01-01');
-        Concessao::query()->update(['termino' => today()->subDay()->toDateString()]);
+
+        // Create concessions for both jazigos
+        $titular = Concessionario::first();
+        if (!$titular) {
+            $titular = Concessionario::create(['nome' => 'Test', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
+        }
+        Concessao::create([
+            'numero' => '1/2026',
+            'plot_id' => $vazio->id,
+            'holder_id' => $titular->id,
+            'tipo' => 'temporaria',
+            'data_inicio' => today()->subYear()->toDateString(),
+            'data_fim' => today()->subDay()->toDateString(), // expired
+            'lock_version' => 0,
+        ]);
+        Concessao::create([
+            'numero' => '2/2026',
+            'plot_id' => $comRestos->id,
+            'holder_id' => $titular->id,
+            'tipo' => 'temporaria',
+            'data_inicio' => today()->subYear()->toDateString(),
+            'data_fim' => today()->addYear()->toDateString(), // not expired
+            'lock_version' => 0,
+        ]);
 
         $this->artisan('cemiterios:expirar-concessoes')->assertSuccessful();
         $this->artisan('cemiterios:expirar-concessoes')->assertSuccessful();
 
         $this->noTenant($this->tenant);
-        self::assertSame(2, Concessao::where('situacao', 'expirada')->count());
+        self::assertSame(1, Concessao::where('estado', 'Vencida')->count());
         self::assertSame(EstadoJazigo::Disponivel, $vazio->refresh()->estado);
         self::assertSame(EstadoJazigo::Ocupado, $comRestos->refresh()->estado);
         self::assertTrue((bool) Concessao::where('plot_id', $comRestos->id)->value('pendencia_regularizacao'));
-        self::assertSame(1, JazigoHistorico::where('plot_id', $vazio->id)->where('para', 'disponivel')->count());
+        self::assertSame(1, JazigoHistorico::where('plot_id', $vazio->id)->where('para_estado', 'disponivel')->count());
     }
 
     // 3.4
@@ -121,13 +144,28 @@ final class ConcessoesTest extends CemiteriosTestCase
     public function test_renovacao_estende_o_termino_e_gera_guia_pelo_preco_vigente(): void
     {
         $jazigo = $this->novoJazigo();
-        $concessao = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
-        $concessao->update(['termino' => '2027-06-30']);
+        // Ensure we have a concessionario
+        $titular = Concessionario::first();
+        if (!$titular) {
+            $titular = Concessionario::create(['nome' => 'Test', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
+        }
+        // Create a concession for the jazigo
+        Concessao::create([
+            'numero' => '1/2026',
+            'plot_id' => $jazigo->id,
+            'holder_id' => $titular->id,
+            'tipo' => 'temporaria',
+            'data_inicio' => today()->subYear()->toDateString(),
+            'data_fim' => '2027-06-30',
+            'lock_version' => 0,
+        ]);
+        $concessao = Concessao::where('plot_id', $jazigo->id)->first();
+        $concessao->update(['data_fim' => '2027-06-30']);
         app(PrecoService::class)->novaVigencia('renovacao', 35000, CarbonImmutable::today());
 
         $this->como($this->admin($this->tenant), $this->tenant)->postJson("/api/cemiterios/concessoes/{$concessao->id}/renovar")
             ->assertOk()
-            ->assertJsonPath('concessao.termino', fn ($v) => str_starts_with((string) $v, '2032-06-30'))
+            ->assertJsonPath('concessao.data_fim', fn ($v) => str_starts_with((string) $v, '2032-06-30'))
             ->assertJsonPath('guia.valor_centavos', 35000)
             ->assertJsonPath('guia.servico', 'renovacao');
 
@@ -260,7 +298,7 @@ final class ConcessoesTest extends CemiteriosTestCase
 
         $this->como($admin, $this->tenant)->postJson("/api/cemiterios/concessoes/{$concessao->id}/renunciar", [
             'motivo' => 'Concessionário devolveu o jazigo espontaneamente.',
-        ])->assertOk()->assertJsonPath('situacao', 'extinta')->assertJsonPath('motivo_extincao', 'renuncia');
+        ])->assertOk()->assertJsonPath('estado', 'Caduca')->assertJsonPath('motivo_extincao', 'renuncia');
 
         $this->noTenant($this->tenant);
         self::assertSame(EstadoJazigo::Disponivel, $jazigo->refresh()->estado);
@@ -281,7 +319,7 @@ final class ConcessoesTest extends CemiteriosTestCase
         $admin = $this->admin($this->tenant);
         $jazigo = $this->novoJazigo(2, true);
         $concessao = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
-        $concessao->update(['situacao' => 'expirada']);
+        $concessao->update(['estado' => 'Vencida']);
 
         $this->como($admin, $this->tenant)->postJson("/api/cemiterios/concessoes/{$concessao->id}/renunciar", ['motivo' => 'x'])
             ->assertStatus(422)->assertJsonPath('code', 'concessao.nao_renunciavel');

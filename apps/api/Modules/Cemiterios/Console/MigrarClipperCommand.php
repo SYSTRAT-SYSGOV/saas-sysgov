@@ -180,7 +180,7 @@ final class MigrarClipperCommand extends Command
                         $processo = trim((string) ($linha['PROCESSO'] ?? $linha['processo'] ?? ''));
                         $validade = $this->parseData($linha['VALIDADE'] ?? $linha['validade'] ?? null);
 
-                        if ($quadra === '' || $lote === '') {
+                        if ($quadra === '' || $lote === '' || ($quadra === '0000' && $lote === '0000') || ($quadra === '0' && $lote === '0')) {
                             continue;
                         }
 
@@ -388,7 +388,7 @@ final class MigrarClipperCommand extends Command
                             $jazigo = $jazigosMap["{$quadra}_{$lote}"];
 
                             $docValido = Documento::somenteDigitos($cpfCnpj);
-                            if (strlen($docValido) !== 11 && strlen($docValido) !== 14) {
+                            if (!Documento::valido($docValido)) {
                                 $docValido = "000" . str_pad((string) $jazigo->id, 5, '0', STR_PAD_LEFT) . str_pad((string) $item, 3, '0', STR_PAD_LEFT);
                             }
 
@@ -408,6 +408,15 @@ final class MigrarClipperCommand extends Command
                                     $titular->restore();
                                 }
 
+                                $titularJaConcedido = Concessao::where('plot_id', $jazigo->id)
+                                    ->where('holder_id', $titular->id)
+                                    ->where('estado', 'Ativa')
+                                    ->exists();
+
+                                if ($titularJaConcedido) {
+                                    continue;
+                                }
+
                                 $numeroConcessao = "CON-{$codigo}-{$quadra}-{$lote}-{$item}";
                                 $concessao = Concessao::withTrashed()->firstOrCreate(
                                     [
@@ -416,13 +425,13 @@ final class MigrarClipperCommand extends Command
                                     [
                                         'plot_id' => $jazigo->id,
                                         'holder_id' => $titular->id,
-                                        'modalidade' => ($jazigo->tipo === 'gaveta') ? 'perpetua' : 'temporaria',
-                                        'inicio' => '1995-01-01',
-                                        'termino' => null,
+                                        'tipo' => ($jazigo->tipo === 'gaveta') ? 'perpetua' : 'temporaria',
+                                        'data_inicio' => '1995-01-01',
+                                        'data_fim' => null,
                                         'processo_administrativo' => $jazigo->processo_administrativo,
                                         'pendencia_regularizacao' => $titularFalecido,
                                         'motivo_pendencia' => $titularFalecido ? 'sucessao_hereditaria' : null,
-                                        'situacao' => 'vigente',
+                                        'estado' => 'Ativa',
                                     ]
                                 );
                                 if ($concessao->trashed()) {
@@ -509,6 +518,13 @@ final class MigrarClipperCommand extends Command
                                 }
                             }
 
+                            $nomeUpper = strtoupper(trim($nome));
+                            if (in_array($nomeUpper, ['NAO CONSTA FALECIDO', 'NÃO CONSTA FALECIDO', 'SEM NOME', 'DESCONHECIDO', 'FALECIDO NAO INFORMADO'], true)
+                                || str_starts_with($nomeUpper, 'NAO CONSTA') || str_starts_with($nomeUpper, 'NÃO CONSTA')) {
+                                $revisaoPendente = true;
+                                $livroRef .= " (Registro histórico sem qualificação nominal)";
+                            }
+
                             if (!$dryRun) {
                                 $falecido = Falecido::firstOrCreate(
                                     [
@@ -567,7 +583,7 @@ final class MigrarClipperCommand extends Command
                         p.estado = CASE 
                             WHEN COALESCE(b.total, 0) >= p.capacidade THEN 'capacidade_maxima'
                             WHEN COALESCE(b.total, 0) > 0 THEN 'ocupado'
-                            WHEN EXISTS (SELECT 1 FROM concessions c WHERE c.plot_id = p.id AND c.situacao = 'vigente' AND c.deleted_at IS NULL) THEN 'concedido'
+                            WHEN EXISTS (SELECT 1 FROM concessions c WHERE c.plot_id = p.id AND c.estado IN ('Ativa','Vencendo','Sucedida','Transferida') AND c.deleted_at IS NULL) THEN 'concedido'
                             ELSE 'disponivel'
                         END
                     WHERE p.park_id = ?

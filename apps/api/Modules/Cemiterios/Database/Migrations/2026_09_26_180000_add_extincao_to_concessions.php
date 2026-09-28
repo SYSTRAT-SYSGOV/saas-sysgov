@@ -12,7 +12,7 @@ return new class extends Migration
     {
         Schema::table('concessions', function (Blueprint $table): void {
             if (!Schema::hasColumn('concessions', 'motivo_extincao')) {
-                $table->string('motivo_extincao', 20)->nullable()->after('situacao'); // renuncia | abandono
+                $table->string('motivo_extincao', 20)->nullable()->after('estado'); // renuncia | abandono
             }
             if (!Schema::hasColumn('concessions', 'extinta_em')) {
                 $table->date('extinta_em')->nullable()->after('motivo_extincao');

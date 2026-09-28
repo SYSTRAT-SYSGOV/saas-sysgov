@@ -321,7 +321,7 @@ final class CorrigirDatasMigradasCommand extends Command
                     p.estado = CASE 
                         WHEN COALESCE(b.total, 0) >= p.capacidade THEN 'capacidade_maxima'
                         WHEN COALESCE(b.total, 0) > 0 THEN 'ocupado'
-                        WHEN EXISTS (SELECT 1 FROM concessions c WHERE c.plot_id = p.id AND c.situacao = 'vigente' AND c.deleted_at IS NULL) THEN 'concedido'
+                        WHEN EXISTS (SELECT 1 FROM concessions c WHERE c.plot_id = p.id AND c.estado IN ('Ativa','Vencendo','Sucedida','Transferida') AND c.deleted_at IS NULL) THEN 'concedido'
                         ELSE 'disponivel'
                     END
             ");

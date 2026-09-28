@@ -9,4 +9,4 @@ RUN composer install --optimize-autoloader
 RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 EXPOSE 8000
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000", "--no-reload"]

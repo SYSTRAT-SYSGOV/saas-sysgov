@@ -93,6 +93,7 @@ export const InventarioView: React.FC = () => {
     cemiterioAtivoId,
     cemiterioAtivo,
     cemiteriosDisponiveis,
+    isCarregandoCemiterios,
     recarregarCemiterios,
     erroCarregamento,
   } = useCemiteriosNavigation();
@@ -110,10 +111,10 @@ export const InventarioView: React.FC = () => {
   const [modalLoteManutencao, setModalLoteManutencao] = useState(false);
   const [modalLoteQr, setModalLoteQr] = useState(false);
 
-  // Se o contexto não tiver parques carregados (ex.: testes isolados), carrega sob demanda
+  // Se o contexto não tiver parques carregados (ex.: testes isolados), carrega sob demanda apenas se não estiver carregando
   const parquesFallback = useDados(
-    () => (cemiteriosDisponiveis.length === 0 ? cemiteriosApi.parques() : Promise.resolve([])),
-    [cemiteriosDisponiveis.length]
+    () => (cemiteriosDisponiveis.length === 0 && !isCarregandoCemiterios ? cemiteriosApi.parques() : Promise.resolve([])),
+    [cemiteriosDisponiveis.length, isCarregandoCemiterios]
   );
   const listaParques = cemiteriosDisponiveis.length > 0 ? cemiteriosDisponiveis : (parquesFallback.dados ?? []);
 
@@ -124,9 +125,15 @@ export const InventarioView: React.FC = () => {
     listaParques.find((p) => String(p.id) === String(parqueIdEfetivo)) ??
     null;
 
+  // Evita disparar busca ampla no acervo inteiro sem filtro enquanto o contexto ainda resolve o cemitério ativo
+  const aguardandoCemiterio = isCarregandoCemiterios && !cemiterioAtivoId;
+
   const jazigosQuery = useDados(
-    () =>
-      cemiteriosApi.jazigos({
+    () => {
+      if (aguardandoCemiterio) {
+        return Promise.resolve({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 50 });
+      }
+      return cemiteriosApi.jazigos({
         parque: parqueIdEfetivo ?? undefined,
         setor: filtros.setorId ?? undefined,
         estado: filtros.estado && filtros.estado !== 'todos' ? filtros.estado : undefined,
@@ -138,8 +145,10 @@ export const InventarioView: React.FC = () => {
         q: filtros.busca.trim() || undefined,
         sepultado: filtros.sepultado?.trim() || undefined,
         per_page: 50,
-      }),
+      });
+    },
     [
+      aguardandoCemiterio,
       parqueIdEfetivo,
       filtros.setorId,
       filtros.estado,
@@ -239,7 +248,7 @@ export const InventarioView: React.FC = () => {
     const cols: ColumnDef<Jazigo, unknown>[] = [
       {
         id: 'select',
-        size: 40,
+        size: 38,
         header: () => (
           <input
             type="checkbox"
@@ -290,89 +299,65 @@ export const InventarioView: React.FC = () => {
           exportValue: (r) => r.codigo,
           sortValue: (r) => r.codigo,
         },
-        cell: ({ row }) => (
-          <div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelecionado(row.original);
-              }}
-              className="font-mono font-bold text-primary hover:underline hover:text-primary/80 text-xs inline-flex items-center gap-1.5 cursor-pointer text-left focus:outline-none group"
-              title={`Clique para ver todas as informações do túmulo ${row.original.codigo}`}
-            >
-              <span>{row.original.codigo}</span>
-              <Info className="h-3 w-3 text-muted-foreground/60 group-hover:text-primary transition-colors" />
-            </button>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              {row.original.codigo_legado ? (
-                <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[90px]" title={`Código legado: ${row.original.codigo_legado}`}>
-                  Livro: {row.original.codigo_legado}
+        cell: ({ row }) => {
+          const c = row.original.comprimento_m;
+          const l = row.original.largura_m;
+          const tipoFormatado = row.original.tipo.replace('_', ' ');
+
+          return (
+            <div className="min-w-0 pr-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelecionado(row.original);
+                  }}
+                  className="font-mono font-bold text-primary hover:underline hover:text-primary/80 text-xs inline-flex items-center gap-1 cursor-pointer text-left focus:outline-none group truncate"
+                  title={`Clique para ver todas as informações do túmulo ${row.original.codigo}`}
+                >
+                  <span>{row.original.codigo}</span>
+                  <Info className="h-3 w-3 text-muted-foreground/60 group-hover:text-primary transition-colors shrink-0" />
+                </button>
+                <span className="capitalize text-[10px] px-1 py-0 rounded bg-muted/60 text-muted-foreground font-medium border border-border/40 shrink-0">
+                  {tipoFormatado}
                 </span>
-              ) : null}
-              {row.original.lat && row.original.lng ? (
-                <span className="inline-flex items-center text-[10px] text-emerald-500 gap-0.5" title="Georreferenciado com GPS">
-                  <MapPin className="h-2.5 w-2.5" />
+              </div>
+              <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground font-mono truncate">
+                {row.original.setor?.codigo ? (
+                  <span title={`Setor/Quadra: ${row.original.setor.codigo}`}>
+                    {row.original.setor.codigo}
+                  </span>
+                ) : null}
+                {row.original.codigo_legado ? (
+                  <span className="truncate max-w-[80px]" title={`Código legado: ${row.original.codigo_legado}`}>
+                    · Livro: {row.original.codigo_legado}
+                  </span>
+                ) : null}
+                {c && l ? (
+                  <span title={`Dimensões: ${c} × ${l} m (${(c * l).toFixed(2)} m²)`} className="text-muted-foreground/80 shrink-0">
+                    · {c} × {l} m
+                  </span>
+                ) : null}
+                {row.original.lat && row.original.lng ? (
+                  <span className="inline-flex items-center text-emerald-500 shrink-0 ml-0.5" title="Georreferenciado com GPS">
+                    <MapPin className="h-2.5 w-2.5" />
+                  </span>
+                ) : null}
+              </div>
+              {!parqueIdEfetivo && row.original.cemiterio?.nome ? (
+                <span className="text-[10px] text-muted-foreground/80 block truncate mt-0.5" title={row.original.cemiterio.nome}>
+                  {row.original.cemiterio.nome}
                 </span>
               ) : null}
             </div>
-          </div>
-        ),
-      },
-      {
-        id: 'cemiterio',
-        header: 'Cemitério',
-        size: 160,
-        meta: {
-          exportHeader: 'Cemitério',
-          exportValue: (r) => r.cemiterio?.nome ?? '—',
-          sortValue: (r) => r.cemiterio?.nome ?? '',
+          );
         },
-        cell: ({ row }) => (
-          <div className="truncate max-w-[150px]" title={row.original.cemiterio?.nome}>
-            <span className="text-xs font-medium text-foreground">
-              {row.original.cemiterio?.nome ?? '—'}
-            </span>
-          </div>
-        ),
-      },
-      {
-        id: 'setor',
-        header: 'Setor / Quadra',
-        size: 130,
-        meta: {
-          exportHeader: 'Setor',
-          exportValue: (r) => r.setor?.codigo ?? '—',
-          sortValue: (r) => r.setor?.codigo ?? '',
-        },
-        cell: ({ row }) => (
-          <span title={row.original.setor?.descricao ?? undefined}>
-            <Mono className="text-xs text-muted-foreground">
-              {row.original.setor?.codigo ?? '—'}
-            </Mono>
-          </span>
-        ),
-      },
-      {
-        id: 'tipo',
-        header: 'Tipo',
-        accessorKey: 'tipo',
-        size: 110,
-        meta: {
-          exportHeader: 'Tipo',
-          exportValue: (r) => r.tipo,
-          sortValue: (r) => r.tipo,
-        },
-        cell: ({ row }) => (
-          <span className="capitalize text-xs font-medium text-muted-foreground">
-            {row.original.tipo.replace('_', ' ')}
-          </span>
-        ),
       },
       {
         id: 'titular',
         header: 'Titular / Concessão',
-        size: 180,
+        size: 175,
         meta: {
           exportHeader: 'Titular',
           exportValue: (r) => r.concessoes?.[0]?.concessionario?.nome ?? 'Sem concessão',
@@ -380,7 +365,7 @@ export const InventarioView: React.FC = () => {
         },
         cell: ({ row }) => {
           const concessoes = row.original.concessoes ?? [];
-          const conc = concessoes[0];
+          const conc = concessoes.find((c) => c.situacao === 'vigente') ?? concessoes[0];
           const titular = conc?.concessionario;
           if (!conc || !titular) {
             return (
@@ -389,11 +374,12 @@ export const InventarioView: React.FC = () => {
               </span>
             );
           }
-          const totalConcessoes = concessoes.length;
-          const outrosTitulares = concessoes.slice(1).map((c) => c.concessionario?.nome).filter(Boolean);
+          const concessoesVigentes = concessoes.filter((c) => c.situacao === 'vigente');
+          const totalConcessoes = concessoesVigentes.length;
+          const outrosTitulares = concessoesVigentes.slice(1).map((c) => c.concessionario?.nome).filter(Boolean);
 
           return (
-            <div className="truncate max-w-[185px]">
+            <div className="truncate max-w-[175px]">
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-foreground text-xs block truncate" title={titular.nome}>
                   {titular.nome}
@@ -425,7 +411,7 @@ export const InventarioView: React.FC = () => {
       {
         id: 'ocupacao',
         header: 'Ocupação & Gavetas',
-        size: 170,
+        size: 135,
         meta: {
           exportHeader: 'Ocupação',
           exportValue: (r) => `${r.ocupacao}/${Math.max(r.capacidade || 1, r.ocupacao || 0)}`,
@@ -440,10 +426,10 @@ export const InventarioView: React.FC = () => {
           const livres = Math.max(0, capacidade - ocupacao);
           const pct = Math.min(100, Math.round((ocupacao / capacidade) * 100));
           return (
-            <div className="min-w-[125px]">
+            <div className="min-w-[115px]">
               <div className="flex items-center justify-between text-xs mb-1">
-                <Mono className="tabular-nums font-semibold text-foreground">
-                  {ocupacao} / {capacidade} gavetas
+                <Mono className="tabular-nums font-semibold text-foreground text-xs">
+                  {ocupacao} / {capacidade}
                 </Mono>
                 {ocupacao === 0 ? (
                   <span className="text-[10px] text-emerald-500 font-medium">Livre</span>
@@ -473,8 +459,8 @@ export const InventarioView: React.FC = () => {
       },
       {
         id: 'sepultados',
-        header: 'Sepultados / Inumados',
-        size: 170,
+        header: 'Sepultados',
+        size: 150,
         meta: {
           exportHeader: 'Sepultados',
           exportValue: (r) => r.inumacoes?.map((i) => i.falecido?.nome).filter(Boolean).join(', ') || 'Nenhum',
@@ -486,11 +472,32 @@ export const InventarioView: React.FC = () => {
             return <span className="text-xs text-muted-foreground/60 italic">Nenhum sepultado</span>;
           }
           const maisRecente = inums[0];
+          const nomeBruto = maisRecente.falecido?.nome?.trim() ?? '';
+          const nomeUpper = nomeBruto.toUpperCase();
+          const isSentinela =
+            (maisRecente.falecido as { sem_identificacao?: boolean })?.sem_identificacao ||
+            nomeUpper === 'NAO CONSTA FALECIDO' ||
+            nomeUpper === 'NÃO CONSTA FALECIDO' ||
+            nomeUpper === 'SEM NOME' ||
+            nomeUpper === 'DESCONHECIDO' ||
+            nomeUpper === 'FALECIDO NAO INFORMADO' ||
+            nomeUpper.startsWith('NAO CONSTA') ||
+            nomeUpper.startsWith('NÃO CONSTA');
+
           return (
-            <div className="truncate max-w-[160px]">
-              <span className="text-xs font-medium text-foreground block truncate" title={maisRecente.falecido?.nome}>
-                {maisRecente.falecido?.nome || 'Inumado registrado'}
-              </span>
+            <div className="truncate max-w-[150px]">
+              {isSentinela ? (
+                <span
+                  className="text-[11px] text-muted-foreground/80 italic block truncate"
+                  title="Falecido sem identificação nominal no acervo legado"
+                >
+                  Sem identificação (Histórico)
+                </span>
+              ) : (
+                <span className="text-xs font-medium text-foreground block truncate" title={maisRecente.falecido?.nome}>
+                  {maisRecente.falecido?.nome || 'Inumado registrado'}
+                </span>
+              )}
               <span className="text-[10px] text-muted-foreground block font-mono">
                 {inums.length > 1
                   ? `+${inums.length - 1} outro(s) sepultado(s)`
@@ -503,37 +510,10 @@ export const InventarioView: React.FC = () => {
         },
       },
       {
-        id: 'dim',
-        header: 'Dimensões (m)',
-        size: 130,
-        meta: {
-          exportHeader: 'Dimensões (m)',
-          exportValue: (r) => `${r.comprimento_m ?? '—'} × ${r.largura_m ?? '—'}`,
-          sortValue: (r) => (r.comprimento_m ?? 0) * (r.largura_m ?? 0),
-        },
-        cell: ({ row }) => {
-          const c = row.original.comprimento_m;
-          const l = row.original.largura_m;
-          if (c && l) {
-            return (
-              <div>
-                <Mono className="text-xs text-foreground font-semibold">
-                  {c} × {l} m
-                </Mono>
-                <span className="text-[10px] text-muted-foreground block font-mono">
-                  {(c * l).toFixed(2)} m²
-                </span>
-              </div>
-            );
-          }
-          return <span className="text-xs text-muted-foreground/60">—</span>;
-        },
-      },
-      {
         id: 'estado',
         header: 'Estado',
         accessorKey: 'estado',
-        size: 140,
+        size: 110,
         meta: {
           exportHeader: 'Estado',
           exportValue: (r) => ESTADOS[r.estado]?.rotulo ?? r.estado,
@@ -544,7 +524,7 @@ export const InventarioView: React.FC = () => {
       {
         id: 'alertas',
         header: 'Alertas Regulatórios',
-        size: 160,
+        size: 130,
         meta: {
           exportHeader: 'Alertas Regulatórios',
           exportValue: (r) => {
@@ -573,13 +553,13 @@ export const InventarioView: React.FC = () => {
             );
           }
 
-          return <GrupoAlertasRegulorios alertas={alertas} limite={2} />;
+          return <GrupoAlertasRegulorios alertas={alertas} limite={1} />;
         },
       },
       {
         id: 'acoes',
         header: 'Ações',
-        size: 190,
+        size: 110,
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
             <Button
@@ -591,9 +571,10 @@ export const InventarioView: React.FC = () => {
               }}
               className="h-7 text-xs px-2 gap-1 text-primary border-primary/30 hover:bg-primary/10 font-semibold"
               title={`Abrir informações completas do túmulo ${row.original.codigo}`}
+              aria-label="Ver Túmulo"
             >
               <Eye className="h-3.5 w-3.5" />
-              <span>Ver Túmulo</span>
+              <span>Ver</span>
             </Button>
             <Button
               variant="ghost"
@@ -644,11 +625,8 @@ export const InventarioView: React.FC = () => {
       },
     ];
 
-    if (cemiterioAtivoId) {
-      return cols.filter((c) => c.id !== 'cemiterio');
-    }
     return cols;
-  }, [jazigosFiltrados, selecionadosIds, cemiterioAtivoId, navegarParaMapa]);
+  }, [jazigosFiltrados, selecionadosIds, parqueIdEfetivo, navegarParaMapa]);
 
   const jazigosSelecionados = useMemo(
     () => todosJazigos.filter((j) => selecionadosIds.has(j.id)),
@@ -798,7 +776,6 @@ export const InventarioView: React.FC = () => {
         pageSize={10}
         pageSizeOptions={[10, 25, 50, 100]}
         pageSizeSelector={true}
-        fixedLayout
         onRowClick={setSelecionado}
         emptyText="Nenhum jazigo encontrado para os filtros selecionados."
       />

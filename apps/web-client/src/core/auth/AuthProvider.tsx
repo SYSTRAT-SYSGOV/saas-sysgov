@@ -160,6 +160,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setModules(parsed.modules || []);
         setPermissions(parsed.permissions || []);
         setNavigation(parsed.navigation || []);
+        if (parsed.token && parsed.tenant) {
+          setIsLoading(false);
+        }
       } catch (e) {
         console.error('Erro ao carregar sessão do storage:', e);
         localStorage.removeItem(TOKEN_KEY);

@@ -9,16 +9,24 @@ use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
+use Modules\Cemiterios\Models\Amenidade;
 use Modules\Cemiterios\Models\Cemiterio;
 use Modules\Cemiterios\Models\Concessao;
+use Modules\Cemiterios\Models\ConcessionDocumento;
+use Modules\Cemiterios\Models\ConcessionHerdeiro;
+use Modules\Cemiterios\Models\ConcessionHistorico;
 use Modules\Cemiterios\Models\Empreiteiro;
+use Modules\Cemiterios\Models\HerdeiroSucessao;
 use Modules\Cemiterios\Models\LegadoFalecidoIndice;
 use Modules\Cemiterios\Models\OcupacaoSubLoteLegado;
 use Modules\Cemiterios\Models\OperadorCemiterio;
 use Modules\Cemiterios\Models\ProcessoAbandono;
+use Modules\Cemiterios\Models\ProcessoSucessao;
 use Modules\Cemiterios\Models\SolicitacaoPortal;
 use Modules\Cemiterios\Models\SubLoteLegado;
+use Modules\Cemiterios\Models\SucessaoDocumento;
 use Modules\Cemiterios\Models\Trasladacao;
+use Modules\Cemiterios\Models\Via;
 use Modules\Cemiterios\Models\Vistoria;
 use Modules\Cemiterios\Services\EmpreiteiroService;
 use Modules\Cemiterios\Services\GisService;
@@ -139,6 +147,54 @@ final class TenantIsolationTest extends CemiteriosTestCase
             'tipo_documento' => 'outro',
         ]);
         $sucessao->adicionarHerdeiro($processoSucessao, ['nome' => 'Herdeiro A', 'parentesco' => 'filho']);
+
+        ConcessionDocumento::create([
+            'concession_id' => $concessao->id,
+            'tipo' => 'termo',
+            'arquivo' => 'doc_concessao.pdf',
+            'hash' => hash('sha256', 'dummy1'),
+        ]);
+        ConcessionHerdeiro::create([
+            'concession_id' => $concessao->id,
+            'nome' => 'Herdeiro Direto A',
+            'parentesco' => 'filho',
+            'documento' => '12345678900',
+            'ordem' => 1,
+        ]);
+        ConcessionHistorico::create([
+            'concession_id' => $concessao->id,
+            'de_estado' => 'solicitada',
+            'para_estado' => 'ativa',
+            'motivo' => 'Aprovacao regular',
+            'usuario_id' => null,
+        ]);
+        SucessaoDocumento::create([
+            'sucessao_id' => $processoSucessao->id,
+            'tipo' => \Modules\Cemiterios\Support\TipoDocumentoSucessao::CertidaoObito,
+            'arquivo' => 'certidao_obito.pdf',
+            'hash' => hash('sha256', 'dummy2'),
+        ]);
+
+        $processoLegado = ProcessoSucessao::create([
+            'concession_id' => $concessao->id,
+            'numero_processo' => 'PA-A-LEG',
+            'tipo_documento' => 'outro',
+            'situacao' => 'aberto',
+        ]);
+        HerdeiroSucessao::create([
+            'process_id' => $processoLegado->id,
+            'nome' => 'Herdeiro Legado A',
+            'parentesco' => 'filho',
+        ]);
+
+        $viaGeojson = ['type' => 'LineString', 'coordinates' => Geo::desprojetar([[0, 0], [0, 20]], $ref)];
+        Via::create([
+            'park_id' => $jazigo->park_id, 'via_codigo' => 'AL-A', 'geojson' => $viaGeojson,
+            'min_lng' => min(array_column($viaGeojson['coordinates'], 0)), 'max_lng' => max(array_column($viaGeojson['coordinates'], 0)),
+            'min_lat' => min(array_column($viaGeojson['coordinates'], 1)), 'max_lat' => max(array_column($viaGeojson['coordinates'], 1)),
+        ]);
+        [$amenidadeLng, $amenidadeLat] = Geo::desprojetar([[0, 0]], $ref)[0];
+        Amenidade::create(['park_id' => $jazigo->park_id, 'tipo' => 'portaria', 'lat' => $amenidadeLat, 'lng' => $amenidadeLng]);
 
         OperadorCemiterio::create(['nome' => 'Operador A', 'tipo' => 'coveiro']);
         LegadoFalecidoIndice::create(['park_id' => $jazigo->park_id, 'quadra_legado' => 'LEG-A', 'lote_legado' => 'L-A']);

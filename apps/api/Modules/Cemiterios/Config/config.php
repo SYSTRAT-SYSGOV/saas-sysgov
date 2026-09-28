@@ -31,9 +31,46 @@ return [
         'notificacao_antecedencia_dias' => 30,
         'suspensoes_para_cancelamento' => 2,
         'concessao_temporaria_anos' => 5,
+        'concessao_transferencia_permitida' => false,
+        'concessao_base_legal_transferencia' => null,
+        'concessao_vigencia_manifestacao_dias' => 30,
         'instrucoes_pagamento' => 'Pagamento na tesouraria municipal ou via PIX.',
         'chave_pix' => null,
         'portal_habilitado' => false,
+    ],
+
+    // Sucessão Hereditária (RF-SUCESSAO) — configuração parametrizável por tenant.
+    'sucessao' => [
+        // Ordem de prioridade dos parentescos (padrão: companheiro, filhos, pais, irmãos, etc.)
+        'ordem_prioridade' => [
+            'companheiro',
+            'filho',
+            'pai',
+            'mae',
+            'irmao',
+            'neto',
+            'avo',
+            'tio',
+            'sobrinho',
+            'outro',
+        ],
+        // Prazo de regularização após falecimento (dias)
+        'prazo_regularizacao_dias' => 120,
+        // Documentos obrigatórios por via de sucessão
+        'documentos_por_via' => [
+            'inventario_judicial' => ['certidao_obito', 'inventario', 'formal_partilha', 'alvara'],
+            'inventario_extrajudicial' => ['certidao_obito', 'escritura'],
+            'alvara_judicial' => ['certidao_obito', 'alvara'],
+            'arrolamento' => ['certidao_obito', 'outro', 'alvara'],
+        ],
+        // Habilita direito de representação (herdeiro pré-morto)
+        'direito_representacao_habilitado' => true,
+        // Base legal municipal
+        'base_legal' => '[LEI/DECRETO MUNICIPAL DE SUCESSÃO DE JAZIGOS — CONFIRMAR]',
+        // Retenção de documentos (dias) - padrão 10 anos
+        'retencao_documentos_dias' => 3650,
+        // Dias de antecedência para notificações de prazo
+        'notificacao_antecedencia_dias' => [30, 7, 1],
     ],
 
     // Mapa base (D4). Provedor configurável por ambiente; a chave nunca vem do usuário.

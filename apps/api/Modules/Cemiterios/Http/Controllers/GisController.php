@@ -11,13 +11,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Modules\Cemiterios\Http\Controllers\Concerns\AutorizaPermissao;
+use Modules\Cemiterios\Models\Amenidade;
+use Modules\Cemiterios\Models\Cemiterio;
 use Modules\Cemiterios\Models\Concessao;
 use Modules\Cemiterios\Models\Concessionario;
 use Modules\Cemiterios\Models\Falecido;
 use Modules\Cemiterios\Models\Inumacao;
 use Modules\Cemiterios\Models\Jazigo;
 use Modules\Cemiterios\Models\Setor;
+use Modules\Cemiterios\Models\Via;
 use Modules\Cemiterios\Services\GisService;
+use Modules\Cemiterios\Services\RotaService;
 use Modules\Cemiterios\Support\Documento;
 
 /** Mapa, geometrias, grade e busca unificada (spec: gis; RF-15..RF-18). */
@@ -26,9 +30,11 @@ final class GisController extends Controller
     use AutorizaPermissao;
 
     private const CAMADAS = ['parques' => 'parque', 'setores' => 'setor', 'jazigos' => 'jazigo'];
+    private const CAMADAS_NECROPOLE = ['vias' => 'via', 'amenidades' => 'amenidade'];
 
     public function __construct(
         private readonly GisService $gis,
+        private readonly RotaService $rotas,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -37,13 +43,19 @@ final class GisController extends Controller
         $this->autorizar($request, 'cemiterios.view');
 
         $dados = $request->validate([
-            'camada' => ['required', Rule::in(array_keys(self::CAMADAS))],
+            'camada' => ['required', Rule::in([...array_keys(self::CAMADAS), ...array_keys(self::CAMADAS_NECROPOLE)])],
             'bbox' => ['required', 'string', 'regex:/^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$/'],
+            'park_id' => ['required_if:camada,vias,amenidades', 'integer'],
+            'zoom' => ['nullable', 'integer', 'min:1', 'max:22'],
         ]);
         $bbox = array_map('floatval', explode(',', $dados['bbox']));
         abort_if($bbox[0] > $bbox[2] || $bbox[1] > $bbox[3], 422, 'bbox deve ser minLng,minLat,maxLng,maxLat.');
 
-        return response()->json($this->gis->camada(self::CAMADAS[$dados['camada']], $bbox));
+        if (isset(self::CAMADAS_NECROPOLE[$dados['camada']])) {
+            return response()->json($this->gis->camadaNecropole(self::CAMADAS_NECROPOLE[$dados['camada']], (int) $dados['park_id'], $bbox));
+        }
+
+        return response()->json($this->gis->camada(self::CAMADAS[$dados['camada']], $bbox, isset($dados['zoom']) ? (int) $dados['zoom'] : null));
     }
 
     public function salvarGeometria(Request $request, string $tipo, int $id): JsonResponse
@@ -85,6 +97,121 @@ final class GisController extends Controller
         $this->audit->record('cemiterios', 'gis.grade.gerada', "Setor #{$id}", null, $resultado);
 
         return response()->json($resultado, 201);
+    }
+
+    /** Roteirização real portaria→jazigo com fallback (spec: mapa-gis › roteirização; design.md). */
+    public function rotas(Request $request): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.view');
+
+        $d = $request->validate([
+            'park_id' => ['required', 'integer'],
+            'origem_lat' => ['required', 'numeric', 'between:-90,90'],
+            'origem_lng' => ['required', 'numeric', 'between:-180,180'],
+            'destino_lat' => ['required', 'numeric', 'between:-90,90'],
+            'destino_lng' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+        Cemiterio::findOrFail($d['park_id']);
+
+        return response()->json($this->rotas->calcular(
+            (int) $d['park_id'],
+            (float) $d['origem_lat'], (float) $d['origem_lng'],
+            (float) $d['destino_lat'], (float) $d['destino_lng'],
+        ));
+    }
+
+    public function storeVia(Request $request): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.gis.edit');
+        $d = $this->validarVia($request);
+        $via = $this->gis->salvarVia(null, (int) $d['park_id'], $d['via_codigo'], $d['geojson']);
+        $this->audit->record('cemiterios', 'gis.via.criada', "Via #{$via->id}", null, $via->toArray());
+
+        return response()->json($via, 201);
+    }
+
+    public function updateVia(Request $request, int $id): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.gis.edit');
+        $via = Via::findOrFail($id);
+        $antes = $via->toArray();
+        $d = $this->validarVia($request);
+        $via = $this->gis->salvarVia($via, (int) $d['park_id'], $d['via_codigo'], $d['geojson']);
+        $this->audit->record('cemiterios', 'gis.via.atualizada', "Via #{$id}", $antes, $via->toArray());
+
+        return response()->json($via);
+    }
+
+    public function destroyVia(Request $request, int $id): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.gis.edit');
+        $via = Via::findOrFail($id);
+        $antes = $via->toArray();
+        $this->gis->excluirVia($via);
+        $this->audit->record('cemiterios', 'gis.via.excluida', "Via #{$id}", $antes, null);
+
+        return response()->json(null, 204);
+    }
+
+    public function storeAmenidade(Request $request): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.gis.edit');
+        $d = $this->validarAmenidade($request);
+        $amenidade = $this->gis->salvarAmenidade(null, (int) $d['park_id'], $d['tipo'], $d['rotulo'] ?? null, (float) $d['lat'], (float) $d['lng']);
+        $this->audit->record('cemiterios', 'gis.amenidade.criada', "Amenidade #{$amenidade->id}", null, $amenidade->toArray());
+
+        return response()->json($amenidade, 201);
+    }
+
+    public function updateAmenidade(Request $request, int $id): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.gis.edit');
+        $amenidade = Amenidade::findOrFail($id);
+        $antes = $amenidade->toArray();
+        $d = $this->validarAmenidade($request);
+        $amenidade = $this->gis->salvarAmenidade($amenidade, (int) $d['park_id'], $d['tipo'], $d['rotulo'] ?? null, (float) $d['lat'], (float) $d['lng']);
+        $this->audit->record('cemiterios', 'gis.amenidade.atualizada', "Amenidade #{$id}", $antes, $amenidade->toArray());
+
+        return response()->json($amenidade);
+    }
+
+    public function destroyAmenidade(Request $request, int $id): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.gis.edit');
+        $amenidade = Amenidade::findOrFail($id);
+        $antes = $amenidade->toArray();
+        $this->gis->excluirAmenidade($amenidade);
+        $this->audit->record('cemiterios', 'gis.amenidade.excluida', "Amenidade #{$id}", $antes, null);
+
+        return response()->json(null, 204);
+    }
+
+    /** @return array{park_id: int, via_codigo: string, geojson: array<string, mixed>} */
+    private function validarVia(Request $request): array
+    {
+        $d = $request->validate([
+            'park_id' => ['required', 'integer'],
+            'via_codigo' => ['required', 'string', 'max:20'],
+            'geojson' => ['required', 'array'],
+            'geojson.type' => ['required', 'in:LineString'],
+            'geojson.coordinates' => ['required', 'array', 'min:2'],
+        ]);
+
+        return $d;
+    }
+
+    /** @return array{park_id: int, tipo: string, rotulo: string|null, lat: float, lng: float} */
+    private function validarAmenidade(Request $request): array
+    {
+        $d = $request->validate([
+            'park_id' => ['required', 'integer'],
+            'tipo' => ['required', Rule::in(Amenidade::TIPOS)],
+            'rotulo' => ['nullable', 'string', 'max:60'],
+            'lat' => ['required', 'numeric', 'between:-90,90'],
+            'lng' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        return $d;
     }
 
     public function sessaoMapaBase(Request $request): JsonResponse

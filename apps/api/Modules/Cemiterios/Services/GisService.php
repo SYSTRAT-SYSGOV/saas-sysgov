@@ -8,10 +8,12 @@ use App\Support\TenantContext;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Modules\Cemiterios\Models\Amenidade;
 use Modules\Cemiterios\Models\Cemiterio;
 use Modules\Cemiterios\Models\Geometria;
 use Modules\Cemiterios\Models\Jazigo;
 use Modules\Cemiterios\Models\Setor;
+use Modules\Cemiterios\Models\Via;
 use Modules\Cemiterios\Support\Documento;
 use Modules\Cemiterios\Support\Geo;
 use Modules\Cemiterios\Support\RegraNegocioException;
@@ -28,6 +30,7 @@ final readonly class GisService
     public function __construct(
         private ParametroService $parametros,
         private TenantContext $tenant,
+        private RotaService $rotas,
     ) {}
 
     /** @param array<string, mixed> $geojson */
@@ -158,28 +161,37 @@ final readonly class GisService
     }
 
     /**
-     * Feições da camada que intersectam a caixa [minLng, minLat, maxLng, maxLat] (RF-15, RNF-07).
+     * Feições da camada que intersectam a caixa [minLng, minLat, maxLng, maxLat] (RF-15, RNF-07). Em zoom
+     * baixo (`$zoom` informado, só MySQL), a geometria vem simplificada (`ST_Simplify`) — a linha
+     * armazenada nunca é alterada, só a resposta para zooms distantes onde o detalhe não é visível.
      *
      * @param array{0: float, 1: float, 2: float, 3: float} $bbox
      * @return array{type: string, features: list<array<string, mixed>>}
      */
-    public function camada(string $tipo, array $bbox): array
+    public function camada(string $tipo, array $bbox, ?int $zoom = null): array
     {
         $tenant = $this->tenant->id();
-        $chave = sprintf('cemiterios:gis:%d:v%d:%s:%s', $tenant, (int) Cache::get("cemiterios:gis:{$tenant}:versao", 0), $tipo, implode(',', array_map(fn ($c) => round($c, 6), $bbox)));
+        $tolerancia = $this->toleranciaSimplificacao($zoom);
+        $chave = sprintf('cemiterios:gis:%d:v%d:%s:%s:%s', $tenant, (int) Cache::get("cemiterios:gis:{$tenant}:versao", 0), $tipo, implode(',', array_map(fn ($c) => round($c, 6), $bbox)), $tolerancia ?? 'exata');
 
-        return Cache::remember($chave, 600, function () use ($tipo, $bbox): array {
+        return Cache::remember($chave, 600, function () use ($tipo, $bbox, $tolerancia): array {
             [$minLng, $minLat, $maxLng, $maxLat] = $bbox;
             $consulta = Geometria::where('geometriavel_type', $tipo)
                 ->where('min_lng', '<=', $maxLng)->where('max_lng', '>=', $minLng)
                 ->where('min_lat', '<=', $maxLat)->where('max_lat', '>=', $minLat);
 
+            $simplificar = $tolerancia !== null && DB::getDriverName() === 'mysql';
             if (DB::getDriverName() === 'mysql') {
                 $wkt = sprintf('POLYGON((%1$F %2$F,%3$F %2$F,%3$F %4$F,%1$F %4$F,%1$F %2$F))', $minLng, $minLat, $maxLng, $maxLat);
                 $consulta->whereRaw("MBRIntersects(geom, ST_GeomFromText(?, 4326, 'axis-order=long-lat'))", [$wkt]);
             }
+            if ($simplificar) {
+                $consulta->selectRaw('geometriavel_id, ST_AsGeoJSON(ST_Simplify(geom, ?)) as geojson_simplificado', [$tolerancia]);
+            } else {
+                $consulta->select(['geometriavel_id', 'geojson']);
+            }
 
-            $geometrias = $consulta->limit(self::LIMITE_FEICOES)->get(['geometriavel_id', 'geojson']);
+            $geometrias = $consulta->limit(self::LIMITE_FEICOES)->get();
             $donos = (Geometria::TIPOS[$tipo])::whereIn('id', $geometrias->pluck('geometriavel_id'))->get()->keyBy('id');
 
             return [
@@ -187,11 +199,108 @@ final readonly class GisService
                 'features' => $geometrias->filter(fn ($g) => $donos->has($g->geometriavel_id))->map(fn (Geometria $g) => [
                     'type' => 'Feature',
                     'id' => "{$tipo}-{$g->geometriavel_id}",
-                    'geometry' => $g->geojson,
+                    'geometry' => $simplificar ? json_decode((string) $g->geojson_simplificado, true) : $g->geojson,
                     'properties' => $this->propriedades($tipo, $donos[$g->geometriavel_id]),
                 ])->values()->all(),
             ];
         });
+    }
+
+    /**
+     * Camada de vias ou equipamentos de uma necrópole, recortada por bbox (spec: mapa-gis › vias e
+     * equipamentos). Isolada por `park_id` (não só por bbox, como as demais camadas), pois vias e
+     * equipamentos de necrópoles vizinhas podem estar geograficamente próximos.
+     *
+     * @param array{0: float, 1: float, 2: float, 3: float} $bbox
+     * @return array{type: string, features: list<array<string, mixed>>}
+     */
+    public function camadaNecropole(string $tipo, int $parkId, array $bbox): array
+    {
+        $tenant = $this->tenant->id();
+        $chave = sprintf('cemiterios:gis:%d:v%d:%s:%d:%s', $tenant, (int) Cache::get("cemiterios:gis:{$tenant}:versao", 0), $tipo, $parkId, implode(',', array_map(fn ($c) => round($c, 6), $bbox)));
+
+        return Cache::remember($chave, 600, function () use ($tipo, $parkId, $bbox): array {
+            [$minLng, $minLat, $maxLng, $maxLat] = $bbox;
+
+            if ($tipo === 'via') {
+                $vias = Via::where('park_id', $parkId)
+                    ->where('min_lng', '<=', $maxLng)->where('max_lng', '>=', $minLng)
+                    ->where('min_lat', '<=', $maxLat)->where('max_lat', '>=', $minLat)
+                    ->limit(self::LIMITE_FEICOES)->get();
+
+                return [
+                    'type' => 'FeatureCollection',
+                    'features' => $vias->map(fn (Via $v) => [
+                        'type' => 'Feature', 'id' => "via-{$v->id}", 'geometry' => $v->geojson,
+                        'properties' => ['id' => $v->id, 'via_codigo' => $v->via_codigo],
+                    ])->all(),
+                ];
+            }
+
+            $amenidades = Amenidade::where('park_id', $parkId)
+                ->whereBetween('lng', [$minLng, $maxLng])->whereBetween('lat', [$minLat, $maxLat])
+                ->limit(self::LIMITE_FEICOES)->get();
+
+            return [
+                'type' => 'FeatureCollection',
+                'features' => $amenidades->map(fn (Amenidade $a) => [
+                    'type' => 'Feature', 'id' => "amenidade-{$a->id}",
+                    'geometry' => ['type' => 'Point', 'coordinates' => [$a->lng, $a->lat]],
+                    'properties' => ['id' => $a->id, 'tipo' => $a->tipo, 'rotulo' => $a->rotulo],
+                ])->all(),
+            ];
+        });
+    }
+
+    /** @param array<string, mixed> $geojson LineString */
+    public function salvarVia(?Via $via, int $parkId, string $viaCodigo, array $geojson): Via
+    {
+        $pontos = $geojson['coordinates'] ?? [];
+        abort_if(count($pontos) < 2, 422, 'Via precisa de ao menos dois pontos.');
+
+        $valores = [
+            'park_id' => $parkId,
+            'via_codigo' => $viaCodigo,
+            'geojson' => $geojson,
+            'min_lng' => min(array_column($pontos, 0)), 'max_lng' => max(array_column($pontos, 0)),
+            'min_lat' => min(array_column($pontos, 1)), 'max_lat' => max(array_column($pontos, 1)),
+        ];
+        $via = $via ? tap($via)->update($valores) : Via::create($valores);
+        if (DB::getDriverName() === 'mysql') {
+            $via->update(['geom' => DB::raw("ST_GeomFromGeoJSON('" . json_encode($geojson) . "', 1, 4326)")]);
+        }
+
+        self::invalidar($this->tenant->id());
+        $this->rotas->invalidarGrafo($parkId);
+
+        return $via->refresh();
+    }
+
+    public function excluirVia(Via $via): void
+    {
+        $parkId = $via->park_id;
+        $via->delete();
+        self::invalidar($this->tenant->id());
+        $this->rotas->invalidarGrafo($parkId);
+    }
+
+    public function salvarAmenidade(?Amenidade $amenidade, int $parkId, string $tipo, ?string $rotulo, float $lat, float $lng): Amenidade
+    {
+        $valores = ['park_id' => $parkId, 'tipo' => $tipo, 'rotulo' => $rotulo, 'lat' => $lat, 'lng' => $lng];
+        $amenidade = $amenidade ? tap($amenidade)->update($valores) : Amenidade::create($valores);
+        if (DB::getDriverName() === 'mysql') {
+            $amenidade->update(['geom' => DB::raw(sprintf("ST_GeomFromText('POINT(%F %F)', 4326, 'axis-order=long-lat')", $lng, $lat))]);
+        }
+
+        self::invalidar($this->tenant->id());
+
+        return $amenidade->refresh();
+    }
+
+    public function excluirAmenidade(Amenidade $amenidade): void
+    {
+        $amenidade->delete();
+        self::invalidar($this->tenant->id());
     }
 
     /**
@@ -279,7 +388,7 @@ final readonly class GisService
         $jazigos = Jazigo::where('park_id', $parkId)
             ->with([
                 'setor:id,codigo,tipo_zona',
-                'concessoes' => fn ($q) => $q->where('situacao', 'vigente')->with('concessionario:id,nome,documento'),
+                'concessoes' => fn ($q) => $q->vigentes()->with('concessionario:id,nome,documento'),
                 'inumacoes' => fn ($q) => $q->whereNull('data_exumacao')->with('falecido:id,nome,data_sepultamento'),
             ])
             ->get();
@@ -484,6 +593,25 @@ final readonly class GisService
     {
         $chave = "cemiterios:gis:{$tenantId}:versao";
         Cache::forever($chave, (int) Cache::get($chave, 0) + 1);
+    }
+
+    /**
+     * Tolerância de `ST_Simplify` em graus, por faixa de zoom. Heurística fixa (não calibrada por
+     * medição real de cada município).
+     * ponytail: valores de tolerância por zoom são um chute razoável, calibrar com dado real se algum
+     * município reportar geometria distorcida ou performance insuficiente em zoom baixo.
+     */
+    private function toleranciaSimplificacao(?int $zoom): ?float
+    {
+        if ($zoom === null || $zoom >= 19) {
+            return null;
+        }
+
+        return match (true) {
+            $zoom >= 17 => 0.0000005,
+            $zoom >= 15 => 0.000005,
+            default => 0.00005,
+        };
     }
 
     private function geometria(string $tipo, int $id): ?Geometria
