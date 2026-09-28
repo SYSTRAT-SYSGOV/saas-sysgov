@@ -74,8 +74,8 @@ final class JazigoController extends Controller
             })
             ->when($request->query('concessao_status'), function ($q, $v) {
                 match ($v) {
-                    'com_concessao' => $q->whereHas('concessoes', fn ($c) => $c->vigentes()),
-                    'sem_concessao' => $q->whereDoesntHave('concessoes', fn ($c) => $c->vigentes()),
+                    'com_concessao' => $q->whereHas('concessoes', fn ($c) => $c->whereIn('estado', Concessao::ESTADOS_VIGENTES)),
+                    'sem_concessao' => $q->whereDoesntHave('concessoes', fn ($c) => $c->whereIn('estado', Concessao::ESTADOS_VIGENTES)),
                     'vencida' => $q->whereHas('concessoes', fn ($c) => $c->where('estado', 'Vencida')->orWhere(fn ($sub) => $sub->whereNotNull('data_fim')->whereDate('data_fim', '<', today()))),
                     'sucessao' => $q->whereHas('concessoes.processosSucessao', fn ($ps) => $ps->whereIn('situacao', ['aberto', 'em_analise', 'em_processamento'])),
                     default => null,

@@ -39,7 +39,8 @@ final class SucessaoDashboardController extends Controller
 
         return response()->json([
             'resumo' => $resumo,
-            'processos' => $processos->map(function ($p) {
+            'processos' => $processos->toBase()->map(function ($p) {
+                /** @var Sucessao $p */
                 return [
                     'id' => $p->id,
                     'processo_referencia' => $p->processo_referencia,

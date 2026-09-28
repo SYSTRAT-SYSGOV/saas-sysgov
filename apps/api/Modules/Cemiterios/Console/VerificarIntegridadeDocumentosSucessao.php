@@ -24,7 +24,7 @@ final class VerificarIntegridadeDocumentosSucessao extends Command
         PorTenant::executar(function ($tenant) use ($documentoService, &$corrompidos) {
             $documentos = SucessaoDocumento::where('tenant_id', $tenant->id)
                 ->whereNull('deleted_at')
-                ->chunkById(100, function ($docs) use ($documentoService, &$corrompidos) {
+                ->chunkById(100, function ($docs) use ($documentoService, &$corrompidos, $tenant) {
                     foreach ($docs as $documento) {
                         if (!$documentoService->verificarHash($documento)) {
                             $corrompidos++;

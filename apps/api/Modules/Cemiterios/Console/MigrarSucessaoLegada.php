@@ -31,7 +31,7 @@ final class MigrarSucessaoLegada extends Command
         $query = ProcessoSucessao::query();
 
         if ($tenantSlug) {
-            $tenant = \Modules\Cemiterios\Models\Tenant::where('slug', $tenantSlug)->firstOrFail();
+            $tenant = \App\Models\Tenant::where('slug', $tenantSlug)->firstOrFail();
             $query->where('tenant_id', $tenant->id);
         }
 

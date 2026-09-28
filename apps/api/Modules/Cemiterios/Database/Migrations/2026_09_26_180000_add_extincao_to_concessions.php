@@ -12,10 +12,15 @@ return new class extends Migration
     {
         Schema::table('concessions', function (Blueprint $table): void {
             if (!Schema::hasColumn('concessions', 'motivo_extincao')) {
-                $table->string('motivo_extincao', 20)->nullable()->after('estado'); // renuncia | abandono
+                $col = $table->string('motivo_extincao', 20)->nullable(); // renuncia | abandono
+                if (Schema::hasColumn('concessions', 'estado')) {
+                    $col->after('estado');
+                } elseif (Schema::hasColumn('concessions', 'situacao')) {
+                    $col->after('situacao');
+                }
             }
             if (!Schema::hasColumn('concessions', 'extinta_em')) {
-                $table->date('extinta_em')->nullable()->after('motivo_extincao');
+                $table->date('extinta_em')->nullable();
             }
         });
     }

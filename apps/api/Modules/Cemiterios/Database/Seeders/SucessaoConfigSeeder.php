@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\Cemiterios\Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Modules\Cemiterios\Models\Tenant;
+use App\Models\Tenant;
 
 final class SucessaoConfigSeeder extends Seeder
 {

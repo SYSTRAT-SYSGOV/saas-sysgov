@@ -2791,6 +2791,180 @@ parameters:
 			path: Modules/Cemiterios/Console/MigrarClipperCommand.php
 
 		-
+			message: '#^Call to an undefined method App\\Models\\Tenant\:\:config\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/Cemiterios/Database/Seeders/SucessaoConfigSeeder.php
+
+		-
+			message: '#^Access to constant ESTADOS_VIGENTES on an unknown class Modules\\Cemiterios\\Http\\Controllers\\Concessao\.$#'
+			identifier: class.notFound
+			count: 2
+			path: Modules/Cemiterios/Http/Controllers/JazigoController.php
+
+		-
+			message: '#^Call to an undefined method Modules\\Cemiterios\\Services\\SucessaoService\:\:deferir\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/ProcessoSucessaoController.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\SucessaoService\:\:indeferir\(\) invoked with 3 parameters, 2 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/ProcessoSucessaoController.php
+
+		-
+			message: '#^Parameter \#1 \$sucessao of method Modules\\Cemiterios\\Services\\SucessaoService\:\:adicionarHerdeiro\(\) expects Modules\\Cemiterios\\Models\\Sucessao, Modules\\Cemiterios\\Models\\ProcessoSucessao given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/ProcessoSucessaoController.php
+
+		-
+			message: '#^Parameter \#1 \$sucessao of method Modules\\Cemiterios\\Services\\SucessaoService\:\:indeferir\(\) expects Modules\\Cemiterios\\Models\\Sucessao, Modules\\Cemiterios\\Models\\ProcessoSucessao given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/ProcessoSucessaoController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$concessao\.$#'
+			identifier: property.notFound
+			count: 6
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$data_falecimento\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$documentos\.$#'
+			identifier: property.notFound
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$estado\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$herdeiros\.$#'
+			identifier: property.notFound
+			count: 3
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$processo_referencia\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$titularFalecido\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$via\.$#'
+			identifier: property.notFound
+			count: 2
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Http\\Controllers\\SucessaoDashboardController\:\:getDocumentosPendentes\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$sucessao of method Modules\\Cemiterios\\Http\\Controllers\\SucessaoDashboardController\:\:getDocumentosPendentes\(\) expects Modules\\Cemiterios\\Models\\Sucessao, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/SucessaoDocumentoController.php
+
+		-
+			message: '#^Parameter \#1 \$request of method Modules\\Cemiterios\\Http\\Controllers\\SucessaoHerdeiroController\:\:autorizar\(\) expects Illuminate\\Http\\Request, Modules\\Cemiterios\\Http\\Controllers\\Request given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/SucessaoHerdeiroController.php
+
+		-
+			message: '#^Parameter \$request of method Modules\\Cemiterios\\Http\\Controllers\\SucessaoHerdeiroController\:\:destroy\(\) has invalid type Modules\\Cemiterios\\Http\\Controllers\\Request\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Http/Controllers/SucessaoHerdeiroController.php
+
+		-
+			message: '#^Call to static method whereHas\(\) on an unknown class Modules\\Cemiterios\\Models\\User\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Listeners/SucessaoEventListener.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Listeners\\SucessaoEventListener\:\:handleConcluida\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Listeners/SucessaoEventListener.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Listeners\\SucessaoEventListener\:\:handleIntegrityFailed\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Listeners/SucessaoEventListener.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Listeners\\SucessaoEventListener\:\:handlePrazoProximo\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Listeners/SucessaoEventListener.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Listeners\\SucessaoEventListener\:\:handlePrazoVencido\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Listeners/SucessaoEventListener.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Listeners\\SucessaoEventListener\:\:handleTransicao\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Listeners/SucessaoEventListener.php
+
+		-
 			message: '#^Right side of && is always true\.$#'
 			identifier: booleanAnd.rightAlwaysTrue
 			count: 1
@@ -2813,6 +2987,348 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: Modules/Cemiterios/Models/OperadorCemiterio.php
+
+		-
+			message: '#^Instanceof between Modules\\Cemiterios\\Support\\Parentesco and Modules\\Cemiterios\\Support\\Parentesco will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 3
+			path: Modules/Cemiterios/Services/CadeiaSucessoriaService.php
+
+		-
+			message: '#^Offset ''direito…'' on array\{direito_representacao\: bool, herdeiro_representado_id\?\: int\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/CadeiaSucessoriaService.php
+
+		-
+			message: '#^Offset ''parentesco'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: Modules/Cemiterios/Services/CadeiaSucessoriaService.php
+
+		-
+			message: '#^Offset ''titular_indicado'' on array\{titular_indicado\: bool\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/CadeiaSucessoriaService.php
+
+		-
+			message: '#^Access to property \$id on an unknown class Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Anonymous function has invalid return type Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 2
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Anonymous function has invalid return type Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 2
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to method concessao\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to method delete\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to method delete\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to method refresh\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to method refresh\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to method update\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to method update\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 2
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to static method create\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to static method create\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 2
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to static method find\(\) on an unknown class Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Call to static method find\(\) on an unknown class Modules\\Cemiterios\\Services\\Concessionario\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:adicionarHerdeiro\(\) has invalid return type Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:adicionarHerdeiro\(\) has parameter \$herdeiroDados with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:atualizarDocumento\(\) has invalid return type Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:atualizarDocumento\(\) has parameter \$dados with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:atualizarHerdeiro\(\) has invalid return type Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:atualizarHerdeiro\(\) has parameter \$dados with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:getDocumento\(\) has invalid return type Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:listarDocumentos\(\) has invalid return type Modules\\Cemiterios\\Services\\Illuminate\\Database\\Eloquent\\Collection\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:listarDocumentos\(\) should return Modules\\Cemiterios\\Services\\Illuminate\\Database\\Eloquent\\Collection but returns Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Cemiterios\\Models\\ConcessionDocumento\>\.$#'
+			identifier: return.type
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:listarHerdeiros\(\) has invalid return type Modules\\Cemiterios\\Services\\Illuminate\\Database\\Eloquent\\Collection\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:listarHerdeiros\(\) should return Modules\\Cemiterios\\Services\\Illuminate\\Database\\Eloquent\\Collection but returns Illuminate\\Database\\Eloquent\\Collection\<int, Modules\\Cemiterios\\Models\\ConcessionHerdeiro\>\.$#'
+			identifier: return.type
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:suceder\(\) has parameter \$herdeirosData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\ConcessaoService\:\:uploadDocumento\(\) has invalid return type Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Parameter \$documento of method Modules\\Cemiterios\\Services\\ConcessaoService\:\:atualizarDocumento\(\) has invalid type Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Parameter \$documento of method Modules\\Cemiterios\\Services\\ConcessaoService\:\:excluirDocumento\(\) has invalid type Modules\\Cemiterios\\Services\\ConcessionDocumento\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Parameter \$herdeiro of method Modules\\Cemiterios\\Services\\ConcessaoService\:\:atualizarHerdeiro\(\) has invalid type Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Parameter \$herdeiro of method Modules\\Cemiterios\\Services\\ConcessaoService\:\:definirTitularIndicado\(\) has invalid type Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^Parameter \$herdeiro of method Modules\\Cemiterios\\Services\\ConcessaoService\:\:removerHerdeiro\(\) has invalid type Modules\\Cemiterios\\Services\\ConcessionHerdeiro\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/ConcessaoService.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$via with type Modules\\Cemiterios\\Support\\TipoDocumentoSucessao\|string is not subtype of native type string\.$#'
+			identifier: parameter.phpDocType
+			count: 1
+			path: Modules/Cemiterios/Services/DocumentoSucessaoService.php
+
+		-
+			message: '#^Offset ''base_legal'' on array\{ordem_prioridade\: list\<string\>, prazo_regularizacao_dias\: int, documentos_por_via\: array\<string, list\<string\>\>, direito_representacao_habilitado\: bool, base_legal\: string, retencao_documentos_dias\: int, notificacao_antecedencia_dias\: list\<int\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoConfigService.php
+
+		-
+			message: '#^Offset ''direito…'' on array\{ordem_prioridade\: list\<string\>, prazo_regularizacao_dias\: int, documentos_por_via\: array\<string, list\<string\>\>, direito_representacao_habilitado\: bool, base_legal\: string, retencao_documentos_dias\: int, notificacao_antecedencia_dias\: list\<int\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoConfigService.php
+
+		-
+			message: '#^Offset ''notificacao…'' on array\{ordem_prioridade\: list\<string\>, prazo_regularizacao_dias\: int, documentos_por_via\: array\<string, list\<string\>\>, direito_representacao_habilitado\: bool, base_legal\: string, retencao_documentos_dias\: int, notificacao_antecedencia_dias\: list\<int\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoConfigService.php
+
+		-
+			message: '#^Offset ''prazo_regularizacao…'' on array\{ordem_prioridade\: list\<string\>, prazo_regularizacao_dias\: int, documentos_por_via\: array\<string, list\<string\>\>, direito_representacao_habilitado\: bool, base_legal\: string, retencao_documentos_dias\: int, notificacao_antecedencia_dias\: list\<int\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoConfigService.php
+
+		-
+			message: '#^Offset ''retencao_documentos…'' on array\{ordem_prioridade\: list\<string\>, prazo_regularizacao_dias\: int, documentos_por_via\: array\<string, list\<string\>\>, direito_representacao_habilitado\: bool, base_legal\: string, retencao_documentos_dias\: int, notificacao_antecedencia_dias\: list\<int\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoConfigService.php
+
+		-
+			message: '#^Anonymous function should return Illuminate\\Database\\Eloquent\\Collection&Illuminate\\Support\\Collection\<int, Modules\\Cemiterios\\Models\\SucessaoHerdeiro\> but returns Illuminate\\Support\\Collection\<int, Modules\\Cemiterios\\Models\\SucessaoHerdeiro\>\.$#'
+			identifier: return.type
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Call to static method tryFrom\(\) on an unknown class Modules\\Cemiterios\\Services\\TipoDocumentoSucessao\.$#'
+			identifier: class.notFound
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\SucessaoService\:\:adicionarHerdeiro\(\) has parameter \$dados with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\SucessaoService\:\:atualizarDados\(\) has parameter \$dados with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\SucessaoService\:\:getPendentes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\SucessaoService\:\:getRegularizacao\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\SucessaoService\:\:uploadDocumento\(\) has parameter \$arquivo with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\SucessaoService\:\:upsertHerdeiros\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Offset ''tipo_documento'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Offset ''via'' on array\{concession_id\: int, park_id\?\: int\|null, plot_id\?\: int\|null, via\: Modules\\Cemiterios\\Support\\ViaSucessao\|string, requerente_id\?\: int\|null, titular_falecido_id\?\: int\|null, data_falecimento\?\: string\|null, processo_referencia\?\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 6
+			path: Modules/Cemiterios/Services/SucessaoService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoStateMachine.php
+
+		-
+			message: '#^Method Modules\\Cemiterios\\Services\\SucessaoStateMachine\:\:formatarMotivo\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoStateMachine.php
+
+		-
+			message: '#^Offset ''aguardando…''\|''arquivada''\|''em_analise''\|''indeferida''\|''solicitada''\|''sucedida''\|''validada'' on array\{solicitada\: array\{''em_analise''\}, em_analise\: array\{''aguardando…'', ''validada'', ''indeferida''\}, aguardando_documentos\: array\{''em_analise'', ''arquivada''\}, validada\: array\{''sucedida'', ''indeferida''\}, indeferida\: array\{''arquivada''\}, sucedida\: array\{\}, arquivada\: array\{\}\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: Modules/Cemiterios/Services/SucessaoStateMachine.php
+
+		-
+			message: '#^Parameter \#1 \$dados of method Modules\\Cemiterios\\Services\\SucessaoService\:\:abrirProcesso\(\) expects array\{concession_id\: int, park_id\?\: int\|null, plot_id\?\: int\|null, via\: Modules\\Cemiterios\\Support\\ViaSucessao\|string, requerente_id\?\: int\|null, titular_falecido_id\?\: int\|null, data_falecimento\?\: string\|null, processo_referencia\?\: string\|null\}, array\{concession_id\: int, numero_processo\: ''PA\-A\-01'', tipo_documento\: ''outro''\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Modules/Cemiterios/Tests/Feature/TenantIsolationTest.php
 
 		-
 			message: '#^Generic type Illuminate\\Database\\Eloquent\\Relations\\HasMany\<Modules\\Client\\Models\\ClientMenuItem\> in PHPDoc tag @return does not specify all template types of class Illuminate\\Database\\Eloquent\\Relations\\HasMany\: TRelatedModel, TDeclaringModel$#'
