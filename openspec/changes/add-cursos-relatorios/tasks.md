@@ -44,12 +44,23 @@
 
 ## 2. Backend dos relatórios
 
-- [ ] 2.1 `RelatorioTurmaService` e `GET turmas/{turma}/relatorio` com resumo e tabela, política
+- [x] 2.1 `RelatorioTurmaService` e `GET turmas/{turma}/relatorio` com resumo e tabela, política
       `operar` da turma (D3, D7); testes dos cenários "Resumo de turma encerrada", "Turma ainda
       aberta" e "Instrutor de outra turma", e de que o total bate com a lista de inscritos.
-- [ ] 2.2 `RelatorioCursosService` e `GET relatorios/cursos` com filtros de período, tipo e
+      O resumo é calculado sobre o mesmo array de `ListaInscritosService::linhas()` que alimenta
+      a tabela (nunca uma consulta agregada à parte), o que já garante D1/D2 por construção.
+      Achado: PHP/`json_encode` serializa um float de valor inteiro (ex.: 75.0) sem a casa
+      decimal, e ele volta como `int` do outro lado — os testes usam `assertEquals`, não
+      `assertSame`, para os indicadores numéricos vindos da API.
+- [x] 2.2 `RelatorioCursosService` e `GET relatorios/cursos` com filtros de período, tipo e
       curso, detalhe por turma e totais somados dos detalhes (D1, D2); testes dos cenários
       "Cursos do período", "Filtro por tipo", "Período sem turmas" e "Turma aberta no período".
+      Consulta agregada por turma (frequência/nota lidas de `frequencia_apurada`/`nota_apurada`,
+      que só existem em turma encerrada — dispensa filtro especial para turma aberta); curso e
+      totais do período são somas em PHP dessas linhas, nunca uma segunda consulta.
+      A tipagem genérica de `Collection` do Larastan é invariante; algumas anotações precisaram
+      ficar em `array<string, mixed>` (com `@var` local nos pontos de leitura) em vez do array
+      shape exato, para o retorno de um método bater com o parâmetro de outro.
 - [ ] 2.3 `RelatorioCapacitacaoService` e `GET relatorios/capacitacao` (lista paginada e
       ordenável por lista fixa) e `GET relatorios/capacitacao/{participante}` (detalhe com o
       código do certificado); só servidores, com a exclusão de externos quando houver `origem`
