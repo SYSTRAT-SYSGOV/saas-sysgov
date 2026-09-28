@@ -61,11 +61,17 @@
       A tipagem genérica de `Collection` do Larastan é invariante; algumas anotações precisaram
       ficar em `array<string, mixed>` (com `@var` local nos pontos de leitura) em vez do array
       shape exato, para o retorno de um método bater com o parâmetro de outro.
-- [ ] 2.3 `RelatorioCapacitacaoService` e `GET relatorios/capacitacao` (lista paginada e
+- [x] 2.3 `RelatorioCapacitacaoService` e `GET relatorios/capacitacao` (lista paginada e
       ordenável por lista fixa) e `GET relatorios/capacitacao/{participante}` (detalhe com o
       código do certificado); só servidores, com a exclusão de externos quando houver `origem`
       (D4, D5); testes dos cenários "Horas de capacitação", "Certificado revogado não conta",
       "Filtro por período de conclusão" e "Servidor sem conclusão".
+      Filtro `user_id IS NOT NULL` (a coluna `origem` ainda não existe nesta branch; a Fase 3
+      quando entrar acrescenta `origem = 'servidor'` ao mesmo filtro). Interpretação: um
+      certificado revogado tira as horas do curso, mas ele continua contando em
+      "cursos concluídos" (a conclusão em si não deixa de ter acontecido). O filtro de período
+      entra dentro do `SUM(CASE WHEN ...)`, nunca no `WHERE`, para não excluir da lista quem
+      tem inscrição na base fora do período (cenário "Servidor sem conclusão").
 - [ ] 2.4 Filtro por unidade com subunidades por prefixo de `path` e a coluna de unidades
       vinculadas (D5); teste do cenário "Filtro por unidade", incluindo que `1.1` não casa com
       `1.10`.

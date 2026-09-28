@@ -120,6 +120,8 @@ Route::post('/inscricoes/{inscricao}/cancelar', [InscricaoController::class, 'ca
 // Relatórios
 Route::get('/turmas/{turma}/relatorio', [RelatorioController::class, 'turma']);
 Route::get('/relatorios/cursos', [RelatorioController::class, 'cursos']);
+Route::get('/relatorios/capacitacao', [RelatorioController::class, 'capacitacao']);
+Route::get('/relatorios/capacitacao/{participante}', [RelatorioController::class, 'capacitacaoDetalhe']);
 
 // Presença: chamada manual e check-in por QR code
 Route::get('/agendamentos/{agendamento}/chamada', [PresencaController::class, 'chamada']);
