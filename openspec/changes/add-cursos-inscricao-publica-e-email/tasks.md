@@ -1,0 +1,146 @@
+# Tasks
+
+> Pré-requisito: PR #39 (Fase 2) mergeado e a change `add-cursos-materiais-avaliacoes`
+> arquivada, com este branch criado a partir da `main` atualizada.
+> Testes do backend rodam no container `api` com o ambiente do CI (`APP_ENV=testing`, SQLite em
+> memória, `CACHE_STORE=array`, `QUEUE_CONNECTION=sync`, `SESSION_DRIVER=array`) e
+> `php -d memory_limit=-1`; chamados abaixo de "phpunit (Docker)". Frontend: `npm --workspace
+> apps/web-client run typecheck` e `run test` num container `node:22`.
+
+## 1. Plataforma de e-mail e Outbox
+
+- [ ] 1.1 Ambiente: serviços `mailpit` e `scheduler` no `Docker-compose.yml`, variáveis de e-mail e
+      `PORTAL_URL` no `.env.example` e no `config`; verificar que o `scheduler` sobe e que um
+      e-mail de teste chega ao Mailpit.
+- [ ] 1.2 Agendar `outbox:process --limit=100` a cada minuto com `withoutOverlapping` em
+      `routes/console.php`; teste de que o agendamento existe.
+- [ ] 1.3 Migration e model de `notificacoes_envios` (único `(event_id, tipo, destinatario)`);
+      verificar `migrate` no MySQL do Docker e o isolamento por órgão com teste A/B.
+- [ ] 1.4 Ouvinte de `OutboxMessage` com o registro de tratadores (`config/notificacoes.php`):
+      define e limpa o `TenantContext` por evento, ignora tipos sem tratador, reserva a linha de
+      envio antes de enviar e grava `enviado`, `falhou` ou `ignorado` (D1, D2); testes dos
+      cenários "E-mail enviado depois do evento", "Falha temporária", "Tentativas esgotadas",
+      "Evento reprocessado", "Falha parcial em vários destinatários" e "Destinatário sem e-mail".
+- [ ] 1.5 Layout base de mensagens e resolvedor de identidade a partir de `Tenant.settings`
+      (título, cor, logotipo, `hideProviderSignature`, identidade padrão sem órgão) (D4); testes
+      dos cenários "Mensagem com a identidade do órgão" e "Mensagem sem órgão".
+- [ ] 1.6 Tratador de `PasswordResetRequested`: e-mail com o link, marcador no lugar do token em
+      claro depois do envio, e nenhum e-mail para endereço inexistente (D5); testes dos
+      cenários "Link de redefinição recebido" e "E-mail não cadastrado".
+- [ ] 1.7 Política do primeiro processamento: eventos com `available_at` anterior à ativação do
+      consumidor são marcados `done` sem envio (Migration Plan); teste com eventos antigos.
+- [ ] 1.8 API de envios do órgão (`cursos.manage`): listar com filtro de situação e reenviar os
+      `falhou`, com auditoria; testes dos cenários "Reenvio de falha" e "Envios de outro órgão".
+
+## 2. Participante externo e cadastro público
+
+- [ ] 2.1 Migrations: `origem` e `consentimento_em`/`termo_versao` em `cursos_participantes`
+      (participantes atuais viram `servidor`) e `email_verification_tokens`; verificar `migrate`
+      no MySQL do Docker.
+- [ ] 2.2 Papel `participante_externo_cursos` (só `cursos.view` e `cursos.participar`) no
+      `CursosRbacSeeder`, e exclusão de externos da busca de instrutores; testes dos cenários
+      "Externo não é oferecido como instrutor" e "Externo entra e vê só o próprio conteúdo".
+- [ ] 2.3 Middleware `ResolvePublicTenant` e grupo `api/public/cursos/{orgao}` (D7), com `404`
+      uniforme para órgão inexistente, inativo ou sem página habilitada; ampliar o teste de
+      arquitetura (controllers públicos só dependem de `Services/Publico`, e toda rota com
+      `{orgao}` tem o middleware); testes dos cenários "Página desabilitada ou órgão
+      inexistente" e "Isolamento entre órgãos".
+- [ ] 2.4 `CadastroExternoService`: cria usuário, vínculo `pending` e participante numa
+      transação, com os três caminhos do e-mail (novo, existente em outro órgão, existente neste
+      órgão), resposta sempre igual, senha descartada no caminho de outro órgão, aceite
+      obrigatório e CPF validado quando informado (D6, D10); evento
+      `cursos.CadastroExternoCriado`. Testes dos cenários "Cadastro e ativação", "E-mail já
+      cadastrado", "E-mail que já tem conta em outro órgão" e "Cadastro sem aceite do termo".
+- [ ] 2.5 Isolamento do papel externo: teste que percorre uma rota de cada módulo com um
+      externo ativo e espera `403`, e verificação de que `primary_org_unit_id` nulo não vira
+      "acesso irrestrito" em nenhum ponto do ABAC; teste do cenário "Externo não acessa outros
+      módulos".
+- [ ] 2.6 Verificação de e-mail: endpoint com token de uso único e validade de 24 h, ativação do
+      vínculo, pedido de novo link, e mensagem "verifique seu e-mail" no login com vínculo
+      `pending` (D5, D6); testes dos cenários "Login antes da verificação", "Link de
+      verificação vencido" e "Link de verificação usado duas vezes".
+- [ ] 2.7 Limites `cursos-cadastro-ip` e `cursos-cadastro-email` e campo isca (D8); testes dos
+      cenários "Excesso de cadastros do mesmo IP" e "Campo isca preenchido".
+- [ ] 2.8 Comando agendado de limpeza de vínculos `pending` com mais de 7 dias e dos usuários
+      que só existiam por eles; teste com dados antigos e recentes.
+
+## 3. Página pública e configuração
+
+- [ ] 3.1 Migrations: `slug` e `texto_publico` em `cursos_cursos` (único por tenant, gerado do
+      título nos cursos existentes) e `aceita_externos` em `cursos_turmas`; validações no
+      cadastro do curso e da turma, com o texto sanitizado; teste do cenário "Texto de
+      divulgação com script".
+- [ ] 3.2 `GET/PUT /api/cursos/configuracao-publica` (habilitar, boas-vindas, termo com versão
+      incrementada quando o texto muda, documento obrigatório) sobre `settings.cursos`, sem tocar
+      nas outras chaves de `settings` (D10, D11); testes de permissão, auditoria e da versão do
+      termo.
+- [ ] 3.3 Endpoints públicos de leitura: página do órgão, catálogo público e página do curso, com
+      Resources de lista explícita de campos (D7); testes dos cenários "Página habilitada",
+      "Oferta pública" e de que nenhum campo interno (e-mail de instrutor, vagas totais) sai.
+- [ ] 3.4 Regra de externo na inscrição: `InscricaoService` recusa turma que não aceita externos,
+      e o `CatalogoController` autenticado filtra por `aceita_externos` para externos; testes dos
+      cenários "Turma fechada a externos" e "Externo em turma fechada a externos".
+
+## 4. Formulário de inscrição configurável
+
+- [ ] 4.1 Migrations e models `TenantAware` de `cursos_campos_inscricao` e
+      `cursos_inscricao_respostas` (D9); verificar `migrate` e isolamento A/B.
+- [ ] 4.2 `CampoInscricaoService` e controller (CRUD, reordenar, desativar; sem excluir campo
+      respondido; tipo `selecao` exige opções); testes dos cenários "Exclusão de campo
+      respondido" e de validação do cadastro do campo.
+- [ ] 4.3 Respostas na inscrição: validação por tipo, obrigatórios, snapshot de rótulo e tipo,
+      texto puro, gravação na mesma transação do `InscricaoService` (D9); testes dos cenários
+      "Campo obrigatório", "Seleção com opção inexistente", "Inscrição com formulário
+      configurado" e "Campo editado depois da resposta".
+- [ ] 4.4 Visibilidade e imutabilidade das respostas (policy da inscrição, `404` entre órgãos e
+      entre participantes, imutáveis depois do encerramento); teste do cenário "Participante vê a
+      resposta de outra pessoa".
+- [ ] 4.5 CSV de inscritos com origem e colunas do formulário, e neutralização de fórmulas em
+      toda célula de texto (D13); testes dos cenários "Exportação da turma" e "Resposta que
+      começa com fórmula".
+
+## 5. E-mails do módulo Cursos
+
+- [ ] 5.1 Tratador de `cursos.CadastroExternoCriado`: gera o token na hora do envio e monta o link
+      de verificação (D5); teste de que uma nova tentativa depois do envio não gera novo token.
+- [ ] 5.2 Tratadores de inscrição: criada (texto por `confirmada`, `pendente` e `lista_espera`,
+      com a posição), aprovada, recusada, cancelada e promovida; conferir se o `payload` atual
+      leva o motivo de recusa e de cancelamento e, se não levar, acrescentar a chave (D12);
+      testes dos cenários "Inscrição em lista de espera" e "Promoção da lista de espera".
+- [ ] 5.3 Tratador de `cursos.CertificadoEmitido` com o código e o link de validação pública;
+      teste do cenário "Certificado emitido".
+- [ ] 5.4 Verificar que nenhuma mensagem do Cursos contém senha, nota ou resposta de terceiros
+      (teste que percorre os tipos e confere o conteúdo renderizado).
+
+## 6. SDK e frontend
+
+- [ ] 6.1 Tipos e métodos novos em `packages/sdk/src/modules/cursos` (página pública, cadastro,
+      verificação, campos do formulário, configuração pública, envios, respostas na inscrição) e
+      na autenticação (esqueci e redefinir senha); verificar o typecheck do web-client.
+- [ ] 6.2 Páginas públicas no web-client, fora do guarda de autenticação: catálogo do órgão,
+      página do curso e cadastro (com campo isca oculto, aceite do termo e identidade do órgão
+      vinda da API) (D14); testes Vitest de renderização, do aceite obrigatório e da ausência de
+      dados do órgão no código.
+- [ ] 6.3 Páginas de verificação de e-mail, "esqueci minha senha" e redefinição de senha, e os
+      links na tela de login; testes Vitest dos estados (sucesso, expirado, já usado).
+- [ ] 6.4 Aba de campos do formulário no detalhe do curso, com modal no padrão das abas da Fase 2
+      e validação das opções da seleção; marca "aceita externos" no formulário da turma; slug e
+      texto de divulgação no formulário do curso; testes Vitest.
+- [ ] 6.5 Formulário de inscrição com os campos configurados (no catálogo autenticado e na
+      inscrição pública) e as respostas na tela da inscrição; testes Vitest dos obrigatórios e
+      dos tipos.
+- [ ] 6.6 Tela de configuração da página pública e a lista de envios de e-mail com reenvio na
+      gestão de cursos; testes Vitest.
+
+## 7. Fechamento
+
+- [ ] 7.1 Estender o `CursosDadosDemonstracaoSeeder` com a página pública habilitada, campos de
+      formulário, uma turma aberta a externos e um externo de exemplo; o
+      `CursosDadosDemonstracaoSeederTest` continua verde.
+- [ ] 7.2 Suíte completa verde: phpunit (Docker), PHPStan, typecheck, testes e build de
+      `apps/web` e `apps/web-client`, mais o grupo `mysql` no MySQL do Docker.
+- [ ] 7.3 Teste manual no navegador com o Mailpit: cadastro de um externo, e-mail de
+      verificação, ativação, login, inscrição com campos do formulário, e-mail de inscrição,
+      lista de espera e promoção, certificado com e-mail, e recuperação de senha de ponta a ponta.
+- [ ] 7.4 Registrar no PR os itens de infraestrutura para produção (SMTP, remetente, SPF/DKIM,
+      `PORTAL_URL`, `scheduler`) e as perguntas abertas do design.
