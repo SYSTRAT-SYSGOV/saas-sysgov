@@ -39,7 +39,8 @@ final class ConcorrenciaVagasMysqlTest extends TestCase
 
     private const DISPUTANTES = 8;
 
-    private string $conexaoOriginal;
+    /** Nulo enquanto o setUp não chegou a trocar a conexão (ex.: teste pulado por falta do MySQL). */
+    private ?string $conexaoOriginal = null;
 
     protected function setUp(): void
     {
@@ -67,7 +68,9 @@ final class ConcorrenciaVagasMysqlTest extends TestCase
     protected function tearDown(): void
     {
         app(TenantContext::class)->clear();
-        config(['database.default' => $this->conexaoOriginal]);
+        if ($this->conexaoOriginal !== null) {
+            config(['database.default' => $this->conexaoOriginal]);
+        }
         parent::tearDown();
     }
 
