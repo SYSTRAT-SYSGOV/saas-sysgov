@@ -192,7 +192,7 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
         <Card className="space-y-1 p-4 text-sm">
           <p className="font-semibold text-foreground">Turma encerrada</p>
           <p className="text-muted-foreground">
-            <span className="font-mono tabular-nums">{resumo.concluidas}</span> concluíram, <span className="font-mono tabular-nums">{resumo.nao_concluidas}</span> não atingiram a frequência mínima,{' '}
+            <span className="font-mono tabular-nums">{resumo.concluidas}</span> concluíram, <span className="font-mono tabular-nums">{resumo.nao_concluidas}</span> não concluíram (frequência ou nota abaixo do mínimo),{' '}
             <span className="font-mono tabular-nums">{resumo.canceladas}</span> inscrições pendentes/na fila canceladas. Certificados emitidos:{' '}
             <span className="font-mono tabular-nums">{resumo.certificados_emitidos}</span>.
           </p>
@@ -329,7 +329,7 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
         }
         description={
           confirmacao?.tipo === 'encerrar'
-            ? 'Encerrar apura a frequência de cada inscrição confirmada, emite os certificados de quem atingiu o mínimo e cancela pendentes e lista de espera. Depois disso, presenças e inscrições não podem mais ser alteradas.'
+            ? 'Encerrar apura a frequência e, quando o curso tem nota mínima, a nota final de cada inscrição confirmada, emite os certificados de quem concluiu e cancela pendentes e lista de espera. Depois disso, presenças e inscrições não podem mais ser alteradas.'
             : confirmacao?.tipo === 'cancelar-turma'
               ? 'Todas as inscrições ativas da turma serão canceladas.'
               : confirmacao && 'inscrito' in confirmacao

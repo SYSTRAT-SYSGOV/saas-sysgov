@@ -117,8 +117,10 @@
 - [x] 7.1 Estender o `CursosDadosDemonstracaoSeeder` com materiais dos quatro tipos, uma
       avaliação mista e tentativas de exemplo; verificar que o `CursosDadosDemonstracaoSeederTest`
       continua verde.
-- [ ] 7.2 Suíte completa verde: phpunit (Docker), PHPStan, typecheck e testes de `apps/web` e
+- [x] 7.2 Suíte completa verde: phpunit (Docker), PHPStan, typecheck e testes de `apps/web` e
       `apps/web-client`, e build do web-client.
-- [ ] 7.3 Teste manual no navegador com um participante e um instrutor: material liberado e
+- [x] 7.3 Teste manual no navegador com um participante e um instrutor: material liberado e
       bloqueado, vídeo incorporado, PDF aberto em aba, tentativa com tempo limite, correção da
       dissertativa, encerramento e certificado com `{{nota}}`.
+      Feito com administrador, instrutora e participantes de demonstração. Não foram
+      inspecionados o conteúdo do PDF na aba `blob:` nem o PDF do certificado baixado.
