@@ -10,21 +10,37 @@
 
 ## 1. Base de cálculo
 
-- [ ] 1.1 Medir as consultas por período com volume: ampliar o banco de demonstração para alguns
+- [x] 1.1 Medir as consultas por período com volume: ampliar o banco de demonstração para alguns
       milhares de inscrições, rodar `EXPLAIN` das consultas de cursos por período e de
       capacitação por servidor e decidir os índices (D8). Criar só os que a medição justificar,
       com migration e `down()`, e verificar `migrate` no MySQL do Docker.
-- [ ] 1.2 `IndicadoresRelatorio` (D2): base de inscrições, taxa de conclusão só de turmas
+      Medido num banco descartável com 2.000 turmas e 60.000 inscrições sintéticas (não
+      commitado). `cursos_inscricoes(tenant_id, status, concluida_em)` reduziu a consulta de
+      capacitação de ~44 ms para ~23 ms — criado. Índice por `data_inicio` em `cursos_turmas`
+      não se justificou: a tabela de turmas continua pequena o bastante para a varredura
+      completa ser mais barata. Achado à parte: sem `ANALYZE TABLE` depois da carga em massa,
+      a consulta de cursos por período levava 31 s por estatística desatualizada do MySQL, não
+      por falta de índice — com estatística em dia, o índice `(tenant_id, turma_id, status)` que
+      já existia resolve em ~11 ms. Verificado com `php artisan module:migrate Cursos --force`
+      no MySQL de desenvolvimento (a `migrate` completa está bloqueada por uma migration do
+      Cemitérios quebrada, de outro módulo, alheia a esta mudança — reportado ao usuário) e com
+      a suíte completa do Cursos em SQLite (341 testes).
+- [x] 1.2 `IndicadoresRelatorio` (D2): base de inscrições, taxa de conclusão só de turmas
       encerradas, médias simples com duas casas e "—" sem valor, e horas certificadas (D4);
       testes unitários dos cenários "Curso sem avaliação", "Turma encerrada não muda" e
       "Certificado revogado".
-- [ ] 1.3 Extrair a apuração de frequência parcial e as linhas de inscritos do
+- [x] 1.3 Extrair a apuração de frequência parcial e as linhas de inscritos do
       `InscricaoController` para um serviço reutilizável, sem mudar o resultado da lista nem do
       CSV atual; os testes existentes de inscritos e exportação continuam verdes.
-- [ ] 1.4 `CsvSeguro` em `app/Support` (separador `;`, UTF-8, neutralização de fórmulas) e troca
+      A apuração de frequência parcial já vivia em `FrequenciaService`; a novidade foi extrair
+      `linhas()` e `nota()` para `ListaInscritosService`, que o `InscricaoController` e (a partir
+      da tarefa 2.1) o `RelatorioTurmaService` passam a compartilhar.
+- [x] 1.4 `CsvSeguro` em `app/Support` (separador `;`, UTF-8, neutralização de fórmulas) e troca
       da exportação de inscritos para ele (D6); testes do cenário "Nome que começa com
       fórmula" e de que o CSV de inscritos continua igual nas demais células. Se a change
       `add-cursos-inscricao-publica-e-email` já tiver criado o ajudante, só reutilizá-lo.
+      Achado: `fputcsv` envolve em aspas qualquer campo com espaço, não só delimitador/aspas —
+      documentado no teste para não surpreender quem for reaproveitar `CsvSeguro`.
 
 ## 2. Backend dos relatórios
 

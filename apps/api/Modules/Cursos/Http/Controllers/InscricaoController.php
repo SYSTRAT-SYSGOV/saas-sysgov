@@ -7,17 +7,17 @@ namespace Modules\Cursos\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\CsvSeguro;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Modules\Cursos\Enums\StatusInscricao;
 use Modules\Cursos\Http\Controllers\Concerns\RespondeErroDeNegocio;
 use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\Participante;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Services\FrequenciaService;
 use Modules\Cursos\Services\InscricaoService;
-use Modules\Cursos\Services\NotaService;
+use Modules\Cursos\Services\ListaInscritosService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class InscricaoController extends Controller
@@ -27,8 +27,9 @@ final class InscricaoController extends Controller
     public function __construct(
         private readonly InscricaoService $inscricoes,
         private readonly FrequenciaService $frequencia,
-        private readonly NotaService $notas,
+        private readonly ListaInscritosService $listaInscritos,
         private readonly AuditLogger $audit,
+        private readonly CsvSeguro $csv,
     ) {}
 
     /** O participante logado se inscreve na turma. */
@@ -68,13 +69,13 @@ final class InscricaoController extends Controller
     {
         $this->authorize('operar', $turma);
 
-        return response()->json($this->linhas($turma));
+        return response()->json($this->listaInscritos->linhas($turma));
     }
 
     public function exportar(Turma $turma): StreamedResponse
     {
         $this->authorize('operar', $turma);
-        $linhas = $this->linhas($turma);
+        $linhas = $this->listaInscritos->linhas($turma);
 
         $this->audit->record('cursos', 'inscricoes.exportadas', "Turma #{$turma->id}", null, ['formato' => 'csv', 'linhas' => count($linhas)]);
 
@@ -82,13 +83,12 @@ final class InscricaoController extends Controller
 
         return response()->streamDownload(function () use ($linhas): void {
             $saida = fopen('php://output', 'wb');
-            fwrite($saida, "\xEF\xBB\xBF"); // BOM: o Excel abre acentos corretamente
-            fputcsv($saida, ['Nome', 'E-mail', 'Status', 'Data da inscrição', 'Frequência até o momento (%)'], ';', escape: '');
+            $this->csv->escreverCabecalho($saida, ['Nome', 'E-mail', 'Status', 'Data da inscrição', 'Frequência até o momento (%)']);
             foreach ($linhas as $l) {
-                fputcsv($saida, [
+                $this->csv->escreverLinha($saida, [
                     $l['nome'], $l['email'], $l['status_label'],
                     $l['inscrito_em'], number_format($l['frequencia']['percentual'], 2, ',', ''),
-                ], ';', escape: '');
+                ]);
             }
             fclose($saida);
         }, $nome, ['Content-Type' => 'text/csv; charset=UTF-8']);
@@ -103,7 +103,7 @@ final class InscricaoController extends Controller
             ...$inscricao->toArray(),
             'posicao_fila' => $this->inscricoes->posicaoNaFila($inscricao),
             'frequencia' => $this->frequencia->resumo($inscricao, ateAgora: true),
-            'nota' => $this->nota($inscricao),
+            'nota' => $this->listaInscritos->nota($inscricao),
             'aulas' => $this->frequencia->detalhe($inscricao),
         ]);
     }
@@ -125,7 +125,7 @@ final class InscricaoController extends Controller
                 ...$i->toArray(),
                 'posicao_fila' => $this->inscricoes->posicaoNaFila($i),
                 'frequencia' => $this->frequencia->resumo($i, ateAgora: true),
-                'nota' => $this->nota($i),
+                'nota' => $this->listaInscritos->nota($i),
             ]);
 
         return response()->json($inscricoes);
@@ -155,40 +155,5 @@ final class InscricaoController extends Controller
         return $this->executar(fn () => response()->json(
             $this->inscricoes->cancelar($inscricao, $request->user(), $peloAdministrador, $dados['motivo'] ?? null),
         ));
-    }
-
-    /**
-     * @return list<array{id: int, participante_id: int, nome: string, email: string, status: string, status_label: string, inscrito_em: string, posicao_fila: int|null, frequencia: array{aulas: int, presencas: int, percentual: float}, nota: float|null}>
-     */
-    private function linhas(Turma $turma): array
-    {
-        return $turma->inscricoes()
-            ->with(['participante', 'turma'])
-            ->orderBy('id')
-            ->get()
-            ->map(fn (Inscricao $i): array => [
-                'id' => $i->id,
-                'participante_id' => $i->participante_id,
-                'nome' => $i->participante->nome,
-                'email' => $i->participante->email,
-                'status' => $i->status,
-                'status_label' => $i->statusEnum()->label(),
-                'inscrito_em' => $i->created_at?->format('d/m/Y H:i') ?? '',
-                'posicao_fila' => $this->inscricoes->posicaoNaFila($i),
-                'frequencia' => $this->frequencia->resumo($i, ateAgora: true),
-                'nota' => $this->nota($i),
-            ])
-            ->values()
-            ->all();
-    }
-
-    /** Nota parcial (turma aberta) ou apurada (encerrada); só quem tem acesso ao conteúdo tem nota. */
-    private function nota(Inscricao $inscricao): ?float
-    {
-        if (!$inscricao->statusEnum()->is(StatusInscricao::Confirmada, StatusInscricao::Concluida, StatusInscricao::NaoConcluida)) {
-            return null;
-        }
-
-        return $this->notas->exibida($inscricao);
     }
 }
