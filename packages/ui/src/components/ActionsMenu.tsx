@@ -51,10 +51,7 @@ export const ActionsMenu: React.FC<ActionsMenuProps> = ({
             key={item.key}
             disabled={item.disabled || item.loading}
             onClick={(e) => e.stopPropagation()}
-            onSelect={(e) => {
-              e.preventDefault();
-              item.onSelect();
-            }}
+            onSelect={() => item.onSelect()}
           >
             {item.loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
