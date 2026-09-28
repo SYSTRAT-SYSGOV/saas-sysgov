@@ -140,6 +140,29 @@ describe('CemiteriosNavigationContext', () => {
     expect(result.current.modoVisao).toBe('administracao_geral');
   });
 
+  it('persiste a preferência de modo da planta (técnico/humanizado) entre trocas de aba', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CemiteriosNavigationProvider abaInicial="mapa" cemiteriosIniciais={mockParques}>
+        {children}
+      </CemiteriosNavigationProvider>
+    );
+
+    const { result } = renderHook(() => useCemiteriosNavigation(), { wrapper });
+
+    expect(result.current.modoPlanta).toBe('tecnico');
+
+    act(() => {
+      result.current.setModoPlanta('humanizado');
+    });
+    expect(result.current.modoPlanta).toBe('humanizado');
+
+    act(() => {
+      result.current.setAbaAtiva('operacoes');
+      result.current.setAbaAtiva('mapa');
+    });
+    expect(result.current.modoPlanta).toBe('humanizado');
+  });
+
   it('reconhece perfil de gestor municipal via prop', () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <CemiteriosNavigationProvider cemiteriosIniciais={mockParques} isGestorMunicipal={true}>

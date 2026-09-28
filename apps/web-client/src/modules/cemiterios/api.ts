@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Polygon } from 'geojson';
+import type { LineString, Point, Polygon } from 'geojson';
 import { apiClient } from '@/core/api/client';
 
 /* ------------------------------------------------------------------ */
@@ -88,9 +88,29 @@ export interface Concessionario {
 }
 export interface Concessao {
   id: number; numero: string; processo_administrativo?: string | null; plot_id: number; holder_id: number; modalidade: 'temporaria' | 'perpetua'; inicio: string;
-  termino: string | null; situacao: string; pendencia_regularizacao: boolean; motivo_pendencia?: string | null;
-  jazigo?: Pick<Jazigo, 'id' | 'codigo' | 'estado' | 'processo_administrativo'> & { cemiterio?: { nome: string } };
+  termino: string | null; situacao: string; motivo_extincao?: 'renuncia' | 'abandono' | null; extinta_em?: string | null;
+  pendencia_regularizacao: boolean; motivo_pendencia?: string | null;
+  guias_count?: number; inadimplente?: boolean;
+  jazigo?: Pick<Jazigo, 'id' | 'codigo' | 'estado' | 'park_id' | 'processo_administrativo'> & { cemiterio?: { nome: string }; setor?: { codigo: string } };
   concessionario?: Partial<Concessionario> & { id: number; nome: string };
+}
+
+export interface FiltrosConcessoesAvancados {
+  setorId?: string | null;
+  modalidade?: 'todas' | 'temporaria' | 'perpetua';
+  situacao?: 'todas' | 'vigente' | 'expirada' | 'extinta';
+  pendenciaRegularizacao?: boolean;
+  financeiro?: 'todas' | 'adimplente' | 'inadimplente' | 'sem_guias';
+  venceEm?: 'todas' | '30' | '60' | '90';
+  busca: string;
+}
+
+export interface EventoAuditoria {
+  id: number;
+  user_id: number | null;
+  action: string;
+  resource: string;
+  created_at: string;
 }
 
 export interface HerdeiroSucessao {
@@ -121,6 +141,208 @@ export interface ProcessoSucessao {
   herdeiros?: HerdeiroSucessao[];
   novo_titular?: Concessionario;
   deferido_por?: { id: number; name: string };
+}
+
+/* ------------------------------------------------------------------ */
+/* Nova API de Sucessão Hereditária (RF-SUCESSAO)                       */
+/* ------------------------------------------------------------------ */
+
+export type ViaSucessao = 'inventario_judicial' | 'inventario_extrajudicial' | 'alvara_judicial' | 'arrolamento';
+
+export type EstadoSucessao = 'solicitada' | 'em_analise' | 'aguardando_documentos' | 'validada' | 'sucedida' | 'indeferida' | 'arquivada';
+
+export type TipoDocumentoSucessao = 'certidao_obito' | 'inventario' | 'formal_partilha' | 'escritura' | 'alvara' | 'procuracao' | 'outro';
+
+export type Parentesco = 'companheiro' | 'filho' | 'pai' | 'mae' | 'irmao' | 'neto' | 'avo' | 'tio' | 'sobrinho' | 'outro' | 'representante';
+
+export interface SucessaoHerdeiro {
+  id: number;
+  tenant_id: number;
+  sucessao_id: number;
+  nome: string;
+  parentesco: Parentesco;
+  documento: string | null;
+  ordem: number;
+  direito_representacao: boolean;
+  titular_indicado: boolean;
+  herdeiro_representado_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SucessaoDocumento {
+  id: number;
+  tenant_id: number;
+  sucessao_id: number;
+  tipo: TipoDocumentoSucessao;
+  arquivo: string;
+  hash: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SucessaoHistorico {
+  id: number;
+  tenant_id: number;
+  sucessao_id: number;
+  de_estado: string;
+  para_estado: string;
+  motivo: Record<string, unknown> | null;
+  usuario_id: number;
+  created_at: string;
+  updated_at: string;
+  usuario?: { id: number; name: string };
+}
+
+export interface Sucessao {
+  id: number;
+  tenant_id: number;
+  concession_id: number;
+  park_id: number | null;
+  plot_id: number | null;
+  via: ViaSucessao;
+  estado: EstadoSucessao;
+  requerente_id: number | null;
+  titular_falecido_id: number | null;
+  data_falecimento: string | null;
+  processo_referencia: string | null;
+  parecer: string | null;
+  lock_version: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+
+  // Relacionamentos (quando incluídos via with)
+  concessao?: {
+    id: number;
+    numero: string;
+    jazigo?: { id: number; codigo: string };
+    concessionario?: { id: number; nome: string; documento: string };
+  };
+  herdeiros?: SucessaoHerdeiro[];
+  documentos?: SucessaoDocumento[];
+  historico?: SucessaoHistorico[];
+  requerente?: { id: number; name: string };
+  titularFalecido?: { id: number; nome: string; documento: string };
+}
+
+export interface SucessaoPaginado {
+  data: Sucessao[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number;
+  to: number;
+}
+
+export interface DashboardPendentesResumo {
+  em_analise: number;
+  aguardando_documentos: number;
+  validada: number;
+  total: number;
+}
+
+export interface DashboardPendentesProcesso {
+  id: number;
+  processo_referencia: string | null;
+  estado: EstadoSucessao;
+  via: ViaSucessao;
+  concessao: { id: number; numero: string } | null;
+  jazigo: { id: number; codigo: string } | null;
+  cemiterio: { id: number; nome: string } | null;
+  titular_falecido: { id: number; nome: string } | null;
+  data_falecimento: string | null;
+  dias_em_analise: number;
+  herdeiros_count: number;
+  documentos_count: number;
+  documentos_pendentes: TipoDocumentoSucessao[];
+}
+
+export interface DashboardPendentes {
+  resumo: DashboardPendentesResumo;
+  processos: DashboardPendentesProcesso[];
+}
+
+export interface DashboardRegularizacaoProcesso {
+  id: number;
+  processo_referencia: string | null;
+  estado: EstadoSucessao;
+  via: ViaSucessao;
+  concessao: { id: number; numero: string } | null;
+  jazigo: { id: number; codigo: string } | null;
+  cemiterio: { id: number; nome: string } | null;
+  titular_falecido: { id: number; nome: string } | null;
+  data_falecimento: string | null;
+  dias_desde_falecimento: number;
+  dias_restantes_regularizacao: number;
+  prazo_vencido: boolean;
+  herdeiros_count: number;
+  titular_indicado: { id: number; nome: string } | null;
+}
+
+export interface DashboardRegularizacao {
+  total: number;
+  processos: DashboardRegularizacaoProcesso[];
+}
+
+export interface AbrirSucessaoInput {
+  concession_id: number;
+  park_id?: number | null;
+  plot_id?: number | null;
+  via: ViaSucessao;
+  requerente_id?: number | null;
+  titular_falecido_id?: number | null;
+  data_falecimento?: string | null;
+  processo_referencia?: string | null;
+}
+
+export interface AtualizarSucessaoInput {
+  park_id?: number | null;
+  plot_id?: number | null;
+  requerente_id?: number | null;
+  titular_falecido_id?: number | null;
+  data_falecimento?: string | null;
+  processo_referencia?: string | null;
+  parecer?: string | null;
+  lock_version: number;
+}
+
+export interface TransicaoSucessaoInput {
+  para: EstadoSucessao;
+  motivo: string;
+  lock_version: number;
+}
+
+export interface HerdeiroInput {
+  nome: string;
+  parentesco: Parentesco;
+  documento?: string | null;
+  ordem: number;
+  direito_representacao?: boolean;
+  titular_indicado?: boolean;
+  herdeiro_representado_id?: number | null;
+}
+
+export interface HerdeirosSucessaoInput {
+  herdeiros: HerdeiroInput[];
+}
+
+export interface DocumentoSucessaoInput {
+  tipo: TipoDocumentoSucessao;
+  arquivo: File;
+}
+
+export interface SucessaoFiltros {
+  estado?: EstadoSucessao;
+  via?: ViaSucessao;
+  park_id?: number;
+  concession_id?: number;
+  data_falecimento_inicio?: string;
+  data_falecimento_fim?: string;
+  q?: string;
+  per_page?: number;
+  page?: number;
 }
 
 export interface TermoSucessaoDados {
@@ -253,6 +475,39 @@ export interface MapaBase {
   atribuicao: string;
   max_zoom: number;
   catalogo?: ProvedorMapaBase[];
+}
+
+export interface Via {
+  id: number;
+  park_id: number;
+  via_codigo: string;
+  geojson: LineString;
+}
+export interface Amenidade {
+  id: number;
+  park_id: number;
+  tipo: 'portaria' | 'capela' | 'sanitario' | 'administracao' | 'agua' | 'vegetacao';
+  rotulo: string | null;
+  lat: number;
+  lng: number;
+}
+export interface ViasFeatureCollection {
+  type: 'FeatureCollection';
+  features: { type: 'Feature'; id: string; geometry: LineString; properties: { id: number; via_codigo: string } }[];
+}
+export interface AmenidadesFeatureCollection {
+  type: 'FeatureCollection';
+  features: { type: 'Feature'; id: string; geometry: Point; properties: { id: number; tipo: Amenidade['tipo']; rotulo: string | null } }[];
+}
+export interface TrechoRota {
+  type: 'Feature';
+  properties: { tipo: 'trecho' | 'acesso'; via_codigo: string | null; trecho_ordem: number };
+  geometry: LineString;
+}
+export interface RotaResposta {
+  encontrada: boolean;
+  distancia_metros: number;
+  rota: { type: 'FeatureCollection'; features: TrechoRota[] } | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -393,11 +648,23 @@ export const cemiteriosApi = {
   atualizarJazigo: (id: number, dados: Partial<Jazigo>) => put<Jazigo>(`/jazigos/${id}`, dados),
   alterarEstado: (id: number, para: 'manutencao' | 'restaurar', motivo: string, lockVersion: number) =>
     post<Jazigo>(`/jazigos/${id}/estado`, { para, motivo, lock_version: lockVersion }),
-  historico: (id: number) => get<EventoHistorico[]>(`/jazigos/${id}/historico`),
+  historicoJazigo: (id: number) => get<EventoHistorico[]>(`/jazigos/${id}/historico`),
 
   // GIS
-  camada: (camada: 'parques' | 'setores' | 'jazigos', bbox: [number, number, number, number]) =>
-    get<FeatureCollection>('/gis/camadas', { camada, bbox: bbox.map((n) => n.toFixed(7)).join(',') }),
+  camada: (camada: 'parques' | 'setores' | 'jazigos', bbox: [number, number, number, number], zoom?: number) =>
+    get<FeatureCollection>('/gis/camadas', { camada, bbox: bbox.map((n) => n.toFixed(7)).join(','), zoom }),
+  camadaVias: (parkId: number, bbox: [number, number, number, number]) =>
+    get<ViasFeatureCollection>('/gis/camadas', { camada: 'vias', park_id: parkId, bbox: bbox.map((n) => n.toFixed(7)).join(',') }),
+  camadaAmenidades: (parkId: number, bbox: [number, number, number, number]) =>
+    get<AmenidadesFeatureCollection>('/gis/camadas', { camada: 'amenidades', park_id: parkId, bbox: bbox.map((n) => n.toFixed(7)).join(',') }),
+  rota: (parkId: number, origem: { lat: number; lng: number }, destino: { lat: number; lng: number }) =>
+    get<RotaResposta>('/gis/rotas', { park_id: parkId, origem_lat: origem.lat, origem_lng: origem.lng, destino_lat: destino.lat, destino_lng: destino.lng }),
+  criarVia: (dados: { park_id: number; via_codigo: string; geojson: LineString }) => post<Via>('/gis/vias', dados),
+  atualizarVia: (id: number, dados: { park_id: number; via_codigo: string; geojson: LineString }) => put<Via>(`/gis/vias/${id}`, dados),
+  excluirVia: (id: number) => apiClient.delete(`${base}/gis/vias/${id}`),
+  criarAmenidade: (dados: { park_id: number; tipo: Amenidade['tipo']; rotulo?: string; lat: number; lng: number }) => post<Amenidade>('/gis/amenidades', dados),
+  atualizarAmenidade: (id: number, dados: { park_id: number; tipo: Amenidade['tipo']; rotulo?: string; lat: number; lng: number }) => put<Amenidade>(`/gis/amenidades/${id}`, dados),
+  excluirAmenidade: (id: number) => apiClient.delete(`${base}/gis/amenidades/${id}`),
   salvarGeometria: (tipo: 'parque' | 'setor' | 'jazigo', id: number, geojson: Polygon) => put(`/gis/geometrias/${tipo}/${id}`, { geojson }),
   gerarGrade: (setor: number, dados: Record<string, unknown>) =>
     post<{ criados: number; descartados: { linha: number; coluna: number; motivo: string }[]; duplicados: string[] }>(`/gis/setores/${setor}/gerar-grade`, dados),
@@ -438,13 +705,38 @@ export const cemiteriosApi = {
   criarTitular: (dados: Partial<Concessionario> & { documento: string }) => post<Concessionario>('/concessionarios', dados),
   atualizarConcessionario: (id: number, dados: Partial<Concessionario>) => put<Concessionario>(`/concessionarios/${id}`, dados),
   concessoes: (filtros: Record<string, unknown> = {}) => get<Paginado<Concessao>>('/concessoes', filtros),
+  concessao: (id: number) => get<Concessao>(`/concessoes/${id}`),
   conceder: (dados: { plot_id: number; holder_id: number; modalidade: string; lock_version: number; inicio?: string; processo_administrativo?: string }) => post<Concessao>('/concessoes', dados),
   renovar: (id: number) => post<{ concessao: Concessao; guia: Guia }>(`/concessoes/${id}/renovar`),
+  renunciarConcessao: (id: number, dados: { motivo: string; processo_administrativo?: string }) => post<Concessao>(`/concessoes/${id}/renunciar`, dados),
+  historicoConcessao: (id: number) => get<Paginado<EventoAuditoria>>(`/concessoes/${id}/historico`),
 
-  // Sucessão Hereditária
-  sucessoes: (filtros: Record<string, unknown> = {}) => get<Paginado<ProcessoSucessao>>('/sucessoes', filtros),
+  // Sucessão Hereditária (Nova API RF-SUCESSAO)
+  sucessoes: (filtros: SucessaoFiltros = {}) => get<SucessaoPaginado>('/sucessoes', filtros as Record<string, unknown>),
+  sucessao: (id: number) => get<Sucessao>(`/sucessoes/${id}`),
+  criarSucessao: (dados: AbrirSucessaoInput) => post<Sucessao>('/sucessoes', dados),
+  atualizarSucessao: (id: number, dados: AtualizarSucessaoInput) => put<Sucessao>(`/sucessoes/${id}`, dados),
+  excluirSucessao: (id: number) => apiClient.delete(`${base}/sucessoes/${id}`),
+  transicionarSucessao: (id: number, dados: TransicaoSucessaoInput) => post<Sucessao>(`/sucessoes/${id}/transicao`, dados),
+  adicionarHerdeiros: (id: number, dados: HerdeirosSucessaoInput) => post<SucessaoHerdeiro[]>(`/sucessoes/${id}/herdeiros`, dados),
+  removerHerdeiro: (id: number, herdeiroId: number) => apiClient.delete(`${base}/sucessoes/${id}/herdeiros/${herdeiroId}`),
+  uploadDocumento: (id: number, tipo: TipoDocumentoSucessao, arquivo: File) => {
+    const form = new FormData();
+    form.append('tipo', tipo);
+    form.append('arquivo', arquivo);
+    return post<SucessaoDocumento>(`/sucessoes/${id}/documentos`, form);
+  },
+  documento: (id: number, documentoId: number) => get<SucessaoDocumento>(`/sucessoes/${id}/documentos/${documentoId}`),
+  downloadDocumento: (id: number, documentoId: number) => get<{ download_url: string; expires_at: string }>(`/sucessoes/${id}/documentos/${documentoId}/download`),
+  excluirDocumento: (id: number, documentoId: number) => apiClient.delete(`${base}/sucessoes/${id}/documentos/${documentoId}`),
+  historico: (id: number) => get<SucessaoHistorico[]>(`/sucessoes/${id}/historico`),
+  pendentes: (parkId?: number) => get<DashboardPendentes>(`/sucessoes/pendentes`, parkId ? { park_id: parkId } : {}),
+  regularizacao: (parkId?: number) => get<DashboardRegularizacao>(`/sucessoes/regularizacao`, parkId ? { park_id: parkId } : {}),
+
+  // Legado — compatibilidade
+  sucessoesLegado: (filtros: Record<string, unknown> = {}) => get<Paginado<ProcessoSucessao>>('/sucessoes', filtros),
   sucessoesPendencias: (filtros: Record<string, unknown> = {}) => get<Paginado<Concessao>>('/sucessoes/pendencias', filtros),
-  sucessao: (id: number) => get<ProcessoSucessao>(`/sucessoes/${id}`),
+  sucessaoLegado: (id: number) => get<ProcessoSucessao>(`/sucessoes/${id}`),
   abrirSucessao: (dados: { concession_id: number; numero_processo: string; tipo_documento: string; vara_ou_cartorio?: string }) => post<ProcessoSucessao>('/sucessoes', dados),
   adicionarHerdeiro: (id: number, dados: { nome: string; parentesco: string; documento?: string; telefone?: string; email?: string; titular_indicado?: boolean }) => post<HerdeiroSucessao>(`/sucessoes/${id}/herdeiros`, dados),
   deferirSucessao: (id: number, dados: { despacho_fundamentacao: string; herdeiro_id?: number; novo_titular_id?: number }) => post<ProcessoSucessao>(`/sucessoes/${id}/deferir`, dados),

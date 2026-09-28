@@ -47,7 +47,7 @@ final class ConcessionarioPortalController extends Controller
     {
         return response()->json(
             $this->titular($request)->concessoes()->with(['jazigo:id,codigo,park_id,sector_id', 'jazigo.cemiterio:id,nome', 'jazigo.setor:id,codigo'])
-                ->orderByDesc('inicio')->get(['id', 'numero', 'plot_id', 'modalidade', 'inicio', 'termino', 'situacao'])
+                ->orderByDesc('data_inicio')->get(['id', 'numero', 'plot_id', 'tipo', 'estado', 'data_inicio', 'data_fim'])
         );
     }
 

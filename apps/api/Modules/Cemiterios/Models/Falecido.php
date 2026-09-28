@@ -41,6 +41,8 @@ final class Falecido extends Model
 
     protected $hidden = ['causa_morte', 'docs_medicos'];
 
+    protected $appends = ['sem_identificacao'];
+
     protected $casts = [
         'nascimento' => 'date',
         'falecimento' => 'date',
@@ -64,6 +66,21 @@ final class Falecido extends Model
     public static function normalizar(string $texto): string
     {
         return Str::of($texto)->ascii()->lower()->squish()->toString();
+    }
+
+    public function getSemIdentificacaoAttribute(): bool
+    {
+        $nomeUpper = strtoupper(trim((string) $this->nome));
+        return in_array($nomeUpper, [
+            'NAO CONSTA FALECIDO',
+            'NÃO CONSTA FALECIDO',
+            'SEM NOME',
+            'DESCONHECIDO',
+            'FALECIDO NAO INFORMADO',
+            'FALECIDO NÃO INFORMADO',
+            'IGNORADO',
+            '',
+        ], true) || str_starts_with($nomeUpper, 'NAO CONSTA') || str_starts_with($nomeUpper, 'NÃO CONSTA');
     }
 
     /** @return HasMany<Inumacao, $this> */

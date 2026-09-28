@@ -30,7 +30,7 @@ final class JazigoHistoricoService
             $eventos->push($this->evento($h->ocorrido_em, 'estado', "Estado: {$h->de} → {$h->para}" . ($h->motivo ? " ({$h->motivo})" : '')));
         }
         foreach (Concessao::where('plot_id', $id)->get() as $c) {
-            $eventos->push($this->evento($c->inicio, 'concessao', "Concessão {$c->numero} ({$c->modalidade}) — {$c->situacao}"));
+            $eventos->push($this->evento($c->data_inicio, 'concessao', "Concessão {$c->numero} ({$c->tipo}) — {$c->estado}"));
         }
         foreach (Inumacao::with('falecido:id,nome')->where('plot_id', $id)->get() as $i) {
             $eventos->push($this->evento($i->sepultado_em, 'inumacao', "Inumação de {$i->falecido?->nome} — {$i->situacao}"));

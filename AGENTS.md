@@ -1,6 +1,7 @@
 # SYSGOV — Diretrizes e Contratos para Agentes de IA
 
 Este documento é a referência primária e obrigatória para qualquer Agente de Inteligência Artificial trabalhando neste repositório.
+Todo código gerado DEVE seguir estritamente o [`CODING_STANDARD.md`](./CODING_STANDARD.md), o [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) e as regras abaixo. Nunca invente padrões arquiteturais, abstrações ou convenções de escrita fora desses manuais.
 
 ---
 

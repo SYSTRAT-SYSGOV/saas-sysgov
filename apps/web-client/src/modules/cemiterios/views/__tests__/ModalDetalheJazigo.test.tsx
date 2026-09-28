@@ -133,7 +133,7 @@ const mockGuias: Guia[] = [
 describe('ModalDetalheJazigo Component', () => {
   beforeEach(() => {
     vi.spyOn(cemiteriosApi, 'jazigo').mockResolvedValue(mockJazigo);
-    vi.spyOn(cemiteriosApi, 'historico').mockResolvedValue([]);
+    vi.spyOn(cemiteriosApi, 'historicoJazigo').mockResolvedValue([]);
     vi.spyOn(cemiteriosApi, 'concessoes').mockResolvedValue({
       data: mockConcessoes,
       current_page: 1,
@@ -372,3 +372,7 @@ describe('ModalDetalheJazigo Component', () => {
     expect(screen.getByDisplayValue('Dr. Roberto Alves - CRM 54321/SP')).toBeInTheDocument();
   });
 });
+
+
+
+

@@ -80,22 +80,28 @@ export const DashboardModule: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      apiClient.get<{ data: any[] }>('/org-units').catch(() => ({ data: { data: [] } })),
       apiClient.get<{ data: any[] }>('/licitacoes?status=em_andamento').catch(() => ({ data: { data: [] } })),
       apiClient.get<{ data: any[] }>('/contratos?status=vigente').catch(() => ({ data: { data: [] } })),
       apiClient.get<{ data: { receita_arrecadada?: number } }>('/financeiro/resumo').catch(() => ({ data: { data: { receita_arrecadada: undefined } as { receita_arrecadada?: number } } })),
-    ]).then(([org, lic, cont, fin]) => {
+    ]).then(([lic, cont, fin]) => {
       if (cancelled) return;
-      setKpis({
-        unidades: Array.isArray(org.data?.data) ? org.data.data.length : null,
+      setKpis((prev) => ({
+        ...prev,
+        unidades: unitList.length > 0 ? unitList.length : prev.unidades,
         licitacoes: Array.isArray(lic.data?.data) ? lic.data.data.length : null,
         contratos: Array.isArray(cont.data?.data) ? cont.data.data.length : null,
         receita: fin.data?.data?.receita_arrecadada ?? null,
         loading: false, error: false,
-      });
+      }));
     }).catch(() => { if (!cancelled) setKpis((p) => ({ ...p, loading: false, error: true })); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (unitList.length > 0) {
+      setKpis((prev) => ({ ...prev, unidades: unitList.length }));
+    }
+  }, [unitList]);
 
   const saveFavorites = (f: string[]) => {
     setFavorites(f);

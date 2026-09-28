@@ -36,12 +36,18 @@ final class JazigoController extends Controller
             ->with([
                 'setor:id,park_id,codigo,descricao',
                 'cemiterio:id,codigo,nome',
-                'concessoes:id,plot_id,holder_id,numero,modalidade,situacao' => [
-                    'concessionario:id,nome,documento,titular_falecido',
-                ],
-                'inumacoes:id,plot_id,deceased_id,sepultado_em,gaveta_numero' => [
-                    'falecido:id,nome',
-                ],
+                'concessoes' => function ($q) {
+                    $q->vigentes()
+                        ->orderByDesc('id')
+                        ->select('id', 'plot_id', 'holder_id', 'numero', 'tipo', 'estado', 'data_inicio', 'data_fim')
+                        ->with('concessionario:id,nome,documento,titular_falecido');
+                },
+                'inumacoes' => function ($q) {
+                    $q->where('situacao', 'confirmada')
+                        ->orderByDesc('sepultado_em')
+                        ->select('id', 'plot_id', 'deceased_id', 'sepultado_em', 'gaveta_numero')
+                        ->with('falecido:id,nome');
+                },
             ])
             ->when($request->query('parque'), fn ($q, $v) => $q->where('park_id', $v))
             ->when($request->query('setor'), fn ($q, $v) => $q->where('sector_id', $v))
@@ -68,9 +74,9 @@ final class JazigoController extends Controller
             })
             ->when($request->query('concessao_status'), function ($q, $v) {
                 match ($v) {
-                    'com_concessao' => $q->whereHas('concessoes', fn ($c) => $c->where('situacao', 'vigente')),
-                    'sem_concessao' => $q->whereDoesntHave('concessoes', fn ($c) => $c->where('situacao', 'vigente')),
-                    'vencida' => $q->whereHas('concessoes', fn ($c) => $c->where('situacao', 'vencida')->orWhere(fn ($sub) => $sub->whereNotNull('termino')->whereDate('termino', '<', today()))),
+                    'com_concessao' => $q->whereHas('concessoes', fn ($c) => $c->vigentes()),
+                    'sem_concessao' => $q->whereDoesntHave('concessoes', fn ($c) => $c->vigentes()),
+                    'vencida' => $q->whereHas('concessoes', fn ($c) => $c->where('estado', 'Vencida')->orWhere(fn ($sub) => $sub->whereNotNull('data_fim')->whereDate('data_fim', '<', today()))),
                     'sucessao' => $q->whereHas('concessoes.processosSucessao', fn ($ps) => $ps->whereIn('situacao', ['aberto', 'em_analise', 'em_processamento'])),
                     default => null,
                 };

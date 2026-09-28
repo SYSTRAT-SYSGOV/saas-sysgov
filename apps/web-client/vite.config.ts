@@ -20,6 +20,18 @@ export default defineConfig({
     host: true,
     watch: {
       usePolling: true,
+      interval: 1000,
+      ignored: [
+        '**/.git/**',
+        '**/node_modules/**',
+        '**/apps/api/**',
+        '**/vendor/**',
+        '**/storage/**',
+        '**/dist/**',
+        '**/.claude/**',
+        '**/.agents/**',
+        '**/openspec/**',
+      ],
     },
     proxy: {
       // Em Docker, aponte VITE_API_PROXY_TARGET para o serviço da API

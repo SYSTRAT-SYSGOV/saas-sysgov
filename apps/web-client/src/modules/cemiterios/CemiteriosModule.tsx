@@ -33,7 +33,7 @@ const ABAS = [
   { key: 'mapa', label: 'Mapa GIS', icon: Map, permissao: 'cemiterios.view', Componente: MapaView },
   { key: 'operacoes', label: 'Operações', icon: ClipboardList, permissao: 'cemiterios.view', Componente: OperacoesView },
   { key: 'concessoes', label: 'Concessões', icon: FileSignature, permissao: 'cemiterios.concessoes.manage', Componente: ConcessoesView },
-  { key: 'sucessao', label: 'Sucessão Hereditária', icon: Scale, permissao: 'cemiterios.concessoes.manage', Componente: SucessaoView },
+  { key: 'sucessao', label: 'Sucessão Hereditária', icon: Scale, permissao: 'cemiterios.sucessao.view', Componente: SucessaoView },
   { key: 'operadores', label: 'Coveiros e Pedreiros', icon: Users, permissao: 'cemiterios.view', Componente: OperadoresView },
   { key: 'financeiro', label: 'Financeiro', icon: Receipt, permissao: 'cemiterios.financeiro.manage', Componente: FinanceiroView },
   { key: 'empreiteiros', label: 'Empreiteiros', icon: HardHat, permissao: 'cemiterios.empreiteiros.manage', Componente: EmpreiteirosView },
@@ -52,6 +52,27 @@ const CemiteriosModuleConteudo: React.FC = () => {
   } = useCemiteriosContext();
 
   const atual = abasVisiveis.find((a) => a.key === abaAtiva) ?? abasVisiveis[0];
+
+  // Abas com Keep-Alive: monta sob demanda e preserva estado ao alternar abas (0ms de carregamento)
+  const [abasVisitadas, setAbasVisitadas] = React.useState<Set<string>>(() => new Set([atual?.key ?? 'inventario']));
+
+  React.useEffect(() => {
+    if (atual?.key) {
+      setAbasVisitadas((prev) => {
+        if (prev.has(atual.key)) return prev;
+        const prox = new Set(prev);
+        prox.add(atual.key);
+        return prox;
+      });
+    }
+  }, [atual?.key]);
+
+  React.useEffect(() => {
+    // Ao alternar entre necrópoles diferentes, revalida estado para a aba atual
+    if (cemiterioAtivoId) {
+      setAbasVisitadas(new Set([atual?.key ?? 'inventario']));
+    }
+  }, [cemiterioAtivoId]);
 
   // 1. Modo de Seleção Inicial de Necrópole
   if (modoVisao === 'selecao') {
@@ -78,7 +99,7 @@ const CemiteriosModuleConteudo: React.FC = () => {
 
   // 3. Modo de Gestão da Necrópole Selecionada
   return (
-    <div className="space-y-6" key={cemiterioAtivoId ?? 'sem-cemiterio'}>
+    <div className="space-y-6">
       {/* Barra de identificação da necrópole e alternador de contexto */}
       <NecropoleHeaderBar />
 
@@ -89,10 +110,23 @@ const CemiteriosModuleConteudo: React.FC = () => {
         onChange={setAbaAtiva}
       />
 
-      {/* View da Aba Ativa */}
-      {atual ? (
-        <atual.Componente />
-      ) : (
+      {/* Views com Keep-Alive: renderiza sob demanda e preserva em memória sem refetch */}
+      {abasVisiveis.map((aba) => {
+        if (!abasVisitadas.has(aba.key)) return null;
+        const isAtiva = aba.key === atual?.key;
+        const Componente = aba.Componente;
+        return (
+          <div
+            key={aba.key}
+            style={{ display: isAtiva ? 'block' : 'none' }}
+            aria-hidden={!isAtiva}
+          >
+            <Componente />
+          </div>
+        );
+      })}
+
+      {abasVisiveis.length === 0 && (
         <p className="text-sm text-muted-foreground">Sem permissão para nenhuma área deste cemitério.</p>
       )}
     </div>

@@ -7,3 +7,4 @@ apps/api/vendor
 apps/api/.env
 apps/api/.phpunit.result.cache
 storage/logs
+apps/api/public/storage

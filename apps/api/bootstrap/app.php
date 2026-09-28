@@ -58,5 +58,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {})
+    ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->shouldRenderJsonWhen(function (\Illuminate\Http\Request $request, \Throwable $e): bool {
+            return $request->is('api/*') || $request->expectsJson();
+        });
+    })
     ->create();

@@ -34,4 +34,8 @@ apps/api/Modules/Procurement/app/
 apps/api/public/storage
 graphify-out/
 apps/api/storage/
-
+.turbo/
+*.sqlite
+*.sqlite-journal
+*.sqlite3
+apps/api/sysgov

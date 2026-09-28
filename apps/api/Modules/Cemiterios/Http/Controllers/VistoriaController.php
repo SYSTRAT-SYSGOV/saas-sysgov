@@ -103,7 +103,7 @@ final class VistoriaController extends Controller
         $this->autorizar($request, 'cemiterios.abandono.manage');
 
         return response()->json(
-            ProcessoAbandono::with(['jazigo:id,codigo,estado', 'concessao:id,numero,situacao'])
+            ProcessoAbandono::with(['jazigo:id,codigo,estado', 'concessao:id,numero,estado'])
                 ->when($request->query('situacao'), fn ($q, $v) => $q->where('situacao', $v))
                 ->orderByDesc('id')
                 ->paginate(min((int) $request->query('per_page', 30), 100))

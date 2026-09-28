@@ -22,6 +22,9 @@ use Modules\Cemiterios\Models\Concerns\Imutavel;
  * @property int $notificacao_antecedencia_dias
  * @property int $suspensoes_para_cancelamento
  * @property int $concessao_temporaria_anos
+ * @property bool $concessao_transferencia_permitida
+ * @property string|null $concessao_base_legal_transferencia
+ * @property int $concessao_vigencia_manifestacao_dias
  * @property bool $portal_habilitado
  * @property string|null $instrucoes_pagamento
  * @property string|null $chave_pix
@@ -56,6 +59,8 @@ final class Parametro extends Model
         'notificacao_antecedencia_dias' => 'integer',
         'suspensoes_para_cancelamento' => 'integer',
         'concessao_temporaria_anos' => 'integer',
+        'concessao_transferencia_permitida' => 'boolean',
+        'concessao_vigencia_manifestacao_dias' => 'integer',
         'portal_habilitado' => 'boolean',
     ];
 }

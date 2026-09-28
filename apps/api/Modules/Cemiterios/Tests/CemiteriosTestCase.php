@@ -121,8 +121,9 @@ abstract class CemiteriosTestCase extends TestCase
 
         return Concessao::create([
             'numero' => 'CON-' . Str::random(6), 'plot_id' => $jazigo->id, 'holder_id' => $titular->id,
-            'modalidade' => 'temporaria', 'inicio' => today()->toDateString(),
-            'termino' => today()->modify($termino)->toDateString(),
+            'tipo' => 'temporaria', 'data_inicio' => today()->toDateString(),
+            'data_fim' => today()->modify($termino)->toDateString(),
+            'estado' => 'Ativa',
         ]);
     }
 

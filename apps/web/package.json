@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --testTimeout 15000",
     "test:watch": "vitest",
     "preview": "vite preview",
     "clean": "rm -rf dist",

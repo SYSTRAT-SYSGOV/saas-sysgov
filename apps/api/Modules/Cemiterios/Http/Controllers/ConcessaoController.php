@@ -87,16 +87,62 @@ final class ConcessaoController extends Controller
         $this->autorizar($request, 'cemiterios.view');
 
         $paginador = Concessao::with([
-            'jazigo:id,codigo,park_id,estado,processo_administrativo',
+            'jazigo:id,codigo,park_id,sector_id,estado,processo_administrativo',
+            'jazigo.cemiterio:id,nome',
+            'jazigo.setor:id,codigo',
             'concessionario:id,nome,documento,tipo_doc,email,telefone,endereco,titular_falecido,data_falecimento_titular,processo_inventario',
         ])
+            ->withCount('guias')
+            ->withExists(['guias as inadimplente' => fn ($q) => $q->where('situacao', 'emitida')->whereDate('vencimento', '<', today())])
             ->when($request->query('park_id'), fn ($q, $v) => $q->whereHas('jazigo', fn ($jq) => $jq->where('park_id', $v)))
-            ->when($request->query('situacao'), fn ($q, $v) => $q->where('situacao', $v))
+            ->when($request->query('setor_id'), fn ($q, $v) => $q->whereHas('jazigo', fn ($jq) => $jq->where('sector_id', $v)))
+            ->when($request->query('estado') ?? $request->query('situacao'), function ($q, $v) {
+                // 'situacao' preserva o contrato legado (vigente|expirada|extinta) dos consumidores atuais.
+                if (in_array($v, ['vigente', 'expirada', 'extinta'], true)) {
+                    match ($v) {
+                        'vigente' => $q->vigentes(),
+                        'expirada' => $q->whereIn('estado', ['Vencendo', 'Vencida']),
+                        default => $q->whereIn('estado', Concessao::ESTADOS_EXTINTOS),
+                    };
+
+                    return;
+                }
+
+                $q->where('estado', $v);
+            })
+            ->when($request->query('tipo') ?? $request->query('modalidade'), fn ($q, $v) => $q->where('tipo', $v))
+            ->when($request->query('vence_ate'), fn ($q, $v) => $q->whereDate('data_fim', '<=', $v))
+            ->when($request->query('vencendo') !== null, fn ($q) => $q->where('estado', 'Vencendo'))
+            ->when($request->query('vencida') !== null, fn ($q) => $q->where('estado', 'Vencida'))
             ->when($request->query('holder_id'), fn ($q, $v) => $q->where('holder_id', $v))
             ->when($request->query('plot_id'), fn ($q, $v) => $q->where('plot_id', $v))
             ->when($request->query('numero'), fn ($q, $v) => $q->where('numero', 'like', "%{$v}%"))
             ->when($request->query('processo_administrativo'), fn ($q, $v) => $q->where('processo_administrativo', 'like', "%{$v}%"))
             ->when($request->query('titular_falecido') !== null, fn ($q) => $q->whereHas('concessionario', fn ($cq) => $cq->where('titular_falecido', filter_var($request->query('titular_falecido'), FILTER_VALIDATE_BOOLEAN))))
+            ->when($request->query('pendencia_regularizacao') !== null, fn ($q) => $q->where('pendencia_regularizacao', filter_var($request->query('pendencia_regularizacao'), FILTER_VALIDATE_BOOLEAN)))
+            ->when($request->query('busca'), function ($q, $v) {
+                $termo = trim((string) $v);
+                $q->where(function ($sub) use ($termo) {
+                    $sub->where('numero', 'like', "%{$termo}%")
+                        ->orWhere('processo_administrativo', 'like', "%{$termo}%")
+                        ->orWhereHas('jazigo', fn ($jq) => $jq->where('codigo', 'like', "%{$termo}%"))
+                        ->orWhereHas('concessionario', function ($cq) use ($termo) {
+                            $cq->where('nome', 'like', "%{$termo}%");
+                            if (strlen(Documento::somenteDigitos($termo)) >= 11) {
+                                $cq->orWhere('documento_hash', Documento::hash($termo));
+                            }
+                        });
+                });
+            })
+            ->when($request->query('financeiro'), function ($q, $v) {
+                $vencida = fn ($g) => $g->where('situacao', 'emitida')->whereDate('vencimento', '<', today());
+                match ($v) {
+                    'inadimplente' => $q->whereHas('guias', $vencida),
+                    'adimplente' => $q->whereDoesntHave('guias', $vencida),
+                    'sem_guias' => $q->whereDoesntHave('guias'),
+                    default => null,
+                };
+            })
             ->when(
                 $request->query('plot_id'),
                 fn ($q) => $q->orderBy('numero')->orderBy('id'),
@@ -129,15 +175,31 @@ final class ConcessaoController extends Controller
         $dados = $request->validate([
             'plot_id' => ['required', 'integer'],
             'holder_id' => ['required', 'integer'],
-            'modalidade' => ['required', Rule::in(['temporaria', 'perpetua'])],
+            'tipo' => ['required_without:modalidade', 'nullable', Rule::in(['temporaria', 'perpetua'])],
+            'modalidade' => ['nullable', Rule::in(['temporaria', 'perpetua'])], // alias legado de tipo
             'inicio' => ['nullable', 'date'],
             'processo_administrativo' => ['nullable', 'string', 'max:50'],
             'lock_version' => ['required', 'integer'],
             'sujeita_taxa_anual' => ['sometimes', 'boolean'],
+            'base_legal' => ['sometimes', 'string', 'max:40'],
+            'prazo_anos' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'taxa_manutencao_centavos' => ['nullable', 'integer', 'min:0'],
+            'vigencia_manifestacao_dias' => ['nullable', 'integer', 'min:0', 'max:365'],
         ]);
         Concessionario::findOrFail($dados['holder_id']);
 
-        $concessao = $this->concessoes->conceder($dados);
+        $concessao = $this->concessoes->solicitar([
+            'plot_id' => $dados['plot_id'],
+            'holder_id' => $dados['holder_id'],
+            'tipo' => (string) ($dados['tipo'] ?? $dados['modalidade']),
+            'data_inicio' => $dados['inicio'] ?? null,
+            'lock_version' => $dados['lock_version'],
+            'sujeita_taxa_anual' => $dados['sujeita_taxa_anual'] ?? true,
+            'base_legal' => $dados['base_legal'] ?? null,
+            'prazo_anos' => $dados['prazo_anos'] ?? null,
+            'taxa_manutencao_centavos' => $dados['taxa_manutencao_centavos'] ?? null,
+            'vigencia_manifestacao_dias' => $dados['vigencia_manifestacao_dias'] ?? null,
+        ]);
         $this->audit->record('cemiterios', 'concessao.created', "Concessao #{$concessao->id}", null, $concessao->toArray());
 
         return response()->json($concessao->load('jazigo'), 201);
@@ -157,6 +219,38 @@ final class ConcessaoController extends Controller
         $this->audit->record('cemiterios', 'concessao.renovada', "Concessao #{$id}", $antes, $resultado['concessao']->toArray());
 
         return response()->json($resultado);
+    }
+
+    public function renunciar(Request $request, int $id): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.concessoes.manage');
+
+        $dados = $request->validate([
+            'motivo' => ['required', 'string', 'max:1000'],
+            'processo_administrativo' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $concessao = Concessao::findOrFail($id);
+        $antes = $concessao->toArray();
+        $concessao = $this->concessoes->renunciar($concessao, $dados['motivo'], $dados['processo_administrativo'] ?? null);
+        $this->audit->record('cemiterios', 'concessao.renunciada', "Concessao #{$id}", $antes, $concessao->toArray());
+
+        return response()->json($concessao->load('jazigo'));
+    }
+
+    public function historico(Request $request, int $id): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.view');
+
+        Concessao::findOrFail($id);
+
+        $eventos = \App\Models\AuditLog::query()
+            ->where('module', 'cemiterios')
+            ->where('resource', "Concessao #{$id}")
+            ->orderByDesc('created_at')
+            ->paginate(min(max((int) $request->query('per_page', 30), 1), 100));
+
+        return response()->json($eventos);
     }
 
     /** @return array<string, mixed> */

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $geometriavel_type
  * @property int $geometriavel_id
  * @property array<mixed> $geojson
+ * @property string|null $geojson_simplificado alias dinâmico só quando `camada()` pede `ST_Simplify` (não é coluna real)
  * @property float $min_lat
  * @property float $min_lng
  * @property float $max_lat

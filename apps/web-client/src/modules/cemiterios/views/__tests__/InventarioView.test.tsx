@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { InventarioView } from '../InventarioView';
-import { cemiteriosApi, type Jazigo, type Parque } from '../../api';
+import { cemiteriosApi, type Jazigo, type Parque, type Inumacao } from '../../api';
 
 vi.mock('@/core/rbac/useCan', () => ({
   useCan: () => ({
@@ -58,7 +58,7 @@ describe('InventarioView Component', () => {
       last_page: 1,
       total: 1,
     });
-    vi.spyOn(cemiteriosApi, 'historico').mockResolvedValue([]);
+    vi.spyOn(cemiteriosApi, 'historicoJazigo').mockResolvedValue([]);
     vi.spyOn(cemiteriosApi, 'concessoes').mockResolvedValue({ data: [], current_page: 1, last_page: 1, total: 0 });
     vi.spyOn(cemiteriosApi, 'inumacoes').mockResolvedValue({ data: [], current_page: 1, last_page: 1, total: 0 });
     vi.spyOn(cemiteriosApi, 'vistorias').mockResolvedValue({ data: [], current_page: 1, last_page: 1, total: 0 });
@@ -185,5 +185,42 @@ describe('InventarioView Component', () => {
 
     // O Drawer deve abrir
     expect(await screen.findByText(/informações do túmulo — JAZ-001/i)).toBeInTheDocument();
+  }, 15000);
+
+  it('exibe registro histórico sentinela higienizado e dimensões métricas consolidadas', async () => {
+    const mockJazigoSentinela: Jazigo = {
+      ...mockJazigos[0],
+      id: 99,
+      codigo: 'Q0001-L0002',
+      comprimento_m: 2.2,
+      largura_m: 1.1,
+      inumacoes: [
+        {
+          id: 50,
+          plot_id: 99,
+          deceased_id: 100,
+          sepultado_em: '2012-12-31',
+          gaveta_numero: 1,
+          situacao: 'confirmada',
+          falecido: {
+            id: 100,
+            nome: 'NAO CONSTA FALECIDO',
+          },
+        },
+      ] as unknown as Inumacao[],
+    };
+
+    vi.spyOn(cemiteriosApi, 'jazigos').mockResolvedValue({
+      data: [mockJazigoSentinela],
+      current_page: 1,
+      last_page: 1,
+      total: 1,
+    });
+
+    render(<InventarioView />);
+
+    expect(await screen.findByText('Q0001-L0002')).toBeInTheDocument();
+    expect(screen.getByText('Sem identificação (Histórico)')).toBeInTheDocument();
+    expect(screen.getByText(/2.2 × 1.1 m/)).toBeInTheDocument();
   }, 15000);
 });

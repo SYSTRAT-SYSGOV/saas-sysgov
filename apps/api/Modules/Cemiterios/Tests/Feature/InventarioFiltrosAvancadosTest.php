@@ -97,9 +97,9 @@ final class InventarioFiltrosAvancadosTest extends CemiteriosTestCase
             'numero' => 'TERMO-999/2026',
             'plot_id' => $jComConc->id,
             'holder_id' => $titular->id,
-            'modalidade' => 'perpetua',
-            'inicio' => today(),
-            'situacao' => 'vigente',
+            'tipo' => 'perpetua',
+            'data_inicio' => today(),
+            'estado' => 'Ativa',
         ]);
 
         // Filtro com_concessao

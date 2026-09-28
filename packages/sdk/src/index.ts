@@ -228,5 +228,7 @@ export * as CapdSdk from './modules/capd';
 export * from './modules/capd';
 export * as CursosSdk from './modules/cursos';
 export * from './modules/cursos';
+export * as CemiteriosSdk from './modules/cemiterios';
+export * from './modules/cemiterios';
 export * as ExampleSdk from './modules/template';
 

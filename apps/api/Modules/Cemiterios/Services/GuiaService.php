@@ -90,7 +90,7 @@ final readonly class GuiaService
     {
         $relatorio = ['exercicio' => $exercicio, 'geradas' => 0, 'existentes' => 0, 'falhas' => []];
 
-        Concessao::where('situacao', 'vigente')->where('sujeita_taxa_anual', true)->orderBy('id')
+        Concessao::query()->vigentes()->where('sujeita_taxa_anual', true)->orderBy('id')
             ->each(function (Concessao $concessao) use ($exercicio, &$relatorio): void {
                 $existe = Guia::where('origem_type', 'concessao')->where('origem_id', $concessao->id)
                     ->where('servico', 'taxa_manutencao_anual')->where('exercicio', $exercicio)->exists();

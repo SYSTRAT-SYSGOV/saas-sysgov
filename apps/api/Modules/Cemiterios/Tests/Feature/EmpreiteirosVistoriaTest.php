@@ -147,7 +147,7 @@ final class EmpreiteirosVistoriaTest extends CemiteriosTestCase
         $this->noTenant($this->tenant);
         $processo = ProcessoAbandono::findOrFail($id);
         self::assertSame(30, $processo->prazo_dias_aplicado);
-        self::assertSame('extinta', Concessao::where('plot_id', $jazigo->id)->value('situacao'));
+        self::assertSame('Caduca', Concessao::where('plot_id', $jazigo->id)->value('estado'));
         self::assertSame('demolicao', OrdemServico::findOrFail($processo->demolicao_order_id)->tipo);
 
         // Concluída a demolição, o jazigo volta ao estado derivado: segue ocupado, não Disponível.
@@ -185,7 +185,7 @@ final class EmpreiteirosVistoriaTest extends CemiteriosTestCase
             ->assertOk()->assertJsonPath('situacao', 'arquivado');
 
         $this->noTenant($this->tenant);
-        self::assertSame('vigente', Concessao::where('plot_id', $jazigo->id)->value('situacao'));
+        self::assertSame('Ativa', Concessao::where('plot_id', $jazigo->id)->value('estado'));
     }
 
     private function empreiteiroApto(string $validade = '2027-12-31'): int

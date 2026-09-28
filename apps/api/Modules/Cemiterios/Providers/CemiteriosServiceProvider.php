@@ -8,10 +8,16 @@ use App\Events\OutboxMessage;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Mail\MailServiceProvider;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\Cemiterios\Console;
 use Modules\Cemiterios\Listeners\EnviarEmail;
+use Modules\Cemiterios\Listeners\SucessaoEventListener;
 use Modules\Cemiterios\Models\Concessionario;
+use Modules\Cemiterios\Models\Concessao;
+use Modules\Cemiterios\Models\Sucessao;
+use Modules\Cemiterios\Policies\ConcessionPolicy;
+use Modules\Cemiterios\Policies\SucessaoPolicy;
 
 final class CemiteriosServiceProvider extends ServiceProvider
 {
@@ -22,6 +28,8 @@ final class CemiteriosServiceProvider extends ServiceProvider
         Console\GerarGuiasAnuais::class => ['yearlyOn', 1, 1, '01:00'],
         Console\LiberarRemocoes::class => ['dailyAt', '01:30'],
         Console\NotificarVencimentos::class => ['dailyAt', '07:00'],
+        Console\VerificarPrazosSucessao::class => ['dailyAt', '08:00'],
+        Console\VerificarIntegridadeDocumentosSucessao::class => ['dailyAt', '02:00'],
     ];
 
     public function register(): void
@@ -45,6 +53,9 @@ final class CemiteriosServiceProvider extends ServiceProvider
             $this->app->register(MailServiceProvider::class);
         }
         Event::listen(OutboxMessage::class, EnviarEmail::class);
+        Event::listen(OutboxMessage::class, SucessaoEventListener::class);
+        Gate::policy(Concessao::class, ConcessionPolicy::class);
+        Gate::policy(Sucessao::class, SucessaoPolicy::class);
 
         if (!$this->app->runningInConsole()) {
             return;
@@ -55,6 +66,9 @@ final class CemiteriosServiceProvider extends ServiceProvider
             Console\ReajustarPrecos::class,
             Console\MigrarClipperCommand::class,
             Console\CorrigirDatasMigradasCommand::class,
+            Console\ReconciliarInventarioCommand::class,
+            Console\ReconciliarTitularesLegadosCommand::class,
+            Console\MigrarSucessaoLegada::class,
         ]);
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
