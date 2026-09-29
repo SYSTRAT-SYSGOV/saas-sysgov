@@ -69,9 +69,18 @@
       de e-mail, a maioria dos clientes ignora CSS moderno), não o sistema de tema
       `<x-mail::message>` do Laravel (evita ter que publicar e customizar o tema padrão só pra
       trocar cor/logotipo, que o componente próprio já faz direto).
-- [ ] 1.6 Tratador de `PasswordResetRequested`: e-mail com o link, marcador no lugar do token em
+- [x] 1.6 Tratador de `PasswordResetRequested`: e-mail com o link, marcador no lugar do token em
       claro depois do envio, e nenhum e-mail para endereço inexistente (D5); testes dos
       cenários "Link de redefinição recebido" e "E-mail não cadastrado".
+      Precisou de um gancho novo em `Mensagem` (`aposEnvio`, uma closure opcional que o ouvinte
+      chama sempre que a linha fica `enviado` — recém-enviada ou já estava, pela idempotência):
+      sem isso não havia como o tratador saber que já podia apagar o token em claro do Outbox só
+      depois do envio dar certo (D5), e rodar a limpeza de novo se ela mesma falhar numa
+      tentativa anterior. `PasswordResetRequested` nunca tem tenant (a rota de "esqueci minha
+      senha" é pública, sem `TenantContext` — confirmado lendo `client-api.php`), então usa
+      sempre a identidade padrão. "E-mail não cadastrado" já era coberto por
+      `UserService::requestPasswordReset` (não publica nada se o e-mail não existe, resposta
+      uniforme contra enumeração) — o teste só confirma que continua assim.
 - [ ] 1.7 Política do primeiro processamento: eventos com `available_at` anterior à ativação do
       consumidor são marcados `done` sem envio (Migration Plan); teste com eventos antigos.
 - [ ] 1.8 API de envios do órgão (`cursos.manage`): listar com filtro de situação e reenviar os

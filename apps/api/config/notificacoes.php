@@ -8,4 +8,5 @@
  * núcleo (app/) não depender de nenhum módulo.
  */
 return [
+    'PasswordResetRequested' => [\App\Notificacoes\Tratadores\PasswordResetTratador::class],
 ];

@@ -85,6 +85,7 @@ final class EnviarNotificacoes
         );
 
         if ($envio->situacao === 'enviado') {
+            $mensagem->aposEnvio?->__invoke();
             return;
         }
 
@@ -93,6 +94,7 @@ final class EnviarNotificacoes
         try {
             Mail::to($mensagem->destinatario)->send($mensagem->mailable);
             $envio->update(['situacao' => 'enviado', 'enviado_em' => now(), 'erro' => null]);
+            $mensagem->aposEnvio?->__invoke();
         } catch (Throwable $exception) {
             $envio->update(['situacao' => 'falhou', 'erro' => $exception->getMessage()]);
             throw $exception;
