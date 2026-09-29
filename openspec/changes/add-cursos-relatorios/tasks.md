@@ -188,8 +188,15 @@
       reaproveita a árvore do tenant se já existir uma (ex.: quem rodou `OrgChartDatabaseSeeder`
       à parte); senão cria as duas só para isto — sem depender de outro seeder ter rodado antes,
       já que `OrgChartDatabaseSeeder` não está na cadeia de seeds do `docker-entrypoint.sh`.
-- [ ] 5.2 Suíte completa verde: phpunit (Docker), PHPStan, typecheck, testes e build de
+- [x] 5.2 Suíte completa verde: phpunit (Docker), PHPStan, typecheck, testes e build de
       `apps/web` e `apps/web-client`.
+      `phpunit` completo (todos os módulos): 1002 testes, 112 falhas — 4 são as de rate-limit
+      pré-existentes do Cursos (documentadas desde a 2.6) e as outras 108 são de Licita e
+      OrgChart, confirmadas alheias a esta mudança por `git diff --stat main...HEAD`: nenhum
+      arquivo fora de `Modules/Cursos` (e `app/Support/CsvSeguro.php`, aditivo) foi tocado na
+      branch inteira. `phpunit`/`phpstan` escopados a `Modules/Cursos app/Support`: verdes.
+      `typecheck`, `vitest` e `build` de `apps/web` (41 testes) e `apps/web-client` (461
+      testes) verdes — o chunk `CursosModule` builda normalmente.
 - [ ] 5.3 Teste manual no navegador com o Administrador e um instrutor: relatório da turma
       aberta e encerrada, cursos por período, capacitação por servidor com filtro de unidade,
       exportação dos três, e `403` para o instrutor nos dois relatórios gerais.
