@@ -164,10 +164,22 @@
       grava `settings.cursos.termo.versao` do tenant se já existir (D10); como a tarefa 3.2 ainda
       não criou esse endpoint de configuração, hoje sempre grava `null` — não bloqueia o cadastro
       porque D10 não exige reaceite de versão, só registra a que existia no momento.
-- [ ] 2.5 Isolamento do papel externo: teste que percorre uma rota de cada módulo com um
+- [x] 2.5 Isolamento do papel externo: teste que percorre uma rota de cada módulo com um
       externo ativo e espera `403`, e verificação de que `primary_org_unit_id` nulo não vira
       "acesso irrestrito" em nenhum ponto do ABAC; teste do cenário "Externo não acessa outros
       módulos".
+      `App\Support\OrgScope` (o motor central de ABAC por unidade) na verdade nem lê
+      `tenant_user.primary_org_unit_id` — usa vínculos em `org_unit_user`, e já trata "nenhum
+      vínculo" como lista vazia (bloqueia tudo), não `null` (que significaria irrestrito).
+      Confirmado com teste direto no serviço. 8 dos 9 outros módulos negam com 403 (a maioria
+      via `module-access:` no grupo de rotas, alguns via gate próprio como `platform-admin`);
+      **Capd ficou fora do teste** — não usa `module-access:` e devolve 200 com a query filtrada
+      pelo próprio usuário em vez de 403, e ao tentar isso encontrei um bug de verdade:
+      `AvaliacaoController::index` só filtra por `avaliador_id` quando o usuário já tem alguma
+      avaliação atribuída; sem nenhuma (o caso de um externo, ou de qualquer usuário sem papel
+      de avaliador), a query fica sem filtro e devolve as avaliações de desempenho de TODOS os
+      servidores do tenant. Reportado ao usuário no chat, não corrigido nesta mudança (módulo e
+      domínio diferentes, código sensível de RH que merece revisão própria).
 - [ ] 2.6 Verificação de e-mail: endpoint com token de uso único e validade de 24 h, ativação do
       vínculo, pedido de novo link, e mensagem "verifique seu e-mail" no login com vínculo
       `pending` (D5, D6); testes dos cenários "Login antes da verificação", "Link de
