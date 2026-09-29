@@ -58,9 +58,17 @@
       precisam de `-e MAIL_MAILER=array` explícito no `docker compose run`, não só do
       `phpunit.xml`. `array` (não `Mail::fake()`) porque `Mail::fake()` não chama `build()` do
       Mailable — os testes de falha simulam erro de envio com um Mailable cujo `build()` lança.
-- [ ] 1.5 Layout base de mensagens e resolvedor de identidade a partir de `Tenant.settings`
+- [x] 1.5 Layout base de mensagens e resolvedor de identidade a partir de `Tenant.settings`
       (título, cor, logotipo, `hideProviderSignature`, identidade padrão sem órgão) (D4); testes
       dos cenários "Mensagem com a identidade do órgão" e "Mensagem sem órgão".
+      `App\Notificacoes\Identidade` (DTO) + `ResolvedorIdentidade` (lê as mesmas chaves de
+      `settings` que `Cemiterios\Http\Controllers\Portal\PublicoController::identidade()` já usa
+      pro portal público de Cemitérios: `portalTitle`, `customPrimaryColor`, `customLogoUrl`,
+      `hideProviderSignature`). Layout em `resources/views/components/email-layout.blade.php`
+      (componente Blade anônimo `<x-email-layout>`) — HTML com tabelas e estilo inline (padrão
+      de e-mail, a maioria dos clientes ignora CSS moderno), não o sistema de tema
+      `<x-mail::message>` do Laravel (evita ter que publicar e customizar o tema padrão só pra
+      trocar cor/logotipo, que o componente próprio já faz direto).
 - [ ] 1.6 Tratador de `PasswordResetRequested`: e-mail com o link, marcador no lugar do token em
       claro depois do envio, e nenhum e-mail para endereço inexistente (D5); testes dos
       cenários "Link de redefinição recebido" e "E-mail não cadastrado".
