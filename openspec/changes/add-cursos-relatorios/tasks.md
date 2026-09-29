@@ -93,10 +93,15 @@
       relatorios/unidades` no Cursos devolve id/nome/path das unidades ativas do tenant, com a
       mesma autorização dos outros relatórios gerais (`viewAny` de `Curso`, D7); a query já vive
       em `RelatorioCapacitacaoService::unidades()` por ser o consumidor do seletor.
-- [ ] 2.6 Autorização e isolamento (D7): `403` para instrutor e participante nos relatórios de
+- [x] 2.6 Autorização e isolamento (D7): `403` para instrutor e participante nos relatórios de
       cursos e de capacitação, `404` para turma ou servidor de outro órgão, e teste A/B em cada
       relatório com dados nos dois órgãos; testes dos cenários "Instrutor pede o relatório por
       servidor", "Isolamento entre órgãos" e "Turma de outro órgão".
+      Nenhum achado novo de autorização — os três relatórios já usavam `viewAny`/`operar` (D7)
+      desde 2.1-2.3 e o isolamento por tenant já vinha do `TenantContext` em cada consulta; esta
+      tarefa só comprovou isso com teste (403 de participante nos dois relatórios gerais, 404 de
+      turma/servidor de outro órgão via resolução de model `TenantAware`, e A/B com dados nos
+      dois órgãos no relatório de cursos e no de capacitação).
 
 ## 3. Exportação
 

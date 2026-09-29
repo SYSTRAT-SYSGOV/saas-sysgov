@@ -71,6 +71,18 @@ final class RelatorioTurmaTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_turma_de_outro_orgao_retorna_404(): void
+    {
+        $outroTenant = $this->criarTenant('prefeitura-b');
+        $outroInstrutor = $this->usuario($outroTenant, ['instrutor_cursos'], 'Instrutor B');
+        $cursoB = $this->cursoPublicado($outroTenant);
+        $turmaB = $this->turmaAberta($outroTenant, $cursoB, $outroInstrutor);
+
+        $this->como($this->admin, $this->tenant)
+            ->getJson("/api/cursos/turmas/{$turmaB->id}/relatorio")
+            ->assertNotFound();
+    }
+
     public function test_totais_do_resumo_batem_com_a_tabela_de_inscritos(): void
     {
         foreach (['Bea', 'Caio'] as $nome) {

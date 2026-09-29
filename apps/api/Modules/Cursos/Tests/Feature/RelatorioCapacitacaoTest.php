@@ -240,6 +240,61 @@ final class RelatorioCapacitacaoTest extends TestCase
         $this->como($this->instrutor, $this->tenant)->getJson('/api/cursos/relatorios/capacitacao')->assertForbidden();
     }
 
+    public function test_participante_nao_acessa_o_relatorio_de_capacitacao(): void
+    {
+        $participante = $this->usuario($this->tenant, ['participante_cursos'], 'Participante');
+        $this->como($participante, $this->tenant)->getJson('/api/cursos/relatorios/capacitacao')->assertForbidden();
+    }
+
+    public function test_instrutor_pede_relatorio_por_servidor(): void
+    {
+        $servidor = $this->usuario($this->tenant, ['participante_cursos'], 'Servidor');
+        $curso = $this->cursoPublicado($this->tenant);
+        $this->concluir($servidor, $curso, '2025-03-01 10:00:00');
+        $participanteId = $this->noTenant($this->tenant, fn () => \Modules\Cursos\Models\Participante::query()->where('user_id', $servidor->id)->firstOrFail()->id);
+
+        $this->como($this->instrutor, $this->tenant)
+            ->getJson("/api/cursos/relatorios/capacitacao/{$participanteId}")
+            ->assertForbidden();
+    }
+
+    public function test_servidor_de_outro_orgao_retorna_404(): void
+    {
+        $outroTenant = $this->criarTenant('prefeitura-b');
+        $outroInstrutor = $this->usuario($outroTenant, ['instrutor_cursos'], 'Instrutor B');
+        $servidorB = $this->usuario($outroTenant, ['participante_cursos'], 'Servidor B');
+        $cursoB = $this->cursoPublicado($outroTenant);
+        $turmaB = $this->turmaAberta($outroTenant, $cursoB, $outroInstrutor);
+        $this->inscrever($outroTenant, $turmaB, $servidorB);
+        $participanteIdB = $this->noTenant($outroTenant, fn () => \Modules\Cursos\Models\Participante::query()->where('user_id', $servidorB->id)->firstOrFail()->id);
+
+        $this->como($this->admin, $this->tenant)
+            ->getJson("/api/cursos/relatorios/capacitacao/{$participanteIdB}")
+            ->assertNotFound();
+    }
+
+    public function test_isolamento_entre_orgaos(): void
+    {
+        $servidorA = $this->usuario($this->tenant, ['participante_cursos'], 'Servidor A');
+        $cursoA = $this->cursoPublicado($this->tenant);
+        $this->concluir($servidorA, $cursoA, '2025-03-01 10:00:00');
+
+        $outroTenant = $this->criarTenant('prefeitura-b');
+        $outroInstrutor = $this->usuario($outroTenant, ['instrutor_cursos'], 'Instrutor B');
+        $servidorB = $this->usuario($outroTenant, ['participante_cursos'], 'Servidor B');
+        $cursoB = $this->cursoPublicado($outroTenant);
+        $turmaB = $this->turmaAberta($outroTenant, $cursoB, $outroInstrutor);
+        $this->inscrever($outroTenant, $turmaB, $servidorB);
+
+        $relatorio = $this->relatorio();
+        /** @var array<int, array<string, mixed>> $dados */
+        $dados = $relatorio['data'];
+        $nomes = collect($dados)->pluck('nome')->all();
+
+        $this->assertContains('Servidor A', $nomes);
+        $this->assertNotContains('Servidor B', $nomes, 'relatório do órgão A não pode trazer servidor do órgão B');
+    }
+
     public function test_detalhe_do_servidor_traz_os_cursos_concluidos(): void
     {
         $servidor = $this->usuario($this->tenant, ['participante_cursos'], 'Servidor');

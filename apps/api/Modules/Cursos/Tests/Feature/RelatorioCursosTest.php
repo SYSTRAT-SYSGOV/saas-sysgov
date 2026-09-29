@@ -157,4 +157,32 @@ final class RelatorioCursosTest extends TestCase
             ->getJson('/api/cursos/relatorios/cursos?' . http_build_query(['inicio' => '2025-01-01', 'fim' => '2025-12-31']))
             ->assertForbidden();
     }
+
+    public function test_participante_nao_acessa_o_relatorio_de_cursos(): void
+    {
+        $participante = $this->usuario($this->tenant, ['participante_cursos'], 'Participante');
+
+        $this->como($participante, $this->tenant)
+            ->getJson('/api/cursos/relatorios/cursos?' . http_build_query(['inicio' => '2025-01-01', 'fim' => '2025-12-31']))
+            ->assertForbidden();
+    }
+
+    public function test_isolamento_entre_orgaos(): void
+    {
+        $cursoA = $this->cursoPublicado($this->tenant, ['titulo' => 'Curso do Órgão A']);
+        $this->turma($cursoA, ['nome' => 'A1', 'data_inicio' => '2025-04-01', 'data_fim' => '2025-04-05']);
+
+        $outroTenant = $this->criarTenant('prefeitura-b');
+        $outroInstrutor = $this->usuario($outroTenant, ['instrutor_cursos'], 'Instrutor B');
+        $cursoB = $this->cursoPublicado($outroTenant, ['titulo' => 'Curso do Órgão B']);
+        $this->turmaAberta($outroTenant, $cursoB, $outroInstrutor, ['nome' => 'B1', 'data_inicio' => '2025-04-01', 'data_fim' => '2025-04-05']);
+
+        $relatorio = $this->relatorio(['inicio' => '2025-01-01', 'fim' => '2025-12-31']);
+        /** @var array<int, array<string, mixed>> $cursos */
+        $cursos = $relatorio['cursos'];
+        $titulos = collect($cursos)->pluck('titulo')->all();
+
+        $this->assertContains('Curso do Órgão A', $titulos);
+        $this->assertNotContains('Curso do Órgão B', $titulos, 'relatório do órgão A não pode trazer curso do órgão B');
+    }
 }
