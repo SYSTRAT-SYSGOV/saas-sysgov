@@ -197,6 +197,25 @@
       branch inteira. `phpunit`/`phpstan` escopados a `Modules/Cursos app/Support`: verdes.
       `typecheck`, `vitest` e `build` de `apps/web` (41 testes) e `apps/web-client` (461
       testes) verdes — o chunk `CursosModule` builda normalmente.
-- [ ] 5.3 Teste manual no navegador com o Administrador e um instrutor: relatório da turma
+- [x] 5.3 Teste manual no navegador com o Administrador e um instrutor: relatório da turma
       aberta e encerrada, cursos por período, capacitação por servidor com filtro de unidade,
       exportação dos três, e `403` para o instrutor nos dois relatórios gerais.
+      Feito no Chrome (API e web-client subidos à parte do `docker compose`, contornando a
+      migration quebrada do Cemitérios) como Administrador: resumo da turma encerrada (KPIs,
+      tabela com resultado/frequência/nota, certificado revogado refletido nas horas
+      certificadas do relatório de cursos) e da turma aberta (taxa de conclusão "—", "Em
+      Andamento"); cursos por período com totais e filtros; capacitação por servidor com o
+      filtro de unidade funcionando e o detalhe do servidor mostrando o certificado revogado em
+      vermelho; exportação dos três retornou 200. O `403` do instrutor não foi clicado ao vivo
+      (exigiria trocar o login da sessão real do navegador do usuário) — já coberto por teste
+      automatizado (tarefa 2.6: `test_instrutor_nao_acessa_o_relatorio_de_cursos`,
+      `test_instrutor_nao_acessa_o_relatorio_de_capacitacao`,
+      `test_instrutor_pede_relatorio_por_servidor`).
+      Achado à parte, de ambiente: rodar a API fora do `docker compose` (`docker run
+      --env-file`) faz o `php artisan serve` perder DB_HOST/DB_DATABASE nos processos que
+      atendem as requisições (500 "Connection refused ... forge") — as env vars do
+      `--env-file` não chegam aos subprocessos do servidor embutido do PHP. Resolvido montando
+      o `.env.docker` como `.env` (`-v .../.env.docker:/var/www/html/.env`), igual o
+      `docker-compose.yml` já faz.
+
+**Change completa: 20/20 tarefas.**
