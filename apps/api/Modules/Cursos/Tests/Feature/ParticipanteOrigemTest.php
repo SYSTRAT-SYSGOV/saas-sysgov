@@ -54,12 +54,12 @@ final class ParticipanteOrigemTest extends TestCase
             'email' => 'externo@fora.gov.br',
             'origem' => Participante::ORIGEM_EXTERNO,
             'consentimento_em' => now(),
-            'termo_versao' => '2026-09-29',
+            'termo_versao' => 1,
         ]));
 
         $this->assertSame(Participante::ORIGEM_EXTERNO, $participante->fresh()->origem);
         $this->assertNotNull($participante->fresh()->consentimento_em);
-        $this->assertSame('2026-09-29', $participante->fresh()->termo_versao);
+        $this->assertSame(1, $participante->fresh()->termo_versao);
     }
 
     public function test_tabela_email_verification_tokens_isola_por_usuario_e_tenant(): void

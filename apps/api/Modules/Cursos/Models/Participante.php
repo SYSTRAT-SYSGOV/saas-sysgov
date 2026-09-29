@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $documento
  * @property string $origem
  * @property \Illuminate\Support\Carbon|null $consentimento_em
- * @property string|null $termo_versao
+ * @property int|null $termo_versao
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read User|null $user
@@ -44,6 +44,7 @@ final class Participante extends Model
         'tenant_id' => 'integer',
         'user_id' => 'integer',
         'consentimento_em' => 'datetime',
+        'termo_versao' => 'integer',
     ];
 
     /** @return BelongsTo<User, $this> */

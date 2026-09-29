@@ -20,7 +20,9 @@ return new class extends Migration
             // O default cobre as linhas existentes: todo participante de antes desta mudança é servidor.
             $table->string('origem', 20)->default('servidor')->after('documento');
             $table->timestamp('consentimento_em')->nullable()->after('origem');
-            $table->string('termo_versao', 20)->nullable()->after('consentimento_em');
+            // Inteiro, não texto: casa com settings.cursos.termo.versao (D10), incrementado
+            // pelo serviço quando o texto do termo muda.
+            $table->unsignedInteger('termo_versao')->nullable()->after('consentimento_em');
         });
     }
 
