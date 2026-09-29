@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ArrowLeft, CalendarPlus, ClipboardCheck, Download, Lock, Pencil, QrCode, Trash2, UserPlus, Users } from 'lucide-react';
 import { ActionsMenu, Button, Card, Input, Modal, Select, type ActionsMenuItem } from '@sysgov/ui';
-import { ConfirmDialog, DataTable, PageHeader, ScreenState, StatusChip, Tabs, type TabsItem } from '@/components/ui';
-import { sysgovApi, type AulaAgendamento, type InscritoTurma, type InstrutorResumo, type ResumoEncerramento, type TurmaDetalhe } from '@sysgov/sdk';
+import { ConfirmDialog, DataTable, KpiCard, PageHeader, ScreenState, StatusChip, Tabs, type TabsItem } from '@/components/ui';
+import { sysgovApi, type AulaAgendamento, type InscritoRelatorioTurma, type InscritoTurma, type InstrutorResumo, type RelatorioTurma, type ResumoEncerramento, type TurmaDetalhe } from '@sysgov/sdk';
 import { useCan } from '@/core/rbac/useCan';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { ChamadaModal } from '../components/ChamadaModal';
@@ -19,9 +19,10 @@ interface Props {
   onVoltar: () => void;
 }
 
-type AbaTurma = 'turma' | 'correcoes';
+type AbaTurma = 'resumo' | 'turma' | 'correcoes';
 
 const ABAS_TURMA: TabsItem<AbaTurma>[] = [
+  { key: 'resumo', label: 'Resumo' },
   { key: 'turma', label: 'Aulas e inscritos' },
   { key: 'correcoes', label: 'Correções' },
 ];
@@ -45,7 +46,8 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
   const [erroCarga, setErroCarga] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [resumo, setResumo] = useState<ResumoEncerramento | null>(null);
+  const [resumoEncerramento, setResumoEncerramento] = useState<ResumoEncerramento | null>(null);
+  const [relatorio, setRelatorio] = useState<RelatorioTurma | null>(null);
   const [chamada, setChamada] = useState<AulaAgendamento | null>(null);
   const [qr, setQr] = useState<AulaAgendamento | null>(null);
   const [editando, setEditando] = useState(false);
@@ -57,9 +59,10 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
   const carregar = useCallback(async () => {
     setErroCarga(null);
     try {
-      const [t, i] = await Promise.all([sysgovApi.cursos.getTurma(turmaId), sysgovApi.cursos.listarInscritos(turmaId)]);
+      const [t, i, r] = await Promise.all([sysgovApi.cursos.getTurma(turmaId), sysgovApi.cursos.listarInscritos(turmaId), sysgovApi.cursos.getRelatorioTurma(turmaId)]);
       setTurma(t);
       setInscritos(i);
+      setRelatorio(r);
     } catch (e) {
       setErroCarga(getApiErrorMessage(e, 'Não foi possível carregar a turma.'));
     }
@@ -133,6 +136,35 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
     [administra, executar],
   );
 
+  const colunasResumo = useMemo<ColumnDef<InscritoRelatorioTurma>[]>(
+    () => [
+      { id: 'nome', header: 'Participante', size: 260, meta: { exportValue: (i) => i.nome, sortValue: (i) => i.nome }, cell: ({ row }) => <span className="block truncate text-left">{row.original.nome}</span> },
+      { id: 'email', header: 'E-mail', size: 240, meta: { exportValue: (i) => i.email }, cell: ({ row }) => <span className="block truncate text-left text-muted-foreground">{row.original.email}</span> },
+      {
+        id: 'resultado',
+        header: 'Resultado',
+        size: 130,
+        meta: { exportValue: (i) => i.resultado },
+        cell: ({ row }) => <span className="capitalize">{row.original.resultado}</span>,
+      },
+      {
+        id: 'frequencia',
+        header: 'Frequência',
+        size: 110,
+        meta: { exportValue: (i) => i.frequencia.percentual, sortValue: (i) => i.frequencia.percentual },
+        cell: ({ row }) => <span className="font-mono tabular-nums">{formatarPercentual(row.original.frequencia.percentual)}</span>,
+      },
+      {
+        id: 'nota',
+        header: 'Nota',
+        size: 90,
+        meta: { exportValue: (i) => i.nota ?? '', sortValue: (i) => i.nota ?? -1 },
+        cell: ({ row }) => <span className="font-mono tabular-nums">{formatarNota(row.original.nota)}</span>,
+      },
+    ],
+    [],
+  );
+
   if (erroCarga) return <ScreenState type="error" title="Erro ao carregar" description={erroCarga} actionLabel="Tentar novamente" onAction={carregar} />;
   if (!turma) return <ScreenState type="loading" title="Carregando turma..." />;
 
@@ -188,17 +220,17 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
       )}
       {aviso && <div role="status" className="rounded-lg border border-status-success-border bg-status-success-bg px-3 py-2 text-sm text-status-success">{aviso}</div>}
 
-      {resumo && (
+      {resumoEncerramento && (
         <Card className="space-y-1 p-4 text-sm">
           <p className="font-semibold text-foreground">Turma encerrada</p>
           <p className="text-muted-foreground">
-            <span className="font-mono tabular-nums">{resumo.concluidas}</span> concluíram, <span className="font-mono tabular-nums">{resumo.nao_concluidas}</span> não concluíram (frequência ou nota abaixo do mínimo),{' '}
-            <span className="font-mono tabular-nums">{resumo.canceladas}</span> inscrições pendentes/na fila canceladas. Certificados emitidos:{' '}
-            <span className="font-mono tabular-nums">{resumo.certificados_emitidos}</span>.
+            <span className="font-mono tabular-nums">{resumoEncerramento.concluidas}</span> concluíram, <span className="font-mono tabular-nums">{resumoEncerramento.nao_concluidas}</span> não concluíram (frequência ou nota abaixo do mínimo),{' '}
+            <span className="font-mono tabular-nums">{resumoEncerramento.canceladas}</span> inscrições pendentes/na fila canceladas. Certificados emitidos:{' '}
+            <span className="font-mono tabular-nums">{resumoEncerramento.certificados_emitidos}</span>.
           </p>
-          {resumo.certificados_pendentes.length > 0 && (
+          {resumoEncerramento.certificados_pendentes.length > 0 && (
             <p className="text-status-warning">
-              {resumo.certificados_pendentes.length} certificado(s) ficaram pendentes porque o órgão não tem modelo de certificado padrão. Cadastre um modelo e use
+              {resumoEncerramento.certificados_pendentes.length} certificado(s) ficaram pendentes porque o órgão não tem modelo de certificado padrão. Cadastre um modelo e use
               “Emitir certificados pendentes”.
             </p>
           )}
@@ -206,6 +238,33 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
       )}
 
       <Tabs items={ABAS_TURMA} value={aba} onChange={setAba} />
+
+      {aba === 'resumo' && relatorio && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard title="Taxa de conclusão" value={formatarPercentual(relatorio.resumo.taxa_conclusao)} />
+            <KpiCard title="Frequência média" value={formatarPercentual(relatorio.resumo.frequencia_media)} />
+            <KpiCard title="Nota média" value={formatarNota(relatorio.resumo.nota_media)} />
+            <KpiCard title="Certificados emitidos" value={relatorio.resumo.certificados_emitidos} />
+          </div>
+
+          <Card className="space-y-3 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">
+                Inscritos <span className="font-mono tabular-nums text-muted-foreground">({relatorio.resumo.vagas_ocupadas}/{relatorio.resumo.vagas} vagas)</span>
+              </h2>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void executar(async () => baixarBlob(await sysgovApi.cursos.exportarRelatorioTurma(turma.id), `relatorio-turma-${turma.id}.csv`), 'Não foi possível exportar.')}
+              >
+                <Download className="h-4 w-4" /> Exportar CSV
+              </Button>
+            </div>
+            <DataTable columns={colunasResumo} data={relatorio.inscritos} searchable searchPlaceholder="Buscar participante..." emptyText="Nenhuma inscrição ainda." />
+          </Card>
+        </>
+      )}
 
       {aba === 'correcoes' && <CorrecoesTab turmaId={turma.id} aberta={aberta} onMudou={() => void carregar()} />}
 
@@ -343,7 +402,7 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
           setConfirmacao(null);
           if (!alvo) return;
           if (alvo.tipo === 'encerrar') {
-            void executar(async () => setResumo(await sysgovApi.cursos.encerrarTurma(turma.id)), 'Não foi possível encerrar a turma.');
+            void executar(async () => setResumoEncerramento(await sysgovApi.cursos.encerrarTurma(turma.id)), 'Não foi possível encerrar a turma.');
           } else if (alvo.tipo === 'cancelar-turma') {
             void executar(() => sysgovApi.cursos.cancelarTurma(turma.id, motivo), 'Não foi possível cancelar a turma.');
           } else if (alvo.tipo === 'recusar') {

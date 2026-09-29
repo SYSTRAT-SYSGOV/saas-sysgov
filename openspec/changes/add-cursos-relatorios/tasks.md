@@ -139,8 +139,15 @@
       mudança; rodar `npm install` e o `typecheck` na mesma invocação do container resolve
       (a instalação não sobrevive a um `docker compose run --rm` seguinte, que descarta os
       volumes anônimos junto com o container).
-- [ ] 4.2 Seção Resumo na `TurmaDetalhePage`: indicadores e tabela do relatório da turma, com o
+- [x] 4.2 Seção Resumo na `TurmaDetalhePage`: indicadores e tabela do relatório da turma, com o
       botão de exportar (D9); teste Vitest com turma encerrada e turma aberta.
+      Nova aba "Resumo" (antes de "Aulas e inscritos"), com `KpiCard` (taxa de conclusão,
+      frequência média, nota média, certificados emitidos) e a tabela de inscritos do
+      relatório (com a coluna "Resultado", que a aba operacional de inscritos não tem).
+      Renomeado o estado local `resumo` (do encerramento) para `resumoEncerramento` pra não
+      colidir com o novo `relatorio` (`RelatorioTurma`) carregado junto com a turma e os
+      inscritos. Achado: precisei adicionar o mock de `getRelatorioTurma` em
+      `CorrecoesTurma.test.tsx`, que já renderizava `TurmaDetalhePage` sem essa chamada.
 - [ ] 4.3 Aba Relatórios na `GestaoCursosPage` (só com `cursos.manage`): visão de cursos por
       período com filtros e totais; teste Vitest dos filtros e do estado vazio.
 - [ ] 4.4 Visão de capacitação por servidor: filtros (período, curso e unidade), ordenação,

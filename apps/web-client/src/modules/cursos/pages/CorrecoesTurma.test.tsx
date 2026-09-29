@@ -15,6 +15,7 @@ const cursosApi = vi.hoisted(() => ({
   getTurma: vi.fn(),
   listarInscritos: vi.fn(),
   encerrarTurma: vi.fn(),
+  getRelatorioTurma: vi.fn(),
 }));
 
 vi.mock('@sysgov/sdk', async (original) => ({
@@ -177,6 +178,10 @@ describe('TurmaDetalhePage — nota parcial e encerramento', () => {
     cursosApi.getTurma.mockResolvedValue(turma);
     cursosApi.listarInscritos.mockResolvedValue([inscrito(1, 'Ana Souza', 7.5), inscrito(2, 'Bruno Lima', null)]);
     cursosApi.filaCorrecao.mockResolvedValue([item()]);
+    cursosApi.getRelatorioTurma.mockResolvedValue({
+      resumo: { por_situacao: { pendente: 0, confirmada: 2, lista_espera: 0, cancelada: 0, concluida: 0, nao_concluida: 0 }, vagas_ocupadas: 2, vagas: 20, frequencia_media: null, nota_media: null, taxa_conclusao: null, certificados_emitidos: 0 },
+      inscritos: [],
+    });
   });
 
   it('a lista de inscritos mostra a nota parcial de cada um', async () => {
