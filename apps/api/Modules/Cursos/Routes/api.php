@@ -23,6 +23,7 @@ use Modules\Cursos\Http\Controllers\MaterialController;
 use Modules\Cursos\Http\Controllers\ModeloCertificadoController;
 use Modules\Cursos\Http\Controllers\PresencaController;
 use Modules\Cursos\Http\Controllers\QuestaoController;
+use Modules\Cursos\Http\Controllers\RelatorioController;
 use Modules\Cursos\Http\Controllers\TentativaController;
 use Modules\Cursos\Http\Controllers\TurmaController;
 use Modules\Cursos\Http\Controllers\UsuarioOrgaoController;
@@ -115,6 +116,16 @@ Route::get('/inscricoes/{inscricao}/conteudo', [ConteudoInscricaoController::cla
 Route::post('/inscricoes/{inscricao}/aprovar', [InscricaoController::class, 'aprovar']);
 Route::post('/inscricoes/{inscricao}/recusar', [InscricaoController::class, 'recusar']);
 Route::post('/inscricoes/{inscricao}/cancelar', [InscricaoController::class, 'cancelar']);
+
+// Relatórios
+Route::get('/turmas/{turma}/relatorio', [RelatorioController::class, 'turma']);
+Route::get('/turmas/{turma}/relatorio/exportar', [RelatorioController::class, 'turmaExportar']);
+Route::get('/relatorios/cursos', [RelatorioController::class, 'cursos']);
+Route::get('/relatorios/cursos/exportar', [RelatorioController::class, 'cursosExportar']);
+Route::get('/relatorios/unidades', [RelatorioController::class, 'unidades']);
+Route::get('/relatorios/capacitacao', [RelatorioController::class, 'capacitacao']);
+Route::get('/relatorios/capacitacao/exportar', [RelatorioController::class, 'capacitacaoExportar']);
+Route::get('/relatorios/capacitacao/{participante}', [RelatorioController::class, 'capacitacaoDetalhe']);
 
 // Presença: chamada manual e check-in por QR code
 Route::get('/agendamentos/{agendamento}/chamada', [PresencaController::class, 'chamada']);

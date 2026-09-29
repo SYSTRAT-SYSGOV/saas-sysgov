@@ -302,4 +302,17 @@ final class InscricaoTest extends TestCase
 
         $this->assertTrue(AuditLog::where('action', 'inscricoes.exportadas')->where('resource', "Turma #{$turma->id}")->where('user_id', $this->instrutor->id)->exists());
     }
+
+    /** Relatórios do Cursos, tarefa 1.4 — cenário "Nome que começa com fórmula" (design D6). */
+    public function test_exportacao_csv_neutraliza_nome_que_comeca_com_formula(): void
+    {
+        $turma = $this->turma();
+        $this->inscrever($this->tenant, $turma, $this->participante('=cmd|calc'));
+
+        $csv = $this->como($this->instrutor, $this->tenant)->get("/api/cursos/turmas/{$turma->id}/inscricoes/exportar")->streamedContent();
+
+        $this->assertStringContainsString("'=cmd|calc", $csv);
+        // Nunca sem o apóstrofo de proteção logo após o separador.
+        $this->assertStringNotContainsString(';=cmd|calc', $csv);
+    }
 }

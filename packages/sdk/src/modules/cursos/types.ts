@@ -564,3 +564,122 @@ export interface ConteudoInscricao {
   materiais: ConteudoMaterial[];
   avaliacoes: ConteudoAvaliacao[];
 }
+
+// ---------------------------------------------------------------- relatórios
+
+export interface ResumoRelatorioTurma {
+  por_situacao: Record<StatusInscricao, number>;
+  vagas_ocupadas: number;
+  vagas: number;
+  frequencia_media: number | null;
+  nota_media: number | null;
+  taxa_conclusao: number | null;
+  certificados_emitidos: number;
+}
+
+export interface InscritoRelatorioTurma extends InscritoTurma {
+  resultado: string;
+}
+
+export interface RelatorioTurma {
+  resumo: ResumoRelatorioTurma;
+  inscritos: InscritoRelatorioTurma[];
+}
+
+export interface TurmaDetalheRelatorioCursos {
+  turma_id: number;
+  turma_nome: string;
+  turma_status: StatusTurma;
+  inscricoes: number;
+  concluidos: number;
+  nao_concluidos: number;
+  taxa_conclusao: number | null;
+  frequencia_media: number | null;
+  nota_media: number | null;
+  certificados_emitidos: number;
+}
+
+export interface CursoRelatorio {
+  curso_id: number;
+  titulo: string;
+  tipo: TipoCurso;
+  turmas: number;
+  inscricoes: number;
+  concluidos: number;
+  nao_concluidos: number;
+  taxa_conclusao: number | null;
+  frequencia_media: number | null;
+  nota_media: number | null;
+  certificados_emitidos: number;
+  horas_certificadas_minutos: number;
+  turmas_detalhe: TurmaDetalheRelatorioCursos[];
+}
+
+export interface TotaisRelatorioCursos {
+  turmas: number;
+  inscricoes: number;
+  concluidos: number;
+  nao_concluidos: number;
+  taxa_conclusao: number | null;
+  frequencia_media: number | null;
+  nota_media: number | null;
+  horas_certificadas_minutos: number;
+  certificados_emitidos: number;
+}
+
+export interface RelatorioCursos {
+  cursos: CursoRelatorio[];
+  totais: TotaisRelatorioCursos;
+}
+
+export interface RelatorioCursosFiltros {
+  inicio: string;
+  fim: string;
+  tipo?: TipoCurso;
+  curso_id?: number;
+}
+
+export type OrdenacaoCapacitacao = 'nome' | 'horas' | 'ultima_conclusao';
+
+export interface RelatorioCapacitacaoFiltros {
+  inicio?: string;
+  fim?: string;
+  curso_id?: number;
+  unidade_id?: number;
+  ordenar_por?: OrdenacaoCapacitacao;
+  direcao?: 'asc' | 'desc';
+  por_pagina?: number;
+  pagina?: number;
+}
+
+export interface CapacitacaoServidor {
+  participante_id: number;
+  nome: string;
+  email: string;
+  cursos_concluidos: number;
+  horas_capacitacao_minutos: number;
+  cursos_em_andamento: number;
+  ultima_conclusao: string | null;
+  unidades: string[];
+}
+
+export interface CapacitacaoCursoConcluido {
+  curso_titulo: string;
+  carga_horaria_minutos: number;
+  concluida_em: string;
+  certificado_codigo: string | null;
+  certificado_valido: boolean;
+}
+
+export interface CapacitacaoServidorDetalhe {
+  participante_id: number;
+  nome: string;
+  email: string;
+  cursos: CapacitacaoCursoConcluido[];
+}
+
+export interface UnidadeRelatorio {
+  id: number;
+  nome: string;
+  path: string;
+}

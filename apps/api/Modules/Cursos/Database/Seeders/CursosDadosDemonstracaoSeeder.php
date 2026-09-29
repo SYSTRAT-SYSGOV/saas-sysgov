@@ -13,9 +13,11 @@ use Illuminate\Support\Facades\Hash;
 use Modules\Admin\Models\Module;
 use Modules\Cursos\Enums\StatusCurso;
 use Modules\Cursos\Models\Aula;
+use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Services\AulaService;
+use Modules\Cursos\Services\CertificadoService;
 use Modules\Cursos\Services\CursoService;
 use Modules\Cursos\Services\EncerramentoService;
 use Modules\Cursos\Services\FormacaoService;
@@ -23,6 +25,8 @@ use Modules\Cursos\Services\InscricaoService;
 use Modules\Cursos\Services\ModeloCertificadoService;
 use Modules\Cursos\Services\PresencaService;
 use Modules\Cursos\Services\TurmaService;
+use Modules\OrgChart\Models\OrgUnit;
+use Modules\OrgChart\Models\OrgUnitUser;
 use RuntimeException;
 
 /**
@@ -51,6 +55,9 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
     /** @var list<User> */
     private array $participantes = [];
 
+    /** @var list<OrgUnit> */
+    private array $unidades = [];
+
     public function run(?int $tenantId = null): void
     {
         if (app()->environment('production')) {
@@ -75,6 +82,8 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
         (new CursosRbacSeeder())->run();
         $this->habilitarModulo($tenant);
         $this->criarPessoas($tenant);
+        $this->criarUnidades($tenant);
+        $this->vincularUnidades($tenant);
 
         $this->como($this->admin, fn () => app(ModeloCertificadoService::class)->criar([
             'nome' => 'Certificado padrão',
@@ -142,6 +151,12 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
             $this->como($this->instrutora, fn () => app(PresencaService::class)->registrarChamada($agendamento, $presencas, $this->instrutora));
         }
         $this->como($this->instrutora, fn () => app(EncerramentoService::class)->encerrar($encerrada->refresh(), $this->instrutora));
+
+        // Um dos certificados emitidos fica revogado (cenário do relatório de capacitação, tarefa 5.1).
+        $certificadoParaRevogar = Certificado::query()->whereHas('inscricao', fn ($q) => $q->where('turma_id', $encerrada->id))->first();
+        if ($certificadoParaRevogar !== null) {
+            $this->como($this->admin, fn () => app(CertificadoService::class)->revogar($certificadoParaRevogar, $this->admin, 'Certificado emitido com dados divergentes do participante — reemissão pendente.'));
+        }
 
         // Turma aberta com 3 vagas: 3 confirmados e 2 na lista de espera.
         $aberta = $this->turma($curso, 'Turma 2026/2', now()->addDays(20), now()->addDays(50), 3, 'hibrido');
@@ -272,6 +287,44 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
         ];
         foreach ($nomes as $nome => $login) {
             $this->participantes[] = $this->usuarioDemo($tenant, $nome, $login, 'participante_cursos');
+        }
+    }
+
+    /**
+     * Duas unidades para o filtro por unidade do relatório de capacitação (tarefa 5.1).
+     * Reaproveita a árvore do OrgChart se o tenant já tiver uma (ex.: `OrgChartDatabaseSeeder`);
+     * senão cria uma raiz mínima só para isto, para não depender de outro seeder ter rodado.
+     */
+    private function criarUnidades(Tenant $tenant): void
+    {
+        $existentes = OrgUnit::query()->orderBy('path')->limit(2)->get();
+        if ($existentes->count() >= 2) {
+            $this->unidades = $existentes->all();
+            return;
+        }
+
+        $secretaria1 = OrgUnit::create(['tenant_id' => $tenant->id, 'name' => 'Secretaria de Administração', 'code' => 'CUR-SMA', 'type' => 'secretaria', 'level' => 1, 'path' => '0']);
+        $secretaria1->update(['path' => (string) $secretaria1->id]);
+
+        $secretaria2 = OrgUnit::create(['tenant_id' => $tenant->id, 'name' => 'Secretaria de Educação', 'code' => 'CUR-SMED', 'type' => 'secretaria', 'level' => 1, 'path' => '0']);
+        $secretaria2->update(['path' => (string) $secretaria2->id]);
+
+        $this->unidades = [$secretaria1, $secretaria2];
+    }
+
+    /** Metade dos participantes de demonstração em cada unidade (idempotente por conta do guard em `run()`). */
+    private function vincularUnidades(Tenant $tenant): void
+    {
+        if ($this->unidades === []) {
+            return;
+        }
+
+        foreach ($this->participantes as $i => $participante) {
+            $unidade = $this->unidades[$i % count($this->unidades)];
+            OrgUnitUser::updateOrCreate(
+                ['tenant_id' => $tenant->id, 'org_unit_id' => $unidade->id, 'user_id' => $participante->id],
+                ['role' => 'membro'],
+            );
         }
     }
 

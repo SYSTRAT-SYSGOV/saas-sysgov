@@ -6,6 +6,8 @@ import type {
   AulaInput,
   Avaliacao,
   AvaliacaoInput,
+  CapacitacaoServidor,
+  CapacitacaoServidorDetalhe,
   CatalogoCurso,
   Certificado,
   Chamada,
@@ -30,6 +32,10 @@ import type {
   QrCheckIn,
   Questao,
   QuestaoInput,
+  RelatorioCapacitacaoFiltros,
+  RelatorioCursos,
+  RelatorioCursosFiltros,
+  RelatorioTurma,
   RespostaSalva,
   ResumoEncerramento,
   StatusCurso,
@@ -39,6 +45,7 @@ import type {
   Turma,
   TurmaDetalhe,
   TurmaInput,
+  UnidadeRelatorio,
   ValidacaoCertificado,
 } from './types';
 
@@ -424,6 +431,51 @@ export class CursosModuleClient implements BaseModuleClient {
 
   corrigirResposta(tentativaId: number, questaoId: number, correcao: { pontos: number; comentario?: string | null }): Promise<TentativaCorrecao> {
     return this.api.request(`/cursos/tentativas/${tentativaId}/respostas/${questaoId}/correcao`, { method: 'PUT', ...json(correcao) });
+  }
+
+  // ---------------------------------------------------------------- relatórios
+
+  getRelatorioTurma(turmaId: number): Promise<RelatorioTurma> {
+    return this.api.request(`/cursos/turmas/${turmaId}/relatorio`);
+  }
+
+  exportarRelatorioTurma(turmaId: number): Promise<Blob> {
+    if (!this.api.requestBlob) throw new Error('Este cliente não suporta download de arquivos.');
+    return this.api.requestBlob(`/cursos/turmas/${turmaId}/relatorio/exportar`);
+  }
+
+  getRelatorioCursos(filtros: RelatorioCursosFiltros): Promise<RelatorioCursos> {
+    return this.api.request(`/cursos/relatorios/cursos?${this.querystring(filtros)}`);
+  }
+
+  exportarRelatorioCursos(filtros: RelatorioCursosFiltros): Promise<Blob> {
+    if (!this.api.requestBlob) throw new Error('Este cliente não suporta download de arquivos.');
+    return this.api.requestBlob(`/cursos/relatorios/cursos/exportar?${this.querystring(filtros)}`);
+  }
+
+  listarUnidadesRelatorio(): Promise<UnidadeRelatorio[]> {
+    return this.api.request('/cursos/relatorios/unidades');
+  }
+
+  getRelatorioCapacitacao(filtros: RelatorioCapacitacaoFiltros = {}): Promise<Paginated<CapacitacaoServidor>> {
+    return this.api.request(`/cursos/relatorios/capacitacao?${this.querystring(filtros)}`);
+  }
+
+  exportarRelatorioCapacitacao(filtros: Omit<RelatorioCapacitacaoFiltros, 'ordenar_por' | 'direcao' | 'por_pagina' | 'pagina'> = {}): Promise<Blob> {
+    if (!this.api.requestBlob) throw new Error('Este cliente não suporta download de arquivos.');
+    return this.api.requestBlob(`/cursos/relatorios/capacitacao/exportar?${this.querystring(filtros)}`);
+  }
+
+  getCapacitacaoServidor(participanteId: number): Promise<CapacitacaoServidorDetalhe> {
+    return this.api.request(`/cursos/relatorios/capacitacao/${participanteId}`);
+  }
+
+  private querystring<T extends object>(filtros: T): string {
+    const params = new URLSearchParams();
+    Object.entries(filtros as Record<string, unknown>).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+    });
+    return params.toString();
   }
 
   // ---------------------------------------------------------------- público (sem login)
