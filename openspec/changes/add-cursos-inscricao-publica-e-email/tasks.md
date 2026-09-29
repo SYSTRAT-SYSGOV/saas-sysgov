@@ -102,9 +102,16 @@
 
 ## 2. Participante externo e cadastro público
 
-- [ ] 2.1 Migrations: `origem` e `consentimento_em`/`termo_versao` em `cursos_participantes`
+- [x] 2.1 Migrations: `origem` e `consentimento_em`/`termo_versao` em `cursos_participantes`
       (participantes atuais viram `servidor`) e `email_verification_tokens`; verificar `migrate`
       no MySQL do Docker.
+      `email_verification_tokens` é tabela de plataforma (`database/migrations`, não
+      `TenantAware`), com `tenant_id` próprio — não é o `TenantContext` que decide qual vínculo
+      `tenant_user` o clique ativa, porque uma pessoa pode ter cadastros pendentes em mais de um
+      órgão ao mesmo tempo (design D5/D6), então o token carrega o tenant explicitamente. Rodei
+      as duas migrations isoladas contra o MySQL do Docker (`migrate --path=...`), conferi as
+      colunas resultantes com `Schema::getColumnListing` e fiz `migrate:rollback --step=2` pra
+      não deixar o banco de dev com schema fora do fluxo normal de migration.
 - [ ] 2.2 Papel `participante_externo_cursos` (só `cursos.view` e `cursos.participar`) no
       `CursosRbacSeeder`, e exclusão de externos da busca de instrutores; testes dos cenários
       "Externo não é oferecido como instrutor" e "Externo entra e vê só o próprio conteúdo".
