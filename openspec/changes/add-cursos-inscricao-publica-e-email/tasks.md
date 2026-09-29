@@ -180,10 +180,25 @@
       de avaliador), a query fica sem filtro e devolve as avaliações de desempenho de TODOS os
       servidores do tenant. Reportado ao usuário no chat, não corrigido nesta mudança (módulo e
       domínio diferentes, código sensível de RH que merece revisão própria).
-- [ ] 2.6 Verificação de e-mail: endpoint com token de uso único e validade de 24 h, ativação do
+- [x] 2.6 Verificação de e-mail: endpoint com token de uso único e validade de 24 h, ativação do
       vínculo, pedido de novo link, e mensagem "verifique seu e-mail" no login com vínculo
       `pending` (D5, D6); testes dos cenários "Login antes da verificação", "Link de
       verificação vencido" e "Link de verificação usado duas vezes".
+      `POST /api/public/cursos/verificar-email` fica em `Routes/publico.php` (sem `{orgao}`/sem
+      `TenantContext`), não em `publico-orgao.php`: o token sozinho já carrega `user_id` e
+      `tenant_id`, então amarrar a rota a um `{orgao}` da URL só criaria um jeito a mais de dar
+      errado (slug não bate com o tenant do token) sem ganhar nada em troca. Já
+      `POST /api/public/cursos/{orgao}/pedir-novo-link` precisa do `{orgao}` porque só o e-mail
+      não diz em qual órgão está o vínculo pending. "Pedido de novo link" não gera token
+      nenhum aqui — só republica `cursos.CadastroExternoCriado` (event_id novo) pro mesmo
+      user_id/tenant_id; o tratador de verdade (tarefa 5.1, ainda não existe) que vai gerar o
+      token na hora do envio (D5) — testei com o token inserido direto na tabela, simulando o
+      que o tratador vai fazer depois. Mudança pequena e cirúrgica no `AuthController::login`
+      (não é do Cursos, mas é o único jeito de dar a mensagem "verifique seu e-mail"): adicionei
+      só uma checagem a mais bem no fim, antes do erro genérico de "sem tenant ativo" — não mexe
+      em MFA nem no caminho de analista de suporte. Sem problema de enumeração em revelar
+      "verifique seu e-mail" no login, porque a pessoa já provou a senha antes de chegar nessa
+      mensagem.
 - [ ] 2.7 Limites `cursos-cadastro-ip` e `cursos-cadastro-email` e campo isca (D8); testes dos
       cenários "Excesso de cadastros do mesmo IP" e "Campo isca preenchido".
 - [ ] 2.8 Comando agendado de limpeza de vínculos `pending` com mais de 7 dias e dos usuários
