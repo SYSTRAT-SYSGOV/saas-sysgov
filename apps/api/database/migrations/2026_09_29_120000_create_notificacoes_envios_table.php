@@ -16,7 +16,11 @@ return new class extends Migration {
             $table->foreignId('tenant_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignUuid('event_id')->constrained('outbox_events', 'event_id')->cascadeOnDelete();
             $table->string('tipo', 100);
-            $table->string('destinatario');
+            // Nulo quando o destinatário pretendido não tem e-mail cadastrado (situação
+            // "ignorado", design D2) — o índice único não deduplica esse caso entre tentativas
+            // (MySQL trata cada NULL como distinto), mas isso só duplica a linha de auditoria
+            // do "ignorado", nunca um envio de verdade.
+            $table->string('destinatario')->nullable();
             $table->enum('situacao', ['pendente', 'enviado', 'falhou', 'ignorado'])->default('pendente');
             $table->unsignedInteger('tentativas')->default(0);
             $table->text('erro')->nullable();

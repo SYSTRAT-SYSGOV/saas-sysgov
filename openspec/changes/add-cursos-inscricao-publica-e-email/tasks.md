@@ -33,11 +33,31 @@
       caso de evento de plataforma sem órgão (ex.: redefinição de senha de usuário sem
       vínculo). Migration verificada no MySQL do Docker (`up`/`rollback`/`up` de novo, escopada
       via `--path=` pra não bater na migration quebrada do Cemitérios).
-- [ ] 1.4 Ouvinte de `OutboxMessage` com o registro de tratadores (`config/notificacoes.php`):
+- [x] 1.4 Ouvinte de `OutboxMessage` com o registro de tratadores (`config/notificacoes.php`):
       define e limpa o `TenantContext` por evento, ignora tipos sem tratador, reserva a linha de
       envio antes de enviar e grava `enviado`, `falhou` ou `ignorado` (D1, D2); testes dos
       cenários "E-mail enviado depois do evento", "Falha temporária", "Tentativas esgotadas",
       "Evento reprocessado", "Falha parcial em vários destinatários" e "Destinatário sem e-mail".
+      `App\Listeners\EnviarNotificacoes` (descoberto automaticamente pelo Laravel — não precisou
+      registrar em nenhum `EventServiceProvider`, o projeto não tem um). Contrato
+      `App\Notificacoes\Tratador` e DTO `App\Notificacoes\Mensagem`; `config/notificacoes.php`
+      começa vazio, os módulos acrescentam suas entradas no boot do próprio
+      `ServiceProvider` (D1). Falha parcial: todas as mensagens de um tratador são tentadas
+      antes de relançar a primeira exceção — quem já foi enviado não é reenviado na próxima
+      tentativa do evento inteiro.
+      Achado: o Cemitérios já tem dois listeners próprios de `OutboxMessage`
+      (`Modules\Cemiterios\Listeners\EnviarEmail` e `SucessaoEventListener`), criados depois do
+      design.md ter sido escrito (que dizia "não existe nenhum ouvinte") — são específicos a
+      `event_type`s do Cemitérios, sem idempotência nem `TenantContext`, e coexistem sem
+      conflito com este ouvinte genérico (Laravel despacha o evento pra todos os listeners
+      registrados; o meu ignora qualquer `event_type` fora de `config('notificacoes.*')`).
+      Achado de ambiente (importante pro resto desta change): `MAIL_MAILER=smtp` do
+      `.env.docker` vence o `force="true"` do `phpunit.xml` pelo mesmo motivo do achado da
+      2.4/3.1 de `add-cursos-relatorios` com `DB_CONNECTION` — só um `putenv()`, sem popular
+      `$_ENV`/`$_SERVER`, e o Dotenv carrega o `.env` por cima. Testes que usam `Mail::to()`
+      precisam de `-e MAIL_MAILER=array` explícito no `docker compose run`, não só do
+      `phpunit.xml`. `array` (não `Mail::fake()`) porque `Mail::fake()` não chama `build()` do
+      Mailable — os testes de falha simulam erro de envio com um Mailable cujo `build()` lança.
 - [ ] 1.5 Layout base de mensagens e resolvedor de identidade a partir de `Tenant.settings`
       (título, cor, logotipo, `hideProviderSignature`, identidade padrão sem órgão) (D4); testes
       dos cenários "Mensagem com a identidade do órgão" e "Mensagem sem órgão".

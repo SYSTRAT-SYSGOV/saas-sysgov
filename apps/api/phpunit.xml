@@ -25,5 +25,8 @@
         <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost"/>
         <env name="DB_CONNECTION" value="sqlite" force="true"/>
         <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <!-- Nunca conecta de verdade (nem no Mailpit): array guarda a mensagem renderizada em
+             memória, então um Mailable que lança em build() ainda simula falha de envio. -->
+        <env name="MAIL_MAILER" value="array" force="true"/>
     </php>
 </phpunit>
