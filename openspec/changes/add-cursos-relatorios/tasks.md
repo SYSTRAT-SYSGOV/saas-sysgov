@@ -157,8 +157,15 @@
       tabela por curso; exportação de tela do `DataTable` (linhas carregadas) e "Exportar CSV"
       da API (resultado completo do período) lado a lado, com uma nota explicando a diferença —
       adianta parte da tarefa 4.5 pra esta visão.
-- [ ] 4.4 Visão de capacitação por servidor: filtros (período, curso e unidade), ordenação,
+- [x] 4.4 Visão de capacitação por servidor: filtros (período, curso e unidade), ordenação,
       paginação e detalhe do servidor com os certificados; teste Vitest.
+      `RelatorioCapacitacaoView` (novo componente, sob a mesma aba Relatórios via
+      `RelatoriosTab`): como a ordenação e a paginação são no servidor (D5) e o `DataTable`
+      só pagina/ordena no navegador, esta visão usa uma tabela própria (`Table` do
+      `@sysgov/ui`) com cabeçalho clicável pra ordenar e paginação anterior/próxima, chamando a
+      API a cada mudança de filtro/ordenação/página. Clicar num servidor abre um `Modal` com o
+      detalhe (`getCapacitacaoServidor`): cursos concluídos, carga horária e o certificado
+      (código, ou "revogado" quando `certificado_valido` é falso).
 - [ ] 4.5 Indicar na tela a diferença entre a exportação de tela do `DataTable` (linhas
       carregadas) e o "Exportar CSV" da API (resultado completo), e mostrar o número de
       inscrições ao lado das médias.

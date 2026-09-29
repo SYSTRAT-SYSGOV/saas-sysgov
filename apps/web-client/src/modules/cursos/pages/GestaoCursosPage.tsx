@@ -6,7 +6,7 @@ import { DataTable, ScreenState, StatusChip, Tabs, type TabsItem } from '@/compo
 import { sysgovApi, type Curso } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { CursoFormModal } from '../components/CursoFormModal';
-import { RelatorioCursosView } from '../components/RelatorioCursosView';
+import { RelatoriosTab } from '../components/RelatoriosTab';
 import { STATUS_CURSO, TIPO_CURSO, formatarCargaHoraria } from '../utils/formatos';
 
 interface Props {
@@ -116,7 +116,7 @@ export const GestaoCursosPage: React.FC<Props> = ({ onAbrirCurso }) => {
         </>
       )}
 
-      {aba === 'relatorios' && <RelatorioCursosView />}
+      {aba === 'relatorios' && <RelatoriosTab />}
 
       <CursoFormModal
         open={novo}
