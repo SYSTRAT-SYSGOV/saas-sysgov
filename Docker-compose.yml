@@ -13,6 +13,23 @@ services:
       - ./apps/api:/var/www/html
       - ./apps/api/.env.docker:/var/www/html/.env
       - /var/www/html/vendor
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on: [mysql, redis]
+    env_file: ./apps/api/.env.docker
+    # Dispara outbox:process (e-mails) e os demais comandos agendados em routes/console.php
+    # a cada minuto; sem isso os e-mails ficam presos em outbox_events (pending) pra sempre.
+    entrypoint: []
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - ./apps/api:/var/www/html
+      - ./apps/api/.env.docker:/var/www/html/.env
+      - /var/www/html/vendor
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["1025:1025", "8025:8025"]
   mysql:
     image: mysql:8.4
     environment:

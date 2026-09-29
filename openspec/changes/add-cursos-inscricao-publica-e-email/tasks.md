@@ -9,9 +9,20 @@
 
 ## 1. Plataforma de e-mail e Outbox
 
-- [ ] 1.1 Ambiente: serviços `mailpit` e `scheduler` no `Docker-compose.yml`, variáveis de e-mail e
+- [x] 1.1 Ambiente: serviços `mailpit` e `scheduler` no `Docker-compose.yml`, variáveis de e-mail e
       `PORTAL_URL` no `.env.example` e no `config`; verificar que o `scheduler` sobe e que um
       e-mail de teste chega ao Mailpit.
+      `scheduler` reusa a imagem da `api` com `entrypoint: []` (pula o `docker-entrypoint.sh` —
+      migrate/seed já rodam no serviço `api`; rodar de novo no scheduler seria redundante e
+      correria com ele) e roda só `php artisan schedule:work`. `mailpit` na porta 1025 (SMTP) e
+      8025 (UI). `PORTAL_URL` em `config/app.php` (`portal_url`), separado de `url` (APP_URL) —
+      os e-mails nunca devem montar link com o endereço da API. Verificado com
+      `Mail::raw(...)` via tinker: o e-mail chegou no Mailpit (`GET :8025/api/v1/messages`) com
+      remetente/assunto corretos. Achado de ambiente: `docker run` anteriores tinham deixado
+      `apps/api/storage/app/cursos` com dono `root` (`drwx------`), quebrando o build do
+      Docker (context read); corrigido com `docker run -v ...:/data alpine chown -R $(id
+      -u):$(id -g) /data/storage` — container descartável rodando como root só pra devolver a
+      pasta pro usuário do host.
 - [ ] 1.2 Agendar `outbox:process --limit=100` a cada minuto com `withoutOverlapping` em
       `routes/console.php`; teste de que o agendamento existe.
 - [ ] 1.3 Migration e model de `notificacoes_envios` (único `(event_id, tipo, destinatario)`);
