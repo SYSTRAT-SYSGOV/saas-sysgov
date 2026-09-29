@@ -120,6 +120,7 @@ Route::post('/inscricoes/{inscricao}/cancelar', [InscricaoController::class, 'ca
 // Relatórios
 Route::get('/turmas/{turma}/relatorio', [RelatorioController::class, 'turma']);
 Route::get('/relatorios/cursos', [RelatorioController::class, 'cursos']);
+Route::get('/relatorios/unidades', [RelatorioController::class, 'unidades']);
 Route::get('/relatorios/capacitacao', [RelatorioController::class, 'capacitacao']);
 Route::get('/relatorios/capacitacao/{participante}', [RelatorioController::class, 'capacitacaoDetalhe']);
 

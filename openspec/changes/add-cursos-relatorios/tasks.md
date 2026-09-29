@@ -84,9 +84,15 @@
       `unidade_id` como string da query string; o método privado que busca os descendentes é
       `?int` estrito (`declare(strict_types=1)`), então o cast pro tipo precisa acontecer na
       extração do filtro, não só na assinatura.
-- [ ] 2.5 Seletor de unidades: verificar se um Administrador do Cursos sem acesso ao OrgChart
+- [x] 2.5 Seletor de unidades: verificar se um Administrador do Cursos sem acesso ao OrgChart
       consegue listar as unidades; se não conseguir, expor `GET relatorios/unidades` no Cursos
       (id, nome e path); teste de permissão.
+      Não consegue: `OrgUnitPolicy::viewAny` (usada por `GET /api/org-units`) só libera papel do
+      organograma (`super_admin`, `admin_tenant`, `auditor`, `responsavel`, `membro`) ou a
+      permissão `org.view` — nenhum dos dois vem com `cursos.manage`. `GET
+      relatorios/unidades` no Cursos devolve id/nome/path das unidades ativas do tenant, com a
+      mesma autorização dos outros relatórios gerais (`viewAny` de `Curso`, D7); a query já vive
+      em `RelatorioCapacitacaoService::unidades()` por ser o consumidor do seletor.
 - [ ] 2.6 Autorização e isolamento (D7): `403` para instrutor e participante nos relatórios de
       cursos e de capacitação, `404` para turma ou servidor de outro órgão, e teste A/B em cada
       relatório com dados nos dois órgãos; testes dos cenários "Instrutor pede o relatório por

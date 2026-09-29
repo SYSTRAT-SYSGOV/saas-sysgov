@@ -216,6 +216,25 @@ final class RelatorioCapacitacaoTest extends TestCase
         $this->assertSame(['Secretaria de Educação'], $linha['unidades']);
     }
 
+    public function test_endpoint_de_unidades_traz_id_nome_e_path(): void
+    {
+        $raiz = $this->unidade('1', 'Prefeitura');
+        $this->unidade('1.1', 'Secretaria de Educação', $raiz->id);
+
+        $unidades = $this->como($this->admin, $this->tenant)
+            ->getJson('/api/cursos/relatorios/unidades')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertCount(2, $unidades);
+        $this->assertSame(['id' => $raiz->id, 'nome' => 'Prefeitura', 'path' => '1'], $unidades[0]);
+    }
+
+    public function test_instrutor_nao_acessa_o_endpoint_de_unidades(): void
+    {
+        $this->como($this->instrutor, $this->tenant)->getJson('/api/cursos/relatorios/unidades')->assertForbidden();
+    }
+
     public function test_instrutor_nao_acessa_o_relatorio_de_capacitacao(): void
     {
         $this->como($this->instrutor, $this->tenant)->getJson('/api/cursos/relatorios/capacitacao')->assertForbidden();

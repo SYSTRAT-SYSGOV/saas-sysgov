@@ -51,6 +51,14 @@ final class RelatorioController extends Controller
         return response()->json($this->relatorioCursos->relatorio($filtros));
     }
 
+    /** Unidades do tenant (id, nome, path) para o seletor do filtro; só quem administra o módulo. */
+    public function unidades(): JsonResponse
+    {
+        $this->authorize('viewAny', Curso::class);
+
+        return response()->json(['data' => $this->relatorioCapacitacao->unidades()]);
+    }
+
     /** Capacitação por servidor, paginado; só quem administra o módulo. */
     public function capacitacao(Request $request): JsonResponse
     {

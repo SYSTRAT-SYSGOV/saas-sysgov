@@ -86,6 +86,23 @@ final class RelatorioCapacitacaoService
     }
 
     /**
+     * Unidades do tenant para o seletor do filtro (tarefa 2.5, D5): id, nome e path, sem os
+     * demais campos do OrgChart. Existe porque o Administrador do Cursos pode não ter acesso
+     * ao módulo OrgChart (a política de `OrgUnit` exige papel do organograma ou `org.view`).
+     *
+     * @return list<array{id: int, nome: string, path: string}>
+     */
+    public function unidades(): array
+    {
+        return OrgUnit::query()
+            ->where('is_active', true)
+            ->orderBy('path')
+            ->get(['id', 'name', 'path'])
+            ->map(fn (OrgUnit $unidade): array => ['id' => $unidade->id, 'nome' => $unidade->name, 'path' => $unidade->path])
+            ->all();
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function detalhe(Participante $participante): ?array
