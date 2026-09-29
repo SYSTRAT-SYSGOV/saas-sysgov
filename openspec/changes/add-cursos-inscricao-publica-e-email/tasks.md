@@ -112,9 +112,16 @@
       as duas migrations isoladas contra o MySQL do Docker (`migrate --path=...`), conferi as
       colunas resultantes com `Schema::getColumnListing` e fiz `migrate:rollback --step=2` pra
       não deixar o banco de dev com schema fora do fluxo normal de migration.
-- [ ] 2.2 Papel `participante_externo_cursos` (só `cursos.view` e `cursos.participar`) no
+- [x] 2.2 Papel `participante_externo_cursos` (só `cursos.view` e `cursos.participar`) no
       `CursosRbacSeeder`, e exclusão de externos da busca de instrutores; testes dos cenários
       "Externo não é oferecido como instrutor" e "Externo entra e vê só o próprio conteúdo".
+      Mesmo conjunto de permissões do `participante_cursos` — o isolamento do externo não vem de
+      permissão própria, mas de não ter outros papéis nem `primary_org_unit_id` (verificado a
+      fundo na tarefa 2.5). `UsuarioOrgaoController` (busca de instrutores e de participante para
+      inscrição direta) já filtra por `role_user.tenant_id` explícito, então bastou um
+      `whereDoesntHave` na mesma linha; "vê só o próprio conteúdo" não precisou de nada novo em
+      `InscricaoPolicy`, que já decide por permissão (`cursos.participar`) e dono da inscrição,
+      não por papel — o teste só confirma que o externo se encaixa no mesmo caminho.
 - [ ] 2.3 Middleware `ResolvePublicTenant` e grupo `api/public/cursos/{orgao}` (D7), com `404`
       uniforme para órgão inexistente, inativo ou sem página habilitada; ampliar o teste de
       arquitetura (controllers públicos só dependem de `Services/Publico`, e toda rota com

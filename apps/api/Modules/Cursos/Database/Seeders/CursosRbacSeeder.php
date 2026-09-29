@@ -47,6 +47,14 @@ final class CursosRbacSeeder extends Seeder
             'description' => 'Inscreve-se em turmas e acessa os próprios cursos, frequência e certificados',
             'permissions' => ['cursos.view', 'cursos.participar'],
         ],
+        // Cadastro público (Fase 3, design D6): mesmas permissões do participante servidor —
+        // o isolamento vem de não ter outros papéis nem primary_org_unit_id, não de permissão
+        // própria. Fica de fora da busca de instrutores/inscrição direta (UsuarioOrgaoController).
+        'participante_externo_cursos' => [
+            'name' => 'Participante Externo',
+            'description' => 'Conta criada pelo cadastro público: acessa só os próprios cursos, frequência e certificados',
+            'permissions' => ['cursos.view', 'cursos.participar'],
+        ],
     ];
 
     public function run(): void
