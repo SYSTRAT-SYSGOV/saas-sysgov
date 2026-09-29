@@ -17,6 +17,7 @@ use Modules\Cursos\Http\Controllers\CertificadoController;
 use Modules\Cursos\Http\Controllers\CorrecaoController;
 use Modules\Cursos\Http\Controllers\ConteudoInscricaoController;
 use Modules\Cursos\Http\Controllers\CursoController;
+use Modules\Cursos\Http\Controllers\EnvioController;
 use Modules\Cursos\Http\Controllers\FormacaoController;
 use Modules\Cursos\Http\Controllers\InscricaoController;
 use Modules\Cursos\Http\Controllers\MaterialController;
@@ -126,6 +127,10 @@ Route::get('/relatorios/unidades', [RelatorioController::class, 'unidades']);
 Route::get('/relatorios/capacitacao', [RelatorioController::class, 'capacitacao']);
 Route::get('/relatorios/capacitacao/exportar', [RelatorioController::class, 'capacitacaoExportar']);
 Route::get('/relatorios/capacitacao/{participante}', [RelatorioController::class, 'capacitacaoDetalhe']);
+
+// E-mails enviados (tarefa 1.8)
+Route::get('/envios', [EnvioController::class, 'index']);
+Route::post('/envios/{envio}/reenviar', [EnvioController::class, 'reenviar']);
 
 // Presença: chamada manual e check-in por QR code
 Route::get('/agendamentos/{agendamento}/chamada', [PresencaController::class, 'chamada']);

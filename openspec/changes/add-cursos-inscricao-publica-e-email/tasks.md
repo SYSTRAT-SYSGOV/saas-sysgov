@@ -87,8 +87,18 @@
       não dá pra saber quais estavam `pending` antes, e desfazer reenviaria exatamente os
       e-mails atrasados que ela existe pra evitar). Roda uma vez no deploy desta mudança, antes
       do `scheduler` subir de verdade em produção.
-- [ ] 1.8 API de envios do órgão (`cursos.manage`): listar com filtro de situação e reenviar os
+- [x] 1.8 API de envios do órgão (`cursos.manage`): listar com filtro de situação e reenviar os
       `falhou`, com auditoria; testes dos cenários "Reenvio de falha" e "Envios de outro órgão".
+      `EnvioController::index/reenviar`, gated por `viewAny` de `Curso` (mesmo nível de acesso de
+      relatórios). Reenvio não chama nada externo na requisição (regra do `CODING_STANDARD` de só
+      usar o Outbox pra chamada externa): só reseta `NotificacaoEnvio.situacao` e
+      `OutboxEvent.status/available_at` pra `pendente`/`pending`, e o `scheduler` já agendado
+      (tarefa 1.2) pega na próxima passada — a idempotência do ouvinte (tarefa 1.4) garante que
+      irmãos já `enviado` do mesmo evento multi-destinatário não são reenviados. Como
+      `NotificacaoEnvio` não é `TenantAware` (mesmo padrão de `OutboxEvent`, tenant_id
+      nulo-permitido), o isolamento é explícito no controller — inclusive no reenvio, onde o model
+      binding implícito do Laravel resolve por id sem filtrar tenant, então o 404 é verificado à
+      mão antes de qualquer mutação.
 
 ## 2. Participante externo e cadastro público
 
