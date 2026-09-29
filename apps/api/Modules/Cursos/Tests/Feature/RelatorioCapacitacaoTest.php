@@ -7,12 +7,15 @@ namespace Modules\Cursos\Tests\Feature;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
+use Modules\OrgChart\Models\OrgUnit;
+use Modules\OrgChart\Models\OrgUnitUser;
 
 /**
  * Relatórios do Cursos, tarefa 2.3 — relatório de capacitação por servidor.
@@ -59,6 +62,29 @@ final class RelatorioCapacitacaoTest extends TestCase
                 'revogado_em' => $certificadoRevogado ? now() : null,
             ]);
         });
+    }
+
+    private function unidade(string $path, string $nome, ?int $parentId = null): OrgUnit
+    {
+        return $this->noTenant($this->tenant, fn (): OrgUnit => OrgUnit::create([
+            'tenant_id' => $this->tenant->id,
+            'parent_id' => $parentId,
+            'name' => $nome,
+            'code' => 'UN-' . Str::random(8),
+            'type' => 'departamento',
+            'level' => substr_count($path, '.') + 1,
+            'path' => $path,
+        ]));
+    }
+
+    private function vincularUnidade(User $user, OrgUnit $unidade): void
+    {
+        $this->noTenant($this->tenant, fn (): OrgUnitUser => OrgUnitUser::create([
+            'tenant_id' => $this->tenant->id,
+            'org_unit_id' => $unidade->id,
+            'user_id' => $user->id,
+            'role' => 'membro',
+        ]));
     }
 
     /**
@@ -143,6 +169,51 @@ final class RelatorioCapacitacaoTest extends TestCase
         $this->assertSame(0, $linha['cursos_concluidos']);
         $this->assertSame(0, $linha['horas_capacitacao_minutos']);
         $this->assertSame(1, $linha['cursos_em_andamento']);
+    }
+
+    public function test_filtro_por_unidade(): void
+    {
+        $raiz = $this->unidade('1', 'Prefeitura');
+        $secretaria1 = $this->unidade('1.1', 'Secretaria 1', $raiz->id);
+        $secretaria10 = $this->unidade('1.10', 'Secretaria 10', $raiz->id);
+        $departamento = $this->unidade('1.1.1', 'Departamento da Secretaria 1', $secretaria1->id);
+
+        $daSecretaria1 = $this->usuario($this->tenant, ['participante_cursos'], 'Da Secretaria 1');
+        $daSecretaria10 = $this->usuario($this->tenant, ['participante_cursos'], 'Da Secretaria 10');
+        $doDepartamento = $this->usuario($this->tenant, ['participante_cursos'], 'Do Departamento');
+
+        $this->vincularUnidade($daSecretaria1, $secretaria1);
+        $this->vincularUnidade($daSecretaria10, $secretaria10);
+        $this->vincularUnidade($doDepartamento, $departamento);
+
+        $curso = $this->cursoPublicado($this->tenant);
+        $this->concluir($daSecretaria1, $curso, '2025-03-01 10:00:00');
+        $this->concluir($daSecretaria10, $curso, '2025-03-01 10:00:00');
+        $this->concluir($doDepartamento, $curso, '2025-03-01 10:00:00');
+
+        $relatorio = $this->relatorio(['unidade_id' => $secretaria1->id]);
+        /** @var array<int, array<string, mixed>> $dados */
+        $dados = $relatorio['data'];
+        $nomes = collect($dados)->pluck('nome')->all();
+
+        $this->assertContains('Da Secretaria 1', $nomes, 'a própria unidade filtrada deve aparecer');
+        $this->assertContains('Do Departamento', $nomes, 'subunidade por path deve aparecer');
+        $this->assertNotContains('Da Secretaria 10', $nomes, '"1.1" não deve casar com "1.10" (prefixo de path)');
+    }
+
+    public function test_coluna_de_unidades_vinculadas(): void
+    {
+        $secretaria = $this->unidade('1', 'Secretaria de Educação');
+        $servidor = $this->usuario($this->tenant, ['participante_cursos'], 'Servidor Vinculado');
+        $this->vincularUnidade($servidor, $secretaria);
+
+        $curso = $this->cursoPublicado($this->tenant);
+        $this->concluir($servidor, $curso, '2025-03-01 10:00:00');
+
+        $relatorio = $this->relatorio();
+        $linha = $this->linhaPorNome($relatorio, 'Servidor Vinculado');
+
+        $this->assertSame(['Secretaria de Educação'], $linha['unidades']);
     }
 
     public function test_instrutor_nao_acessa_o_relatorio_de_capacitacao(): void

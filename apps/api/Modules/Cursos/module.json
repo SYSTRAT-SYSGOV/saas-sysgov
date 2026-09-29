@@ -8,7 +8,8 @@
         "Modules\\Cursos\\Providers\\RouteServiceProvider"
     ],
     "requires": [
-        "Admin"
+        "Admin",
+        "OrgChart"
     ],
     "permissions": {
         "cursos.view": "Acessar o módulo de Cursos e o catálogo publicado",

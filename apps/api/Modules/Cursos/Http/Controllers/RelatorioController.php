@@ -59,6 +59,7 @@ final class RelatorioController extends Controller
             'inicio' => ['sometimes', 'nullable', 'date'],
             'fim' => ['sometimes', 'nullable', 'date', 'after_or_equal:inicio'],
             'curso_id' => ['sometimes', 'nullable', 'integer', Rule::exists('cursos_cursos', 'id')->where('tenant_id', app(TenantContext::class)->id())],
+            'unidade_id' => ['sometimes', 'nullable', 'integer', Rule::exists('org_units', 'id')->where('tenant_id', app(TenantContext::class)->id())],
             'ordenar_por' => ['sometimes', 'nullable', Rule::in(['nome', 'horas', 'ultima_conclusao'])],
             'direcao' => ['sometimes', 'nullable', Rule::in(['asc', 'desc'])],
             'por_pagina' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],

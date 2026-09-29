@@ -9,6 +9,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Modules\Cursos\Models\Participante;
+use Modules\OrgChart\Models\OrgUnit;
 
 /**
  * Relatório de capacitação por servidor (Relatórios do Cursos, tarefa 2.3, design D4/D5).
@@ -20,7 +21,11 @@ use Modules\Cursos\Models\Participante;
  *
  * Só servidores: `user_id` não nulo (a Fase 3, ainda não implementada, reserva `user_id` nulo
  * ao participante externo — quando a coluna `origem` existir, o filtro passa a usá-la também).
- * O filtro por unidade organizacional entra na tarefa 2.4.
+ *
+ * Filtro por unidade (tarefa 2.4, D5): a unidade escolhida e suas subunidades por prefixo de
+ * `path` (`OrgUnit::getSelfAndDescendantIds()`, que já separa os níveis por `.` para não casar
+ * `1.1` com `1.10`). O vínculo usuário↔unidade é semijoin (`whereIn` por subconsulta), não
+ * `join`, para um servidor com mais de uma unidade não duplicar linhas nem inflar as somas.
  */
 final class RelatorioCapacitacaoService
 {
@@ -32,7 +37,7 @@ final class RelatorioCapacitacaoService
     ) {}
 
     /**
-     * @param array{inicio?: string|null, fim?: string|null, curso_id?: int|null, ordenar_por?: string|null, direcao?: string|null, por_pagina?: int|null, pagina?: int|null} $filtros
+     * @param array{inicio?: string|null, fim?: string|null, curso_id?: int|null, unidade_id?: int|null, ordenar_por?: string|null, direcao?: string|null, por_pagina?: int|null, pagina?: int|null} $filtros
      * @return LengthAwarePaginator<int, array<string, mixed>>
      */
     public function relatorio(array $filtros): LengthAwarePaginator
@@ -42,25 +47,28 @@ final class RelatorioCapacitacaoService
         $pagina = max(1, $filtros['pagina'] ?? 1);
         $ordenarPor = self::ORDENACAO_PERMITIDA[$filtros['ordenar_por'] ?? 'nome'] ?? self::ORDENACAO_PERMITIDA['nome'];
         $direcao = strtolower($filtros['direcao'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+        $unidadeIds = $this->idsUnidadeEDescendentes(isset($filtros['unidade_id']) ? (int) $filtros['unidade_id'] : null);
 
-        $total = $this->consultaBase($tenantId, $filtros['curso_id'] ?? null)->distinct()->count('p.id');
+        $total = $this->consultaBase($tenantId, $filtros['curso_id'] ?? null, $unidadeIds)->distinct()->count('p.id');
 
         [$condicaoPeriodo, $bindingsPeriodo] = $this->condicaoPeriodo($filtros['inicio'] ?? null, $filtros['fim'] ?? null);
 
-        $linhas = $this->consultaBase($tenantId, $filtros['curso_id'] ?? null)
+        $linhas = $this->consultaBase($tenantId, $filtros['curso_id'] ?? null, $unidadeIds)
             ->selectRaw(
-                "p.id as participante_id, p.nome, p.email,
+                "p.id as participante_id, p.user_id, p.nome, p.email,
                  SUM(CASE WHEN i.status = 'confirmada' THEN 1 ELSE 0 END) as em_andamento,
                  SUM(CASE WHEN i.status = 'concluida'{$condicaoPeriodo} THEN 1 ELSE 0 END) as concluidos,
                  SUM(CASE WHEN i.status = 'concluida'{$condicaoPeriodo} AND cert.id IS NOT NULL THEN c.carga_horaria_minutos ELSE 0 END) as minutos,
                  MAX(CASE WHEN i.status = 'concluida'{$condicaoPeriodo} THEN i.concluida_em ELSE NULL END) as ultima_conclusao",
                 [...$bindingsPeriodo, ...$bindingsPeriodo, ...$bindingsPeriodo],
             )
-            ->groupBy('p.id', 'p.nome', 'p.email')
+            ->groupBy('p.id', 'p.user_id', 'p.nome', 'p.email')
             ->orderBy($ordenarPor, $direcao)
             ->orderBy('p.id') // desempate estável
             ->forPage($pagina, $porPagina)
             ->get();
+
+        $unidadesPorUsuario = $this->unidadesPorUsuario($tenantId, $linhas->pluck('user_id')->unique()->map(fn (mixed $id): int => (int) $id)->values()->all());
 
         /** @var array<int, array<string, mixed>> $dados */
         $dados = $linhas->map(fn (object $l): array => [
@@ -71,6 +79,7 @@ final class RelatorioCapacitacaoService
             'horas_capacitacao_minutos' => (int) $l->minutos,
             'cursos_em_andamento' => (int) $l->em_andamento,
             'ultima_conclusao' => $l->ultima_conclusao,
+            'unidades' => $unidadesPorUsuario[(int) $l->user_id] ?? [],
         ])->all();
 
         return new LengthAwarePaginator($dados, $total, $porPagina, $pagina, ['path' => LengthAwarePaginator::resolveCurrentPath()]);
@@ -116,7 +125,8 @@ final class RelatorioCapacitacaoService
         ];
     }
 
-    private function consultaBase(int $tenantId, ?int $cursoId): Builder
+    /** @param list<int>|null $unidadeIds null = sem filtro de unidade */
+    private function consultaBase(int $tenantId, ?int $cursoId, ?array $unidadeIds): Builder
     {
         return DB::table('cursos_participantes as p')
             ->join('cursos_inscricoes as i', function ($j) use ($tenantId): void {
@@ -133,7 +143,46 @@ final class RelatorioCapacitacaoService
             })
             ->leftJoin('cursos_certificados as cert', fn ($j) => $j->on('cert.inscricao_id', '=', 'i.id')->where('cert.tenant_id', $tenantId)->whereNull('cert.revogado_em'))
             ->where('p.tenant_id', $tenantId)
-            ->whereNotNull('p.user_id');
+            ->whereNotNull('p.user_id')
+            ->when($unidadeIds !== null, function (Builder $q) use ($tenantId, $unidadeIds): void {
+                $q->whereIn('p.user_id', function ($sub) use ($tenantId, $unidadeIds): void {
+                    $sub->select('user_id')->from('org_unit_user')->where('tenant_id', $tenantId)->whereIn('org_unit_id', $unidadeIds);
+                });
+            });
+    }
+
+    /**
+     * @return list<int>|null null = sem filtro; lista vazia = unidade inexistente no tenant (zero resultados)
+     */
+    private function idsUnidadeEDescendentes(?int $unidadeId): ?array
+    {
+        if ($unidadeId === null) {
+            return null;
+        }
+
+        return OrgUnit::find($unidadeId)?->getSelfAndDescendantIds() ?? [];
+    }
+
+    /**
+     * @param list<int> $userIds
+     * @return array<int, list<string>>
+     */
+    private function unidadesPorUsuario(int $tenantId, array $userIds): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        return DB::table('org_unit_user as ouu')
+            ->join('org_units as u', fn ($j) => $j->on('u.id', '=', 'ouu.org_unit_id')->where('u.tenant_id', $tenantId)->whereNull('u.deleted_at'))
+            ->where('ouu.tenant_id', $tenantId)
+            ->whereIn('ouu.user_id', $userIds)
+            ->orderBy('u.name')
+            ->select(['ouu.user_id', 'u.name'])
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn ($linhas) => $linhas->pluck('name')->all())
+            ->all();
     }
 
     /** @return array{0: string, 1: list<string>} fragmento SQL (vazio se sem período) e os bindings dele */

@@ -72,9 +72,18 @@
       "cursos concluídos" (a conclusão em si não deixa de ter acontecido). O filtro de período
       entra dentro do `SUM(CASE WHEN ...)`, nunca no `WHERE`, para não excluir da lista quem
       tem inscrição na base fora do período (cenário "Servidor sem conclusão").
-- [ ] 2.4 Filtro por unidade com subunidades por prefixo de `path` e a coluna de unidades
+- [x] 2.4 Filtro por unidade com subunidades por prefixo de `path` e a coluna de unidades
       vinculadas (D5); teste do cenário "Filtro por unidade", incluindo que `1.1` não casa com
       `1.10`.
+      Reaproveitado `OrgUnit::getSelfAndDescendantIds()` (já separa os níveis por `.`) em vez de
+      repetir o `path LIKE '{path}%'` sem separador que o `PainelGerencialService` do Capd usa —
+      aquele padrão casaria `1.1` com `1.10`. O vínculo usuário↔unidade entra por `whereIn`
+      com subconsulta em `org_unit_user`, não por `join`, para um servidor em mais de uma
+      unidade não duplicar linha nem inflar as somas. Cursos passou a `requires: ["OrgChart"]`
+      no `module.json` (mesmo padrão do Capd). Achado: `$request->validate()` devolve
+      `unidade_id` como string da query string; o método privado que busca os descendentes é
+      `?int` estrito (`declare(strict_types=1)`), então o cast pro tipo precisa acontecer na
+      extração do filtro, não só na assinatura.
 - [ ] 2.5 Seletor de unidades: verificar se um Administrador do Cursos sem acesso ao OrgChart
       consegue listar as unidades; se não conseguir, expor `GET relatorios/unidades` no Cursos
       (id, nome e path); teste de permissão.
