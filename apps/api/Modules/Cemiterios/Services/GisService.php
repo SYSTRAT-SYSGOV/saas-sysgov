@@ -186,7 +186,7 @@ final readonly class GisService
                 $consulta->whereRaw("MBRIntersects(geom, ST_GeomFromText(?, 4326, 'axis-order=long-lat'))", [$wkt]);
             }
             if ($simplificar) {
-                $consulta->selectRaw('geometriavel_id, ST_AsGeoJSON(ST_Simplify(geom, ?)) as geojson_simplificado', [$tolerancia]);
+                $consulta->selectRaw('geometriavel_id, ST_AsGeoJSON(ST_Simplify(ST_SRID(geom, 0), ?)) as geojson_simplificado', [$tolerancia]);
             } else {
                 $consulta->select(['geometriavel_id', 'geojson']);
             }
@@ -265,10 +265,10 @@ final readonly class GisService
             'min_lng' => min(array_column($pontos, 0)), 'max_lng' => max(array_column($pontos, 0)),
             'min_lat' => min(array_column($pontos, 1)), 'max_lat' => max(array_column($pontos, 1)),
         ];
-        $via = $via ? tap($via)->update($valores) : Via::create($valores);
         if (DB::getDriverName() === 'mysql') {
-            $via->update(['geom' => DB::raw("ST_GeomFromGeoJSON('" . json_encode($geojson) . "', 1, 4326)")]);
+            $valores['geom'] = DB::raw("ST_GeomFromGeoJSON('" . json_encode($geojson) . "', 1, 4326)");
         }
+        $via = $via ? tap($via)->update($valores) : Via::create($valores);
 
         self::invalidar($this->tenant->id());
         $this->rotas->invalidarGrafo($parkId);

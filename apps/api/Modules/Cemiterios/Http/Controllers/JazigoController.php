@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Modules\Cemiterios\Http\Controllers\Concerns\AutorizaPermissao;
+use Modules\Cemiterios\Models\Concessao;
 use Modules\Cemiterios\Models\Falecido;
 use Modules\Cemiterios\Models\Jazigo;
 use Modules\Cemiterios\Models\Setor;

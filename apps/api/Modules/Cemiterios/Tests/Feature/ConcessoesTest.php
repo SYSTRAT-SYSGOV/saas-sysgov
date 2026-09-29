@@ -104,39 +104,17 @@ final class ConcessoesTest extends CemiteriosTestCase
         $comRestos = $this->novoJazigo();
         $this->sepultado($comRestos, '2020-01-01');
 
-        // Create concessions for both jazigos
-        $titular = Concessionario::first();
-        if (!$titular) {
-            $titular = Concessionario::create(['nome' => 'Test', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
-        }
-        Concessao::create([
-            'numero' => '1/2026',
-            'plot_id' => $vazio->id,
-            'holder_id' => $titular->id,
-            'tipo' => 'temporaria',
-            'data_inicio' => today()->subYear()->toDateString(),
-            'data_fim' => today()->subDay()->toDateString(), // expired
-            'lock_version' => 0,
-        ]);
-        Concessao::create([
-            'numero' => '2/2026',
-            'plot_id' => $comRestos->id,
-            'holder_id' => $titular->id,
-            'tipo' => 'temporaria',
-            'data_inicio' => today()->subYear()->toDateString(),
-            'data_fim' => today()->addYear()->toDateString(), // not expired
-            'lock_version' => 0,
-        ]);
+        Concessao::query()->update(['data_fim' => today()->subDay()->toDateString()]);
 
         $this->artisan('cemiterios:expirar-concessoes')->assertSuccessful();
         $this->artisan('cemiterios:expirar-concessoes')->assertSuccessful();
 
         $this->noTenant($this->tenant);
-        self::assertSame(1, Concessao::where('estado', 'Vencida')->count());
+        self::assertSame(2, Concessao::where('estado', 'Vencida')->count());
         self::assertSame(EstadoJazigo::Disponivel, $vazio->refresh()->estado);
         self::assertSame(EstadoJazigo::Ocupado, $comRestos->refresh()->estado);
         self::assertTrue((bool) Concessao::where('plot_id', $comRestos->id)->value('pendencia_regularizacao'));
-        self::assertSame(1, JazigoHistorico::where('plot_id', $vazio->id)->where('para_estado', 'disponivel')->count());
+        self::assertSame(1, JazigoHistorico::where('plot_id', $vazio->id)->where('para', 'disponivel')->count());
     }
 
     // 3.4
@@ -144,22 +122,7 @@ final class ConcessoesTest extends CemiteriosTestCase
     public function test_renovacao_estende_o_termino_e_gera_guia_pelo_preco_vigente(): void
     {
         $jazigo = $this->novoJazigo();
-        // Ensure we have a concessionario
-        $titular = Concessionario::first();
-        if (!$titular) {
-            $titular = Concessionario::create(['nome' => 'Test', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
-        }
-        // Create a concession for the jazigo
-        Concessao::create([
-            'numero' => '1/2026',
-            'plot_id' => $jazigo->id,
-            'holder_id' => $titular->id,
-            'tipo' => 'temporaria',
-            'data_inicio' => today()->subYear()->toDateString(),
-            'data_fim' => '2027-06-30',
-            'lock_version' => 0,
-        ]);
-        $concessao = Concessao::where('plot_id', $jazigo->id)->first();
+        $concessao = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
         $concessao->update(['data_fim' => '2027-06-30']);
         app(PrecoService::class)->novaVigencia('renovacao', 35000, CarbonImmutable::today());
 

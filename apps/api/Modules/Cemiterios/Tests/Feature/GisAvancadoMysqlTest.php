@@ -94,12 +94,15 @@ final class GisAvancadoMysqlTest extends CemiteriosTestCase
     {
         $geojson = ['type' => 'LineString', 'coordinates' => Geo::desprojetar([$a, $b], self::REF)];
         $pontos = $geojson['coordinates'];
-        $via = Via::create([
+        $valores = [
             'park_id' => $this->parque->id, 'via_codigo' => $codigo, 'geojson' => $geojson,
             'min_lng' => min(array_column($pontos, 0)), 'max_lng' => max(array_column($pontos, 0)),
             'min_lat' => min(array_column($pontos, 1)), 'max_lat' => max(array_column($pontos, 1)),
-        ]);
-        $via->update(['geom' => DB::raw("ST_GeomFromGeoJSON('" . json_encode($geojson) . "', 1, 4326)")]);
+        ];
+        if (DB::getDriverName() === 'mysql') {
+            $valores['geom'] = DB::raw("ST_GeomFromGeoJSON('" . json_encode($geojson) . "', 1, 4326)");
+        }
+        $via = Via::create($valores);
 
         return $via->refresh();
     }

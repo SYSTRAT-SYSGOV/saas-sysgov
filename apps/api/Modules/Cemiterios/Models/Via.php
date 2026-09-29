@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property float $min_lng
  * @property float $max_lat
  * @property float $max_lng
+ * @property mixed $geom
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  */
@@ -41,6 +42,15 @@ final class Via extends Model
         'max_lat' => 'float',
         'max_lng' => 'float',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Via $via): void {
+            if (\Illuminate\Support\Facades\DB::getDriverName() === 'mysql' && !empty($via->geojson) && !$via->isDirty('geom') && empty($via->geom)) {
+                $via->geom = \Illuminate\Support\Facades\DB::raw("ST_GeomFromGeoJSON('" . json_encode($via->geojson) . "', 1, 4326)");
+            }
+        });
+    }
 
     /** @return BelongsTo<Cemiterio, $this> */
     public function cemiterio(): BelongsTo

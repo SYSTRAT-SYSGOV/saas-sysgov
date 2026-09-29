@@ -9,16 +9,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Cemiterios\Http\Controllers\Concerns\AutorizaPermissao;
 use Modules\Cemiterios\Models\Concessao;
+use Modules\Cemiterios\Models\Concessionario;
+use Modules\Cemiterios\Models\HerdeiroSucessao;
 use Modules\Cemiterios\Models\ProcessoSucessao;
-use Modules\Cemiterios\Services\SucessaoService;
 
 final class ProcessoSucessaoController extends Controller
 {
     use AutorizaPermissao;
 
-    public function __construct(
-        private readonly SucessaoService $sucessao,
-    ) {}
+    public function __construct() {}
 
     public function index(Request $request): JsonResponse
     {
@@ -84,7 +83,19 @@ final class ProcessoSucessaoController extends Controller
             'vara_ou_cartorio' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $processo = $this->sucessao->abrirProcesso($dados);
+        $concessao = Concessao::findOrFail($dados['concession_id']);
+        $processo = ProcessoSucessao::create([
+            'concession_id' => $dados['concession_id'],
+            'numero_processo' => $dados['numero_processo'],
+            'tipo_documento' => $dados['tipo_documento'],
+            'vara_ou_cartorio' => $dados['vara_ou_cartorio'] ?? null,
+            'situacao' => 'em_analise',
+        ]);
+
+        $concessao->update([
+            'pendencia_regularizacao' => true,
+            'motivo_pendencia' => 'sucessao_hereditaria',
+        ]);
 
         return response()->json($processo->load(['concessao.jazigo', 'concessao.concessionario']), 201);
     }
@@ -120,7 +131,19 @@ final class ProcessoSucessaoController extends Controller
             'titular_indicado' => ['nullable', 'boolean'],
         ]);
 
-        $herdeiro = $this->sucessao->adicionarHerdeiro($processo, $dados);
+        if (!empty($dados['titular_indicado'])) {
+            HerdeiroSucessao::where('process_id', $processo->id)->update(['titular_indicado' => false]);
+        }
+
+        $herdeiro = HerdeiroSucessao::create([
+            'process_id' => $processo->id,
+            'nome' => $dados['nome'],
+            'parentesco' => $dados['parentesco'],
+            'documento' => $dados['documento'] ?? null,
+            'telefone' => $dados['telefone'] ?? null,
+            'email' => $dados['email'] ?? null,
+            'titular_indicado' => (bool) ($dados['titular_indicado'] ?? false),
+        ]);
 
         return response()->json($herdeiro, 201);
     }
@@ -137,9 +160,44 @@ final class ProcessoSucessaoController extends Controller
             'novo_titular_id' => ['nullable', 'integer', 'exists:concession_holders,id'],
         ]);
 
-        $deferido = $this->sucessao->deferir($processo, $dados, $request->user()?->getKey());
+        $ano = now()->year;
+        $termoNumero = "TERMO-SUC-{$ano}-" . str_pad((string) $processo->id, 5, '0', STR_PAD_LEFT);
 
-        return response()->json($deferido);
+        $herdeiroIndicado = $processo->herdeiros()->where('titular_indicado', true)->first();
+        $novoTitular = null;
+        if (!empty($dados['novo_titular_id'])) {
+            $novoTitular = Concessionario::find($dados['novo_titular_id']);
+        } elseif ($herdeiroIndicado) {
+            $fakeDoc = $herdeiroIndicado->documento ?: ('000' . str_pad((string) $herdeiroIndicado->id, 8, '0', STR_PAD_LEFT));
+            $novoTitular = Concessionario::create([
+                'nome' => $herdeiroIndicado->nome,
+                'tipo_doc' => 'cpf',
+                'documento' => $fakeDoc,
+                'documento_hash' => hash('sha256', $fakeDoc),
+                'titular_falecido' => false,
+            ]);
+        }
+
+        $novoTitularId = $novoTitular instanceof Concessionario ? $novoTitular->id : null;
+
+        $processo->update([
+            'situacao' => 'deferido',
+            'despacho_fundamentacao' => $dados['despacho_fundamentacao'],
+            'novo_titular_id' => $novoTitularId,
+            'termo_numero' => $termoNumero,
+            'deferido_em' => now(),
+            'deferido_por_id' => $request->user()?->getKey(),
+        ]);
+
+        if ($processo->concessao !== null) {
+            $processo->concessao->update([
+                'holder_id' => $novoTitularId ?? $processo->concessao->holder_id,
+                'pendencia_regularizacao' => false,
+                'motivo_pendencia' => null,
+            ]);
+        }
+
+        return response()->json($processo->fresh(['concessao', 'herdeiros', 'novoTitular', 'deferidoPor']));
     }
 
     public function indeferir(Request $request, int $id): JsonResponse
@@ -152,9 +210,14 @@ final class ProcessoSucessaoController extends Controller
             'despacho_fundamentacao' => ['required', 'string', 'min:10'],
         ]);
 
-        $indeferido = $this->sucessao->indeferir($processo, $dados['despacho_fundamentacao'], $request->user()?->getKey());
+        $processo->update([
+            'situacao' => 'indeferido',
+            'despacho_fundamentacao' => $dados['despacho_fundamentacao'],
+            'deferido_em' => now(),
+            'deferido_por_id' => $request->user()?->getKey(),
+        ]);
 
-        return response()->json($indeferido);
+        return response()->json($processo->fresh());
     }
 
     public function termoDados(Request $request, int $id): JsonResponse

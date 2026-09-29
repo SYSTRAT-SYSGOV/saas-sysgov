@@ -51,7 +51,7 @@ final class SucessaoTest extends CemiteriosTestCase
         $respPend->assertOk()->assertJsonPath('total', 1);
 
         // 2. Autuar processo de sucessão
-        $respProc = $this->como($admin, $this->tenant)->postJson('/api/cemiterios/sucessoes', [
+        $respProc = $this->como($admin, $this->tenant)->postJson('/api/cemiterios/sucessoes-legado', [
             'concession_id' => $concessao->id,
             'numero_processo' => 'PA-001/2026',
             'tipo_documento' => 'inventario_judicial',
@@ -61,7 +61,7 @@ final class SucessaoTest extends CemiteriosTestCase
         $processoId = (int) $respProc->json('id');
 
         // 3. Adicionar herdeiro indicado como representante
-        $respHerd = $this->como($admin, $this->tenant)->postJson("/api/cemiterios/sucessoes/{$processoId}/herdeiros", [
+        $respHerd = $this->como($admin, $this->tenant)->postJson("/api/cemiterios/sucessoes-legado/{$processoId}/herdeiros", [
             'nome' => 'Maria Silva (Filha Herdeira)',
             'parentesco' => 'filho',
             'documento' => $this->cpfValido(),
@@ -71,7 +71,7 @@ final class SucessaoTest extends CemiteriosTestCase
         $respHerd->assertCreated()->assertJsonPath('titular_indicado', true);
 
         // 4. Deferir processo de sucessão
-        $respDef = $this->como($admin, $this->tenant)->postJson("/api/cemiterios/sucessoes/{$processoId}/deferir", [
+        $respDef = $this->como($admin, $this->tenant)->postJson("/api/cemiterios/sucessoes-legado/{$processoId}/deferir", [
             'despacho_fundamentacao' => 'Defiro a sucessão por força do formal de partilha apresentado.',
         ]);
         $respDef->assertOk()
@@ -85,7 +85,7 @@ final class SucessaoTest extends CemiteriosTestCase
         $this->assertNotEquals($titularOriginal->id, $concessao->holder_id);
 
         // 6. Consultar dados do termo oficial
-        $respTermo = $this->como($admin, $this->tenant)->getJson("/api/cemiterios/sucessoes/{$processoId}/termo");
+        $respTermo = $this->como($admin, $this->tenant)->getJson("/api/cemiterios/sucessoes-legado/{$processoId}/termo");
         $respTermo->assertOk()
             ->assertJsonPath('processo_numero', 'PA-001/2026')
             ->assertJsonPath('novo_titular.nome', 'Maria Silva (Filha Herdeira)');
@@ -121,12 +121,12 @@ final class SucessaoTest extends CemiteriosTestCase
         ]);
 
         // Tenant B não enxerga processo do Tenant A
-        $this->como($adminB, $tenantB)->getJson('/api/cemiterios/sucessoes')
+        $this->como($adminB, $tenantB)->getJson('/api/cemiterios/sucessoes-legado')
             ->assertOk()
             ->assertJsonPath('total', 0);
 
         // Tenant B recebe 404 ao tentar acessar processo do Tenant A
-        $this->como($adminB, $tenantB)->getJson("/api/cemiterios/sucessoes/{$proc->id}")
+        $this->como($adminB, $tenantB)->getJson("/api/cemiterios/sucessoes-legado/{$proc->id}")
             ->assertNotFound();
     }
 }

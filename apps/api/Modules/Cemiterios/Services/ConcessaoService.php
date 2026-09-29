@@ -46,7 +46,18 @@ final readonly class ConcessaoService
         return today()->greaterThanOrEqualTo($dataLimite) && today()->lessThan($concessao->data_fim);
     }
 
-    /** @param array{plot_id: int, holder_id: int, tipo: string, data_inicio?: string|null, lock_version: int, sujeita_taxa_anual?: bool} $dados */
+    /**
+     * @param array{
+     *     plot_id: int,
+     *     holder_id: int,
+     *     tipo: string,
+     *     data_inicio?: string|null,
+     *     lock_version: int,
+     *     sujeita_taxa_anual?: bool,
+     *     processo_administrativo?: string|null,
+     *     estado?: string|null
+     * } $dados
+     */
     public function solicitar(array $dados): Concessao
     {
         $jazigo = Jazigo::findOrFail($dados['plot_id']);
@@ -67,17 +78,22 @@ final readonly class ConcessaoService
 
             $concessao = Concessao::create([
                 'numero' => "{$sequencia}/{$ano}",
+                'processo_administrativo' => $dados['processo_administrativo'] ?? null,
                 'plot_id' => $jazigo->id,
                 'holder_id' => $dados['holder_id'],
                 'tipo' => $dados['tipo'],
                 'data_inicio' => $dataInicio->toDateString(),
                 'data_fim' => $this->calcularDataFim($dados['tipo'], $dataInicio),
                 'sujeita_taxa_anual' => $dados['sujeita_taxa_anual'] ?? true,
-                'estado' => 'Solicitada',
+                'estado' => $dados['estado'] ?? 'Ativa',
                 'lock_version' => 0, // Inicializa lock_version para novas concessões
             ]);
 
-            $this->estados->recalcular($jazigo, "Concessão {$concessao->numero} solicitada", (int) $dados['lock_version']);
+            if (!empty($dados['processo_administrativo'])) {
+                $jazigo->update(['processo_administrativo' => $dados['processo_administrativo']]);
+            }
+
+            $this->estados->recalcular($jazigo, "Concessão {$concessao->numero} ativada", (int) $dados['lock_version']);
 
             return $concessao;
         });

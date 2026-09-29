@@ -193,6 +193,7 @@ final class ConcessaoController extends Controller
             'holder_id' => $dados['holder_id'],
             'tipo' => (string) ($dados['tipo'] ?? $dados['modalidade']),
             'data_inicio' => $dados['inicio'] ?? null,
+            'processo_administrativo' => $dados['processo_administrativo'] ?? null,
             'lock_version' => $dados['lock_version'],
             'sujeita_taxa_anual' => $dados['sujeita_taxa_anual'] ?? true,
             'base_legal' => $dados['base_legal'] ?? null,
