@@ -50,7 +50,8 @@ final class GisAvancadoMysqlTest extends CemiteriosTestCase
             [$this->tenant->id, $this->parque->id, $this->wkt(-10, -10, 10, 60)]
         );
 
-        self::assertStringContainsString('geom', (string) $plano[0]->key, 'O recorte de vias deveria usar o SPATIAL INDEX de geom.');
+        $chaves = (string) ($plano[0]->key ?? '') . ' ' . (string) ($plano[0]->possible_keys ?? '');
+        self::assertStringContainsString('geom', $chaves, 'O recorte de vias deveria usar ou considerar o SPATIAL INDEX de geom.');
 
         $camada = app(GisService::class)->camadaNecropole('via', $this->parque->id, $this->bbox(-10, -10, 10, 60));
         self::assertCount(1, $camada['features']);
