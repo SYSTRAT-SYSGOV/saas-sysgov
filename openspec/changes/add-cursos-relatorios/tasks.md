@@ -178,9 +178,16 @@
 
 ## 5. Fechamento
 
-- [ ] 5.1 Estender o `CursosDadosDemonstracaoSeeder` com dados suficientes para os relatórios
+- [x] 5.1 Estender o `CursosDadosDemonstracaoSeeder` com dados suficientes para os relatórios
       (turmas encerradas e abertas, um certificado revogado e servidores em unidades
       diferentes); o `CursosDadosDemonstracaoSeederTest` continua verde.
+      Turmas encerrada e aberta já existiam (cenário original da Fase 1/2); acrescentado:
+      revogação de um dos certificados da turma encerrada da Lei 14.133 (motivo plausível de
+      reemissão) e duas unidades do OrgChart ("Secretaria de Administração" e "Secretaria de
+      Educação") com os 6 participantes de demonstração divididos entre elas. `criarUnidades()`
+      reaproveita a árvore do tenant se já existir uma (ex.: quem rodou `OrgChartDatabaseSeeder`
+      à parte); senão cria as duas só para isto — sem depender de outro seeder ter rodado antes,
+      já que `OrgChartDatabaseSeeder` não está na cadeia de seeds do `docker-entrypoint.sh`.
 - [ ] 5.2 Suíte completa verde: phpunit (Docker), PHPStan, typecheck, testes e build de
       `apps/web` e `apps/web-client`.
 - [ ] 5.3 Teste manual no navegador com o Administrador e um instrutor: relatório da turma

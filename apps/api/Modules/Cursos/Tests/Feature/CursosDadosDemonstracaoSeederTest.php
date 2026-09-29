@@ -23,6 +23,8 @@ use Modules\Cursos\Models\Questao;
 use Modules\Cursos\Models\Resposta;
 use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\Turma;
+use Modules\OrgChart\Models\OrgUnit;
+use Modules\OrgChart\Models\OrgUnitUser;
 use Modules\Cursos\Database\Seeders\CursosConteudoDemonstracaoSeeder;
 use Modules\Cursos\Services\CorrecaoService;
 use Modules\Cursos\Services\LiberacaoService;
@@ -67,7 +69,14 @@ final class CursosDadosDemonstracaoSeederTest extends TestCase
             $this->assertSame(3, $porStatus['pendente']);
 
             $this->assertSame(4, Certificado::count());
+            $this->assertSame(1, Certificado::whereNotNull('revogado_em')->count(), 'Um dos certificados deveria estar revogado (cenário do relatório de capacitação).');
             $this->assertTrue(AulaAgendamento::query()->where('inicio', '<=', now())->where('fim', '>=', now())->exists(), 'Deveria haver uma aula acontecendo agora para testar o QR.');
+
+            // Duas unidades, com os seis participantes de demonstração distribuídos entre elas.
+            $this->assertSame(2, OrgUnit::count());
+            $this->assertSame(6, OrgUnitUser::count());
+            $porUnidade = OrgUnitUser::query()->pluck('org_unit_id')->countBy();
+            $this->assertCount(2, $porUnidade, 'As duas unidades deveriam ter ao menos um servidor cada.');
         });
 
         $this->assertTrue($this->tenant->users()->where('email', 'helena.duarte@demo.sysgov.local')->exists());
