@@ -127,9 +127,18 @@
 
 ## 4. SDK e frontend
 
-- [ ] 4.1 Tipos e métodos novos em `packages/sdk/src/modules/cursos` (relatório da turma, de
+- [x] 4.1 Tipos e métodos novos em `packages/sdk/src/modules/cursos` (relatório da turma, de
       cursos, de capacitação, detalhe do servidor, unidades e download de CSV como blob);
       verificar o typecheck do web-client.
+      `GET relatorios/unidades` deixou de devolver `{data: [...]}` e passou a devolver o array
+      direto, para ficar consistente com os outros endpoints de listagem simples do módulo
+      (`/cursos/usuarios`, `/cursos/catalogo`) — só a paginação (`capacitacao`) usa envelope.
+      Achado do ambiente: a imagem Docker do `web-client` tinha o `node_modules` desatualizado
+      (sem `leaflet`/`geojson`/`react-leaflet`/`html-to-image`, já declarados no
+      `package.json` do Cemitérios) — os erros de typecheck que isso causa são alheios a esta
+      mudança; rodar `npm install` e o `typecheck` na mesma invocação do container resolve
+      (a instalação não sobrevive a um `docker compose run --rm` seguinte, que descarta os
+      volumes anônimos junto com o container).
 - [ ] 4.2 Seção Resumo na `TurmaDetalhePage`: indicadores e tabela do relatório da turma, com o
       botão de exportar (D9); teste Vitest com turma encerrada e turma aberta.
 - [ ] 4.3 Aba Relatórios na `GestaoCursosPage` (só com `cursos.manage`): visão de cursos por

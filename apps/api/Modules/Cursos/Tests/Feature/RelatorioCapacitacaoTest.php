@@ -226,7 +226,7 @@ final class RelatorioCapacitacaoTest extends TestCase
         $unidades = $this->como($this->admin, $this->tenant)
             ->getJson('/api/cursos/relatorios/unidades')
             ->assertOk()
-            ->json('data');
+            ->json();
 
         $this->assertCount(2, $unidades);
         $this->assertSame(['id' => $raiz->id, 'nome' => 'Prefeitura', 'path' => '1'], $unidades[0]);

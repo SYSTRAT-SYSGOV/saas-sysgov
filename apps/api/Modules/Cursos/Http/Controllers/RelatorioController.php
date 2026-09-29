@@ -137,7 +137,7 @@ final class RelatorioController extends Controller
     {
         $this->authorize('viewAny', Curso::class);
 
-        return response()->json(['data' => $this->relatorioCapacitacao->unidades()]);
+        return response()->json($this->relatorioCapacitacao->unidades());
     }
 
     /** Capacitação por servidor, paginado; só quem administra o módulo. */
