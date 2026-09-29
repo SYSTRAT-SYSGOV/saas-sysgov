@@ -239,16 +239,25 @@ antigas) seriam enviados de uma vez: a primeira execução em produção process
 `available_at` posterior à data de ativação, e os anteriores são marcados `done` sem envio.
 Rollback: desligar o `scheduler` interrompe os envios sem perder eventos.
 
+## Decisões da revisão (2026-09-29)
+
+- **Endereço público**: caminho por órgão, `PORTAL_URL/inscricao/{órgão}` (D7/D14), não
+  subdomínio — sem DNS nem certificado novo por órgão. Subdomínio fica como evolução futura se
+  algum órgão pedir identidade visual totalmente separada.
+- **LGPD**: sem expiração automática nesta mudança. Retenção fica indefinida por ora; exclusão a
+  pedido do titular continua manual (pelo Administrador). O prazo de retenção e o procedimento
+  formal de exclusão ficam como pendência para o encarregado de dados de cada órgão decidir —
+  não bloqueia esta mudança.
+- **CPF**: opcional e em claro, como já assumido no desenho (D9/D6). Exigência de CPF por
+  órgão/curso, se algum precisar, fica como evolução futura.
+- **Limites do plano**: contas externas (`origem = 'externo'`) **não** contam na cota de
+  usuários do plano do órgão — são público do serviço, não usuários internos. A cota em
+  `tenant_user` deve ser contada só sobre vínculos com `origem` de servidor, ou equivalente.
+
 ## Open Questions
 
 - **Provedor de e-mail**: qual SMTP ou serviço, qual domínio remetente e quem configura SPF e
-  DKIM em produção. Sem impacto no código.
-- **Endereço público**: `PORTAL_URL` com caminho (`/inscricao/{órgão}`, como está aqui) ou
-  subdomínio por órgão.
-- **LGPD**: prazo de retenção de contas externas e procedimento para exclusão a pedido do
-  titular. Precisa de decisão do encarregado de dados do órgão.
-- **CPF**: se é armazenado em claro ou mascarado, e se algum órgão vai exigi-lo (o padrão aqui é
-  opcional).
+  DKIM em produção. Sem impacto no código — configuração de operação, feita via `.env` em cada
+  ambiente (D15).
 - **Convites do Admin**: enviar por e-mail os convites de usuário, que hoje também não chegam.
   Cabe numa mudança pequena de plataforma logo depois desta.
-- **Limites do plano**: se contas externas contam nas cotas de usuários de cada órgão.
