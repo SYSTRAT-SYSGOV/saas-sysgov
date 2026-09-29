@@ -11,6 +11,8 @@ declare(strict_types=1);
  */
 
 use Illuminate\Support\Facades\Route;
+use Modules\Cursos\Http\Controllers\Publico\CadastroExternoController;
 use Modules\Cursos\Http\Controllers\Publico\OrgaoController;
 
 Route::get('/', OrgaoController::class);
+Route::post('/cadastro', CadastroExternoController::class);

@@ -1,0 +1,92 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Cursos\Services\Publico;
+
+use App\Models\Role;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Services\UserService;
+use App\Support\AuditLogger;
+use App\Support\OutboxPublisher;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+use Modules\Cursos\Models\Participante;
+use Modules\Cursos\Support\Cpf;
+
+/**
+ * Cadastro público do participante externo (design D6, D10) — os três caminhos do e-mail:
+ * novo (cria tudo), já existe em outro órgão (só o vínculo novo, a senha do formulário é
+ * descartada) e já vinculado a este órgão (nada muda, só orienta recuperar a senha). A resposta
+ * ao cliente é sempre igual nos três casos — quem decide isso é o controller, não este serviço.
+ */
+final class CadastroExternoService
+{
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly OutboxPublisher $outbox,
+        private readonly UserService $userService,
+    ) {}
+
+    /**
+     * @param array{nome: string, email: string, senha: string, documento: string|null, aceite: bool} $dados
+     */
+    public function cadastrar(Tenant $tenant, array $dados): void
+    {
+        if ($dados['aceite'] !== true) {
+            throw ValidationException::withMessages(['aceite' => 'É preciso aceitar o termo de uso para se cadastrar.']);
+        }
+
+        if ($dados['documento'] !== null && $dados['documento'] !== '' && !Cpf::valido($dados['documento'])) {
+            throw ValidationException::withMessages(['documento' => 'CPF inválido.']);
+        }
+
+        $usuario = User::where('email', $dados['email'])->first();
+
+        if ($usuario && $usuario->tenants()->where('tenants.id', $tenant->id)->exists()) {
+            // Já tem conta com vínculo neste órgão (ativo ou pending): nada muda aqui, só reaproveita
+            // o fluxo de recuperação de senha que já existe (mesma resposta genérica dele).
+            $this->userService->requestPasswordReset($dados['email']);
+
+            return;
+        }
+
+        DB::transaction(function () use ($tenant, $dados, $usuario): void {
+            $usuario ??= User::create([
+                'name' => $dados['nome'],
+                'email' => $dados['email'],
+                'password' => Hash::make($dados['senha']),
+                'is_active' => true,
+            ]);
+            // Se $usuario já existia (conta de outro órgão), a senha do formulário nunca é usada:
+            // a pessoa continua entrando com a senha que já tinha (D6).
+
+            $role = Role::where('slug', 'participante_externo_cursos')->where('tenant_id', $tenant->id)->firstOrFail();
+
+            $usuario->tenants()->syncWithoutDetaching([
+                $tenant->id => ['role_id' => $role->id, 'status' => 'pending', 'is_primary' => true],
+            ]);
+            $usuario->roles()->syncWithoutDetaching([$role->id]);
+            DB::table('role_user')->where('role_id', $role->id)->where('user_id', $usuario->id)->update(['tenant_id' => $tenant->id]);
+
+            Participante::create([
+                'tenant_id' => $tenant->id,
+                'user_id' => $usuario->id,
+                'nome' => $dados['nome'],
+                'email' => $dados['email'],
+                'documento' => $dados['documento'],
+                'origem' => Participante::ORIGEM_EXTERNO,
+                'consentimento_em' => now(),
+                'termo_versao' => data_get($tenant->settings, 'cursos.termo.versao'),
+            ]);
+
+            $this->audit->record('cursos', 'cadastro_externo.criado', "User #{$usuario->id}", null, ['tenant_id' => $tenant->id, 'email' => $dados['email']]);
+
+            // O e-mail leva o link de verificação (design D5): o tratador gera o token na hora do
+            // envio, então o payload só precisa do user_id — o tenant já vai na coluna do evento.
+            $this->outbox->publish('cursos.CadastroExternoCriado', ['user_id' => $usuario->id], $tenant->id);
+        });
+    }
+}

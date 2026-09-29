@@ -147,12 +147,23 @@
       único que falha, mas em arquivo isolado passa limpo — não é causado por nada desta tarefa
       (o teste e o `travel()` já existiam antes), fica registrado pra tarefa 7.2 investigar com
       calma.
-- [ ] 2.4 `CadastroExternoService`: cria usuário, vínculo `pending` e participante numa
+- [x] 2.4 `CadastroExternoService`: cria usuário, vínculo `pending` e participante numa
       transação, com os três caminhos do e-mail (novo, existente em outro órgão, existente neste
       órgão), resposta sempre igual, senha descartada no caminho de outro órgão, aceite
       obrigatório e CPF validado quando informado (D6, D10); evento
       `cursos.CadastroExternoCriado`. Testes dos cenários "Cadastro e ativação", "E-mail já
       cadastrado", "E-mail que já tem conta em outro órgão" e "Cadastro sem aceite do termo".
+      "E-mail já cadastrado neste órgão" reaproveita `UserService::requestPasswordReset()` (já
+      público, já com resposta genérica anti-enumeração) em vez de inventar um segundo e-mail de
+      "orienta recuperar senha" — a tarefa só falava de UM evento novo
+      (`cursos.CadastroExternoCriado`), e essa reaproveita o fluxo que a Seção 1 já deixou
+      funcionando de ponta a ponta. Quem garante a resposta igual nos três caminhos é o
+      controller (sempre a mesma mensagem), não o serviço. `Modules\Cursos\Support\Cpf` é
+      dígito-verificador só de CPF (a `Documento` do Cemitérios faz CPF+CNPJ, mas está no módulo
+      errado pra reaproveitar sem virar uma dependência cross-module sem sentido). `termo_versao`
+      grava `settings.cursos.termo.versao` do tenant se já existir (D10); como a tarefa 3.2 ainda
+      não criou esse endpoint de configuração, hoje sempre grava `null` — não bloqueia o cadastro
+      porque D10 não exige reaceite de versão, só registra a que existia no momento.
 - [ ] 2.5 Isolamento do papel externo: teste que percorre uma rota de cada módulo com um
       externo ativo e espera `403`, e verificação de que `primary_org_unit_id` nulo não vira
       "acesso irrestrito" em nenhum ponto do ABAC; teste do cenário "Externo não acessa outros
