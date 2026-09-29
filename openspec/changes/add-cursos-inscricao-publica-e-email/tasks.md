@@ -23,7 +23,7 @@
       Docker (context read); corrigido com `docker run -v ...:/data alpine chown -R $(id
       -u):$(id -g) /data/storage` — container descartável rodando como root só pra devolver a
       pasta pro usuário do host.
-- [ ] 1.2 Agendar `outbox:process --limit=100` a cada minuto com `withoutOverlapping` em
+- [x] 1.2 Agendar `outbox:process --limit=100` a cada minuto com `withoutOverlapping` em
       `routes/console.php`; teste de que o agendamento existe.
 - [ ] 1.3 Migration e model de `notificacoes_envios` (único `(event_id, tipo, destinatario)`);
       verificar `migrate` no MySQL do Docker e o isolamento por órgão com teste A/B.

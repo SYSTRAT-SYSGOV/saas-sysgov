@@ -49,4 +49,16 @@ final class OutboxProcessingTest extends TestCase
         self::assertSame(0, OutboxEvent::query()->where('status', 'processing')->count());
         self::assertSame('done', OutboxEvent::query()->sole()->status);
     }
+
+    /** Tarefa 1.2: outbox:process precisa estar agendado, senão os e-mails nunca saem de `pending`. */
+    public function test_outbox_process_is_scheduled_every_minute_without_overlapping(): void
+    {
+        $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+        $evento = collect($schedule->events())->first(fn ($e) => str_contains((string) $e->command, 'outbox:process'));
+
+        self::assertNotNull($evento, 'outbox:process deveria estar agendado em routes/console.php.');
+        self::assertSame('* * * * *', $evento->expression);
+        self::assertTrue($evento->withoutOverlapping);
+        self::assertStringContainsString('--limit=100', (string) $evento->command);
+    }
 }
