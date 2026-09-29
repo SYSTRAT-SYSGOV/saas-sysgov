@@ -6,11 +6,16 @@ import { ModalNovaExumacao } from '../operacoes/ModalNovaExumacao';
 import { ModalNovaTrasladacao } from '../operacoes/ModalNovaTrasladacao';
 import { cemiteriosApi } from '../../api';
 
+vi.mock('@/core/rbac/useCan', () => ({
+  useCan: () => ({ can: () => true, cannot: () => false }),
+}));
+
 vi.mock('../../api', async () => {
   const actual = await vi.importActual('../../api');
   return {
     ...actual,
     cemiteriosApi: {
+      operadores: vi.fn().mockResolvedValue({ data: [] }),
       jazigos: vi.fn().mockResolvedValue({
         data: [
           {

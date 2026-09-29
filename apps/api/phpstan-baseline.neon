@@ -2911,24 +2911,6 @@ parameters:
 			path: Modules/Cemiterios/Http/Controllers/SucessaoDashboardController.php
 
 		-
-			message: '#^Ternary operator condition is always true\.$#'
-			identifier: ternary.alwaysTrue
-			count: 1
-			path: Modules/Cemiterios/Http/Controllers/SucessaoDocumentoController.php
-
-		-
-			message: '#^Parameter \#1 \$request of method Modules\\Cemiterios\\Http\\Controllers\\SucessaoHerdeiroController\:\:autorizar\(\) expects Illuminate\\Http\\Request, Modules\\Cemiterios\\Http\\Controllers\\Request given\.$#'
-			identifier: argument.type
-			count: 1
-			path: Modules/Cemiterios/Http/Controllers/SucessaoHerdeiroController.php
-
-		-
-			message: '#^Parameter \$request of method Modules\\Cemiterios\\Http\\Controllers\\SucessaoHerdeiroController\:\:destroy\(\) has invalid type Modules\\Cemiterios\\Http\\Controllers\\Request\.$#'
-			identifier: class.notFound
-			count: 1
-			path: Modules/Cemiterios/Http/Controllers/SucessaoHerdeiroController.php
-
-		-
 			message: '#^Call to static method whereHas\(\) on an unknown class Modules\\Cemiterios\\Models\\User\.$#'
 			identifier: class.notFound
 			count: 1

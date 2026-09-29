@@ -12,6 +12,7 @@ use Modules\Cemiterios\Models\Falecido;
 use Modules\Cemiterios\Models\Inumacao;
 use Modules\Cemiterios\Models\Jazigo;
 use Modules\Cemiterios\Models\OrdemServico;
+use Modules\Cemiterios\Models\OperadorCemiterio;
 use Modules\Cemiterios\Models\Trasladacao;
 use Modules\Cemiterios\Support\EstadoJazigo;
 use Modules\Cemiterios\Support\RegraNegocioException;
@@ -26,7 +27,30 @@ final readonly class OperacaoService
     public function __construct(
         private JazigoEstadoService $estados,
         private ParametroService $parametros,
+        private OperadorCemiterioService $operadores,
     ) {}
+
+    /**
+     * Bloqueia a vinculação de coveiro/pedreiro sancionado (suspenso ou
+     * descredenciado) a uma nova inumação (spec: cadastro-operadores —
+     * Profissional Sancionado Não Pode Ser Alocado a Nova Execução).
+     *
+     * @param array<string, mixed> $dados
+     */
+    public function vincularOperadores(array $dados): void
+    {
+        $overrideSuspensao = (bool) ($dados['override_suspensao'] ?? false);
+        $justificativa = $dados['justificativa_override'] ?? null;
+
+        foreach (['coveiro_id', 'pedreiro_id'] as $campo) {
+            if (empty($dados[$campo])) {
+                continue;
+            }
+
+            $operador = OperadorCemiterio::findOrFail($dados[$campo]);
+            $this->operadores->validarDisponibilidade($operador, $overrideSuspensao, $justificativa);
+        }
+    }
 
     /** Numeração sequencial por tenant e ano (RF-07). */
     public function emitirOrdem(string $tipo, ?int $plotId, ?string $agendadaPara = null, ?string $equipe = null, ?string $observacao = null): OrdemServico
@@ -55,6 +79,7 @@ final readonly class OperacaoService
         $this->exigirAceitaSepultamento($jazigo);
         $this->exigirCertidaoLivre((string) $falecido['certidao_numero']);
         $this->exigirSucessaoRegularizada($jazigo, $falecido, (bool) ($dados['autorizado_judicial'] ?? false));
+        $this->vincularOperadores($dados);
 
         return DB::transaction(function () use ($jazigo, $falecido, $dados): Inumacao {
             $registro = Falecido::create($falecido);
@@ -82,7 +107,9 @@ final readonly class OperacaoService
                 'carencia_desde' => CarbonImmutable::parse($dados['sepultado_em'])->toDateString(),
                 'service_order_id' => $ordem->id,
                 'coveiro_nome' => $dados['coveiro_nome'] ?? null,
+                'coveiro_id' => $dados['coveiro_id'] ?? null,
                 'pedreiro_nome' => $dados['pedreiro_nome'] ?? null,
+                'pedreiro_id' => $dados['pedreiro_id'] ?? null,
                 'cartorio' => $dados['cartorio'] ?? null,
                 'medico' => $dados['medico'] ?? null,
                 'situacao' => 'confirmada',

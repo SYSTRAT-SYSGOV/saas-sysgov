@@ -18,7 +18,7 @@ class SucessaoPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('cemiterios.sucessao.view');
+        return $user->hasPermission('cemiterios.sucessao.view');
     }
 
     /**
@@ -26,7 +26,7 @@ class SucessaoPolicy
      */
     public function view(User $user, Sucessao $sucessao): bool
     {
-        return $user->can('cemiterios.sucessao.view');
+        return $user->hasPermission('cemiterios.sucessao.view');
     }
 
     /**
@@ -34,7 +34,7 @@ class SucessaoPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('cemiterios.sucessao.manage');
+        return $user->hasPermission('cemiterios.sucessao.manage');
     }
 
     /**
@@ -42,7 +42,7 @@ class SucessaoPolicy
      */
     public function update(User $user, Sucessao $sucessao): bool
     {
-        return $user->can('cemiterios.sucessao.manage');
+        return $user->hasPermission('cemiterios.sucessao.manage');
     }
 
     /**
@@ -50,7 +50,7 @@ class SucessaoPolicy
      */
     public function delete(User $user, Sucessao $sucessao): bool
     {
-        return $user->can('cemiterios.sucessao.manage');
+        return $user->hasPermission('cemiterios.sucessao.manage');
     }
 
     /**
@@ -58,7 +58,7 @@ class SucessaoPolicy
      */
     public function transition(User $user, Sucessao $sucessao): bool
     {
-        return $user->can('cemiterios.sucessao.transition');
+        return $user->hasPermission('cemiterios.sucessao.transition');
     }
 
     /**
@@ -66,7 +66,7 @@ class SucessaoPolicy
      */
     public function viewDocument(User $user, Sucessao $sucessao, SucessaoDocumento $documento): bool
     {
-        return $user->can('cemiterios.sucessao.view');
+        return $user->hasPermission('cemiterios.sucessao.view');
     }
 
     /**
@@ -74,7 +74,7 @@ class SucessaoPolicy
      */
     public function downloadDocument(User $user, Sucessao $sucessao, SucessaoDocumento $documento): bool
     {
-        return $user->can('cemiterios.sucessao.view');
+        return $user->hasPermission('cemiterios.sucessao.view');
     }
 
     /**
@@ -82,7 +82,7 @@ class SucessaoPolicy
      */
     public function restore(User $user, Sucessao $sucessao): bool
     {
-        return $user->can('cemiterios.sucessao.manage');
+        return $user->hasPermission('cemiterios.sucessao.manage');
     }
 
     /**
@@ -90,6 +90,6 @@ class SucessaoPolicy
      */
     public function forceDelete(User $user, Sucessao $sucessao): bool
     {
-        return $user->can('cemiterios.sucessao.manage');
+        return $user->hasPermission('cemiterios.sucessao.manage');
     }
 }

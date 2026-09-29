@@ -42,6 +42,10 @@ export const DocumentosList: React.FC<DocumentosListProps> = ({ sucessaoId, read
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumentoSucessao>('certidao_obito');
 
+  React.useEffect(() => {
+    void carregar();
+  }, [sucessaoId, carregar]);
+
   const handleUpload = useCallback(async () => {
     if (!arquivoSelecionado) return;
     await upload(tipoDocumento, arquivoSelecionado);

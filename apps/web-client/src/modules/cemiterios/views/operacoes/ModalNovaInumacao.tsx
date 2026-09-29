@@ -27,8 +27,11 @@ import {
   cemiteriosApi,
   type Cemiterio,
   type Jazigo,
+  type OperadorCemiterio,
 } from '../../api';
-import { ErroBox, Mono, useAcao } from '../comum';
+import { useCan } from '@/core/rbac/useCan';
+import { AlertCard } from '@/components/ui';
+import { ErroBox, useAcao } from '../comum';
 
 interface ModalNovaInumacaoProps {
   aberto: boolean;
@@ -49,6 +52,8 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
 }) => {
   const [modo, setModo] = useState<'regular' | 'historica'>(modoInicial);
   const { erro, enviando, executar, setErro } = useAcao();
+  const { can } = useCan();
+  const podeGerenciarOperadores = can('cemiterios.cadastros.manage');
 
   // Estados dos campos
   const [nome, setNome] = useState('');
@@ -67,8 +72,15 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
 
   const [sepultadoEm, setSepultadoEm] = useState('');
   const [coveiroNome, setCoveiroNome] = useState('');
+  const [coveiroId, setCoveiroId] = useState<string>('');
   const [pedreiroNome, setPedreiroNome] = useState('');
+  const [pedreiroId, setPedreiroId] = useState<string>('');
   const [equipe, setEquipe] = useState('');
+
+  // Operadores cadastrados (coveiros/pedreiros credenciados) para autocomplete
+  const [coveiros, setCoveiros] = useState<OperadorCemiterio[]>([]);
+  const [pedreiros, setPedreiros] = useState<OperadorCemiterio[]>([]);
+  const [justificativaOverride, setJustificativaOverride] = useState('');
 
   // Campos específicos de Inumação Histórica
   const [livroReferencia, setLivroReferencia] = useState('');
@@ -94,9 +106,12 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
       setGavetaNumero('');
       setSepultadoEm('');
       setCoveiroNome('');
+      setCoveiroId('');
       setPedreiroNome('');
+      setPedreiroId('');
       setEquipe('');
       setLivroReferencia('');
+      setJustificativaOverride('');
 
       // Carregar jazigos do cemitério ativo
       if (cemiterioAtivoId) {
@@ -113,8 +128,15 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
             setCarregandoJazigos(false);
           });
       }
+
+      // Carregar profissionais credenciados ativos para autocomplete (fallback: texto livre)
+      cemiteriosApi.operadores({ tipo: 'coveiro', situacao: 'ativo', per_page: 200 }).then((res) => setCoveiros(res.data ?? [])).catch(() => setCoveiros([]));
+      cemiteriosApi.operadores({ tipo: 'pedreiro', situacao: 'ativo', per_page: 200 }).then((res) => setPedreiros(res.data ?? [])).catch(() => setPedreiros([]));
     }
   }, [aberto, modoInicial, cemiterioAtivoId, setErro]);
+
+  const opcoesCoveiros = [{ value: '', label: 'Não cadastrado (digitar manualmente)' }, ...coveiros.map((o) => ({ value: String(o.id), label: o.nome }))];
+  const opcoesPedreiros = [{ value: '', label: 'Não cadastrado (digitar manualmente)' }, ...pedreiros.map((o) => ({ value: String(o.id), label: o.nome }))];
 
   const opcoesJazigos = jazigos.map((j) => ({
     value: String(j.id),
@@ -123,9 +145,7 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
 
   const jazigoSelecionado = jazigos.find((j) => String(j.id) === plotId);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const submeter = async (override: boolean) => {
     if (!plotId) {
       return;
     }
@@ -143,11 +163,18 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
       gaveta_numero: gavetaNumero ? Number(gavetaNumero) : undefined,
       sepultado_em: sepultadoEm,
       coveiro_nome: coveiroNome || undefined,
+      coveiro_id: coveiroId ? Number(coveiroId) : undefined,
       pedreiro_nome: pedreiroNome || undefined,
+      pedreiro_id: pedreiroId ? Number(pedreiroId) : undefined,
       equipe: equipe || undefined,
       cartorio: cartorioRegistro || undefined,
       medico: medico || undefined,
     };
+
+    if (override) {
+      payload.override_suspensao = true;
+      payload.justificativa_override = justificativaOverride;
+    }
 
     if (certidaoArquivo) {
       payload.certidao_arquivo = certidaoArquivo;
@@ -169,6 +196,11 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
       await onSucesso();
       onFechar();
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submeter(false);
   };
 
   const formId = 'form-nova-inumacao';
@@ -534,32 +566,58 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
                 </Field>
               </div>
 
-              <div className="sm:col-span-6">
+              <div className="sm:col-span-6 space-y-2">
                 <Field
                   label="Coveiro Responsável"
-                  hint="Profissional responsável pela abertura e fechamento"
+                  hint="Profissional cadastrado e credenciado (recomendado) ou nome livre"
                   error={erro?.campos?.coveiro_nome?.[0]}
                 >
+                  <Select
+                    value={coveiroId}
+                    onChange={(v) => {
+                      const id = v ?? '';
+                      setCoveiroId(id);
+                      const op = coveiros.find((o) => String(o.id) === id);
+                      if (op) setCoveiroNome(op.nome);
+                    }}
+                    options={opcoesCoveiros}
+                    placeholder="Selecione um coveiro cadastrado…"
+                  />
+                </Field>
+                {!coveiroId && (
                   <Input
-                    placeholder="Nome do coveiro municipal"
+                    placeholder="Nome do coveiro (não cadastrado)"
                     value={coveiroNome}
                     onChange={(e) => setCoveiroNome(e.target.value)}
                   />
-                </Field>
+                )}
               </div>
 
-              <div className="sm:col-span-6">
+              <div className="sm:col-span-6 space-y-2">
                 <Field
                   label="Pedreiro de Alvenaria"
-                  hint="Profissional da alvenaria (se houver obra ou reforma)"
+                  hint="Profissional cadastrado e credenciado (recomendado) ou nome livre, se houver obra ou reforma"
                   error={erro?.campos?.pedreiro_nome?.[0]}
                 >
+                  <Select
+                    value={pedreiroId}
+                    onChange={(v) => {
+                      const id = v ?? '';
+                      setPedreiroId(id);
+                      const op = pedreiros.find((o) => String(o.id) === id);
+                      if (op) setPedreiroNome(op.nome);
+                    }}
+                    options={opcoesPedreiros}
+                    placeholder="Selecione um pedreiro cadastrado…"
+                  />
+                </Field>
+                {!pedreiroId && (
                   <Input
-                    placeholder="Nome do pedreiro"
+                    placeholder="Nome do pedreiro (não cadastrado)"
                     value={pedreiroNome}
                     onChange={(e) => setPedreiroNome(e.target.value)}
                   />
-                </Field>
+                )}
               </div>
             </div>
           </div>
@@ -594,6 +652,27 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
         </form>
 
         <ErroBox erro={erro} />
+
+        {erro?.codigo === 'operador.suspenso' && podeGerenciarOperadores && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+            <AlertCard
+              priority="warning"
+              title="Vincular mesmo assim?"
+              description="O profissional selecionado está suspenso. A vinculação exige justificativa e fica registrada em auditoria."
+            />
+            <Field label="Justificativa da Exceção" required>
+              <Textarea value={justificativaOverride} onChange={(e) => setJustificativaOverride(e.target.value)} rows={2} />
+            </Field>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!justificativaOverride || enviando}
+              onClick={() => void submeter(true)}
+            >
+              Confirmar vinculação com suspensão
+            </Button>
+          </div>
+        )}
       </div>
     </Modal>
   );

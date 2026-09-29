@@ -1,21 +1,18 @@
-import React, { useMemo, useState } from 'react';
-import { AlertCircle, Clock, FileCheck2, Scale } from 'lucide-react';
-import { Button, KpiCard, StatusChip, Tabs } from '@/components/ui';
+import React, { useState } from 'react';
+import { Scale } from 'lucide-react';
+import { Button, Tabs } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import { cemiteriosApi } from '../api';
-import type { Sucessao, SucessaoPaginado, DashboardPendentes, DashboardRegularizacao, DashboardPendentesProcesso, DashboardRegularizacaoProcesso } from '../api';
-import { ErroBox, Mono, useDados } from '../views/comum';
+import type { Sucessao } from '../api';
+import { ErroBox, useDados } from '../views/comum';
 import { useCemiteriosNavigation } from '../CemiteriosContext';
-import {
-  transicoesValidas,
-  ESTADO_LABELS,
-  ESTADO_BADGE_VARIANT,
-} from '../hooks/useSucessaoTransicoes';
 import DashboardPendentesComponent from '../components/DashboardPendentes';
 import DashboardRegularizacaoComponent from '../components/DashboardRegularizacao';
 import SucessaoList from '../components/SucessaoList';
 import SucessaoWizard from '../components/SucessaoWizard';
 import SucessaoDetail from '../components/SucessaoDetail';
+import SucessaoKpis from './SucessaoKpis';
+import SucessaoFiltros, { SUCESSAO_FILTROS_INICIAIS, type SucessaoFiltrosState } from '../components/SucessaoFiltros';
 
 export const SucessaoView: React.FC = () => {
   const { can } = useCan();
@@ -25,6 +22,7 @@ export const SucessaoView: React.FC = () => {
   const [subAba, setSubAba] = useState<'pendencias' | 'processos' | 'regularizacao'>('pendencias');
   const [modalWizardAberto, setModalWizardAberto] = useState(false);
   const [modalDetalheAberto, setModalDetalheAberto] = useState<Sucessao | null>(null);
+  const [filtros, setFiltros] = useState<SucessaoFiltrosState>(SUCESSAO_FILTROS_INICIAIS);
 
   const pendentes = useDados(
     () => cemiteriosApi.pendentes(cemiterioAtivoId ?? undefined),
@@ -37,41 +35,31 @@ export const SucessaoView: React.FC = () => {
   );
 
   const processos = useDados(
-    () => cemiteriosApi.sucessoes({ park_id: cemiterioAtivoId ?? undefined, per_page: 50 }),
-    [cemiterioAtivoId]
+    () =>
+      cemiteriosApi.sucessoes({
+        park_id: cemiterioAtivoId ?? undefined,
+        estado: filtros.estado !== 'todos' ? filtros.estado : undefined,
+        via: filtros.via !== 'todas' ? filtros.via : undefined,
+        data_falecimento_inicio: filtros.dataFalecimentoInicio || undefined,
+        data_falecimento_fim: filtros.dataFalecimentoFim || undefined,
+        q: filtros.busca.trim() || undefined,
+        per_page: 50,
+      }),
+    [cemiterioAtivoId, filtros]
   );
 
-  const sucedidas = useMemo(
-    () => processos.dados?.data?.filter((p) => p.estado === 'sucedida').length ?? 0,
-    [processos.dados?.data]
+  const sucedidasQuery = useDados(
+    () => cemiteriosApi.sucessoes({ park_id: cemiterioAtivoId ?? undefined, estado: 'sucedida', per_page: 1 }),
+    [cemiterioAtivoId]
   );
 
   return (
     <div className="space-y-6">
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KpiCard
-          title="Pendentes de Análise"
-          value={pendentes.dados?.resumo?.total ?? '—'}
-          icon={<AlertCircle className="h-5 w-5" />}
-          iconBgColor="bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-          subtitle="Processos aguardando análise"
-        />
-        <KpiCard
-          title="Em Análise"
-          value={pendentes.dados?.resumo?.em_analise ?? '—'}
-          icon={<Clock className="h-5 w-5" />}
-          iconBgColor="bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-          subtitle="Aguardando qualificação ou decisão"
-        />
-        <KpiCard
-          title="Sucessões Concluídas"
-          value={sucedidas || '—'}
-          icon={<FileCheck2 className="h-5 w-5" />}
-          iconBgColor="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-          subtitle="Titular sucedido e concessão transferida"
-        />
-      </div>
+      <SucessaoKpis
+        resumoPendentes={pendentes.dados?.resumo}
+        regularizacao={regularizacao.dados}
+        sucedidas={sucedidasQuery.dados?.total ?? 0}
+      />
 
       <ErroBox erro={pendentes.erro ?? regularizacao.erro ?? processos.erro ?? null} />
 
@@ -108,13 +96,20 @@ export const SucessaoView: React.FC = () => {
       )}
 
       {subAba === 'processos' && (
-        <SucessaoList
-          dados={processos.dados}
-          carregando={processos.carregando}
-          onDetalhar={(p) => setModalDetalheAberto(p)}
-          onAutuar={podeAutuar ? () => setModalWizardAberto(true) : undefined}
-          podeAutuar={podeAutuar}
-        />
+        <div className="space-y-4">
+          <SucessaoFiltros
+            filtros={filtros}
+            onFiltrosChange={(novos) => setFiltros((f) => ({ ...f, ...novos }))}
+            onLimparFiltros={() => setFiltros(SUCESSAO_FILTROS_INICIAIS)}
+            totalRegistros={processos.dados?.total ?? 0}
+            carregando={processos.carregando}
+          />
+          <SucessaoList
+            dados={processos.dados}
+            carregando={processos.carregando}
+            onDetalhar={(p) => setModalDetalheAberto(p)}
+          />
+        </div>
       )}
 
       {subAba === 'regularizacao' && (
@@ -137,6 +132,7 @@ export const SucessaoView: React.FC = () => {
           processos.recarregar();
           pendentes.recarregar();
           regularizacao.recarregar();
+          sucedidasQuery.recarregar();
         }}
       />
 
@@ -150,6 +146,7 @@ export const SucessaoView: React.FC = () => {
             processos.recarregar();
             pendentes.recarregar();
             regularizacao.recarregar();
+            sucedidasQuery.recarregar();
           }}
         />
       )}

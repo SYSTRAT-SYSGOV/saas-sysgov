@@ -57,7 +57,11 @@ final class OperacaoController extends Controller
             'agendada_para' => ['nullable', 'date'],
             'equipe' => ['nullable', 'string', 'max:255'],
             'coveiro_nome' => ['nullable', 'string', 'max:150'],
+            'coveiro_id' => ['nullable', 'integer'],
             'pedreiro_nome' => ['nullable', 'string', 'max:150'],
+            'pedreiro_id' => ['nullable', 'integer'],
+            'override_suspensao' => ['sometimes', 'boolean'],
+            'justificativa_override' => ['nullable', 'string', 'max:500'],
             'cartorio' => ['nullable', 'string', 'max:200'],
             'medico' => ['nullable', 'string', 'max:200'],
             'autorizado_judicial' => ['sometimes', 'boolean'],
@@ -127,7 +131,11 @@ final class OperacaoController extends Controller
             'tipo' => ['nullable', 'string', 'max:20'],
             'livro_referencia' => ['nullable', 'string', 'max:255'],
             'coveiro_nome' => ['nullable', 'string', 'max:150'],
+            'coveiro_id' => ['nullable', 'integer'],
             'pedreiro_nome' => ['nullable', 'string', 'max:150'],
+            'pedreiro_id' => ['nullable', 'integer'],
+            'override_suspensao' => ['sometimes', 'boolean'],
+            'justificativa_override' => ['nullable', 'string', 'max:500'],
             'cartorio' => ['nullable', 'string', 'max:200'],
             'medico' => ['nullable', 'string', 'max:200'],
             'falecido' => ['nullable', 'array'],
@@ -142,6 +150,8 @@ final class OperacaoController extends Controller
         $falecidoDados = $dados['falecido'] ?? null;
         unset($dados['falecido']);
 
+        $this->operacoes->vincularOperadores($dados);
+        unset($dados['override_suspensao'], $dados['justificativa_override']);
         $inumacao->update($dados);
 
         if ($falecidoDados && $inumacao->falecido) {

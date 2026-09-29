@@ -91,6 +91,80 @@ final class SucessaoTest extends CemiteriosTestCase
             ->assertJsonPath('novo_titular.nome', 'Maria Silva (Filha Herdeira)');
     }
 
+    /**
+     * Regressão: AbrirSucessaoRequest/AtualizarSucessaoRequest/TransicaoSucessaoRequest
+     * usavam $user->can('slug') (Gate nativo, sem Gate::define correspondente), o que
+     * sempre retornava 403 independente de permissão — corrigido para hasPermission().
+     */
+    public function test_abertura_e_transicao_do_fluxo_rf_sucessao(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $jazigo = $this->novoJazigo(concedido: false);
+
+        $titular = Concessionario::create([
+            'nome' => 'Titular Falecido RF-SUCESSAO',
+            'tipo_doc' => 'cpf',
+            'documento' => $this->cpfValido(),
+            'documento_hash' => hash('sha256', 'rf-sucessao'),
+        ]);
+
+        $concessao = Concessao::create([
+            'numero' => 'CON-RF-01',
+            'plot_id' => $jazigo->id,
+            'holder_id' => $titular->id,
+            'tipo' => 'perpetua',
+            'data_inicio' => '2000-01-01',
+            'estado' => 'Ativa',
+        ]);
+
+        $respAbrir = $this->como($admin, $this->tenant)->postJson('/api/cemiterios/sucessoes', [
+            'concession_id' => $concessao->id,
+            'park_id' => $jazigo->park_id,
+            'plot_id' => $jazigo->id,
+            'via' => 'inventario_extrajudicial',
+            'data_falecimento' => '2026-01-10',
+            'processo_referencia' => 'PROC-RF-0001',
+        ]);
+        $respAbrir->assertCreated()->assertJsonPath('estado', 'solicitada');
+
+        $processoId = (int) $respAbrir->json('id');
+        $lockVersion = (int) $respAbrir->json('lock_version');
+
+        $respTransicao = $this->como($admin, $this->tenant)->postJson("/api/cemiterios/sucessoes/{$processoId}/transicao", [
+            'para' => 'em_analise',
+            'motivo' => 'Documentação inicial conferida.',
+            'lock_version' => $lockVersion,
+        ]);
+        $respTransicao->assertOk()->assertJsonPath('estado', 'em_analise');
+    }
+
+    public function test_abertura_de_sucessao_exige_permissao_manage(): void
+    {
+        $semPermissao = $this->usuario($this->tenant, []);
+        $jazigo = $this->novoJazigo(concedido: false);
+
+        $titular = Concessionario::create([
+            'nome' => 'Titular Sem Permissão',
+            'tipo_doc' => 'cpf',
+            'documento' => $this->cpfValido(),
+            'documento_hash' => hash('sha256', 'sem-permissao'),
+        ]);
+
+        $concessao = Concessao::create([
+            'numero' => 'CON-RF-02',
+            'plot_id' => $jazigo->id,
+            'holder_id' => $titular->id,
+            'tipo' => 'perpetua',
+            'data_inicio' => '2000-01-01',
+            'estado' => 'Ativa',
+        ]);
+
+        $this->como($semPermissao, $this->tenant)->postJson('/api/cemiterios/sucessoes', [
+            'concession_id' => $concessao->id,
+            'via' => 'inventario_extrajudicial',
+        ])->assertForbidden();
+    }
+
     public function test_isolamento_multi_tenant_sucessao(): void
     {
         $adminA = $this->admin($this->tenant);

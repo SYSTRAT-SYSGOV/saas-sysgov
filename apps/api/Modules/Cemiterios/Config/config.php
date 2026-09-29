@@ -73,6 +73,14 @@ return [
         'notificacao_antecedencia_dias' => [30, 7, 1],
     ],
 
+    // Saúde e Segurança Ocupacional de coveiros/pedreiros (RF-cadastro-operadores).
+    'saude_ocupacional' => [
+        // Janela de alerta de vencimento do ASO, em dias (mesma janela do credenciamento).
+        'aso_periodicidade_dias' => 365,
+        // Exames/documentos exigidos por legislação municipal — varia por município.
+        'requisitos_legais' => '[REQUISITOS DE SAÚDE OCUPACIONAL — CONFIRMAR LEGISLAÇÃO MUNICIPAL]',
+    ],
+
     // Mapa base (D4). Provedor configurável por ambiente; a chave nunca vem do usuário.
     'mapa_base' => [
         'provedor' => env('CEMITERIO_MAPA_PROVEDOR', 'esri'), // google | esri

@@ -6,6 +6,7 @@ namespace Modules\Cemiterios\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Modules\Cemiterios\Http\Controllers\Concerns\AutorizaPermissao;
 use Modules\Cemiterios\Http\Requests\HerdeirosSucessaoRequest;
 use Modules\Cemiterios\Models\Sucessao;

@@ -3,14 +3,16 @@ import type { ColumnDef } from '@tanstack/react-table';
 import {
   AlertTriangle,
   Clock,
+  FileCheck,
   HardHat,
   History,
   Pencil,
   Search,
+  ShieldAlert,
   UserPlus,
   Users,
 } from 'lucide-react';
-import { Button, DataTable, StatusChip } from '@/components/ui';
+import { Button, DataTable, Modal, StatusChip } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import {
   cemiteriosApi,
@@ -18,6 +20,9 @@ import {
   type HistoricoOperador,
   type OperadorCemiterio,
 } from '../api';
+import { useCemiteriosNavigation } from '../CemiteriosContext';
+import { HistoricoCredenciamentoOperador } from '../components/HistoricoCredenciamentoOperador';
+import { SancoesOperador } from '../components/SancoesOperador';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
 
 const STATUS_ALVARA_BADGES: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'neutral' }> = {
@@ -28,16 +33,27 @@ const STATUS_ALVARA_BADGES: Record<string, { label: string; variant: 'success' |
   dispensado: { label: 'Servidor Público', variant: 'neutral' },
 };
 
+const STATUS_SAUDE_BADGES: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'neutral' }> = {
+  valido: { label: 'ASO Válido', variant: 'success' },
+  a_vencer: { label: 'ASO a Vencer', variant: 'warning' },
+  vencido: { label: 'ASO Vencido', variant: 'danger' },
+  nao_informado: { label: 'ASO Não Informado', variant: 'neutral' },
+};
+
 export const OperadoresView: React.FC = () => {
   const { can } = useCan();
   const gerencia = can('cemiterios.cadastros.manage');
+  const { cemiterioAtivoId } = useCemiteriosNavigation();
 
   const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
   const [alvaraFiltro, setAlvaraFiltro] = useState<string>('todos');
+  const [saudeFiltro, setSaudeFiltro] = useState<string>('todos');
   const [busca, setBusca] = useState<string>('');
   const [modalNovo, setModalNovo] = useState(false);
   const [operadorEditando, setOperadorEditando] = useState<OperadorCemiterio | null>(null);
   const [historicoDrawer, setHistoricoDrawer] = useState<HistoricoOperador | null>(null);
+  const [credenciamentoOperador, setCredenciamentoOperador] = useState<OperadorCemiterio | null>(null);
+  const [sancoesOperador, setSancoesOperador] = useState<OperadorCemiterio | null>(null);
 
   const { erro, executar } = useAcao();
 
@@ -46,10 +62,18 @@ export const OperadoresView: React.FC = () => {
       cemiteriosApi.operadores({
         tipo: tipoFiltro !== 'todos' ? tipoFiltro : undefined,
         status_alvara: alvaraFiltro !== 'todos' ? alvaraFiltro : undefined,
+        status_saude_ocupacional: saudeFiltro !== 'todos' ? saudeFiltro : undefined,
+        park_id: cemiterioAtivoId || undefined,
         q: busca || undefined,
         per_page: 50,
       }),
-    [tipoFiltro, alvaraFiltro, busca]
+    [tipoFiltro, alvaraFiltro, saudeFiltro, busca, cemiterioAtivoId]
+  );
+
+  const parques = useDados(() => cemiteriosApi.parques(), []);
+  const opcoesParque = useMemo(
+    () => (parques.dados ?? []).map((p) => ({ value: String(p.id), label: p.nome })),
+    [parques.dados]
   );
 
   const colunas = useMemo<ColumnDef<OperadorCemiterio, unknown>[]>(() => [
@@ -60,7 +84,7 @@ export const OperadoresView: React.FC = () => {
         <div>
           <span className="font-semibold text-foreground">{row.original.nome}</span>
           <div className="text-xs text-muted-foreground font-mono mt-0.5">
-            {row.original.cpf_cnpj ? `Doc: ${row.original.cpf_cnpj}` : '—'}
+            {row.original.documento_mascarado ? `Doc: ${row.original.documento_mascarado}` : '—'}
             {row.original.telefone ? ` • Tel: ${row.original.telefone}` : ''}
           </div>
         </div>
@@ -119,6 +143,15 @@ export const OperadoresView: React.FC = () => {
       },
     },
     {
+      id: 'status_saude_ocupacional',
+      header: 'Saúde Ocupacional',
+      cell: ({ row }) => {
+        const status = row.original.status_saude_ocupacional ?? 'nao_informado';
+        const badge = STATUS_SAUDE_BADGES[status] ?? STATUS_SAUDE_BADGES.nao_informado;
+        return <StatusChip label={badge.label} variant={badge.variant} />;
+      },
+    },
+    {
       id: 'situacao',
       header: 'Situação',
       cell: ({ row }) => (
@@ -148,6 +181,14 @@ export const OperadoresView: React.FC = () => {
               Histórico
             </Button>
 
+            <Button size="xs" variant="outline" onClick={() => setCredenciamentoOperador(o)} title="Ver histórico de credenciamentos (alvarás)">
+              <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
+            </Button>
+
+            <Button size="xs" variant="outline" onClick={() => setSancoesOperador(o)} title="Ver sanções administrativas">
+              <ShieldAlert className="h-3.5 w-3.5 text-rose-600" />
+            </Button>
+
             {gerencia && (
               <Button size="xs" variant="outline" onClick={() => setOperadorEditando(o)}>
                 <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
@@ -164,7 +205,7 @@ export const OperadoresView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">Coveiros Ativos</span>
@@ -208,6 +249,28 @@ export const OperadoresView: React.FC = () => {
           </div>
           <p className="mt-1 text-xs text-rose-700/80 dark:text-rose-400/80">Obras particulares impedidas</p>
         </div>
+
+        <div className="p-4 rounded-xl border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-orange-800 dark:text-orange-300">ASO a Vencer (30 dias)</span>
+            <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+          </div>
+          <div className="mt-2 text-2xl font-bold font-mono text-orange-900 dark:text-orange-100">
+            {stats?.aso_vencendo ?? 0}
+          </div>
+          <p className="mt-1 text-xs text-orange-700/80 dark:text-orange-400/80">Renovação de exame recomendada</p>
+        </div>
+
+        <div className="p-4 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-rose-800 dark:text-rose-300">ASO Vencido</span>
+            <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+          </div>
+          <div className="mt-2 text-2xl font-bold font-mono text-rose-900 dark:text-rose-100">
+            {stats?.aso_vencido ?? 0}
+          </div>
+          <p className="mt-1 text-xs text-rose-700/80 dark:text-rose-400/80">Saúde ocupacional irregular</p>
+        </div>
       </div>
 
       <ErroBox erro={erro} />
@@ -245,6 +308,18 @@ export const OperadoresView: React.FC = () => {
             <option value="valido">Alvarás Válidos</option>
             <option value="vencendo">Alvarás a Vencer</option>
             <option value="vencido">Alvarás Vencidos</option>
+          </select>
+
+          <select
+            value={saudeFiltro}
+            onChange={(e) => setSaudeFiltro(e.target.value)}
+            className="text-xs rounded-lg border px-3 py-1.5 bg-background font-medium"
+          >
+            <option value="todos">Saúde Ocupacional (Todos)</option>
+            <option value="valido">ASO Válido</option>
+            <option value="a_vencer">ASO a Vencer</option>
+            <option value="vencido">ASO Vencido</option>
+            <option value="nao_informado">ASO Não Informado</option>
           </select>
         </div>
 
@@ -284,8 +359,11 @@ export const OperadoresView: React.FC = () => {
           },
           { nome: 'cpf_cnpj', rotulo: 'CPF ou CNPJ', dica: 'Apenas números ou formatado.' },
           { nome: 'matricula_funcional', rotulo: 'Matrícula Funcional (se servidor)' },
+          { nome: 'park_id', rotulo: 'Necrópole', tipo: 'select', opcoes: opcoesParque, dica: 'Vazio = atua em todas as necrópoles do tenant.' },
           { nome: 'alvara_numero', rotulo: 'Nº do Alvará Municipal (se pedreiro)' },
           { nome: 'alvara_validade', rotulo: 'Validade do Alvará', tipo: 'date' },
+          { nome: 'aso_validade', rotulo: 'Validade do ASO', tipo: 'date' },
+          { nome: 'epi_ultimo_registro', rotulo: 'Último Registro de Entrega de EPI', tipo: 'date' },
           { nome: 'telefone', rotulo: 'Telefone de Contato' },
           { nome: 'email', rotulo: 'E-mail' },
         ]}
@@ -297,8 +375,11 @@ export const OperadoresView: React.FC = () => {
             tipo: v.tipo as 'coveiro' | 'pedreiro',
             cpf_cnpj: v.cpf_cnpj ? String(v.cpf_cnpj) : undefined,
             matricula_funcional: v.matricula_funcional ? String(v.matricula_funcional) : undefined,
+            park_id: v.park_id ? Number(v.park_id) : undefined,
             alvara_numero: v.alvara_numero ? String(v.alvara_numero) : undefined,
             alvara_validade: v.alvara_validade ? String(v.alvara_validade) : undefined,
+            aso_validade: v.aso_validade ? String(v.aso_validade) : undefined,
+            epi_ultimo_registro: v.epi_ultimo_registro ? String(v.epi_ultimo_registro) : undefined,
             telefone: v.telefone ? String(v.telefone) : undefined,
             email: v.email ? String(v.email) : undefined,
             situacao: 'ativo',
@@ -335,10 +416,13 @@ export const OperadoresView: React.FC = () => {
               { value: 'inativo', label: 'Inativo / Descredenciado' },
             ],
           },
-          { nome: 'cpf_cnpj', rotulo: 'CPF ou CNPJ' },
+          { nome: 'cpf_cnpj', rotulo: 'CPF ou CNPJ', dica: 'Preencha apenas para alterar o documento atual.' },
           { nome: 'matricula_funcional', rotulo: 'Matrícula Funcional' },
+          { nome: 'park_id', rotulo: 'Necrópole', tipo: 'select', opcoes: opcoesParque, dica: 'Vazio = atua em todas as necrópoles do tenant.' },
           { nome: 'alvara_numero', rotulo: 'Nº do Alvará' },
           { nome: 'alvara_validade', rotulo: 'Validade do Alvará', tipo: 'date' },
+          { nome: 'aso_validade', rotulo: 'Validade do ASO', tipo: 'date' },
+          { nome: 'epi_ultimo_registro', rotulo: 'Último Registro de Entrega de EPI', tipo: 'date' },
           { nome: 'telefone', rotulo: 'Telefone de Contato' },
           { nome: 'email', rotulo: 'E-mail' },
         ]}
@@ -348,10 +432,12 @@ export const OperadoresView: React.FC = () => {
                 nome: operadorEditando.nome,
                 tipo: operadorEditando.tipo,
                 situacao: operadorEditando.situacao,
-                cpf_cnpj: operadorEditando.cpf_cnpj ?? '',
                 matricula_funcional: operadorEditando.matricula_funcional ?? '',
+                park_id: operadorEditando.park_id ? String(operadorEditando.park_id) : '',
                 alvara_numero: operadorEditando.alvara_numero ?? '',
                 alvara_validade: operadorEditando.alvara_validade ?? '',
+                aso_validade: operadorEditando.aso_validade ?? '',
+                epi_ultimo_registro: operadorEditando.epi_ultimo_registro ?? '',
                 telefone: operadorEditando.telefone ?? '',
                 email: operadorEditando.email ?? '',
               }
@@ -366,8 +452,11 @@ export const OperadoresView: React.FC = () => {
             situacao: String(v.situacao) as 'ativo' | 'suspenso' | 'inativo',
             cpf_cnpj: v.cpf_cnpj ? String(v.cpf_cnpj) : undefined,
             matricula_funcional: v.matricula_funcional ? String(v.matricula_funcional) : undefined,
+            park_id: v.park_id ? Number(v.park_id) : undefined,
             alvara_numero: v.alvara_numero ? String(v.alvara_numero) : undefined,
             alvara_validade: v.alvara_validade ? String(v.alvara_validade) : undefined,
+            aso_validade: v.aso_validade ? String(v.aso_validade) : undefined,
+            epi_ultimo_registro: v.epi_ultimo_registro ? String(v.epi_ultimo_registro) : undefined,
             telefone: v.telefone ? String(v.telefone) : undefined,
             email: v.email ? String(v.email) : undefined,
           });
@@ -440,6 +529,28 @@ export const OperadoresView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal: Histórico de Credenciamentos */}
+      <Modal
+        open={credenciamentoOperador !== null}
+        onClose={() => setCredenciamentoOperador(null)}
+        title={`Credenciamentos: ${credenciamentoOperador?.nome ?? ''}`}
+        size="lg"
+      >
+        {credenciamentoOperador && (
+          <HistoricoCredenciamentoOperador operadorId={credenciamentoOperador.id} readonly={!gerencia} />
+        )}
+      </Modal>
+
+      {/* Modal: Sanções Administrativas */}
+      <Modal
+        open={sancoesOperador !== null}
+        onClose={() => setSancoesOperador(null)}
+        title={`Sanções: ${sancoesOperador?.nome ?? ''}`}
+        size="lg"
+      >
+        {sancoesOperador && <SancoesOperador operadorId={sancoesOperador.id} podeGerenciar={gerencia} />}
+      </Modal>
     </div>
   );
 };

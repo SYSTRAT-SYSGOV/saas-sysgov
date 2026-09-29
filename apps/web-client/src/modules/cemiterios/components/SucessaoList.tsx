@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { DataTable, Button, StatusChip } from '@/components/ui';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Eye, Scale, Users } from 'lucide-react';
+import { Eye, Users } from 'lucide-react';
 import type { Sucessao, SucessaoPaginado, EstadoSucessao, ViaSucessao } from '../api';
 import { formatarData } from '../api';
 import { ESTADO_LABELS, ESTADO_BADGE_VARIANT } from '../hooks/useSucessaoTransicoes';
@@ -12,8 +12,6 @@ interface SucessaoListProps {
   dados: SucessaoPaginado | null;
   carregando: boolean;
   onDetalhar: (p: Sucessao) => void;
-  onAutuar?: () => void;
-  podeAutuar?: boolean;
 }
 
 const colunasBase = [
@@ -30,8 +28,6 @@ export const SucessaoList: React.FC<SucessaoListProps> = ({
   dados,
   carregando,
   onDetalhar,
-  onAutuar,
-  podeAutuar = true,
 }) => {
   const colunas = useMemo<ColumnDef<Sucessao, unknown>[]>(
     () => [
@@ -151,22 +147,17 @@ export const SucessaoList: React.FC<SucessaoListProps> = ({
 
   return (
     <div className="space-y-4">
-      {podeAutuar && onAutuar && (
-        <div className="flex justify-end">
-          <Button size="sm" onClick={onAutuar}>
-            <Scale className="h-4 w-4 mr-2" />
-            Abrir Processo de Sucessão
-          </Button>
-        </div>
-      )}
-
       <DataTable
         columns={colunas}
         data={dados?.data ?? []}
         loading={carregando}
-        searchable
-        searchPlaceholder="Buscar por processo, herdeiro ou concessão..."
-        emptyText="Nenhum processo de sucessão encontrado."
+        searchable={false}
+        exportable
+        exportFileName="processos-sucessao"
+        exportTitle="Processos de Sucessão Hereditária"
+        pageSizeSelector
+        pageSizeOptions={[10, 25, 50]}
+        emptyText="Nenhum processo de sucessão encontrado para os filtros selecionados."
         pagination={false}
       />
     </div>

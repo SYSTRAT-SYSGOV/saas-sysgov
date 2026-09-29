@@ -48,14 +48,7 @@ final class SucessaoDocumentoController extends Controller
 
         $documento = SucessaoDocumento::where('sucessao_id', $id)->findOrFail($documentoId);
 
-        // Verifica integridade
-        if (!$request->user()->can('cemiterios.sucessao.view')) {
-            return response()->json(['message' => 'Não autorizado'], 403);
-        }
-
-        $url = $request->user()->can('cemiterios.sucessao.view')
-            ? app(\Modules\Cemiterios\Services\DocumentoSucessaoService::class)->downloadUrl($documento)
-            : null;
+        $url = app(\Modules\Cemiterios\Services\DocumentoSucessaoService::class)->downloadUrl($documento);
 
         return response()->json([
             'download_url' => $url,

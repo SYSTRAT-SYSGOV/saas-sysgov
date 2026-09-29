@@ -82,5 +82,29 @@ final class CemiteriosRbacSeeder extends Seeder
                 $perfil['permissions'] === '*' ? array_values($ids) : array_map(fn (string $p) => $ids[$p], $perfil['permissions'])
             );
         }
+
+        $this->concederLeituraDeCadastroParaQuemJaGerencia($ids);
+    }
+
+    /**
+     * `cemiterios.cadastros.view` é uma permissão nova: qualquer papel, em
+     * qualquer tenant, que já possua `cemiterios.cadastros.manage` passa a
+     * receber a leitura automaticamente, para não regredir o acesso de quem já
+     * gerenciava o cadastro (design.md - Migration Plan #3).
+     *
+     * @param array<string, int> $ids
+     */
+    private function concederLeituraDeCadastroParaQuemJaGerencia(array $ids): void
+    {
+        if (!isset($ids['cemiterios.cadastros.view'], $ids['cemiterios.cadastros.manage'])) {
+            return;
+        }
+
+        $viewId = $ids['cemiterios.cadastros.view'];
+        $manageId = $ids['cemiterios.cadastros.manage'];
+
+        Role::whereHas('permissions', fn ($q) => $q->where('permissions.id', $manageId))
+            ->get()
+            ->each(fn (Role $role) => $role->permissions()->syncWithoutDetaching([$viewId]));
     }
 }

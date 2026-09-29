@@ -21,7 +21,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $origem
  * @property string|null $livro_referencia
  * @property string|null $coveiro_nome
+ * @property int|null $coveiro_id
  * @property string|null $pedreiro_nome
+ * @property int|null $pedreiro_id
  * @property string|null $cartorio
  * @property string|null $medico
  * @property bool $revisao_pendente
@@ -63,5 +65,17 @@ final class Inumacao extends Model
     public function ordemServico(): BelongsTo
     {
         return $this->belongsTo(OrdemServico::class, 'service_order_id');
+    }
+
+    /** @return BelongsTo<OperadorCemiterio, $this> */
+    public function coveiro(): BelongsTo
+    {
+        return $this->belongsTo(OperadorCemiterio::class, 'coveiro_id');
+    }
+
+    /** @return BelongsTo<OperadorCemiterio, $this> */
+    public function pedreiro(): BelongsTo
+    {
+        return $this->belongsTo(OperadorCemiterio::class, 'pedreiro_id');
     }
 }

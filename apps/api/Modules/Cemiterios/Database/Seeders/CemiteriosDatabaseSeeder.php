@@ -13,6 +13,8 @@ final class CemiteriosDatabaseSeeder extends Seeder
         $this->call([
             CemiteriosRbacSeeder::class,
             CemiteriosDadosDemonstracaoSeeder::class,
+            SucessaoConfigSeeder::class,
+            SucessaoDemonstracaoSeeder::class,
         ]);
     }
 }

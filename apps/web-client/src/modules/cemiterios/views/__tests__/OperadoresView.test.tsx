@@ -20,31 +20,37 @@ const mockOperadores: any = {
       id: 1,
       tipo: 'coveiro' as const,
       nome: 'Sebastião Coveiro',
-      cpf_cnpj: '111.222.333-44',
+      documento_mascarado: '***.222.333-**',
       telefone: '(11) 97777-1111',
       matricula_funcional: 'MAT-9901',
-      numero_alvara: null,
-      vencimento_alvara: null,
+      park_id: null,
+      alvara_numero: null,
+      alvara_validade: null,
+      aso_validade: null,
+      epi_ultimo_registro: null,
       is_alvara_vencido: false,
       status_alvara: 'dispensado' as const,
-      ativo: true,
+      status_saude_ocupacional: 'nao_informado' as const,
+      situacao: 'ativo' as const,
       observacoes: 'Servidor estatutário.',
-      created_at: '2025-01-15T10:00:00Z',
     },
     {
       id: 2,
       tipo: 'pedreiro' as const,
       nome: 'José das Obras',
-      cpf_cnpj: '222.333.444-55',
+      documento_mascarado: '**.333.444/0001-**',
       telefone: '(11) 98888-2222',
       matricula_funcional: null,
-      numero_alvara: 'ALV-2026/044',
-      vencimento_alvara: '2026-12-31',
+      park_id: null,
+      alvara_numero: 'ALV-2026/044',
+      alvara_validade: '2026-12-31',
+      aso_validade: '2027-01-01',
+      epi_ultimo_registro: null,
       is_alvara_vencido: false,
       status_alvara: 'valido' as const,
-      ativo: true,
+      status_saude_ocupacional: 'valido' as const,
+      situacao: 'ativo' as const,
       observacoes: 'Pedreiro credenciado.',
-      created_at: '2025-02-01T10:00:00Z',
     },
   ],
   total: 2,
@@ -55,6 +61,8 @@ const mockOperadores: any = {
     total_pedreiros: 1,
     alvaras_vencendo: 0,
     alvaras_vencidos: 0,
+    aso_vencendo: 0,
+    aso_vencido: 0,
   },
 };
 
@@ -110,6 +118,7 @@ describe('OperadoresView Component', () => {
     vi.clearAllMocks();
     vi.spyOn(cemiteriosApi, 'operadores').mockResolvedValue(mockOperadores as any);
     vi.spyOn(cemiteriosApi, 'historicoOperador').mockResolvedValue(mockHistorico as any);
+    vi.spyOn(cemiteriosApi, 'parques').mockResolvedValue([]);
   });
 
   it('renderiza os cards de indicadores operacionais e tabela de profissionais', async () => {
@@ -125,6 +134,8 @@ describe('OperadoresView Component', () => {
       expect(screen.getByText('José das Obras')).toBeInTheDocument();
       expect(screen.getByText('Coveiro Municipal')).toBeInTheDocument();
       expect(screen.getByText('Pedreiro de Obras')).toBeInTheDocument();
+      expect(screen.getByText(/Doc: \*\*\*\.222\.333-\*\*/)).toBeInTheDocument();
+      expect(screen.getAllByText('ASO Válido').length).toBeGreaterThan(0);
     });
   });
 
@@ -152,6 +163,22 @@ describe('OperadoresView Component', () => {
       expect(screen.getByText('Histórico Operacional')).toBeInTheDocument();
       expect(screen.getByText('Falecido Teste')).toBeInTheDocument();
       expect(screen.getByText(/JAZ-01/i)).toBeInTheDocument();
+    });
+  });
+
+  it('filtra por status de saúde ocupacional', async () => {
+    render(<OperadoresView />);
+
+    await waitFor(() => expect(screen.getByText('Sebastião Coveiro')).toBeInTheDocument());
+
+    const selects = screen.getAllByRole('combobox');
+    const selectSaude = selects.find((el) => el.textContent?.includes('Saúde Ocupacional')) ?? selects[selects.length - 1];
+    fireEvent.change(selectSaude, { target: { value: 'vencido' } });
+
+    await waitFor(() => {
+      expect(cemiteriosApi.operadores).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status_saude_ocupacional: 'vencido' })
+      );
     });
   });
 });

@@ -19,6 +19,7 @@ use Modules\Cemiterios\Support\ConflitoVersaoException;
 use Modules\Cemiterios\Support\EstadoSucessao;
 use Modules\Cemiterios\Support\Parentesco;
 use Modules\Cemiterios\Support\RegraNegocioException;
+use Modules\Cemiterios\Support\TipoDocumentoSucessao;
 use Modules\Cemiterios\Support\ViaSucessao;
 
 /**

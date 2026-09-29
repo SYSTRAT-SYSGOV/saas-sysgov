@@ -12,6 +12,8 @@ use Modules\Cemiterios\Http\Controllers\FinanceiroController;
 use Modules\Cemiterios\Http\Controllers\GisController;
 use Modules\Cemiterios\Http\Controllers\JazigoController;
 use Modules\Cemiterios\Http\Controllers\OperadorCemiterioController;
+use Modules\Cemiterios\Http\Controllers\OperadorLicencaController;
+use Modules\Cemiterios\Http\Controllers\OperadorPenalidadeController;
 use Modules\Cemiterios\Http\Controllers\OperacaoController;
 use Modules\Cemiterios\Http\Controllers\OrdemServicoController;
 use Modules\Cemiterios\Http\Controllers\ParametroController;
@@ -178,4 +180,8 @@ Route::post('/operadores', [OperadorCemiterioController::class, 'store']);
 Route::get('/operadores/{id}', [OperadorCemiterioController::class, 'show']);
 Route::put('/operadores/{id}', [OperadorCemiterioController::class, 'update']);
 Route::get('/operadores/{id}/historico', [OperadorCemiterioController::class, 'historico']);
+Route::get('/operadores/{id}/licencas', [OperadorLicencaController::class, 'index']);
+Route::post('/operadores/{id}/licencas', [OperadorLicencaController::class, 'store']);
+Route::get('/operadores/{id}/penalidades', [OperadorPenalidadeController::class, 'index']);
+Route::post('/operadores/{id}/penalidades', [OperadorPenalidadeController::class, 'store']);
 

@@ -11,7 +11,7 @@ final class TransicaoSucessaoRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('cemiterios.sucessao.transition');
+        return $this->user()?->hasPermission('cemiterios.sucessao.transition') === true;
     }
 
     /**

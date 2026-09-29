@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Modules\Cemiterios\Models\Sucessao;
 use Modules\Cemiterios\Models\SucessaoDocumento;
+use Modules\Cemiterios\Support\EstadoSucessao;
 use Modules\Cemiterios\Support\RegraNegocioException;
 use Modules\Cemiterios\Support\TipoDocumentoSucessao;
 
@@ -17,6 +18,10 @@ use Modules\Cemiterios\Support\TipoDocumentoSucessao;
 final class DocumentoSucessaoService
 {
     private const DISCO = 's3';
+
+    public function __construct(
+        private readonly SucessaoConfigService $configService,
+    ) {}
 
     /**
      * Faz upload de um documento e calcula o hash SHA-256.
@@ -100,6 +105,35 @@ final class DocumentoSucessaoService
     public function remover(SucessaoDocumento $documento): void
     {
         $documento->delete();
+    }
+
+    /**
+     * Purga (soft delete) documentos de processos sucessórios encerrados cuja
+     * retenção LGPD configurada para o tenant já expirou.
+     *
+     * @return int Quantidade de documentos purgados
+     */
+    public function purgarExpirados(int $tenantId): int
+    {
+        $retencaoDias = $this->configService->getRetencaoDocumentosDias();
+        $limite = now()->subDays($retencaoDias);
+
+        $documentos = SucessaoDocumento::where('tenant_id', $tenantId)
+            ->where('created_at', '<', $limite)
+            ->whereHas('sucessao', function ($query): void {
+                $query->whereIn('estado', [
+                    EstadoSucessao::Sucedida->value,
+                    EstadoSucessao::Indeferida->value,
+                    EstadoSucessao::Arquivada->value,
+                ]);
+            })
+            ->get();
+
+        foreach ($documentos as $documento) {
+            $this->remover($documento);
+        }
+
+        return $documentos->count();
     }
 
     /**

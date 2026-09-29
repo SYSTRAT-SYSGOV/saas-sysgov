@@ -34,6 +34,10 @@ export const HerdeirosTable: React.FC<HerdeirosTableProps> = ({ sucessaoId, read
   const [form, setForm] = useState<Partial<HerdeiroInput>>({});
   const podeEditar = !readonly && herdeiros.length > 0;
 
+  React.useEffect(() => {
+    void carregar();
+  }, [sucessaoId, carregar]);
+
   const iniciarEdicao = (h: SucessaoHerdeiro) => {
     setEditando(h);
     setForm({

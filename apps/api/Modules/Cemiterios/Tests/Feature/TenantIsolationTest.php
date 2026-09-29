@@ -20,6 +20,8 @@ use Modules\Cemiterios\Models\HerdeiroSucessao;
 use Modules\Cemiterios\Models\LegadoFalecidoIndice;
 use Modules\Cemiterios\Models\OcupacaoSubLoteLegado;
 use Modules\Cemiterios\Models\OperadorCemiterio;
+use Modules\Cemiterios\Models\OperadorLicenca;
+use Modules\Cemiterios\Models\OperadorPenalidade;
 use Modules\Cemiterios\Models\ProcessoAbandono;
 use Modules\Cemiterios\Models\ProcessoSucessao;
 use Modules\Cemiterios\Models\SolicitacaoPortal;
@@ -74,7 +76,7 @@ final class TenantIsolationTest extends CemiteriosTestCase
             "/api/cemiterios/concessoes/{$i['concessao']}", "/api/cemiterios/concessionarios/{$i['titular']}",
             "/api/cemiterios/ordens-servico/{$i['ordem']}", "/api/cemiterios/ordens-servico/{$i['ordem']}/pdf",
             "/api/cemiterios/guias/{$i['guia']}/pdf", "/api/cemiterios/empreiteiros/{$i['empreiteiro']}",
-            "/api/cemiterios/processos-abandono/{$i['processo']}",
+            "/api/cemiterios/processos-abandono/{$i['processo']}", "/api/cemiterios/sucessoes/{$i['sucessao']}",
         ] as $uri) {
             $this->como($adminB, $b)->getJson($uri)->assertNotFound();
         }
@@ -196,7 +198,9 @@ final class TenantIsolationTest extends CemiteriosTestCase
         [$amenidadeLng, $amenidadeLat] = Geo::desprojetar([[0, 0]], $ref)[0];
         Amenidade::create(['park_id' => $jazigo->park_id, 'tipo' => 'portaria', 'lat' => $amenidadeLat, 'lng' => $amenidadeLng]);
 
-        OperadorCemiterio::create(['nome' => 'Operador A', 'tipo' => 'coveiro']);
+        $operador = OperadorCemiterio::create(['nome' => 'Operador A', 'tipo' => 'coveiro']);
+        OperadorLicenca::create(['operator_id' => $operador->id, 'numero' => 'ALV-A-001', 'validade' => '2030-01-01']);
+        OperadorPenalidade::create(['operator_id' => $operador->id, 'tipo' => 'advertencia', 'inicio' => '2026-01-01', 'motivo' => 'Atraso reiterado.']);
         LegadoFalecidoIndice::create(['park_id' => $jazigo->park_id, 'quadra_legado' => 'LEG-A', 'lote_legado' => 'L-A']);
 
         $subLote = SubLoteLegado::create(['plot_id' => $jazigo->id, 'codigo_sublote' => '001A']);
@@ -206,6 +210,7 @@ final class TenantIsolationTest extends CemiteriosTestCase
             'parque' => $jazigo->park_id, 'setor' => $jazigo->sector_id, 'jazigo' => $jazigo->id, 'falecido' => $inumacao->deceased_id,
             'inumacao' => $inumacao->id, 'ordem' => (int) $inumacao->service_order_id, 'concessao' => $concessao->id,
             'titular' => $concessao->holder_id, 'guia' => $guia->id, 'empreiteiro' => $empreiteiro->id, 'processo' => $processo->id,
+            'sucessao' => $processoSucessao->id,
         ];
     }
 

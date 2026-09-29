@@ -69,6 +69,7 @@ final class CemiteriosServiceProvider extends ServiceProvider
             Console\ReconciliarInventarioCommand::class,
             Console\ReconciliarTitularesLegadosCommand::class,
             Console\MigrarSucessaoLegada::class,
+            Console\CriptografarDocumentosOperadores::class,
         ]);
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {

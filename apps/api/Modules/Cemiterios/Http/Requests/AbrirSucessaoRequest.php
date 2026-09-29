@@ -11,7 +11,7 @@ final class AbrirSucessaoRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('cemiterios.sucessao.manage');
+        return $this->user()?->hasPermission('cemiterios.sucessao.manage') === true;
     }
 
     /**
@@ -21,8 +21,8 @@ final class AbrirSucessaoRequest extends FormRequest
     {
         return [
             'concession_id' => ['required', 'integer', 'exists:concessions,id'],
-            'park_id' => ['nullable', 'integer', 'exists:parks,id'],
-            'plot_id' => ['nullable', 'integer', 'exists:plots,id'],
+            'park_id' => ['nullable', 'integer', 'exists:cemetery_parks,id'],
+            'plot_id' => ['nullable', 'integer', 'exists:plot_inventory,id'],
             'via' => ['required', 'string', 'in:' . implode(',', array_map(fn (ViaSucessao $v) => $v->value, ViaSucessao::cases()))],
             'requerente_id' => ['nullable', 'integer', 'exists:users,id'],
             'titular_falecido_id' => ['nullable', 'integer', 'exists:concession_holders,id'],

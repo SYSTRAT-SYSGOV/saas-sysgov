@@ -359,14 +359,20 @@ export interface TermoSucessaoDados {
   herdeiros: { nome: string; parentesco: string; documento: string | null; titular_indicado: boolean }[];
 }
 
+export type StatusCredenciamento = 'valido' | 'a_vencer' | 'vencido' | 'sem_credenciamento' | 'dispensado';
+export type StatusSaudeOcupacional = 'valido' | 'a_vencer' | 'vencido' | 'nao_informado';
+
 export interface OperadorCemiterio {
   id: number;
   nome: string;
   tipo: 'coveiro' | 'pedreiro';
-  cpf_cnpj: string | null;
+  documento_mascarado: string;
   matricula_funcional: string | null;
+  park_id: number | null;
   alvara_numero: string | null;
   alvara_validade: string | null;
+  aso_validade: string | null;
+  epi_ultimo_registro: string | null;
   telefone: string | null;
   email: string | null;
   situacao: 'ativo' | 'suspenso' | 'inativo';
@@ -374,6 +380,29 @@ export interface OperadorCemiterio {
   status_alvara?: 'valido' | 'vencendo' | 'vencido' | 'dispensado' | 'sem_alvara';
   is_alvara_vencido?: boolean;
   is_alvara_vencendo?: boolean;
+  status_credenciamento?: StatusCredenciamento;
+  status_saude_ocupacional?: StatusSaudeOcupacional;
+}
+
+export interface OperadorLicenca {
+  id: number;
+  operator_id: number;
+  numero: string;
+  validade: string;
+  arquivo: string | null;
+  hash: string | null;
+  created_at: string;
+}
+
+export interface OperadorPenalidade {
+  id: number;
+  operator_id: number;
+  tipo: 'advertencia' | 'suspensao' | 'descredenciamento';
+  inicio: string;
+  fim: string | null;
+  motivo: string;
+  arquivo: string | null;
+  created_at: string;
 }
 
 export interface HistoricoOperador {
@@ -744,11 +773,28 @@ export const cemiteriosApi = {
   termoSucessao: (id: number) => get<TermoSucessaoDados>(`/sucessoes/${id}/termo`),
 
   // Operadores (Coveiros e Pedreiros)
-  operadores: (filtros: Record<string, unknown> = {}) => get<Paginado<OperadorCemiterio> & { stats: { total_coveiros: number; total_pedreiros: number; alvaras_vencendo: number; alvaras_vencidos: number } }>('/operadores', filtros),
+  operadores: (filtros: Record<string, unknown> = {}) =>
+    get<
+      Paginado<OperadorCemiterio> & {
+        stats: {
+          total_coveiros: number; total_pedreiros: number; alvaras_vencendo: number; alvaras_vencidos: number;
+          aso_vencendo: number; aso_vencido: number;
+        };
+      }
+    >('/operadores', filtros),
   operador: (id: number) => get<OperadorCemiterio>(`/operadores/${id}`),
-  criarOperador: (dados: Partial<OperadorCemiterio>) => post<OperadorCemiterio>('/operadores', dados),
-  atualizarOperador: (id: number, dados: Partial<OperadorCemiterio>) => put<OperadorCemiterio>(`/operadores/${id}`, dados),
+  criarOperador: (dados: Partial<OperadorCemiterio> & { cpf_cnpj?: string | null }) => post<OperadorCemiterio>('/operadores', dados),
+  atualizarOperador: (id: number, dados: Partial<OperadorCemiterio> & { cpf_cnpj?: string | null }) => put<OperadorCemiterio>(`/operadores/${id}`, dados),
   historicoOperador: (id: number) => get<HistoricoOperador>(`/operadores/${id}/historico`),
+  licencasOperador: (id: number) => get<OperadorLicenca[]>(`/operadores/${id}/licencas`),
+  credenciarOperador: (id: number, dados: { numero: string; validade: string }, arquivo?: File | null) =>
+    post<OperadorLicenca>(`/operadores/${id}/licencas`, paraFormData({ ...dados, arquivo: arquivo ?? undefined })),
+  penalidadesOperador: (id: number) => get<OperadorPenalidade[]>(`/operadores/${id}/penalidades`),
+  sancionarOperador: (
+    id: number,
+    dados: { tipo: 'advertencia' | 'suspensao' | 'descredenciamento'; inicio: string; fim?: string | null; motivo: string },
+    arquivo?: File | null,
+  ) => post<OperadorPenalidade>(`/operadores/${id}/penalidades`, paraFormData({ ...dados, arquivo: arquivo ?? undefined })),
 
 
   // Financeiro
