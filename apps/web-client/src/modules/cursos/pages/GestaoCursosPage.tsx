@@ -2,17 +2,26 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
 import { Button } from '@sysgov/ui';
-import { DataTable, ScreenState, StatusChip } from '@/components/ui';
+import { DataTable, ScreenState, StatusChip, Tabs, type TabsItem } from '@/components/ui';
 import { sysgovApi, type Curso } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { CursoFormModal } from '../components/CursoFormModal';
+import { RelatorioCursosView } from '../components/RelatorioCursosView';
 import { STATUS_CURSO, TIPO_CURSO, formatarCargaHoraria } from '../utils/formatos';
 
 interface Props {
   onAbrirCurso: (id: number) => void;
 }
 
+type AbaGestaoCursos = 'lista' | 'relatorios';
+
+const ABAS: TabsItem<AbaGestaoCursos>[] = [
+  { key: 'lista', label: 'Cursos e eventos' },
+  { key: 'relatorios', label: 'Relatórios' },
+];
+
 export const GestaoCursosPage: React.FC<Props> = ({ onAbrirCurso }) => {
+  const [aba, setAba] = useState<AbaGestaoCursos>('lista');
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -75,26 +84,40 @@ export const GestaoCursosPage: React.FC<Props> = ({ onAbrirCurso }) => {
     [],
   );
 
-  if (carregando && cursos.length === 0) return <ScreenState type="loading" title="Carregando cursos..." />;
-  if (erro) return <ScreenState type="error" title="Erro ao carregar" description={erro} actionLabel="Tentar novamente" onAction={carregar} />;
-
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={() => setNovo(true)}>
-          <Plus className="h-4 w-4" /> Novo curso ou evento
-        </Button>
-      </div>
-      <DataTable
-        columns={colunas}
-        data={cursos}
-        searchable
-        searchPlaceholder="Buscar curso..."
-        emptyText="Nenhum curso cadastrado."
-        onRowClick={(c) => onAbrirCurso(c.id)}
-        exportable
-        exportFileName="cursos"
-      />
+      <Tabs items={ABAS} value={aba} onChange={setAba} />
+
+      {aba === 'lista' && (
+        <>
+          {carregando && cursos.length === 0 ? (
+            <ScreenState type="loading" title="Carregando cursos..." />
+          ) : erro ? (
+            <ScreenState type="error" title="Erro ao carregar" description={erro} actionLabel="Tentar novamente" onAction={carregar} />
+          ) : (
+            <>
+              <div className="flex justify-end">
+                <Button onClick={() => setNovo(true)}>
+                  <Plus className="h-4 w-4" /> Novo curso ou evento
+                </Button>
+              </div>
+              <DataTable
+                columns={colunas}
+                data={cursos}
+                searchable
+                searchPlaceholder="Buscar curso..."
+                emptyText="Nenhum curso cadastrado."
+                onRowClick={(c) => onAbrirCurso(c.id)}
+                exportable
+                exportFileName="cursos"
+              />
+            </>
+          )}
+        </>
+      )}
+
+      {aba === 'relatorios' && <RelatorioCursosView />}
+
       <CursoFormModal
         open={novo}
         onClose={() => setNovo(false)}

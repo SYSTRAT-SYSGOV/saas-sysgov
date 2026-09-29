@@ -148,8 +148,15 @@
       colidir com o novo `relatorio` (`RelatorioTurma`) carregado junto com a turma e os
       inscritos. Achado: precisei adicionar o mock de `getRelatorioTurma` em
       `CorrecoesTurma.test.tsx`, que já renderizava `TurmaDetalhePage` sem essa chamada.
-- [ ] 4.3 Aba Relatórios na `GestaoCursosPage` (só com `cursos.manage`): visão de cursos por
+- [x] 4.3 Aba Relatórios na `GestaoCursosPage` (só com `cursos.manage`): visão de cursos por
       período com filtros e totais; teste Vitest dos filtros e do estado vazio.
+      Nova aba interna na própria `GestaoCursosPage` ("Cursos e eventos" / "Relatórios"), já que
+      a página só é alcançável com `cursos.manage` (gate no `CursosModule`) — sem gate
+      duplicado. `RelatorioCursosView` (novo componente): filtros de período (padrão: ano
+      corrente), tipo e curso; totais (turmas, inscrições, concluídos, taxa de conclusão) e a
+      tabela por curso; exportação de tela do `DataTable` (linhas carregadas) e "Exportar CSV"
+      da API (resultado completo do período) lado a lado, com uma nota explicando a diferença —
+      adianta parte da tarefa 4.5 pra esta visão.
 - [ ] 4.4 Visão de capacitação por servidor: filtros (período, curso e unidade), ordenação,
       paginação e detalhe do servidor com os certificados; teste Vitest.
 - [ ] 4.5 Indicar na tela a diferença entre a exportação de tela do `DataTable` (linhas
