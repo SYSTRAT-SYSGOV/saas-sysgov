@@ -81,8 +81,12 @@
       sempre a identidade padrão. "E-mail não cadastrado" já era coberto por
       `UserService::requestPasswordReset` (não publica nada se o e-mail não existe, resposta
       uniforme contra enumeração) — o teste só confirma que continua assim.
-- [ ] 1.7 Política do primeiro processamento: eventos com `available_at` anterior à ativação do
+- [x] 1.7 Política do primeiro processamento: eventos com `available_at` anterior à ativação do
       consumidor são marcados `done` sem envio (Migration Plan); teste com eventos antigos.
+      Migration de dados só (`down()` documentadamente irreversível — depois de marcar `done`
+      não dá pra saber quais estavam `pending` antes, e desfazer reenviaria exatamente os
+      e-mails atrasados que ela existe pra evitar). Roda uma vez no deploy desta mudança, antes
+      do `scheduler` subir de verdade em produção.
 - [ ] 1.8 API de envios do órgão (`cursos.manage`): listar com filtro de situação e reenviar os
       `falhou`, com auditoria; testes dos cenários "Reenvio de falha" e "Envios de outro órgão".
 
