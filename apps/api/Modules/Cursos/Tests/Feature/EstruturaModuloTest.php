@@ -65,6 +65,6 @@ final class EstruturaModuloTest extends TestCase
         (new CursosRbacSeeder())->run();
         (new CursosRbacSeeder())->run();
 
-        $this->assertSame(3, Role::where('module', 'cursos')->count());
+        $this->assertSame(4, Role::where('module', 'cursos')->count());
     }
 }

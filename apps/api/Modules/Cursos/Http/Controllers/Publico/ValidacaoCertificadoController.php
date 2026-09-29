@@ -6,7 +6,7 @@ namespace Modules\Cursos\Http\Controllers\Publico;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
-use Modules\Cursos\Services\ValidacaoCertificadoService;
+use Modules\Cursos\Services\Publico\ValidacaoCertificadoService;
 
 /**
  * Validação pública de certificado — sem login e sem TenantContext.

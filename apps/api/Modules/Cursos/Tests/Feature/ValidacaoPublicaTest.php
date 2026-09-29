@@ -7,11 +7,11 @@ namespace Modules\Cursos\Tests\Feature;
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\RateLimiter;
+use Modules\Cursos\Http\Middleware\ResolvePublicTenant;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Participante;
 use Modules\Cursos\Providers\CursosServiceProvider;
-use Modules\Cursos\Services\ValidacaoCertificadoService;
+use Modules\Cursos\Services\Publico\ValidacaoCertificadoService;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
 use ReflectionClass;
@@ -30,7 +30,6 @@ final class ValidacaoPublicaTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        RateLimiter::clear('cursos-publico');
         $this->tenant = $this->criarTenant('prefeitura-a');
     }
 
@@ -123,7 +122,11 @@ final class ValidacaoPublicaTest extends TestCase
         }
     }
 
-    public function test_arquitetura_controllers_publicos_so_dependem_do_servico_de_validacao(): void
+    /**
+     * Tarefa 2.3 (design D7): ampliado de "só o ValidacaoCertificadoService" para "só classes
+     * de Services\Publico", agora que o grupo `{orgao}` tem mais de um controller/serviço.
+     */
+    public function test_arquitetura_controllers_publicos_so_dependem_de_services_publico(): void
     {
         $arquivos = glob(__DIR__ . '/../../Http/Controllers/Publico/*.php') ?: [];
         $this->assertNotEmpty($arquivos);
@@ -135,15 +138,39 @@ final class ValidacaoPublicaTest extends TestCase
                 fn (\ReflectionParameter $p): string => $p->getType() instanceof ReflectionNamedType ? $p->getType()->getName() : 'sem-tipo',
                 $construtor?->getParameters() ?? [],
             );
-            $this->assertSame([ValidacaoCertificadoService::class], $dependencias, "{$classe} só pode depender do ValidacaoCertificadoService.");
+            $this->assertNotEmpty($dependencias, "{$classe} precisa depender de algum serviço de Services\\Publico.");
+            foreach ($dependencias as $dependencia) {
+                $this->assertStringStartsWith('Modules\\Cursos\\Services\\Publico\\', $dependencia, "{$classe} só pode depender de classes em Modules\\Cursos\\Services\\Publico ({$dependencia} não está lá).");
+            }
 
             $fonte = (string) file_get_contents($arquivo);
             $this->assertDoesNotMatchRegularExpression('/Modules\\\\Cursos\\\\Models|\\bDB::|::query\(|Illuminate\\\\Support\\\\Facades\\\\DB/', $fonte, "{$classe} não pode acessar models nem o banco diretamente.");
         }
 
-        $servico = (string) file_get_contents(__DIR__ . '/../../Services/ValidacaoCertificadoService.php');
+        $servico = (string) file_get_contents(__DIR__ . '/../../Services/Publico/ValidacaoCertificadoService.php');
         preg_match_all('/^use Modules\\\\Cursos\\\\Models\\\\(\w+);/m', $servico, $models);
         $this->assertSame(['Certificado'], $models[1], 'O ValidacaoCertificadoService só pode consultar o model Certificado.');
+    }
+
+    /**
+     * Tarefa 2.3 (design D7): toda rota pública com `{orgao}` precisa do ResolvePublicTenant —
+     * é ele que define o TenantContext antes do `bindings`. A rota antiga (certificado, sem
+     * `{orgao}`) continua de fora de propósito: roda sem tenant nenhum (design D7, item c).
+     */
+    public function test_toda_rota_publica_com_orgao_tem_o_middleware_resolve_public_tenant(): void
+    {
+        $rotasComOrgao = collect(app('router')->getRoutes()->getRoutes())
+            ->filter(fn (\Illuminate\Routing\Route $rota): bool => str_starts_with($rota->uri(), 'api/public/cursos/') && str_contains($rota->uri(), '{orgao}'));
+
+        $this->assertNotEmpty($rotasComOrgao, 'Nenhuma rota pública com {orgao} encontrada — o grupo foi registrado?');
+
+        foreach ($rotasComOrgao as $rota) {
+            $this->assertContains(ResolvePublicTenant::class, $rota->gatherMiddleware(), "A rota {$rota->uri()} tem {orgao} mas não passa pelo ResolvePublicTenant.");
+        }
+
+        $rotaCertificado = collect(app('router')->getRoutes()->getRoutes())->first(fn (\Illuminate\Routing\Route $rota): bool => $rota->uri() === 'api/public/cursos/certificados/{codigo}');
+        $this->assertNotNull($rotaCertificado);
+        $this->assertNotContains(ResolvePublicTenant::class, $rotaCertificado->gatherMiddleware(), 'A validação de certificado roda sem tenant, de propósito (design D7).');
     }
 
     // ------------------------------------------------------------------ 7.3

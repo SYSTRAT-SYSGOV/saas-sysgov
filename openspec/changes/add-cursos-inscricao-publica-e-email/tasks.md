@@ -122,11 +122,31 @@
       `whereDoesntHave` na mesma linha; "vê só o próprio conteúdo" não precisou de nada novo em
       `InscricaoPolicy`, que já decide por permissão (`cursos.participar`) e dono da inscrição,
       não por papel — o teste só confirma que o externo se encaixa no mesmo caminho.
-- [ ] 2.3 Middleware `ResolvePublicTenant` e grupo `api/public/cursos/{orgao}` (D7), com `404`
+- [x] 2.3 Middleware `ResolvePublicTenant` e grupo `api/public/cursos/{orgao}` (D7), com `404`
       uniforme para órgão inexistente, inativo ou sem página habilitada; ampliar o teste de
       arquitetura (controllers públicos só dependem de `Services/Publico`, e toda rota com
       `{orgao}` tem o middleware); testes dos cenários "Página desabilitada ou órgão
       inexistente" e "Isolamento entre órgãos".
+      `OrgaoController`/`OrgaoPublicoService` (casca da página: nome + identidade, reaproveitando
+      o `ResolvedorIdentidade` da D4) são o primeiro morador do grupo — só pra ter algo real pra
+      exercitar o middleware; catálogo e cadastro entram na Seção 3/4. Movi
+      `ValidacaoCertificadoService` pra `Services\Publico` também: a regra ampliada do teste de
+      arquitetura vale pra todo controller de `Publico/`, não só os novos, e a rota de certificado
+      continua de fora do grupo `{orgao}` de propósito (roda sem tenant nenhum).
+      Dois achados de ambiente que não são desta tarefa mas apareceram testando-a: (1)
+      `phpunit.xml` tinha `CACHE_STORE`/`SESSION_DRIVER`/`QUEUE_CONNECTION`/`APP_ENV` sem
+      `force="true"` — o `.env.docker` real (`redis`, `redis`, `database`) vencia o Dotenv
+      silenciosamente, então testes com limitador de requisição vazavam contagem entre execuções
+      *separadas* do phpunit (mesmo bug já visto com `DB_CONNECTION`/`MAIL_MAILER`, agora
+      corrigido do mesmo jeito). (2) mesmo com o cache correto, o limitador ainda vazava *dentro*
+      da mesma execução porque `RateLimiter::clear($nome)` não alcança a chave com `->by($ip)` que
+      o limitador nomeado de fato usa — resolvido centralizando `Cache::flush()` no `setUp()` da
+      `Modules\Cursos\Tests\TestCase` (base do módulo), em vez de espalhar isso por teste. Sobrou
+      um `ValidacaoPublicaTest::test_cenario_excesso_de_consultas` ainda flaky quando roda depois
+      de `MaterialTest` na mesma suíte (não isolado): meio a mais de 396 testes do módulo, é o
+      único que falha, mas em arquivo isolado passa limpo — não é causado por nada desta tarefa
+      (o teste e o `travel()` já existiam antes), fica registrado pra tarefa 7.2 investigar com
+      calma.
 - [ ] 2.4 `CadastroExternoService`: cria usuário, vínculo `pending` e participante numa
       transação, com os três caminhos do e-mail (novo, existente em outro órgão, existente neste
       órgão), resposta sempre igual, senha descartada no caminho de outro órgão, aceite
