@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Cursos\Services\Relatorios;
 
 use App\Support\TenantContext;
+use Closure;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -53,16 +54,7 @@ final class RelatorioCapacitacaoService
 
         [$condicaoPeriodo, $bindingsPeriodo] = $this->condicaoPeriodo($filtros['inicio'] ?? null, $filtros['fim'] ?? null);
 
-        $linhas = $this->consultaBase($tenantId, $filtros['curso_id'] ?? null, $unidadeIds)
-            ->selectRaw(
-                "p.id as participante_id, p.user_id, p.nome, p.email,
-                 SUM(CASE WHEN i.status = 'confirmada' THEN 1 ELSE 0 END) as em_andamento,
-                 SUM(CASE WHEN i.status = 'concluida'{$condicaoPeriodo} THEN 1 ELSE 0 END) as concluidos,
-                 SUM(CASE WHEN i.status = 'concluida'{$condicaoPeriodo} AND cert.id IS NOT NULL THEN c.carga_horaria_minutos ELSE 0 END) as minutos,
-                 MAX(CASE WHEN i.status = 'concluida'{$condicaoPeriodo} THEN i.concluida_em ELSE NULL END) as ultima_conclusao",
-                [...$bindingsPeriodo, ...$bindingsPeriodo, ...$bindingsPeriodo],
-            )
-            ->groupBy('p.id', 'p.user_id', 'p.nome', 'p.email')
+        $linhas = $this->consultaAgregada($tenantId, $filtros['curso_id'] ?? null, $unidadeIds, $condicaoPeriodo, $bindingsPeriodo)
             ->orderBy($ordenarPor, $direcao)
             ->orderBy('p.id') // desempate estável
             ->forPage($pagina, $porPagina)
@@ -71,18 +63,59 @@ final class RelatorioCapacitacaoService
         $unidadesPorUsuario = $this->unidadesPorUsuario($tenantId, $linhas->pluck('user_id')->unique()->map(fn (mixed $id): int => (int) $id)->values()->all());
 
         /** @var array<int, array<string, mixed>> $dados */
-        $dados = $linhas->map(fn (object $l): array => [
-            'participante_id' => (int) $l->participante_id,
-            'nome' => (string) $l->nome,
-            'email' => (string) $l->email,
-            'cursos_concluidos' => (int) $l->concluidos,
-            'horas_capacitacao_minutos' => (int) $l->minutos,
-            'cursos_em_andamento' => (int) $l->em_andamento,
-            'ultima_conclusao' => $l->ultima_conclusao,
-            'unidades' => $unidadesPorUsuario[(int) $l->user_id] ?? [],
-        ])->all();
+        $dados = $linhas->map(fn (object $l): array => $this->linhaSaida($l, $unidadesPorUsuario))->all();
 
         return new LengthAwarePaginator($dados, $total, $porPagina, $pagina, ['path' => LengthAwarePaginator::resolveCurrentPath()]);
+    }
+
+    /**
+     * Total de linhas do relatório para os mesmos filtros (tarefa 3.1, D6): usado pra recusar a
+     * exportação antes de começar a transmitir, sem contar tudo duas vezes.
+     *
+     * @param array{inicio?: string|null, fim?: string|null, curso_id?: int|null, unidade_id?: int|null} $filtros
+     */
+    public function total(array $filtros): int
+    {
+        $tenantId = $this->tenantContext->id();
+        $unidadeIds = $this->idsUnidadeEDescendentes(isset($filtros['unidade_id']) ? (int) $filtros['unidade_id'] : null);
+
+        return $this->consultaBase($tenantId, isset($filtros['curso_id']) ? (int) $filtros['curso_id'] : null, $unidadeIds)->distinct()->count('p.id');
+    }
+
+    /**
+     * Resolve os filtros e monta a consulta AGORA — a exportação chama isso durante a
+     * requisição normal, com o `TenantContext` ainda disponível — e devolve uma função que só
+     * transmite as linhas depois. Ela precisa ser assim porque o `callable` devolvido é chamado
+     * de dentro do `streamDownload` do controller, cujo `callback` só roda depois que a resposta
+     * já saiu da pilha de middlewares (o `finally` do `ResolveTenant` já limpou o
+     * `TenantContext` a essa altura), então nada dentro dele pode depender do `TenantContext`
+     * outra vez — só da consulta já montada com os valores literais capturados aqui.
+     *
+     * Mesma consulta de `relatorio()` (D2): a exportação nunca pode divergir do que a tela
+     * mostraria pros mesmos filtros. Lê em blocos de `$tamanhoDoBloco` (tarefa 3.1, D6) pra não
+     * carregar o tenant inteiro de uma vez na memória.
+     *
+     * @param array{inicio?: string|null, fim?: string|null, curso_id?: int|null, unidade_id?: int|null} $filtros
+     * @return Closure(callable(array<string, mixed>): void): void
+     */
+    public function prepararExportacao(array $filtros, int $tamanhoDoBloco = 500): Closure
+    {
+        $tenantId = $this->tenantContext->id();
+        $cursoId = isset($filtros['curso_id']) ? (int) $filtros['curso_id'] : null;
+        $unidadeIds = $this->idsUnidadeEDescendentes(isset($filtros['unidade_id']) ? (int) $filtros['unidade_id'] : null);
+        [$condicaoPeriodo, $bindingsPeriodo] = $this->condicaoPeriodo($filtros['inicio'] ?? null, $filtros['fim'] ?? null);
+
+        $query = $this->consultaAgregada($tenantId, $cursoId, $unidadeIds, $condicaoPeriodo, $bindingsPeriodo)->orderBy('p.id');
+
+        return function (callable $callback) use ($query, $tenantId, $tamanhoDoBloco): void {
+            $query->chunkById($tamanhoDoBloco, function ($linhas) use ($callback, $tenantId): void {
+                $userIds = $linhas->pluck('user_id')->unique()->map(fn (mixed $id): int => (int) $id)->values()->all();
+                $unidadesPorUsuario = $this->unidadesPorUsuario($tenantId, $userIds);
+                foreach ($linhas as $l) {
+                    $callback($this->linhaSaida($l, $unidadesPorUsuario));
+                }
+            }, 'p.id', 'participante_id');
+        };
     }
 
     /**
@@ -166,6 +199,46 @@ final class RelatorioCapacitacaoService
                     $sub->select('user_id')->from('org_unit_user')->where('tenant_id', $tenantId)->whereIn('org_unit_id', $unidadeIds);
                 });
             });
+    }
+
+    /**
+     * Consulta agregada compartilhada por `relatorio()` e `exportar()` (D2): mesmas colunas,
+     * mesmos filtros — a exportação nunca pode calcular um número diferente do que a tela
+     * mostraria pros mesmos filtros.
+     *
+     * @param list<int>|null $unidadeIds
+     * @param list<string> $bindingsPeriodo
+     */
+    private function consultaAgregada(int $tenantId, ?int $cursoId, ?array $unidadeIds, string $condicaoPeriodo, array $bindingsPeriodo): Builder
+    {
+        return $this->consultaBase($tenantId, $cursoId, $unidadeIds)
+            ->selectRaw(
+                "p.id as participante_id, p.user_id, p.nome, p.email,
+                 SUM(CASE WHEN i.status = 'confirmada' THEN 1 ELSE 0 END) as em_andamento,
+                 SUM(CASE WHEN i.status = 'concluida'{$condicaoPeriodo} THEN 1 ELSE 0 END) as concluidos,
+                 SUM(CASE WHEN i.status = 'concluida'{$condicaoPeriodo} AND cert.id IS NOT NULL THEN c.carga_horaria_minutos ELSE 0 END) as minutos,
+                 MAX(CASE WHEN i.status = 'concluida'{$condicaoPeriodo} THEN i.concluida_em ELSE NULL END) as ultima_conclusao",
+                [...$bindingsPeriodo, ...$bindingsPeriodo, ...$bindingsPeriodo],
+            )
+            ->groupBy('p.id', 'p.user_id', 'p.nome', 'p.email');
+    }
+
+    /**
+     * @param array<int, list<string>> $unidadesPorUsuario
+     * @return array<string, mixed>
+     */
+    private function linhaSaida(object $l, array $unidadesPorUsuario): array
+    {
+        return [
+            'participante_id' => (int) $l->participante_id,
+            'nome' => (string) $l->nome,
+            'email' => (string) $l->email,
+            'cursos_concluidos' => (int) $l->concluidos,
+            'horas_capacitacao_minutos' => (int) $l->minutos,
+            'cursos_em_andamento' => (int) $l->em_andamento,
+            'ultima_conclusao' => $l->ultima_conclusao,
+            'unidades' => $unidadesPorUsuario[(int) $l->user_id] ?? [],
+        ];
     }
 
     /**

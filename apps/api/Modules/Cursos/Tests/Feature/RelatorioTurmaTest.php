@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Cursos\Tests\Feature;
 
+use App\Models\AuditLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Cursos\Tests\Concerns\CenarioAvaliacoes;
 use Modules\Cursos\Tests\TestCase;
@@ -81,6 +82,24 @@ final class RelatorioTurmaTest extends TestCase
         $this->como($this->admin, $this->tenant)
             ->getJson("/api/cursos/turmas/{$turmaB->id}/relatorio")
             ->assertNotFound();
+    }
+
+    public function test_exportacao_com_auditoria(): void
+    {
+        $resposta = $this->como($this->admin, $this->tenant)
+            ->get("/api/cursos/turmas/{$this->turma->id}/relatorio/exportar")
+            ->assertOk();
+        $csv = $resposta->streamedContent();
+
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
+        $linhas = array_values(array_filter(explode("\n", trim(substr($csv, 3)))));
+        $this->assertSame('Nome;E-mail;Status;Resultado;"Data da inscrição";"Frequência (%)";Nota', $linhas[0]);
+        $this->assertCount(2, $linhas); // cabeçalho + a única inscrição do cenário
+        $this->assertStringContainsString('em andamento', $linhas[1]);
+
+        $log = AuditLog::where('action', 'relatorios.turma.exportado')->where('resource', "Turma #{$this->turma->id}")->first();
+        $this->assertNotNull($log);
+        $this->assertSame(['formato' => 'csv', 'linhas' => 1], $log->after);
     }
 
     public function test_totais_do_resumo_batem_com_a_tabela_de_inscritos(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Cursos\Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -158,6 +159,30 @@ final class RelatorioCursosTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_exportacao_com_auditoria(): void
+    {
+        $curso = $this->cursoPublicado($this->tenant, ['titulo' => 'Curso Exportável']);
+        $turma = $this->turma($curso, ['nome' => 'Turma X', 'data_inicio' => '2025-05-01', 'data_fim' => '2025-05-05']);
+        $this->encerrarComResultados($turma, [['status' => 'concluida', 'frequencia' => 100.0, 'nota' => 9.0]]);
+
+        $resposta = $this->como($this->admin, $this->tenant)
+            ->get('/api/cursos/relatorios/cursos/exportar?' . http_build_query(['inicio' => '2025-01-01', 'fim' => '2025-12-31']))
+            ->assertOk();
+        $csv = $resposta->streamedContent();
+
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
+        $linhas = array_values(array_filter(explode("\n", trim(substr($csv, 3)))));
+        $this->assertSame('Curso;Tipo;Turma;Status;Inscrições;Concluídos;"Não concluídos";"Taxa de conclusão (%)";"Frequência média (%)";"Nota média";"Certificados emitidos"', $linhas[0]);
+        $this->assertCount(2, $linhas);
+        $this->assertStringContainsString('Curso Exportável', $linhas[1]);
+        $this->assertStringContainsString('Turma X', $linhas[1]);
+
+        $log = AuditLog::where('action', 'relatorios.cursos.exportado')->first();
+        $this->assertNotNull($log);
+        $this->assertSame(1, $log->after['linhas']);
+        $this->assertSame(['inicio' => '2025-01-01', 'fim' => '2025-12-31'], $log->after['filtros']);
+    }
+
     public function test_participante_nao_acessa_o_relatorio_de_cursos(): void
     {
         $participante = $this->usuario($this->tenant, ['participante_cursos'], 'Participante');
@@ -184,5 +209,27 @@ final class RelatorioCursosTest extends TestCase
 
         $this->assertContains('Curso do Órgão A', $titulos);
         $this->assertNotContains('Curso do Órgão B', $titulos, 'relatório do órgão A não pode trazer curso do órgão B');
+    }
+
+    public function test_exportacao_respeita_filtros_e_isolamento(): void
+    {
+        $curso = $this->cursoPublicado($this->tenant, ['tipo' => 'curso', 'titulo' => 'Curso Comum']);
+        $evento = $this->cursoPublicado($this->tenant, ['tipo' => 'evento', 'titulo' => 'Palestra']);
+        $this->turma($curso, ['nome' => 'Turma Comum', 'data_inicio' => '2025-05-01', 'data_fim' => '2025-05-02']);
+        $this->turma($evento, ['nome' => 'Turma Evento', 'data_inicio' => '2025-05-10', 'data_fim' => '2025-05-10']);
+
+        $outroTenant = $this->criarTenant('prefeitura-b');
+        $outroInstrutor = $this->usuario($outroTenant, ['instrutor_cursos'], 'Instrutor B');
+        $cursoB = $this->cursoPublicado($outroTenant, ['tipo' => 'evento', 'titulo' => 'Curso do Órgão B']);
+        $this->turmaAberta($outroTenant, $cursoB, $outroInstrutor, ['nome' => 'Turma B', 'data_inicio' => '2025-05-01', 'data_fim' => '2025-05-05']);
+
+        $csv = $this->como($this->admin, $this->tenant)
+            ->get('/api/cursos/relatorios/cursos/exportar?' . http_build_query(['inicio' => '2025-01-01', 'fim' => '2025-12-31', 'tipo' => 'evento']))
+            ->assertOk()
+            ->streamedContent();
+
+        $this->assertStringContainsString('Palestra', $csv);
+        $this->assertStringNotContainsString('Curso Comum', $csv, 'o filtro tipo=evento não pode trazer o curso do tipo "curso"');
+        $this->assertStringNotContainsString('Curso do Órgão B', $csv, 'a exportação não pode trazer curso de outro órgão');
     }
 }

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Cursos\Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
@@ -293,6 +295,105 @@ final class RelatorioCapacitacaoTest extends TestCase
 
         $this->assertContains('Servidor A', $nomes);
         $this->assertNotContains('Servidor B', $nomes, 'relatório do órgão A não pode trazer servidor do órgão B');
+    }
+
+    public function test_exportacao_com_auditoria(): void
+    {
+        $unidade = $this->unidade('1', 'Secretaria de Educação');
+        $servidor = $this->usuario($this->tenant, ['participante_cursos'], 'Servidor Exportado');
+        $this->vincularUnidade($servidor, $unidade);
+        $curso = $this->cursoPublicado($this->tenant, ['carga_horaria_minutos' => 600]);
+        $this->concluir($servidor, $curso, '2025-03-01 10:00:00');
+
+        $resposta = $this->como($this->admin, $this->tenant)->get('/api/cursos/relatorios/capacitacao/exportar')->assertOk();
+        $csv = $resposta->streamedContent();
+
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
+        $linhas = array_values(array_filter(explode("\n", trim(substr($csv, 3)))));
+        $this->assertSame('Nome;E-mail;Unidades;"Cursos concluídos";"Horas de capacitação";"Cursos em andamento";"Última conclusão"', $linhas[0]);
+        $this->assertCount(2, $linhas);
+        $this->assertStringContainsString('Servidor Exportado', $linhas[1]);
+        $this->assertStringContainsString('Secretaria de Educação', $linhas[1]);
+        $this->assertStringContainsString('10,00', $linhas[1]); // 600 minutos = 10,00 horas
+
+        $log = AuditLog::where('action', 'relatorios.capacitacao.exportado')->first();
+        $this->assertNotNull($log);
+        $this->assertSame(1, $log->after['linhas']);
+        $this->assertSame([], $log->after['filtros']);
+    }
+
+    /** ~50 mil linhas inseridas direto no banco: mais lento que o resto da suíte (~25s). */
+    public function test_exportacao_grande_demais(): void
+    {
+        $curso = $this->cursoPublicado($this->tenant);
+        $turma = $this->turmaAberta($this->tenant, $curso, $this->instrutor);
+        $quantidade = 50_001;
+
+        // Inserção direta em massa (fora dos services) e numa única transação — só assim
+        // gerar 50 mil linhas fica rápido o bastante pra um teste.
+        $this->noTenant($this->tenant, function () use ($turma, $quantidade): void {
+            DB::transaction(function () use ($turma, $quantidade): void {
+                $agora = now();
+                $primeiroUserId = DB::table('users')->insertGetId(['name' => 'Bulk 0', 'email' => 'bulk-0@teste.gov.br', 'password' => 'x', 'created_at' => $agora, 'updated_at' => $agora]);
+                $usuarios = [];
+                for ($i = 1; $i < $quantidade; $i++) {
+                    $usuarios[] = ['name' => "Bulk {$i}", 'email' => "bulk-{$i}@teste.gov.br", 'password' => 'x', 'created_at' => $agora, 'updated_at' => $agora];
+                }
+                foreach (array_chunk($usuarios, 2000) as $bloco) {
+                    DB::table('users')->insert($bloco);
+                }
+
+                $participantes = [];
+                for ($i = 0; $i < $quantidade; $i++) {
+                    $participantes[] = ['tenant_id' => $this->tenant->id, 'user_id' => $primeiroUserId + $i, 'nome' => "Bulk {$i}", 'email' => "bulk-{$i}@teste.gov.br", 'created_at' => $agora, 'updated_at' => $agora];
+                }
+                foreach (array_chunk($participantes, 2000) as $bloco) {
+                    DB::table('cursos_participantes')->insert($bloco);
+                }
+                $primeiroParticipanteId = DB::table('cursos_participantes')->where('tenant_id', $this->tenant->id)->where('email', 'bulk-0@teste.gov.br')->value('id');
+
+                $inscricoes = [];
+                for ($i = 0; $i < $quantidade; $i++) {
+                    $inscricoes[] = ['tenant_id' => $this->tenant->id, 'turma_id' => $turma->id, 'participante_id' => $primeiroParticipanteId + $i, 'status' => 'confirmada', 'created_at' => $agora, 'updated_at' => $agora];
+                }
+                foreach (array_chunk($inscricoes, 2000) as $bloco) {
+                    DB::table('cursos_inscricoes')->insert($bloco);
+                }
+            });
+        });
+
+        $this->como($this->admin, $this->tenant)
+            ->get('/api/cursos/relatorios/capacitacao/exportar')
+            ->assertStatus(422);
+    }
+
+    public function test_exportacao_respeita_filtros_e_isolamento(): void
+    {
+        $secretaria1 = $this->unidade('1', 'Secretaria 1');
+        $secretaria2 = $this->unidade('2', 'Secretaria 2');
+        $daSecretaria1 = $this->usuario($this->tenant, ['participante_cursos'], 'Da Secretaria 1');
+        $daSecretaria2 = $this->usuario($this->tenant, ['participante_cursos'], 'Da Secretaria 2');
+        $this->vincularUnidade($daSecretaria1, $secretaria1);
+        $this->vincularUnidade($daSecretaria2, $secretaria2);
+        $curso = $this->cursoPublicado($this->tenant);
+        $this->concluir($daSecretaria1, $curso, '2025-03-01 10:00:00');
+        $this->concluir($daSecretaria2, $curso, '2025-03-01 10:00:00');
+
+        $outroTenant = $this->criarTenant('prefeitura-b');
+        $outroInstrutor = $this->usuario($outroTenant, ['instrutor_cursos'], 'Instrutor B');
+        $servidorB = $this->usuario($outroTenant, ['participante_cursos'], 'Servidor B');
+        $cursoB = $this->cursoPublicado($outroTenant);
+        $turmaB = $this->turmaAberta($outroTenant, $cursoB, $outroInstrutor);
+        $this->inscrever($outroTenant, $turmaB, $servidorB);
+
+        $csv = $this->como($this->admin, $this->tenant)
+            ->get('/api/cursos/relatorios/capacitacao/exportar?' . http_build_query(['unidade_id' => $secretaria1->id]))
+            ->assertOk()
+            ->streamedContent();
+
+        $this->assertStringContainsString('Da Secretaria 1', $csv);
+        $this->assertStringNotContainsString('Da Secretaria 2', $csv, 'o filtro por unidade não pode trazer servidor de outra unidade');
+        $this->assertStringNotContainsString('Servidor B', $csv, 'a exportação não pode trazer servidor de outro órgão');
     }
 
     public function test_detalhe_do_servidor_traz_os_cursos_concluidos(): void

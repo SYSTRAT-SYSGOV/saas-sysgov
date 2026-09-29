@@ -119,9 +119,12 @@ Route::post('/inscricoes/{inscricao}/cancelar', [InscricaoController::class, 'ca
 
 // Relatórios
 Route::get('/turmas/{turma}/relatorio', [RelatorioController::class, 'turma']);
+Route::get('/turmas/{turma}/relatorio/exportar', [RelatorioController::class, 'turmaExportar']);
 Route::get('/relatorios/cursos', [RelatorioController::class, 'cursos']);
+Route::get('/relatorios/cursos/exportar', [RelatorioController::class, 'cursosExportar']);
 Route::get('/relatorios/unidades', [RelatorioController::class, 'unidades']);
 Route::get('/relatorios/capacitacao', [RelatorioController::class, 'capacitacao']);
+Route::get('/relatorios/capacitacao/exportar', [RelatorioController::class, 'capacitacaoExportar']);
 Route::get('/relatorios/capacitacao/{participante}', [RelatorioController::class, 'capacitacaoDetalhe']);
 
 // Presença: chamada manual e check-in por QR code

@@ -105,10 +105,24 @@
 
 ## 3. Exportação
 
-- [ ] 3.1 Rotas `/exportar` dos três relatórios com `streamDownload` em blocos, contagem prévia,
+- [x] 3.1 Rotas `/exportar` dos três relatórios com `streamDownload` em blocos, contagem prévia,
       recusa acima de 50.000 linhas e auditoria com relatório, filtros e contagem (D6); testes
       dos cenários "Exportação com auditoria" e "Exportação grande demais".
-- [ ] 3.2 Teste de que a exportação respeita os mesmos filtros e o mesmo isolamento da consulta
+      Só a exportação de capacitação lê em blocos de verdade (`chunkById` na mesma consulta
+      agregada de `relatorio()`, D2): turma e cursos por período reaproveitam o array já
+      montado pelos próprios métodos `relatorio()`/`relatorio($turma)` (o volume de um e outro é
+      limitado por vagas da turma ou por turmas do período, nunca pelo tenant inteiro).
+      Achado: o `ResolveTenant` limpa o `TenantContext` no `finally` assim que `$next($request)`
+      retorna — ou seja, antes do `streamDownload` transmitir, porque a resposta ainda está
+      subindo a pilha de middlewares. Qualquer código dentro do callback do `streamDownload`
+      que dependa do `TenantContext` (ou de um scope Eloquent que dependa dele) quebra com
+      "TenantContext não foi resolvido", em produção e não só em teste. Resolvido com
+      `RelatorioCapacitacaoService::prepararExportacao()`: monta a consulta e resolve
+      tenant/unidade agora (ainda dentro da requisição), devolve uma função que só transmite as
+      linhas depois — a função não toca `TenantContext` de novo, só os valores literais já
+      capturados. O teste "Exportação grande demais" insere ~50 mil linhas direto nas tabelas
+      (fora dos services, numa transação) — é o teste mais lento da suíte do módulo (~25s).
+- [x] 3.2 Teste de que a exportação respeita os mesmos filtros e o mesmo isolamento da consulta
       (o CSV nunca traz linhas que a tela não traria).
 
 ## 4. SDK e frontend
