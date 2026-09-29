@@ -3,7 +3,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Download } from 'lucide-react';
 import { Button, Card, Input, Select } from '@sysgov/ui';
 import { DataTable, ScreenState } from '@/components/ui';
-import { sysgovApi, type Curso, type CursoRelatorio, type RelatorioCursosFiltros } from '@sysgov/sdk';
+import { sysgovApi, type Curso, type CursoRelatorio, type RelatorioCursosFiltros, type TotaisRelatorioCursos } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { TIPO_CURSO, baixarBlob, formatarCargaHoraria, formatarNota, formatarPercentual } from '../utils/formatos';
 
@@ -21,7 +21,7 @@ export const RelatorioCursosView: React.FC = () => {
   const [filtros, setFiltros] = useState(filtrosPadrao());
   const [cursosDisponiveis, setCursosDisponiveis] = useState<Curso[]>([]);
   const [cursos, setCursos] = useState<CursoRelatorio[]>([]);
-  const [totais, setTotais] = useState<{ turmas: number; inscricoes: number; concluidos: number; taxa_conclusao: number | null } | null>(null);
+  const [totais, setTotais] = useState<TotaisRelatorioCursos | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
@@ -112,7 +112,7 @@ export const RelatorioCursosView: React.FC = () => {
       ) : (
         <>
           {totais && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               <Card className="p-4">
                 <p className="text-xs text-muted-foreground">Turmas no período</p>
                 <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{totais.turmas}</p>
@@ -120,7 +120,6 @@ export const RelatorioCursosView: React.FC = () => {
               <Card className="p-4">
                 <p className="text-xs text-muted-foreground">Inscrições</p>
                 <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{totais.inscricoes}</p>
-                <p className="text-xs text-muted-foreground">o número de inscrições ao lado das médias evita ler tamanhos diferentes como iguais</p>
               </Card>
               <Card className="p-4">
                 <p className="text-xs text-muted-foreground">Concluídos</p>
@@ -130,7 +129,20 @@ export const RelatorioCursosView: React.FC = () => {
                 <p className="text-xs text-muted-foreground">Taxa de conclusão</p>
                 <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{formatarPercentual(totais.taxa_conclusao)}</p>
               </Card>
+              <Card className="p-4">
+                <p className="text-xs text-muted-foreground">Frequência média</p>
+                <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{formatarPercentual(totais.frequencia_media)}</p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-xs text-muted-foreground">Nota média</p>
+                <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{formatarNota(totais.nota_media)}</p>
+              </Card>
             </div>
+          )}
+          {totais && (
+            <p className="text-xs text-muted-foreground">
+              As médias acima são sobre todas as {totais.inscricoes} inscrições da base, não a média das médias de cada turma — turmas de tamanhos diferentes pesam proporcionalmente ao número de inscritos.
+            </p>
           )}
 
           <Card className="space-y-3 p-4">

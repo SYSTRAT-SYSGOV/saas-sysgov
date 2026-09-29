@@ -166,9 +166,15 @@
       API a cada mudança de filtro/ordenação/página. Clicar num servidor abre um `Modal` com o
       detalhe (`getCapacitacaoServidor`): cursos concluídos, carga horária e o certificado
       (código, ou "revogado" quando `certificado_valido` é falso).
-- [ ] 4.5 Indicar na tela a diferença entre a exportação de tela do `DataTable` (linhas
+- [x] 4.5 Indicar na tela a diferença entre a exportação de tela do `DataTable` (linhas
       carregadas) e o "Exportar CSV" da API (resultado completo), e mostrar o número de
       inscrições ao lado das médias.
+      A distinção entre os dois botões já tinha a nota desde a 4.3 (`RelatorioCursosView`); as
+      demais telas não têm ambiguidade pra indicar (`RelatorioCapacitacaoView` só tem o
+      "Exportar CSV" da API, sem exportação de tela; a aba "Aulas e inscritos" da
+      `TurmaDetalhePage`, de antes desta change, também só tem o botão da API). Faltava mostrar
+      as médias do período (não só as por curso) — acrescentadas ao resumo de totais, com nota
+      de que são sobre todas as inscrições da base, não a média das médias de cada turma.
 
 ## 5. Fechamento
 
