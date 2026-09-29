@@ -25,8 +25,14 @@
       pasta pro usuário do host.
 - [x] 1.2 Agendar `outbox:process --limit=100` a cada minuto com `withoutOverlapping` em
       `routes/console.php`; teste de que o agendamento existe.
-- [ ] 1.3 Migration e model de `notificacoes_envios` (único `(event_id, tipo, destinatario)`);
+- [x] 1.3 Migration e model de `notificacoes_envios` (único `(event_id, tipo, destinatario)`);
       verificar `migrate` no MySQL do Docker e o isolamento por órgão com teste A/B.
+      `NotificacaoEnvio` não usa `TenantAware`, mesmo padrão de `OutboxEvent`: a trait lança
+      `LogicException` ao criar um registro com `tenant_id` explicitamente nulo fora de um
+      `TenantContext` (só permite quando o atributo já vem preenchido), o que quebraria o
+      caso de evento de plataforma sem órgão (ex.: redefinição de senha de usuário sem
+      vínculo). Migration verificada no MySQL do Docker (`up`/`rollback`/`up` de novo, escopada
+      via `--path=` pra não bater na migration quebrada do Cemitérios).
 - [ ] 1.4 Ouvinte de `OutboxMessage` com o registro de tratadores (`config/notificacoes.php`):
       define e limpa o `TenantContext` por evento, ignora tipos sem tratador, reserva a linha de
       envio antes de enviar e grava `enviado`, `falhou` ou `ignorado` (D1, D2); testes dos
