@@ -199,8 +199,23 @@
       em MFA nem no caminho de analista de suporte. Sem problema de enumeração em revelar
       "verifique seu e-mail" no login, porque a pessoa já provou a senha antes de chegar nessa
       mensagem.
-- [ ] 2.7 Limites `cursos-cadastro-ip` e `cursos-cadastro-email` e campo isca (D8); testes dos
+- [x] 2.7 Limites `cursos-cadastro-ip` e `cursos-cadastro-email` e campo isca (D8); testes dos
       cenários "Excesso de cadastros do mesmo IP" e "Campo isca preenchido".
+      `cursos-cadastro-ip` (5/hora) é `throttle:` só na rota `POST /cadastro` (não no grupo
+      inteiro — `/` e `/pedir-novo-link` continuam só com o `cursos-publico` do grupo), devolve
+      429 normal. `cursos-cadastro-email` (3/hora, hash do e-mail normalizado) não dá pra ser
+      `RateLimiter::for` porque o e-mail só existe depois de ler o corpo (D8); implementado a
+      mão com `RateLimiter::tooManyAttempts`/`hit` no início de `CadastroExternoService::cadastrar`,
+      antes de qualquer um dos três caminhos — cobre também o reenvio de "esqueci minha senha" do
+      caminho "já vinculado a este órgão" (que também manda e-mail). Excedido, o serviço só
+      retorna sem publicar nada; a resposta ao cliente continua a mesma de sempre (D8: nunca
+      revela nada, nem para quem excedeu o próprio limite). Campo isca `website` (oculto por CSS
+      no formulário, tarefa 6.2) checado no controller ANTES do `$request->validate(...)`: bot
+      preenchendo qualquer coisa nos outros campos ainda cai na resposta de sucesso sem validação
+      nenhuma rodar, então erro de validação nunca ensina o formato certo a um bot. Teste extra
+      não pedido no cenário mas necessário pra cobrir a metade do D8 que a tarefa só descreve na
+      prosa: "Excesso de cadastros do mesmo e-mail" (o `OutboxEvent::count()` para de crescer
+      depois do limite, resposta continua 200).
 - [ ] 2.8 Comando agendado de limpeza de vínculos `pending` com mais de 7 dias e dos usuários
       que só existiam por eles; teste com dados antigos e recentes.
 

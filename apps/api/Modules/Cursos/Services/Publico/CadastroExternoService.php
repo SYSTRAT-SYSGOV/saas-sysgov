@@ -12,8 +12,10 @@ use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Modules\Cursos\Models\Participante;
+use Modules\Cursos\Providers\CursosServiceProvider;
 use Modules\Cursos\Support\Cpf;
 
 /**
@@ -42,6 +44,16 @@ final class CadastroExternoService
         if ($dados['documento'] !== null && $dados['documento'] !== '' && !Cpf::valido($dados['documento'])) {
             throw ValidationException::withMessages(['documento' => 'CPF inválido.']);
         }
+
+        $chaveLimiteEmail = 'cursos-cadastro-email:' . sha1(mb_strtolower(trim($dados['email'])));
+
+        if (RateLimiter::tooManyAttempts($chaveLimiteEmail, CursosServiceProvider::LIMITE_CADASTRO_EMAIL_POR_HORA)) {
+            // Resposta sempre igual (D8): o limite por e-mail existe pra não encher a caixa de
+            // outra pessoa, não pra revelar nada — quem excede não dispara nenhum e-mail novo.
+            return;
+        }
+
+        RateLimiter::hit($chaveLimiteEmail, 3600);
 
         $usuario = User::where('email', $dados['email'])->first();
 

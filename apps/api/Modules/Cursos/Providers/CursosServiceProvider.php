@@ -36,6 +36,12 @@ final class CursosServiceProvider extends ServiceProvider
     /** Salvamentos de resposta por minuto, por usuário: o autosave com debounce não deve inundar o banco (design D8). */
     public const LIMITE_RESPOSTAS_POR_MINUTO = 60;
 
+    /** Cadastros públicos por hora, por IP (design D8). O limite por e-mail é o outro (aplicado no serviço, não aqui — o e-mail vem no corpo). */
+    public const LIMITE_CADASTRO_IP_POR_HORA = 5;
+
+    /** Cadastros públicos por hora, pelo hash do e-mail normalizado (design D8) — aplicado em CadastroExternoService, não como RateLimiter::for, porque o e-mail só existe depois de ler o corpo. */
+    public const LIMITE_CADASTRO_EMAIL_POR_HORA = 3;
+
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
@@ -53,6 +59,7 @@ final class CursosServiceProvider extends ServiceProvider
 
         RateLimiter::for('cursos-respostas', fn (Request $request) => Limit::perMinute(self::LIMITE_RESPOSTAS_POR_MINUTO)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
         RateLimiter::for('cursos-publico', fn (Request $request) => Limit::perMinute(self::LIMITE_PUBLICO_POR_MINUTO)->by((string) $request->ip()));
+        RateLimiter::for('cursos-cadastro-ip', fn (Request $request) => Limit::perHour(self::LIMITE_CADASTRO_IP_POR_HORA)->by((string) $request->ip()));
     }
 
     public function register(): void

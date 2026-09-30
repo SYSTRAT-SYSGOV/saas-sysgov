@@ -23,6 +23,13 @@ final class CadastroExternoController extends Controller
 
     public function __invoke(Request $request, TenantContext $tenantContext): JsonResponse
     {
+        if (filled($request->input('website'))) {
+            // Campo isca (design D8), oculto por CSS no formulário: só um bot preenche. Resposta de
+            // sucesso sem validar mais nada e sem tocar em conta ou e-mail — nada que ensine o bot
+            // a acertar o formulário da próxima vez.
+            return response()->json(['mensagem' => self::MENSAGEM]);
+        }
+
         $dados = $request->validate([
             'nome' => ['required', 'string', 'max:160'],
             'email' => ['required', 'email', 'max:160'],

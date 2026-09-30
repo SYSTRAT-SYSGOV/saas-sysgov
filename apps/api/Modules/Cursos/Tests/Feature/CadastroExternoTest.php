@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Modules\Cursos\Models\Participante;
+use Modules\Cursos\Providers\CursosServiceProvider;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
 
@@ -129,5 +130,47 @@ final class CadastroExternoTest extends TestCase
         $user = User::where('email', 'ana.externa@fora.gov.br')->sole();
         $participante = $this->noTenant($this->tenant, fn () => Participante::where('user_id', $user->id)->sole());
         $this->assertSame('529.982.247-25', $participante->documento);
+    }
+
+    public function test_cenario_excesso_de_cadastros_do_mesmo_ip(): void
+    {
+        $limite = CursosServiceProvider::LIMITE_CADASTRO_IP_POR_HORA;
+
+        for ($i = 1; $i <= $limite; $i++) {
+            $this->cadastrar(['email' => "externo{$i}@fora.gov.br"])->assertOk();
+        }
+
+        $this->cadastrar(['email' => 'externo-extra@fora.gov.br'])->assertStatus(429);
+
+        $this->travel(3601)->seconds();
+        $this->cadastrar(['email' => 'externo-extra@fora.gov.br'])->assertOk();
+    }
+
+    public function test_cenario_excesso_de_cadastros_do_mesmo_email(): void
+    {
+        $limite = CursosServiceProvider::LIMITE_CADASTRO_EMAIL_POR_HORA;
+        $email = 'alvo@fora.gov.br';
+
+        for ($i = 1; $i <= $limite; $i++) {
+            $this->cadastrar(['email' => $email])->assertOk();
+        }
+
+        $antes = OutboxEvent::count();
+
+        // Resposta continua sendo a de sucesso (D8: nunca revela nada) — só não dispara mais
+        // e-mail nenhum pra esse endereço até passar a hora.
+        $this->cadastrar(['email' => $email])->assertOk();
+
+        $this->assertSame($antes, OutboxEvent::count());
+    }
+
+    public function test_cenario_campo_isca_preenchido(): void
+    {
+        $this->cadastrar(['website' => 'http://bot.example', 'email' => 'bot@fora.gov.br'])
+            ->assertOk()
+            ->assertJsonStructure(['mensagem']);
+
+        $this->assertSame(0, User::where('email', 'bot@fora.gov.br')->count());
+        $this->assertSame(0, OutboxEvent::count());
     }
 }

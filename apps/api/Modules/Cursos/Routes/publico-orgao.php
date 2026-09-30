@@ -16,5 +16,5 @@ use Modules\Cursos\Http\Controllers\Publico\OrgaoController;
 use Modules\Cursos\Http\Controllers\Publico\PedidoNovoLinkController;
 
 Route::get('/', OrgaoController::class);
-Route::post('/cadastro', CadastroExternoController::class);
+Route::post('/cadastro', CadastroExternoController::class)->middleware('throttle:cursos-cadastro-ip');
 Route::post('/pedir-novo-link', PedidoNovoLinkController::class);
