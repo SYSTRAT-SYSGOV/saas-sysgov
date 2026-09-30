@@ -21,15 +21,39 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { unitList, activeUnit, setActiveUnitId, loading: loadingUnits, hasMultipleUnits } = useOrgUnit();
   const location = useLocation();
 
-  const [expandedGroups, setExpandedGroups] = useState<Set<number | string>>(() => new Set([1, 2, 3, 99]));
+  const [expandedGroups, setExpandedGroups] = useState<Set<number | string>>(new Set());
   const [expandedItems, setExpandedItems] = useState<Set<number | string>>(new Set());
   const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
 
+  // Expande apenas o grupo e submenu correspondentes à rota atual, mantendo os demais colapsados
   React.useEffect(() => {
-    if (navigation && navigation.length > 0) {
-      setExpandedGroups(new Set(navigation.map((g) => g.id)));
+    if (!navigation || navigation.length === 0) return;
+
+    let activeGroupId: number | string | null = null;
+    let activeItemId: number | string | null = null;
+
+    for (const group of navigation) {
+      for (const item of group.items) {
+        if (item.route === location.pathname || (item.route !== '/' && location.pathname.startsWith(item.route))) {
+          activeGroupId = group.id;
+          break;
+        }
+        const children = (item as any).children || [];
+        for (const child of children) {
+          if (child.route === location.pathname || (child.route !== '/' && location.pathname.startsWith(child.route))) {
+            activeGroupId = group.id;
+            activeItemId = item.id;
+            break;
+          }
+        }
+        if (activeGroupId !== null) break;
+      }
+      if (activeGroupId !== null) break;
     }
-  }, [navigation]);
+
+    setExpandedGroups(activeGroupId !== null ? new Set([activeGroupId]) : new Set());
+    setExpandedItems(activeItemId !== null ? new Set([activeItemId]) : new Set());
+  }, [navigation, location.pathname, isOpen]);
 
   const toggleGroup = (id: number | string) => setExpandedGroups((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleItem = (id: number | string) => setExpandedItems((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });

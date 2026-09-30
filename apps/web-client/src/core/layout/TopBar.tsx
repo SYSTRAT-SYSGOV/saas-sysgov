@@ -39,26 +39,28 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
             <Menu className="w-6 h-6" />
           </button>
 
-          {/* Center: título + subtítulo (alinhados à página, max-w-7xl) */}
-          <div className="flex-1 min-w-0">
-              <span className="text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap">
-                <span className="text-[#1351b4] font-[900]">SYS</span>
-                <span className="ml-1 text-[#168821] font-[900]">GOV</span>
-              </span>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          {/* Center: título + município e secretaria ao lado */}
+          <div className="flex-1 min-w-0 ml-3 sm:ml-4 flex items-center flex-wrap gap-2 sm:gap-3">
+            <span className="text-base sm:text-lg tracking-tight leading-none whitespace-nowrap shrink-0">
+              <span className="text-[#1351b4] font-[900]">SYS</span>
+              <span className="ml-1 text-[#168821] font-[900]">GOV</span>
+            </span>
+            <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+              {tenant?.name && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary whitespace-nowrap">
                   <Building2 className="h-3 w-3 shrink-0" />
-                  {tenant?.name}
+                  {tenant.name}
                 </span>
-                {loadingUnit ? (
-                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                ) : activeUnit ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success whitespace-nowrap">
-                    <ShieldCheck className="h-3 w-3 shrink-0" />
-                    {activeUnit.name}
-                  </span>
-                ) : null}
-              </div>
+              )}
+              {loadingUnit ? (
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              ) : activeUnit ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success whitespace-nowrap">
+                  <ShieldCheck className="h-3 w-3 shrink-0" />
+                  {activeUnit.name}
+                </span>
+              ) : null}
+            </div>
           </div>
 
           {/* Right: notificações + perfil (borda direita da tela) */}
