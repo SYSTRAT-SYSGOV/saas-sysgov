@@ -1,13 +1,19 @@
 import type { ApiRequester, BaseModuleClient } from '../base';
 import type {
+  CreateIntegracaoInput,
   CreatePessoaInput,
   CreateVinculoInput,
   ImportarPessoaInput,
   ListPessoasParams,
+  ListSyncLogsParams,
+  Paginado,
   Pessoa,
+  PessoaIntegracao,
+  PessoaSyncLog,
   PessoaUsuarioVinculo,
   PessoaVinculo,
   PromoverPessoaInput,
+  UpdateIntegracaoInput,
   UpdatePessoaInput,
 } from './types';
 
@@ -55,5 +61,27 @@ export class PessoasClient implements BaseModuleClient {
 
   async importar(input: ImportarPessoaInput): Promise<{ message: string }> {
     return this.api.request(`/${this.moduleName}/importacoes`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async listarIntegracoes(): Promise<PessoaIntegracao[]> {
+    return this.api.request(`/${this.moduleName}/integracoes`);
+  }
+
+  async criarIntegracao(input: CreateIntegracaoInput): Promise<PessoaIntegracao> {
+    return this.api.request(`/${this.moduleName}/integracoes`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async atualizarIntegracao(id: number, input: UpdateIntegracaoInput): Promise<PessoaIntegracao> {
+    return this.api.request(`/${this.moduleName}/integracoes/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async listarSyncLogs(params: ListSyncLogsParams = {}): Promise<Paginado<PessoaSyncLog>> {
+    const query = new URLSearchParams(params as unknown as Record<string, string>).toString();
+
+    return this.api.request(`/${this.moduleName}/sync-logs${query ? `?${query}` : ''}`);
+  }
+
+  async reprocessarSyncLog(id: number): Promise<{ message: string }> {
+    return this.api.request(`/${this.moduleName}/sync-logs/${id}/reprocessar`, { method: 'POST' });
   }
 }

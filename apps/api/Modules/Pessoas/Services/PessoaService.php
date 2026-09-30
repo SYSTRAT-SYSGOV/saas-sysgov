@@ -32,6 +32,7 @@ final readonly class PessoaService
     public function listar(array $filtros = []): LengthAwarePaginator
     {
         return Pessoa::query()
+            ->with(['vinculos', 'usuario'])
             ->when($filtros['q'] ?? null, function ($query, string $q): void {
                 $digitos = Documento::somenteDigitos($q);
                 if (strlen($digitos) === 11) {

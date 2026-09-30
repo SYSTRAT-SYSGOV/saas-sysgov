@@ -32,11 +32,25 @@ final class PessoaIntegracao extends Model
 
     protected $hidden = ['api_token'];
 
+    protected $appends = ['api_token_mascarado'];
+
     protected $casts = [
+        'api_token' => 'encrypted',
         'field_mappings' => 'array',
         'is_active' => 'boolean',
         'ultima_sincronizacao_em' => 'datetime',
     ];
+
+    public function getApiTokenMascaradoAttribute(): ?string
+    {
+        if (empty($this->api_token)) {
+            return null;
+        }
+
+        $limpo = (string) $this->api_token;
+
+        return str_repeat('•', max(strlen($limpo) - 4, 0)) . substr($limpo, -4);
+    }
 
     /** @return HasMany<PessoaSyncLog, $this> */
     public function logs(): HasMany

@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $tipo
  * @property string $valor
  * @property bool $principal
+ * @property bool $autoriza_notificacoes
  */
 final class PessoaContato extends Model
 {
@@ -28,6 +29,7 @@ final class PessoaContato extends Model
 
     protected $casts = [
         'principal' => 'boolean',
+        'autoriza_notificacoes' => 'boolean',
     ];
 
     protected static function booted(): void

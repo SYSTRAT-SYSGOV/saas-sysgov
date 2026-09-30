@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $tenant_id
  * @property int|null $integracao_id
+ * @property string|null $cpf
  * @property string $tipo
  * @property string $direcao
  * @property string $status
@@ -29,6 +30,7 @@ final class PessoaSyncLog extends Model
     protected $guarded = ['id', 'tenant_id'];
 
     protected $casts = [
+        'cpf' => 'encrypted',
         'registros_processados' => 'integer',
         'registros_sucesso' => 'integer',
         'registros_falha' => 'integer',

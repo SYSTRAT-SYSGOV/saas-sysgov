@@ -24,7 +24,7 @@ final readonly class SincronizacaoPessoaService
 
     public function sincronizar(PessoaIntegracao $integracao, string $cpf): PessoaSyncLog
     {
-        $base = ['integracao_id' => $integracao->id, 'tipo' => 'importacao_pessoa', 'direcao' => 'inbound'];
+        $base = ['integracao_id' => $integracao->id, 'cpf' => $cpf, 'tipo' => 'importacao_pessoa', 'direcao' => 'inbound'];
 
         try {
             $dados = (new GenericHttpPessoaImportAdapter($integracao))->buscarPorCpf($cpf);

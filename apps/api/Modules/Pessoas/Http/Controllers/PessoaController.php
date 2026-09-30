@@ -97,6 +97,7 @@ final class PessoaController extends Controller
 
         $dados = $request->validate([
             'tipo_vinculo' => ['required', Rule::in(PessoaVinculo::TIPOS)],
+            'matricula' => ['nullable', 'string', 'max:50'],
             'dados' => ['nullable', 'array'],
             'inicio' => ['nullable', 'date'],
         ]);
@@ -127,6 +128,8 @@ final class PessoaController extends Controller
             'tipo' => ['required', Rule::in(PessoaDocumento::TIPOS)],
             'numero' => ['required', 'string', 'max:50'],
             'orgao_emissor' => ['nullable', 'string', 'max:100'],
+            'uf_emissao' => ['nullable', 'string', 'size:2'],
+            'data_emissao' => ['nullable', 'date'],
         ]);
 
         $documento = $pessoa->documentos()->create($dados);
@@ -164,6 +167,7 @@ final class PessoaController extends Controller
             'tipo' => ['required', Rule::in(PessoaContato::TIPOS)],
             'valor' => ['required', 'string', 'max:255'],
             'principal' => ['sometimes', 'boolean'],
+            'autoriza_notificacoes' => ['sometimes', 'boolean'],
         ]);
 
         $contato = $pessoa->contatos()->create($dados);

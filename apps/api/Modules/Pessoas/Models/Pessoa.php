@@ -8,6 +8,7 @@ use App\Models\Concerns\TenantAware;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Pessoas\Support\Documento;
 
 /**
@@ -28,10 +29,12 @@ use Modules\Pessoas\Support\Documento;
  * @property string|null $naturalidade
  * @property string|null $nis
  * @property string $status
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 final class Pessoa extends Model
 {
     use TenantAware;
+    use SoftDeletes;
 
     protected $table = 'pessoas';
 

@@ -25,13 +25,14 @@ export interface PessoaVinculo {
   id: number;
   pessoa_id: number;
   tipo_vinculo: TipoVinculo;
+  matricula: string | null;
   inicio: string | null;
   fim: string | null;
 }
 
-export interface PessoaDocumento { id: number; tipo: 'rg' | 'cnh' | 'titulo_eleitor'; numero: string; orgao_emissor: string | null }
+export interface PessoaDocumento { id: number; tipo: 'rg' | 'cnh' | 'titulo_eleitor'; numero: string; orgao_emissor: string | null; uf_emissao: string | null; data_emissao: string | null }
 export interface PessoaEndereco { id: number; cep: string | null; logradouro: string | null; numero: string | null; bairro: string | null; cidade: string | null; uf: string | null }
-export interface PessoaContato { id: number; tipo: 'celular' | 'email' | 'telefone'; valor: string; principal: boolean }
+export interface PessoaContato { id: number; tipo: 'celular' | 'email' | 'telefone'; valor: string; principal: boolean; autoriza_notificacoes: boolean }
 export interface PessoaUsuarioVinculo { id: number; user_id: number; promovido_em: string }
 
 export interface Pessoa {
@@ -54,6 +55,36 @@ export interface Pessoa {
   contatos?: PessoaContato[];
   usuario?: PessoaUsuarioVinculo | null;
 }
+
+export interface PessoaIntegracao {
+  id: number;
+  nome: string;
+  driver: string;
+  api_url: string | null;
+  api_token_mascarado: string | null;
+  field_mappings: Record<string, string> | null;
+  is_active: boolean;
+  ultima_sincronizacao_em: string | null;
+}
+
+export type StatusSyncLog = 'sucesso' | 'erro' | 'nao_encontrado';
+
+export interface PessoaSyncLog {
+  id: number;
+  integracao_id: number | null;
+  status: StatusSyncLog;
+  registros_processados: number;
+  registros_sucesso: number;
+  registros_falha: number;
+  detalhes: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export const STATUS_SYNC_LOG: Record<StatusSyncLog, string> = {
+  sucesso: 'Sucesso',
+  erro: 'Falha',
+  nao_encontrado: 'Não encontrado',
+};
 
 export interface ErroApi { status: number; mensagem: string; codigo?: string; campos?: Record<string, string[]> }
 
@@ -84,11 +115,11 @@ export const pessoasApi = {
   criar: (dados: Record<string, unknown>) => post<Pessoa>('', dados),
   atualizar: (id: number, dados: Record<string, unknown>) => put<Pessoa>(`/${id}`, dados),
   excluir: (id: number) => del<{ deleted: boolean }>(`/${id}`),
-  adicionarVinculo: (pessoaId: number, dados: { tipo_vinculo: TipoVinculo; inicio?: string }) => post<PessoaVinculo>(`/${pessoaId}/vinculos`, dados),
+  adicionarVinculo: (pessoaId: number, dados: { tipo_vinculo: TipoVinculo; matricula?: string; inicio?: string }) => post<PessoaVinculo>(`/${pessoaId}/vinculos`, dados),
   encerrarVinculo: (pessoaId: number, vinculoId: number, fim?: string) => post<PessoaVinculo>(`/${pessoaId}/vinculos/${vinculoId}/encerrar`, fim ? { fim } : {}),
-  adicionarDocumento: (pessoaId: number, dados: { tipo: PessoaDocumento['tipo']; numero: string; orgao_emissor?: string }) => post<PessoaDocumento>(`/${pessoaId}/documentos`, dados),
+  adicionarDocumento: (pessoaId: number, dados: { tipo: PessoaDocumento['tipo']; numero: string; orgao_emissor?: string; uf_emissao?: string; data_emissao?: string }) => post<PessoaDocumento>(`/${pessoaId}/documentos`, dados),
   adicionarEndereco: (pessoaId: number, dados: Partial<PessoaEndereco>) => post<PessoaEndereco>(`/${pessoaId}/enderecos`, dados),
-  adicionarContato: (pessoaId: number, dados: { tipo: PessoaContato['tipo']; valor: string; principal?: boolean }) => post<PessoaContato>(`/${pessoaId}/contatos`, dados),
+  adicionarContato: (pessoaId: number, dados: { tipo: PessoaContato['tipo']; valor: string; principal?: boolean; autoriza_notificacoes?: boolean }) => post<PessoaContato>(`/${pessoaId}/contatos`, dados),
   promover: (pessoaId: number, dados: { email: string; role_id: number }) => post<PessoaUsuarioVinculo>(`/${pessoaId}/promover`, dados),
   importar: (documento: string) => post<{ message: string }>('/importacoes', { documento }),
   exportarCsv: async () => {
@@ -100,4 +131,9 @@ export const pessoasApi = {
     a.click();
     URL.revokeObjectURL(url);
   },
+  listarIntegracoes: () => get<PessoaIntegracao[]>('/integracoes'),
+  criarIntegracao: (dados: Record<string, unknown>) => post<PessoaIntegracao>('/integracoes', dados),
+  atualizarIntegracao: (id: number, dados: Record<string, unknown>) => put<PessoaIntegracao>(`/integracoes/${id}`, dados),
+  listarSyncLogs: (filtros: Record<string, unknown> = {}) => get<Paginado<PessoaSyncLog>>('/sync-logs', filtros),
+  reprocessarSyncLog: (id: number) => post<{ message: string }>(`/sync-logs/${id}/reprocessar`),
 };

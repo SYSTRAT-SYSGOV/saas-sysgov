@@ -12,6 +12,7 @@ export interface PessoaVinculo {
   id: number;
   pessoa_id: number;
   tipo_vinculo: TipoVinculoPessoa;
+  matricula?: string | null;
   dados?: Record<string, unknown> | null;
   inicio?: string | null;
   fim?: string | null;
@@ -23,6 +24,8 @@ export interface PessoaDocumento {
   tipo: 'rg' | 'cnh' | 'titulo_eleitor';
   numero: string;
   orgao_emissor?: string | null;
+  uf_emissao?: string | null;
+  data_emissao?: string | null;
 }
 
 export interface PessoaEndereco {
@@ -44,6 +47,7 @@ export interface PessoaContato {
   tipo: 'celular' | 'email' | 'telefone';
   valor: string;
   principal: boolean;
+  autoriza_notificacoes: boolean;
 }
 
 export interface PessoaUsuarioVinculo {
@@ -104,6 +108,7 @@ export interface ListPessoasParams {
 
 export interface CreateVinculoInput {
   tipo_vinculo: TipoVinculoPessoa;
+  matricula?: string;
   dados?: Record<string, unknown>;
   inicio?: string;
 }
@@ -115,4 +120,58 @@ export interface PromoverPessoaInput {
 
 export interface ImportarPessoaInput {
   documento: string;
+}
+
+export interface Paginado<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  total: number;
+}
+
+export interface PessoaIntegracao {
+  id: number;
+  tenant_id: number;
+  nome: string;
+  driver: string;
+  api_url: string | null;
+  api_token_mascarado: string | null;
+  field_mappings: Record<string, string> | null;
+  is_active: boolean;
+  ultima_sincronizacao_em: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateIntegracaoInput {
+  nome: string;
+  api_url?: string;
+  api_token?: string;
+  field_mappings?: Record<string, string>;
+  is_active?: boolean;
+}
+
+export type UpdateIntegracaoInput = Partial<CreateIntegracaoInput>;
+
+export type StatusSyncLog = 'sucesso' | 'erro' | 'nao_encontrado';
+
+export interface PessoaSyncLog {
+  id: number;
+  tenant_id: number;
+  integracao_id: number | null;
+  tipo: string;
+  direcao: string;
+  status: StatusSyncLog;
+  registros_processados: number;
+  registros_sucesso: number;
+  registros_falha: number;
+  detalhes: Record<string, unknown> | null;
+  created_at?: string;
+}
+
+export interface ListSyncLogsParams {
+  integracao_id?: number;
+  status?: StatusSyncLog;
+  per_page?: number;
+  page?: number;
 }

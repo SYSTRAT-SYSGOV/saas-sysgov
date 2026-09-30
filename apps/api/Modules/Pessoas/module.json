@@ -22,6 +22,7 @@
         "cadastros.pessoas.update": "Editar pessoas e seus vínculos",
         "cadastros.pessoas.delete": "Excluir pessoas",
         "cadastros.pessoas.promote": "Promover pessoa a usuário do SYSGOV",
-        "cadastros.pessoas.import": "Importar pessoas de sistemas da prefeitura"
+        "cadastros.pessoas.import": "Importar pessoas de sistemas da prefeitura",
+        "cadastros.pessoas.integracoes.manage": "Gerenciar integrações com sistemas de gestão da prefeitura"
     }
 }

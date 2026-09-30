@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $tipo
  * @property string $numero
  * @property string|null $orgao_emissor
+ * @property string|null $uf_emissao
+ * @property \Illuminate\Support\Carbon|null $data_emissao
  */
 final class PessoaDocumento extends Model
 {
@@ -25,6 +27,10 @@ final class PessoaDocumento extends Model
     protected $table = 'pessoas_documentos';
 
     protected $guarded = ['id', 'tenant_id'];
+
+    protected $casts = [
+        'data_emissao' => 'date',
+    ];
 
     /** @return BelongsTo<Pessoa, $this> */
     public function pessoa(): BelongsTo

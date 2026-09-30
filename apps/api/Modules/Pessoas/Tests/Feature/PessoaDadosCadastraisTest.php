@@ -50,4 +50,39 @@ final class PessoaDadosCadastraisTest extends PessoasTestCase
         self::assertFalse($emailAntigo->refresh()->principal);
         self::assertTrue($emailNovo->refresh()->principal);
     }
+
+    public function test_vinculo_cadastrado_com_matricula_a_armazena_corretamente(): void
+    {
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+
+        $resposta = $this->como($this->admin($this->tenant), $this->tenant)
+            ->postJson("/api/pessoas/{$pessoa->id}/vinculos", ['tipo_vinculo' => 'servidor_carreira', 'matricula' => 'MAT-00123']);
+
+        $resposta->assertCreated();
+        self::assertSame('MAT-00123', $pessoa->vinculos()->first()->matricula);
+    }
+
+    public function test_documento_cadastrado_com_uf_e_data_de_emissao_os_armazena(): void
+    {
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+
+        $resposta = $this->como($this->admin($this->tenant), $this->tenant)
+            ->postJson("/api/pessoas/{$pessoa->id}/documentos", ['tipo' => 'rg', 'numero' => '1234567', 'uf_emissao' => 'PR', 'data_emissao' => '2020-01-15']);
+
+        $resposta->assertCreated();
+        $documento = $pessoa->documentos()->first();
+        self::assertSame('PR', $documento->uf_emissao);
+        self::assertSame('2020-01-15', $documento->data_emissao->toDateString());
+    }
+
+    public function test_contato_sem_autoriza_notificacoes_informado_assume_autorizado_por_padrao(): void
+    {
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+
+        $this->como($this->admin($this->tenant), $this->tenant)
+            ->postJson("/api/pessoas/{$pessoa->id}/contatos", ['tipo' => 'email', 'valor' => 'maria@teste.gov.br'])
+            ->assertCreated();
+
+        self::assertTrue($pessoa->contatos()->first()->autoriza_notificacoes);
+    }
 }

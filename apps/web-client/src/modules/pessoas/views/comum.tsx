@@ -61,13 +61,54 @@ export const ErroBox: React.FC<{ erro: ErroApi | null }> = ({ erro }) => {
 export interface CampoForm {
   nome: string;
   rotulo: string;
-  tipo?: 'text' | 'number' | 'date' | 'textarea' | 'select' | 'switch';
+  tipo?: 'text' | 'number' | 'date' | 'password' | 'textarea' | 'select' | 'switch';
   obrigatorio?: boolean;
   opcoes?: { value: string; label: string }[];
   dica?: string;
   /** Dado técnico (CPF, RG, NIS, códigos) — exibido em `font-mono tabular-nums`. */
   mono?: boolean;
 }
+
+/** Renderiza o controle de input adequado ao tipo do campo. Compartilhado entre `FormModal` e fluxos em passos (wizard). */
+export function renderCampoControle(c: CampoForm, valor: unknown, definir: (valor: unknown) => void): React.ReactNode {
+  switch (c.tipo) {
+    case 'select':
+      return <Select value={valor == null ? null : String(valor)} onChange={definir} options={c.opcoes ?? []} placeholder="Selecione…" />;
+    case 'textarea':
+      return <Textarea aria-label={c.rotulo} value={String(valor ?? '')} onChange={(e) => definir(e.target.value)} required={c.obrigatorio} rows={3} />;
+    case 'switch':
+      return <Switch label={c.rotulo} checked={Boolean(valor)} onCheckedChange={definir} />;
+    default:
+      return (
+        <Input
+          aria-label={c.rotulo}
+          type={c.tipo ?? 'text'}
+          className={c.tipo === 'date' || c.mono ? 'font-mono tabular-nums' : ''}
+          value={String(valor ?? '')}
+          onChange={(e) => definir(e.target.value)}
+          required={c.obrigatorio}
+        />
+      );
+  }
+}
+
+/** Grid de campos com rótulo/erro — o corpo reutilizável de um `FormModal`, também usado passo a passo pelo wizard. */
+export const CamposFormulario: React.FC<{
+  campos: CampoForm[];
+  valores: Record<string, unknown>;
+  onChange: (nome: string, valor: unknown) => void;
+  erro?: ErroApi | null;
+}> = ({ campos, valores, onChange, erro }) => (
+  <div className="grid gap-3 sm:grid-cols-2">
+    {campos.map((c) => (
+      <div key={c.nome} className={c.tipo === 'textarea' ? 'sm:col-span-2' : ''}>
+        <Field label={c.rotulo} required={c.obrigatorio} hint={c.dica} error={erro?.campos?.[c.nome]?.[0]}>
+          {renderCampoControle(c, valores[c.nome], (v) => onChange(c.nome, v))}
+        </Field>
+      </div>
+    ))}
+  </div>
+);
 
 export const FormModal: React.FC<{
   aberto: boolean;
@@ -98,29 +139,6 @@ export const FormModal: React.FC<{
     if (resultado !== null) onFechar();
   };
 
-  const controle = (c: CampoForm) => {
-    const valor = valores[c.nome];
-    switch (c.tipo) {
-      case 'select':
-        return <Select value={valor == null ? null : String(valor)} onChange={(v) => definir(c.nome, v)} options={c.opcoes ?? []} placeholder="Selecione…" />;
-      case 'textarea':
-        return <Textarea aria-label={c.rotulo} value={String(valor ?? '')} onChange={(e) => definir(c.nome, e.target.value)} required={c.obrigatorio} rows={3} />;
-      case 'switch':
-        return <Switch label={c.rotulo} checked={Boolean(valor)} onCheckedChange={(v) => definir(c.nome, v)} />;
-      default:
-        return (
-          <Input
-            aria-label={c.rotulo}
-            type={c.tipo ?? 'text'}
-            className={c.tipo === 'date' || c.mono ? 'font-mono tabular-nums' : ''}
-            value={String(valor ?? '')}
-            onChange={(e) => definir(c.nome, e.target.value)}
-            required={c.obrigatorio}
-          />
-        );
-    }
-  };
-
   return (
     <Modal
       open={aberto}
@@ -134,14 +152,8 @@ export const FormModal: React.FC<{
         </div>
       }
     >
-      <form id={formId} onSubmit={enviar} className="grid gap-3 sm:grid-cols-2">
-        {campos.map((c) => (
-          <div key={c.nome} className={c.tipo === 'textarea' ? 'sm:col-span-2' : ''}>
-            <Field label={c.rotulo} required={c.obrigatorio} hint={c.dica} error={erro?.campos?.[c.nome]?.[0]}>
-              {controle(c)}
-            </Field>
-          </div>
-        ))}
+      <form id={formId} onSubmit={enviar}>
+        <CamposFormulario campos={campos} valores={valores} onChange={definir} erro={erro} />
       </form>
       <div className="mt-3"><ErroBox erro={erro} /></div>
     </Modal>

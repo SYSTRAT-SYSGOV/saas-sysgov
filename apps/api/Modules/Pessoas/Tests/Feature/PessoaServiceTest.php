@@ -47,4 +47,22 @@ final class PessoaServiceTest extends PessoasTestCase
         self::assertSame(1, $resultado->total());
         self::assertSame($municipe->id, $resultado->first()->id);
     }
+
+    public function test_listar_traz_vinculos_e_usuario_sem_consulta_adicional_por_pessoa(): void
+    {
+        $pessoa1 = Pessoa::create(['nome' => 'Ana', 'cpf' => $this->cpfValido()]);
+        $pessoa1->vinculos()->create(['tipo_vinculo' => 'municipe']);
+        $pessoa2 = Pessoa::create(['nome' => 'Bruno', 'cpf' => $this->cpfValido()]);
+        $pessoa2->vinculos()->create(['tipo_vinculo' => 'servidor_carreira']);
+        $pessoa3 = Pessoa::create(['nome' => 'Carla', 'cpf' => $this->cpfValido()]);
+
+        $resultado = $this->service->listar();
+
+        foreach ($resultado as $pessoa) {
+            self::assertTrue($pessoa->relationLoaded('vinculos'), "vinculos não veio pré-carregado para a pessoa #{$pessoa->id}");
+            self::assertTrue($pessoa->relationLoaded('usuario'), "usuario não veio pré-carregado para a pessoa #{$pessoa->id}");
+        }
+        self::assertSame('municipe', $resultado->firstWhere('id', $pessoa1->id)->vinculos->first()->tipo_vinculo);
+        self::assertCount(0, $resultado->firstWhere('id', $pessoa3->id)->vinculos);
+    }
 }

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $tenant_id
  * @property int $pessoa_id
  * @property string $tipo_vinculo
+ * @property string|null $matricula
  * @property array<string, mixed>|null $dados
  * @property \Illuminate\Support\Carbon|null $inicio
  * @property \Illuminate\Support\Carbon|null $fim
