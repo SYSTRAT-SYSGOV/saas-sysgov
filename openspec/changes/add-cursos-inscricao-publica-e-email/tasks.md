@@ -525,9 +525,49 @@
       utilizado", token inventado mostrou "Link inválido".
       Verificação completa: typecheck + `vitest run` de `apps/web-client` (474/475 —
       `AuthProvider.test.tsx`, mesma flakiness já documentada) + `build`, todos limpos.
-- [ ] 6.4 Aba de campos do formulário no detalhe do curso, com modal no padrão das abas da Fase 2
+- [x] 6.4 Aba de campos do formulário no detalhe do curso, com modal no padrão das abas da Fase 2
       e validação das opções da seleção; marca "aceita externos" no formulário da turma; slug e
       texto de divulgação no formulário do curso; testes Vitest.
+      `CamposInscricaoTab` (nova, `apps/web-client/src/modules/cursos/components/`) segue o
+      MESMO padrão de `MateriaisTab` (lista + subir/descer com `reordenarCamposInscricao` +
+      ativar/desativar + editar/excluir), só trocando "publicado/despublicar" por
+      "ativo/desativar" (não existe conceito de rascunho num campo de formulário). Nova aba
+      "Formulário de inscrição" no `CursoDetalhePage` (`AbaCurso` ganhou `'formulario'`), gated
+      por `administra` igual às demais abas de gestão da Fase 2. `CampoInscricaoFormModal` (nova)
+      segue o padrão de `QuestaoFormModal` pro campo `opcoes` (lista dinâmica de `Input`s com
+      adicionar/remover, mínimo de 1 linha sempre visível) — validação de "pelo menos uma opção
+      com texto" no tipo `selecao` replicada do backend (`CampoInscricaoService::validarOpcoes`)
+      em `validarOpcoesCampo` (`utils/validacoes.ts`), pro erro aparecer na hora, sem round-trip.
+      `TIPO_CAMPO_INSCRICAO` (rótulos pt-BR dos 6 tipos) entrou em `utils/formatos.ts`, mesmo
+      padrão de `TIPO_MATERIAL`.
+      `aceita_externos` (Switch) em `TurmaFormModal` e `slug`/`texto_publico` (Input + o mesmo
+      `RichTextEditor` da Descrição) em `CursoFormModal` — campos simples, sem achado novo (o
+      padrão de "refresh após create" e o slug opcional já vieram prontos da 3.1).
+      **Achado corrigido nos testes, não na aplicação**: adicionar o `RichTextEditor` ao
+      `CursoFormModal` quebrou os testes existentes de `Formularios.test.tsx`
+      (`window.matchMedia is not a function`, o TinyMCE carregando de verdade no jsdom) — mesmo
+      problema que `FormulariosConteudo.test.tsx` (testes do `QuestaoFormModal`) já resolvia
+      mockando `RichTextEditor` como um `<textarea>`; apliquei o mesmo `vi.mock('@sysgov/ui', ...)`
+      em `Formularios.test.tsx`. Confirmado **no navegador de verdade** que o TinyMCE carrega sem
+      problema (só o jsdom não suporta `matchMedia`) — não é um bug de produção, só um gap de
+      mock que ficou faltando quando a tarefa introduziu o primeiro editor rico nesse arquivo de
+      teste.
+      Testes novos: `CampoInscricaoFormModal.test.tsx` (5), `CamposInscricaoTab.test.tsx` (9,
+      cobrindo lista/estado vazio/reordenar/ativar-desativar/excluir incluindo o erro de "campo
+      com respostas"/não-editável/criar) e mais 5 em `Formularios.test.tsx` (slug/texto_publico
+      nulos e preenchidos, edição carrega os dois, `aceita_externos` carrega e envia desmarcado,
+      nova turma envia marcado) — 19 testes novos.
+      **Verificação completa**: typecheck de `apps/web-client` limpo; `vitest run` do módulo
+      `cursos` (16 arquivos/139 testes) e da suíte inteira (69 arquivos/494 testes, incluindo a
+      flakiness já documentada de `AuthProvider.test.tsx`, que passou nesta rodada) verdes;
+      `build` limpo. **Testado no navegador contra o backend de verdade** (Claude em Chrome,
+      tenant `systrat`, curso "Gestão e fiscalização de contratos"): aba nova → criei campo
+      seleção com 2 opções (dropdown Radix interagido via `ref` do `read_page`, não coordenadas —
+      a mesma técnica documentada na 6.2 pra contornar o desalinhamento
+      screenshot-pixels×viewport) → criei campo texto → reordenei (subir) → desativei → excluí,
+      tudo refletindo na tela sem reload manual; `CursoFormModal` abriu com o slug
+      auto-gerado da 3.1 e o `texto_publico` existente renderizado no TinyMCE de verdade;
+      `TurmaFormModal` abriu com o Switch "aceita externos" já ligado (dado semeado da Fase 2).
 - [ ] 6.5 Formulário de inscrição com os campos configurados (no catálogo autenticado e na
       inscrição pública) e as respostas na tela da inscrição; testes Vitest dos obrigatórios e
       dos tipos.

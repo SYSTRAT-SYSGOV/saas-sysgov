@@ -1,4 +1,4 @@
-import type { Modalidade, RegraLiberacao, StatusCurso, StatusInscricao, StatusTentativa, StatusTurma, SituacaoAula, TipoCurso, TipoMaterial, TipoQuestao } from '@sysgov/sdk';
+import type { Modalidade, RegraLiberacao, StatusCurso, StatusInscricao, StatusTentativa, StatusTurma, SituacaoAula, TipoCampoInscricao, TipoCurso, TipoMaterial, TipoQuestao } from '@sysgov/sdk';
 import type { StatusVariant } from '@/components/ui';
 
 export function formatarCargaHoraria(minutos: number): string {
@@ -90,6 +90,15 @@ export const REGRA_LIBERACAO: Record<RegraLiberacao, string> = {
 };
 
 export const TIPO_QUESTAO: Record<TipoQuestao, string> = { objetiva: 'Objetiva', dissertativa: 'Dissertativa' };
+
+export const TIPO_CAMPO_INSCRICAO: Record<TipoCampoInscricao, string> = {
+  texto: 'Texto curto',
+  texto_longo: 'Texto longo',
+  numero: 'Número',
+  data: 'Data',
+  selecao: 'Seleção (opções)',
+  caixa_marcacao: 'Caixa de marcação',
+};
 
 export const STATUS_TENTATIVA: Record<StatusTentativa, { label: string; variant: StatusVariant }> = {
   em_andamento: { label: 'Em andamento', variant: 'info' },

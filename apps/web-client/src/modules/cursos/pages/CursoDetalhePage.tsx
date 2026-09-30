@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, ClipboardList, FileText, HelpCircle, ImagePlus, Layers, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, ClipboardCheck, ClipboardList, FileText, HelpCircle, ImagePlus, Layers, Pencil, Plus, Trash2 } from 'lucide-react';
 import { ActionsMenu, Button, Card, type ActionsMenuItem } from '@sysgov/ui';
 import { ConfirmDialog, EmptyState, PageHeader, ScreenState, StatusChip, Tabs, type TabsItem } from '@/components/ui';
 import { sysgovApi, type Aula, type CursoDetalhe, type StatusCurso } from '@sysgov/sdk';
@@ -7,6 +7,7 @@ import { useCan } from '@/core/rbac/useCan';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { AulaFormModal } from '../components/AulaFormModal';
 import { AvaliacoesTab } from '../components/AvaliacoesTab';
+import { CamposInscricaoTab } from '../components/CamposInscricaoTab';
 import { CursoFormModal } from '../components/CursoFormModal';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { MateriaisTab } from '../components/MateriaisTab';
@@ -20,7 +21,7 @@ interface Props {
   onAbrirTurma: (id: number) => void;
 }
 
-type AbaCurso = 'geral' | 'materiais' | 'questoes' | 'avaliacoes';
+type AbaCurso = 'geral' | 'materiais' | 'questoes' | 'avaliacoes' | 'formulario';
 
 const PROXIMO_STATUS: Partial<Record<StatusCurso, { status: StatusCurso; label: string }>> = {
   rascunho: { status: 'publicado', label: 'Publicar' },
@@ -78,6 +79,7 @@ export const CursoDetalhePage: React.FC<Props> = ({ cursoId, onVoltar, onAbrirTu
           { key: 'materiais' as const, label: 'Materiais', icon: <FileText className="h-4 w-4" /> },
           { key: 'questoes' as const, label: 'Questões', icon: <HelpCircle className="h-4 w-4" /> },
           { key: 'avaliacoes' as const, label: 'Avaliações', icon: <ClipboardList className="h-4 w-4" /> },
+          { key: 'formulario' as const, label: 'Formulário de inscrição', icon: <ClipboardCheck className="h-4 w-4" /> },
         ]
       : []),
   ];
@@ -140,6 +142,7 @@ export const CursoDetalhePage: React.FC<Props> = ({ cursoId, onVoltar, onAbrirTu
       {aba === 'materiais' && administra && <MateriaisTab cursoId={curso.id} aulas={curso.aulas} editavel={editavel} />}
       {aba === 'questoes' && administra && <QuestoesTab cursoId={curso.id} editavel={editavel} />}
       {aba === 'avaliacoes' && administra && <AvaliacoesTab cursoId={curso.id} aulas={curso.aulas} editavel={editavel} evento={curso.tipo === 'evento'} />}
+      {aba === 'formulario' && administra && <CamposInscricaoTab cursoId={curso.id} editavel={editavel} />}
 
       {aba === 'geral' && (
         <>

@@ -64,6 +64,13 @@ export function paraNumero(valor: string): number | null {
   return Number(valor.replace(',', '.'));
 }
 
+/** Campo de seleção: exige ao menos uma opção com texto (mesma regra de `CampoInscricaoService::validarOpcoes`). */
+export function validarOpcoesCampo(tipo: string, opcoes: string[]): string | null {
+  if (tipo !== 'selecao') return null;
+  if (opcoes.every((o) => o.trim() === '')) return 'Campos do tipo seleção precisam de pelo menos uma opção.';
+  return null;
+}
+
 /** Tamanho máximo do PDF de um material (o backend também confere). */
 export const PDF_MAX_BYTES = 20 * 1024 * 1024;
 
