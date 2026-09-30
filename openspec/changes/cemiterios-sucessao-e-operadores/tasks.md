@@ -24,6 +24,6 @@
 
 ## 4. Testes e Validação Integrada
 
-- [ ] 4.1 Escrever testes unitários e de integração no backend (`SucessaoTest.php` e `OperadoresTest.php`) cobrindo deferimento e isolamento multi-tenant
-- [ ] 4.2 Escrever testes no frontend para as novas telas (`SucessaoView.test.tsx` e `OperadoresView.test.tsx`)
-- [ ] 4.3 Executar bateria de testes com `npm test` e `php artisan test` garantindo 100% de aprovação
+- [x] 4.1 Escrever testes unitários e de integração no backend (`SucessaoTest.php` e `OperadoresTest.php`) cobrindo deferimento e isolamento multi-tenant
+- [x] 4.2 Escrever testes no frontend para as novas telas (`SucessaoView.test.tsx` e `OperadoresView.test.tsx`)
+- [x] 4.3 Executar bateria de testes com `npm test` e `php artisan test` garantindo 100% de aprovação
