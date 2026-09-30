@@ -15,6 +15,7 @@ use Modules\Cursos\Http\Controllers\AvaliacaoController;
 use Modules\Cursos\Http\Controllers\CatalogoController;
 use Modules\Cursos\Http\Controllers\CertificadoController;
 use Modules\Cursos\Http\Controllers\CorrecaoController;
+use Modules\Cursos\Http\Controllers\ConfiguracaoPublicaController;
 use Modules\Cursos\Http\Controllers\ConteudoInscricaoController;
 use Modules\Cursos\Http\Controllers\CursoController;
 use Modules\Cursos\Http\Controllers\EnvioController;
@@ -131,6 +132,10 @@ Route::get('/relatorios/capacitacao/{participante}', [RelatorioController::class
 // E-mails enviados (tarefa 1.8)
 Route::get('/envios', [EnvioController::class, 'index']);
 Route::post('/envios/{envio}/reenviar', [EnvioController::class, 'reenviar']);
+
+// Configuração da página pública (tarefa 3.2)
+Route::get('/configuracao-publica', [ConfiguracaoPublicaController::class, 'show']);
+Route::put('/configuracao-publica', [ConfiguracaoPublicaController::class, 'update']);
 
 // Presença: chamada manual e check-in por QR code
 Route::get('/agendamentos/{agendamento}/chamada', [PresencaController::class, 'chamada']);

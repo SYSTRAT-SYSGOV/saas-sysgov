@@ -259,10 +259,19 @@
       não carregava `aceita_externos` (nem nenhuma outra coluna com padrão que não veio em
       `$dados`), e a resposta da API devolvia a chave ausente em vez de `false`. Corrigido; achado
       pelo teste "turma não aceita externos por padrão", não por revisão de código.
-- [ ] 3.2 `GET/PUT /api/cursos/configuracao-publica` (habilitar, boas-vindas, termo com versão
+- [x] 3.2 `GET/PUT /api/cursos/configuracao-publica` (habilitar, boas-vindas, termo com versão
       incrementada quando o texto muda, documento obrigatório) sobre `settings.cursos`, sem tocar
       nas outras chaves de `settings` (D10, D11); testes de permissão, auditoria e da versão do
       termo.
+      `ConfiguracaoPublicaService` (novo) concentra a leitura/merge do sub-objeto
+      `settings.cursos` — mesmo cuidado do `TenantSettingsController` (núcleo) de nunca sobrescrever
+      `settings` inteiro, só a própria chave. Gate `viewAny` de `Curso` (= `cursos.manage`), mesmo
+      corte de `EnvioController`/relatórios, sem precisar de instância própria pra autorizar.
+      Versão do termo incrementa comparando o texto NOVO (já sanitizado) com o gravado — reenviar
+      o campo `termo` inteiro sem mudança de texto (esperado do frontend, que manda o objeto
+      inteiro no PUT) não infla a versão; não mandar `termo` no PUT não toca nele. `boas_vindas` e
+      `termo.texto` sanitizados com o mesmo `HtmlSanitizer` de 3.1/D5 — são exibidos na página
+      pública, mesmo vetor de XSS armazenado.
 - [ ] 3.3 Endpoints públicos de leitura: página do órgão, catálogo público e página do curso, com
       Resources de lista explícita de campos (D7); testes dos cenários "Página habilitada",
       "Oferta pública" e de que nenhum campo interno (e-mail de instrutor, vagas totais) sai.
