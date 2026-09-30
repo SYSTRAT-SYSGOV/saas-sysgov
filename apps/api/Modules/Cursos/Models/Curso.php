@@ -108,6 +108,12 @@ final class Curso extends Model
         return $this->hasMany(Material::class, 'curso_id')->orderBy('ordem')->orderBy('id');
     }
 
+    /** @return HasMany<CampoInscricao, $this> */
+    public function camposInscricao(): HasMany
+    {
+        return $this->hasMany(CampoInscricao::class, 'curso_id')->orderBy('ordem')->orderBy('id');
+    }
+
     /** @return HasManyThrough<Inscricao, Turma, $this> */
     public function inscricoes(): HasManyThrough
     {

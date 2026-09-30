@@ -14,6 +14,7 @@ use Modules\Cursos\Models\Aula;
 use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\AvaliacaoQuestao;
 use Modules\Cursos\Models\AulaAgendamento;
+use Modules\Cursos\Models\CampoInscricao;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Formacao;
@@ -25,6 +26,7 @@ use Modules\Cursos\Models\Presenca;
 use Modules\Cursos\Models\Questao;
 use Modules\Cursos\Models\QuestaoAlternativa;
 use Modules\Cursos\Models\Resposta;
+use Modules\Cursos\Models\RespostaInscricao;
 use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
@@ -45,7 +47,7 @@ final class TenantIsolationTest extends TestCase
         ModeloCertificado::class, Curso::class, Formacao::class, Turma::class, Aula::class,
         AulaAgendamento::class, Participante::class, Inscricao::class, Presenca::class, Certificado::class,
         Material::class, Questao::class, QuestaoAlternativa::class, Avaliacao::class, AvaliacaoQuestao::class,
-        Tentativa::class, Resposta::class,
+        Tentativa::class, Resposta::class, CampoInscricao::class, RespostaInscricao::class,
     ];
 
     public function test_todos_os_models_do_modulo_sao_isolados_entre_tenants(): void
@@ -113,6 +115,8 @@ final class TenantIsolationTest extends TestCase
         $avaliacaoQuestao = AvaliacaoQuestao::create(['avaliacao_id' => $avaliacao->id, 'questao_id' => $questao->id, 'ordem' => 1]);
         $tentativa = Tentativa::create(['avaliacao_id' => $avaliacao->id, 'inscricao_id' => $inscricao->id, 'numero' => 1, 'status' => 'em_andamento', 'iniciada_em' => now(), 'questoes' => []]);
         $resposta = Resposta::create(['tentativa_id' => $tentativa->id, 'questao_id' => $questao->id, 'alternativa_id' => $alternativa->id]);
+        $campoInscricao = CampoInscricao::create(['curso_id' => $curso->id, 'rotulo' => "Campo {$sufixo}", 'tipo' => 'texto', 'ordem' => 1]);
+        $respostaInscricao = RespostaInscricao::create(['inscricao_id' => $inscricao->id, 'campo_id' => $campoInscricao->id, 'rotulo' => $campoInscricao->rotulo, 'tipo' => 'texto', 'valor' => "Valor {$sufixo}"]);
         $certificado = Certificado::create([
             'codigo' => $codigo ?? strtoupper(substr(md5($sufixo), 0, 12)), 'tipo' => 'curso', 'participante_id' => $participante->id,
             'inscricao_id' => $inscricao->id, 'modelo_id' => $modelo->id, 'dados' => ['participante' => $user->name], 'emitido_em' => now(),
@@ -125,6 +129,7 @@ final class TenantIsolationTest extends TestCase
             Certificado::class => $certificado->id, Material::class => $material->id,
             Questao::class => $questao->id, QuestaoAlternativa::class => $alternativa->id, Avaliacao::class => $avaliacao->id,
             AvaliacaoQuestao::class => $avaliacaoQuestao->id, Tentativa::class => $tentativa->id, Resposta::class => $resposta->id,
+            CampoInscricao::class => $campoInscricao->id, RespostaInscricao::class => $respostaInscricao->id,
         ];
     }
 }

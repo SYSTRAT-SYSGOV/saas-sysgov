@@ -308,8 +308,16 @@
 
 ## 4. Formulário de inscrição configurável
 
-- [ ] 4.1 Migrations e models `TenantAware` de `cursos_campos_inscricao` e
+- [x] 4.1 Migrations e models `TenantAware` de `cursos_campos_inscricao` e
       `cursos_inscricao_respostas` (D9); verificar `migrate` e isolamento A/B.
+      Mesmo padrão de `cursos_respostas`/`cursos_tentativas` da Fase 2: `campo_id` é
+      `restrictOnDelete` (campo respondido não pode sumir, D9), `inscricao_id` é
+      `cascadeOnDelete` (a resposta não tem vida própria fora da inscrição),
+      `unique(inscricao_id, campo_id)`. Enum `TipoCampoInscricao` (6 casos: texto, texto_longo,
+      numero, data, selecao, caixa_marcacao) no padrão de `TipoQuestao`. Migration verificada no
+      MySQL de dev (`module:migrate Cursos --force`). Isolamento A/B: os dois models entraram na
+      lista genérica de `TenantIsolationTest` (não criei arquivo de teste separado — o teste
+      genérico já cobre "isolamento A/B" com o mesmo rigor pra todo model do módulo).
 - [ ] 4.2 `CampoInscricaoService` e controller (CRUD, reordenar, desativar; sem excluir campo
       respondido; tipo `selecao` exige opções); testes dos cenários "Exclusão de campo
       respondido" e de validação do cadastro do campo.
