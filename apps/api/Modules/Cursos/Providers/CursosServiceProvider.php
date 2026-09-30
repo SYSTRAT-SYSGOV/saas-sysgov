@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Modules\Cursos\Console\Commands\LimparCadastrosPendentesCommand;
 use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
@@ -46,6 +47,12 @@ final class CursosServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
         $this->loadViewsFrom(__DIR__ . '/../Resources/views', 'cursos');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                LimparCadastrosPendentesCommand::class,
+            ]);
+        }
 
         Gate::policy(Curso::class, CursoPolicy::class);
         Gate::policy(Formacao::class, FormacaoPolicy::class);

@@ -216,8 +216,26 @@
       não pedido no cenário mas necessário pra cobrir a metade do D8 que a tarefa só descreve na
       prosa: "Excesso de cadastros do mesmo e-mail" (o `OutboxEvent::count()` para de crescer
       depois do limite, resposta continua 200).
-- [ ] 2.8 Comando agendado de limpeza de vínculos `pending` com mais de 7 dias e dos usuários
+- [x] 2.8 Comando agendado de limpeza de vínculos `pending` com mais de 7 dias e dos usuários
       que só existiam por eles; teste com dados antigos e recentes.
+      `cursos:limpar-cadastros-pendentes`, registrado no `CursosServiceProvider` (padrão do
+      Admin, `commands([...])` só `runningInConsole`) e agendado `dailyAt('04:00')` em
+      `routes/console.php`, entre o `ExpireAccess` (03:00) e o `NotifyExpiringAccess` (07:00).
+      `tenant_user` não tem `created_at` — a idade do vínculo pending vem de
+      `cursos_participantes.created_at` (origem=externo), criado na mesma transação do cadastro
+      (D6), então é o mesmo instante em todos os casos, inclusive quando um `User` de outro órgão
+      ganha um vínculo novo. Roda sem `TenantContext` pra levantar os candidatos de todos os
+      órgãos de uma vez (o escopo global de `TenantAware` não filtra sem contexto — mesmo truque
+      que os testes usam com `noTenant()`), depois define/limpa o contexto por órgão (padrão do
+      `EnviarNotificacoes`) pra que os models `TenantAware` do laço filtrem certo. `User` só é
+      apagado se não sobrar nenhum `tenant_user` depois de remover o vínculo vencido — testado com
+      um mesmo `User` com vínculo pending vencido num órgão e ativo em outro: só o primeiro some.
+      Participante com inscrição (`restrictOnDelete` em `cursos_inscricoes`/`cursos_certificados`)
+      é ignorado em vez de derrubar o comando — não deveria acontecer com um vínculo pending (login
+      exige `active`), mas não custa não confiar nisso num comando destrutivo agendado. Rodei
+      manualmente contra o MySQL de dev (`docker compose exec api php artisan
+      cursos:limpar-cadastros-pendentes`): 0/0/0, como esperado (nenhum cadastro externo velho
+      ainda nesse branch).
 
 ## 3. Página pública e configuração
 
