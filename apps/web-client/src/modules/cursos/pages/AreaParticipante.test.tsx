@@ -6,6 +6,7 @@ const cursosApi = vi.hoisted(() => ({
   minhasInscricoes: vi.fn(),
   meusCertificados: vi.fn(),
   listarCatalogo: vi.fn(),
+  listarCamposInscricao: vi.fn(),
   inscrever: vi.fn(),
 }));
 
@@ -57,12 +58,14 @@ describe('Área do participante — Catálogo', () => {
         turmas: [{ id: 11, nome: 'Turma 1', data_inicio: '2026-10-01', data_fim: '2026-10-31', inscricoes_inicio: '2026-09-01', inscricoes_fim: '2026-09-30', vagas: 20, modalidade: 'presencial', local: 'Auditório', aprovacao_manual: false, vagas_restantes: 0, inscricoes_abertas: true, minha_inscricao: null }],
       },
     ]);
+    cursosApi.listarCamposInscricao.mockResolvedValue([]);
     cursosApi.inscrever.mockResolvedValue({ id: 99, status: 'lista_espera' });
 
     render(<CatalogoPage onVerMeusCursos={() => undefined} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Entrar na fila' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar inscrição' }));
 
-    await waitFor(() => expect(cursosApi.inscrever).toHaveBeenCalledWith(11));
+    await waitFor(() => expect(cursosApi.inscrever).toHaveBeenCalledWith(11, []));
     expect(await screen.findByText(/você entrou na lista de espera/)).toBeInTheDocument();
   });
 });

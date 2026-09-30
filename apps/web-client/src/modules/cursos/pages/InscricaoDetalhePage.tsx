@@ -2,10 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, UserCheck } from 'lucide-react';
 import { Button, Card } from '@sysgov/ui';
 import { PageHeader, ScreenState, StatusChip } from '@/components/ui';
-import { sysgovApi, type InscricaoDetalhe } from '@sysgov/sdk';
+import { sysgovApi, type InscricaoDetalhe, type RespostaInscricao } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { ConteudoInscricaoSection } from '../components/ConteudoInscricaoSection';
-import { SITUACAO_AULA, STATUS_INSCRICAO, formatarData, formatarDataHora, formatarHora, formatarPercentual } from '../utils/formatos';
+import { SITUACAO_AULA, STATUS_INSCRICAO, formatarData, formatarDataHora, formatarHora, formatarPercentual, formatarValorResposta } from '../utils/formatos';
 
 interface Props {
   inscricaoId: number;
@@ -16,12 +16,15 @@ interface Props {
 /** Frequência, materiais e avaliações do participante numa turma. */
 export const InscricaoDetalhePage: React.FC<Props> = ({ inscricaoId, onVoltar, onAbrirTentativa }) => {
   const [inscricao, setInscricao] = useState<InscricaoDetalhe | null>(null);
+  const [respostas, setRespostas] = useState<RespostaInscricao[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     setErro(null);
     try {
-      setInscricao(await sysgovApi.cursos.getInscricao(inscricaoId));
+      const [detalhe, respostasFormulario] = await Promise.all([sysgovApi.cursos.getInscricao(inscricaoId), sysgovApi.cursos.getRespostasInscricao(inscricaoId)]);
+      setInscricao(detalhe);
+      setRespostas(respostasFormulario);
     } catch (e) {
       setErro(getApiErrorMessage(e, 'Não foi possível carregar a inscrição.'));
     }
@@ -89,6 +92,20 @@ export const InscricaoDetalhePage: React.FC<Props> = ({ inscricaoId, onVoltar, o
           </ul>
         )}
       </Card>
+
+      {respostas.length > 0 && (
+        <Card className="space-y-3 p-4">
+          <h2 className="text-sm font-semibold text-foreground">Respostas do formulário de inscrição</h2>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            {respostas.map((r) => (
+              <div key={r.id}>
+                <dt className="text-xs text-muted-foreground">{r.rotulo}</dt>
+                <dd className="text-sm text-foreground">{formatarValorResposta(r)}</dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+      )}
 
       <ConteudoInscricaoSection inscricaoId={inscricao.id} onAbrirTentativa={onAbrirTentativa} />
     </div>

@@ -3,15 +3,15 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { ArrowLeft, CalendarPlus, ClipboardCheck, Download, Lock, Pencil, QrCode, Trash2, UserPlus, Users } from 'lucide-react';
 import { ActionsMenu, Button, Card, Input, Modal, Select, type ActionsMenuItem } from '@sysgov/ui';
 import { ConfirmDialog, DataTable, KpiCard, PageHeader, ScreenState, StatusChip, Tabs, type TabsItem } from '@/components/ui';
-import { sysgovApi, type AulaAgendamento, type InscritoRelatorioTurma, type InscritoTurma, type InstrutorResumo, type RelatorioTurma, type ResumoEncerramento, type TurmaDetalhe } from '@sysgov/sdk';
+import { sysgovApi, type AulaAgendamento, type InscritoRelatorioTurma, type InscritoTurma, type RelatorioTurma, type ResumoEncerramento, type TurmaDetalhe } from '@sysgov/sdk';
 import { useCan } from '@/core/rbac/useCan';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { ChamadaModal } from '../components/ChamadaModal';
 import { CorrecoesTab } from '../components/CorrecoesTab';
 import { ErroFormulario } from '../components/ErroFormulario';
+import { InscreverParticipanteModal } from '../components/InscreverParticipanteModal';
 import { QrCheckInModal } from '../components/QrCheckInModal';
 import { TurmaFormModal } from '../components/TurmaFormModal';
-import { UsuarioPicker } from '../components/UsuarioPicker';
 import { MODALIDADE, STATUS_INSCRICAO, STATUS_TURMA, baixarBlob, formatarData, formatarDataHora, formatarHora, formatarNota, formatarPercentual } from '../utils/formatos';
 
 interface Props {
@@ -369,6 +369,7 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
       <InscreverParticipanteModal
         open={inscrevendo}
         turmaId={turma.id}
+        cursoId={turma.curso.id}
         onClose={() => setInscrevendo(false)}
         onSalvo={(msg) => {
           setInscrevendo(false);
@@ -492,64 +493,6 @@ const AgendarAulaModal: React.FC<{
           </Button>
         </div>
       </form>
-    </Modal>
-  );
-};
-
-const InscreverParticipanteModal: React.FC<{
-  open: boolean;
-  turmaId: number;
-  onClose: () => void;
-  onSalvo: (mensagem: string) => void;
-}> = ({ open, turmaId, onClose, onSalvo }) => {
-  const [usuario, setUsuario] = useState<InstrutorResumo[]>([]);
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (open) {
-      setUsuario([]);
-      setErro(null);
-    }
-  }, [open]);
-
-  const salvar = async () => {
-    if (usuario.length === 0) return;
-    setSalvando(true);
-    setErro(null);
-    try {
-      const inscricao = await sysgovApi.cursos.inscreverUsuario(turmaId, usuario[0].id);
-      onSalvo(`${usuario[0].name} inscrito(a): ${STATUS_INSCRICAO[inscricao.status].label.toLowerCase()}.`);
-    } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível inscrever.'));
-    } finally {
-      setSalvando(false);
-    }
-  };
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Inscrever participante"
-      icon={<UserPlus className="h-5 w-5" />}
-      size="md"
-      footer={
-        <div className="flex w-full justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button onClick={salvar} isLoading={salvando} disabled={usuario.length === 0}>
-            Inscrever
-          </Button>
-        </div>
-      }
-    >
-      <div className="space-y-3">
-        <ErroFormulario mensagem={erro} />
-        <p className="text-sm text-muted-foreground">A inscrição direta dispensa o período de inscrição e a aprovação. Se a turma estiver lotada, entra na lista de espera.</p>
-        <UsuarioPicker label="Participante" selecionados={usuario} onChange={setUsuario} unico />
-      </div>
     </Modal>
   );
 };

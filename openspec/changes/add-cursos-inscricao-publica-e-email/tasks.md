@@ -568,9 +568,36 @@
       tudo refletindo na tela sem reload manual; `CursoFormModal` abriu com o slug
       auto-gerado da 3.1 e o `texto_publico` existente renderizado no TinyMCE de verdade;
       `TurmaFormModal` abriu com o Switch "aceita externos" já ligado (dado semeado da Fase 2).
-- [ ] 6.5 Formulário de inscrição com os campos configurados (no catálogo autenticado e na
+- [x] 6.5 Formulário de inscrição com os campos configurados (no catálogo autenticado e na
       inscrição pública) e as respostas na tela da inscrição; testes Vitest dos obrigatórios e
       dos tipos.
+      Implementação já estava no working tree (não commitada) ao retomar esta tarefa nesta
+      sessão: hook `useCamposInscricao` (carrega os campos `ativo` do curso sob demanda,
+      valida obrigatórios via `validarRespostas` e monta o payload `RespostaInscricaoInput[]`,
+      caixa de marcação sempre com valor "sim"/"nao") + `CamposInscricaoForm` (um input por
+      tipo, reaproveitando `CampoTexto`/`ErroFormulario` já existentes). Usado em dois pontos:
+      `FormularioInscricaoModal` (novo, autoinscrição no catálogo autenticado —
+      `CatalogoPage` abre o modal em vez de inscrever direto) e `InscreverParticipanteModal`
+      (extraído de dentro de `TurmaDetalhePage` para o próprio arquivo, inscrição direta pelo
+      Administrador, mesmos campos e validação). Respostas aparecem em
+      `InscricaoDetalhePage` via `getRespostasInscricao` (SDK já existente da 6.1), formatadas
+      por tipo com `formatarValorResposta` (caixa de marcação → Sim/Não, data formatada).
+      Não encontrei uma segunda tela de "inscrição pública" separada do catálogo autenticado —
+      o cadastro externo (tarefa 6.2) só cria a conta; a inscrição em turma, seja de servidor
+      ou de externo já verificado, passa sempre pelo `CatalogoPage` autenticado, então os dois
+      pontos do enunciado ("catálogo autenticado e inscrição pública") convergem para o mesmo
+      `FormularioInscricaoModal`.
+      **Verificação nesta sessão**: `vitest run` do módulo `cursos` (21 arquivos/165 testes,
+      incluindo os 6 arquivos novos/ajustados desta tarefa:
+      `CamposInscricaoForm.test.tsx`, `FormularioInscricaoModal.test.tsx`,
+      `InscreverParticipanteModal.test.tsx`, `CatalogoPage.test.tsx`,
+      `InscricaoDetalhePage.test.tsx`, `validacoes.test.ts`) e typecheck de `apps/web-client`
+      sem nenhum erro em `cursos` (os erros de `cemiterios`/`leaflet` que aparecem no typecheck
+      são de dependência não instalada no volume do container, módulo de outra mudança, fora do
+      escopo desta tarefa). Suíte completa de `apps/web-client`: 515/516 testes, só a
+      flakiness já documentada de `AuthProvider.test.tsx` (corrida entre workers, não desta
+      tarefa) falhou. **Não testei no navegador de verdade nesta sessão** — a extensão do
+      Claude em Chrome não estava conectada; só a verificação automatizada acima.
 - [ ] 6.6 Tela de configuração da página pública e a lista de envios de e-mail com reenvio na
       gestão de cursos; testes Vitest.
 

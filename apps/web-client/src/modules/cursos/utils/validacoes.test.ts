@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { CampoInscricao } from '@sysgov/sdk';
 import { formatarNota, formatarTamanho, descreverLiberacao } from './formatos';
-import { liberacaoDe, liberacaoParaApi, paraNumero, validarAlternativas, validarLiberacao, validarNotaMinima, validarPdf } from './validacoes';
+import { liberacaoDe, liberacaoParaApi, paraNumero, validarAlternativas, validarLiberacao, validarNotaMinima, validarPdf, validarRespostas } from './validacoes';
 
 describe('validarLiberacao', () => {
   it('imediata não exige nada', () => {
@@ -67,6 +68,37 @@ describe('validarNotaMinima', () => {
   it('paraNumero aceita vírgula e ponto', () => {
     expect(paraNumero('7,5')).toBe(7.5);
     expect(paraNumero('')).toBeNull();
+  });
+});
+
+describe('validarRespostas', () => {
+  const campo = (extra: Partial<CampoInscricao>): CampoInscricao => ({
+    id: 1, curso_id: 1, rotulo: 'Campo', tipo: 'texto', obrigatorio: false, opcoes: null, ordem: 1, ativo: true, ...extra,
+  });
+
+  it('campo opcional sem resposta não bloqueia', () => {
+    expect(validarRespostas([campo({ obrigatorio: false })], {})).toBeNull();
+  });
+
+  it('campo obrigatório sem resposta é recusado com o rótulo no erro', () => {
+    expect(validarRespostas([campo({ id: 9, rotulo: 'Órgão de origem', obrigatorio: true })], {})).toBe('O campo "Órgão de origem" é obrigatório.');
+  });
+
+  it('campo obrigatório com espaços em branco continua vazio', () => {
+    expect(validarRespostas([campo({ obrigatorio: true })], { 1: '   ' })).toMatch(/é obrigatório/);
+  });
+
+  it('campo obrigatório respondido passa', () => {
+    expect(validarRespostas([campo({ obrigatorio: true })], { 1: 'Secretaria X' })).toBeNull();
+  });
+
+  it('caixa_marcacao obrigatória nunca bloqueia (sempre tem um valor definido — sim/não)', () => {
+    expect(validarRespostas([campo({ tipo: 'caixa_marcacao', obrigatorio: true })], {})).toBeNull();
+  });
+
+  it('para no primeiro campo obrigatório vazio, na ordem da lista', () => {
+    const campos = [campo({ id: 1, rotulo: 'A', obrigatorio: true }), campo({ id: 2, rotulo: 'B', obrigatorio: true })];
+    expect(validarRespostas(campos, { 1: 'ok' })).toBe('O campo "B" é obrigatório.');
   });
 });
 

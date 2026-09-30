@@ -1,4 +1,4 @@
-import type { Modalidade, RegraLiberacao, StatusCurso, StatusInscricao, StatusTentativa, StatusTurma, SituacaoAula, TipoCampoInscricao, TipoCurso, TipoMaterial, TipoQuestao } from '@sysgov/sdk';
+import type { Modalidade, RegraLiberacao, RespostaInscricao, StatusCurso, StatusInscricao, StatusTentativa, StatusTurma, SituacaoAula, TipoCampoInscricao, TipoCurso, TipoMaterial, TipoQuestao } from '@sysgov/sdk';
 import type { StatusVariant } from '@/components/ui';
 
 export function formatarCargaHoraria(minutos: number): string {
@@ -99,6 +99,14 @@ export const TIPO_CAMPO_INSCRICAO: Record<TipoCampoInscricao, string> = {
   selecao: 'Seleção (opções)',
   caixa_marcacao: 'Caixa de marcação',
 };
+
+/** Valor de uma resposta do formulário de inscrição (design D9), formatado por tipo. */
+export function formatarValorResposta(resposta: RespostaInscricao): string {
+  if (resposta.valor === null) return '—';
+  if (resposta.tipo === 'caixa_marcacao') return resposta.valor === 'sim' ? 'Sim' : 'Não';
+  if (resposta.tipo === 'data') return formatarData(resposta.valor);
+  return resposta.valor;
+}
 
 export const STATUS_TENTATIVA: Record<StatusTentativa, { label: string; variant: StatusVariant }> = {
   em_andamento: { label: 'Em andamento', variant: 'info' },
