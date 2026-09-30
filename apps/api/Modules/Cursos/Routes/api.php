@@ -27,6 +27,7 @@ use Modules\Cursos\Http\Controllers\ModeloCertificadoController;
 use Modules\Cursos\Http\Controllers\PresencaController;
 use Modules\Cursos\Http\Controllers\QuestaoController;
 use Modules\Cursos\Http\Controllers\RelatorioController;
+use Modules\Cursos\Http\Controllers\RespostaInscricaoController;
 use Modules\Cursos\Http\Controllers\TentativaController;
 use Modules\Cursos\Http\Controllers\TurmaController;
 use Modules\Cursos\Http\Controllers\UsuarioOrgaoController;
@@ -125,6 +126,7 @@ Route::post('/turmas/{turma}/inscricoes', [InscricaoController::class, 'inscreve
 Route::post('/turmas/{turma}/inscricoes/direta', [InscricaoController::class, 'inscreverDireto']);
 Route::get('/inscricoes/{inscricao}', [InscricaoController::class, 'show']);
 Route::get('/inscricoes/{inscricao}/conteudo', [ConteudoInscricaoController::class, 'show']);
+Route::get('/inscricoes/{inscricao}/respostas', [RespostaInscricaoController::class, 'index']);
 Route::post('/inscricoes/{inscricao}/aprovar', [InscricaoController::class, 'aprovar']);
 Route::post('/inscricoes/{inscricao}/recusar', [InscricaoController::class, 'recusar']);
 Route::post('/inscricoes/{inscricao}/cancelar', [InscricaoController::class, 'cancelar']);

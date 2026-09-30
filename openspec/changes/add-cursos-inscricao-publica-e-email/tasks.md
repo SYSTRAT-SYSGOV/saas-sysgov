@@ -350,9 +350,25 @@
       `null` — o operador `?->` só protege contra `null`, então `false?->format(...)` ainda
       dispara `Error` fatal (não veio como `DomainException` 422); primeiro teste que exercitou o
       caminho de data inválida pegou isso na hora.
-- [ ] 4.4 Visibilidade e imutabilidade das respostas (policy da inscrição, `404` entre órgãos e
+- [x] 4.4 Visibilidade e imutabilidade das respostas (policy da inscrição, `404` entre órgãos e
       entre participantes, imutáveis depois do encerramento); teste do cenário "Participante vê a
       resposta de outra pessoa".
+      `GET /inscricoes/{inscricao}/respostas` (novo `RespostaInscricaoController`) — mesma regra
+      do `InscricaoPolicy::view` (próprio participante, Administrador, instrutores da turma), mas
+      `abort_if(...cannot('view', $inscricao)..., 404)` em vez do `authorize()` padrão (que dá
+      403): a spec pede 404 aqui especificamente, mais estrito que o resto do módulo (dado pessoal
+      de terceiro, não só metadado da inscrição). Outro tenant já vira 404 sozinho antes de
+      chegar no controller — `Inscricao` é `TenantAware`, o binding da rota não encontra fora do
+      tenant. Imutabilidade: não existe (nem está planejado) nenhum endpoint que edite uma
+      resposta depois de criada, mas o bloqueio entrou no PRÓPRIO MODEL (`RespostaInscricao::
+      booted()`, evento `updating`, olha o status da turma da inscrição) em vez de só confiar na
+      ausência de rota — defesa em profundidade contra qualquer `->update()` direto que apareça no
+      futuro. **Achado durante o próprio desenvolvimento**: a primeira versão lia
+      `$resposta->inscricao->turma` (propriedade, não método) — Eloquent cacheia relação
+      carregada no objeto, então chamar `update()` duas vezes no MESMO `$resposta`, com a turma
+      encerrada entre as duas chamadas, não veria o encerramento na segunda vez (usaria a `Turma`
+      já em cache da primeira). Corrigido lendo com `->inscricao()->first()->turma()->first()`
+      (chamada de método, não acesso de propriedade — força busca nova a cada vez).
 - [ ] 4.5 CSV de inscritos com origem e colunas do formulário, e neutralização de fórmulas em
       toda célula de texto (D13); testes dos cenários "Exportação da turma" e "Resposta que
       começa com fórmula".

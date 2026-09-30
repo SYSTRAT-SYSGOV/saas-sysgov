@@ -7,11 +7,16 @@ namespace Modules\Cursos\Models;
 use App\Models\Concerns\TenantAware;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
+use Modules\Cursos\Enums\StatusTurma;
 
 /**
  * Resposta de um campo extra na inscrição (design D9) — `rotulo`/`tipo` são um snapshot do
  * `CampoInscricao` no momento da resposta (mesmo padrão de `Resposta`/`Tentativa` na Fase 2):
- * editar o campo depois não reescreve o que já foi respondido.
+ * editar o campo depois não reescreve o que já foi respondido. Imutável depois que a turma
+ * encerra: nenhum fluxo do módulo altera uma resposta depois de criada, mas o bloqueio fica no
+ * model (não só na ausência de endpoint) — defesa em profundidade contra qualquer código futuro
+ * que tente `->update()` direto.
  *
  * @property int $id
  * @property int $tenant_id
@@ -49,5 +54,17 @@ final class RespostaInscricao extends Model
     public function campo(): BelongsTo
     {
         return $this->belongsTo(CampoInscricao::class, 'campo_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $resposta): void {
+            // ->inscricao()->first() (não a propriedade): a propriedade fica em cache no model,
+            // e um encerramento entre duas chamadas de update() no mesmo objeto passaria batido.
+            $turma = $resposta->inscricao()->first()?->turma()->first();
+            if ($turma !== null && $turma->statusEnum()->is(StatusTurma::Encerrada)) {
+                throw new LogicException('Resposta de inscrição de turma encerrada é imutável.');
+            }
+        });
     }
 }
