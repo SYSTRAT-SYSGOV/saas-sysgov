@@ -436,8 +436,18 @@
       em produção alguém pode configurar uma sem a outra e os links do certificado e os do
       cadastro/e-mail iriam pra endereços diferentes. Revogado antes do processamento do evento
       (raro, mas testado): não manda "certificado emitido" pra algo que já não vale mais.
-- [ ] 5.4 Verificar que nenhuma mensagem do Cursos contém senha, nota ou resposta de terceiros
+- [x] 5.4 Verificar que nenhuma mensagem do Cursos contém senha, nota ou resposta de terceiros
       (teste que percorre os tipos e confere o conteúdo renderizado).
+      Um único cenário gera pelo menos um evento de cada tipo registrado em
+      `config('notificacoes.cursos.*')` (os 7 tratadores das tarefas 5.1-5.3), com uma senha, uma
+      nota e uma resposta de formulário "marcadas" (strings bem distintas); o teste primeiro
+      confere que o cenário realmente cobriu todos os tipos configurados (senão passaria sem
+      testar nada de verdade), depois percorre TODOS os `OutboxEvent` publicados, chama o
+      tratador de cada um do jeito que `EnviarNotificacoes` chamaria, renderiza cada mensagem e
+      confere a ausência das três marcas. **Validei que o teste pega vazamento de verdade**:
+      injetei a marca da nota num tratador de propósito, rodei o teste (falhou apontando o
+      tratador certo), tirei a injeção de novo — não é só um teste que sempre passa por
+      construção. Nenhum vazamento encontrado nos 7 tratadores já implementados.
 
 ## 6. SDK e frontend
 
