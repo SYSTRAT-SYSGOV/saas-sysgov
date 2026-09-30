@@ -12,6 +12,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Cursos\Http\Controllers\AulaController;
 use Modules\Cursos\Http\Controllers\AvaliacaoController;
+use Modules\Cursos\Http\Controllers\CampoInscricaoController;
 use Modules\Cursos\Http\Controllers\CatalogoController;
 use Modules\Cursos\Http\Controllers\CertificadoController;
 use Modules\Cursos\Http\Controllers\CorrecaoController;
@@ -82,6 +83,15 @@ Route::put('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'update']);
 Route::delete('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'destroy']);
 Route::post('/avaliacoes/{avaliacao}/publicar', [AvaliacaoController::class, 'publicar']);
 Route::post('/avaliacoes/{avaliacao}/despublicar', [AvaliacaoController::class, 'despublicar']);
+
+// Formulário de inscrição configurável (tarefa 4.2, design D9)
+Route::get('/cursos/{curso}/campos-inscricao', [CampoInscricaoController::class, 'index']);
+Route::post('/cursos/{curso}/campos-inscricao', [CampoInscricaoController::class, 'store']);
+Route::post('/cursos/{curso}/campos-inscricao/reordenar', [CampoInscricaoController::class, 'reordenar']);
+Route::put('/campos-inscricao/{campo}', [CampoInscricaoController::class, 'update']);
+Route::delete('/campos-inscricao/{campo}', [CampoInscricaoController::class, 'destroy']);
+Route::post('/campos-inscricao/{campo}/desativar', [CampoInscricaoController::class, 'desativar']);
+Route::post('/campos-inscricao/{campo}/ativar', [CampoInscricaoController::class, 'ativar']);
 
 // Tentativas do participante e correção (Fase 2)
 Route::post('/avaliacoes/{avaliacao}/tentativas', [TentativaController::class, 'iniciar']);

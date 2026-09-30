@@ -318,9 +318,20 @@
       MySQL de dev (`module:migrate Cursos --force`). Isolamento A/B: os dois models entraram na
       lista genérica de `TenantIsolationTest` (não criei arquivo de teste separado — o teste
       genérico já cobre "isolamento A/B" com o mesmo rigor pra todo model do módulo).
-- [ ] 4.2 `CampoInscricaoService` e controller (CRUD, reordenar, desativar; sem excluir campo
+- [x] 4.2 `CampoInscricaoService` e controller (CRUD, reordenar, desativar; sem excluir campo
       respondido; tipo `selecao` exige opções); testes dos cenários "Exclusão de campo
       respondido" e de validação do cadastro do campo.
+      Mesmo desenho de `QuestaoService`/`MaterialService` (Fase 2): `desativar`/`ativar` são
+      endpoints próprios (não um campo solto em `update`), `reordenar` valida que a lista bate
+      exatamente com os campos do curso, `ordem` auto-incrementa quando não informada. Opções de
+      `selecao` são limpas no serviço (trim, remove vazias e duplicadas) antes de validar "pelo
+      menos uma" — a mesma limpeza roda em `criar` e `atualizar` (troca pra `selecao` depois de
+      criado como outro tipo também exige opções). **Achado (mesma classe do achado da 3.1)**:
+      `CampoInscricaoService::criar` não tinha `->refresh()` depois do `create()` — sem isso a
+      resposta da API devolvia `ativo` ausente em vez de `true`. Corrigido; achado pelo primeiro
+      teste que rodou, não por revisão — vale a pena revisar os outros `Service::criar()` do
+      módulo em algum momento por esse mesmo padrão (não fiz uma varredura geral agora, fora do
+      escopo desta tarefa).
 - [ ] 4.3 Respostas na inscrição: validação por tipo, obrigatórios, snapshot de rótulo e tipo,
       texto puro, gravação na mesma transação do `InscricaoService` (D9); testes dos cenários
       "Campo obrigatório", "Seleção com opção inexistente", "Inscrição com formulário
