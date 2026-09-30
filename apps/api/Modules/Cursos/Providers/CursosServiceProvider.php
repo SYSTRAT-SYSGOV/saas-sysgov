@@ -20,6 +20,7 @@ use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\ModeloCertificado;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Notificacoes\Tratadores\CadastroExternoCriadoTratador;
+use Modules\Cursos\Notificacoes\Tratadores\CertificadoEmitidoTratador;
 use Modules\Cursos\Notificacoes\Tratadores\InscricaoAprovadaTratador;
 use Modules\Cursos\Notificacoes\Tratadores\InscricaoCanceladaTratador;
 use Modules\Cursos\Notificacoes\Tratadores\InscricaoCriadaTratador;
@@ -83,6 +84,7 @@ final class CursosServiceProvider extends ServiceProvider
             'notificacoes.cursos.InscricaoRecusada' => [InscricaoRecusadaTratador::class],
             'notificacoes.cursos.InscricaoCancelada' => [InscricaoCanceladaTratador::class],
             'notificacoes.cursos.InscricaoPromovida' => [InscricaoPromovidaTratador::class],
+            'notificacoes.cursos.CertificadoEmitido' => [CertificadoEmitidoTratador::class],
         ]);
     }
 

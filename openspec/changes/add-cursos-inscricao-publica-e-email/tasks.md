@@ -425,8 +425,17 @@
       manual de "já enviado": não geram nenhum efeito colateral com estado próprio (como o token
       de verificação), então recalcular o mesmo conteúdo numa nova tentativa é inofensivo — a
       idempotência de `NotificacaoEnvio` (já existente desde a Seção 1) basta sozinha.
-- [ ] 5.3 Tratador de `cursos.CertificadoEmitido` com o código e o link de validação pública;
+- [x] 5.3 Tratador de `cursos.CertificadoEmitido` com o código e o link de validação pública;
       teste do cenário "Certificado emitido".
+      Link reaproveita `CertificadoService::urlValidacao()` (`config('cursos.url_portal')`) — a
+      MESMA URL que já vai no QR code do PDF, de propósito: não usei `config('app.portal_url')`
+      (a variável `PORTAL_URL` desta mudança) pra não ter dois links diferentes apontando pro
+      mesmo certificado. **Achado, não corrigido (fora do escopo desta tarefa, registrar em
+      7.4)**: `CURSOS_URL_PORTAL` (Fase 1) e `PORTAL_URL` (Seção 1 desta Fase 3) são duas env vars
+      separadas que hoje só coincidem por os dois padrões apontarem pro mesmo `localhost:5174` —
+      em produção alguém pode configurar uma sem a outra e os links do certificado e os do
+      cadastro/e-mail iriam pra endereços diferentes. Revogado antes do processamento do evento
+      (raro, mas testado): não manda "certificado emitido" pra algo que já não vale mais.
 - [ ] 5.4 Verificar que nenhuma mensagem do Cursos contém senha, nota ou resposta de terceiros
       (teste que percorre os tipos e confere o conteúdo renderizado).
 
