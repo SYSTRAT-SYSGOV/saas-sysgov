@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Cursos\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -59,7 +60,7 @@ final class CursoController extends Controller
     public function update(Request $request, Curso $curso): JsonResponse
     {
         $this->authorize('update', $curso);
-        $dados = $request->validate($this->regras(parcial: true), $this->mensagens());
+        $dados = $request->validate($this->regras(parcial: true, curso: $curso), $this->mensagens());
 
         return $this->executar(fn () => response()->json($this->cursos->atualizar($curso, $dados)));
     }
@@ -106,24 +107,31 @@ final class CursoController extends Controller
         return [
             'nota_minima.numeric' => 'A nota mínima deve ser um número na escala de 0 a 10.',
             'nota_minima.between' => 'A nota mínima deve estar na escala de 0 a 10.',
+            'slug.regex' => 'O endereço só pode ter letras minúsculas, números e hífen (ex.: gestao-de-contratos).',
+            'slug.unique' => 'Já existe um curso com este endereço.',
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function regras(bool $parcial = false): array
+    private function regras(bool $parcial = false, ?Curso $curso = null): array
     {
         $obrigatorio = $parcial ? 'sometimes' : 'required';
 
         return [
             'tipo' => ['sometimes', Rule::enum(TipoCurso::class)],
             'titulo' => [$obrigatorio, 'string', 'max:255'],
+            'slug' => [
+                'sometimes', 'nullable', 'string', 'max:160', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/',
+                Rule::unique('cursos_cursos', 'slug')->where('tenant_id', app(TenantContext::class)->id())->ignore($curso?->id),
+            ],
             'descricao' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            'texto_publico' => ['sometimes', 'nullable', 'string', 'max:20000'],
             'carga_horaria_minutos' => [$obrigatorio, 'integer', 'min:1', 'max:100000'],
             'frequencia_minima' => ['sometimes', 'integer', 'between:0,100'],
             'nota_minima' => ['sometimes', 'nullable', 'numeric', 'between:0,10'],
-            'modelo_certificado_id' => ['sometimes', 'nullable', 'integer', Rule::exists('cursos_modelos_certificado', 'id')->where('tenant_id', app(\App\Support\TenantContext::class)->id())],
+            'modelo_certificado_id' => ['sometimes', 'nullable', 'integer', Rule::exists('cursos_modelos_certificado', 'id')->where('tenant_id', app(TenantContext::class)->id())],
         ];
     }
 }

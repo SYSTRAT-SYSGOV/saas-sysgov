@@ -50,7 +50,10 @@ final class TurmaService
         $this->validarInstrutores($instrutorIds);
 
         return DB::transaction(function () use ($curso, $dados, $instrutorIds): Turma {
-            $turma = $curso->turmas()->create([...$dados, 'status' => StatusTurma::Aberta->value]);
+            // refresh(): sem isso o model em memória não carrega colunas com padrão no banco que
+            // não vieram em $dados (ex.: aceita_externos) — mesmo motivo do refresh() em
+            // CursoService::criar.
+            $turma = $curso->turmas()->create([...$dados, 'status' => StatusTurma::Aberta->value])->refresh();
             $turma->instrutores()->sync($this->pivotInstrutores($instrutorIds));
             $turma->load('instrutores');
 

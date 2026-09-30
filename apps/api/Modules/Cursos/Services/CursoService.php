@@ -6,11 +6,14 @@ namespace Modules\Cursos\Services;
 
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\HtmlSanitizer;
 use App\Support\OutboxPublisher;
+use App\Support\TenantContext;
 use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Modules\Cursos\Enums\StatusCurso;
 use Modules\Cursos\Enums\StatusTurma;
 use Modules\Cursos\Enums\TipoCurso;
@@ -21,19 +24,26 @@ final class CursoService
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly OutboxPublisher $outbox,
+        private readonly HtmlSanitizer $sanitizer,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     /**
-     * @param array{tipo?: string, titulo: string, descricao?: string|null, carga_horaria_minutos: int, frequencia_minima?: int, nota_minima?: float|int|string|null, modelo_certificado_id?: int|null} $dados
+     * @param array{tipo?: string, titulo: string, slug?: string|null, descricao?: string|null, texto_publico?: string|null, carga_horaria_minutos: int, frequencia_minima?: int, nota_minima?: float|int|string|null, modelo_certificado_id?: int|null} $dados
      */
     public function criar(array $dados, User $user): Curso
     {
         $this->garantirEventoSemAvaliacao(TipoCurso::from($dados['tipo'] ?? TipoCurso::Curso->value), $dados['nota_minima'] ?? null);
 
         return DB::transaction(function () use ($dados, $user): Curso {
+            $slug = $dados['slug'] ?? null;
+            $slug = $slug !== null && $slug !== '' ? $slug : $this->gerarSlugUnico($dados['titulo']);
+
             $curso = Curso::create([
                 ...$dados,
                 'tipo' => $dados['tipo'] ?? TipoCurso::Curso->value,
+                'slug' => $slug,
+                'texto_publico' => $this->sanitizarTextoPublico($dados['texto_publico'] ?? null),
                 'status' => StatusCurso::Rascunho->value,
                 'criado_por' => $user->id,
             ])->refresh();
@@ -63,6 +73,10 @@ final class CursoService
         $this->garantirEventoSemAvaliacao($tipo, $notaMinima);
         if ($tipo === TipoCurso::Evento && $curso->avaliacoes()->exists()) {
             throw new DomainException('Este curso tem avaliações e não pode virar evento — eventos não têm avaliação.');
+        }
+
+        if (array_key_exists('texto_publico', $dados)) {
+            $dados['texto_publico'] = $this->sanitizarTextoPublico($dados['texto_publico']);
         }
 
         return DB::transaction(function () use ($curso, $dados): Curso {
@@ -156,5 +170,34 @@ final class CursoService
     private function turmasNaoCanceladas(Curso $curso): int
     {
         return $curso->turmas()->where('status', '!=', StatusTurma::Cancelada->value)->count();
+    }
+
+    /** Slug gerado do título (design D11), único por tenant — sufixo -2, -3... em colisão. */
+    private function gerarSlugUnico(string $titulo): string
+    {
+        $base = Str::slug($titulo);
+        if ($base === '') {
+            $base = 'curso';
+        }
+
+        $slug = $base;
+        $sufixo = 2;
+        while (Curso::query()->where('tenant_id', $this->tenantContext->id())->where('slug', $slug)->exists()) {
+            $slug = "{$base}-{$sufixo}";
+            $sufixo++;
+        }
+
+        return $slug;
+    }
+
+    private function sanitizarTextoPublico(?string $texto): ?string
+    {
+        if ($texto === null) {
+            return null;
+        }
+
+        $limpo = $this->sanitizer->sanitize($texto);
+
+        return $limpo !== '' ? $limpo : null;
     }
 }

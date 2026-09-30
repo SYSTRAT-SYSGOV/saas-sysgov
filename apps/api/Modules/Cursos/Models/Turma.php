@@ -27,6 +27,7 @@ use Modules\Cursos\Enums\StatusTurma;
  * @property string|null $local
  * @property string|null $link
  * @property bool $aprovacao_manual
+ * @property bool $aceita_externos
  * @property string $status
  * @property \Illuminate\Support\Carbon|null $encerrada_em
  * @property int|null $encerrada_por
@@ -45,7 +46,7 @@ final class Turma extends Model
 
     protected $fillable = [
         'tenant_id', 'curso_id', 'nome', 'data_inicio', 'data_fim', 'inscricoes_inicio', 'inscricoes_fim',
-        'vagas', 'modalidade', 'local', 'link', 'aprovacao_manual', 'status', 'encerrada_em', 'encerrada_por',
+        'vagas', 'modalidade', 'local', 'link', 'aprovacao_manual', 'aceita_externos', 'status', 'encerrada_em', 'encerrada_por',
     ];
 
     protected $casts = [
@@ -57,6 +58,7 @@ final class Turma extends Model
         'inscricoes_fim' => 'datetime',
         'vagas' => 'integer',
         'aprovacao_manual' => 'boolean',
+        'aceita_externos' => 'boolean',
         'encerrada_em' => 'datetime',
         'encerrada_por' => 'integer',
     ];

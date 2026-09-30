@@ -239,10 +239,26 @@
 
 ## 3. Página pública e configuração
 
-- [ ] 3.1 Migrations: `slug` e `texto_publico` em `cursos_cursos` (único por tenant, gerado do
+- [x] 3.1 Migrations: `slug` e `texto_publico` em `cursos_cursos` (único por tenant, gerado do
       título nos cursos existentes) e `aceita_externos` em `cursos_turmas`; validações no
       cadastro do curso e da turma, com o texto sanitizado; teste do cenário "Texto de
       divulgação com script".
+      `slug`/`texto_publico` nullable no banco (sem doctrine/dbal no projeto, não dá pra fazer
+      `->change()` de NOT NULL depois de backfill numa mesma migration sem ele) — quem garante que
+      todo curso novo sai com slug é o `CursoService::criar` (gera do título com
+      `Str::slug`/sufixo `-2`, `-3`... em colisão, só quando o cliente não manda um), não a coluna.
+      Migration de backfill testada de verdade contra o MySQL de dev (`module:migrate Cursos
+      --force`): os 4 cursos de demonstração ganharam slug correto a partir do título acentuado
+      (`Lei 14.133/2021 na prática` → `lei-141332021-na-pratica`). `texto_publico` sanitizado com
+      o mesmo `HtmlSanitizer` da Fase 2 (D5), no `CursoService`, não no controller — mesmo padrão
+      de `AvaliacaoService`/`MaterialService`. Unicidade do slug por tenant como
+      `Rule::unique(...)->where('tenant_id', ...)->ignore($curso?->id)` no controller (só valida
+      quando o cliente informa um slug; o gerado automaticamente já nasce único, verificado contra
+      o banco num laço). **Achado**: `TurmaService::criar` não tinha `->refresh()` depois do
+      `create()` (só `CursoService::criar` tinha, por outro motivo) — sem isso o model em memória
+      não carregava `aceita_externos` (nem nenhuma outra coluna com padrão que não veio em
+      `$dados`), e a resposta da API devolvia a chave ausente em vez de `false`. Corrigido; achado
+      pelo teste "turma não aceita externos por padrão", não por revisão de código.
 - [ ] 3.2 `GET/PUT /api/cursos/configuracao-publica` (habilitar, boas-vindas, termo com versão
       incrementada quando o texto muda, documento obrigatório) sobre `settings.cursos`, sem tocar
       nas outras chaves de `settings` (D10, D11); testes de permissão, auditoria e da versão do
