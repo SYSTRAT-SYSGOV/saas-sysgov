@@ -57,6 +57,12 @@ final class OperadorCemiterio extends Model
 
     public function getDocumentoMascaradoAttribute(): string
     {
+        if ($this->pessoa_id && $this->pessoa) {
+            return $this->pessoa->cpf_mascarado;
+        }
+        if (!$this->cpf_cnpj) {
+            return '—';
+        }
         try {
             return Documento::mascarar((string) $this->cpf_cnpj);
         } catch (\Throwable) {

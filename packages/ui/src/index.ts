@@ -77,3 +77,13 @@ export * from './components/SystratBrand';
 export * from './components/OrgTypeBadge';
 export * from './components/OrgTreeNodeCard';
 export * from './components/OrgScopeIndicator';
+
+// ============================================================
+// Componentes de domínio — Cadastro Central de Pessoas (MDM)
+// ============================================================
+export * from './components/PessoaSearchInput';
+export * from './components/PessoaVinculosBadge';
+export * from './components/PessoaCard';
+export * from './components/PessoaFormModal';
+export * from './components/PessoaPicker';
+

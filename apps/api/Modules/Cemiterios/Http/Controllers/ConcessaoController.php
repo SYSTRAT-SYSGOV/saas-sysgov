@@ -34,7 +34,8 @@ final class ConcessaoController extends Controller
 
         return response()->json(
             Concessionario::query()
-                ->select(['id', 'tenant_id', 'nome', 'documento', 'tipo_doc', 'titular_falecido', 'email', 'telefone'])
+                ->with('pessoa')
+                ->select(['id', 'tenant_id', 'pessoa_id', 'nome', 'documento', 'tipo_doc', 'titular_falecido', 'email', 'telefone'])
                 ->when($q !== '', fn ($query) => strlen(Documento::somenteDigitos($q)) >= 11
                     ? $query->where('documento_hash', Documento::hash($q))
                     : $query->where('nome', 'like', "%{$q}%"))
@@ -47,7 +48,7 @@ final class ConcessaoController extends Controller
     {
         $this->autorizar($request, 'cemiterios.concessoes.manage');
 
-        $titular = Concessionario::with('concessoes.jazigo:id,codigo')->findOrFail($id);
+        $titular = Concessionario::with(['pessoa', 'concessoes.jazigo:id,codigo'])->findOrFail($id);
 
         return response()->json($titular->toArray() + ['documento' => $titular->documento]);
     }
@@ -57,10 +58,14 @@ final class ConcessaoController extends Controller
         $this->autorizar($request, 'cemiterios.concessoes.manage');
 
         $dados = $this->validarTitular($request, null);
-        $titular = Concessionario::create($dados + ['tipo_doc' => Documento::tipo($dados['documento'])]);
+        $tipoDoc = Documento::tipo($dados['documento']);
+        if (!empty($dados['pessoa_id']) && str_contains((string) $dados['documento'], '*')) {
+            $tipoDoc = 'cpf';
+        }
+        $titular = Concessionario::create($dados + ['tipo_doc' => $tipoDoc]);
         $this->audit->record('cemiterios', 'concessionario.created', "Concessionario #{$titular->id}", null, $titular->toArray());
 
-        return response()->json($titular, 201);
+        return response()->json($titular->load('pessoa'), 201);
     }
 
     public function updateTitular(Request $request, int $id): JsonResponse
@@ -70,7 +75,9 @@ final class ConcessaoController extends Controller
         $titular = Concessionario::findOrFail($id);
         $dados = $this->validarTitular($request, $titular);
         if (isset($dados['documento'])) {
-            $dados['tipo_doc'] = Documento::tipo($dados['documento']);
+            $dados['tipo_doc'] = (!empty($dados['pessoa_id']) && str_contains((string) $dados['documento'], '*'))
+                ? 'cpf'
+                : Documento::tipo($dados['documento']);
         }
 
         $antes = $titular->toArray();
@@ -79,7 +86,7 @@ final class ConcessaoController extends Controller
 
         $titular->makeVisible(['documento']);
 
-        return response()->json($titular);
+        return response()->json($titular->load('pessoa'));
     }
 
     public function index(Request $request): JsonResponse
@@ -260,8 +267,12 @@ final class ConcessaoController extends Controller
         $obrigatorio = $atual ? 'sometimes' : 'required';
 
         return $request->validate([
+            'pessoa_id' => ['nullable', 'integer', 'exists:pessoas,id'],
             'nome' => [$obrigatorio, 'string', 'max:255'],
-            'documento' => [$obrigatorio, 'string', function (string $campo, mixed $valor, Closure $falha) use ($atual): void {
+            'documento' => [$obrigatorio, 'string', function (string $campo, mixed $valor, Closure $falha) use ($request, $atual): void {
+                if ($request->filled('pessoa_id') && str_contains((string) $valor, '*')) {
+                    return;
+                }
                 if (!Documento::valido((string) $valor)) {
                     $falha('CPF/CNPJ inválido.');
 

@@ -24,6 +24,10 @@ import { useCemiteriosNavigation } from '../CemiteriosContext';
 import { HistoricoCredenciamentoOperador } from '../components/HistoricoCredenciamentoOperador';
 import { SancoesOperador } from '../components/SancoesOperador';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
+import { PessoaPicker, PessoaCard } from '@sysgov/ui';
+import { usePessoaPicker } from '@/modules/pessoas/hooks';
+import { pessoasApi } from '@/modules/pessoas/api';
+
 
 const STATUS_ALVARA_BADGES: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'neutral' }> = {
   valido: { label: 'Alvará Válido', variant: 'success' },
@@ -56,6 +60,44 @@ export const OperadoresView: React.FC = () => {
   const [sancoesOperador, setSancoesOperador] = useState<OperadorCemiterio | null>(null);
 
   const { erro, executar } = useAcao();
+  const { buscarPessoas, criarPessoaRapido } = usePessoaPicker();
+
+  const abrirEdicao = async (o: OperadorCemiterio) => {
+    if (o.pessoa_id && (!o.telefone || !o.email || !o.matricula_funcional || !o.documento_mascarado || o.documento_mascarado === '—')) {
+      try {
+        const detalhes = await pessoasApi.obter(o.pessoa_id);
+        if (detalhes) {
+          const telPrincipal = detalhes.contatos?.find(
+            (c) => c.tipo === 'celular' || c.tipo === 'telefone'
+          )?.valor;
+          const emailPrincipal = detalhes.contatos?.find(
+            (c) => c.tipo === 'email'
+          )?.valor;
+          const vinculoServidor = detalhes.vinculos?.find(
+            (v) => Boolean(v.matricula)
+          );
+
+          setOperadorEditando({
+            ...o,
+            nome: o.nome || detalhes.nome,
+            telefone: o.telefone || telPrincipal || null,
+            email: o.email || emailPrincipal || null,
+            matricula_funcional: o.matricula_funcional || vinculoServidor?.matricula || null,
+            documento_mascarado: detalhes.cpf_mascarado || o.documento_mascarado,
+            pessoa: {
+              id: detalhes.id,
+              nome: detalhes.nome,
+              cpf_mascarado: detalhes.cpf_mascarado,
+            },
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn('Não foi possível obter dados adicionais para edição:', e);
+      }
+    }
+    setOperadorEditando(o);
+  };
 
   const operadores = useDados(
     () =>
@@ -64,6 +106,7 @@ export const OperadoresView: React.FC = () => {
         status_alvara: alvaraFiltro !== 'todos' ? alvaraFiltro : undefined,
         status_saude_ocupacional: saudeFiltro !== 'todos' ? saudeFiltro : undefined,
         park_id: cemiterioAtivoId || undefined,
+        incluir_gerais: true,
         q: busca || undefined,
         per_page: 50,
       }),
@@ -82,7 +125,14 @@ export const OperadoresView: React.FC = () => {
       header: 'Nome do Profissional',
       cell: ({ row }) => (
         <div>
-          <span className="font-semibold text-foreground">{row.original.nome}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-foreground">{row.original.nome}</span>
+            {row.original.pessoa_id && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium">
+                Cadastro Central
+              </span>
+            )}
+          </div>
           <div className="text-xs text-muted-foreground font-mono mt-0.5">
             {row.original.documento_mascarado ? `Doc: ${row.original.documento_mascarado}` : '—'}
             {row.original.telefone ? ` • Tel: ${row.original.telefone}` : ''}
@@ -190,7 +240,7 @@ export const OperadoresView: React.FC = () => {
             </Button>
 
             {gerencia && (
-              <Button size="xs" variant="outline" onClick={() => setOperadorEditando(o)}>
+              <Button size="xs" variant="outline" onClick={() => abrirEdicao(o)}>
                 <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
             )}
@@ -346,6 +396,60 @@ export const OperadoresView: React.FC = () => {
         titulo="Cadastrar Profissional Operacional"
         description="Credenciamento de coveiros e pedreiros de obras funerárias"
         campos={[
+          {
+            nome: 'pessoa_id',
+            rotulo: 'Vincular Pessoa Física (Cadastro Central)',
+            tipo: 'custom',
+            dica: 'Opcional. Selecione uma pessoa para vincular e evitar duplicidade de cadastro civil.',
+            renderCustom: (valor, onChange, setValores) => (
+              <PessoaPicker
+                value={valor ? Number(valor) : null}
+                onChange={async (id, pessoaOption) => {
+                  onChange(id);
+                  if (id && setValores) {
+                    // Preenchimento imediato a partir dos dados locais do picker
+                    if (pessoaOption) {
+                      setValores((prev) => ({
+                        ...prev,
+                        nome: pessoaOption.nome || prev.nome,
+                        cpf_cnpj: pessoaOption.cpf_mascarado || prev.cpf_cnpj,
+                      }));
+                    }
+                    // Busca dados cadastrais completos (contatos e vínculos funcionais)
+                    try {
+                      const detalhes = await pessoasApi.obter(id);
+                      if (detalhes) {
+                        const telPrincipal = detalhes.contatos?.find(
+                          (c) => c.tipo === 'celular' || c.tipo === 'telefone'
+                        )?.valor;
+                        const emailPrincipal = detalhes.contatos?.find(
+                          (c) => c.tipo === 'email'
+                        )?.valor;
+                        const vinculoServidor = detalhes.vinculos?.find(
+                          (v) => Boolean(v.matricula)
+                        );
+
+                        setValores((prev) => ({
+                          ...prev,
+                          nome: detalhes.nome || prev.nome,
+                          cpf_cnpj: detalhes.cpf_mascarado || prev.cpf_cnpj,
+                          telefone: telPrincipal || prev.telefone,
+                          email: emailPrincipal || prev.email,
+                          matricula_funcional: vinculoServidor?.matricula || prev.matricula_funcional,
+                          tipo: vinculoServidor ? 'coveiro' : prev.tipo,
+                        }));
+                      }
+                    } catch (e) {
+                      console.warn('Não foi possível obter detalhes adicionais da pessoa civil:', e);
+                    }
+                  }
+                }}
+                onSearch={buscarPessoas}
+                onCreatePessoa={criarPessoaRapido}
+                placeholder="Buscar por nome ou CPF no cadastro geral..."
+              />
+            ),
+          },
           { nome: 'nome', rotulo: 'Nome Completo', obrigatorio: true },
           {
             nome: 'tipo',
@@ -367,13 +471,19 @@ export const OperadoresView: React.FC = () => {
           { nome: 'telefone', rotulo: 'Telefone de Contato' },
           { nome: 'email', rotulo: 'E-mail' },
         ]}
-        iniciais={{ tipo: 'coveiro' }}
+        iniciais={{
+          tipo: 'coveiro',
+          park_id: cemiterioAtivoId ? String(cemiterioAtivoId) : undefined,
+        }}
         onFechar={() => setModalNovo(false)}
         onEnviar={async (v: Record<string, unknown>) => {
+          const cpfRaw = v.cpf_cnpj ? String(v.cpf_cnpj) : undefined;
+          const cpfParaEnvio = cpfRaw && !cpfRaw.includes('*') ? cpfRaw : undefined;
           await cemiteriosApi.criarOperador({
+            pessoa_id: v.pessoa_id ? Number(v.pessoa_id) : undefined,
             nome: String(v.nome),
             tipo: v.tipo as 'coveiro' | 'pedreiro',
-            cpf_cnpj: v.cpf_cnpj ? String(v.cpf_cnpj) : undefined,
+            cpf_cnpj: cpfParaEnvio,
             matricula_funcional: v.matricula_funcional ? String(v.matricula_funcional) : undefined,
             park_id: v.park_id ? Number(v.park_id) : undefined,
             alvara_numero: v.alvara_numero ? String(v.alvara_numero) : undefined,
@@ -394,6 +504,58 @@ export const OperadoresView: React.FC = () => {
         aberto={operadorEditando !== null}
         titulo={`Editar Profissional: ${operadorEditando?.nome ?? ''}`}
         campos={[
+          {
+            nome: 'pessoa_id',
+            rotulo: 'Vincular Pessoa Física (Cadastro Central)',
+            tipo: 'custom',
+            dica: 'Pessoa física do cadastro único municipal vinculada a este profissional.',
+            renderCustom: (valor, onChange, setValores) => (
+              <PessoaPicker
+                value={valor ? Number(valor) : null}
+                onChange={async (id, pessoaOption) => {
+                  onChange(id);
+                  if (id && setValores) {
+                    if (pessoaOption) {
+                      setValores((prev) => ({
+                        ...prev,
+                        nome: pessoaOption.nome || prev.nome,
+                        cpf_cnpj: pessoaOption.cpf_mascarado || prev.cpf_cnpj,
+                      }));
+                    }
+                    try {
+                      const detalhes = await pessoasApi.obter(id);
+                      if (detalhes) {
+                        const telPrincipal = detalhes.contatos?.find(
+                          (c) => c.tipo === 'celular' || c.tipo === 'telefone'
+                        )?.valor;
+                        const emailPrincipal = detalhes.contatos?.find(
+                          (c) => c.tipo === 'email'
+                        )?.valor;
+                        const vinculoServidor = detalhes.vinculos?.find(
+                          (v) => Boolean(v.matricula)
+                        );
+
+                        setValores((prev) => ({
+                          ...prev,
+                          nome: detalhes.nome || prev.nome,
+                          cpf_cnpj: detalhes.cpf_mascarado || prev.cpf_cnpj,
+                          telefone: telPrincipal || prev.telefone,
+                          email: emailPrincipal || prev.email,
+                          matricula_funcional: vinculoServidor?.matricula || prev.matricula_funcional,
+                          tipo: vinculoServidor ? 'coveiro' : prev.tipo,
+                        }));
+                      }
+                    } catch (e) {
+                      console.warn('Não foi possível obter detalhes adicionais da pessoa civil:', e);
+                    }
+                  }
+                }}
+                onSearch={buscarPessoas}
+                onCreatePessoa={criarPessoaRapido}
+                placeholder="Buscar por nome ou CPF no cadastro geral..."
+              />
+            ),
+          },
           { nome: 'nome', rotulo: 'Nome Completo', obrigatorio: true },
           {
             nome: 'tipo',
@@ -416,7 +578,7 @@ export const OperadoresView: React.FC = () => {
               { value: 'inativo', label: 'Inativo / Descredenciado' },
             ],
           },
-          { nome: 'cpf_cnpj', rotulo: 'CPF ou CNPJ', dica: 'Preencha apenas para alterar o documento atual.' },
+          { nome: 'cpf_cnpj', rotulo: 'CPF ou CNPJ', dica: 'Documento civil ou cadastral.' },
           { nome: 'matricula_funcional', rotulo: 'Matrícula Funcional' },
           { nome: 'park_id', rotulo: 'Necrópole', tipo: 'select', opcoes: opcoesParque, dica: 'Vazio = atua em todas as necrópoles do tenant.' },
           { nome: 'alvara_numero', rotulo: 'Nº do Alvará' },
@@ -429,9 +591,15 @@ export const OperadoresView: React.FC = () => {
         iniciais={
           operadorEditando
             ? {
+                pessoa_id: operadorEditando.pessoa_id ?? null,
                 nome: operadorEditando.nome,
                 tipo: operadorEditando.tipo,
                 situacao: operadorEditando.situacao,
+                cpf_cnpj:
+                  operadorEditando.pessoa?.cpf_mascarado ??
+                  (operadorEditando.documento_mascarado && operadorEditando.documento_mascarado !== '—'
+                    ? operadorEditando.documento_mascarado
+                    : ''),
                 matricula_funcional: operadorEditando.matricula_funcional ?? '',
                 park_id: operadorEditando.park_id ? String(operadorEditando.park_id) : '',
                 alvara_numero: operadorEditando.alvara_numero ?? '',
@@ -446,13 +614,16 @@ export const OperadoresView: React.FC = () => {
         onFechar={() => setOperadorEditando(null)}
         onEnviar={async (v: Record<string, unknown>) => {
           if (!operadorEditando) return;
+          const cpfRaw = v.cpf_cnpj ? String(v.cpf_cnpj) : undefined;
+          const cpfParaEnvio = cpfRaw && !cpfRaw.includes('*') ? cpfRaw : undefined;
           await cemiteriosApi.atualizarOperador(operadorEditando.id, {
+            pessoa_id: v.pessoa_id ? Number(v.pessoa_id) : null,
             nome: String(v.nome),
             tipo: v.tipo as 'coveiro' | 'pedreiro',
             situacao: String(v.situacao) as 'ativo' | 'suspenso' | 'inativo',
-            cpf_cnpj: v.cpf_cnpj ? String(v.cpf_cnpj) : undefined,
+            cpf_cnpj: cpfParaEnvio,
             matricula_funcional: v.matricula_funcional ? String(v.matricula_funcional) : undefined,
-            park_id: v.park_id ? Number(v.park_id) : undefined,
+            park_id: v.park_id ? Number(v.park_id) : null,
             alvara_numero: v.alvara_numero ? String(v.alvara_numero) : undefined,
             alvara_validade: v.alvara_validade ? String(v.alvara_validade) : undefined,
             aso_validade: v.aso_validade ? String(v.aso_validade) : undefined,

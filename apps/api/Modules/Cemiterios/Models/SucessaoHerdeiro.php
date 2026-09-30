@@ -53,6 +53,11 @@ final class SucessaoHerdeiro extends Model
         return $this->belongsTo(SucessaoHerdeiro::class, 'herdeiro_representado_id');
     }
 
+    public function pessoa(): BelongsTo
+    {
+        return $this->belongsTo(\Modules\Pessoas\Models\Pessoa::class, 'pessoa_id');
+    }
+
     /** @return HasMany<SucessaoHerdeiro, $this> */
     public function representados(): HasMany
     {

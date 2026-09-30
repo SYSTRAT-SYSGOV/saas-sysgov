@@ -57,6 +57,11 @@ final class Concessionario extends Model
     protected static function booted(): void
     {
         static::saving(function (self $holder): void {
+            if ($holder->pessoa_id && $holder->pessoa) {
+                $holder->documento = $holder->pessoa->cpf_limpo ?? (string) $holder->documento;
+                $holder->documento_hash = $holder->pessoa->cpf_hash ?? Documento::hash((string) $holder->documento);
+                return;
+            }
             $holder->documento = Documento::somenteDigitos((string) $holder->documento);
             $holder->documento_hash = Documento::hash($holder->documento);
         });
@@ -65,11 +70,19 @@ final class Concessionario extends Model
     /** CPF/CNPJ sempre mascarado nas listagens (RN-05). */
     public function getDocumentoMascaradoAttribute(): string
     {
+        if ($this->pessoa_id && $this->pessoa) {
+            return $this->pessoa->cpf_mascarado;
+        }
         try {
             return Documento::mascarar((string) $this->documento);
         } catch (\Throwable) {
             return '—';
         }
+    }
+
+    public function pessoa(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\Modules\Pessoas\Models\Pessoa::class, 'pessoa_id');
     }
 
     /** @return HasMany<Concessao, $this> */

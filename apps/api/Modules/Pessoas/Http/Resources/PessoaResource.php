@@ -18,6 +18,16 @@ final class PessoaResource extends JsonResource
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
+        if ($request->boolean('compact')) {
+            return [
+                'id' => $this->id,
+                'nome' => $this->nome,
+                'nome_social' => $this->nome_social,
+                'cpf_mascarado' => $this->cpf_mascarado,
+                'status' => $this->status,
+            ];
+        }
+
         return [
             'id' => $this->id,
             'tenant_id' => $this->tenant_id,

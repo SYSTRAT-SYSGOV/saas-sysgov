@@ -12,6 +12,7 @@ import {
   TableCell,
   Input,
 } from '@/components/ui';
+import { PessoaCard } from '@sysgov/ui';
 import { Users, UserPlus, Search, Pencil, Power, RotateCcw, Loader2, ShieldCheck } from 'lucide-react';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useCan } from '@/core/rbac/useCan';
@@ -223,7 +224,14 @@ export const UsersModule: React.FC = () => {
               {users.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell>
-                    <span className="font-medium text-gov-text-primary">{u.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-gov-text-primary">{u.name}</span>
+                      {u.pessoa && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium" title={`Pessoa: ${u.pessoa.cpf_mascarado}`}>
+                          Civil
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="font-mono tabular-nums font-semibold text-muted-foreground">
                     {u.email}
@@ -321,6 +329,26 @@ export const UsersModule: React.FC = () => {
                   {TENANT_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
+              {editingUser?.pessoa && (
+                <div className="pt-2 border-t border-gov-border space-y-2">
+                  <label className="block font-mono text-xs font-bold uppercase tracking-wider text-gov-text-secondary">
+                    Identidade Civil Vinculada (Cadastro Central)
+                  </label>
+                  <PessoaCard
+                    pessoa={{
+                      id: editingUser.pessoa.id,
+                      nome: editingUser.pessoa.nome,
+                      cpf_mascarado: editingUser.pessoa.cpf_mascarado,
+                      status: 'ativo',
+                      email: editingUser.email,
+                    }}
+                    compact
+                    onViewDetails={(id) => {
+                      window.location.hash = `#/pessoas/${id}`;
+                    }}
+                  />
+                </div>
+              )}
               <div className="flex justify-end gap-3 pt-4 border-t border-gov-border">
                 <Button variant="ghost" type="button" onClick={() => setModalOpen(false)}>Cancelar</Button>
                 <Button variant="primary" type="submit" isLoading={isSaving}>

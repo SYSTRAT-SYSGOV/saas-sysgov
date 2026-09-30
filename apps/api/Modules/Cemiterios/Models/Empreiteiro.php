@@ -13,6 +13,7 @@ use Modules\Cemiterios\Support\Documento;
 /**
  * @property int $id
  * @property int $tenant_id
+ * @property int|null $pessoa_id
  * @property string $tipo_doc
  * @property string $documento
  * @property string $documento_hash
@@ -42,6 +43,11 @@ final class Empreiteiro extends Model
     protected static function booted(): void
     {
         static::saving(function (self $empreiteiro): void {
+            if ($empreiteiro->pessoa_id && $empreiteiro->pessoa) {
+                $empreiteiro->documento = $empreiteiro->pessoa->cpf_limpo ?? (string) $empreiteiro->documento;
+                $empreiteiro->documento_hash = $empreiteiro->pessoa->cpf_hash ?? Documento::hash((string) $empreiteiro->documento);
+                return;
+            }
             $empreiteiro->documento = Documento::somenteDigitos((string) $empreiteiro->documento);
             $empreiteiro->documento_hash = Documento::hash($empreiteiro->documento);
         });
@@ -49,11 +55,19 @@ final class Empreiteiro extends Model
 
     public function getDocumentoMascaradoAttribute(): string
     {
+        if ($this->pessoa_id && $this->pessoa) {
+            return $this->pessoa->cpf_mascarado;
+        }
         try {
             return Documento::mascarar((string) $this->documento);
         } catch (\Throwable) {
             return '—';
         }
+    }
+
+    public function pessoa(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\Modules\Pessoas\Models\Pessoa::class, 'pessoa_id');
     }
 
     /** @return HasMany<AlvaraAnual, $this> */

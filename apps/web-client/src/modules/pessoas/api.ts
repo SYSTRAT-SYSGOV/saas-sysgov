@@ -35,7 +35,16 @@ export interface PessoaEndereco { id: number; cep: string | null; logradouro: st
 export interface PessoaContato { id: number; tipo: 'celular' | 'email' | 'telefone'; valor: string; principal: boolean; autoriza_notificacoes: boolean }
 export interface PessoaUsuarioVinculo { id: number; user_id: number; promovido_em: string }
 
+export interface PessoaCompacta {
+  id: number;
+  nome: string;
+  nome_social: string | null;
+  cpf_mascarado: string;
+  status: 'ativo' | 'inativo';
+}
+
 export interface Pessoa {
+
   id: number;
   nome: string;
   nome_social: string | null;
@@ -111,6 +120,7 @@ const del = async <T,>(url: string) => (await apiClient.delete<T>(`${base}${url}
 
 export const pessoasApi = {
   listar: (filtros: Record<string, unknown> = {}) => get<Paginado<Pessoa>>('', filtros),
+  buscarCompacto: (q: string, per_page: number = 10) => get<Paginado<PessoaCompacta>>('', { q, compact: true, per_page }),
   obter: (id: number) => get<Pessoa>(`/${id}`),
   criar: (dados: Record<string, unknown>) => post<Pessoa>('', dados),
   atualizar: (id: number, dados: Record<string, unknown>) => put<Pessoa>(`/${id}`, dados),

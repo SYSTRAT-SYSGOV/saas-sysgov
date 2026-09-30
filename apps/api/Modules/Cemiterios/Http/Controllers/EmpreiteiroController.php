@@ -33,6 +33,7 @@ final class EmpreiteiroController extends Controller
 
         return response()->json(
             Empreiteiro::query()
+                ->with('pessoa')
                 ->when($request->query('situacao'), fn ($q, $v) => $q->where('situacao', $v))
                 ->when($request->query('q'), fn ($q, $v) => $q->where('nome', 'like', "%{$v}%"))
                 ->orderBy('nome')
@@ -44,7 +45,7 @@ final class EmpreiteiroController extends Controller
     {
         $this->autorizar($request, 'cemiterios.empreiteiros.manage');
 
-        return response()->json(Empreiteiro::with(['alvaras', 'obras', 'penalidades'])->findOrFail($id));
+        return response()->json(Empreiteiro::with(['pessoa', 'alvaras', 'obras', 'penalidades'])->findOrFail($id));
     }
 
     public function store(Request $request): JsonResponse
@@ -52,8 +53,12 @@ final class EmpreiteiroController extends Controller
         $this->autorizar($request, 'cemiterios.empreiteiros.manage');
 
         $dados = $request->validate([
+            'pessoa_id' => ['nullable', 'integer', 'exists:pessoas,id'],
             'nome' => ['required', 'string', 'max:255'],
-            'documento' => ['required', 'string', function (string $campo, mixed $valor, Closure $falha): void {
+            'documento' => ['required', 'string', function (string $campo, mixed $valor, Closure $falha) use ($request): void {
+                if ($request->filled('pessoa_id') && str_contains((string) $valor, '*')) {
+                    return;
+                }
                 if (!Documento::valido((string) $valor)) {
                     $falha('CPF/CNPJ inválido.');
                 } elseif (Empreiteiro::withTrashed()->where('documento_hash', Documento::hash((string) $valor))->exists()) {
@@ -64,7 +69,12 @@ final class EmpreiteiroController extends Controller
             'contatos' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $empreiteiro = Empreiteiro::create($dados + ['tipo_doc' => Documento::tipo($dados['documento'])]);
+        $tipoDoc = Documento::tipo($dados['documento']);
+        if (!empty($dados['pessoa_id']) && str_contains((string) $dados['documento'], '*')) {
+            $tipoDoc = 'cpf';
+        }
+
+        $empreiteiro = Empreiteiro::create($dados + ['tipo_doc' => $tipoDoc]);
         $this->audit->record('cemiterios', 'empreiteiro.created', "Empreiteiro #{$empreiteiro->id}", null, $empreiteiro->toArray());
 
         return response()->json($empreiteiro->refresh(), 201);

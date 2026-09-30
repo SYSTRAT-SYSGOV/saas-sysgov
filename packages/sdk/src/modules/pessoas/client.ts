@@ -11,6 +11,7 @@ import type {
   ListSyncLogsParams,
   Paginado,
   Pessoa,
+  PessoaCompacta,
   PessoaContato,
   PessoaDocumento,
   PessoaEndereco,
@@ -32,9 +33,14 @@ export class PessoasClient implements BaseModuleClient {
   constructor(private readonly api: ApiRequester) {}
 
   async list(params: ListPessoasParams = {}): Promise<Paginado<Pessoa>> {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
+    const query = new URLSearchParams(params as unknown as Record<string, string>).toString();
 
     return this.api.request(`/${this.moduleName}${query ? `?${query}` : ''}`);
+  }
+
+  async lookup(q: string, perPage: number = 10): Promise<PessoaCompacta[]> {
+    const res = await this.list({ q, per_page: perPage, compact: true });
+    return (res.data ?? []) as unknown as PessoaCompacta[];
   }
 
   async get(id: number): Promise<Pessoa> {

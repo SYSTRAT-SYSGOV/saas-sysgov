@@ -114,12 +114,17 @@ export const ErroBox: React.FC<{ erro: ErroApi | null }> = ({ erro }) => {
 export interface CampoForm {
   nome: string;
   rotulo: string;
-  tipo?: 'text' | 'number' | 'date' | 'datetime-local' | 'file' | 'textarea' | 'select' | 'switch';
+  tipo?: 'text' | 'number' | 'date' | 'datetime-local' | 'file' | 'textarea' | 'select' | 'switch' | 'custom';
   obrigatorio?: boolean;
   opcoes?: { value: string; label: string }[];
   dica?: string;
   multiplo?: boolean;
   aceitar?: string;
+  renderCustom?: (
+    valor: unknown,
+    onChange: (val: unknown) => void,
+    setValores?: React.Dispatch<React.SetStateAction<Record<string, unknown>>>
+  ) => React.ReactNode;
 }
 
 /**
@@ -200,6 +205,8 @@ export const FormModal: React.FC<{
           </div>
         );
       }
+      case 'custom':
+        return c.renderCustom ? c.renderCustom(valor, (v) => definir(c.nome, v), setValores) : null;
       default:
         return (
           <Input

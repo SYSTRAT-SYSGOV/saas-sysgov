@@ -31,6 +31,7 @@ export interface Jazigo {
 export interface EventoHistorico { data: string; tipo: string; descricao: string }
 export interface Falecido {
   id: number;
+  pessoa_id?: number | null;
   nome: string;
   nascimento: string | null;
   falecimento: string;
@@ -80,7 +81,7 @@ export interface Trasladacao {
   jazigoDestino?: Pick<Jazigo, 'id' | 'codigo'>;
 }
 export interface Concessionario {
-  id: number; nome: string; tipo_doc: 'cpf' | 'cnpj'; documento_mascarado: string; documento?: string;
+  id: number; pessoa_id?: number | null; nome: string; tipo_doc: 'cpf' | 'cnpj'; documento_mascarado: string; documento?: string;
   email: string | null; telefone: string | null; endereco: string | null; base_legal: string;
   titular_falecido?: boolean; data_falecimento_titular?: string | null; processo_inventario?: string | null;
   cep?: string | null; logradouro?: string | null; numero?: string | null; complemento?: string | null;
@@ -159,6 +160,7 @@ export interface SucessaoHerdeiro {
   id: number;
   tenant_id: number;
   sucessao_id: number;
+  pessoa_id?: number | null;
   nome: string;
   parentesco: Parentesco;
   documento: string | null;
@@ -315,6 +317,7 @@ export interface TransicaoSucessaoInput {
 }
 
 export interface HerdeiroInput {
+  pessoa_id?: number | null;
   nome: string;
   parentesco: Parentesco;
   documento?: string | null;
@@ -364,6 +367,8 @@ export type StatusSaudeOcupacional = 'valido' | 'a_vencer' | 'vencido' | 'nao_in
 
 export interface OperadorCemiterio {
   id: number;
+  pessoa_id?: number | null;
+  pessoa?: { id: number; nome: string; cpf_mascarado: string } | null;
   nome: string;
   tipo: 'coveiro' | 'pedreiro';
   documento_mascarado: string;
@@ -455,6 +460,8 @@ export interface FiltrosJazigosAvancados {
 export interface Empreiteiro {
   id: number; nome: string; tipo_doc: string; documento_mascarado: string; responsavel_tecnico: string | null;
   situacao: 'apto' | 'inapto' | 'suspenso' | 'cancelado';
+  pessoa_id?: number | null;
+  pessoa?: { id: number; nome: string; cpf_mascarado: string } | null;
   alvaras?: { id: number; numero: string; validade: string }[];
   penalidades?: { id: number; tipo: string; inicio: string | null; fim: string | null; motivo: string }[];
   obras?: AlvaraObra[];
@@ -813,7 +820,7 @@ export const cemiteriosApi = {
   // Empreiteiros
   empreiteiros: () => get<Paginado<Empreiteiro>>('/empreiteiros'),
   empreiteiro: (id: number) => get<Empreiteiro>(`/empreiteiros/${id}`),
-  criarEmpreiteiro: (dados: { nome: string; documento: string; responsavel_tecnico?: string }) => post<Empreiteiro>('/empreiteiros', dados),
+  criarEmpreiteiro: (dados: { nome: string; documento: string; responsavel_tecnico?: string; pessoa_id?: number }) => post<Empreiteiro>('/empreiteiros', dados),
   alvaraAnual: (id: number, dados: { numero: string; validade: string }) => post<Empreiteiro>(`/empreiteiros/${id}/alvaras`, dados),
   penalidade: (id: number, dados: Record<string, unknown>) => post<Empreiteiro>(`/empreiteiros/${id}/penalidades`, dados),
   obras: (filtros: Record<string, unknown> = {}) => get<Paginado<AlvaraObra>>('/alvaras-obra', filtros),

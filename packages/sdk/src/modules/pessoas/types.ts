@@ -98,13 +98,23 @@ export interface CreatePessoaInput {
 
 export type UpdatePessoaInput = Partial<CreatePessoaInput> & { status?: 'ativo' | 'inativo' };
 
+export interface PessoaCompacta {
+  id: number;
+  nome: string;
+  nome_social?: string | null;
+  cpf_mascarado: string;
+  status: 'ativo' | 'inativo';
+}
+
 export interface ListPessoasParams {
   q?: string;
   tipo_vinculo?: TipoVinculoPessoa;
   status?: 'ativo' | 'inativo';
   per_page?: number;
   page?: number;
+  compact?: boolean;
 }
+
 
 export interface CreateVinculoInput {
   tipo_vinculo: TipoVinculoPessoa;

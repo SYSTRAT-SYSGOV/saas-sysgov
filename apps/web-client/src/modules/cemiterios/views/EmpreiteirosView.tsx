@@ -4,12 +4,16 @@ import { Button, DataTable, StatusChip, Tabs } from '@/components/ui';
 import { cemiteriosApi, formatarData, type AlvaraObra, type Empreiteiro } from '../api';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
 import { useCemiteriosNavigation } from '../CemiteriosContext';
+import { PessoaPicker } from '@sysgov/ui';
+import { usePessoaPicker } from '@/modules/pessoas/hooks';
+import { pessoasApi } from '@/modules/pessoas/api';
 
 const SITUACAO: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { apto: 'success', inapto: 'warning', suspenso: 'danger', cancelado: 'neutral' };
 
 /** Empreiteiros com alvará anual, alvarás de obra e penalidades (RF-29..RF-32). */
 export const EmpreiteirosView: React.FC = () => {
   const { cemiterioAtivoId } = useCemiteriosNavigation();
+  const { buscarPessoas, criarPessoaRapido } = usePessoaPicker();
   const [aba, setAba] = useState<'empreiteiros' | 'obras'>('empreiteiros');
   const [modal, setModal] = useState<{ tipo: 'novo' | 'alvara' | 'penalidade' | 'obra'; alvo?: Empreiteiro } | null>(null);
   const empreiteiros = useDados(() => cemiteriosApi.empreiteiros(), []);
@@ -21,7 +25,20 @@ export const EmpreiteirosView: React.FC = () => {
   const recarregar = () => Promise.all([empreiteiros.recarregar(), obras.recarregar()]);
 
   const colEmpreiteiros = useMemo<ColumnDef<Empreiteiro, unknown>[]>(() => [
-    { id: 'nome', header: 'Nome', accessorKey: 'nome' },
+    {
+      id: 'nome',
+      header: 'Nome',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-foreground">{row.original.nome}</span>
+          {row.original.pessoa_id && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium">
+              Cadastro Central
+            </span>
+          )}
+        </div>
+      ),
+    },
     { id: 'doc', header: 'CPF/CNPJ', cell: ({ row }) => <Mono>{row.original.documento_mascarado}</Mono> },
     { id: 'rt', header: 'Responsável técnico', accessorFn: (r) => r.responsavel_tecnico ?? '—' },
     { id: 'situacao', header: 'Situação', cell: ({ row }) => <StatusChip label={row.original.situacao} variant={SITUACAO[row.original.situacao]} /> },
@@ -75,8 +92,51 @@ export const EmpreiteirosView: React.FC = () => {
         : <DataTable columns={colObras} data={obras.dados?.data ?? []} loading={obras.carregando} emptyText="Nenhuma obra." />}
 
       <FormModal aberto={modal?.tipo === 'novo'} titulo="Novo empreiteiro" onFechar={() => setModal(null)}
-        campos={[{ nome: 'nome', rotulo: 'Nome / razão social', obrigatorio: true }, { nome: 'documento', rotulo: 'CPF ou CNPJ', obrigatorio: true }, { nome: 'responsavel_tecnico', rotulo: 'Responsável técnico' }]}
-        onEnviar={async (v) => { await cemiteriosApi.criarEmpreiteiro(v as { nome: string; documento: string }); await recarregar(); }} />
+        campos={[
+          {
+            nome: 'pessoa_id',
+            rotulo: 'Vincular Pessoa Física (Cadastro Central)',
+            tipo: 'custom',
+            dica: 'Opcional. Preencha se o empreiteiro for uma pessoa física cadastrada no município.',
+            renderCustom: (valor, onChange, setValores) => (
+              <PessoaPicker
+                value={valor ? Number(valor) : null}
+                onChange={async (id, pessoaOption) => {
+                  onChange(id);
+                  if (id && setValores) {
+                    if (pessoaOption) {
+                      setValores((prev) => ({
+                        ...prev,
+                        nome: pessoaOption.nome || prev.nome,
+                        documento: pessoaOption.cpf_mascarado || prev.documento,
+                      }));
+                    }
+                    try {
+                      const detalhes = await pessoasApi.obter(id);
+                      if (detalhes) {
+                        setValores((prev) => ({
+                          ...prev,
+                          nome: detalhes.nome || prev.nome,
+                          documento: detalhes.cpf_mascarado || prev.documento,
+                          responsavel_tecnico: detalhes.nome || prev.responsavel_tecnico,
+                        }));
+                      }
+                    } catch (e) {
+                      console.warn('Não foi possível obter detalhes adicionais da pessoa civil:', e);
+                    }
+                  }
+                }}
+                onSearch={buscarPessoas}
+                onCreatePessoa={criarPessoaRapido}
+                placeholder="Buscar por nome ou CPF no cadastro geral..."
+              />
+            ),
+          },
+          { nome: 'nome', rotulo: 'Nome / razão social', obrigatorio: true },
+          { nome: 'documento', rotulo: 'CPF ou CNPJ', obrigatorio: true },
+          { nome: 'responsavel_tecnico', rotulo: 'Responsável técnico' },
+        ]}
+        onEnviar={async (v) => { await cemiteriosApi.criarEmpreiteiro(v as { nome: string; documento: string; pessoa_id?: number }); await recarregar(); }} />
       <FormModal aberto={modal?.tipo === 'alvara'} titulo={`Alvará anual — ${modal?.alvo?.nome ?? ''}`} onFechar={() => setModal(null)}
         campos={[{ nome: 'numero', rotulo: 'Número', obrigatorio: true }, { nome: 'validade', rotulo: 'Validade', tipo: 'date', obrigatorio: true }]}
         onEnviar={async (v) => { await cemiteriosApi.alvaraAnual(Number(modal?.alvo?.id), v as { numero: string; validade: string }); await recarregar(); }} />

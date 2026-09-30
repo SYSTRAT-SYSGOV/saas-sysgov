@@ -34,10 +34,19 @@ final class OperadorCemiterioController extends Controller
         $parkId = $request->query('park_id');
         $q = trim((string) $request->query('q'));
 
+        $incluirGerais = $request->boolean('incluir_gerais');
+
         $query = OperadorCemiterio::query()
+            ->with('pessoa')
             ->when($tipo, fn ($query) => $query->where('tipo', $tipo))
             ->when($situacao, fn ($query) => $query->where('situacao', $situacao))
-            ->when($parkId, fn ($query) => $query->where('park_id', $parkId))
+            ->when($parkId, function ($query) use ($parkId, $incluirGerais): void {
+                if ($incluirGerais) {
+                    $query->where(fn ($sub) => $sub->where('park_id', $parkId)->orWhereNull('park_id'));
+                } else {
+                    $query->where('park_id', $parkId);
+                }
+            })
             ->when($statusAlvara === 'vencido', fn ($query) => $query->where('tipo', 'pedreiro')->whereDate('alvara_validade', '<', today()))
             ->when($statusAlvara === 'vencendo', fn ($query) => $query->where('tipo', 'pedreiro')->whereBetween('alvara_validade', [today(), today()->addDays(30)]))
             ->when($statusAlvara === 'valido', fn ($query) => $query->where('tipo', 'pedreiro')->whereDate('alvara_validade', '>', today()->addDays(30)))
@@ -94,7 +103,7 @@ final class OperadorCemiterioController extends Controller
     {
         $this->autorizar($request, 'cemiterios.cadastros.view');
 
-        $operador = OperadorCemiterio::findOrFail($id);
+        $operador = OperadorCemiterio::with('pessoa')->findOrFail($id);
 
         return response()->json($operador->toArray() + [
             'status_alvara' => $operador->statusAlvara(),

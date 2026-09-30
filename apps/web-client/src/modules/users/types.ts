@@ -17,7 +17,10 @@ export interface TenantUser {
   role_slug?: string;
   role_name?: string;
   status?: 'active' | 'inactive';
+  pessoa_id?: number | null;
+  pessoa?: { id: number; nome: string; cpf_mascarado: string } | null;
 }
+
 
 export interface PaginatedTenantUsers {
   data: TenantUser[];

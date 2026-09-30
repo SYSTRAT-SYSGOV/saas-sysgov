@@ -32,6 +32,9 @@ import {
 import { useCan } from '@/core/rbac/useCan';
 import { AlertCard } from '@/components/ui';
 import { ErroBox, useAcao } from '../comum';
+import { PessoaPicker } from '@sysgov/ui';
+import { usePessoaPicker } from '@/modules/pessoas/hooks';
+import { pessoasApi } from '@/modules/pessoas/api';
 
 interface ModalNovaInumacaoProps {
   aberto: boolean;
@@ -54,8 +57,10 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
   const { erro, enviando, executar, setErro } = useAcao();
   const { can } = useCan();
   const podeGerenciarOperadores = can('cemiterios.cadastros.manage');
+  const { buscarPessoas, criarPessoaRapido } = usePessoaPicker();
 
   // Estados dos campos
+  const [pessoaId, setPessoaId] = useState<number | null>(null);
   const [nome, setNome] = useState('');
   const [nascimento, setNascimento] = useState('');
   const [falecimento, setFalecimento] = useState('');
@@ -93,6 +98,7 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
     if (aberto) {
       setModo(modoInicial);
       setErro(null);
+      setPessoaId(null);
       setNome('');
       setNascimento('');
       setFalecimento('');
@@ -152,6 +158,7 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
 
     const payload: Record<string, unknown> = {
       falecido: {
+        pessoa_id: pessoaId || undefined,
         nome,
         nascimento: nascimento || undefined,
         falecimento,
@@ -261,6 +268,39 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+              <div className="sm:col-span-12">
+                <Field
+                  label="Vincular Munícipe (Cadastro Central)"
+                  hint="Opcional. Selecione o munícipe para preencher automaticamente o nome completo e data de nascimento."
+                >
+                  <PessoaPicker
+                    value={pessoaId}
+                    onChange={async (id, pessoaOption) => {
+                      setPessoaId(id);
+                      if (id) {
+                        if (pessoaOption) {
+                          setNome(pessoaOption.nome || '');
+                        }
+                        try {
+                          const detalhes = await pessoasApi.obter(id);
+                          if (detalhes) {
+                            setNome(detalhes.nome || '');
+                            if (detalhes.data_nascimento) {
+                              setNascimento(detalhes.data_nascimento.slice(0, 10));
+                            }
+                          }
+                        } catch (e) {
+                          console.warn('Não foi possível obter detalhes da pessoa:', e);
+                        }
+                      }
+                    }}
+                    onSearch={buscarPessoas}
+                    onCreatePessoa={criarPessoaRapido}
+                    placeholder="Buscar munícipe por nome ou CPF no cadastro geral..."
+                  />
+                </Field>
+              </div>
+
               <div className="sm:col-span-6">
                 <Field
                   label="Nome Completo do Falecido"

@@ -252,6 +252,7 @@ final class OperacaoController extends Controller
 
         return [
             'falecido' => ['required', 'array'],
+            'falecido.pessoa_id' => ['nullable', 'integer', 'exists:pessoas,id'],
             'falecido.nome' => ['required', 'string', 'max:255'],
             'falecido.nascimento' => ['nullable', 'date', 'before_or_equal:falecido.falecimento'],
             'falecido.falecimento' => ['required', 'date', 'before_or_equal:today'],

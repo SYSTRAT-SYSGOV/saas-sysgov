@@ -83,6 +83,11 @@ final class Falecido extends Model
         ], true) || str_starts_with($nomeUpper, 'NAO CONSTA') || str_starts_with($nomeUpper, 'NÃO CONSTA');
     }
 
+    public function pessoa(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\Modules\Pessoas\Models\Pessoa::class, 'pessoa_id');
+    }
+
     /** @return HasMany<Inumacao, $this> */
     public function inumacoes(): HasMany
     {

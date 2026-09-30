@@ -21,6 +21,7 @@ final class HerdeirosSucessaoRequest extends FormRequest
     {
         return [
             'herdeiros' => ['required', 'array', 'min:1'],
+            'herdeiros.*.pessoa_id' => ['nullable', 'integer', 'exists:pessoas,id'],
             'herdeiros.*.nome' => ['required', 'string', 'max:255'],
             'herdeiros.*.parentesco' => ['required', 'string', 'in:' . implode(',', array_map(fn (Parentesco $p) => $p->value, Parentesco::cases()))],
             'herdeiros.*.documento' => ['nullable', 'string', 'max:50'],

@@ -7,6 +7,9 @@ import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
 import { useCemiteriosNavigation } from '../CemiteriosContext';
 import { ConcessoesFiltros } from './ConcessoesFiltros';
 import { DrawerHistoricoConcessao } from './DrawerHistoricoConcessao';
+import { PessoaPicker } from '@sysgov/ui';
+import { usePessoaPicker } from '@/modules/pessoas/hooks';
+import { pessoasApi } from '@/modules/pessoas/api';
 
 const SITUACAO: Record<string, 'success' | 'warning' | 'danger'> = { vigente: 'success', expirada: 'warning', extinta: 'danger' };
 const MOTIVO_EXTINCAO_LABEL: Record<string, string> = { renuncia: 'Renúncia voluntária', abandono: 'Abandono (processo administrativo)' };
@@ -43,6 +46,7 @@ function paraParametrosApi(filtros: FiltrosConcessoesAvancados, parkId: number |
 export const ConcessoesView: React.FC = () => {
   const { can } = useCan();
   const { cemiterioAtivoId, cemiterioAtivo } = useCemiteriosNavigation();
+  const { buscarPessoas, criarPessoaRapido } = usePessoaPicker();
   const gerencia = can('cemiterios.concessoes.manage');
   const [aba, setAba] = useState<'concessoes' | 'titulares'>('concessoes');
   const [modal, setModal] = useState<'concessao' | 'titular' | null>(null);
@@ -154,7 +158,20 @@ export const ConcessoesView: React.FC = () => {
   ], [gerencia]);
 
   const colunasTitulares = useMemo<ColumnDef<Concessionario, unknown>[]>(() => [
-    { id: 'nome', header: 'Nome', accessorKey: 'nome' },
+    {
+      id: 'nome',
+      header: 'Nome',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-foreground">{row.original.nome}</span>
+          {row.original.pessoa_id && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium">
+              Cadastro Central
+            </span>
+          )}
+        </div>
+      ),
+    },
     { id: 'doc', header: 'CPF/CNPJ', accessorKey: 'documento_mascarado', cell: ({ row }) => <Mono>{row.original.documento_mascarado}</Mono> },
     {
       id: 'situacao_titular',
@@ -226,6 +243,55 @@ export const ConcessoesView: React.FC = () => {
 
       <FormModal aberto={modal === 'titular'} titulo="Novo concessionário" onFechar={() => setModal(null)} iniciais={{ base_legal: 'execucao_contrato' }}
         campos={[
+          {
+            nome: 'pessoa_id',
+            rotulo: 'Vincular Pessoa Física (Cadastro Central)',
+            tipo: 'custom',
+            dica: 'Opcional. Preencha para vincular e importar os dados cadastrais do munícipe.',
+            renderCustom: (valor, onChange, setValores) => (
+              <PessoaPicker
+                value={valor ? Number(valor) : null}
+                onChange={async (id, pessoaOption) => {
+                  onChange(id);
+                  if (id && setValores) {
+                    if (pessoaOption) {
+                      setValores((prev) => ({
+                        ...prev,
+                        nome: pessoaOption.nome || prev.nome,
+                        documento: pessoaOption.cpf_mascarado || prev.documento,
+                      }));
+                    }
+                    try {
+                      const detalhes = await pessoasApi.obter(id);
+                      if (detalhes) {
+                        const primEndereco = detalhes.enderecos?.[0];
+                        const endFormatado = primEndereco
+                          ? `${primEndereco.logradouro || ''}, ${primEndereco.numero || 's/n'}${primEndereco.bairro ? ` - ${primEndereco.bairro}` : ''}${primEndereco.cidade ? ` - ${primEndereco.cidade}/${primEndereco.uf}` : ''}`
+                          : '';
+
+                        const emailContato = detalhes.contatos?.find((c) => c.tipo === 'email')?.valor;
+                        const telContato = detalhes.contatos?.find((c) => c.tipo === 'celular' || c.tipo === 'telefone')?.valor;
+
+                        setValores((prev) => ({
+                          ...prev,
+                          nome: detalhes.nome || prev.nome,
+                          documento: detalhes.cpf_mascarado || prev.documento,
+                          email: emailContato || prev.email,
+                          telefone: telContato || prev.telefone,
+                          endereco: endFormatado || prev.endereco,
+                        }));
+                      }
+                    } catch (e) {
+                      console.warn('Não foi possível obter detalhes adicionais da pessoa:', e);
+                    }
+                  }
+                }}
+                onSearch={buscarPessoas}
+                onCreatePessoa={criarPessoaRapido}
+                placeholder="Buscar munícipe por nome ou CPF no cadastro geral..."
+              />
+            ),
+          },
           { nome: 'nome', rotulo: 'Nome / razão social', obrigatorio: true },
           { nome: 'documento', rotulo: 'CPF ou CNPJ', obrigatorio: true, dica: 'Armazenado cifrado; exibido mascarado.' },
           { nome: 'email', rotulo: 'E-mail' }, { nome: 'telefone', rotulo: 'Telefone' }, { nome: 'endereco', rotulo: 'Endereço' },

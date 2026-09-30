@@ -126,6 +126,15 @@ const CORE_MODULE_MAP = {
     requiredPermission: 'capd.view',
     icon: 'ClipboardCheck',
   },
+  pessoas: {
+    id: 'pessoas',
+    name: 'Cadastro de Pessoas',
+    componentPath: '@/modules/pessoas/PessoasModule',
+    routePath: 'pessoas',
+    routes: ['pessoas', 'pessoas/*'],
+    requiredPermission: 'cadastros.pessoas.view',
+    icon: 'Users',
+  },
 };
 
 function capitalizeFirst(str) {
