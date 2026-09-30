@@ -451,9 +451,25 @@
 
 ## 6. SDK e frontend
 
-- [ ] 6.1 Tipos e métodos novos em `packages/sdk/src/modules/cursos` (página pública, cadastro,
+- [x] 6.1 Tipos e métodos novos em `packages/sdk/src/modules/cursos` (página pública, cadastro,
       verificação, campos do formulário, configuração pública, envios, respostas na inscrição) e
       na autenticação (esqueci e redefinir senha); verificar o typecheck do web-client.
+      `Curso` ganhou `slug`/`texto_publico`, `Turma` ganhou `aceita_externos`, `InscritoTurma`
+      ganhou `origem`/`origem_label`/`respostas` (o `GET .../inscricoes` de gestão já devolvia
+      isso desde a 4.5, via `ListaInscritosService::linhas()` — só faltava no tipo). `inscrever`/
+      `inscreverUsuario` ganharam parâmetro `respostas` opcional (compatível, default `[]`).
+      `forgotPassword`/`resetPassword` entraram no `SysgovApi` (núcleo, `client.ts`) — as rotas
+      `/auth/forgot-password`/`/auth/reset-password` já existiam de antes desta Fase 3, só
+      faltava o SDK. Achado ao rodar o typecheck: dois testes existentes (`TurmaDetalhePage.
+      test.tsx`) tinham mocks de `Curso`/`InscritoRelatorioTurma` sem spread (`...extra`) no
+      objeto aninhado, então o TypeScript não relevou os campos novos ausentes — corrigido
+      acrescentando os campos nos mocks. **Verificação completa** (não só typecheck, como o texto
+      da tarefa pede): `npm --workspace apps/web-client run typecheck` e `run apps/web
+      typecheck` limpos, `vitest run` de `apps/web-client` (461 testes) e `apps/web` (41 testes)
+      verdes, `npm --workspace apps/web-client run build` concluído. Ambiente: sem Node no host,
+      rodei via `docker run node:22` num diretório de scratchpad com os arquivos rastreados pelo
+      git (`git ls-files -co --exclude-standard`, excluindo `.md`/`apps/api`), `npm ci` uma vez
+      por invocação (o `node_modules` não sobrevive entre invocações separadas do container).
 - [ ] 6.2 Páginas públicas no web-client, fora do guarda de autenticação: catálogo do órgão,
       página do curso e cadastro (com campo isca oculto, aceite do termo e identidade do órgão
       vinda da API) (D14); testes Vitest de renderização, do aceite obrigatório e da ausência de

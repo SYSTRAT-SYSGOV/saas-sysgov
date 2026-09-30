@@ -37,10 +37,11 @@ const turma = (extra: Partial<TurmaDetalhe> = {}): TurmaDetalhe => ({
   local: 'Auditório',
   link: null,
   aprovacao_manual: false,
+  aceita_externos: false,
   status: 'aberta',
   encerrada_em: null,
   curso: {
-    id: 1, tipo: 'curso', titulo: 'Gestão de Contratos', descricao: null, carga_horaria_minutos: 480, capa_path: null, capa_url: null,
+    id: 1, tipo: 'curso', titulo: 'Gestão de Contratos', slug: 'gestao-de-contratos', descricao: null, texto_publico: null, carga_horaria_minutos: 480, capa_path: null, capa_url: null,
     status: 'publicado', frequencia_minima: 75, nota_minima: null, modelo_certificado_id: null, created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z',
   },
   agendamentos: [],
@@ -62,7 +63,7 @@ const relatorio = (extra: Partial<RelatorioTurma> = {}): RelatorioTurma => ({
     certificados_emitidos: 0,
   },
   inscritos: [
-    { id: 1, participante_id: 1, nome: 'Ana Souza', email: 'ana@teste.gov.br', status: 'confirmada', status_label: 'Confirmada', inscrito_em: '2025-01-02T00:00:00Z', posicao_fila: null, frequencia: { aulas: 0, presencas: 0, percentual: 0 }, nota: null, resultado: 'em andamento' },
+    { id: 1, participante_id: 1, nome: 'Ana Souza', email: 'ana@teste.gov.br', origem: 'servidor', origem_label: 'Servidor', status: 'confirmada', status_label: 'Confirmada', inscrito_em: '2025-01-02T00:00:00Z', posicao_fila: null, frequencia: { aulas: 0, presencas: 0, percentual: 0 }, nota: null, respostas: {}, resultado: 'em andamento' },
   ],
   ...extra,
 });
@@ -101,7 +102,7 @@ describe('Aba Resumo da turma (relatório)', () => {
           certificados_emitidos: 1,
         },
         inscritos: [
-          { id: 1, participante_id: 1, nome: 'Ana Souza', email: 'ana@teste.gov.br', status: 'concluida', status_label: 'Concluída', inscrito_em: '2025-01-02T00:00:00Z', posicao_fila: null, frequencia: { aulas: 4, presencas: 4, percentual: 100 }, nota: 8.5, resultado: 'concluída' },
+          { id: 1, participante_id: 1, nome: 'Ana Souza', email: 'ana@teste.gov.br', origem: 'servidor', origem_label: 'Servidor', status: 'concluida', status_label: 'Concluída', inscrito_em: '2025-01-02T00:00:00Z', posicao_fila: null, frequencia: { aulas: 4, presencas: 4, percentual: 100 }, nota: 8.5, respostas: {}, resultado: 'concluída' },
         ],
       }),
     );
