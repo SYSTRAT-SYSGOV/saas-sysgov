@@ -15,6 +15,7 @@ use Modules\Cemiterios\Support\Parentesco;
  * @property int $id
  * @property int $tenant_id
  * @property int $sucessao_id
+ * @property int|null $pessoa_id
  * @property string $nome
  * @property Parentesco $parentesco
  * @property string|null $documento
@@ -24,6 +25,7 @@ use Modules\Cemiterios\Support\Parentesco;
  * @property int|null $herdeiro_representado_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Modules\Pessoas\Models\Pessoa|null $pessoa
  */
 final class SucessaoHerdeiro extends Model
 {
@@ -53,6 +55,7 @@ final class SucessaoHerdeiro extends Model
         return $this->belongsTo(SucessaoHerdeiro::class, 'herdeiro_representado_id');
     }
 
+    /** @return BelongsTo<\Modules\Pessoas\Models\Pessoa, $this> */
     public function pessoa(): BelongsTo
     {
         return $this->belongsTo(\Modules\Pessoas\Models\Pessoa::class, 'pessoa_id');

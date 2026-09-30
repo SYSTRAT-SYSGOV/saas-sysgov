@@ -17,6 +17,7 @@ use Modules\Cemiterios\Support\Documento;
  *
  * @property int $id
  * @property int $tenant_id
+ * @property int|null $pessoa_id
  * @property string $nome
  * @property string $tipo_doc
  * @property string $documento
@@ -31,6 +32,8 @@ use Modules\Cemiterios\Support\Documento;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read string $documento_mascarado
+ * @property-read \Modules\Pessoas\Models\Pessoa|null $pessoa
  */
 final class Concessionario extends Model
 {
@@ -58,8 +61,8 @@ final class Concessionario extends Model
     {
         static::saving(function (self $holder): void {
             if ($holder->pessoa_id && $holder->pessoa) {
-                $holder->documento = $holder->pessoa->cpf_limpo ?? (string) $holder->documento;
-                $holder->documento_hash = $holder->pessoa->cpf_hash ?? Documento::hash((string) $holder->documento);
+                $holder->documento = (string) $holder->pessoa->cpf;
+                $holder->documento_hash = (string) $holder->pessoa->cpf_hash;
                 return;
             }
             $holder->documento = Documento::somenteDigitos((string) $holder->documento);
@@ -80,6 +83,7 @@ final class Concessionario extends Model
         }
     }
 
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Modules\Pessoas\Models\Pessoa, $this> */
     public function pessoa(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(\Modules\Pessoas\Models\Pessoa::class, 'pessoa_id');

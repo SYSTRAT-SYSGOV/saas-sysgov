@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
  *
  * @property int $id
  * @property int $tenant_id
+ * @property int|null $pessoa_id
  * @property string $nome
  * @property string $nome_normalizado
  * @property \Illuminate\Support\Carbon|null $nascimento
@@ -29,6 +30,7 @@ use Illuminate\Support\Str;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read \Modules\Pessoas\Models\Pessoa|null $pessoa
  */
 final class Falecido extends Model
 {
@@ -83,6 +85,7 @@ final class Falecido extends Model
         ], true) || str_starts_with($nomeUpper, 'NAO CONSTA') || str_starts_with($nomeUpper, 'NÃO CONSTA');
     }
 
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Modules\Pessoas\Models\Pessoa, $this> */
     public function pessoa(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(\Modules\Pessoas\Models\Pessoa::class, 'pessoa_id');

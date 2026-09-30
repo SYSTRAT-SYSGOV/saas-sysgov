@@ -34,6 +34,7 @@ use Modules\Pessoas\Support\Documento;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read string $cpf_mascarado
  */
 final class Pessoa extends Model
 {

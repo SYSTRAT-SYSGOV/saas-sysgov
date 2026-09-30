@@ -24,6 +24,8 @@ use Modules\Cemiterios\Support\Documento;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read string $documento_mascarado
+ * @property-read \Modules\Pessoas\Models\Pessoa|null $pessoa
  */
 final class Empreiteiro extends Model
 {
@@ -44,8 +46,8 @@ final class Empreiteiro extends Model
     {
         static::saving(function (self $empreiteiro): void {
             if ($empreiteiro->pessoa_id && $empreiteiro->pessoa) {
-                $empreiteiro->documento = $empreiteiro->pessoa->cpf_limpo ?? (string) $empreiteiro->documento;
-                $empreiteiro->documento_hash = $empreiteiro->pessoa->cpf_hash ?? Documento::hash((string) $empreiteiro->documento);
+                $empreiteiro->documento = (string) $empreiteiro->pessoa->cpf;
+                $empreiteiro->documento_hash = (string) $empreiteiro->pessoa->cpf_hash;
                 return;
             }
             $empreiteiro->documento = Documento::somenteDigitos((string) $empreiteiro->documento);
@@ -65,6 +67,7 @@ final class Empreiteiro extends Model
         }
     }
 
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Modules\Pessoas\Models\Pessoa, $this> */
     public function pessoa(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(\Modules\Pessoas\Models\Pessoa::class, 'pessoa_id');
