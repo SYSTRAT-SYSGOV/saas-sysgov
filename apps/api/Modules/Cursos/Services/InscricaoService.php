@@ -72,6 +72,11 @@ final class InscricaoService
                 throw new DomainException('Fora do período de inscrição desta turma ('
                     . $turma->inscricoes_inicio->format('d/m/Y H:i') . ' a ' . $turma->inscricoes_fim->format('d/m/Y H:i') . ').');
             }
+            // Regra de acesso da turma, não de conveniência do fluxo de inscrição (design D7/D11):
+            // vale mesmo quando é o Administrador inscrevendo direto, diferente do período acima.
+            if ($participante->origem === Participante::ORIGEM_EXTERNO && !$turma->aceita_externos) {
+                throw new DomainException('Esta turma não aceita participantes externos.');
+            }
 
             $jaInscrito = $turma->inscricoes()
                 ->where('participante_id', $participante->id)

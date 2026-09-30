@@ -293,9 +293,18 @@
       (`__invoke(string $orgao, string $slug)`), mesmo sem usar `$orgao` (o tenant já vem do
       `ResolvePublicTenant`) — vale pra qualquer rota pública futura com mais de um parâmetro na
       URI.
-- [ ] 3.4 Regra de externo na inscrição: `InscricaoService` recusa turma que não aceita externos,
+- [x] 3.4 Regra de externo na inscrição: `InscricaoService` recusa turma que não aceita externos,
       e o `CatalogoController` autenticado filtra por `aceita_externos` para externos; testes dos
       cenários "Turma fechada a externos" e "Externo em turma fechada a externos".
+      Checagem em `InscricaoService::inscrever` por `$participante->origem === ORIGEM_EXTERNO`
+      (não pelo papel do `$autor` — quem importa é de quem é a inscrição, não quem está clicando),
+      logo depois do período de inscrição — mas ao contrário daquele, **não** é dispensada quando
+      `$peloAdministrador=true`: é regra de acesso da turma (D7/D11), não conveniência de fluxo;
+      testado que o Administrador também é recusado ao tentar inscrever um externo direto numa
+      turma fechada. `CatalogoController::index` só filtra as turmas de cada curso por
+      `aceita_externos` quando `Participante.origem` do usuário logado é `externo` — servidor
+      continua vendo tudo, curso continua aparecendo (só a lista de turmas fica vazia), nunca some
+      da lista inteira.
 
 ## 4. Formulário de inscrição configurável
 

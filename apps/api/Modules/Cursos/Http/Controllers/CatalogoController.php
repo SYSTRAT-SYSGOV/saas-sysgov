@@ -25,9 +25,19 @@ final class CatalogoController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Externo só vê a oferta que também pode se inscrever (design D11) — mesma regra que
+        // InscricaoService::inscrever recusa no servidor, só que aqui filtrando antes de exibir.
+        $ehExterno = Participante::query()->where('user_id', $request->user()->id)->value('origem') === Participante::ORIGEM_EXTERNO;
+
         $query = Curso::query()
             ->where('status', StatusCurso::Publicado->value)
-            ->with(['turmas' => fn ($q) => $q->where('status', StatusTurma::Aberta->value)->orderBy('data_inicio')])
+            ->with(['turmas' => function ($q) use ($ehExterno) {
+                $q->where('status', StatusTurma::Aberta->value);
+                if ($ehExterno) {
+                    $q->where('aceita_externos', true);
+                }
+                $q->orderBy('data_inicio');
+            }])
             ->orderBy('titulo');
 
         if ($tipo = $request->query('tipo')) {
