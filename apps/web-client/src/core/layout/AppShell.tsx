@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
+import { ErrorBoundary } from '@sysgov/ui';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { Footer } from './Footer';
@@ -10,6 +11,7 @@ export const AppShell: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { navigation } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Atalhos de teclado globais: [D], [L], [C], [F], [E], [R], [G] e [M] para menu
   useEffect(() => {
@@ -83,7 +85,9 @@ export const AppShell: React.FC = () => {
               </div>
             }
           >
+            <ErrorBoundary resetKey={location.pathname}>
             <Outlet />
+          </ErrorBoundary>
           </Suspense>
         </div>
       </main>

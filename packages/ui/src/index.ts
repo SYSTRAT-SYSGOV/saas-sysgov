@@ -63,6 +63,9 @@ export type { RichTextEditorProps } from './components/RichTextEditor';
 export { ActionsMenu } from './components/ActionsMenu';
 export type { ActionsMenuProps, ActionsMenuItem } from './components/ActionsMenu';
 
+export { ErrorBoundary } from './components/ErrorBoundary';
+export type { ErrorBoundaryProps } from './components/ErrorBoundary';
+
 // ============================================================
 // Componentes de domínio SYSGOV (sem equivalente no catálogo shadcn)
 // ============================================================
