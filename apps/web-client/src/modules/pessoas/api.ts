@@ -40,6 +40,13 @@ export interface Pessoa {
   nome_social: string | null;
   cpf_mascarado: string;
   data_nascimento: string | null;
+  sexo: string | null;
+  nome_mae: string | null;
+  nome_pai: string | null;
+  estado_civil: string | null;
+  nacionalidade: string | null;
+  naturalidade: string | null;
+  nis: string | null;
   status: 'ativo' | 'inativo';
   vinculos?: PessoaVinculo[];
   documentos?: PessoaDocumento[];

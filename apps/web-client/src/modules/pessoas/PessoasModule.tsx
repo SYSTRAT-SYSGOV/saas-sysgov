@@ -3,16 +3,19 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { UserPlus, Users, Download, ShieldCheck, FileDown } from 'lucide-react';
 import { Button, DataTable, Modal, PageHeader, Select, StatusChip } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
+import { accessApi } from '@/modules/access/AccessApi';
 import { pessoasApi, TIPOS_VINCULO, type Pessoa, type PessoaVinculo, type TipoVinculo } from './api';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './views/comum';
 
 const opcoesVinculo = Object.entries(TIPOS_VINCULO).map(([value, label]) => ({ value, label }));
+const opcoesStatus = [{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }];
 
 /** Módulo de Cadastro de Pessoas Físicas (servidores e munícipes) — base para outros módulos. */
 export const PessoasModule: React.FC = () => {
   const { can } = useCan();
   const [busca, setBusca] = useState('');
   const [tipoVinculo, setTipoVinculo] = useState<TipoVinculo | null>(null);
+  const [status, setStatus] = useState<'ativo' | 'inativo' | null>(null);
   const [modal, setModal] = useState<'pessoa' | 'importar' | null>(null);
   const [pessoaSelecionada, setPessoaSelecionada] = useState<Pessoa | null>(null);
   const [pessoaDetalhe, setPessoaDetalhe] = useState<Pessoa | null>(null);
@@ -20,13 +23,14 @@ export const PessoasModule: React.FC = () => {
   const { erro, executar } = useAcao();
 
   const pessoas = useDados(
-    () => pessoasApi.listar({ q: busca || undefined, tipo_vinculo: tipoVinculo || undefined, per_page: 50 }),
-    [busca, tipoVinculo],
+    () => pessoasApi.listar({ q: busca || undefined, tipo_vinculo: tipoVinculo || undefined, status: status || undefined, per_page: 50 }),
+    [busca, tipoVinculo, status],
   );
 
   const podeGerenciar = can('cadastros.pessoas.update');
   const podeImportar = can('cadastros.pessoas.import');
   const podePromover = can('cadastros.pessoas.promote');
+  const podeExcluir = can('cadastros.pessoas.delete');
 
   const abrirDetalhe = async (pessoa: Pessoa) => setPessoaDetalhe(await pessoasApi.obter(pessoa.id));
 
@@ -63,6 +67,7 @@ export const PessoasModule: React.FC = () => {
             onChange={(e) => setBusca(e.target.value)}
           />
           <Select value={tipoVinculo} onChange={(v) => setTipoVinculo(v as TipoVinculo | null)} options={opcoesVinculo} placeholder="Todos os vínculos" />
+          <Select value={status} onChange={(v) => setStatus(v as 'ativo' | 'inativo' | null)} options={opcoesStatus} placeholder="Todos os status" />
         </div>
         <div className="flex gap-2">
           {can('cadastros.pessoas.view') && <Button variant="outline" onClick={() => void pessoasApi.exportarCsv()}><FileDown className="h-4 w-4" /> Exportar CSV</Button>}
@@ -76,13 +81,30 @@ export const PessoasModule: React.FC = () => {
       <DataTable columns={colunas} data={pessoas.dados?.data ?? []} loading={pessoas.carregando} emptyText="Nenhuma pessoa cadastrada." />
 
       <FormModal aberto={modal === 'pessoa'} titulo={pessoaSelecionada ? 'Editar pessoa' : 'Nova pessoa'} onFechar={() => setModal(null)}
-        iniciais={pessoaSelecionada ? { nome: pessoaSelecionada.nome, nome_social: pessoaSelecionada.nome_social ?? '' } : {}}
+        iniciais={pessoaSelecionada ? {
+          nome: pessoaSelecionada.nome,
+          nome_social: pessoaSelecionada.nome_social ?? '',
+          data_nascimento: pessoaSelecionada.data_nascimento ?? '',
+          sexo: pessoaSelecionada.sexo ?? '',
+          nome_mae: pessoaSelecionada.nome_mae ?? '',
+          nome_pai: pessoaSelecionada.nome_pai ?? '',
+          estado_civil: pessoaSelecionada.estado_civil ?? '',
+          nacionalidade: pessoaSelecionada.nacionalidade ?? '',
+          naturalidade: pessoaSelecionada.naturalidade ?? '',
+          nis: pessoaSelecionada.nis ?? '',
+        } : {}}
         campos={[
           { nome: 'nome', rotulo: 'Nome completo', obrigatorio: true },
-          ...(pessoaSelecionada ? [] : [{ nome: 'cpf', rotulo: 'CPF', obrigatorio: true, dica: 'Armazenado cifrado; exibido mascarado.' } as const]),
+          ...(pessoaSelecionada ? [] : [{ nome: 'cpf', rotulo: 'CPF', obrigatorio: true, mono: true, dica: 'Armazenado cifrado; exibido mascarado.' } as const]),
           { nome: 'nome_social', rotulo: 'Nome social' },
           { nome: 'data_nascimento', rotulo: 'Data de nascimento', tipo: 'date' as const },
+          { nome: 'sexo', rotulo: 'Sexo' },
           { nome: 'nome_mae', rotulo: 'Nome da mãe' },
+          { nome: 'nome_pai', rotulo: 'Nome do pai' },
+          { nome: 'estado_civil', rotulo: 'Estado civil' },
+          { nome: 'nacionalidade', rotulo: 'Nacionalidade' },
+          { nome: 'naturalidade', rotulo: 'Naturalidade' },
+          { nome: 'nis', rotulo: 'NIS', mono: true },
         ]}
         onEnviar={async (v) => {
           if (pessoaSelecionada) await pessoasApi.atualizar(pessoaSelecionada.id, v);
@@ -102,8 +124,10 @@ export const PessoasModule: React.FC = () => {
           pessoa={pessoaDetalhe}
           podeGerenciar={podeGerenciar}
           podePromover={podePromover}
+          podeExcluir={podeExcluir}
           onFechar={() => setPessoaDetalhe(null)}
           onAtualizado={async () => { setPessoaDetalhe(await pessoasApi.obter(pessoaDetalhe.id)); await pessoas.recarregar(); }}
+          onExcluido={async () => { setPessoaDetalhe(null); await pessoas.recarregar(); }}
         />
       )}
     </div>
@@ -114,26 +138,66 @@ const DetalhePessoaModal: React.FC<{
   pessoa: Pessoa;
   podeGerenciar: boolean;
   podePromover: boolean;
+  podeExcluir: boolean;
   onFechar: () => void;
   onAtualizado: () => Promise<void>;
-}> = ({ pessoa, podeGerenciar, podePromover, onFechar, onAtualizado }) => {
+  onExcluido: () => Promise<void>;
+}> = ({ pessoa, podeGerenciar, podePromover, podeExcluir, onFechar, onAtualizado, onExcluido }) => {
   const [modalVinculo, setModalVinculo] = useState(false);
+  const [vinculoEncerrando, setVinculoEncerrando] = useState<PessoaVinculo | null>(null);
   const [modalPromover, setModalPromover] = useState(false);
   const [modalDocumento, setModalDocumento] = useState(false);
   const [modalEndereco, setModalEndereco] = useState(false);
   const [modalContato, setModalContato] = useState(false);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const { erro, executar } = useAcao();
+  const papeis = useDados(() => accessApi.tenantRoles(), []);
+  const opcoesPapel = (papeis.dados ?? []).map((r) => ({ value: String(r.id), label: r.name }));
 
-  const encerrar = async (vinculo: PessoaVinculo) => {
-    await executar(() => pessoasApi.encerrarVinculo(pessoa.id, vinculo.id));
-    await onAtualizado();
+  const excluir = async () => {
+    const resultado = await executar(() => pessoasApi.excluir(pessoa.id));
+    if (resultado) await onExcluido();
   };
 
   return (
     <>
-      <Modal open onClose={onFechar} title={pessoa.nome} description={`CPF ${pessoa.cpf_mascarado}`} size="lg">
+      <Modal
+        open
+        onClose={onFechar}
+        title={pessoa.nome}
+        description={`CPF ${pessoa.cpf_mascarado}`}
+        size="lg"
+        footer={podeExcluir ? (
+          confirmandoExclusao ? (
+            <div className="flex w-full items-center justify-between gap-2">
+              <span className="text-sm text-destructive">Excluir esta pessoa e todo o seu histórico de vínculos, documentos, endereços e contatos?</span>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" variant="outline" onClick={() => setConfirmandoExclusao(false)}>Cancelar</Button>
+                <Button size="sm" variant="destructive" onClick={() => void excluir()}>Confirmar exclusão</Button>
+              </div>
+            </div>
+          ) : (
+            <Button size="sm" variant="destructive" onClick={() => setConfirmandoExclusao(true)}>Excluir pessoa</Button>
+          )
+        ) : undefined}
+      >
         <div className="space-y-4">
           <ErroBox erro={erro} />
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">Dados civis</h3>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+              {pessoa.nome_social && <><dt className="text-muted-foreground">Nome social</dt><dd>{pessoa.nome_social}</dd></>}
+              {pessoa.data_nascimento && <><dt className="text-muted-foreground">Nascimento</dt><dd><Mono>{pessoa.data_nascimento}</Mono></dd></>}
+              {pessoa.sexo && <><dt className="text-muted-foreground">Sexo</dt><dd>{pessoa.sexo}</dd></>}
+              {pessoa.estado_civil && <><dt className="text-muted-foreground">Estado civil</dt><dd>{pessoa.estado_civil}</dd></>}
+              {pessoa.nacionalidade && <><dt className="text-muted-foreground">Nacionalidade</dt><dd>{pessoa.nacionalidade}</dd></>}
+              {pessoa.naturalidade && <><dt className="text-muted-foreground">Naturalidade</dt><dd>{pessoa.naturalidade}</dd></>}
+              {pessoa.nome_mae && <><dt className="text-muted-foreground">Nome da mãe</dt><dd>{pessoa.nome_mae}</dd></>}
+              {pessoa.nome_pai && <><dt className="text-muted-foreground">Nome do pai</dt><dd>{pessoa.nome_pai}</dd></>}
+              {pessoa.nis && <><dt className="text-muted-foreground">NIS</dt><dd><Mono>{pessoa.nis}</Mono></dd></>}
+            </dl>
+          </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between">
@@ -144,7 +208,7 @@ const DetalhePessoaModal: React.FC<{
               {(pessoa.vinculos ?? []).map((v) => (
                 <li key={v.id} className="flex items-center justify-between rounded-md border border-border p-2 text-sm">
                   <span>{TIPOS_VINCULO[v.tipo_vinculo]}{v.fim ? ` — encerrado em ${v.fim}` : ''}</span>
-                  {podeGerenciar && !v.fim && <Button size="xs" variant="outline" onClick={() => void encerrar(v)}>Encerrar</Button>}
+                  {podeGerenciar && !v.fim && <Button size="xs" variant="outline" onClick={() => setVinculoEncerrando(v)}>Encerrar</Button>}
                 </li>
               ))}
               {(pessoa.vinculos ?? []).length === 0 && <li className="text-sm text-muted-foreground">Nenhum vínculo cadastrado.</li>}
@@ -204,17 +268,25 @@ const DetalhePessoaModal: React.FC<{
         ]}
         onEnviar={async (v) => { await pessoasApi.adicionarVinculo(pessoa.id, v as { tipo_vinculo: TipoVinculo; inicio?: string }); await onAtualizado(); }} />
 
+      <FormModal aberto={vinculoEncerrando !== null} titulo="Encerrar vínculo" rotuloEnviar="Encerrar" onFechar={() => setVinculoEncerrando(null)}
+        campos={[{ nome: 'fim', rotulo: 'Data de término', tipo: 'date', dica: 'Deixe em branco para usar a data de hoje.' }]}
+        onEnviar={async (v) => {
+          if (!vinculoEncerrando) return;
+          await pessoasApi.encerrarVinculo(pessoa.id, vinculoEncerrando.id, v.fim ? String(v.fim) : undefined);
+          await onAtualizado();
+        }} />
+
       <FormModal aberto={modalPromover} titulo="Promover a usuário do SYSGOV" rotuloEnviar="Promover" onFechar={() => setModalPromover(false)}
         campos={[
           { nome: 'email', rotulo: 'E-mail de acesso', obrigatorio: true, dica: 'Senha definida no primeiro acesso.' },
-          { nome: 'role_id', rotulo: 'ID do papel (role)', tipo: 'number', obrigatorio: true },
+          { nome: 'role_id', rotulo: 'Papel (role)', tipo: 'select', obrigatorio: true, opcoes: opcoesPapel },
         ]}
         onEnviar={async (v) => { await pessoasApi.promover(pessoa.id, { email: String(v.email), role_id: Number(v.role_id) }); await onAtualizado(); }} />
 
       <FormModal aberto={modalDocumento} titulo="Adicionar documento" onFechar={() => setModalDocumento(false)}
         campos={[
           { nome: 'tipo', rotulo: 'Tipo', tipo: 'select', obrigatorio: true, opcoes: [{ value: 'rg', label: 'RG' }, { value: 'cnh', label: 'CNH' }, { value: 'titulo_eleitor', label: 'Título de eleitor' }] },
-          { nome: 'numero', rotulo: 'Número', obrigatorio: true },
+          { nome: 'numero', rotulo: 'Número', obrigatorio: true, mono: true },
           { nome: 'orgao_emissor', rotulo: 'Órgão emissor' },
         ]}
         onEnviar={async (v) => { await pessoasApi.adicionarDocumento(pessoa.id, v as { tipo: 'rg' | 'cnh' | 'titulo_eleitor'; numero: string }); await onAtualizado(); }} />

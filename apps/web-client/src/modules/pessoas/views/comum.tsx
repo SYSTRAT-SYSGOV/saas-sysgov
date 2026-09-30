@@ -65,6 +65,8 @@ export interface CampoForm {
   obrigatorio?: boolean;
   opcoes?: { value: string; label: string }[];
   dica?: string;
+  /** Dado técnico (CPF, RG, NIS, códigos) — exibido em `font-mono tabular-nums`. */
+  mono?: boolean;
 }
 
 export const FormModal: React.FC<{
@@ -110,7 +112,7 @@ export const FormModal: React.FC<{
           <Input
             aria-label={c.rotulo}
             type={c.tipo ?? 'text'}
-            className={c.tipo === 'date' ? 'font-mono tabular-nums' : ''}
+            className={c.tipo === 'date' || c.mono ? 'font-mono tabular-nums' : ''}
             value={String(valor ?? '')}
             onChange={(e) => definir(c.nome, e.target.value)}
             required={c.obrigatorio}
