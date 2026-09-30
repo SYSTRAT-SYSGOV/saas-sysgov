@@ -387,8 +387,25 @@
 
 ## 5. E-mails do módulo Cursos
 
-- [ ] 5.1 Tratador de `cursos.CadastroExternoCriado`: gera o token na hora do envio e monta o link
+- [x] 5.1 Tratador de `cursos.CadastroExternoCriado`: gera o token na hora do envio e monta o link
       de verificação (D5); teste de que uma nova tentativa depois do envio não gera novo token.
+      `Modules\Cursos\Notificacoes\Tratadores\CadastroExternoCriadoTratador` (registrado em
+      `config('notificacoes.cursos.CadastroExternoCriado')` no boot do `CursosServiceProvider`,
+      igual ao comentário do `config/notificacoes.php`) + `Modules\Cursos\Mail\
+      CadastroExternoVerificacaoMail` + view `cursos::emails.cadastro-externo-verificacao`
+      (componente `<x-email-layout>` do núcleo funciona normal fora do namespace `cursos::`, sem
+      nada especial). "Não gera novo token depois de enviado" checado direto por
+      `NotificacaoEnvio` (`event_id`+`tipo`+`situacao=enviado`) ANTES de qualquer coisa — uma
+      tentativa que ainda não enviou (ex.: falhou no meio) pode gerar outro token sem problema,
+      só um chega a ser usado (o token antigo só fica sem uso até expirar em 24h, não é uma falha
+      de segurança). Achado extra que virou guarda: se o vínculo já não está mais `pending`
+      (already verificado por um evento republicado, por exemplo), não gera token nem manda
+      e-mail — não estava no design mas é a mesma linha de "não fazer nada desnecessário" do D2.
+      **Testado de ponta a ponta contra o ambiente de dev de verdade** (não só sqlite dos testes):
+      cadastro via `curl` no tenant `systrat`, `outbox:process`, e-mail chegou no Mailpit com
+      assunto/identidade/link corretos (`http://localhost:5174/verificar-email?token=...`, usa
+      `PORTAL_URL`, não `APP_URL`), e o token de verdade do e-mail ativou o vínculo via
+      `POST .../verificar-email`.
 - [ ] 5.2 Tratadores de inscrição: criada (texto por `confirmada`, `pendente` e `lista_espera`,
       com a posição), aprovada, recusada, cancelada e promovida; conferir se o `payload` atual
       leva o motivo de recusa e de cancelamento e, se não levar, acrescentar a chave (D12);

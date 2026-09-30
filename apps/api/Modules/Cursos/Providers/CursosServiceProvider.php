@@ -19,6 +19,7 @@ use Modules\Cursos\Models\Material;
 use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\ModeloCertificado;
 use Modules\Cursos\Models\Turma;
+use Modules\Cursos\Notificacoes\Tratadores\CadastroExternoCriadoTratador;
 use Modules\Cursos\Policies\AvaliacaoPolicy;
 use Modules\Cursos\Policies\CertificadoPolicy;
 use Modules\Cursos\Policies\CursoPolicy;
@@ -67,6 +68,10 @@ final class CursosServiceProvider extends ServiceProvider
         RateLimiter::for('cursos-respostas', fn (Request $request) => Limit::perMinute(self::LIMITE_RESPOSTAS_POR_MINUTO)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
         RateLimiter::for('cursos-publico', fn (Request $request) => Limit::perMinute(self::LIMITE_PUBLICO_POR_MINUTO)->by((string) $request->ip()));
         RateLimiter::for('cursos-cadastro-ip', fn (Request $request) => Limit::perHour(self::LIMITE_CADASTRO_IP_POR_HORA)->by((string) $request->ip()));
+
+        // Tratadores de e-mail do Outbox (design D1): o núcleo (app/) não conhece o Cursos, cada
+        // módulo acrescenta as próprias entradas aqui.
+        config(['notificacoes.cursos.CadastroExternoCriado' => [CadastroExternoCriadoTratador::class]]);
     }
 
     public function register(): void
