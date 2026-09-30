@@ -37,9 +37,10 @@ final class InscricaoController extends Controller
     {
         $this->authorize('inscrever', $turma);
         $user = $request->user();
+        $respostas = $request->validate($this->regrasRespostas())['respostas'] ?? [];
 
         return $this->executar(fn () => response()->json(
-            $this->inscricoes->inscrever($turma, $this->inscricoes->participanteDoUsuario($user), $user),
+            $this->inscricoes->inscrever($turma, $this->inscricoes->participanteDoUsuario($user), $user, respostas: $respostas),
             201,
         ));
     }
@@ -48,7 +49,7 @@ final class InscricaoController extends Controller
     public function inscreverDireto(Request $request, Turma $turma): JsonResponse
     {
         $this->authorize('inscreverOutros', $turma);
-        $dados = $request->validate(['user_id' => ['required', 'integer']]);
+        $dados = $request->validate(['user_id' => ['required', 'integer'], ...$this->regrasRespostas()]);
 
         $tenantId = app(TenantContext::class)->id();
         $alvo = User::query()
@@ -60,7 +61,7 @@ final class InscricaoController extends Controller
         }
 
         return $this->executar(fn () => response()->json(
-            $this->inscricoes->inscrever($turma, $this->inscricoes->participanteDoUsuario($alvo), $request->user(), peloAdministrador: true),
+            $this->inscricoes->inscrever($turma, $this->inscricoes->participanteDoUsuario($alvo), $request->user(), peloAdministrador: true, respostas: $dados['respostas'] ?? []),
             201,
         ));
     }
@@ -155,5 +156,17 @@ final class InscricaoController extends Controller
         return $this->executar(fn () => response()->json(
             $this->inscricoes->cancelar($inscricao, $request->user(), $peloAdministrador, $dados['motivo'] ?? null),
         ));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function regrasRespostas(): array
+    {
+        return [
+            'respostas' => ['sometimes', 'array'],
+            'respostas.*.campo_id' => ['required', 'integer'],
+            'respostas.*.valor' => ['nullable'],
+        ];
     }
 }

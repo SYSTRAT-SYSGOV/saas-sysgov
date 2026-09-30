@@ -30,6 +30,7 @@ final class InscricaoService
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly OutboxPublisher $outbox,
+        private readonly RespostaInscricaoService $respostas,
     ) {}
 
     /**
@@ -56,10 +57,11 @@ final class InscricaoService
     /**
      * @param bool $peloAdministrador inscrição direta pelo Administrador: dispensa o período de
      *                                inscrição e a aprovação manual
+     * @param list<array{campo_id: int, valor: mixed}> $respostas formulário configurável (D9)
      */
-    public function inscrever(Turma $turma, Participante $participante, User $autor, bool $peloAdministrador = false): Inscricao
+    public function inscrever(Turma $turma, Participante $participante, User $autor, bool $peloAdministrador = false, array $respostas = []): Inscricao
     {
-        return DB::transaction(function () use ($turma, $participante, $autor, $peloAdministrador): Inscricao {
+        return DB::transaction(function () use ($turma, $participante, $autor, $peloAdministrador, $respostas): Inscricao {
             $turma = $this->travar($turma);
 
             if (!$turma->statusEnum()->is(StatusTurma::Aberta)) {
@@ -96,6 +98,10 @@ final class InscricaoService
                 'inscrito_por' => $autor->id,
                 ...($status === StatusInscricao::Confirmada && $peloAdministrador ? ['aprovada_por' => $autor->id, 'aprovada_em' => now()] : []),
             ]);
+
+            // Mesma transação, antes de publicar o evento (design D9): campo obrigatório faltando
+            // desfaz a inscrição inteira, não deixa uma inscrição "pela metade".
+            $this->respostas->gravar($inscricao, $turma->curso, $respostas);
 
             $this->audit->record('cursos', 'inscricao.criada', "Inscricao #{$inscricao->id}", null, $inscricao->toArray());
             $this->outbox->publish('cursos.InscricaoCriada', [

@@ -332,10 +332,24 @@
       teste que rodou, não por revisão — vale a pena revisar os outros `Service::criar()` do
       módulo em algum momento por esse mesmo padrão (não fiz uma varredura geral agora, fora do
       escopo desta tarefa).
-- [ ] 4.3 Respostas na inscrição: validação por tipo, obrigatórios, snapshot de rótulo e tipo,
+- [x] 4.3 Respostas na inscrição: validação por tipo, obrigatórios, snapshot de rótulo e tipo,
       texto puro, gravação na mesma transação do `InscricaoService` (D9); testes dos cenários
       "Campo obrigatório", "Seleção com opção inexistente", "Inscrição com formulário
       configurado" e "Campo editado depois da resposta".
+      `RespostaInscricaoService` (novo) chamado de dentro da transação de
+      `InscricaoService::inscrever`, antes do `audit->record`/`outbox->publish` — campo
+      obrigatório faltando desfaz a inscrição inteira (rollback), não deixa uma inscrição "pela
+      metade". Só os campos `ativo` do curso são considerados (pedidos e validados); campo
+      desativado nunca bloqueia nem grava resposta nova, mesmo que o cliente envie uma. Payload
+      `respostas: [{campo_id, valor}]` (lista, não mapa por id) tanto em `POST
+      turmas/{turma}/inscricoes` quanto em `.../inscricoes/direta` (o Administrador também
+      preenche o formulário na inscrição direta). "Texto puro" (D9) é `strip_tags` — diferente do
+      `HtmlSanitizer` usado em `texto_publico`/`boas_vindas`/termo, que preserva marcação limitada;
+      aqui não sobra tag nenhuma. **Achado corrigido durante o próprio desenvolvimento (não chegou
+      a subir com o bug)**: `DateTime::createFromFormat()` devolve `false` numa data inválida, não
+      `null` — o operador `?->` só protege contra `null`, então `false?->format(...)` ainda
+      dispara `Error` fatal (não veio como `DomainException` 422); primeiro teste que exercitou o
+      caminho de data inválida pegou isso na hora.
 - [ ] 4.4 Visibilidade e imutabilidade das respostas (policy da inscrição, `404` entre órgãos e
       entre participantes, imutáveis depois do encerramento); teste do cenário "Participante vê a
       resposta de outra pessoa".
