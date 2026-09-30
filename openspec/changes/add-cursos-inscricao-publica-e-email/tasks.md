@@ -406,10 +406,25 @@
       assunto/identidade/link corretos (`http://localhost:5174/verificar-email?token=...`, usa
       `PORTAL_URL`, não `APP_URL`), e o token de verdade do e-mail ativou o vínculo via
       `POST .../verificar-email`.
-- [ ] 5.2 Tratadores de inscrição: criada (texto por `confirmada`, `pendente` e `lista_espera`,
+- [x] 5.2 Tratadores de inscrição: criada (texto por `confirmada`, `pendente` e `lista_espera`,
       com a posição), aprovada, recusada, cancelada e promovida; conferir se o `payload` atual
       leva o motivo de recusa e de cancelamento e, se não levar, acrescentar a chave (D12);
       testes dos cenários "Inscrição em lista de espera" e "Promoção da lista de espera".
+      `payload` de `cursos.InscricaoRecusada`/`cursos.InscricaoCancelada` NÃO levava o motivo
+      (só `id`+`turma_id`) — acrescentado `motivo` nos dois (mudança compatível, só chave nova,
+      em `InscricaoService::encerrarInscricao`, método compartilhado pelas duas ações). Os 5
+      tratadores compartilham um único `Modules\Cursos\Mail\InscricaoStatusMail` (mesma casca:
+      saudação + parágrafos, nenhum precisa de link) — só o texto muda por tratador; evitei criar
+      5 Mailables/views quase idênticas. Posição na lista de espera é calculada NA HORA DO ENVIO
+      (`InscricaoService::posicaoNaFila`, reaproveitado), não guardada no payload da criação —
+      mais precisa, já que a fila pode mudar entre a inscrição e o processamento do Outbox.
+      `InscricaoService::recusar` prefixa "Recusada: " no motivo antes de gravar na coluna
+      `motivo_cancelamento` (compartilhada com cancelamento, achado de sessão anterior) — o
+      tratador de recusa tira esse prefixo antes de montar o e-mail, senão a frase repetiria
+      "recusada" duas vezes. Diferente do tratador da 5.1, nenhum destes precisou de checagem
+      manual de "já enviado": não geram nenhum efeito colateral com estado próprio (como o token
+      de verificação), então recalcular o mesmo conteúdo numa nova tentativa é inofensivo — a
+      idempotência de `NotificacaoEnvio` (já existente desde a Seção 1) basta sozinha.
 - [ ] 5.3 Tratador de `cursos.CertificadoEmitido` com o código e o link de validação pública;
       teste do cenário "Certificado emitido".
 - [ ] 5.4 Verificar que nenhuma mensagem do Cursos contém senha, nota ou resposta de terceiros

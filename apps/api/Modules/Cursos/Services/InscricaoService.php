@@ -200,7 +200,7 @@ final class InscricaoService
             ]);
 
             $this->audit->record('cursos', $acaoAudit, "Inscricao #{$inscricao->id}", ['status' => $antes], ['status' => $inscricao->status, 'motivo' => $motivo]);
-            $this->outbox->publish($evento, ['id' => $inscricao->id, 'turma_id' => $turma->id]);
+            $this->outbox->publish($evento, ['id' => $inscricao->id, 'turma_id' => $turma->id, 'motivo' => $motivo]);
 
             if (StatusInscricao::from($antes)->ocupaVaga()) {
                 $this->promoverFila($turma);

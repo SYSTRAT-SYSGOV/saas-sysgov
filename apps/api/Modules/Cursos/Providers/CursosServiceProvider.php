@@ -20,6 +20,11 @@ use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\ModeloCertificado;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Notificacoes\Tratadores\CadastroExternoCriadoTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoAprovadaTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoCanceladaTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoCriadaTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoPromovidaTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoRecusadaTratador;
 use Modules\Cursos\Policies\AvaliacaoPolicy;
 use Modules\Cursos\Policies\CertificadoPolicy;
 use Modules\Cursos\Policies\CursoPolicy;
@@ -71,7 +76,14 @@ final class CursosServiceProvider extends ServiceProvider
 
         // Tratadores de e-mail do Outbox (design D1): o núcleo (app/) não conhece o Cursos, cada
         // módulo acrescenta as próprias entradas aqui.
-        config(['notificacoes.cursos.CadastroExternoCriado' => [CadastroExternoCriadoTratador::class]]);
+        config([
+            'notificacoes.cursos.CadastroExternoCriado' => [CadastroExternoCriadoTratador::class],
+            'notificacoes.cursos.InscricaoCriada' => [InscricaoCriadaTratador::class],
+            'notificacoes.cursos.InscricaoAprovada' => [InscricaoAprovadaTratador::class],
+            'notificacoes.cursos.InscricaoRecusada' => [InscricaoRecusadaTratador::class],
+            'notificacoes.cursos.InscricaoCancelada' => [InscricaoCanceladaTratador::class],
+            'notificacoes.cursos.InscricaoPromovida' => [InscricaoPromovidaTratador::class],
+        ]);
     }
 
     public function register(): void
