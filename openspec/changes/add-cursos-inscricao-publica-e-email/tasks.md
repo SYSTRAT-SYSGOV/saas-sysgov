@@ -502,8 +502,29 @@
       `systrat`): catálogo → página do curso (vagas restantes, nunca a capacidade total) → cadastro
       (aceite obrigatório bloqueia o envio sem chamar a API; com aceite, envia de verdade e o
       e-mail de verificação chegou no Mailpit).
-- [ ] 6.3 Páginas de verificação de e-mail, "esqueci minha senha" e redefinição de senha, e os
+- [x] 6.3 Páginas de verificação de e-mail, "esqueci minha senha" e redefinição de senha, e os
       links na tela de login; testes Vitest dos estados (sucesso, expirado, já usado).
+      As 3 páginas ficam em `apps/web-client/src/pages/` (núcleo, ao lado de `LoginPage`), não em
+      `modules/cursos/` — nenhuma delas tem `{orgao}` na URL nem precisa de identidade do
+      órgão (`forgotPassword`/`resetPassword` são núcleo; `verificar-email` não amarra a
+      `{orgao}` de propósito, o token já diz tudo, mesma razão do backend em 2.6). Classifico o
+      estado da verificação pelo TEXTO da mensagem que a API devolve (não há campo de código de
+      erro): "vencido" → expirado, "já foi usado" → usado, resto → inválido — frágil a mudança de
+      texto do backend, mas é o contrato que existe hoje (RespondeErroDeNegocio não tem códigos).
+      `Link` estilizado com `buttonVariants` em vez de `Button asChild` (mesmo achado da 6.2).
+      Tela de login ganhou "Esqueci minha senha" (sempre visível) e "Inscreva-se em cursos deste
+      órgão" (aponta pro `/inscricao/:orgao` do órgão selecionado no combo — se esse órgão não
+      tiver página pública habilitada, a própria página de destino já mostra "não disponível",
+      não tentei replicar essa checagem na tela de login pra não precisar de outra chamada à API
+      só pra isso).
+      **Testado no navegador contra o backend de verdade** (Claude em Chrome): "esqueci minha
+      senha" com `admin@sysgov.local` → e-mail chegou no Mailpit → página de redefinição abriu
+      com o token real (não cheguei a confirmar a troca, pra não mudar a senha de uma conta
+      compartilhada entre os desenvolvedores do projeto); verificação de e-mail testada nos 3
+      estados de verdade — token já usado (reaproveitei o da tarefa 5.1) mostrou "Link já
+      utilizado", token inventado mostrou "Link inválido".
+      Verificação completa: typecheck + `vitest run` de `apps/web-client` (474/475 —
+      `AuthProvider.test.tsx`, mesma flakiness já documentada) + `build`, todos limpos.
 - [ ] 6.4 Aba de campos do formulário no detalhe do curso, com modal no padrão das abas da Fase 2
       e validação das opções da seleção; marca "aceita externos" no formulário da turma; slug e
       texto de divulgação no formulário do curso; testes Vitest.

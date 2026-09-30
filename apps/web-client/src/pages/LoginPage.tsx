@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { apiClient } from '@/core/api/client';
@@ -199,6 +199,18 @@ export const LoginPage: React.FC = () => {
               Entrar no Portal
             </Button>
           </form>
+
+          {/* Links de autoatendimento (design D14): redefinição de senha e cadastro externo */}
+          <div className="flex flex-col items-center gap-1 text-xs">
+            <Link to="/esqueci-senha" className="text-gov-primary hover:underline">
+              Esqueci minha senha
+            </Link>
+            {selectedTenantSlug && (
+              <Link to={`/inscricao/${selectedTenantSlug}`} className="text-gov-text-secondary hover:underline">
+                Não tem cadastro? Inscreva-se em cursos deste órgão
+              </Link>
+            )}
+          </div>
 
           {/* SSO Alternative */}
           <div className="space-y-3 pt-3 border-t border-gov-border">

@@ -21,6 +21,9 @@ const CheckInPage = React.lazy(() => import('@/modules/cursos/pages/CheckInPage'
 const CatalogoOrgaoPage = React.lazy(() => import('@/modules/cursos/pages/CatalogoOrgaoPage'));
 const CursoPublicoPage = React.lazy(() => import('@/modules/cursos/pages/CursoPublicoPage'));
 const CadastroExternoPage = React.lazy(() => import('@/modules/cursos/pages/CadastroExternoPage'));
+const VerificarEmailPage = React.lazy(() => import('@/pages/VerificarEmailPage'));
+const EsqueciSenhaPage = React.lazy(() => import('@/pages/EsqueciSenhaPage'));
+const RedefinirSenhaPage = React.lazy(() => import('@/pages/RedefinirSenhaPage'));
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -160,6 +163,30 @@ export const AppRouter: React.FC = () => {
         element={
           <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
             <CadastroExternoPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/verificar-email"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <VerificarEmailPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/esqueci-senha"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <EsqueciSenhaPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/redefinir-senha"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <RedefinirSenhaPage />
           </React.Suspense>
         }
       />
