@@ -13,10 +13,16 @@ export function limparCacheDados(): void {
 
 /** Carrega dados de um serviço com suporte a SWR (stale-while-revalidate) e expõe estado de carga/erro e recarga. */
 export function useDados<T>(carregar: () => Promise<T>, deps: React.DependencyList = []) {
+  // Namespace por instância do hook: sem isso, duas chamadas de useDados() com os
+  // mesmos `deps` (ex.: `[]` ou `[cemiterioAtivoId]`, muito comuns em views diferentes)
+  // colidem na mesma chave do Map global e uma passa a ler os dados (de outro formato)
+  // que a outra acabou de gravar — causa de crashes intermitentes ao montar.
+  const idInstancia = React.useId();
+
   const chaveCache = React.useMemo(() => {
     if (IS_TEST) return '';
     try {
-      return JSON.stringify(deps);
+      return `${idInstancia}:${JSON.stringify(deps)}`;
     } catch {
       return '';
     }
@@ -39,7 +45,13 @@ export function useDados<T>(carregar: () => Promise<T>, deps: React.DependencyLi
       const resultado = await carregar();
       setDados(resultado);
       if (chaveCache) {
-        cacheDadosMemoria.set(chaveCache, { dados: resultado, timestamp: Date.now() });
+        const agora = Date.now();
+        // Chaves agora são únicas por instância (useId), então nada mais as expira
+        // sozinho: varre e descarta entradas velhas a cada escrita para não vazar memória.
+        cacheDadosMemoria.forEach((entrada, chave) => {
+          if (agora - entrada.timestamp >= TTL_DADOS_MS) cacheDadosMemoria.delete(chave);
+        });
+        cacheDadosMemoria.set(chaveCache, { dados: resultado, timestamp: agora });
       }
     } catch (e) {
       setErro(erroApi(e));
