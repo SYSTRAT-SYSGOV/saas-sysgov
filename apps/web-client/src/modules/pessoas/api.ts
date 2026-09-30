@@ -31,7 +31,7 @@ export interface PessoaVinculo {
 }
 
 export interface PessoaDocumento { id: number; tipo: 'rg' | 'cnh' | 'titulo_eleitor'; numero: string; orgao_emissor: string | null; uf_emissao: string | null; data_emissao: string | null }
-export interface PessoaEndereco { id: number; cep: string | null; logradouro: string | null; numero: string | null; bairro: string | null; cidade: string | null; uf: string | null }
+export interface PessoaEndereco { id: number; cep: string | null; logradouro: string | null; numero: string | null; complemento?: string | null; bairro: string | null; cidade: string | null; uf: string | null }
 export interface PessoaContato { id: number; tipo: 'celular' | 'email' | 'telefone'; valor: string; principal: boolean; autoriza_notificacoes: boolean }
 export interface PessoaUsuarioVinculo { id: number; user_id: number; promovido_em: string }
 
@@ -118,8 +118,16 @@ export const pessoasApi = {
   adicionarVinculo: (pessoaId: number, dados: { tipo_vinculo: TipoVinculo; matricula?: string; inicio?: string }) => post<PessoaVinculo>(`/${pessoaId}/vinculos`, dados),
   encerrarVinculo: (pessoaId: number, vinculoId: number, fim?: string) => post<PessoaVinculo>(`/${pessoaId}/vinculos/${vinculoId}/encerrar`, fim ? { fim } : {}),
   adicionarDocumento: (pessoaId: number, dados: { tipo: PessoaDocumento['tipo']; numero: string; orgao_emissor?: string; uf_emissao?: string; data_emissao?: string }) => post<PessoaDocumento>(`/${pessoaId}/documentos`, dados),
+  atualizarDocumento: (pessoaId: number, documentoId: number, dados: Partial<PessoaDocumento>) => put<PessoaDocumento>(`/${pessoaId}/documentos/${documentoId}`, dados),
+  excluirDocumento: (pessoaId: number, documentoId: number) => del<{ deleted: boolean }>(`/${pessoaId}/documentos/${documentoId}`),
+
   adicionarEndereco: (pessoaId: number, dados: Partial<PessoaEndereco>) => post<PessoaEndereco>(`/${pessoaId}/enderecos`, dados),
+  atualizarEndereco: (pessoaId: number, enderecoId: number, dados: Partial<PessoaEndereco>) => put<PessoaEndereco>(`/${pessoaId}/enderecos/${enderecoId}`, dados),
+  excluirEndereco: (pessoaId: number, enderecoId: number) => del<{ deleted: boolean }>(`/${pessoaId}/enderecos/${enderecoId}`),
+
   adicionarContato: (pessoaId: number, dados: { tipo: PessoaContato['tipo']; valor: string; principal?: boolean; autoriza_notificacoes?: boolean }) => post<PessoaContato>(`/${pessoaId}/contatos`, dados),
+  atualizarContato: (pessoaId: number, contatoId: number, dados: Partial<PessoaContato>) => put<PessoaContato>(`/${pessoaId}/contatos/${contatoId}`, dados),
+  excluirContato: (pessoaId: number, contatoId: number) => del<{ deleted: boolean }>(`/${pessoaId}/contatos/${contatoId}`),
   promover: (pessoaId: number, dados: { email: string; role_id: number }) => post<PessoaUsuarioVinculo>(`/${pessoaId}/promover`, dados),
   importar: (documento: string) => post<{ message: string }>('/importacoes', { documento }),
   exportarCsv: async () => {

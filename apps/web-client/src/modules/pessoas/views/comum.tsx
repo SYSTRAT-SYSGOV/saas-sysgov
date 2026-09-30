@@ -52,6 +52,18 @@ export const Mono: React.FC<{ children: React.ReactNode; className?: string }> =
   <span className={`font-mono tabular-nums ${className}`}>{children}</span>
 );
 
+/** Formata data ISO ("1982-05-28") para o padrão brasileiro ("28/05/1982") sem deslocamento de fuso. */
+export function formatarData(valor: string | null | undefined): string {
+  if (!valor) return '';
+  const limpo = valor.slice(0, 10);
+  const partes = limpo.split('-');
+  if (partes.length === 3) {
+    const [ano, mes, dia] = partes;
+    return `${dia}/${mes}/${ano}`;
+  }
+  return valor;
+}
+
 export const ErroBox: React.FC<{ erro: ErroApi | null }> = ({ erro }) => {
   if (!erro) return null;
   const campos = erro.campos ? Object.values(erro.campos).flat().join(' ') : '';
@@ -116,9 +128,10 @@ export const FormModal: React.FC<{
   campos: CampoForm[];
   iniciais?: Record<string, unknown>;
   rotuloEnviar?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   onFechar: () => void;
   onEnviar: (valores: Record<string, unknown>) => Promise<unknown>;
-}> = ({ aberto, titulo, campos, iniciais = {}, rotuloEnviar = 'Salvar', onFechar, onEnviar }) => {
+}> = ({ aberto, titulo, campos, iniciais = {}, rotuloEnviar = 'Salvar', size = 'xl', onFechar, onEnviar }) => {
   const [valores, setValores] = useState<Record<string, unknown>>(iniciais);
   const { erro, enviando, executar, setErro } = useAcao();
   const formId = `form-${titulo.replace(/\W+/g, '-').toLowerCase()}`;
@@ -144,7 +157,7 @@ export const FormModal: React.FC<{
       open={aberto}
       onClose={onFechar}
       title={titulo}
-      size="lg"
+      size={size}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onFechar} type="button">Cancelar</Button>

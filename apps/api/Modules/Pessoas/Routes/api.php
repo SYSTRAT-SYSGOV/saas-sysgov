@@ -13,6 +13,9 @@ use Modules\Pessoas\Http\Controllers\SyncLogController;
 
 Route::pattern('pessoa', '[0-9]+');
 Route::pattern('vinculo', '[0-9]+');
+Route::pattern('documento', '[0-9]+');
+Route::pattern('endereco', '[0-9]+');
+Route::pattern('contato', '[0-9]+');
 Route::pattern('integracao', '[0-9]+');
 Route::pattern('syncLog', '[0-9]+');
 
@@ -25,9 +28,18 @@ Route::delete('/{pessoa}', [PessoaController::class, 'destroy']);
 
 Route::post('/{pessoa}/vinculos', [PessoaController::class, 'storeVinculo']);
 Route::post('/{pessoa}/vinculos/{vinculo}/encerrar', [PessoaController::class, 'encerrarVinculo']);
+
 Route::post('/{pessoa}/documentos', [PessoaController::class, 'storeDocumento']);
+Route::put('/{pessoa}/documentos/{documento}', [PessoaController::class, 'updateDocumento']);
+Route::delete('/{pessoa}/documentos/{documento}', [PessoaController::class, 'destroyDocumento']);
+
 Route::post('/{pessoa}/enderecos', [PessoaController::class, 'storeEndereco']);
+Route::put('/{pessoa}/enderecos/{endereco}', [PessoaController::class, 'updateEndereco']);
+Route::delete('/{pessoa}/enderecos/{endereco}', [PessoaController::class, 'destroyEndereco']);
+
 Route::post('/{pessoa}/contatos', [PessoaController::class, 'storeContato']);
+Route::put('/{pessoa}/contatos/{contato}', [PessoaController::class, 'updateContato']);
+Route::delete('/{pessoa}/contatos/{contato}', [PessoaController::class, 'destroyContato']);
 
 Route::post('/{pessoa}/promover', [PromocaoController::class, 'promover']);
 

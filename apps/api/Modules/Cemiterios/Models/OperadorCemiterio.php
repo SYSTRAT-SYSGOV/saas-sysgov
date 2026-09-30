@@ -15,6 +15,7 @@ use Modules\Cemiterios\Support\Documento;
 /**
  * @property int $id
  * @property int $tenant_id
+ * @property int|null $pessoa_id
  * @property int|null $park_id
  * @property string $nome
  * @property string $tipo
@@ -61,6 +62,12 @@ final class OperadorCemiterio extends Model
         } catch (\Throwable) {
             return '—';
         }
+    }
+
+    /** @return BelongsTo<\Modules\Pessoas\Models\Pessoa, $this> */
+    public function pessoa(): BelongsTo
+    {
+        return $this->belongsTo(\Modules\Pessoas\Models\Pessoa::class, 'pessoa_id');
     }
 
     /** @return BelongsTo<Cemiterio, $this> */

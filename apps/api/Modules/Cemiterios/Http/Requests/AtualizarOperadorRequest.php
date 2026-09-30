@@ -17,6 +17,7 @@ final class AtualizarOperadorRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'pessoa_id' => ['nullable', 'integer', 'exists:pessoas,id'],
             'nome' => ['sometimes', 'required', 'string', 'max:255'],
             'tipo' => ['sometimes', 'required', 'string', 'in:coveiro,pedreiro'],
             'cpf_cnpj' => ['nullable', 'string', 'max:20'],

@@ -9,11 +9,26 @@ use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
 use Modules\Pessoas\Http\Controllers\Concerns\AutorizaPermissao;
+use Modules\Pessoas\Http\Requests\EncerrarVinculoRequest;
+use Modules\Pessoas\Http\Requests\StoreContatoRequest;
+use Modules\Pessoas\Http\Requests\StoreDocumentoRequest;
+use Modules\Pessoas\Http\Requests\StoreEnderecoRequest;
+use Modules\Pessoas\Http\Requests\StorePessoaRequest;
+use Modules\Pessoas\Http\Requests\StoreVinculoRequest;
+use Modules\Pessoas\Http\Requests\UpdateContatoRequest;
+use Modules\Pessoas\Http\Requests\UpdateDocumentoRequest;
+use Modules\Pessoas\Http\Requests\UpdateEnderecoRequest;
+use Modules\Pessoas\Http\Requests\UpdatePessoaRequest;
+use Modules\Pessoas\Http\Resources\PessoaContatoResource;
+use Modules\Pessoas\Http\Resources\PessoaDocumentoResource;
+use Modules\Pessoas\Http\Resources\PessoaEnderecoResource;
+use Modules\Pessoas\Http\Resources\PessoaResource;
+use Modules\Pessoas\Http\Resources\PessoaVinculoResource;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Models\PessoaContato;
 use Modules\Pessoas\Models\PessoaDocumento;
+use Modules\Pessoas\Models\PessoaEndereco;
 use Modules\Pessoas\Models\PessoaVinculo;
 use Modules\Pessoas\Services\PessoaExportService;
 use Modules\Pessoas\Services\PessoaService;
@@ -33,7 +48,7 @@ final class PessoaController extends Controller
     /** Exportação self-service do cadastro (JSON com manifest ou CSV). GET /api/pessoas/export?format=json|csv */
     public function export(Request $request): JsonResponse|Response
     {
-        $this->autorizar($request, 'cadastros.pessoas.view');
+        $this->authorize('viewAny', Pessoa::class);
 
         if (strtolower((string) $request->query('format', 'json')) === 'csv') {
             return response($this->export->exportCsv(), 200, [
@@ -47,42 +62,52 @@ final class PessoaController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.view');
+        $this->authorize('viewAny', Pessoa::class);
 
-        return response()->json($this->pessoas->listar($request->only(['q', 'tipo_vinculo', 'status', 'per_page'])));
+        $paginator = $this->pessoas->listar($request->only(['q', 'tipo_vinculo', 'status', 'per_page']));
+
+        return response()->json([
+            'data' => PessoaResource::collection($paginator->items()),
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ]);
     }
 
     public function show(Request $request, Pessoa $pessoa): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.view');
+        $this->authorize('view', $pessoa);
 
-        return response()->json($pessoa->load(['vinculos', 'documentos', 'enderecos', 'contatos', 'usuario']));
+        $pessoa->load(['vinculos', 'documentos', 'enderecos', 'contatos', 'usuario']);
+
+        return response()->json(new PessoaResource($pessoa));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StorePessoaRequest $request): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.create');
+        $this->authorize('create', Pessoa::class);
 
-        $pessoa = $this->pessoas->criar($this->validar($request));
+        $pessoa = $this->pessoas->criar($request->validated());
         $this->audit->record('pessoas', 'pessoa.created', "Pessoa #{$pessoa->id}", null, $pessoa->toArray());
 
-        return response()->json($pessoa, 201);
+        return response()->json(new PessoaResource($pessoa), 201);
     }
 
-    public function update(Request $request, Pessoa $pessoa): JsonResponse
+    public function update(UpdatePessoaRequest $request, Pessoa $pessoa): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.update');
+        $this->authorize('update', $pessoa);
 
         $antes = $pessoa->toArray();
-        $this->pessoas->atualizar($pessoa, $this->validar($request, $pessoa));
+        $this->pessoas->atualizar($pessoa, $request->validated());
         $this->audit->record('pessoas', 'pessoa.updated', "Pessoa #{$pessoa->id}", $antes, $pessoa->toArray());
 
-        return response()->json($pessoa);
+        return response()->json(new PessoaResource($pessoa));
     }
 
     public function destroy(Request $request, Pessoa $pessoa): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.delete');
+        $this->authorize('delete', $pessoa);
 
         $antes = $pessoa->toArray();
         $pessoa->delete();
@@ -91,109 +116,126 @@ final class PessoaController extends Controller
         return response()->json(['deleted' => true]);
     }
 
-    public function storeVinculo(Request $request, Pessoa $pessoa): JsonResponse
+    public function storeVinculo(StoreVinculoRequest $request, Pessoa $pessoa): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.update');
+        $this->authorize('update', $pessoa);
 
-        $dados = $request->validate([
-            'tipo_vinculo' => ['required', Rule::in(PessoaVinculo::TIPOS)],
-            'matricula' => ['nullable', 'string', 'max:50'],
-            'dados' => ['nullable', 'array'],
-            'inicio' => ['nullable', 'date'],
-        ]);
-
-        $vinculo = $this->vinculos->adicionar($pessoa, $dados);
+        $vinculo = $this->vinculos->adicionar($pessoa, $request->validated());
         $this->audit->record('pessoas', 'pessoa.vinculo_adicionado', "Pessoa #{$pessoa->id}", null, $vinculo->toArray());
 
-        return response()->json($vinculo, 201);
+        return response()->json(new PessoaVinculoResource($vinculo), 201);
     }
 
-    public function encerrarVinculo(Request $request, Pessoa $pessoa, PessoaVinculo $vinculo): JsonResponse
+    public function encerrarVinculo(EncerrarVinculoRequest $request, Pessoa $pessoa, PessoaVinculo $vinculo): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.update');
+        $this->authorize('update', $pessoa);
 
-        $dados = $request->validate(['fim' => ['nullable', 'date']]);
+        $dados = $request->validated();
         $antes = $vinculo->toArray();
         $this->vinculos->encerrar($vinculo, $dados['fim'] ?? null);
         $this->audit->record('pessoas', 'pessoa.vinculo_encerrado', "Pessoa #{$pessoa->id}", $antes, $vinculo->toArray());
 
-        return response()->json($vinculo);
+        return response()->json(new PessoaVinculoResource($vinculo));
     }
 
-    public function storeDocumento(Request $request, Pessoa $pessoa): JsonResponse
+    public function storeDocumento(StoreDocumentoRequest $request, Pessoa $pessoa): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.update');
+        $this->authorize('update', $pessoa);
 
-        $dados = $request->validate([
-            'tipo' => ['required', Rule::in(PessoaDocumento::TIPOS)],
-            'numero' => ['required', 'string', 'max:50'],
-            'orgao_emissor' => ['nullable', 'string', 'max:100'],
-            'uf_emissao' => ['nullable', 'string', 'size:2'],
-            'data_emissao' => ['nullable', 'date'],
-        ]);
-
-        $documento = $pessoa->documentos()->create($dados);
+        $documento = $this->pessoas->adicionarDocumento($pessoa, $request->validated());
         $this->audit->record('pessoas', 'pessoa.documento_adicionado', "Pessoa #{$pessoa->id}", null, $documento->toArray());
 
-        return response()->json($documento, 201);
+        return response()->json(new PessoaDocumentoResource($documento), 201);
     }
 
-    public function storeEndereco(Request $request, Pessoa $pessoa): JsonResponse
+    public function updateDocumento(UpdateDocumentoRequest $request, Pessoa $pessoa, PessoaDocumento $documento): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.update');
+        $this->authorize('update', $pessoa);
 
-        $dados = $request->validate([
-            'cep' => ['nullable', 'string', 'max:9'],
-            'logradouro' => ['nullable', 'string', 'max:255'],
-            'numero' => ['nullable', 'string', 'max:20'],
-            'complemento' => ['nullable', 'string', 'max:100'],
-            'bairro' => ['nullable', 'string', 'max:100'],
-            'cidade' => ['nullable', 'string', 'max:100'],
-            'uf' => ['nullable', 'string', 'size:2'],
-            'tipo_endereco' => ['sometimes', 'string', 'max:20'],
-        ]);
+        $antes = $documento->toArray();
+        $documento = $this->pessoas->atualizarDocumento($documento, $request->validated());
+        $this->audit->record('pessoas', 'pessoa.documento_atualizado', "Documento #{$documento->id}", $antes, $documento->toArray());
 
-        $endereco = $pessoa->enderecos()->create($dados);
+        return response()->json(new PessoaDocumentoResource($documento));
+    }
+
+    public function destroyDocumento(Request $request, Pessoa $pessoa, PessoaDocumento $documento): JsonResponse
+    {
+        $this->authorize('update', $pessoa);
+
+        $antes = $documento->toArray();
+        $this->pessoas->removerDocumento($documento);
+        $this->audit->record('pessoas', 'pessoa.documento_removido', "Documento #{$documento->id}", $antes, null);
+
+        return response()->json(['deleted' => true]);
+    }
+
+    public function storeEndereco(StoreEnderecoRequest $request, Pessoa $pessoa): JsonResponse
+    {
+        $this->authorize('update', $pessoa);
+
+        $endereco = $this->pessoas->adicionarEndereco($pessoa, $request->validated());
         $this->audit->record('pessoas', 'pessoa.endereco_adicionado', "Pessoa #{$pessoa->id}", null, $endereco->toArray());
 
-        return response()->json($endereco, 201);
+        return response()->json(new PessoaEnderecoResource($endereco), 201);
     }
 
-    public function storeContato(Request $request, Pessoa $pessoa): JsonResponse
+    public function updateEndereco(UpdateEnderecoRequest $request, Pessoa $pessoa, PessoaEndereco $endereco): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.update');
+        $this->authorize('update', $pessoa);
 
-        $dados = $request->validate([
-            'tipo' => ['required', Rule::in(PessoaContato::TIPOS)],
-            'valor' => ['required', 'string', 'max:255'],
-            'principal' => ['sometimes', 'boolean'],
-            'autoriza_notificacoes' => ['sometimes', 'boolean'],
-        ]);
+        $antes = $endereco->toArray();
+        $endereco = $this->pessoas->atualizarEndereco($endereco, $request->validated());
+        $this->audit->record('pessoas', 'pessoa.endereco_atualizado', "Endereco #{$endereco->id}", $antes, $endereco->toArray());
 
-        $contato = $pessoa->contatos()->create($dados);
+        return response()->json(new PessoaEnderecoResource($endereco));
+    }
+
+    public function destroyEndereco(Request $request, Pessoa $pessoa, PessoaEndereco $endereco): JsonResponse
+    {
+        $this->authorize('update', $pessoa);
+
+        $antes = $endereco->toArray();
+        $this->pessoas->removerEndereco($endereco);
+        $this->audit->record('pessoas', 'pessoa.endereco_removido', "Endereco #{$endereco->id}", $antes, null);
+
+        return response()->json(['deleted' => true]);
+    }
+
+    public function storeContato(StoreContatoRequest $request, Pessoa $pessoa): JsonResponse
+    {
+        $this->authorize('update', $pessoa);
+
+        $dados = $request->validated();
+        if (! array_key_exists('autoriza_notificacoes', $dados)) {
+            $dados['autoriza_notificacoes'] = true;
+        }
+
+        $contato = $this->pessoas->adicionarContato($pessoa, $dados);
         $this->audit->record('pessoas', 'pessoa.contato_adicionado', "Pessoa #{$pessoa->id}", null, $contato->toArray());
 
-        return response()->json($contato, 201);
+        return response()->json(new PessoaContatoResource($contato), 201);
     }
 
-    /** @return array<string, mixed> */
-    private function validar(Request $request, ?Pessoa $atual = null): array
+    public function updateContato(UpdateContatoRequest $request, Pessoa $pessoa, PessoaContato $contato): JsonResponse
     {
-        $obrigatorio = $atual ? 'sometimes' : 'required';
+        $this->authorize('update', $pessoa);
 
-        return $request->validate([
-            'nome' => [$obrigatorio, 'string', 'max:255'],
-            'cpf' => [$obrigatorio, 'string'],
-            'nome_social' => ['nullable', 'string', 'max:255'],
-            'data_nascimento' => ['nullable', 'date'],
-            'sexo' => ['nullable', 'string', 'max:20'],
-            'nome_mae' => ['nullable', 'string', 'max:255'],
-            'nome_pai' => ['nullable', 'string', 'max:255'],
-            'estado_civil' => ['nullable', 'string', 'max:30'],
-            'nacionalidade' => ['nullable', 'string', 'max:60'],
-            'naturalidade' => ['nullable', 'string', 'max:100'],
-            'nis' => ['nullable', 'string', 'max:20'],
-            'status' => ['sometimes', Rule::in(['ativo', 'inativo'])],
-        ]);
+        $antes = $contato->toArray();
+        $contato = $this->pessoas->atualizarContato($contato, $request->validated());
+        $this->audit->record('pessoas', 'pessoa.contato_atualizado', "Contato #{$contato->id}", $antes, $contato->toArray());
+
+        return response()->json(new PessoaContatoResource($contato));
+    }
+
+    public function destroyContato(Request $request, Pessoa $pessoa, PessoaContato $contato): JsonResponse
+    {
+        $this->authorize('update', $pessoa);
+
+        $antes = $contato->toArray();
+        $this->pessoas->removerContato($contato);
+        $this->audit->record('pessoas', 'pessoa.contato_removido', "Contato #{$contato->id}", $antes, null);
+
+        return response()->json(['deleted' => true]);
     }
 }

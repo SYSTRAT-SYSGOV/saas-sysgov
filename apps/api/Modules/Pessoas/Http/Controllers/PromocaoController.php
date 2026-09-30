@@ -7,8 +7,8 @@ namespace Modules\Pessoas\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Modules\Pessoas\Http\Controllers\Concerns\AutorizaPermissao;
+use Modules\Pessoas\Http\Requests\PromoverPessoaRequest;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Services\PromocaoUsuarioService;
 
@@ -18,17 +18,13 @@ final class PromocaoController extends Controller
 
     public function __construct(private readonly PromocaoUsuarioService $promocao) {}
 
-    public function promover(Request $request, Pessoa $pessoa): JsonResponse
+    public function promover(PromoverPessoaRequest $request, Pessoa $pessoa): JsonResponse
     {
-        $this->autorizar($request, 'cadastros.pessoas.promote');
+        $this->authorize('promote', $pessoa);
 
-        $dados = $request->validate([
-            'email' => ['required', 'email'],
-            'role_id' => ['required', 'integer', 'exists:roles,id'],
-        ]);
-
+        $dados = $request->validated();
         $role = Role::findOrFail($dados['role_id']);
-        $vinculo = $this->promocao->promover($pessoa, $dados['email'], $role, $request->user()->id);
+        $vinculo = $this->promocao->promover($pessoa, $dados['email'], $role, $request->user()?->id);
 
         return response()->json($vinculo, 201);
     }

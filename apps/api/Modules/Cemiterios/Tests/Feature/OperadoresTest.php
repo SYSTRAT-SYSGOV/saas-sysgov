@@ -267,4 +267,29 @@ final class OperadoresTest extends CemiteriosTestCase
         $this->como($adminB, $tenantB)->getJson("/api/cemiterios/operadores/{$opA->id}")
             ->assertNotFound();
     }
+
+    public function test_vinculo_de_operador_com_pessoa_do_cadastro_unico(): void
+    {
+        $pessoa = \Modules\Pessoas\Models\Pessoa::create([
+            'nome' => 'Carlos Coveiro da Silva',
+            'cpf' => '52998224725',
+        ]);
+
+        $admin = $this->admin($this->tenant);
+
+        $resp = $this->como($admin, $this->tenant)->postJson('/api/cemiterios/operadores', [
+            'pessoa_id' => $pessoa->id,
+            'nome' => 'Carlos Coveiro da Silva',
+            'tipo' => 'coveiro',
+            'matricula_funcional' => 'MAT-COV-10',
+        ]);
+
+        $resp->assertCreated();
+        $operadorId = (int) $resp->json('id');
+
+        $operador = OperadorCemiterio::findOrFail($operadorId);
+        self::assertSame($pessoa->id, $operador->pessoa_id);
+        self::assertInstanceOf(\Modules\Pessoas\Models\Pessoa::class, $operador->pessoa);
+        self::assertSame('Carlos Coveiro da Silva', $operador->pessoa->nome);
+    }
 }

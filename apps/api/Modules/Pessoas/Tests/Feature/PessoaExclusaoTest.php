@@ -26,7 +26,7 @@ final class PessoaExclusaoTest extends PessoasTestCase
     public function test_exclusao_preserva_o_historico_relacionado(): void
     {
         $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
-        $vinculo = $pessoa->vinculos()->create(['tipo_vinculo' => 'municipe']);
+        $vinculo = $pessoa->vinculos()->create(['tipo_vinculo' => 'municipe', 'fim' => '2020-01-01']);
         $documento = $pessoa->documentos()->create(['tipo' => 'rg', 'numero' => '1234567']);
 
         $this->como($this->admin($this->tenant), $this->tenant)
@@ -42,6 +42,18 @@ final class PessoaExclusaoTest extends PessoasTestCase
         self::assertNotNull(DB::table('pessoas')->where('id', $pessoa->id)->value('deleted_at'));
         self::assertNotNull(PessoaVinculo::withoutGlobalScopes()->find($vinculo->id));
         self::assertNotNull(PessoaDocumento::withoutGlobalScopes()->find($documento->id));
+    }
+
+    public function test_exclusao_de_pessoa_com_vinculos_ativos_e_rejeitada(): void
+    {
+        $pessoa = Pessoa::create(['nome' => 'Maria Ativa', 'cpf' => $this->cpfValido()]);
+        $pessoa->vinculos()->create(['tipo_vinculo' => 'servidor_carreira', 'fim' => null]);
+
+        $this->como($this->admin($this->tenant), $this->tenant)
+            ->deleteJson("/api/pessoas/{$pessoa->id}")
+            ->assertForbidden();
+
+        self::assertSame(1, Pessoa::count());
     }
 
     public function test_cpf_de_pessoa_excluida_continua_bloqueado_para_reuso(): void

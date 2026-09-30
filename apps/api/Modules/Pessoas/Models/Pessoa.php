@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Modules\Pessoas\Models;
 
 use App\Models\Concerns\TenantAware;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Pessoas\Database\Factories\PessoaFactory;
 use Modules\Pessoas\Support\Documento;
 
 /**
@@ -29,12 +31,21 @@ use Modules\Pessoas\Support\Documento;
  * @property string|null $naturalidade
  * @property string|null $nis
  * @property string $status
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 final class Pessoa extends Model
 {
+    /** @use HasFactory<PessoaFactory> */
+    use HasFactory;
     use TenantAware;
     use SoftDeletes;
+
+    protected static function newFactory(): PessoaFactory
+    {
+        return PessoaFactory::new();
+    }
 
     protected $table = 'pessoas';
 

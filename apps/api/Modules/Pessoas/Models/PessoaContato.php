@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Modules\Pessoas\Models;
 
 use App\Models\Concerns\TenantAware;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Pessoas\Database\Factories\PessoaContatoFactory;
 
 /**
  * @property int $id
@@ -16,10 +18,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $valor
  * @property bool $principal
  * @property bool $autoriza_notificacoes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 final class PessoaContato extends Model
 {
+    /** @use HasFactory<PessoaContatoFactory> */
+    use HasFactory;
     use TenantAware;
+
+    protected static function newFactory(): PessoaContatoFactory
+    {
+        return PessoaContatoFactory::new();
+    }
 
     public const TIPOS = ['celular', 'email', 'telefone'];
 

@@ -17,6 +17,7 @@ final class CadastrarOperadorRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'pessoa_id' => ['nullable', 'integer', 'exists:pessoas,id'],
             'nome' => ['required', 'string', 'max:255'],
             'tipo' => ['required', 'string', 'in:coveiro,pedreiro'],
             'cpf_cnpj' => ['nullable', 'string', 'max:20'],

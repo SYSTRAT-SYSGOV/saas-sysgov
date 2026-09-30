@@ -111,7 +111,40 @@ export interface CreateVinculoInput {
   matricula?: string;
   dados?: Record<string, unknown>;
   inicio?: string;
+  fim?: string;
 }
+
+export interface CreateDocumentoInput {
+  tipo: 'rg' | 'cnh' | 'titulo_eleitor';
+  numero: string;
+  orgao_emissor?: string;
+  uf_emissao?: string;
+  data_emissao?: string;
+}
+
+export type UpdateDocumentoInput = Partial<CreateDocumentoInput>;
+
+export interface CreateEnderecoInput {
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  tipo_endereco?: string;
+}
+
+export type UpdateEnderecoInput = Partial<CreateEnderecoInput>;
+
+export interface CreateContatoInput {
+  tipo: 'celular' | 'email' | 'telefone';
+  valor: string;
+  principal?: boolean;
+  autoriza_notificacoes?: boolean;
+}
+
+export type UpdateContatoInput = Partial<CreateContatoInput>;
 
 export interface PromoverPessoaInput {
   email: string;
@@ -127,6 +160,7 @@ export interface Paginado<T> {
   current_page: number;
   last_page: number;
   total: number;
+  per_page?: number;
 }
 
 export interface PessoaIntegracao {

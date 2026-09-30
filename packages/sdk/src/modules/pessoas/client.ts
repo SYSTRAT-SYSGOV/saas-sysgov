@@ -1,5 +1,8 @@
 import type { ApiRequester, BaseModuleClient } from '../base';
 import type {
+  CreateContatoInput,
+  CreateDocumentoInput,
+  CreateEnderecoInput,
   CreateIntegracaoInput,
   CreatePessoaInput,
   CreateVinculoInput,
@@ -8,11 +11,17 @@ import type {
   ListSyncLogsParams,
   Paginado,
   Pessoa,
+  PessoaContato,
+  PessoaDocumento,
+  PessoaEndereco,
   PessoaIntegracao,
   PessoaSyncLog,
   PessoaUsuarioVinculo,
   PessoaVinculo,
   PromoverPessoaInput,
+  UpdateContatoInput,
+  UpdateDocumentoInput,
+  UpdateEnderecoInput,
   UpdateIntegracaoInput,
   UpdatePessoaInput,
 } from './types';
@@ -22,7 +31,7 @@ export class PessoasClient implements BaseModuleClient {
 
   constructor(private readonly api: ApiRequester) {}
 
-  async list(params: ListPessoasParams = {}): Promise<{ data: Pessoa[]; total: number; current_page: number; last_page: number }> {
+  async list(params: ListPessoasParams = {}): Promise<Paginado<Pessoa>> {
     const query = new URLSearchParams(params as Record<string, string>).toString();
 
     return this.api.request(`/${this.moduleName}${query ? `?${query}` : ''}`);
@@ -53,6 +62,47 @@ export class PessoasClient implements BaseModuleClient {
       method: 'POST',
       body: JSON.stringify(fim ? { fim } : {}),
     });
+  }
+
+  async addDocumento(pessoaId: number, input: CreateDocumentoInput): Promise<PessoaDocumento> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/documentos`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async updateDocumento(pessoaId: number, documentoId: number, input: UpdateDocumentoInput): Promise<PessoaDocumento> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/documentos/${documentoId}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async deleteDocumento(pessoaId: number, documentoId: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/documentos/${documentoId}`, { method: 'DELETE' });
+  }
+
+  async addEndereco(pessoaId: number, input: CreateEnderecoInput): Promise<PessoaEndereco> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/enderecos`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async updateEndereco(pessoaId: number, enderecoId: number, input: UpdateEnderecoInput): Promise<PessoaEndereco> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/enderecos/${enderecoId}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async deleteEndereco(pessoaId: number, enderecoId: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/enderecos/${enderecoId}`, { method: 'DELETE' });
+  }
+
+  async addContato(pessoaId: number, input: CreateContatoInput): Promise<PessoaContato> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/contatos`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async updateContato(pessoaId: number, contatoId: number, input: UpdateContatoInput): Promise<PessoaContato> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/contatos/${contatoId}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async deleteContato(pessoaId: number, contatoId: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/contatos/${contatoId}`, { method: 'DELETE' });
+  }
+
+  async buscarPorDocumento(documento: string): Promise<Pessoa | null> {
+    const res = await this.list({ q: documento, per_page: 1 });
+    return res.data && res.data.length > 0 ? res.data[0] : null;
   }
 
   async promover(pessoaId: number, input: PromoverPessoaInput): Promise<PessoaUsuarioVinculo> {
