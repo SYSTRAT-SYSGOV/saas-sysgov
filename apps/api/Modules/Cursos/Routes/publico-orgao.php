@@ -12,9 +12,13 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Cursos\Http\Controllers\Publico\CadastroExternoController;
+use Modules\Cursos\Http\Controllers\Publico\CatalogoController;
+use Modules\Cursos\Http\Controllers\Publico\CursoController;
 use Modules\Cursos\Http\Controllers\Publico\OrgaoController;
 use Modules\Cursos\Http\Controllers\Publico\PedidoNovoLinkController;
 
 Route::get('/', OrgaoController::class);
+Route::get('/catalogo', CatalogoController::class);
+Route::get('/cursos/{slug}', CursoController::class);
 Route::post('/cadastro', CadastroExternoController::class)->middleware('throttle:cursos-cadastro-ip');
 Route::post('/pedir-novo-link', PedidoNovoLinkController::class);

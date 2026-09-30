@@ -36,6 +36,15 @@ final class PaginaPublicaOrgaoTest extends TestCase
             ->assertJsonPath('identidade.cor_primaria', '#123456');
     }
 
+    /** Tarefa 3.3 — o texto de boas-vindas configurado em /configuracao-publica (3.2) aparece na página pública. */
+    public function test_pagina_do_orgao_leva_o_texto_de_boas_vindas(): void
+    {
+        $tenant = $this->criarTenant('prefeitura-f');
+        $tenant->update(['settings' => ['cursos' => ['publico_habilitado' => true, 'boas_vindas' => 'Bem-vindo!']]]);
+
+        $this->getJson("/api/public/cursos/{$tenant->slug}")->assertOk()->assertJsonPath('boas_vindas', 'Bem-vindo!');
+    }
+
     public function test_orgao_inexistente_responde_404(): void
     {
         $this->getJson('/api/public/cursos/nao-existe')->assertNotFound();

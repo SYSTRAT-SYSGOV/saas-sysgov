@@ -272,9 +272,27 @@
       inteiro no PUT) não infla a versão; não mandar `termo` no PUT não toca nele. `boas_vindas` e
       `termo.texto` sanitizados com o mesmo `HtmlSanitizer` de 3.1/D5 — são exibidos na página
       pública, mesmo vetor de XSS armazenado.
-- [ ] 3.3 Endpoints públicos de leitura: página do órgão, catálogo público e página do curso, com
+- [x] 3.3 Endpoints públicos de leitura: página do órgão, catálogo público e página do curso, com
       Resources de lista explícita de campos (D7); testes dos cenários "Página habilitada",
       "Oferta pública" e de que nenhum campo interno (e-mail de instrutor, vagas totais) sai.
+      `Services\Publico\CatalogoPublicoService` (novo) — lista campo a campo, nunca
+      `$model->toArray()`, mesmo padrão de `ValidacaoCertificadoService`/`OrgaoPublicoService`
+      (por isso "Resources" aqui são arrays explícitos, não classes `JsonResource` — não achei
+      motivo pra desviar do padrão já estabelecido no namespace `Services\Publico` só nesta
+      tarefa). Turma "qualificada" pra sair no público: `status=aberta` + `aceita_externos=true`
+      + dentro do período de inscrição — catálogo só lista curso `publicado` com pelo menos uma;
+      página do curso individual não exige isso pra existir (só `publicado`+slug), mas só mostra
+      as turmas qualificadas (lista vazia é uma resposta válida, não 404). `vagas_restantes`
+      (calculado) sai, `vagas` (capacidade) nunca. `OrgaoPublicoService::informacoes` ganhou
+      `boas_vindas` (só esse campo de `settings.cursos`, o resto fica só na configuração
+      autenticada). **Achado importante, achado pelo teste, não por revisão**: rota
+      `{orgao}/cursos/{slug}` tem DOIS parâmetros de URL, mas o Laravel injeta parâmetro primitivo
+      de rota (não tipado como model/classe) no método do controller **por posição na URI, não
+      pelo nome do parâmetro** — `__invoke(string $slug)` sozinho recebia o valor de `{orgao}`
+      (o primeiro da URI), não o do `{slug}`. Corrigido aceitando os dois na ordem
+      (`__invoke(string $orgao, string $slug)`), mesmo sem usar `$orgao` (o tenant já vem do
+      `ResolvePublicTenant`) — vale pra qualquer rota pública futura com mais de um parâmetro na
+      URI.
 - [ ] 3.4 Regra de externo na inscrição: `InscricaoService` recusa turma que não aceita externos,
       e o `CatalogoController` autenticado filtra por `aceita_externos` para externos; testes dos
       cenários "Turma fechada a externos" e "Externo em turma fechada a externos".
