@@ -369,9 +369,21 @@
       encerrada entre as duas chamadas, não veria o encerramento na segunda vez (usaria a `Turma`
       já em cache da primeira). Corrigido lendo com `->inscricao()->first()->turma()->first()`
       (chamada de método, não acesso de propriedade — força busca nova a cada vez).
-- [ ] 4.5 CSV de inscritos com origem e colunas do formulário, e neutralização de fórmulas em
+- [x] 4.5 CSV de inscritos com origem e colunas do formulário, e neutralização de fórmulas em
       toda célula de texto (D13); testes dos cenários "Exportação da turma" e "Resposta que
       começa com fórmula".
+      A neutralização (`CsvSeguro::escreverLinha`) já existia desde `add-cursos-relatorios` e já
+      cobria nome/e-mail; só precisei passar os valores das respostas pela mesma função — nenhuma
+      mudança no `CsvSeguro` em si. `ListaInscritosService::colunasFormulario()` (novo) só lista
+      campos com PELO MENOS UMA resposta entre os inscritos DESTA turma (não todo campo do
+      curso) — campo que ninguém respondeu não vira coluna vazia à toa; um campo desativado
+      depois de respondido continua saindo (a coluna vem de quem respondeu, não do estado `ativo`
+      atual do campo). Cabeçalho da coluna usa o rótulo ATUAL do campo (não o snapshot da
+      resposta) — o cabeçalho é do formulário de hoje, os valores embaixo são o que cada um
+      respondeu. `origem`/`origem_label` ("Servidor"/"Externo") entraram em
+      `ListaInscritosService::linhas()`, reaproveitado por relatórios/listagem também (mudança só
+      aditiva, não quebrou nenhum consumidor existente). Atualizei a asserção do teste de CSV já
+      existente (`add-cursos-relatorios`) pra incluir a coluna "Origem" no cabeçalho esperado.
 
 ## 5. E-mails do módulo Cursos
 

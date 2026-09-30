@@ -77,18 +77,23 @@ final class InscricaoController extends Controller
     {
         $this->authorize('operar', $turma);
         $linhas = $this->listaInscritos->linhas($turma);
+        $colunasFormulario = $this->listaInscritos->colunasFormulario($turma);
 
         $this->audit->record('cursos', 'inscricoes.exportadas', "Turma #{$turma->id}", null, ['formato' => 'csv', 'linhas' => count($linhas)]);
 
         $nome = 'inscritos-turma-' . $turma->id . '-' . now()->format('Ymd-His') . '.csv';
 
-        return response()->streamDownload(function () use ($linhas): void {
+        return response()->streamDownload(function () use ($linhas, $colunasFormulario): void {
             $saida = fopen('php://output', 'wb');
-            $this->csv->escreverCabecalho($saida, ['Nome', 'E-mail', 'Status', 'Data da inscrição', 'Frequência até o momento (%)']);
+            $this->csv->escreverCabecalho($saida, [
+                'Nome', 'E-mail', 'Origem', 'Status', 'Data da inscrição', 'Frequência até o momento (%)',
+                ...array_map(fn (array $c): string => $c['rotulo'], $colunasFormulario),
+            ]);
             foreach ($linhas as $l) {
                 $this->csv->escreverLinha($saida, [
-                    $l['nome'], $l['email'], $l['status_label'],
+                    $l['nome'], $l['email'], $l['origem_label'], $l['status_label'],
                     $l['inscrito_em'], number_format($l['frequencia']['percentual'], 2, ',', ''),
+                    ...array_map(fn (array $c): string => $l['respostas'][$c['campo_id']] ?? '', $colunasFormulario),
                 ]);
             }
             fclose($saida);
