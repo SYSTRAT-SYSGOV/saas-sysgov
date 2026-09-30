@@ -1,0 +1,27 @@
+{
+    "name": "Pessoas",
+    "alias": "pessoas",
+    "description": "Cadastro único de pessoa física por tenant (servidores e munícipes), base de identidade civil consumida por outros módulos.",
+    "priority": 10,
+    "providers": [
+        "Modules\\Pessoas\\Providers\\PessoasServiceProvider",
+        "Modules\\Pessoas\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin"
+    ],
+    "menu": {
+        "label": "Cadastro de Pessoas",
+        "icon": "Users",
+        "order": 50,
+        "permission": "cadastros.pessoas.view"
+    },
+    "permissions": {
+        "cadastros.pessoas.view": "Visualizar cadastro de pessoas",
+        "cadastros.pessoas.create": "Cadastrar pessoas",
+        "cadastros.pessoas.update": "Editar pessoas e seus vínculos",
+        "cadastros.pessoas.delete": "Excluir pessoas",
+        "cadastros.pessoas.promote": "Promover pessoa a usuário do SYSGOV",
+        "cadastros.pessoas.import": "Importar pessoas de sistemas da prefeitura"
+    }
+}

@@ -231,4 +231,6 @@ export * from './modules/cursos';
 export * as CemiteriosSdk from './modules/cemiterios';
 export * from './modules/cemiterios';
 export * as ExampleSdk from './modules/template';
+export * as PessoasSdk from './modules/pessoas';
+export * from './modules/pessoas';
 

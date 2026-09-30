@@ -19,6 +19,7 @@ const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
 const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
+const PessoasComponent = lazy(() => import('@/modules/pessoas/PessoasModule'));
 
 export interface ModuleDefinition {
   id: string;
@@ -178,6 +179,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['licita'],
     requiredPermission: 'licita.view',
     icon: 'FileText',
+  },
+  pessoas: {
+    id: 'pessoas',
+    name: "Pessoas",
+    component: PessoasComponent,
+    routePath: 'pessoas',
+    routes: ['pessoas'],
+    requiredPermission: 'pessoas.view',
+    icon: 'Users',
   }
 };
 

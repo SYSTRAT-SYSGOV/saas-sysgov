@@ -22,6 +22,7 @@ use Modules\Cursos\Providers\CursosServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
 use Modules\OrgChart\Providers\OrgChartServiceProvider;
+use Modules\Pessoas\Providers\PessoasServiceProvider;
 use Modules\Procurement\Providers\ProcurementServiceProvider;
 use Laravel\Tinker\TinkerServiceProvider;
 
@@ -40,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
         OrgChartServiceProvider::class,
+        PessoasServiceProvider::class,
         ProcurementServiceProvider::class,
         TinkerServiceProvider::class,
         \App\Providers\AuthServiceProvider::class,
