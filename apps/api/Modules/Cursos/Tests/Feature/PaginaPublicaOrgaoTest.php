@@ -33,7 +33,17 @@ final class PaginaPublicaOrgaoTest extends TestCase
             ->assertJsonPath('nome', $tenant->name)
             ->assertJsonPath('slug', $tenant->slug)
             ->assertJsonPath('identidade.titulo', 'Portal da Prefeitura A')
-            ->assertJsonPath('identidade.cor_primaria', '#123456');
+            ->assertJsonPath('identidade.cor_primaria', '#123456')
+            ->assertJsonPath('identidade.assinatura_oculta', false);
+    }
+
+    /** White-label (CLAUDE.md): a assinatura "Portal SYSGOV" do rodapé respeita hideProviderSignature. */
+    public function test_pagina_do_orgao_leva_a_assinatura_oculta(): void
+    {
+        $tenant = $this->criarTenant('prefeitura-g');
+        $this->habilitarPaginaPublica($tenant, ['hideProviderSignature' => true]);
+
+        $this->getJson("/api/public/cursos/{$tenant->slug}")->assertOk()->assertJsonPath('identidade.assinatura_oculta', true);
     }
 
     /** Tarefa 3.3 — o texto de boas-vindas configurado em /configuracao-publica (3.2) aparece na página pública. */

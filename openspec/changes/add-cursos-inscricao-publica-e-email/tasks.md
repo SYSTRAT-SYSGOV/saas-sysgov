@@ -470,10 +470,38 @@
       rodei via `docker run node:22` num diretório de scratchpad com os arquivos rastreados pelo
       git (`git ls-files -co --exclude-standard`, excluindo `.md`/`apps/api`), `npm ci` uma vez
       por invocação (o `node_modules` não sobrevive entre invocações separadas do container).
-- [ ] 6.2 Páginas públicas no web-client, fora do guarda de autenticação: catálogo do órgão,
+- [x] 6.2 Páginas públicas no web-client, fora do guarda de autenticação: catálogo do órgão,
       página do curso e cadastro (com campo isca oculto, aceite do termo e identidade do órgão
       vinda da API) (D14); testes Vitest de renderização, do aceite obrigatório e da ausência de
       dados do órgão no código.
+      Rotas `/inscricao/:orgao`, `/inscricao/:orgao/cursos/:slug`, `/inscricao/:orgao/cadastro`
+      registradas fora do `ProtectedRoute` no `AppRouter`, mesmo padrão de
+      `ValidarCertificadoPage`. Hook `usePaginaOrgao` (novo) + `PaginaPublicaLayout` (novo)
+      compartilham a identidade/boas-vindas entre as 3 páginas — mesmo mecanismo do portal
+      público de Cemitérios (`applyWhiteLabelTheme`, cor do órgão aplicada em runtime nas
+      variáveis CSS, nunca embutida no código). Texto de divulgação do curso passa por
+      `TextoSeguro` (DOMPurify), não `dangerouslySetInnerHTML` cru — reaproveita componente já
+      existente no módulo. Campo isca (`website`) fica num container `aria-hidden` fora da tela
+      (`-left-[9999px]`, não `type="hidden"` — um bot que ignora CSS ainda vê um input normal no
+      DOM) com `tabIndex={-1}` e `autoComplete="off"`.
+      **Achado corrigido durante o desenvolvimento**: `OrgaoPublicoService::informacoes()` (task
+      3.3) não expunha `hideProviderSignature` — a assinatura "Portal SYSGOV" do rodapé não tinha
+      como ser escondida pelo órgão nesta página pública, quebrando o contrato de white-label do
+      CLAUDE.md (que já vale pro e-mail e pro portal de Cemitérios). Acrescentei
+      `identidade.assinatura_oculta` no backend (tarefa 3.3, retroativo) + tipo do SDK + teste.
+      **Achado de framework corrigido**: `<Button asChild><Link>...</Link></Button>` quebrava em
+      teste (`Slot failed to slot onto its children`) — o `Button` do `@sysgov/ui` sempre renderiza
+      mais de um filho dentro do `Slot.Root` quando `asChild` (ícone condicional + children + ícone
+      condicional), e o Radix Slot exige exatamente um elemento React filho. Troquei por
+      `<Link className={buttonVariants(...)}>`, o mesmo contorno já usado em
+      `MaterialParticipante.tsx` — não é um bug introduzido por mim, é uma limitação existente do
+      componente `Button` que outros pontos do código já sabiam evitar.
+      **Verificação completa**: typecheck e `vitest run` de `apps/web-client` (467/468 —
+      `AuthProvider.test.tsx` é a flakiness de corrida entre workers já documentada, passa 4/4
+      isolado) e `build` limpos. **Testado no navegador de verdade** (Claude em Chrome, tenant
+      `systrat`): catálogo → página do curso (vagas restantes, nunca a capacidade total) → cadastro
+      (aceite obrigatório bloqueia o envio sem chamar a API; com aceite, envia de verdade e o
+      e-mail de verificação chegou no Mailpit).
 - [ ] 6.3 Páginas de verificação de e-mail, "esqueci minha senha" e redefinição de senha, e os
       links na tela de login; testes Vitest dos estados (sucesso, expirado, já usado).
 - [ ] 6.4 Aba de campos do formulário no detalhe do curso, com modal no padrão das abas da Fase 2

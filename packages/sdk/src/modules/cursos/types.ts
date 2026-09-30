@@ -706,6 +706,8 @@ export interface IdentidadeOrgao {
   titulo: string;
   cor_primaria: string | null;
   logo_url: string | null;
+  /** White-label: esconde a assinatura "Portal SYSGOV — SYSTRAT" no rodapé quando true. */
+  assinatura_oculta: boolean;
 }
 
 /** Casca da página pública do órgão (design D7) — GET /public/cursos/{orgao}. */

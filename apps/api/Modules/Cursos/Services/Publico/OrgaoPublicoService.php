@@ -17,7 +17,7 @@ final class OrgaoPublicoService
     public function __construct(private readonly ResolvedorIdentidade $resolvedorIdentidade) {}
 
     /**
-     * @return array{nome: string, slug: string, boas_vindas: string|null, identidade: array{titulo: string, cor_primaria: string|null, logo_url: string|null}}
+     * @return array{nome: string, slug: string, boas_vindas: string|null, identidade: array{titulo: string, cor_primaria: string|null, logo_url: string|null, assinatura_oculta: bool}}
      */
     public function informacoes(Tenant $tenant): array
     {
@@ -33,6 +33,9 @@ final class OrgaoPublicoService
                 'titulo' => $identidade->titulo,
                 'cor_primaria' => $identidade->corPrimaria,
                 'logo_url' => $identidade->logoUrl,
+                // White-label (CLAUDE.md): a assinatura "Portal SYSGOV — SYSTRAT" do rodapé
+                // respeita a mesma chave que já vale pro e-mail (D4) e pro portal de Cemitérios.
+                'assinatura_oculta' => $identidade->assinaturaOculta,
             ],
         ];
     }

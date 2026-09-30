@@ -18,6 +18,9 @@ const PortalConcessionarioPage = React.lazy(() => import('@/modules/cemiterios/p
 const PortalCallbackPage = React.lazy(() => import('@/modules/cemiterios/portal/PortalCallbackPage'));
 const ValidarCertificadoPage = React.lazy(() => import('@/modules/cursos/pages/ValidarCertificadoPage'));
 const CheckInPage = React.lazy(() => import('@/modules/cursos/pages/CheckInPage'));
+const CatalogoOrgaoPage = React.lazy(() => import('@/modules/cursos/pages/CatalogoOrgaoPage'));
+const CursoPublicoPage = React.lazy(() => import('@/modules/cursos/pages/CursoPublicoPage'));
+const CadastroExternoPage = React.lazy(() => import('@/modules/cursos/pages/CadastroExternoPage'));
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -131,6 +134,32 @@ export const AppRouter: React.FC = () => {
         element={
           <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
             <CheckInPage />
+          </React.Suspense>
+        }
+      />
+
+      {/* Cursos: inscrição pública do participante externo (design D7/D14) — sem login */}
+      <Route
+        path="/inscricao/:orgao"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <CatalogoOrgaoPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/inscricao/:orgao/cursos/:slug"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <CursoPublicoPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/inscricao/:orgao/cadastro"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <CadastroExternoPage />
           </React.Suspense>
         }
       />
