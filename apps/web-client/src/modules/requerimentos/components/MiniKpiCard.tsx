@@ -14,18 +14,18 @@ export interface KpiCardProps {
 
 const variantStyles: Record<string, string> = {
   default: 'bg-card border-border',
-  success: 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950 dark:border-emerald-800',
-  warning: 'bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800',
-  danger: 'bg-rose-50 border-rose-200 dark:bg-rose-950 dark:border-rose-800',
-  info: 'bg-cyan-50 border-cyan-200 dark:bg-cyan-950 dark:border-cyan-800',
+  success: 'bg-status-success-bg border-status-success-border',
+  warning: 'bg-status-warning-bg border-status-warning-border',
+  danger: 'bg-status-danger-bg border-status-danger-border',
+  info: 'bg-status-info-bg border-status-info-border',
 };
 
 const iconColors: Record<string, string> = {
   default: 'text-muted-foreground',
-  success: 'text-emerald-600 dark:text-emerald-400',
-  warning: 'text-amber-600 dark:text-amber-400',
-  danger: 'text-rose-600 dark:text-rose-400',
-  info: 'text-cyan-600 dark:text-cyan-400',
+  success: 'text-status-success',
+  warning: 'text-status-warning',
+  danger: 'text-status-danger',
+  info: 'text-status-info',
 };
 
 export const MiniKpiCard: React.FC<KpiCardProps> = ({
