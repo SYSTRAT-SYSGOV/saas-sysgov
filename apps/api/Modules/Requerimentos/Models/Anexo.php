@@ -45,7 +45,7 @@ final class Anexo extends Model
         'uploaded_by'    => 'integer',
     ];
 
-    /** @return MorphTo */
+    /** @return MorphTo<Model, $this> */
     public function anexavel(): MorphTo
     {
         return $this->morphTo();

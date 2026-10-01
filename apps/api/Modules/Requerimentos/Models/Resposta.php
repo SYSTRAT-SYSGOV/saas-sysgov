@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property string $conteudo
  * @property string $status
  * @property string|null $enviado_em
- * @property array|null $metadata
+ * @property array<string, mixed>|null $metadata
  */
 final class Resposta extends Model
 {

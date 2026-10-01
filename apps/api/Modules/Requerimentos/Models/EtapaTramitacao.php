@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $data_conclusao
  * @property int|null $prazo_dias
  * @property string|null $observacao
- * @property array|null $metadata
+ * @property array<string, mixed>|null $metadata
  */
 final class EtapaTramitacao extends Model
 {

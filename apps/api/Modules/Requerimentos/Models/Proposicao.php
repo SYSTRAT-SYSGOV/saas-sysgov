@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Requerimentos\Models;
 
 use App\Models\Concerns\TenantAware;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -32,8 +33,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property bool   $visibilidade_publica
  * @property int|null $vinculacao_proposicao_id
  * @property int|null $vinculacao_processo_id
- * @property array|null $dados_pessoais
- * @property array|null $metadata
+ * @property array<string, mixed>|null $dados_pessoais
+ * @property array<string, mixed>|null $metadata
  */
 final class Proposicao extends Model
 {
@@ -148,27 +149,47 @@ final class Proposicao extends Model
 
     // ── Scopes ────────────────────────────────────────────────────────
 
-    public function scopePublica($query)
+    /**
+     * @param Builder<Proposicao> $query
+     * @return Builder<Proposicao>
+     */
+    public function scopePublica(Builder $query): Builder
     {
         return $query->where('visibilidade_publica', true);
     }
 
-    public function scopeDoPoder($query, string $poder)
+    /**
+     * @param Builder<Proposicao> $query
+     * @return Builder<Proposicao>
+     */
+    public function scopeDoPoder(Builder $query, string $poder): Builder
     {
         return $query->where('poder_origem', $poder);
     }
 
-    public function scopeDoAutor($query, int $userId)
+    /**
+     * @param Builder<Proposicao> $query
+     * @return Builder<Proposicao>
+     */
+    public function scopeDoAutor(Builder $query, int $userId): Builder
     {
         return $query->where('autor_principal_id', $userId);
     }
 
-    public function scopeDoExercicio($query, int $exercicio)
+    /**
+     * @param Builder<Proposicao> $query
+     * @return Builder<Proposicao>
+     */
+    public function scopeDoExercicio(Builder $query, int $exercicio): Builder
     {
         return $query->where('exercicio', $exercicio);
     }
 
-    public function scopeEmTramitacao($query)
+    /**
+     * @param Builder<Proposicao> $query
+     * @return Builder<Proposicao>
+     */
+    public function scopeEmTramitacao(Builder $query): Builder
     {
         return $query->whereIn('status', [
             self::STATUS_PROTOCOLADO,

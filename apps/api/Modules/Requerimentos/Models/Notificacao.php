@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Requerimentos\Models;
 
 use App\Models\Concerns\TenantAware;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -61,12 +62,20 @@ final class Notificacao extends Model
         return $this->belongsTo(Proposicao::class);
     }
 
-    public function scopeNaoLidas($query)
+    /**
+     * @param Builder<Notificacao> $query
+     * @return Builder<Notificacao>
+     */
+    public function scopeNaoLidas(Builder $query): Builder
     {
         return $query->where('lida', false);
     }
 
-    public function scopeDoUsuario($query, int $userId)
+    /**
+     * @param Builder<Notificacao> $query
+     * @return Builder<Notificacao>
+     */
+    public function scopeDoUsuario(Builder $query, int $userId): Builder
     {
         return $query->where('user_id', $userId);
     }

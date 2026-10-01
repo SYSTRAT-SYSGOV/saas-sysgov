@@ -81,8 +81,9 @@ final class AuditoriaController extends Controller
             $query->where('created_at', '<=', $fim . ' 23:59:59');
         }
 
-        $logs = $query->with('user:id,name')
-            ->paginate($request->input('per_page', 50));
+        // AuditLog não tem relação `user()` (só a coluna user_id) — mesmo padrão de
+        // Admin\Http\Controllers\AuditController, que também não tenta eager-load aqui.
+        $logs = $query->paginate($request->input('per_page', 50));
 
         return response()->json($logs);
     }

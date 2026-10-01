@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Requerimentos\Models;
 
 use App\Models\Concerns\TenantAware;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $descricao
  * @property string $poder_origem
  * @property int|null $prazo_regimental_dias
- * @property array|null $campos_especificos
+ * @property array<string, mixed>|null $campos_especificos
  * @property bool   $exige_tramitacao_interna
  * @property bool   $ativo
  * @property int    $ordem
@@ -64,12 +65,20 @@ final class TipoInstrumento extends Model
         return $this->hasMany(WorkflowConfig::class, 'tipo_instrumento_id');
     }
 
-    public function scopeAtivo($query)
+    /**
+     * @param Builder<TipoInstrumento> $query
+     * @return Builder<TipoInstrumento>
+     */
+    public function scopeAtivo(Builder $query): Builder
     {
         return $query->where('ativo', true);
     }
 
-    public function scopeOrdenado($query)
+    /**
+     * @param Builder<TipoInstrumento> $query
+     * @return Builder<TipoInstrumento>
+     */
+    public function scopeOrdenado(Builder $query): Builder
     {
         return $query->orderBy('ordem')->orderBy('nome');
     }

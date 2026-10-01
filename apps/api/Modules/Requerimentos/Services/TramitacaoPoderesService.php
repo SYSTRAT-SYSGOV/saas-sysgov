@@ -15,6 +15,7 @@ final class TramitacaoPoderesService
     /**
      * Encaminha uma proposição de um Poder a outro.
      *
+     * @param array<string, mixed> $dados
      * @throws \DomainException
      */
     public function encaminhar(Proposicao $proposicao, array $dados, User $remetente): TramitacaoPoderes
@@ -67,6 +68,8 @@ final class TramitacaoPoderesService
 
     /**
      * Devolve a tramitação com resposta ao Poder de origem.
+     *
+     * @param array<int, mixed> $anexos
      */
     public function devolver(TramitacaoPoderes $tramitacao, string $conteudo, array $anexos, User $elaborador): void
     {

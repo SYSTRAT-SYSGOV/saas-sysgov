@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Modules\Requerimentos\Models;
 
 use App\Models\Concerns\TenantAware;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int    $id
@@ -17,9 +19,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $poder_destino
  * @property int    $remetente_id
  * @property int|null $responsavel_id
- * @property string $data_encaminhamento
- * @property string|null $data_recebimento
- * @property string $data_limite_resposta
+ * @property Carbon $data_encaminhamento
+ * @property Carbon|null $data_recebimento
+ * @property Carbon $data_limite_resposta
  * @property string $status
  * @property string|null $observacao
  */
@@ -82,20 +84,32 @@ final class TramitacaoPoderes extends Model
         return $this->hasMany(Resposta::class, 'tramitacao_id');
     }
 
-    public function scopeDoPoder($query, string $poder)
+    /**
+     * @param Builder<TramitacaoPoderes> $query
+     * @return Builder<TramitacaoPoderes>
+     */
+    public function scopeDoPoder(Builder $query, string $poder): Builder
     {
-        return $query->where(function ($q) use ($poder) {
+        return $query->where(function (Builder $q) use ($poder) {
             $q->where('poder_origem', $poder)
               ->orWhere('poder_destino', $poder);
         });
     }
 
-    public function scopePendentes($query)
+    /**
+     * @param Builder<TramitacaoPoderes> $query
+     * @return Builder<TramitacaoPoderes>
+     */
+    public function scopePendentes(Builder $query): Builder
     {
         return $query->whereIn('status', [self::STATUS_ENCAMINHADO, self::STATUS_RECEBIDO]);
     }
 
-    public function scopeVencidas($query)
+    /**
+     * @param Builder<TramitacaoPoderes> $query
+     * @return Builder<TramitacaoPoderes>
+     */
+    public function scopeVencidas(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_VENCIDO);
     }
