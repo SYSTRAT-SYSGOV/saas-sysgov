@@ -702,5 +702,10 @@
       próprio — o checkbox de aceite no cadastro funciona independente de haver texto configurado);
       fica como lacuna pra uma validação futura da aba em si no navegador, já coberta por testes
       automatizados (6.6).
-- [ ] 7.4 Registrar no PR os itens de infraestrutura para produção (SMTP, remetente, SPF/DKIM,
-      `PORTAL_URL`, `scheduler`) e as perguntas abertas do design.
+- [x] 7.4 (2026-10-01) Registrar no PR os itens de infraestrutura para produção (SMTP, remetente,
+      SPF/DKIM, `PORTAL_URL`, `scheduler`) e as perguntas abertas do design. PR #46 (rascunho),
+      `feat/cursos-inscricao-publica-email` → `main`, com seções próprias "Pendências de
+      infraestrutura para produção" (SMTP/SPF/DKIM, `PORTAL_URL` vs `CURSOS_URL_PORTAL` — achado
+      da 5.3 — ordem de deploy do `scheduler`, migration de dados da 1.7) e "Perguntas em aberto
+      do design" (LGPD/retenção, CPF opcional, convites do Admin, token de redefinição em claro
+      no Outbox), além do plano de testes completo (7.2/7.3). **Fase 3 fechada — 39/39 tarefas.**
