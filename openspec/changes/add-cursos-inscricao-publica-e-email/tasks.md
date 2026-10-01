@@ -598,8 +598,24 @@
       flakiness já documentada de `AuthProvider.test.tsx` (corrida entre workers, não desta
       tarefa) falhou. **Não testei no navegador de verdade nesta sessão** — a extensão do
       Claude em Chrome não estava conectada; só a verificação automatizada acima.
-- [ ] 6.6 Tela de configuração da página pública e a lista de envios de e-mail com reenvio na
-      gestão de cursos; testes Vitest.
+- [x] 6.6 (2026-10-01) Tela de configuração da página pública e a lista de envios de e-mail com
+      reenvio na gestão de cursos; testes Vitest. Duas abas novas na `GestaoCursosPage`: "Página
+      pública" (`ConfiguracaoPublicaTab`, novo) — habilitado, boas-vindas e termo de uso
+      (`RichTextEditor`), exigência de CPF, com a versão do termo exibida ao lado (a versão em si
+      só muda no backend quando o texto muda de verdade, D10); e "Envios de e-mail" (`EnviosTab`,
+      novo) — lista paginada no servidor com filtro por situação e botão "Reenviar" só no que
+      falhou, mesmo padrão de paginação da `RelatorioCapacitacaoView` (4.4). **Achado de teste**:
+      o `Select` (Radix) do `@sysgov/ui` precisa de `Element.prototype.scrollIntoView` stubado no
+      jsdom pra abrir sem lançar (nenhum teste do módulo exercitava a abertura de um Select até
+      agora); o rótulo do `Select` não tem associação programática com o `combobox`
+      (`aria-labelledby`/`htmlFor` ausentes), então o teste localiza por `getByRole('combobox')`
+      sem nome quando só há um na tela — vale considerar corrigir essa associação no componente
+      compartilhado se outra tela precisar de mais de um `Select` por página num teste. 10 testes
+      novos (`ConfiguracaoPublicaTab.test.tsx` 4, `EnviosTab.test.tsx` 6). Verificação completa:
+      typecheck e vitest da suíte inteira de `apps/web-client` limpos (só os erros/falha já
+      documentados de `cemiterios`/`leaflet`, dependência não instalada no volume do container,
+      fora do escopo desta tarefa — o `build` também é bloqueado por isso, pré-existente).
+      **Não testado no navegador nesta sessão** — extensão Claude em Chrome não conectada.
 
 ## 7. Fechamento
 
