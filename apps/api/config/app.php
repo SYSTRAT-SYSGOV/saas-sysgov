@@ -21,6 +21,11 @@ return [
         Illuminate\Session\SessionServiceProvider::class,
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
+        // Faltava: qualquer `Job::dispatch()` (ShouldQueue) quebra com "Target
+        // [Illuminate\Contracts\Bus\Dispatcher] is not instantiable" sem este provider — achado
+        // ao testar Modules\Requerimentos\Jobs\EnviarNotificacaoJob, mas afeta igualmente os
+        // ShouldQueue já existentes em Capd/Procurement (nenhum tinha teste exercitando o dispatch).
+        Illuminate\Bus\BusServiceProvider::class,
         Illuminate\Queue\QueueServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\Foundation\Providers\FoundationServiceProvider::class,
