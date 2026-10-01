@@ -662,8 +662,45 @@
       (530/530, incluindo os testes de GIS do Cemitérios que antes nem compilavam) e build
       ficaram 100% limpos, sem nenhuma exclusão pendente. A flakiness já documentada do
       `AuthProvider.test.tsx` não apareceu nesta rodada.
-- [ ] 7.3 Teste manual no navegador com o Mailpit: cadastro de um externo, e-mail de
+- [x] 7.3 (2026-10-01) Teste manual no navegador com o Mailpit: cadastro de um externo, e-mail de
       verificação, ativação, login, inscrição com campos do formulário, e-mail de inscrição,
       lista de espera e promoção, certificado com e-mail, e recuperação de senha de ponta a ponta.
+      Tudo no tenant `systrat` real (Claude em Chrome + Mailpit via API), sem atalho por tinker:
+      **cadastro** de `teste.e2e.73@fora.gov.br` pelo formulário público (`/inscricao/systrat/cadastro`)
+      → **e-mail de verificação** no Mailpit → clique no link → **ativação** confirmada → **login**
+      no Portal do Cliente. **Inscrição com formulário**: catálogo autenticado já filtrava certo
+      (só a turma com `aceita_externos` aparecia com "Inscrever-me", as outras "Nenhuma turma
+      aberta") — inscrição na turma de "Gestão e fiscalização de contratos" respondendo o campo
+      "Unidade de lotação" (seleção, já existente de sessão anterior) → **e-mail de inscrição**
+      ("Inscrição confirmada") recebido. **Lista de espera e promoção**: habilitei
+      `aceita_externos` numa turma já lotada (Lei 14.133, 3 vagas, 2 na fila) pela nova aba
+      "Editar turma"; o externo entrou em 3º na lista de espera (**e-mail recebido**); cancelei a
+      inscrição de um confirmado como Admin e o primeiro da fila foi promovido automaticamente —
+      **e-mails de cancelamento e de promoção** recebidos, ambos corretos. **Certificado com
+      e-mail**: criei um curso/turma descartável de 1 aula (não reaproveitei nenhum cenário do
+      seeder pra não mexer nos certificados já emitidos em sessões anteriores, que não gerariam
+      e-mail novo por idempotência do Outbox), inscrevi o externo, registrei presença 100% e
+      encerrei a turma — certificado emitido, **e-mail com o link de validação** recebido, e a
+      página pública `/validar-certificado/{codigo}` confirmou "Certificado válido" sem login.
+      **Recuperação de senha**: `/esqueci-senha` → e-mail (remetente "SYSGOV", não o white-label
+      do tenant — correto, é fluxo de plataforma) → `/redefinir-senha?token=...` → login com a
+      senha nova funcionou. **Achado de ambiente, não de produto**: sessão de autenticação do
+      web-client fica em storage compartilhado entre abas da mesma janela do Chrome — logar como
+      Admin numa aba derruba a sessão do externo testada em outra aba do mesmo navegador; contornado
+      logando/deslogando em sequência na mesma aba sempre que trocava de papel (Admin ↔ externo),
+      em vez de manter duas abas "paralelas". Também: o autofill de credenciais salvas do Chrome
+      reaplica sobre os campos depois de preenchidos por `type` sem aviso — necessário focar o
+      campo com `ctrl+a` substituindo o conteúdo logo antes de cada submit, e tirar um screenshot
+      de confirmação antes de clicar em "Entrar". **Estado de dev alterado nesta sessão (tenant
+      `systrat`)**: usuário externo `teste.e2e.73@fora.gov.br` (senha redefinida para
+      `NovaSenha@456`) inscrito e confirmado em duas turmas; turma "Turma 2026/2" (Lei 14.133)
+      ganhou `aceita_externos=true` permanentemente (Sandra Vieira promovida, João Batista Lima
+      cancelado); curso "Certificado E2E 7.3" com 1 turma encerrada e 1 certificado emitido ficou
+      no catálogo do tenant — nada foi revertido (dados de teste inofensivos, mesmo padrão de
+      sessões anteriores). **Não usei a `ConfiguracaoPublicaTab` da 6.6 nesta sessão** (o tenant já
+      tinha `publico_habilitado`/`boas_vindas` configurados de sessão anterior, sem termo de uso
+      próprio — o checkbox de aceite no cadastro funciona independente de haver texto configurado);
+      fica como lacuna pra uma validação futura da aba em si no navegador, já coberta por testes
+      automatizados (6.6).
 - [ ] 7.4 Registrar no PR os itens de infraestrutura para produção (SMTP, remetente, SPF/DKIM,
       `PORTAL_URL`, `scheduler`) e as perguntas abertas do design.
