@@ -703,9 +703,26 @@
       fica como lacuna pra uma validação futura da aba em si no navegador, já coberta por testes
       automatizados (6.6).
 - [x] 7.4 (2026-10-01) Registrar no PR os itens de infraestrutura para produção (SMTP, remetente,
-      SPF/DKIM, `PORTAL_URL`, `scheduler`) e as perguntas abertas do design. PR #46 (rascunho),
+      SPF/DKIM, `PORTAL_URL`, `scheduler`) e as perguntas abertas do design. PR #46,
       `feat/cursos-inscricao-publica-email` → `main`, com seções próprias "Pendências de
       infraestrutura para produção" (SMTP/SPF/DKIM, `PORTAL_URL` vs `CURSOS_URL_PORTAL` — achado
       da 5.3 — ordem de deploy do `scheduler`, migration de dados da 1.7) e "Perguntas em aberto
       do design" (LGPD/retenção, CPF opcional, convites do Admin, token de redefinição em claro
       no Outbox), além do plano de testes completo (7.2/7.3). **Fase 3 fechada — 39/39 tarefas.**
+      **Antes de tirar do rascunho**: rodei `/code-review high` sobre o PR inteiro (162 arquivos).
+      Nenhuma quebra de isolamento entre tenants/BOLA nas rotas públicas novas (checado de
+      propósito). Cinco achados reais corrigidos num commit à parte (81e3048): corrida de
+      cadastro externo na constraint única de `users.email` (fora da transação, podia dar 500 em
+      vez da resposta genérica de D8); "Exigir CPF" (`documento_obrigatorio`) nunca era aplicado
+      em lugar nenhum — corrigido no `CadastroExternoService`, e de quebra o formulário público
+      passou a mostrar o termo de uso de verdade (antes só uma frase fixa) e marcar o CPF como
+      obrigatório quando for o caso; `pedir-novo-link` sem limite próprio por IP (só o genérico de
+      30/min de toda rota pública); relatório de capacitação por servidor (RH) incluindo
+      participantes externos (ganham `user_id` nesta Fase 3, faltava filtrar por `origem`
+      também); slug do curso virando `NULL` de verdade ao limpar na edição (só `criar()`
+      regenerava do título). 8 testes novos, 1161/1161 phpunit (as mesmas 2 falhas pré-existentes
+      da 7.2), PHPStan/lint/typecheck/vitest/build limpos. Achados de menor severidade (modal de
+      campo de inscrição com mensagem de erro genérica em vez de por campo; página de verificação
+      orienta "peça novo link" sem nenhuma UI de reenvio; duas consultas N+1 em pontos de baixo
+      volume) registrados no corpo do PR como possível fast-follow, não corrigidos agora. PR
+      marcado "ready for review" (`gh pr ready 46`).
