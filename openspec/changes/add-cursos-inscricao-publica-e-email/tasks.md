@@ -634,8 +634,34 @@
       não entrar em lista de espera, sem precisar ajustar números do cenário. 510/510 testes do
       módulo Cursos e PHPStan (`Modules/Cursos`, `--memory-limit=512M` — o padrão de 128M estoura
       com os workers em paralelo) verdes.
-- [ ] 7.2 Suíte completa verde: phpunit (Docker), PHPStan, typecheck, testes e build de
-      `apps/web` e `apps/web-client`, mais o grupo `mysql` no MySQL do Docker.
+- [x] 7.2 (2026-10-01) Suíte completa verde: phpunit (Docker), PHPStan, typecheck, testes e build
+      de `apps/web` e `apps/web-client`, mais o grupo `mysql` no MySQL do Docker.
+      **phpunit completo** (`apps/api`, sqlite): 1153 testes, 2 falhas — ambas em
+      `Modules\Admin\Tests\Feature\MfaRequirementTest` (status 200 em vez de 403/422). Confirmado
+      que são pré-existentes e não causadas pela Fase 3: o teste passa isolado (4/4) tanto na
+      branch quanto no `origin/main` (233c25d, 14 commits à frente do ponto em que esta branch
+      nasceu) — só falha quando roda dentro da suíte completa de 1153 testes no mesmo processo,
+      um sintoma de estado vazando entre testes do Admin (achado já visto na tarefa 2.3, não
+      investigado a fundo por estar fora do escopo do Cursos).
+      **PHPStan completo** (sem escopo): 0 erros — os 116 erros do Cemitérios de sessões
+      anteriores continuam resolvidos. **`composer lint`** (`php -l` em `app`+`Modules`): limpo.
+      **Grupo `mysql`**: criado o banco descartável `sysgov_cursos_concorrencia_teste` (comando no
+      cabeçalho do `ConcorrenciaVagasMysqlTest`) — o teste de concorrência do Cursos (8
+      disputantes pela última vaga) rodou de verdade contra o MySQL do Docker e passou; os 3
+      testes de GIS do Cemitérios (`GisMysqlTest`, `GisAvancadoMysqlTest`, `MysqlEspacialTest`)
+      continuam pulados por falta de infraestrutura espacial própria deles, fora do escopo.
+      **Achado de ambiente, útil pra qualquer sessão futura**: mesmo pro grupo `mysql`, o
+      `docker compose exec` no serviço `api` ainda precisa dos overrides
+      `-e DB_CONNECTION=sqlite -e DB_DATABASE=":memory:"` (a conexão padrão continua tendo que
+      ser sqlite — só o teste específico troca pra conexão `concorrencia` depois do `GuardAgainstRealDatabase`
+      já ter passado); sem isso o guard bloqueia antes mesmo do teste trocar de conexão.
+      **`apps/web`**: typecheck, vitest (41/41) e build limpos. **`apps/web-client`**: o container
+      tinha `node_modules` desatualizado sem `leaflet`/`geojson`/`react-leaflet`/`html-to-image`
+      (dependências já declaradas no `package.json`, só não instaladas no volume anônimo) — rodei
+      `npm install` dentro do container pra atualizar o volume; depois disso, typecheck, vitest
+      (530/530, incluindo os testes de GIS do Cemitérios que antes nem compilavam) e build
+      ficaram 100% limpos, sem nenhuma exclusão pendente. A flakiness já documentada do
+      `AuthProvider.test.tsx` não apareceu nesta rodada.
 - [ ] 7.3 Teste manual no navegador com o Mailpit: cadastro de um externo, e-mail de
       verificação, ativação, login, inscrição com campos do formulário, e-mail de inscrição,
       lista de espera e promoção, certificado com e-mail, e recuperação de senha de ponta a ponta.
