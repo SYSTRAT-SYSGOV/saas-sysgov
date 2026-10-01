@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Button, Card, CardContent, Badge, Textarea } from '@sysgov/ui';
-import { Eye, Send, Download, Clock, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { Modal, Card, CardContent, Badge } from '@sysgov/ui';
+import { Eye, Clock } from 'lucide-react';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { StatusBadgeProposicao } from '../components';
 import type { StatusProposicao } from '../components';
@@ -37,8 +37,8 @@ export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = (
     carregar();
   }, [id]);
 
-  if (loading) return <Modal open onClose={onClose} size="lg"><ScreenState type="loading" title="Carregando..." /></Modal>;
-  if (error || !proposicao) return <Modal open onClose={onClose} size="lg"><ScreenState type="error" title="Erro" description={error ?? 'Proposição não encontrada'} /></Modal>;
+  if (loading) return <Modal open onClose={onClose} size="lg" title="Detalhes da Proposição" icon={<Eye className="h-5 w-5" />}><ScreenState type="loading" title="Carregando..." /></Modal>;
+  if (error || !proposicao) return <Modal open onClose={onClose} size="lg" title="Detalhes da Proposição" icon={<Eye className="h-5 w-5" />}><ScreenState type="error" title="Erro" description={error ?? 'Proposição não encontrada'} /></Modal>;
 
   const timelineEvents: TimelineEvent[] = [
     // Evento de criação
@@ -66,28 +66,24 @@ export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = (
   ];
 
   return (
-    <Modal open onClose={onClose} size="xl">
+    <Modal
+      open
+      onClose={onClose}
+      size="xl"
+      icon={<Eye className="h-5 w-5" />}
+      title={proposicao.numero}
+      description={proposicao.ementa}
+    >
       <div className="space-y-6">
-        {/* Cabeçalho */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-sm font-bold text-muted-foreground">{proposicao.numero}</span>
-              <StatusBadgeProposicao status={proposicao.status as StatusProposicao} />
-              {proposicao.tipo_instrumento && (
-                <Badge variant="info">{proposicao.tipo_instrumento.nome}</Badge>
-              )}
-            </div>
-            <h2 className="text-xl font-bold mt-1">{proposicao.ementa}</h2>
-            <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
-              <span>Autor: <strong>{proposicao.autor_principal?.name}</strong></span>
-              {proposicao.area_tematica && <span>• Área: <strong>{proposicao.area_tematica}</strong></span>}
-              <span>• Poder: <strong>{proposicao.poder_origem}</strong></span>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
+        {/* Metadados */}
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <StatusBadgeProposicao status={proposicao.status as StatusProposicao} />
+          {proposicao.tipo_instrumento && (
+            <Badge variant="info">{proposicao.tipo_instrumento.nome}</Badge>
+          )}
+          <span>Autor: <strong>{proposicao.autor_principal?.name}</strong></span>
+          {proposicao.area_tematica && <span>• Área: <strong>{proposicao.area_tematica}</strong></span>}
+          <span>• Poder: <strong>{proposicao.poder_origem}</strong></span>
         </div>
 
         {/* Grid: conteúdo + timeline */}

@@ -141,15 +141,15 @@ export const TramitacoesView: React.FC = () => {
 
       {/* Modal de Resposta */}
       {selectedTramitacao && (
-        <Modal open onClose={() => { setSelectedTramitacao(null); setRepostaTexto(''); }} size="md">
+        <Modal
+          open
+          onClose={() => { setSelectedTramitacao(null); setRepostaTexto(''); }}
+          size="md"
+          icon={<Send className="h-5 w-5" />}
+          title="Elaborar Resposta"
+          description={`Proposição: ${selectedTramitacao.proposicao?.numero} — ${selectedTramitacao.proposicao?.ementa}`}
+        >
           <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-bold">Elaborar Resposta</h3>
-              <p className="text-sm text-muted-foreground">
-                Proposição: {selectedTramitacao.proposicao?.numero} — {selectedTramitacao.proposicao?.ementa}
-              </p>
-            </div>
-
             <Textarea
               value={respostaTexto}
               onChange={(e) => setRepostaTexto(e.target.value)}

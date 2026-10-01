@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Button, Input, Select, Textarea, Switch } from '@sysgov/ui';
 import type { SelectOption } from '@sysgov/ui';
-import { Send, AlertCircle } from 'lucide-react';
+import { FileText, Send, AlertCircle } from 'lucide-react';
 import { requerimentosApi } from '../api';
 import type { TipoInstrumento } from '../api';
 
@@ -63,15 +63,15 @@ export const CriarProposicaoModal: React.FC<CriarProposicaoModalProps> = ({ tipo
   const podeEnviar = tipoSlug && ementa.trim().length > 0;
 
   return (
-    <Modal open onClose={onClose} size="lg">
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      icon={<FileText className="h-5 w-5" />}
+      title="Nova Proposição"
+      description="Preencha os dados para protocolar uma nova proposição legislativa."
+    >
       <div className="space-y-5">
-        <div>
-          <h2 className="text-xl font-bold">Nova Proposição</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Preencha os dados para protocolar uma nova proposição legislativa.
-          </p>
-        </div>
-
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
