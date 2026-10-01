@@ -619,9 +619,21 @@
 
 ## 7. Fechamento
 
-- [ ] 7.1 Estender o `CursosDadosDemonstracaoSeeder` com a página pública habilitada, campos de
-      formulário, uma turma aberta a externos e um externo de exemplo; o
-      `CursosDadosDemonstracaoSeederTest` continua verde.
+- [x] 7.1 (2026-10-01) Estender o `CursosDadosDemonstracaoSeeder` com a página pública habilitada,
+      campos de formulário, uma turma aberta a externos e um externo de exemplo; o
+      `CursosDadosDemonstracaoSeederTest` continua verde. Página pública habilitada via
+      `ConfiguracaoPublicaService::atualizar` (boas-vindas e termo de uso); a turma já existente
+      "Turma 2026/1" do curso de Gestão e fiscalização de contratos virou `aceita_externos: true`
+      (não criei turma nova, pra não mexer na contagem exata de status que o teste do seeder
+      verifica); dois campos novos no formulário desse mesmo curso (`CampoInscricaoService`) —
+      "Órgão de origem" (texto, obrigatório) e "Vínculo com a administração" (seleção, opcional);
+      `mariana.freitas@fora.gov.br` (senha `SENHA_DEMO`, papel `participante_externo_cursos`,
+      `Participante` com `origem=externo` criado direto, sem o fluxo de verificação de e-mail —
+      esse fluxo de ponta a ponta é o que a 7.3 testa no navegador) inscrita nessa turma
+      respondendo aos dois campos. Vagas da turma (20) já tinham sobra suficiente pro externo
+      não entrar em lista de espera, sem precisar ajustar números do cenário. 510/510 testes do
+      módulo Cursos e PHPStan (`Modules/Cursos`, `--memory-limit=512M` — o padrão de 128M estoura
+      com os workers em paralelo) verdes.
 - [ ] 7.2 Suíte completa verde: phpunit (Docker), PHPStan, typecheck, testes e build de
       `apps/web` e `apps/web-client`, mais o grupo `mysql` no MySQL do Docker.
 - [ ] 7.3 Teste manual no navegador com o Mailpit: cadastro de um externo, e-mail de
