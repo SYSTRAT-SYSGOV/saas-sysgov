@@ -3,15 +3,15 @@ import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui/Tabs';
 import type { TabsItem } from '@/components/ui/Tabs';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScreenState } from '@/components/ui/ScreenState';
-import { MiniKpiCard } from '../components';
-import { requerimentosApi } from '../api';
-import type { Notificacao } from '../api';
+import { MiniKpiCard } from './components';
+import { requerimentosApi } from './api';
+import type { Notificacao } from './api';
 import { FileText, Bell, ArrowLeftRight, BarChart3, ShieldCheck } from 'lucide-react';
-import { ProposicoesView } from '../views/ProposicoesView';
-import { MinhasProposicoesView } from '../views/MinhasProposicoesView';
-import { TramitacoesView } from '../views/TramitacoesView';
-import { NotificacoesView } from '../views/NotificacoesView';
-import { RelatoriosView } from '../views/RelatoriosView';
+import { ProposicoesView } from './views/ProposicoesView';
+import { MinhasProposicoesView } from './views/MinhasProposicoesView';
+import { TramitacoesView } from './views/TramitacoesView';
+import { NotificacoesView } from './views/NotificacoesView';
+import { RelatoriosView } from './views/RelatoriosView';
 
 type RequerimentosTab = 'proposicoes' | 'minhas' | 'tramitacoes' | 'notificacoes' | 'relatorios';
 
@@ -21,7 +21,7 @@ export const RequerimentosModule: React.FC = () => {
 
   useEffect(() => {
     requerimentosApi.getNotificacoes({ nao_lidas: true, per_page: 1 })
-      .then((res) => setNaoLidas(res.data.meta.total))
+      .then((res) => setNaoLidas(res.data.total))
       .catch(() => {});
   }, []);
 

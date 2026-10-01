@@ -45,8 +45,8 @@ export const ProposicoesView: React.FC = () => {
 
       setTipos(tiposRes.data);
       setProposicoes(propsRes.data.data);
-      setTotalPages(propsRes.data.meta.last_page);
-      setTotal(propsRes.data.meta.total);
+      setTotalPages(propsRes.data.last_page);
+      setTotal(propsRes.data.total);
       setKpis(minhasRes.data.kpis);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar proposições';
@@ -134,7 +134,7 @@ export const ProposicoesView: React.FC = () => {
   ];
 
   if (error) {
-    return <ScreenState variant="error" title="Erro ao carregar" message={error} onRetry={carregar} />;
+    return <ScreenState type="error" title="Erro ao carregar" description={error} actionLabel="Tentar novamente" onAction={carregar} />;
   }
 
   const tipoOptions = tipos
@@ -203,7 +203,7 @@ export const ProposicoesView: React.FC = () => {
 
       {/* ── Tabela ────────────────────────────────────────────────── */}
       {loading ? (
-        <ScreenState variant="loading" title="Carregando proposições..." />
+        <ScreenState type="loading" title="Carregando proposições..." />
       ) : proposicoesFiltradas.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-10 w-10" />}

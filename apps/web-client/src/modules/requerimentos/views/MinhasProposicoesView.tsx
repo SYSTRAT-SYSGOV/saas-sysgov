@@ -30,8 +30,8 @@ export const MinhasProposicoesView: React.FC = () => {
 
   useEffect(() => { carregar(); }, []);
 
-  if (loading) return <ScreenState variant="loading" title="Carregando..." />;
-  if (error) return <ScreenState variant="error" title="Erro" message={error} onRetry={carregar} />;
+  if (loading) return <ScreenState type="loading" title="Carregando..." />;
+  if (error) return <ScreenState type="error" title="Erro" description={error} actionLabel="Tentar novamente" onAction={carregar} />;
 
   return (
     <div className="space-y-6">

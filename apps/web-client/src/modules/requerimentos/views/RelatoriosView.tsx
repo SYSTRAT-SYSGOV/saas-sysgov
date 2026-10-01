@@ -65,9 +65,9 @@ export const RelatoriosView: React.FC = () => {
       </div>
 
       {loading ? (
-        <ScreenState variant="loading" title="Gerando relatório..." />
+        <ScreenState type="loading" title="Gerando relatório..." />
       ) : !dados ? (
-        <ScreenState variant="error" title="Erro" message="Não foi possível gerar o relatório." />
+        <ScreenState type="error" title="Erro" description="Não foi possível gerar o relatório." />
       ) : (
         <Card>
           <CardContent className="p-6">

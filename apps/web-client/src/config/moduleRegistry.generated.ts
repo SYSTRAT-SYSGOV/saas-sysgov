@@ -17,10 +17,10 @@ const ModuleGranularityComponent = lazy(() => import('@/modules/access/ModuleGra
 const PermissionMatrixComponent = lazy(() => import('@/modules/access/PermissionMatrix'));
 const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const PessoasComponent = lazy(() => import('@/modules/pessoas/PessoasModule'));
-const CemiterioComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Cemiterio", alias: "cemiterio", description: "Módulo de negócio Cemiterio para a plataforma SYSGOV" }) }));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
 const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
+const RequerimentosComponent = lazy(() => import('@/modules/requerimentos/RequerimentosModule'));
 
 export interface ModuleDefinition {
   id: string;
@@ -163,15 +163,6 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     requiredPermission: 'cadastros.pessoas.view',
     icon: 'Users',
   },
-  cemiterio: {
-    id: 'cemiterio',
-    name: "Cemiterio",
-    component: CemiterioComponent,
-    routePath: 'cemiterio',
-    routes: ['cemiterio'],
-    requiredPermission: 'cemiterio.view',
-    icon: 'Layers',
-  },
   client: {
     id: 'client',
     name: "Client",
@@ -197,6 +188,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'licita',
     routes: ['licita'],
     requiredPermission: 'licita.view',
+    icon: 'FileText',
+  },
+  requerimentos: {
+    id: 'requerimentos',
+    name: "Requerimentos",
+    component: RequerimentosComponent,
+    routePath: 'requerimentos',
+    routes: ['requerimentos'],
+    requiredPermission: 'requerimentos.view',
     icon: 'FileText',
   }
 };

@@ -37,8 +37,8 @@ export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = (
     carregar();
   }, [id]);
 
-  if (loading) return <Modal open onClose={onClose} size="lg"><ScreenState variant="loading" title="Carregando..." /></Modal>;
-  if (error || !proposicao) return <Modal open onClose={onClose} size="lg"><ScreenState variant="error" title="Erro" message={error ?? 'Proposição não encontrada'} /></Modal>;
+  if (loading) return <Modal open onClose={onClose} size="lg"><ScreenState type="loading" title="Carregando..." /></Modal>;
+  if (error || !proposicao) return <Modal open onClose={onClose} size="lg"><ScreenState type="error" title="Erro" description={error ?? 'Proposição não encontrada'} /></Modal>;
 
   const timelineEvents: TimelineEvent[] = [
     // Evento de criação
