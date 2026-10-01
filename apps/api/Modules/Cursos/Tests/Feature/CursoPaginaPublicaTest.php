@@ -102,6 +102,32 @@ final class CursoPaginaPublicaTest extends TestCase
             ->assertJsonPath('slug', 'novo-endereco');
     }
 
+    /**
+     * Achado da revisão do PR (tarefa 7.4): só `criar()` gerava o slug a partir do título quando
+     * vinha vazio — `atualizar()` gravava NULL de verdade, e a página pública do curso (que
+     * resolve pelo slug) parava de existir até alguém digitar um novo na mão. O curso mantém o
+     * título ("Gestão de Contratos" → "gestao-de-contratos") e o slug limpo tem que regenerar
+     * pro MESMO valor, sem se tratar como colisão de si mesmo (sem o excetoId em
+     * `gerarSlugUnico`, acharia "gestao-de-contratos-2" à toa).
+     */
+    public function test_limpar_o_slug_na_edicao_gera_de_novo_a_partir_do_titulo_sem_colidir_consigo_mesmo(): void
+    {
+        $curso = $this->cursoPublicado($this->tenant);
+
+        $this->como($this->admin, $this->tenant)->putJson("/api/cursos/cursos/{$curso->id}", ['slug' => null])
+            ->assertOk()
+            ->assertJsonPath('slug', 'gestao-de-contratos');
+    }
+
+    public function test_limpar_o_slug_junto_com_o_titulo_gera_a_partir_do_titulo_novo(): void
+    {
+        $curso = $this->cursoPublicado($this->tenant);
+
+        $this->como($this->admin, $this->tenant)->putJson("/api/cursos/cursos/{$curso->id}", ['titulo' => 'Novo Título do Curso', 'slug' => null])
+            ->assertOk()
+            ->assertJsonPath('slug', 'novo-titulo-do-curso');
+    }
+
     public function test_cenario_texto_de_divulgacao_com_script(): void
     {
         $malicioso = '<p>Inscreva-se</p><script>alert(1)</script><img src=x onerror=alert(1)>';

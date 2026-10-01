@@ -50,6 +50,9 @@ final class CursosServiceProvider extends ServiceProvider
     /** Cadastros públicos por hora, pelo hash do e-mail normalizado (design D8) — aplicado em CadastroExternoService, não como RateLimiter::for, porque o e-mail só existe depois de ler o corpo. */
     public const LIMITE_CADASTRO_EMAIL_POR_HORA = 3;
 
+    /** Pedidos de novo link de verificação por hora, por IP (design D8) — sem isso, só o limite genérico de 30/min de toda rota pública valia aqui, o suficiente pra inundar a caixa de um e-mail alheio. */
+    public const LIMITE_PEDIR_NOVO_LINK_IP_POR_HORA = 5;
+
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
@@ -74,6 +77,7 @@ final class CursosServiceProvider extends ServiceProvider
         RateLimiter::for('cursos-respostas', fn (Request $request) => Limit::perMinute(self::LIMITE_RESPOSTAS_POR_MINUTO)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
         RateLimiter::for('cursos-publico', fn (Request $request) => Limit::perMinute(self::LIMITE_PUBLICO_POR_MINUTO)->by((string) $request->ip()));
         RateLimiter::for('cursos-cadastro-ip', fn (Request $request) => Limit::perHour(self::LIMITE_CADASTRO_IP_POR_HORA)->by((string) $request->ip()));
+        RateLimiter::for('cursos-pedir-novo-link-ip', fn (Request $request) => Limit::perHour(self::LIMITE_PEDIR_NOVO_LINK_IP_POR_HORA)->by((string) $request->ip()));
 
         // Tratadores de e-mail do Outbox (design D1): o núcleo (app/) não conhece o Cursos, cada
         // módulo acrescenta as próprias entradas aqui.

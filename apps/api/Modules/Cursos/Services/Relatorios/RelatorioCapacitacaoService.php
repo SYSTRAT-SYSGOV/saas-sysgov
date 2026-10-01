@@ -20,8 +20,9 @@ use Modules\OrgChart\Models\OrgUnit;
  * quem aparece na lista —, por isso ele entra dentro de cada agregação condicional
  * (`SUM(CASE WHEN ...)`), não no `WHERE` da consulta.
  *
- * Só servidores: `user_id` não nulo (a Fase 3, ainda não implementada, reserva `user_id` nulo
- * ao participante externo — quando a coluna `origem` existir, o filtro passa a usá-la também).
+ * Só servidores: `user_id` não nulo e `origem = 'servidor'` (achado da revisão do PR da Fase 3,
+ * tarefa 7.4 — o cadastro externo também grava `user_id`, então sem o filtro de `origem` um
+ * participante externo concluído entrava nesta lista interna de capacitação por servidor).
  *
  * Filtro por unidade (tarefa 2.4, D5): a unidade escolhida e suas subunidades por prefixo de
  * `path` (`OrgUnit::getSelfAndDescendantIds()`, que já separa os níveis por `.` para não casar
@@ -194,6 +195,7 @@ final class RelatorioCapacitacaoService
             ->leftJoin('cursos_certificados as cert', fn ($j) => $j->on('cert.inscricao_id', '=', 'i.id')->where('cert.tenant_id', $tenantId)->whereNull('cert.revogado_em'))
             ->where('p.tenant_id', $tenantId)
             ->whereNotNull('p.user_id')
+            ->where('p.origem', Participante::ORIGEM_SERVIDOR)
             ->when($unidadeIds !== null, function (Builder $q) use ($tenantId, $unidadeIds): void {
                 $q->whereIn('p.user_id', function ($sub) use ($tenantId, $unidadeIds): void {
                     $sub->select('user_id')->from('org_unit_user')->where('tenant_id', $tenantId)->whereIn('org_unit_id', $unidadeIds);

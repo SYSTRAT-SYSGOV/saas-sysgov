@@ -132,6 +132,24 @@ final class CadastroExternoTest extends TestCase
         $this->assertSame('529.982.247-25', $participante->documento);
     }
 
+    public function test_cpf_obrigatorio_pela_configuracao_do_orgao_recusa_cadastro_sem_documento(): void
+    {
+        $this->tenant->update(['settings' => ['cursos' => ['publico_habilitado' => true, 'documento_obrigatorio' => true]]]);
+
+        $this->cadastrar(['documento' => null])->assertJsonValidationErrors('documento');
+
+        $this->assertSame(0, User::where('email', 'ana.externa@fora.gov.br')->count());
+    }
+
+    public function test_cpf_obrigatorio_pela_configuracao_do_orgao_aceita_cadastro_com_documento(): void
+    {
+        $this->tenant->update(['settings' => ['cursos' => ['publico_habilitado' => true, 'documento_obrigatorio' => true]]]);
+
+        $this->cadastrar(['documento' => '529.982.247-25'])->assertOk();
+
+        $this->assertSame(1, User::where('email', 'ana.externa@fora.gov.br')->count());
+    }
+
     public function test_cenario_excesso_de_cadastros_do_mesmo_ip(): void
     {
         $limite = CursosServiceProvider::LIMITE_CADASTRO_IP_POR_HORA;

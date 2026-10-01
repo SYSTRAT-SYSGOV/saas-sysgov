@@ -142,6 +142,32 @@ describe('Cadastro externo', () => {
     expect(await screen.findByTestId('cadastro-concluido')).toBeInTheDocument();
   });
 
+  it('mostra o termo de uso configurado pelo órgão, quando houver', async () => {
+    cursosApi.getPaginaOrgao.mockResolvedValue({ nome: 'Prefeitura A', slug: 'prefeitura-a', boas_vindas: null, termo_texto: '<p>Texto do termo de uso.</p>', documento_obrigatorio: false, identidade: identidadeA });
+    render(
+      <MemoryRouter initialEntries={['/inscricao/prefeitura-a/cadastro']}>
+        <AppRouter />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Criar cadastro');
+
+    expect(screen.getByText('Texto do termo de uso.')).toBeInTheDocument();
+  });
+
+  it('CPF obrigatório (configuração do órgão): rótulo sem "opcional" e campo exigido', async () => {
+    cursosApi.getPaginaOrgao.mockResolvedValue({ nome: 'Prefeitura A', slug: 'prefeitura-a', boas_vindas: null, termo_texto: null, documento_obrigatorio: true, identidade: identidadeA });
+    render(
+      <MemoryRouter initialEntries={['/inscricao/prefeitura-a/cadastro']}>
+        <AppRouter />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Criar cadastro');
+
+    const cpf = screen.getByLabelText('CPF') as HTMLInputElement;
+    expect(cpf).toBeRequired();
+    expect(screen.queryByLabelText('CPF (opcional)')).not.toBeInTheDocument();
+  });
+
   it('o campo isca fica fora da tela e não atrapalha o preenchimento normal', async () => {
     cursosApi.getPaginaOrgao.mockResolvedValue({ nome: 'Prefeitura A', slug: 'prefeitura-a', boas_vindas: null, identidade: identidadeA });
     render(

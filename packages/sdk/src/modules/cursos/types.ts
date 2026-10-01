@@ -715,6 +715,10 @@ export interface PaginaOrgao {
   nome: string;
   slug: string;
   boas_vindas: string | null;
+  /** Termo de uso configurado em `/configuracao-publica` (D10); null = órgão não configurou nenhum. */
+  termo_texto: string | null;
+  /** Se o cadastro externo exige CPF (D11, `ConfiguracaoPublicaTab`). */
+  documento_obrigatorio: boolean;
   identidade: IdentidadeOrgao;
 }
 

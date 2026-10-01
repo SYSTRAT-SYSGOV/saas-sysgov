@@ -79,6 +79,14 @@ final class CursoService
             $dados['texto_publico'] = $this->sanitizarTextoPublico($dados['texto_publico']);
         }
 
+        if (array_key_exists('slug', $dados) && ($dados['slug'] === null || $dados['slug'] === '')) {
+            // Achado da revisão do PR (tarefa 7.4): `criar()` já gerava o slug a partir do
+            // título quando vinha vazio, mas limpar o slug na EDIÇÃO (o mesmo campo do formulário
+            // aceita isso, "deixe em branco pra gerar do título") gravava NULL de verdade — a
+            // página pública do curso parava de resolver por slug até alguém digitar um na mão.
+            $dados['slug'] = $this->gerarSlugUnico($dados['titulo'] ?? $curso->titulo, $curso->id);
+        }
+
         return DB::transaction(function () use ($curso, $dados): Curso {
             $antes = $curso->toArray();
             $curso->update($dados);
@@ -173,7 +181,7 @@ final class CursoService
     }
 
     /** Slug gerado do título (design D11), único por tenant — sufixo -2, -3... em colisão. */
-    private function gerarSlugUnico(string $titulo): string
+    private function gerarSlugUnico(string $titulo, ?int $excetoId = null): string
     {
         $base = Str::slug($titulo);
         if ($base === '') {
@@ -182,7 +190,11 @@ final class CursoService
 
         $slug = $base;
         $sufixo = 2;
-        while (Curso::query()->where('tenant_id', $this->tenantContext->id())->where('slug', $slug)->exists()) {
+        while (
+            Curso::query()->where('tenant_id', $this->tenantContext->id())->where('slug', $slug)
+                ->when($excetoId !== null, fn ($q) => $q->where('id', '!=', $excetoId))
+                ->exists()
+        ) {
             $slug = "{$base}-{$sufixo}";
             $sufixo++;
         }

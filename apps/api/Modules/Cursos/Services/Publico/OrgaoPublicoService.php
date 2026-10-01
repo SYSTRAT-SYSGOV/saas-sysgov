@@ -17,7 +17,7 @@ final class OrgaoPublicoService
     public function __construct(private readonly ResolvedorIdentidade $resolvedorIdentidade) {}
 
     /**
-     * @return array{nome: string, slug: string, boas_vindas: string|null, identidade: array{titulo: string, cor_primaria: string|null, logo_url: string|null, assinatura_oculta: bool}}
+     * @return array{nome: string, slug: string, boas_vindas: string|null, termo_texto: string|null, documento_obrigatorio: bool, identidade: array{titulo: string, cor_primaria: string|null, logo_url: string|null, assinatura_oculta: bool}}
      */
     public function informacoes(Tenant $tenant): array
     {
@@ -26,9 +26,13 @@ final class OrgaoPublicoService
         return [
             'nome' => $tenant->name,
             'slug' => $tenant->slug,
-            // Único campo de settings.cursos exposto aqui (design D11): o texto de boas-vindas
-            // que o Administrador configura em /configuracao-publica (tarefa 3.2).
+            // Campos de settings.cursos expostos aqui (design D10/D11), configurados pelo
+            // Administrador em /configuracao-publica (tarefas 3.2/6.6): o cadastro externo
+            // precisa do termo de verdade pra mostrar o que a pessoa está aceitando, e de saber
+            // se o CPF é obrigatório pra validar e marcar o campo certo no formulário.
             'boas_vindas' => data_get($tenant->settings, 'cursos.boas_vindas'),
+            'termo_texto' => data_get($tenant->settings, 'cursos.termo.texto'),
+            'documento_obrigatorio' => (bool) data_get($tenant->settings, 'cursos.documento_obrigatorio', false),
             'identidade' => [
                 'titulo' => $identidade->titulo,
                 'cor_primaria' => $identidade->corPrimaria,

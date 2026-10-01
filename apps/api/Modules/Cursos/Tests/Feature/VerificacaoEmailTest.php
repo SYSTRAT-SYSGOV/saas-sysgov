@@ -10,6 +10,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Modules\Cursos\Providers\CursosServiceProvider;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
 
@@ -120,5 +121,25 @@ final class VerificacaoEmailTest extends TestCase
             ->assertOk()->assertJsonStructure(['mensagem']);
 
         $this->assertSame(0, OutboxEvent::where('event_type', 'cursos.CadastroExternoCriado')->count());
+    }
+
+    /**
+     * Achado da revisão do PR (tarefa 7.4): antes desta mudança, só o limite genérico de
+     * `cursos-publico` (30/min por IP, compartilhado por toda rota pública) valia aqui — o
+     * suficiente pra inundar a caixa de entrada de um e-mail alheio bem mais rápido que o limite
+     * de cadastro novo (5/hora). `cursos-pedir-novo-link-ip` fecha essa lacuna.
+     */
+    public function test_cenario_excesso_de_pedidos_de_novo_link_do_mesmo_ip(): void
+    {
+        $limite = CursosServiceProvider::LIMITE_PEDIR_NOVO_LINK_IP_POR_HORA;
+
+        for ($i = 1; $i <= $limite; $i++) {
+            $this->postJson("/api/public/cursos/{$this->tenant->slug}/pedir-novo-link", ['email' => 'externa@fora.gov.br'])->assertOk();
+        }
+
+        $this->postJson("/api/public/cursos/{$this->tenant->slug}/pedir-novo-link", ['email' => 'externa@fora.gov.br'])->assertStatus(429);
+
+        $this->travel(3601)->seconds();
+        $this->postJson("/api/public/cursos/{$this->tenant->slug}/pedir-novo-link", ['email' => 'externa@fora.gov.br'])->assertOk();
     }
 }

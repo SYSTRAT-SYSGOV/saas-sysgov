@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\UserService;
 use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -41,7 +42,18 @@ final class CadastroExternoService
             throw ValidationException::withMessages(['aceite' => 'É preciso aceitar o termo de uso para se cadastrar.']);
         }
 
-        if ($dados['documento'] !== null && $dados['documento'] !== '' && !Cpf::valido($dados['documento'])) {
+        $documentoInformado = $dados['documento'] !== null && $dados['documento'] !== '';
+
+        // "Exigir CPF no cadastro externo" (ConfiguracaoPublicaTab, tarefa 6.6) gravava o valor
+        // em settings.cursos, mas nada aqui chegou a lê-lo pra validar de verdade — a inscrição
+        // sempre tratava o CPF como opcional, mesmo com o órgão exigindo. Lido direto do tenant
+        // (como OrgaoPublicoService já faz) pra não puxar ConfiguracaoPublicaService pra dentro
+        // de Services\Publico (o teste de arquitetura só libera isso pra outros Services\Publico).
+        if (!$documentoInformado && data_get($tenant->settings, 'cursos.documento_obrigatorio', false)) {
+            throw ValidationException::withMessages(['documento' => 'CPF é obrigatório para se cadastrar neste órgão.']);
+        }
+
+        if ($documentoInformado && !Cpf::valido($dados['documento'])) {
             throw ValidationException::withMessages(['documento' => 'CPF inválido.']);
         }
 
@@ -65,40 +77,53 @@ final class CadastroExternoService
             return;
         }
 
-        DB::transaction(function () use ($tenant, $dados, $usuario): void {
-            $usuario ??= User::create([
-                'name' => $dados['nome'],
-                'email' => $dados['email'],
-                'password' => Hash::make($dados['senha']),
-                'is_active' => true,
-            ]);
-            // Se $usuario já existia (conta de outro órgão), a senha do formulário nunca é usada:
-            // a pessoa continua entrando com a senha que já tinha (D6).
+        try {
+            DB::transaction(function () use ($tenant, $dados, $usuario): void {
+                $usuario ??= User::create([
+                    'name' => $dados['nome'],
+                    'email' => $dados['email'],
+                    'password' => Hash::make($dados['senha']),
+                    'is_active' => true,
+                ]);
+                // Se $usuario já existia (conta de outro órgão), a senha do formulário nunca é usada:
+                // a pessoa continua entrando com a senha que já tinha (D6).
 
-            $role = Role::where('slug', 'participante_externo_cursos')->where('tenant_id', $tenant->id)->firstOrFail();
+                $role = Role::where('slug', 'participante_externo_cursos')->where('tenant_id', $tenant->id)->firstOrFail();
 
-            $usuario->tenants()->syncWithoutDetaching([
-                $tenant->id => ['role_id' => $role->id, 'status' => 'pending', 'is_primary' => true],
-            ]);
-            $usuario->roles()->syncWithoutDetaching([$role->id]);
-            DB::table('role_user')->where('role_id', $role->id)->where('user_id', $usuario->id)->update(['tenant_id' => $tenant->id]);
+                $usuario->tenants()->syncWithoutDetaching([
+                    $tenant->id => ['role_id' => $role->id, 'status' => 'pending', 'is_primary' => true],
+                ]);
+                $usuario->roles()->syncWithoutDetaching([$role->id]);
+                DB::table('role_user')->where('role_id', $role->id)->where('user_id', $usuario->id)->update(['tenant_id' => $tenant->id]);
 
-            Participante::create([
-                'tenant_id' => $tenant->id,
-                'user_id' => $usuario->id,
-                'nome' => $dados['nome'],
-                'email' => $dados['email'],
-                'documento' => $dados['documento'],
-                'origem' => Participante::ORIGEM_EXTERNO,
-                'consentimento_em' => now(),
-                'termo_versao' => data_get($tenant->settings, 'cursos.termo.versao'),
-            ]);
+                Participante::create([
+                    'tenant_id' => $tenant->id,
+                    'user_id' => $usuario->id,
+                    'nome' => $dados['nome'],
+                    'email' => $dados['email'],
+                    'documento' => $dados['documento'],
+                    'origem' => Participante::ORIGEM_EXTERNO,
+                    'consentimento_em' => now(),
+                    'termo_versao' => data_get($tenant->settings, 'cursos.termo.versao'),
+                ]);
 
-            $this->audit->record('cursos', 'cadastro_externo.criado', "User #{$usuario->id}", null, ['tenant_id' => $tenant->id, 'email' => $dados['email']]);
+                $this->audit->record('cursos', 'cadastro_externo.criado', "User #{$usuario->id}", null, ['tenant_id' => $tenant->id, 'email' => $dados['email']]);
 
-            // O e-mail leva o link de verificação (design D5): o tratador gera o token na hora do
-            // envio, então o payload só precisa do user_id — o tenant já vai na coluna do evento.
-            $this->outbox->publish('cursos.CadastroExternoCriado', ['user_id' => $usuario->id], $tenant->id);
-        });
+                // O e-mail leva o link de verificação (design D5): o tratador gera o token na hora do
+                // envio, então o payload só precisa do user_id — o tenant já vai na coluna do evento.
+                $this->outbox->publish('cursos.CadastroExternoCriado', ['user_id' => $usuario->id], $tenant->id);
+            });
+        } catch (QueryException $e) {
+            // A checagem de e-mail duplicado em User::where(...)->first() acima roda fora da
+            // transação (D8: não pode travar a linha de um e-mail que talvez nem exista ainda) —
+            // duas requisições concorrentes com o mesmo e-mail novo podem passar as duas pela
+            // checagem e colidir só aqui, no índice único de `users.email`. Perdedor da corrida
+            // cai no mesmo caminho de "já tem conta" (resposta idêntica, D8) em vez de 500.
+            if (!str_contains($e->getMessage(), 'users_email_unique') && !str_contains($e->getMessage(), 'users.email')) {
+                throw $e;
+            }
+
+            $this->userService->requestPasswordReset($dados['email']);
+        }
     }
 }

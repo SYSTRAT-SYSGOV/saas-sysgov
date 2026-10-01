@@ -21,4 +21,4 @@ Route::get('/', OrgaoController::class);
 Route::get('/catalogo', CatalogoController::class);
 Route::get('/cursos/{slug}', CursoController::class);
 Route::post('/cadastro', CadastroExternoController::class)->middleware('throttle:cursos-cadastro-ip');
-Route::post('/pedir-novo-link', PedidoNovoLinkController::class);
+Route::post('/pedir-novo-link', PedidoNovoLinkController::class)->middleware('throttle:cursos-pedir-novo-link-ip');

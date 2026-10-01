@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Inscricao;
+use Modules\Cursos\Models\Participante;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
@@ -126,6 +127,30 @@ final class RelatorioCapacitacaoTest extends TestCase
 
         $this->assertSame(2, $linha['cursos_concluidos']);
         $this->assertSame(1440, $linha['horas_capacitacao_minutos']);
+    }
+
+    /**
+     * Achado da revisão do PR (tarefa 7.4): o cadastro externo (Fase 3) também grava `user_id`
+     * no `Participante` — sem o filtro por `origem`, um externo concluído entrava nesta lista
+     * interna de capacitação por servidor, pensada só para o quadro de pessoal do órgão.
+     */
+    public function test_participante_externo_concluido_nao_aparece_no_relatorio(): void
+    {
+        $externo = $this->usuario($this->tenant, ['participante_externo_cursos'], 'Externa');
+        $this->noTenant($this->tenant, fn () => Participante::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $externo->id,
+            'nome' => $externo->name,
+            'email' => $externo->email,
+            'origem' => Participante::ORIGEM_EXTERNO,
+            'consentimento_em' => now(),
+        ]));
+        $curso = $this->cursoPublicado($this->tenant, ['titulo' => 'A', 'carga_horaria_minutos' => 480]);
+        $this->concluir($externo, $curso, '2025-03-01 10:00:00', atributosTurma: ['nome' => 'Turma 2025-03-01', 'aceita_externos' => true]);
+
+        $relatorio = $this->relatorio();
+
+        $this->assertNull($this->linhaPorNome($relatorio, 'Externa'));
     }
 
     public function test_certificado_revogado_nao_conta(): void

@@ -55,6 +55,36 @@ final class PaginaPublicaOrgaoTest extends TestCase
         $this->getJson("/api/public/cursos/{$tenant->slug}")->assertOk()->assertJsonPath('boas_vindas', 'Bem-vindo!');
     }
 
+    /**
+     * Achado da revisão do PR (tarefa 7.4): o cadastro externo precisa do termo de verdade pra
+     * mostrar o que a pessoa está aceitando, e de saber se o CPF é obrigatório — antes a página
+     * pública só levava `boas_vindas`, os outros dois campos de `settings.cursos` configurados
+     * em `/configuracao-publica` nunca chegavam ao formulário.
+     */
+    public function test_pagina_do_orgao_leva_o_termo_de_uso_e_a_exigencia_de_cpf(): void
+    {
+        $tenant = $this->criarTenant('prefeitura-h');
+        $tenant->update(['settings' => ['cursos' => [
+            'publico_habilitado' => true,
+            'termo' => ['texto' => 'Texto do termo de uso.', 'versao' => 2],
+            'documento_obrigatorio' => true,
+        ]]]);
+
+        $this->getJson("/api/public/cursos/{$tenant->slug}")->assertOk()
+            ->assertJsonPath('termo_texto', 'Texto do termo de uso.')
+            ->assertJsonPath('documento_obrigatorio', true);
+    }
+
+    public function test_pagina_do_orgao_sem_termo_configurado_leva_null(): void
+    {
+        $tenant = $this->criarTenant('prefeitura-i');
+        $this->habilitarPaginaPublica($tenant);
+
+        $this->getJson("/api/public/cursos/{$tenant->slug}")->assertOk()
+            ->assertJsonPath('termo_texto', null)
+            ->assertJsonPath('documento_obrigatorio', false);
+    }
+
     public function test_orgao_inexistente_responde_404(): void
     {
         $this->getJson('/api/public/cursos/nao-existe')->assertNotFound();

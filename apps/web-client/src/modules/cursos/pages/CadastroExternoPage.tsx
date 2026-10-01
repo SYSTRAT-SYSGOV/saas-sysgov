@@ -7,6 +7,7 @@ import { sysgovApi } from '@sysgov/sdk';
 import { getApiErrorMessage, getApiValidationErrors, type ApiFieldError } from '@/lib/apiErrors';
 import { usePaginaOrgao } from '../utils/usePaginaOrgao';
 import { PaginaPublicaLayout } from '../components/PaginaPublicaLayout';
+import { TextoSeguro } from '../components/TextoSeguro';
 
 interface FormState {
   nome: string;
@@ -99,13 +100,25 @@ export const CadastroExternoPage: React.FC = () => {
             <Input label="E-mail" type="email" value={form.email} onChange={campo('email')} required />
             <Input label="Senha" type="password" value={form.senha} onChange={campo('senha')} required helperText="Mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo." />
             <Input label="Confirme a senha" type="password" value={form.senha_confirmation} onChange={campo('senha_confirmation')} required />
-            <Input label="CPF (opcional)" value={form.documento} onChange={campo('documento')} maxLength={20} />
+            <Input
+              label={pagina.documento_obrigatorio ? 'CPF' : 'CPF (opcional)'}
+              value={form.documento}
+              onChange={campo('documento')}
+              maxLength={20}
+              required={pagina.documento_obrigatorio}
+            />
 
             {/* Campo isca: oculto por CSS, fora da ordem de tabulação, autoComplete desligado. */}
             <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
               <label htmlFor="website">Site</label>
               <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" value={form.website} onChange={campo('website')} />
             </div>
+
+            {pagina.termo_texto && (
+              <div className="max-h-40 overflow-y-auto rounded-lg border border-border p-3">
+                <TextoSeguro html={pagina.termo_texto} />
+              </div>
+            )}
 
             <label className="flex items-start gap-2 text-sm text-foreground">
               <input type="checkbox" className="mt-0.5" checked={form.aceite} onChange={campo('aceite')} />

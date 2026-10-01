@@ -34,6 +34,10 @@ final class CadastroExternoController extends Controller
             'nome' => ['required', 'string', 'max:160'],
             'email' => ['required', 'email', 'max:160'],
             'senha' => ['required', 'string', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
+            // Formato só (tamanho); "obrigatório ou não" depende de settings.cursos do tenant
+            // (ConfiguracaoPublicaTab, tarefa 6.6) — regra de negócio, verificada no serviço,
+            // igual ao CPF inválido e ao aceite do termo (não dá pra montar a regra do Validator
+            // aqui sem puxar uma classe de fora de Services\Publico, o teste de arquitetura trava).
             'documento' => ['nullable', 'string', 'max:20'],
             'aceite' => ['required', 'accepted'],
         ]);
