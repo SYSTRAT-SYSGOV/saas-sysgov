@@ -12,11 +12,14 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Cursos\Http\Controllers\AulaController;
 use Modules\Cursos\Http\Controllers\AvaliacaoController;
+use Modules\Cursos\Http\Controllers\CampoInscricaoController;
 use Modules\Cursos\Http\Controllers\CatalogoController;
 use Modules\Cursos\Http\Controllers\CertificadoController;
 use Modules\Cursos\Http\Controllers\CorrecaoController;
+use Modules\Cursos\Http\Controllers\ConfiguracaoPublicaController;
 use Modules\Cursos\Http\Controllers\ConteudoInscricaoController;
 use Modules\Cursos\Http\Controllers\CursoController;
+use Modules\Cursos\Http\Controllers\EnvioController;
 use Modules\Cursos\Http\Controllers\FormacaoController;
 use Modules\Cursos\Http\Controllers\InscricaoController;
 use Modules\Cursos\Http\Controllers\MaterialController;
@@ -24,6 +27,7 @@ use Modules\Cursos\Http\Controllers\ModeloCertificadoController;
 use Modules\Cursos\Http\Controllers\PresencaController;
 use Modules\Cursos\Http\Controllers\QuestaoController;
 use Modules\Cursos\Http\Controllers\RelatorioController;
+use Modules\Cursos\Http\Controllers\RespostaInscricaoController;
 use Modules\Cursos\Http\Controllers\TentativaController;
 use Modules\Cursos\Http\Controllers\TurmaController;
 use Modules\Cursos\Http\Controllers\UsuarioOrgaoController;
@@ -81,6 +85,15 @@ Route::delete('/avaliacoes/{avaliacao}', [AvaliacaoController::class, 'destroy']
 Route::post('/avaliacoes/{avaliacao}/publicar', [AvaliacaoController::class, 'publicar']);
 Route::post('/avaliacoes/{avaliacao}/despublicar', [AvaliacaoController::class, 'despublicar']);
 
+// Formulário de inscrição configurável (tarefa 4.2, design D9)
+Route::get('/cursos/{curso}/campos-inscricao', [CampoInscricaoController::class, 'index']);
+Route::post('/cursos/{curso}/campos-inscricao', [CampoInscricaoController::class, 'store']);
+Route::post('/cursos/{curso}/campos-inscricao/reordenar', [CampoInscricaoController::class, 'reordenar']);
+Route::put('/campos-inscricao/{campo}', [CampoInscricaoController::class, 'update']);
+Route::delete('/campos-inscricao/{campo}', [CampoInscricaoController::class, 'destroy']);
+Route::post('/campos-inscricao/{campo}/desativar', [CampoInscricaoController::class, 'desativar']);
+Route::post('/campos-inscricao/{campo}/ativar', [CampoInscricaoController::class, 'ativar']);
+
 // Tentativas do participante e correção (Fase 2)
 Route::post('/avaliacoes/{avaliacao}/tentativas', [TentativaController::class, 'iniciar']);
 Route::get('/tentativas/{tentativa}', [TentativaController::class, 'show']);
@@ -113,6 +126,7 @@ Route::post('/turmas/{turma}/inscricoes', [InscricaoController::class, 'inscreve
 Route::post('/turmas/{turma}/inscricoes/direta', [InscricaoController::class, 'inscreverDireto']);
 Route::get('/inscricoes/{inscricao}', [InscricaoController::class, 'show']);
 Route::get('/inscricoes/{inscricao}/conteudo', [ConteudoInscricaoController::class, 'show']);
+Route::get('/inscricoes/{inscricao}/respostas', [RespostaInscricaoController::class, 'index']);
 Route::post('/inscricoes/{inscricao}/aprovar', [InscricaoController::class, 'aprovar']);
 Route::post('/inscricoes/{inscricao}/recusar', [InscricaoController::class, 'recusar']);
 Route::post('/inscricoes/{inscricao}/cancelar', [InscricaoController::class, 'cancelar']);
@@ -126,6 +140,14 @@ Route::get('/relatorios/unidades', [RelatorioController::class, 'unidades']);
 Route::get('/relatorios/capacitacao', [RelatorioController::class, 'capacitacao']);
 Route::get('/relatorios/capacitacao/exportar', [RelatorioController::class, 'capacitacaoExportar']);
 Route::get('/relatorios/capacitacao/{participante}', [RelatorioController::class, 'capacitacaoDetalhe']);
+
+// E-mails enviados (tarefa 1.8)
+Route::get('/envios', [EnvioController::class, 'index']);
+Route::post('/envios/{envio}/reenviar', [EnvioController::class, 'reenviar']);
+
+// Configuração da página pública (tarefa 3.2)
+Route::get('/configuracao-publica', [ConfiguracaoPublicaController::class, 'show']);
+Route::put('/configuracao-publica', [ConfiguracaoPublicaController::class, 'update']);
 
 // Presença: chamada manual e check-in por QR code
 Route::get('/agendamentos/{agendamento}/chamada', [PresencaController::class, 'chamada']);

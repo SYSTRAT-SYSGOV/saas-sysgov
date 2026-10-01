@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Modules\Cursos\Console\Commands\LimparCadastrosPendentesCommand;
 use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
@@ -18,6 +19,13 @@ use Modules\Cursos\Models\Material;
 use Modules\Cursos\Models\Tentativa;
 use Modules\Cursos\Models\ModeloCertificado;
 use Modules\Cursos\Models\Turma;
+use Modules\Cursos\Notificacoes\Tratadores\CadastroExternoCriadoTratador;
+use Modules\Cursos\Notificacoes\Tratadores\CertificadoEmitidoTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoAprovadaTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoCanceladaTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoCriadaTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoPromovidaTratador;
+use Modules\Cursos\Notificacoes\Tratadores\InscricaoRecusadaTratador;
 use Modules\Cursos\Policies\AvaliacaoPolicy;
 use Modules\Cursos\Policies\CertificadoPolicy;
 use Modules\Cursos\Policies\CursoPolicy;
@@ -36,10 +44,25 @@ final class CursosServiceProvider extends ServiceProvider
     /** Salvamentos de resposta por minuto, por usuário: o autosave com debounce não deve inundar o banco (design D8). */
     public const LIMITE_RESPOSTAS_POR_MINUTO = 60;
 
+    /** Cadastros públicos por hora, por IP (design D8). O limite por e-mail é o outro (aplicado no serviço, não aqui — o e-mail vem no corpo). */
+    public const LIMITE_CADASTRO_IP_POR_HORA = 5;
+
+    /** Cadastros públicos por hora, pelo hash do e-mail normalizado (design D8) — aplicado em CadastroExternoService, não como RateLimiter::for, porque o e-mail só existe depois de ler o corpo. */
+    public const LIMITE_CADASTRO_EMAIL_POR_HORA = 3;
+
+    /** Pedidos de novo link de verificação por hora, por IP (design D8) — sem isso, só o limite genérico de 30/min de toda rota pública valia aqui, o suficiente pra inundar a caixa de um e-mail alheio. */
+    public const LIMITE_PEDIR_NOVO_LINK_IP_POR_HORA = 5;
+
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
         $this->loadViewsFrom(__DIR__ . '/../Resources/views', 'cursos');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                LimparCadastrosPendentesCommand::class,
+            ]);
+        }
 
         Gate::policy(Curso::class, CursoPolicy::class);
         Gate::policy(Formacao::class, FormacaoPolicy::class);
@@ -53,6 +76,20 @@ final class CursosServiceProvider extends ServiceProvider
 
         RateLimiter::for('cursos-respostas', fn (Request $request) => Limit::perMinute(self::LIMITE_RESPOSTAS_POR_MINUTO)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
         RateLimiter::for('cursos-publico', fn (Request $request) => Limit::perMinute(self::LIMITE_PUBLICO_POR_MINUTO)->by((string) $request->ip()));
+        RateLimiter::for('cursos-cadastro-ip', fn (Request $request) => Limit::perHour(self::LIMITE_CADASTRO_IP_POR_HORA)->by((string) $request->ip()));
+        RateLimiter::for('cursos-pedir-novo-link-ip', fn (Request $request) => Limit::perHour(self::LIMITE_PEDIR_NOVO_LINK_IP_POR_HORA)->by((string) $request->ip()));
+
+        // Tratadores de e-mail do Outbox (design D1): o núcleo (app/) não conhece o Cursos, cada
+        // módulo acrescenta as próprias entradas aqui.
+        config([
+            'notificacoes.cursos.CadastroExternoCriado' => [CadastroExternoCriadoTratador::class],
+            'notificacoes.cursos.InscricaoCriada' => [InscricaoCriadaTratador::class],
+            'notificacoes.cursos.InscricaoAprovada' => [InscricaoAprovadaTratador::class],
+            'notificacoes.cursos.InscricaoRecusada' => [InscricaoRecusadaTratador::class],
+            'notificacoes.cursos.InscricaoCancelada' => [InscricaoCanceladaTratador::class],
+            'notificacoes.cursos.InscricaoPromovida' => [InscricaoPromovidaTratador::class],
+            'notificacoes.cursos.CertificadoEmitido' => [CertificadoEmitidoTratador::class],
+        ]);
     }
 
     public function register(): void

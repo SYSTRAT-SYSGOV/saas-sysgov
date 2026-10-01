@@ -86,6 +86,16 @@ final class AuthController
         }
 
         if (!$user->is_platform_admin && !$tenant) {
+            // Cadastro externo do Cursos (design D6): já provou a senha, então não há problema de
+            // enumeração em dizer que falta verificar o e-mail — só ainda não pode entrar.
+            $temVinculoPendente = !empty($credentials['tenant_slug'])
+                ? $user->tenants()->where('tenants.slug', $credentials['tenant_slug'])->where('tenant_user.status', 'pending')->exists()
+                : $user->tenants()->where('tenant_user.status', 'pending')->exists();
+
+            if ($temVinculoPendente) {
+                throw ValidationException::withMessages(['tenant_slug' => 'Verifique seu e-mail para ativar o cadastro antes de entrar.']);
+            }
+
             throw ValidationException::withMessages(['tenant_slug' => 'O usuário não possui um tenant ativo.']);
         }
 

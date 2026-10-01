@@ -17,13 +17,21 @@
         </exclude>
     </groups>
     <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="CACHE_STORE" value="array"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="AUTH_GUARD" value="web"/>
-        <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost"/>
+        <!-- force="true" em tudo: sem isso, um .env real (.env.docker no CI/dev) com um valor
+             próprio pra essas mesmas chaves vence o Dotenv do Laravel silenciosamente, e o teste
+             roda contra Redis/DB de verdade sem avisar nada (achado ao investigar um teste de
+             limite de requisições ficando aleatoriamente flakey por causa de contagem que
+             sobrevivia entre execuções separadas do phpunit, tarefa 2.3). -->
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="AUTH_GUARD" value="web" force="true"/>
+        <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost" force="true"/>
         <env name="DB_CONNECTION" value="sqlite" force="true"/>
         <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <!-- Nunca conecta de verdade (nem no Mailpit): array guarda a mensagem renderizada em
+             memória, então um Mailable que lança em build() ainda simula falha de envio. -->
+        <env name="MAIL_MAILER" value="array" force="true"/>
     </php>
 </phpunit>

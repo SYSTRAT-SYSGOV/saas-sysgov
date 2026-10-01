@@ -223,6 +223,18 @@ export class SysgovApi implements ApiRequester {
     }
   }
 
+  /** Solicita o link de redefinição de senha — resposta sempre igual, não revela se o e-mail existe. */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return this.request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+  }
+
+  async resetPassword(token: string, password: string, passwordConfirmation: string): Promise<{ message: string }> {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password, password_confirmation: passwordConfirmation }),
+    });
+  }
+
   // --- Admin Plataforma ---
   async tenants(): Promise<Paginated<ApiTenant>> { return this.request('/admin/tenants'); }
   async createTenant(input: CreateTenantInput): Promise<ApiTenant> { return this.request('/admin/tenants', { method: 'POST', body: JSON.stringify(input) }); }

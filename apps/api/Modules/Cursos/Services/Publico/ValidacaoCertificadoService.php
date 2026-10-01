@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Modules\Cursos\Services;
+namespace Modules\Cursos\Services\Publico;
 
 use Modules\Cursos\Models\Certificado;
+use Modules\Cursos\Services\CertificadoService;
 
 /**
  * ÚNICO ponto de acesso a dados das rotas públicas do módulo (design D7).

@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 
 const cursosApi = vi.hoisted(() => ({
   getInscricao: vi.fn(),
+  getRespostasInscricao: vi.fn(),
   getConteudoInscricao: vi.fn(),
   baixarArquivoMaterial: vi.fn(),
   iniciarTentativa: vi.fn(),
@@ -56,6 +57,7 @@ describe('Área do participante — materiais e avaliações da inscrição', ()
     vi.clearAllMocks();
     delete (window as unknown as { hackeado?: boolean }).hackeado;
     cursosApi.getInscricao.mockResolvedValue(inscricao);
+    cursosApi.getRespostasInscricao.mockResolvedValue([]);
     cursosApi.getConteudoInscricao.mockResolvedValue({ ...base, materiais, avaliacoes });
   });
 

@@ -1,4 +1,4 @@
-import type { LiberacaoInput, RegraLiberacao } from '@sysgov/sdk';
+import type { CampoInscricao, LiberacaoInput, RegraLiberacao } from '@sysgov/sdk';
 
 /** Regra de liberação como o formulário a mantém (tudo em texto, como vem dos campos). */
 export interface LiberacaoForm {
@@ -62,6 +62,27 @@ export function validarNotaMinima(valor: string): string | null {
 export function paraNumero(valor: string): number | null {
   if (valor.trim() === '') return null;
   return Number(valor.replace(',', '.'));
+}
+
+/** Campo de seleção: exige ao menos uma opção com texto (mesma regra de `CampoInscricaoService::validarOpcoes`). */
+export function validarOpcoesCampo(tipo: string, opcoes: string[]): string | null {
+  if (tipo !== 'selecao') return null;
+  if (opcoes.every((o) => o.trim() === '')) return 'Campos do tipo seleção precisam de pelo menos uma opção.';
+  return null;
+}
+
+/**
+ * Formulário de inscrição (design D9): campo do tipo `caixa_marcacao` sempre tem um valor
+ * definido ("sim"/"nao", nunca vazio — ver `useCamposInscricao`), então nunca dispara o
+ * "obrigatório" aqui, mesmo espelho da regra do backend (`RespostaInscricaoService::gravar`).
+ */
+export function validarRespostas(campos: CampoInscricao[], valores: Record<number, string>): string | null {
+  for (const campo of campos) {
+    if (!campo.obrigatorio || campo.tipo === 'caixa_marcacao') continue;
+    const valor = valores[campo.id];
+    if (valor === undefined || valor.trim() === '') return `O campo "${campo.rotulo}" é obrigatório.`;
+  }
+  return null;
 }
 
 /** Tamanho máximo do PDF de um material (o backend também confere). */

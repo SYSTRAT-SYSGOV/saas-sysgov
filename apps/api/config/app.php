@@ -5,6 +5,9 @@ return [
     'env' => env('APP_ENV', 'production'),
     'debug' => (bool) env('APP_DEBUG', false),
     'url' => env('APP_URL', 'http://localhost'),
+    // Endereço público do Painel do Cliente (apps/web-client) — os e-mails transacionais
+    // montam os links a partir daqui, nunca de 'url' (o endereço da API).
+    'portal_url' => env('PORTAL_URL', 'http://localhost:5174'),
     'timezone' => 'America/Sao_Paulo',
     'locale' => 'pt_BR',
     'fallback_locale' => 'en',

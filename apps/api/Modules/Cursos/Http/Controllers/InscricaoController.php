@@ -37,9 +37,10 @@ final class InscricaoController extends Controller
     {
         $this->authorize('inscrever', $turma);
         $user = $request->user();
+        $respostas = $request->validate($this->regrasRespostas())['respostas'] ?? [];
 
         return $this->executar(fn () => response()->json(
-            $this->inscricoes->inscrever($turma, $this->inscricoes->participanteDoUsuario($user), $user),
+            $this->inscricoes->inscrever($turma, $this->inscricoes->participanteDoUsuario($user), $user, respostas: $respostas),
             201,
         ));
     }
@@ -48,7 +49,7 @@ final class InscricaoController extends Controller
     public function inscreverDireto(Request $request, Turma $turma): JsonResponse
     {
         $this->authorize('inscreverOutros', $turma);
-        $dados = $request->validate(['user_id' => ['required', 'integer']]);
+        $dados = $request->validate(['user_id' => ['required', 'integer'], ...$this->regrasRespostas()]);
 
         $tenantId = app(TenantContext::class)->id();
         $alvo = User::query()
@@ -60,7 +61,7 @@ final class InscricaoController extends Controller
         }
 
         return $this->executar(fn () => response()->json(
-            $this->inscricoes->inscrever($turma, $this->inscricoes->participanteDoUsuario($alvo), $request->user(), peloAdministrador: true),
+            $this->inscricoes->inscrever($turma, $this->inscricoes->participanteDoUsuario($alvo), $request->user(), peloAdministrador: true, respostas: $dados['respostas'] ?? []),
             201,
         ));
     }
@@ -76,18 +77,23 @@ final class InscricaoController extends Controller
     {
         $this->authorize('operar', $turma);
         $linhas = $this->listaInscritos->linhas($turma);
+        $colunasFormulario = $this->listaInscritos->colunasFormulario($turma);
 
         $this->audit->record('cursos', 'inscricoes.exportadas', "Turma #{$turma->id}", null, ['formato' => 'csv', 'linhas' => count($linhas)]);
 
         $nome = 'inscritos-turma-' . $turma->id . '-' . now()->format('Ymd-His') . '.csv';
 
-        return response()->streamDownload(function () use ($linhas): void {
+        return response()->streamDownload(function () use ($linhas, $colunasFormulario): void {
             $saida = fopen('php://output', 'wb');
-            $this->csv->escreverCabecalho($saida, ['Nome', 'E-mail', 'Status', 'Data da inscrição', 'Frequência até o momento (%)']);
+            $this->csv->escreverCabecalho($saida, [
+                'Nome', 'E-mail', 'Origem', 'Status', 'Data da inscrição', 'Frequência até o momento (%)',
+                ...array_map(fn (array $c): string => $c['rotulo'], $colunasFormulario),
+            ]);
             foreach ($linhas as $l) {
                 $this->csv->escreverLinha($saida, [
-                    $l['nome'], $l['email'], $l['status_label'],
+                    $l['nome'], $l['email'], $l['origem_label'], $l['status_label'],
                     $l['inscrito_em'], number_format($l['frequencia']['percentual'], 2, ',', ''),
+                    ...array_map(fn (array $c): string => $l['respostas'][$c['campo_id']] ?? '', $colunasFormulario),
                 ]);
             }
             fclose($saida);
@@ -155,5 +161,17 @@ final class InscricaoController extends Controller
         return $this->executar(fn () => response()->json(
             $this->inscricoes->cancelar($inscricao, $request->user(), $peloAdministrador, $dados['motivo'] ?? null),
         ));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function regrasRespostas(): array
+    {
+        return [
+            'respostas' => ['sometimes', 'array'],
+            'respostas.*.campo_id' => ['required', 'integer'],
+            'respostas.*.valor' => ['nullable'],
+        ];
     }
 }

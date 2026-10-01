@@ -5,7 +5,9 @@ import { Button } from '@sysgov/ui';
 import { DataTable, ScreenState, StatusChip, Tabs, type TabsItem } from '@/components/ui';
 import { sysgovApi, type Curso } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
+import { ConfiguracaoPublicaTab } from '../components/ConfiguracaoPublicaTab';
 import { CursoFormModal } from '../components/CursoFormModal';
+import { EnviosTab } from '../components/EnviosTab';
 import { RelatoriosTab } from '../components/RelatoriosTab';
 import { STATUS_CURSO, TIPO_CURSO, formatarCargaHoraria } from '../utils/formatos';
 
@@ -13,11 +15,13 @@ interface Props {
   onAbrirCurso: (id: number) => void;
 }
 
-type AbaGestaoCursos = 'lista' | 'relatorios';
+type AbaGestaoCursos = 'lista' | 'relatorios' | 'publica' | 'envios';
 
 const ABAS: TabsItem<AbaGestaoCursos>[] = [
   { key: 'lista', label: 'Cursos e eventos' },
   { key: 'relatorios', label: 'Relatórios' },
+  { key: 'publica', label: 'Página pública' },
+  { key: 'envios', label: 'Envios de e-mail' },
 ];
 
 export const GestaoCursosPage: React.FC<Props> = ({ onAbrirCurso }) => {
@@ -117,6 +121,8 @@ export const GestaoCursosPage: React.FC<Props> = ({ onAbrirCurso }) => {
       )}
 
       {aba === 'relatorios' && <RelatoriosTab />}
+      {aba === 'publica' && <ConfiguracaoPublicaTab />}
+      {aba === 'envios' && <EnviosTab />}
 
       <CursoFormModal
         open={novo}

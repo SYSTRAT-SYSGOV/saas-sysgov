@@ -13,11 +13,15 @@ use Illuminate\Support\Facades\Hash;
 use Modules\Admin\Models\Module;
 use Modules\Cursos\Enums\StatusCurso;
 use Modules\Cursos\Models\Aula;
+use Modules\Cursos\Models\CampoInscricao;
 use Modules\Cursos\Models\Certificado;
 use Modules\Cursos\Models\Curso;
+use Modules\Cursos\Models\Participante;
 use Modules\Cursos\Models\Turma;
 use Modules\Cursos\Services\AulaService;
+use Modules\Cursos\Services\CampoInscricaoService;
 use Modules\Cursos\Services\CertificadoService;
+use Modules\Cursos\Services\ConfiguracaoPublicaService;
 use Modules\Cursos\Services\CursoService;
 use Modules\Cursos\Services\EncerramentoService;
 use Modules\Cursos\Services\FormacaoService;
@@ -36,6 +40,11 @@ use RuntimeException;
  * check-in), evento com aprovação manual, curso em rascunho e uma formação.
  * O conteúdo da Fase 2 (materiais e avaliações) vem do CursosConteudoDemonstracaoSeeder.
  *
+ * Fase 3 (tarefa 7.1): página pública habilitada, dois campos extras no
+ * formulário de inscrição do curso de contratos, e um participante externo
+ * de exemplo (mariana.freitas@fora.gov.br) já inscrito e com as respostas
+ * do formulário.
+ *
  * Tudo passa pelos Services (auditoria, outbox e regras valem como no uso
  * real). Cria usuários de demonstração (@demo.sysgov.local) com a senha
  * SENHA_DEMO para dar para entrar como instrutora e participantes — por isso
@@ -47,6 +56,8 @@ use RuntimeException;
 final class CursosDadosDemonstracaoSeeder extends Seeder
 {
     public const SENHA_DEMO = 'Cursos@Demo2026';
+
+    private Tenant $tenant;
 
     private User $admin;
 
@@ -70,6 +81,7 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
             return;
         }
 
+        $this->tenant = $tenant;
         app(TenantContext::class)->set($tenant);
 
         if (Curso::query()->exists()) {
@@ -112,6 +124,10 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
                 ['curso_id' => $excel->id, 'obrigatorio' => false],
             ],
         ));
+
+        $this->habilitarPaginaPublica();
+        $campos = $this->camposFormularioInscricao($contratos);
+        $this->inscreverExterno($contratos, $campos);
 
         $this->semearConteudo($tenant->id);
 
@@ -177,7 +193,8 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
         $curso = $this->cursoPublicado('Gestão e fiscalização de contratos', 480, 'Papéis do gestor e do fiscal, medições, aditivos, reequilíbrio e aplicação de sanções.');
         [$aula1, $aula2, $aula3] = $this->aulas($curso, ['Gestor e fiscal do contrato', 'Medição e pagamento', 'Aditivos e sanções'], 160);
 
-        $turma = $this->turma($curso, 'Turma 2026/1', now()->subDays(7), now()->addDays(14), 20, 'presencial');
+        // aceitaExternos: true — turma de exemplo aberta a participantes externos (tarefa 7.1, design D11).
+        $turma = $this->turma($curso, 'Turma 2026/1', now()->subDays(7), now()->addDays(14), 20, 'presencial', aceitaExternos: true);
         $inscricoes = array_map(fn (User $p) => $this->inscrever($turma, $p, peloAdministrador: true), array_slice($this->participantes, 0, 4));
 
         $passada = $this->como($this->admin, fn () => app(TurmaService::class)->agendar($turma, $aula1, now()->subDays(5)->setTime(9, 0)->toDateTimeString(), now()->subDays(5)->setTime(11, 40)->toDateTimeString()));
@@ -209,6 +226,64 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
         }
     }
 
+    /** Página pública do órgão habilitada, com boas-vindas e termo de uso (tarefa 7.1, design D11). */
+    private function habilitarPaginaPublica(): void
+    {
+        $this->como($this->admin, fn () => app(ConfiguracaoPublicaService::class)->atualizar($this->tenant, [
+            'publico_habilitado' => true,
+            'boas_vindas' => '<p>Conheça os cursos e eventos gratuitos oferecidos pela Escola de Governo e inscreva-se diretamente pelo catálogo abaixo.</p>',
+            'documento_obrigatorio' => false,
+            'termo' => ['texto' => '<p>Ao se cadastrar, você concorda com o uso dos seus dados para controle de frequência e emissão de certificado, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>'],
+        ]));
+    }
+
+    /**
+     * Campos extras do formulário de inscrição do curso de contratos (tarefa 7.1, design D9).
+     *
+     * @return list<CampoInscricao>
+     */
+    private function camposFormularioInscricao(Curso $curso): array
+    {
+        $servico = app(CampoInscricaoService::class);
+
+        return [
+            $this->como($this->admin, fn () => $servico->criar($curso, ['rotulo' => 'Órgão de origem', 'tipo' => 'texto', 'obrigatorio' => true])),
+            $this->como($this->admin, fn () => $servico->criar($curso, [
+                'rotulo' => 'Vínculo com a administração', 'tipo' => 'selecao', 'obrigatorio' => false,
+                'opcoes' => ['Servidor efetivo', 'Comissionado', 'Terceirizado'],
+            ])),
+        ];
+    }
+
+    /**
+     * Participante externo de exemplo (design D6/D7), cadastrado direto (sem o fluxo de
+     * verificação de e-mail, que é o que a tarefa 7.3 testa de ponta a ponta no navegador) e
+     * inscrito na turma de contratos aberta a externos, respondendo ao formulário da 7.1.
+     *
+     * @param list<CampoInscricao> $campos
+     */
+    private function inscreverExterno(Curso $curso, array $campos): void
+    {
+        $externo = User::updateOrCreate(
+            ['email' => 'mariana.freitas@fora.gov.br'],
+            ['name' => 'Mariana Freitas', 'password' => Hash::make(self::SENHA_DEMO), 'is_active' => true],
+        );
+        $this->tenant->users()->syncWithoutDetaching([$externo->id => ['status' => 'active', 'is_primary' => true]]);
+        $this->atribuir($this->tenant, $externo, 'participante_externo_cursos');
+
+        $config = app(ConfiguracaoPublicaService::class)->obter($this->tenant);
+        Participante::updateOrCreate(
+            ['tenant_id' => $this->tenant->id, 'user_id' => $externo->id],
+            ['nome' => $externo->name, 'email' => $externo->email, 'origem' => Participante::ORIGEM_EXTERNO, 'consentimento_em' => now(), 'termo_versao' => $config['termo']['versao']],
+        );
+
+        $turma = Turma::query()->where('curso_id', $curso->id)->sole();
+        $this->inscrever($turma, $externo, respostas: [
+            ['campo_id' => $campos[0]->id, 'valor' => 'Secretaria de Administração'],
+            ['campo_id' => $campos[1]->id, 'valor' => 'Servidor efetivo'],
+        ]);
+    }
+
     // ---------------------------------------------------------------- montagem
 
     private function cursoPublicado(string $titulo, int $minutos, string $descricao, string $tipo = 'curso'): Curso
@@ -233,7 +308,7 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
         );
     }
 
-    private function turma(Curso $curso, string $nome, \DateTimeInterface $inicio, \DateTimeInterface $fim, int $vagas, string $modalidade, bool $aprovacaoManual = false): Turma
+    private function turma(Curso $curso, string $nome, \DateTimeInterface $inicio, \DateTimeInterface $fim, int $vagas, string $modalidade, bool $aprovacaoManual = false, bool $aceitaExternos = false): Turma
     {
         return $this->como($this->admin, fn () => app(TurmaService::class)->criar($curso, [
             'nome' => $nome,
@@ -246,17 +321,21 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
             'local' => $modalidade === 'online' ? null : 'Auditório da Escola de Governo',
             'link' => $modalidade === 'presencial' ? null : 'https://meet.example.gov.br/escola-de-governo',
             'aprovacao_manual' => $aprovacaoManual,
+            'aceita_externos' => $aceitaExternos,
         ], [$this->instrutora->id]));
     }
 
-    private function inscrever(Turma $turma, User $user, bool $peloAdministrador = false): \Modules\Cursos\Models\Inscricao
+    /**
+     * @param list<array{campo_id: int, valor: mixed}> $respostas
+     */
+    private function inscrever(Turma $turma, User $user, bool $peloAdministrador = false, array $respostas = []): \Modules\Cursos\Models\Inscricao
     {
         $autor = $peloAdministrador ? $this->admin : $user;
 
-        return $this->como($autor, function () use ($turma, $user, $autor, $peloAdministrador) {
+        return $this->como($autor, function () use ($turma, $user, $autor, $peloAdministrador, $respostas) {
             $servico = app(InscricaoService::class);
 
-            return $servico->inscrever($turma->refresh(), $servico->participanteDoUsuario($user), $autor, $peloAdministrador);
+            return $servico->inscrever($turma->refresh(), $servico->participanteDoUsuario($user), $autor, $peloAdministrador, $respostas);
         });
     }
 

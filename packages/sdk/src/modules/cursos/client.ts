@@ -6,17 +6,26 @@ import type {
   AulaInput,
   Avaliacao,
   AvaliacaoInput,
+  CadastroExternoInput,
+  CampoInscricao,
+  CampoInscricaoInput,
   CapacitacaoServidor,
   CapacitacaoServidorDetalhe,
   CatalogoCurso,
+  CatalogoPublicoCurso,
   Certificado,
   Chamada,
   CheckInResultado,
+  ConfiguracaoPublica,
+  ConfiguracaoPublicaInput,
   ConteudoInscricao,
   Curso,
   CursoDetalhe,
   CursoFiltros,
   CursoInput,
+  CursoPublicoDetalhe,
+  Envio,
+  EnvioFiltros,
   FilaCorrecaoItem,
   Formacao,
   FormacaoInput,
@@ -26,9 +35,11 @@ import type {
   InstrutorResumo,
   Material,
   MaterialInput,
+  MensagemResposta,
   MinhaInscricao,
   ModeloCertificado,
   ModeloCertificadoInput,
+  PaginaOrgao,
   QrCheckIn,
   Questao,
   QuestaoInput,
@@ -36,6 +47,8 @@ import type {
   RelatorioCursos,
   RelatorioCursosFiltros,
   RelatorioTurma,
+  RespostaInscricao,
+  RespostaInscricaoInput,
   RespostaSalva,
   ResumoEncerramento,
   StatusCurso,
@@ -75,8 +88,8 @@ export class CursosModuleClient implements BaseModuleClient {
     return this.api.request('/cursos/meus-certificados');
   }
 
-  inscrever(turmaId: number): Promise<Inscricao> {
-    return this.api.request(`/cursos/turmas/${turmaId}/inscricoes`, { method: 'POST' });
+  inscrever(turmaId: number, respostas: RespostaInscricaoInput[] = []): Promise<Inscricao> {
+    return this.api.request(`/cursos/turmas/${turmaId}/inscricoes`, { method: 'POST', ...json({ respostas }) });
   }
 
   cancelarInscricao(id: number, motivo?: string): Promise<Inscricao> {
@@ -226,8 +239,13 @@ export class CursosModuleClient implements BaseModuleClient {
     return this.api.requestBlob(`/cursos/turmas/${turmaId}/inscricoes/exportar`);
   }
 
-  inscreverUsuario(turmaId: number, userId: number): Promise<Inscricao> {
-    return this.api.request(`/cursos/turmas/${turmaId}/inscricoes/direta`, { method: 'POST', ...json({ user_id: userId }) });
+  inscreverUsuario(turmaId: number, userId: number, respostas: RespostaInscricaoInput[] = []): Promise<Inscricao> {
+    return this.api.request(`/cursos/turmas/${turmaId}/inscricoes/direta`, { method: 'POST', ...json({ user_id: userId, respostas }) });
+  }
+
+  /** Respostas do formulário de inscrição (design D9) — mesma regra de visibilidade da inscrição, negada com 404. */
+  getRespostasInscricao(inscricaoId: number): Promise<RespostaInscricao[]> {
+    return this.api.request(`/cursos/inscricoes/${inscricaoId}/respostas`);
   }
 
   aprovarInscricao(id: number): Promise<Inscricao> {
@@ -478,10 +496,90 @@ export class CursosModuleClient implements BaseModuleClient {
     return params.toString();
   }
 
+  // ---------------------------------------------------------------- formulário de inscrição (design D9)
+
+  listarCamposInscricao(cursoId: number): Promise<CampoInscricao[]> {
+    return this.api.request(`/cursos/cursos/${cursoId}/campos-inscricao`);
+  }
+
+  criarCampoInscricao(cursoId: number, input: CampoInscricaoInput): Promise<CampoInscricao> {
+    return this.api.request(`/cursos/cursos/${cursoId}/campos-inscricao`, { method: 'POST', ...json(input) });
+  }
+
+  atualizarCampoInscricao(id: number, input: Partial<CampoInscricaoInput>): Promise<CampoInscricao> {
+    return this.api.request(`/cursos/campos-inscricao/${id}`, { method: 'PUT', ...json(input) });
+  }
+
+  excluirCampoInscricao(id: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/cursos/campos-inscricao/${id}`, { method: 'DELETE' });
+  }
+
+  /** `ids` = todos os campos do curso, na nova ordem. */
+  reordenarCamposInscricao(cursoId: number, ids: number[]): Promise<CampoInscricao[]> {
+    return this.api.request(`/cursos/cursos/${cursoId}/campos-inscricao/reordenar`, { method: 'POST', ...json({ ids }) });
+  }
+
+  desativarCampoInscricao(id: number): Promise<CampoInscricao> {
+    return this.api.request(`/cursos/campos-inscricao/${id}/desativar`, { method: 'POST' });
+  }
+
+  ativarCampoInscricao(id: number): Promise<CampoInscricao> {
+    return this.api.request(`/cursos/campos-inscricao/${id}/ativar`, { method: 'POST' });
+  }
+
+  // ---------------------------------------------------------------- configuração da página pública (design D10/D11)
+
+  getConfiguracaoPublica(): Promise<ConfiguracaoPublica> {
+    return this.api.request('/cursos/configuracao-publica');
+  }
+
+  atualizarConfiguracaoPublica(input: ConfiguracaoPublicaInput): Promise<ConfiguracaoPublica> {
+    return this.api.request('/cursos/configuracao-publica', { method: 'PUT', ...json(input) });
+  }
+
+  // ---------------------------------------------------------------- envios de e-mail (tarefa 1.8)
+
+  listarEnvios(filtros: EnvioFiltros = {}): Promise<Paginated<Envio>> {
+    return this.api.request(`/cursos/envios?${this.querystring(filtros)}`);
+  }
+
+  reenviarEnvio(id: number): Promise<Envio> {
+    return this.api.request(`/cursos/envios/${id}/reenviar`, { method: 'POST' });
+  }
+
   // ---------------------------------------------------------------- público (sem login)
 
   /** Validação pública — responde 404 (erro) quando o código não existe. */
   validarCertificado(codigo: string): Promise<ValidacaoCertificado> {
     return this.api.request(`/public/cursos/certificados/${encodeURIComponent(codigo)}`);
+  }
+
+  /** Casca da página pública do órgão: identidade + texto de boas-vindas (design D7). */
+  getPaginaOrgao(orgao: string): Promise<PaginaOrgao> {
+    return this.api.request(`/public/cursos/${encodeURIComponent(orgao)}`);
+  }
+
+  /** Oferta pública: só cursos publicados com turma aberta a externos (design D7). */
+  listarCatalogoPublico(orgao: string): Promise<CatalogoPublicoCurso[]> {
+    return this.api.request(`/public/cursos/${encodeURIComponent(orgao)}/catalogo`);
+  }
+
+  getCursoPublico(orgao: string, slug: string): Promise<CursoPublicoDetalhe> {
+    return this.api.request(`/public/cursos/${encodeURIComponent(orgao)}/cursos/${encodeURIComponent(slug)}`);
+  }
+
+  /** Cadastro do participante externo (design D6) — resposta sempre igual, não revela se o e-mail já existe. */
+  cadastrarExterno(orgao: string, input: CadastroExternoInput): Promise<MensagemResposta> {
+    return this.api.request(`/public/cursos/${encodeURIComponent(orgao)}/cadastro`, { method: 'POST', ...json(input) });
+  }
+
+  /** Reenvia o e-mail de verificação de um cadastro externo pendente (resposta sempre igual). */
+  pedirNovoLink(orgao: string, email: string): Promise<MensagemResposta> {
+    return this.api.request(`/public/cursos/${encodeURIComponent(orgao)}/pedir-novo-link`, { method: 'POST', ...json({ email }) });
+  }
+
+  /** Confirma o e-mail do cadastro externo e ativa o vínculo pendente (design D5/D6). */
+  verificarEmail(token: string): Promise<MensagemResposta> {
+    return this.api.request('/public/cursos/verificar-email', { method: 'POST', ...json({ token }) });
   }
 }

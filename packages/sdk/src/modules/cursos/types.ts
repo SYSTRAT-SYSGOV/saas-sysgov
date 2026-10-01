@@ -17,7 +17,11 @@ export interface Curso {
   id: number;
   tipo: TipoCurso;
   titulo: string;
+  /** Endereço curto, único no órgão — identifica o curso na página pública (design D11). */
+  slug: string | null;
   descricao: string | null;
+  /** Texto de divulgação da página pública, sanitizado no servidor (design D11). */
+  texto_publico: string | null;
   carga_horaria_minutos: number;
   capa_path: string | null;
   capa_url: string | null;
@@ -39,7 +43,10 @@ export interface CursoDetalhe extends Curso {
 export interface CursoInput {
   tipo?: TipoCurso;
   titulo: string;
+  /** Gerado do título quando ausente; único no órgão (design D11). */
+  slug?: string | null;
   descricao?: string | null;
+  texto_publico?: string | null;
   carga_horaria_minutos: number;
   frequencia_minima?: number;
   /** 0 a 10; nulo/ausente = sem nota mínima. Eventos não aceitam. */
@@ -111,6 +118,8 @@ export interface Turma {
   local: string | null;
   link: string | null;
   aprovacao_manual: boolean;
+  /** Abre a turma à inscrição pública de participantes externos (design D11, padrão falso). */
+  aceita_externos: boolean;
   status: StatusTurma;
   encerrada_em: string | null;
   instrutores?: InstrutorResumo[];
@@ -140,6 +149,7 @@ export interface TurmaInput {
   local?: string | null;
   link?: string | null;
   aprovacao_manual?: boolean;
+  aceita_externos?: boolean;
   instrutores: number[];
 }
 
@@ -213,17 +223,23 @@ export interface InscricaoDetalhe extends Omit<MinhaInscricao, 'turma'> {
   aulas: AulaFrequencia[];
 }
 
+export type OrigemParticipante = 'servidor' | 'externo';
+
 export interface InscritoTurma {
   id: number;
   participante_id: number;
   nome: string;
   email: string;
+  origem: OrigemParticipante;
+  origem_label: string;
   status: StatusInscricao;
   status_label: string;
   inscrito_em: string;
   posicao_fila: number | null;
   frequencia: Frequencia;
   nota: number | null;
+  /** Respostas do formulário de inscrição (design D9), por campo_id. */
+  respostas: Record<number, string>;
 }
 
 export interface ItemChamada {
@@ -682,4 +698,144 @@ export interface UnidadeRelatorio {
   id: number;
   nome: string;
   path: string;
+}
+
+// ---------------------------------------------------------------- Fase 3: inscrição pública e e-mail
+
+export interface IdentidadeOrgao {
+  titulo: string;
+  cor_primaria: string | null;
+  logo_url: string | null;
+  /** White-label: esconde a assinatura "Portal SYSGOV — SYSTRAT" no rodapé quando true. */
+  assinatura_oculta: boolean;
+}
+
+/** Casca da página pública do órgão (design D7) — GET /public/cursos/{orgao}. */
+export interface PaginaOrgao {
+  nome: string;
+  slug: string;
+  boas_vindas: string | null;
+  /** Termo de uso configurado em `/configuracao-publica` (D10); null = órgão não configurou nenhum. */
+  termo_texto: string | null;
+  /** Se o cadastro externo exige CPF (D11, `ConfiguracaoPublicaTab`). */
+  documento_obrigatorio: boolean;
+  identidade: IdentidadeOrgao;
+}
+
+/** Curso na oferta pública (design D7) — só sai se tiver turma aberta a externos. */
+export interface CatalogoPublicoCurso {
+  slug: string;
+  tipo: TipoCurso;
+  titulo: string;
+  carga_horaria_minutos: number;
+  capa_url: string | null;
+}
+
+export interface TurmaPublica {
+  id: number;
+  nome: string;
+  data_inicio: string;
+  data_fim: string;
+  inscricoes_inicio: string;
+  inscricoes_fim: string;
+  modalidade: Modalidade;
+  local: string | null;
+  /** Nunca a capacidade total (`vagas`) — só o que sobra, informação de gestão fica de fora (D7). */
+  vagas_restantes: number;
+}
+
+export interface CursoPublicoDetalhe extends CatalogoPublicoCurso {
+  descricao: string | null;
+  texto_publico: string | null;
+  turmas: TurmaPublica[];
+}
+
+export interface CadastroExternoInput {
+  nome: string;
+  email: string;
+  senha: string;
+  senha_confirmation: string;
+  documento?: string | null;
+  aceite: boolean;
+  /** Campo isca oculto por CSS (design D8) — nunca preencher de verdade; só bot preenche. */
+  website?: string;
+}
+
+export interface MensagemResposta {
+  mensagem: string;
+}
+
+// -------------------------------------------------- formulário de inscrição configurável (D9)
+
+export type TipoCampoInscricao = 'texto' | 'texto_longo' | 'numero' | 'data' | 'selecao' | 'caixa_marcacao';
+
+export interface CampoInscricao {
+  id: number;
+  curso_id: number;
+  rotulo: string;
+  tipo: TipoCampoInscricao;
+  obrigatorio: boolean;
+  /** Só preenchido (e obrigatório) no tipo `selecao`. */
+  opcoes: string[] | null;
+  ordem: number;
+  ativo: boolean;
+}
+
+export interface CampoInscricaoInput {
+  rotulo: string;
+  tipo: TipoCampoInscricao;
+  obrigatorio?: boolean;
+  opcoes?: string[] | null;
+  ordem?: number;
+}
+
+export interface RespostaInscricaoInput {
+  campo_id: number;
+  valor: string | number | null;
+}
+
+/** Resposta como veio gravada — `rotulo`/`tipo` são o snapshot do campo no momento da resposta (D9). */
+export interface RespostaInscricao {
+  id: number;
+  campo_id: number;
+  rotulo: string;
+  tipo: TipoCampoInscricao;
+  valor: string | null;
+}
+
+// -------------------------------------------------- configuração da página pública (D10/D11)
+
+export interface ConfiguracaoPublica {
+  publico_habilitado: boolean;
+  boas_vindas: string | null;
+  termo: { texto: string | null; versao: number };
+  documento_obrigatorio: boolean;
+}
+
+export interface ConfiguracaoPublicaInput {
+  publico_habilitado?: boolean;
+  boas_vindas?: string | null;
+  documento_obrigatorio?: boolean;
+  termo?: { texto: string | null };
+}
+
+// -------------------------------------------------- envios de e-mail (Fase 1, tarefa 1.8)
+
+export type SituacaoEnvio = 'pendente' | 'enviado' | 'falhou' | 'ignorado';
+
+export interface Envio {
+  id: number;
+  tipo: string;
+  destinatario: string | null;
+  situacao: SituacaoEnvio;
+  tentativas: number;
+  erro: string | null;
+  enviado_em: string | null;
+  criado_em: string;
+}
+
+export interface EnvioFiltros {
+  situacao?: SituacaoEnvio;
+  por_pagina?: number;
+  pagina?: number;
 }

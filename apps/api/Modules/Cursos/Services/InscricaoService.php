@@ -30,6 +30,7 @@ final class InscricaoService
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly OutboxPublisher $outbox,
+        private readonly RespostaInscricaoService $respostas,
     ) {}
 
     /**
@@ -56,10 +57,11 @@ final class InscricaoService
     /**
      * @param bool $peloAdministrador inscrição direta pelo Administrador: dispensa o período de
      *                                inscrição e a aprovação manual
+     * @param list<array{campo_id: int, valor: mixed}> $respostas formulário configurável (D9)
      */
-    public function inscrever(Turma $turma, Participante $participante, User $autor, bool $peloAdministrador = false): Inscricao
+    public function inscrever(Turma $turma, Participante $participante, User $autor, bool $peloAdministrador = false, array $respostas = []): Inscricao
     {
-        return DB::transaction(function () use ($turma, $participante, $autor, $peloAdministrador): Inscricao {
+        return DB::transaction(function () use ($turma, $participante, $autor, $peloAdministrador, $respostas): Inscricao {
             $turma = $this->travar($turma);
 
             if (!$turma->statusEnum()->is(StatusTurma::Aberta)) {
@@ -71,6 +73,11 @@ final class InscricaoService
             if (!$peloAdministrador && !now()->betweenIncluded($turma->inscricoes_inicio, $turma->inscricoes_fim)) {
                 throw new DomainException('Fora do período de inscrição desta turma ('
                     . $turma->inscricoes_inicio->format('d/m/Y H:i') . ' a ' . $turma->inscricoes_fim->format('d/m/Y H:i') . ').');
+            }
+            // Regra de acesso da turma, não de conveniência do fluxo de inscrição (design D7/D11):
+            // vale mesmo quando é o Administrador inscrevendo direto, diferente do período acima.
+            if ($participante->origem === Participante::ORIGEM_EXTERNO && !$turma->aceita_externos) {
+                throw new DomainException('Esta turma não aceita participantes externos.');
             }
 
             $jaInscrito = $turma->inscricoes()
@@ -91,6 +98,10 @@ final class InscricaoService
                 'inscrito_por' => $autor->id,
                 ...($status === StatusInscricao::Confirmada && $peloAdministrador ? ['aprovada_por' => $autor->id, 'aprovada_em' => now()] : []),
             ]);
+
+            // Mesma transação, antes de publicar o evento (design D9): campo obrigatório faltando
+            // desfaz a inscrição inteira, não deixa uma inscrição "pela metade".
+            $this->respostas->gravar($inscricao, $turma->curso, $respostas);
 
             $this->audit->record('cursos', 'inscricao.criada', "Inscricao #{$inscricao->id}", null, $inscricao->toArray());
             $this->outbox->publish('cursos.InscricaoCriada', [
@@ -189,7 +200,7 @@ final class InscricaoService
             ]);
 
             $this->audit->record('cursos', $acaoAudit, "Inscricao #{$inscricao->id}", ['status' => $antes], ['status' => $inscricao->status, 'motivo' => $motivo]);
-            $this->outbox->publish($evento, ['id' => $inscricao->id, 'turma_id' => $turma->id]);
+            $this->outbox->publish($evento, ['id' => $inscricao->id, 'turma_id' => $turma->id, 'motivo' => $motivo]);
 
             if (StatusInscricao::from($antes)->ocupaVaga()) {
                 $this->promoverFila($turma);

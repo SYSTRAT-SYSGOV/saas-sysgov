@@ -150,6 +150,7 @@ final class TurmaController extends Controller
             'local' => ['sometimes', 'nullable', 'string', 'max:255'],
             'link' => ['sometimes', 'nullable', 'url', 'max:500'],
             'aprovacao_manual' => ['sometimes', 'boolean'],
+            'aceita_externos' => ['sometimes', 'boolean'],
             'instrutores' => [$obrigatorio, 'array', 'min:1'],
             'instrutores.*' => ['integer'],
         ];

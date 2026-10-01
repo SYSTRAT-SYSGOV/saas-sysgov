@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarDays, Clock, MapPin, Users } from 'lucide-react';
 import { Button, Card } from '@sysgov/ui';
 import { ScreenState, SearchInput, StatusChip } from '@/components/ui';
-import { sysgovApi, type CatalogoCurso, type CatalogoTurma } from '@sysgov/sdk';
+import { sysgovApi, type CatalogoCurso, type CatalogoTurma, type RespostaInscricaoInput } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
+import { FormularioInscricaoModal } from '../components/FormularioInscricaoModal';
 import { MODALIDADE, STATUS_INSCRICAO, TIPO_CURSO, formatarCargaHoraria, formatarData } from '../utils/formatos';
 
 interface Props {
@@ -17,6 +18,7 @@ export const CatalogoPage: React.FC<Props> = ({ onVerMeusCursos }) => {
   const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [inscrevendo, setInscrevendo] = useState<number | null>(null);
+  const [modalInscricao, setModalInscricao] = useState<{ turma: CatalogoTurma; cursoId: number; tituloCurso: string } | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
 
   const carregar = useCallback(async () => {
@@ -35,20 +37,18 @@ export const CatalogoPage: React.FC<Props> = ({ onVerMeusCursos }) => {
     void carregar();
   }, [carregar]);
 
-  const inscrever = async (turma: CatalogoTurma) => {
+  const confirmarInscricao = async (turma: CatalogoTurma, respostas: RespostaInscricaoInput[]) => {
     setInscrevendo(turma.id);
-    setAviso(null);
     try {
-      const inscricao = await sysgovApi.cursos.inscrever(turma.id);
+      const inscricao = await sysgovApi.cursos.inscrever(turma.id, respostas);
       const mensagens: Record<string, string> = {
         confirmada: 'Inscrição confirmada!',
         pendente: 'Inscrição enviada: aguardando aprovação do Administrador.',
         lista_espera: 'A turma está lotada: você entrou na lista de espera e será avisado se abrir vaga.',
       };
       setAviso({ tipo: 'sucesso', texto: mensagens[inscricao.status] ?? 'Inscrição registrada.' });
+      setModalInscricao(null);
       await carregar();
-    } catch (e) {
-      setAviso({ tipo: 'erro', texto: getApiErrorMessage(e, 'Não foi possível concluir a inscrição.') });
     } finally {
       setInscrevendo(null);
     }
@@ -132,7 +132,14 @@ export const CatalogoPage: React.FC<Props> = ({ onVerMeusCursos }) => {
                               variant={STATUS_INSCRICAO[turma.minha_inscricao.status].variant}
                             />
                           ) : turma.inscricoes_abertas ? (
-                            <Button size="sm" onClick={() => inscrever(turma)} isLoading={inscrevendo === turma.id}>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setAviso(null);
+                                setModalInscricao({ turma, cursoId: curso.id, tituloCurso: `${curso.titulo} — ${turma.nome}` });
+                              }}
+                              isLoading={inscrevendo === turma.id}
+                            >
                               {turma.vagas_restantes > 0 ? 'Inscrever-me' : 'Entrar na fila'}
                             </Button>
                           ) : (
@@ -148,6 +155,14 @@ export const CatalogoPage: React.FC<Props> = ({ onVerMeusCursos }) => {
           ))}
         </div>
       )}
+
+      <FormularioInscricaoModal
+        open={modalInscricao !== null}
+        cursoId={modalInscricao?.cursoId ?? null}
+        descricao={modalInscricao?.tituloCurso ?? ''}
+        onClose={() => setModalInscricao(null)}
+        onConfirmar={(respostas) => confirmarInscricao(modalInscricao!.turma, respostas)}
+      />
     </div>
   );
 };

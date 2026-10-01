@@ -1,4 +1,4 @@
-import type { Modalidade, RegraLiberacao, StatusCurso, StatusInscricao, StatusTentativa, StatusTurma, SituacaoAula, TipoCurso, TipoMaterial, TipoQuestao } from '@sysgov/sdk';
+import type { Modalidade, RegraLiberacao, RespostaInscricao, SituacaoEnvio, StatusCurso, StatusInscricao, StatusTentativa, StatusTurma, SituacaoAula, TipoCampoInscricao, TipoCurso, TipoMaterial, TipoQuestao } from '@sysgov/sdk';
 import type { StatusVariant } from '@/components/ui';
 
 export function formatarCargaHoraria(minutos: number): string {
@@ -91,6 +91,23 @@ export const REGRA_LIBERACAO: Record<RegraLiberacao, string> = {
 
 export const TIPO_QUESTAO: Record<TipoQuestao, string> = { objetiva: 'Objetiva', dissertativa: 'Dissertativa' };
 
+export const TIPO_CAMPO_INSCRICAO: Record<TipoCampoInscricao, string> = {
+  texto: 'Texto curto',
+  texto_longo: 'Texto longo',
+  numero: 'Número',
+  data: 'Data',
+  selecao: 'Seleção (opções)',
+  caixa_marcacao: 'Caixa de marcação',
+};
+
+/** Valor de uma resposta do formulário de inscrição (design D9), formatado por tipo. */
+export function formatarValorResposta(resposta: RespostaInscricao): string {
+  if (resposta.valor === null) return '—';
+  if (resposta.tipo === 'caixa_marcacao') return resposta.valor === 'sim' ? 'Sim' : 'Não';
+  if (resposta.tipo === 'data') return formatarData(resposta.valor);
+  return resposta.valor;
+}
+
 export const STATUS_TENTATIVA: Record<StatusTentativa, { label: string; variant: StatusVariant }> = {
   em_andamento: { label: 'Em andamento', variant: 'info' },
   aguardando_correcao: { label: 'Aguardando correção', variant: 'warning' },
@@ -114,6 +131,29 @@ export function formatarTamanho(bytes: number | null | undefined): string {
 export function descreverLiberacao(regra: RegraLiberacao, dias: number | null): string {
   if (regra === 'dias_apos_inicio') return dias === 0 ? 'No dia do início da turma' : `${dias} ${dias === 1 ? 'dia' : 'dias'} após o início da turma`;
   return REGRA_LIBERACAO[regra];
+}
+
+export const SITUACAO_ENVIO: Record<SituacaoEnvio, { label: string; variant: StatusVariant }> = {
+  pendente: { label: 'Pendente', variant: 'warning' },
+  enviado: { label: 'Enviado', variant: 'success' },
+  falhou: { label: 'Falhou', variant: 'danger' },
+  ignorado: { label: 'Ignorado', variant: 'neutral' },
+};
+
+const TIPO_ENVIO_LABEL: Record<string, string> = {
+  redefinicao_senha: 'Redefinição de senha',
+  verificacao_cadastro_externo: 'Verificação de cadastro externo',
+  inscricao_criada: 'Inscrição criada',
+  inscricao_aprovada: 'Inscrição aprovada',
+  inscricao_recusada: 'Inscrição recusada',
+  inscricao_cancelada: 'Inscrição cancelada',
+  inscricao_promovida: 'Promoção da lista de espera',
+  certificado_emitido: 'Certificado emitido',
+};
+
+/** Rótulo do tipo de e-mail da lista de envios; tipos ainda não mapeados caem no texto cru. */
+export function formatarTipoEnvio(tipo: string): string {
+  return TIPO_ENVIO_LABEL[tipo] ?? tipo.replace(/_/g, ' ');
 }
 
 /** Milissegundos → "mm:ss" (ou "h:mm:ss"), para o cronômetro da avaliação. */

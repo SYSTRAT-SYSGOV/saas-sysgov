@@ -85,4 +85,10 @@ final class Inscricao extends Model
     {
         return $this->hasOne(Certificado::class, 'inscricao_id');
     }
+
+    /** @return HasMany<RespostaInscricao, $this> */
+    public function respostas(): HasMany
+    {
+        return $this->hasMany(RespostaInscricao::class, 'inscricao_id');
+    }
 }

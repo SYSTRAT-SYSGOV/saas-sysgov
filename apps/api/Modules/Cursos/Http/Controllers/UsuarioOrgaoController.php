@@ -15,6 +15,10 @@ use Modules\Cursos\Models\Curso;
  * Busca de usuários ativos do órgão para designar instrutores e inscrever
  * participantes. Existe aqui (e não reaproveita /users) para não exigir do
  * Administrador de Cursos a permissão de gestão de usuários da plataforma.
+ *
+ * Participante externo (Fase 3, design D6) nunca aparece aqui: entra pelo cadastro público, não
+ * é candidato a instrutor, e a inscrição direta por um admin é para quem já está no roster do
+ * órgão — o externo se inscreve sozinho pela página pública.
  */
 final class UsuarioOrgaoController extends Controller
 {
@@ -27,6 +31,7 @@ final class UsuarioOrgaoController extends Controller
         $usuarios = User::query()
             ->where('is_active', true)
             ->whereHas('tenants', fn ($q) => $q->where('tenants.id', $tenantId)->where('tenant_user.status', 'active'))
+            ->whereDoesntHave('roles', fn ($q) => $q->where('slug', 'participante_externo_cursos')->where('role_user.tenant_id', $tenantId))
             ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w->where('name', 'like', "%{$busca}%")->orWhere('email', 'like', "%{$busca}%")))
             ->orderBy('name')
             ->limit(50)

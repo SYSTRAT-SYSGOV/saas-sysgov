@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen } from 'lucide-react';
-import { Button, Input, Modal, Select } from '@sysgov/ui';
+import { Button, Input, Modal, RichTextEditor, Select } from '@sysgov/ui';
 import { sysgovApi, type Curso, type CursoInput, type TipoCurso } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { validarNotaMinima, paraNumero } from '../utils/validacoes';
@@ -15,7 +15,7 @@ interface Props {
   onSalvo: (curso: Curso) => void;
 }
 
-const vazio = { tipo: 'curso' as TipoCurso, titulo: '', descricao: '', horas: '', minutos: '0', frequencia_minima: '75', nota_minima: '' };
+const vazio = { tipo: 'curso' as TipoCurso, titulo: '', slug: '', descricao: '', texto_publico: '', horas: '', minutos: '0', frequencia_minima: '75', nota_minima: '' };
 
 /** Criação e edição de curso/evento. Carga horária digitada em horas e minutos, gravada em minutos. */
 export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo }) => {
@@ -32,7 +32,9 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
         ? {
             tipo: curso.tipo,
             titulo: curso.titulo,
+            slug: curso.slug ?? '',
             descricao: curso.descricao ?? '',
+            texto_publico: curso.texto_publico ?? '',
             horas: String(Math.floor(curso.carga_horaria_minutos / 60)),
             minutos: String(curso.carga_horaria_minutos % 60),
             frequencia_minima: String(curso.frequencia_minima),
@@ -62,7 +64,9 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
     const dados: CursoInput = {
       tipo: form.tipo,
       titulo: form.titulo,
+      slug: form.slug.trim() || null,
       descricao: form.descricao || null,
+      texto_publico: form.texto_publico || null,
       carga_horaria_minutos: cargaMinutos,
       frequencia_minima: Number(form.frequencia_minima),
       nota_minima: form.tipo === 'curso' ? paraNumero(form.nota_minima) : null,
@@ -93,7 +97,20 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
           ]}
         />
         <Input label="Título" value={form.titulo} onChange={(e) => set('titulo')(e.target.value)} required maxLength={255} />
+        <Input
+          label="Endereço da página pública (slug)"
+          value={form.slug}
+          onChange={(e) => set('slug')(e.target.value)}
+          maxLength={160}
+          placeholder="gerado-do-titulo-se-vazio"
+          helperText="Só letras minúsculas, números e hífen. Deixe em branco para gerar a partir do título."
+          className="font-mono"
+        />
         <CampoTexto label="Descrição" value={form.descricao} onChange={(e) => set('descricao')(e.target.value)} rows={4} maxLength={10000} />
+        <div>
+          <p className="mb-1 text-sm font-medium text-foreground">Texto de divulgação (página pública)</p>
+          <RichTextEditor value={form.texto_publico} onChange={set('texto_publico')} minHeight={140} />
+        </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Input label="Carga horária (horas)" type="number" min={0} value={form.horas} onChange={(e) => set('horas')(e.target.value)} className="font-mono tabular-nums" />
           <Input label="Minutos" type="number" min={0} max={59} value={form.minutos} onChange={(e) => set('minutos')(e.target.value)} className="font-mono tabular-nums" />

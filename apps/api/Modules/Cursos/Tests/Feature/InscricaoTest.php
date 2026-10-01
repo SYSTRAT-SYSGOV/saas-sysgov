@@ -293,9 +293,10 @@ final class InscricaoTest extends TestCase
 
         $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
         $linhas = array_values(array_filter(explode("\n", trim(substr($csv, 3)))));
-        $this->assertSame('Nome;E-mail;Status;"Data da inscrição";"Frequência até o momento (%)"', $linhas[0]);
+        $this->assertSame('Nome;E-mail;Origem;Status;"Data da inscrição";"Frequência até o momento (%)"', $linhas[0]);
         $this->assertCount(3, $linhas);
         $this->assertStringContainsString('Ana Souza', $linhas[1]);
+        $this->assertStringContainsString('Servidor', $linhas[1]);
         $this->assertStringContainsString('Confirmada', $linhas[1]);
         $this->assertStringContainsString('Lista de espera', $linhas[2]);
         $this->assertStringEndsWith(';0,00', $linhas[1]);

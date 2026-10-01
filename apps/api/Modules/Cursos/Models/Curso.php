@@ -20,7 +20,9 @@ use Modules\Cursos\Enums\TipoCurso;
  * @property int $tenant_id
  * @property string $tipo
  * @property string $titulo
+ * @property string|null $slug
  * @property string|null $descricao
+ * @property string|null $texto_publico
  * @property int $carga_horaria_minutos
  * @property string|null $capa_path
  * @property string $status
@@ -45,7 +47,7 @@ final class Curso extends Model
     protected $table = 'cursos_cursos';
 
     protected $fillable = [
-        'tenant_id', 'tipo', 'titulo', 'descricao', 'carga_horaria_minutos', 'capa_path', 'status',
+        'tenant_id', 'tipo', 'titulo', 'slug', 'descricao', 'texto_publico', 'carga_horaria_minutos', 'capa_path', 'status',
         'frequencia_minima', 'nota_minima', 'modelo_certificado_id', 'criado_por',
     ];
 
@@ -104,6 +106,12 @@ final class Curso extends Model
     public function materiais(): HasMany
     {
         return $this->hasMany(Material::class, 'curso_id')->orderBy('ordem')->orderBy('id');
+    }
+
+    /** @return HasMany<CampoInscricao, $this> */
+    public function camposInscricao(): HasMany
+    {
+        return $this->hasMany(CampoInscricao::class, 'curso_id')->orderBy('ordem')->orderBy('id');
     }
 
     /** @return HasManyThrough<Inscricao, Turma, $this> */

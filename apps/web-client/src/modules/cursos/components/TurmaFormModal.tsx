@@ -26,11 +26,12 @@ interface Estado {
   local: string;
   link: string;
   aprovacao_manual: boolean;
+  aceita_externos: boolean;
 }
 
 const vazio: Estado = {
   nome: '', data_inicio: '', data_fim: '', inscricoes_inicio: '', inscricoes_fim: '',
-  vagas: '30', modalidade: 'presencial', local: '', link: '', aprovacao_manual: false,
+  vagas: '30', modalidade: 'presencial', local: '', link: '', aprovacao_manual: false, aceita_externos: false,
 };
 
 export const TurmaFormModal: React.FC<Props> = ({ open, cursoId, turma, onClose, onSalvo }) => {
@@ -56,6 +57,7 @@ export const TurmaFormModal: React.FC<Props> = ({ open, cursoId, turma, onClose,
             local: turma.local ?? '',
             link: turma.link ?? '',
             aprovacao_manual: turma.aprovacao_manual,
+            aceita_externos: turma.aceita_externos,
           }
         : vazio,
     );
@@ -84,6 +86,7 @@ export const TurmaFormModal: React.FC<Props> = ({ open, cursoId, turma, onClose,
       local: exigeLocal ? form.local : null,
       link: exigeLink ? form.link : null,
       aprovacao_manual: form.aprovacao_manual,
+      aceita_externos: form.aceita_externos,
       instrutores: instrutores.map((i) => i.id),
     };
     try {
@@ -125,6 +128,12 @@ export const TurmaFormModal: React.FC<Props> = ({ open, cursoId, turma, onClose,
           <Switch id="aprovacao-manual" checked={form.aprovacao_manual} onCheckedChange={(v) => set('aprovacao_manual')(v)} label="Exigir aprovação das inscrições" />
           <label htmlFor="aprovacao-manual" className="text-sm text-foreground">
             Exigir aprovação das inscrições pelo Administrador
+          </label>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch id="aceita-externos" checked={form.aceita_externos} onCheckedChange={(v) => set('aceita_externos')(v)} label="Aceitar participantes externos" />
+          <label htmlFor="aceita-externos" className="text-sm text-foreground">
+            Abrir esta turma à inscrição pública de participantes externos
           </label>
         </div>
         <UsuarioPicker label="Instrutores" selecionados={instrutores} onChange={setInstrutores} />
