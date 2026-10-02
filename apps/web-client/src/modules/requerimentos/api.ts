@@ -120,6 +120,45 @@ export interface PaginatedResponse<T> {
   total: number;
 }
 
+export interface RelatorioQuantitativo {
+  total: number;
+  por_tipo: { tipo: string | null; slug: string | null; total: number }[];
+  por_status: Record<string, number>;
+  por_area: { area_tematica: string; total: number }[];
+  por_autor: { autor: string | null; total: number }[];
+}
+
+export interface RelatorioTempoMedioItem {
+  tipo: string;
+  slug: string;
+  total: number;
+  media_dias: number;
+  mediana_dias: number;
+  desvio_padrao: number;
+}
+
+export interface RelatorioTempoMedio {
+  exercicio: number;
+  por_tipo: RelatorioTempoMedioItem[];
+}
+
+export interface RelatorioCumprimentoPrazosItem {
+  tipo: string;
+  slug: string;
+  total: number;
+  no_prazo: number;
+  no_prazo_pct: number;
+  em_alerta: number;
+  em_alerta_pct: number;
+  vencido: number;
+  vencido_pct: number;
+}
+
+export interface RelatorioCumprimentoPrazos {
+  exercicio: number;
+  por_tipo: RelatorioCumprimentoPrazosItem[];
+}
+
 // ── Parâmetros ─────────────────────────────────────────────────────
 export interface ProposicaoIndexParams {
   tipo_slug?: string;
@@ -232,13 +271,13 @@ export const requerimentosApi = {
 
   // Relatórios
   getRelatorioQuantitativo: (params?: Record<string, unknown>) =>
-    apiClient.get('/requerimentos/relatorios/quantitativo', { params }),
+    apiClient.get<RelatorioQuantitativo>('/requerimentos/relatorios/quantitativo', { params }),
 
   getRelatorioTempoMedio: (params?: Record<string, unknown>) =>
-    apiClient.get('/requerimentos/relatorios/tempo-medio', { params }),
+    apiClient.get<RelatorioTempoMedio>('/requerimentos/relatorios/tempo-medio', { params }),
 
   getRelatorioCumprimentoPrazos: (params?: Record<string, unknown>) =>
-    apiClient.get('/requerimentos/relatorios/cumprimento-prazos', { params }),
+    apiClient.get<RelatorioCumprimentoPrazos>('/requerimentos/relatorios/cumprimento-prazos', { params }),
 
   // Painel Público
   getProposicoesPublicas: (params?: ProposicaoIndexParams) =>

@@ -1,6 +1,6 @@
 export { MiniKpiCard } from './MiniKpiCard';
 export type { KpiCardProps } from './MiniKpiCard';
-export { StatusBadgeProposicao } from './StatusBadgeProposicao';
+export { StatusBadgeProposicao, statusConfig } from './StatusBadgeProposicao';
 export type { StatusProposicao } from './StatusBadgeProposicao';
 export { TimelineTramitacao } from './TimelineTramitacao';
 export type { TimelineEvent } from './TimelineTramitacao' assert { type: 'export-type' };

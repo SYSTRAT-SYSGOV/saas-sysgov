@@ -18,7 +18,8 @@ export type StatusProposicao =
   | 'arquivado'
   | 'vencido';
 
-const statusConfig: Record<StatusProposicao, {
+/** Exportado pra telas que precisam do rótulo/cor sem renderizar o badge inteiro (ex.: Relatórios). */
+export const statusConfig: Record<StatusProposicao, {
   label: string;
   variant: 'default' | 'success' | 'warning' | 'danger' | 'info';
   icon: LucideIcon;
