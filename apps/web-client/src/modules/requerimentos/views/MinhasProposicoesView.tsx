@@ -8,12 +8,14 @@ import type { StatusProposicao } from '../components/StatusBadgeProposicao';
 import { requerimentosApi } from '../api';
 import type { Proposicao, KpiAutor } from '../api';
 import { FileText, Eye, AlertTriangle, CheckCircle2, RefreshCw, ArrowRight } from 'lucide-react';
+import { DetalhesProposicaoModal } from './DetalhesProposicaoModal';
 
 export const MinhasProposicoesView: React.FC = () => {
   const [kpis, setKpis] = useState<KpiAutor | null>(null);
   const [proposicoes, setProposicoes] = useState<Proposicao[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const carregar = async () => {
     setLoading(true);
@@ -69,16 +71,18 @@ export const MinhasProposicoesView: React.FC = () => {
                       {new Date(p.created_at).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={`#proposicoes`}>
-                      <ArrowRight className="h-4 w-4" />
-                    </a>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedId(p.id)}>
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+      )}
+
+      {selectedId && (
+        <DetalhesProposicaoModal id={selectedId} onClose={() => setSelectedId(null)} />
       )}
     </div>
   );
