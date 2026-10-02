@@ -50,8 +50,12 @@ final class RequerimentosRbacSeeder extends Seeder
         ],
         'autor_requerimentos' => [
             'name' => 'Autor de Proposições',
-            'description' => 'Protocola e acompanha as próprias proposições legislativas',
-            'permissions' => ['requerimentos.view', 'requerimentos.create'],
+            'description' => 'Protocola, edita e acompanha as próprias proposições legislativas',
+            // 'requerimentos.edit' faltava aqui apesar de a própria descrição da permissão dizer
+            // "editar proposições PRÓPRIAS" — a ProposicaoPolicy::update já restringe a edição ao
+            // autor (ou admin), então sem essa permissão o autor nunca conseguia editar nada,
+            // mesmo sendo dono da proposição. Lacuna anterior à funcionalidade de edição existir.
+            'permissions' => ['requerimentos.view', 'requerimentos.create', 'requerimentos.edit'],
         ],
         'tramitador_requerimentos' => [
             'name' => 'Tramitador',

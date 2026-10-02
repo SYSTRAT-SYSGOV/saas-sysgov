@@ -6,3 +6,5 @@ export { TimelineTramitacao } from './TimelineTramitacao';
 export type { TimelineEvent } from './TimelineTramitacao' assert { type: 'export-type' };
 export { FiltrosProposicao } from './FiltrosProposicao';
 export type { FiltrosProposicaoValues } from './FiltrosProposicao';
+export { AnexosList } from './AnexosList';
+export type { AnexosListProps } from './AnexosList';

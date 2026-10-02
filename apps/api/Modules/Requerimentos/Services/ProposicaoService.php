@@ -110,6 +110,34 @@ final class ProposicaoService
     }
 
     /**
+     * Atualiza os campos descritivos de uma proposição ainda não tramitada.
+     *
+     * Tipo de instrumento, numeração, poder de origem e autoria são imutáveis após o protocolo
+     * (mesmo princípio de `Modules\Cursos\Services\MaterialService::atualizar` para o tipo) — só
+     * o texto/metadados editam. Uma vez encaminhada, a proposição também fica travada: é o
+     * registro formal que foi enviado ao outro Poder, equivalente à regra já existente de
+     * `RespostaService::enviar` para resposta já enviada.
+     *
+     * @param array<string, mixed> $dados
+     * @throws \DomainException
+     */
+    public function atualizar(Proposicao $proposicao, array $dados): Proposicao
+    {
+        if ($proposicao->status !== Proposicao::STATUS_PROTOCOLADO) {
+            throw new \DomainException('Proposição já encaminhada não pode ser editada.');
+        }
+
+        $campos = array_intersect_key($dados, array_flip([
+            'ementa', 'justificativa', 'conteudo', 'area_tematica', 'dispositivos_legais',
+            'partido_bancada', 'visibilidade_publica', 'dados_pessoais', 'metadata',
+        ]));
+
+        $proposicao->update($campos);
+
+        return $proposicao;
+    }
+
+    /**
      * Altera o status da proposição.
      */
     public function alterarStatus(Proposicao $proposicao, string $novoStatus): void

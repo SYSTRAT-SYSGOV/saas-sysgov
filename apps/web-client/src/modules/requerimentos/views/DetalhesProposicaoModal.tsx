@@ -1,20 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Card, CardContent, Badge } from '@sysgov/ui';
-import { Eye, Clock } from 'lucide-react';
+import { Modal, Card, CardContent, Badge, Button } from '@sysgov/ui';
+import { Eye, Clock, Pencil } from 'lucide-react';
 import { ScreenState } from '@/components/ui/ScreenState';
-import { StatusBadgeProposicao } from '../components';
+import { StatusBadgeProposicao, AnexosList } from '../components';
 import type { StatusProposicao } from '../components';
 import { TimelineTramitacao } from '../components/TimelineTramitacao';
 import type { TimelineEvent } from '../components/TimelineTramitacao';
 import { requerimentosApi } from '../api';
-import type { Proposicao, TramitacaoPoderes } from '../api';
+import type { Anexo, Proposicao, TramitacaoPoderes } from '../api';
 
 interface DetalhesProposicaoModalProps {
   id: number;
   onClose: () => void;
+  /** Quando informado, mostra o botão "Editar" (só habilitado enquanto `status === 'protocolado'` — a API bloqueia edição após o encaminhamento). */
+  onEdit?: () => void;
 }
 
-export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = ({ id, onClose }) => {
+export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = ({ id, onClose, onEdit }) => {
   const [proposicao, setProposicao] = useState<Proposicao | null>(null);
   const [tramitacoes, setTramitacoes] = useState<TramitacaoPoderes[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,18 @@ export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = (
     };
     carregar();
   }, [id]);
+
+  const handleUpload = async (arquivo: File) => {
+    const resposta = await requerimentosApi.anexarNaProposicao(id, arquivo);
+    setProposicao((atual) => (atual ? { ...atual, anexos: [...(atual.anexos ?? []), resposta.data] } : atual));
+  };
+
+  const handleExcluirAnexo = async (anexo: Anexo) => {
+    await requerimentosApi.excluirAnexo(anexo.id);
+    setProposicao((atual) =>
+      atual ? { ...atual, anexos: (atual.anexos ?? []).filter((a) => a.id !== anexo.id) } : atual,
+    );
+  };
 
   if (loading) return <Modal open onClose={onClose} size="lg" title="Detalhes da Proposição" icon={<Eye className="h-5 w-5" />}><ScreenState type="loading" title="Carregando..." /></Modal>;
   if (error || !proposicao) return <Modal open onClose={onClose} size="lg" title="Detalhes da Proposição" icon={<Eye className="h-5 w-5" />}><ScreenState type="error" title="Erro" description={error ?? 'Proposição não encontrada'} /></Modal>;
@@ -73,6 +87,14 @@ export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = (
       icon={<Eye className="h-5 w-5" />}
       title={proposicao.numero}
       description={proposicao.ementa}
+      headerActions={
+        onEdit && proposicao.status === 'protocolado' ? (
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            <Pencil className="h-3.5 w-3.5 mr-1.5" />
+            Editar
+          </Button>
+        ) : undefined
+      }
     >
       <div className="space-y-6">
         {/* Metadados */}
@@ -118,6 +140,17 @@ export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = (
                 </CardContent>
               </Card>
             )}
+
+            <Card>
+              <CardContent className="p-4">
+                <AnexosList
+                  anexos={proposicao.anexos ?? []}
+                  onUpload={handleUpload}
+                  onDelete={handleExcluirAnexo}
+                  podeAnexar
+                />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Timeline */}

@@ -74,4 +74,92 @@ final class ProposicaoControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure(['data', 'current_page', 'last_page', 'total']);
     }
+
+    private function criarProposicao(User $autor): int
+    {
+        $response = $this->como($autor, $this->tenant)->postJson('/api/requerimentos/proposicoes', [
+            'tipo_slug'    => 'requerimento',
+            'ementa'       => 'Ementa original',
+            'area_tematica' => 'infraestrutura',
+            'poder_origem'  => 'camara',
+        ]);
+        $response->assertCreated();
+
+        return (int) $response->json('id');
+    }
+
+    public function test_autor_edita_a_propria_proposicao_protocolada(): void
+    {
+        $id = $this->criarProposicao($this->autor);
+
+        $this->como($this->autor, $this->tenant)
+            ->patchJson("/api/requerimentos/proposicoes/{$id}", [
+                'ementa'        => 'Ementa corrigida',
+                'justificativa' => 'Justificativa adicionada depois',
+            ])
+            ->assertOk()
+            ->assertJsonPath('ementa', 'Ementa corrigida')
+            ->assertJsonPath('justificativa', 'Justificativa adicionada depois');
+    }
+
+    public function test_nao_edita_tipo_numero_ou_poder_de_origem(): void
+    {
+        $id = $this->criarProposicao($this->autor);
+
+        $response = $this->como($this->autor, $this->tenant)->patchJson("/api/requerimentos/proposicoes/{$id}", [
+            'ementa' => 'Ementa corrigida',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('camara', $response->json('poder_origem'));
+        $this->assertStringStartsWith('requerimento/', $response->json('numero'));
+    }
+
+    public function test_outro_usuario_nao_edita_proposicao_alheia(): void
+    {
+        $id = $this->criarProposicao($this->autor);
+        $outroAutor = $this->usuario($this->tenant, ['autor_requerimentos'], 'Outro Autor');
+
+        $this->como($outroAutor, $this->tenant)
+            ->patchJson("/api/requerimentos/proposicoes/{$id}", ['ementa' => 'Tentativa alheia'])
+            ->assertForbidden();
+    }
+
+    public function test_tramitador_sem_permissao_de_editar_e_recusado(): void
+    {
+        $id = $this->criarProposicao($this->autor);
+        $tramitador = $this->usuario($this->tenant, ['tramitador_requerimentos'], 'Tramitador');
+
+        $this->como($tramitador, $this->tenant)
+            ->patchJson("/api/requerimentos/proposicoes/{$id}", ['ementa' => 'Tentativa do tramitador'])
+            ->assertForbidden();
+    }
+
+    public function test_proposicao_encaminhada_nao_pode_ser_editada(): void
+    {
+        $id = $this->criarProposicao($this->autor);
+        $tramitador = $this->usuario($this->tenant, ['tramitador_requerimentos'], 'Tramitador');
+
+        $this->como($tramitador, $this->tenant)->postJson('/api/requerimentos/tramitacoes-poderes', [
+            'proposicao_id' => $id,
+            'poder_origem'  => 'camara',
+            'poder_destino' => 'prefeitura',
+        ])->assertCreated();
+
+        $this->como($this->autor, $this->tenant)
+            ->patchJson("/api/requerimentos/proposicoes/{$id}", ['ementa' => 'Tentativa tardia'])
+            ->assertStatus(422);
+    }
+
+    public function test_edicao_de_proposicao_de_outro_tenant_responde_404(): void
+    {
+        $id = $this->criarProposicao($this->autor);
+
+        $outroTenant = $this->criarTenant('prefeitura-b');
+        $outroAutor = $this->usuario($outroTenant, ['autor_requerimentos'], 'Autor B');
+
+        $this->como($outroAutor, $outroTenant)
+            ->patchJson("/api/requerimentos/proposicoes/{$id}", ['ementa' => 'Tentativa cross-tenant'])
+            ->assertNotFound();
+    }
 }

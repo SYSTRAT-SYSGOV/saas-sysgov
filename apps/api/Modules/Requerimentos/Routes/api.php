@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Requerimentos\Http\Controllers\AnexoController;
 use Modules\Requerimentos\Http\Controllers\AuditoriaController;
 use Modules\Requerimentos\Http\Controllers\NotificacaoController;
 use Modules\Requerimentos\Http\Controllers\ProposicaoController;
@@ -21,10 +22,17 @@ Route::put('/tipos-instrumento/{slug}', [TipoInstrumentoController::class, 'upda
 Route::get('/proposicoes', [ProposicaoController::class, 'index']);
 Route::post('/proposicoes', [ProposicaoController::class, 'store']);
 Route::get('/proposicoes/{id}', [ProposicaoController::class, 'show']);
+Route::patch('/proposicoes/{id}', [ProposicaoController::class, 'update']);
 Route::get('/proposicoes/{id}/historico', [ProposicaoController::class, 'historico']);
 
 // ── Minhas Proposições (Dashboard do Autor) ─────────────────────────
 Route::get('/minhas-proposicoes', [ProposicaoController::class, 'minhasProposicoes']);
+
+// ── Anexos ──────────────────────────────────────────────────────────
+Route::post('/proposicoes/{proposicao}/anexos', [AnexoController::class, 'storeParaProposicao']);
+Route::post('/respostas/{resposta}/anexos', [AnexoController::class, 'storeParaResposta']);
+Route::get('/anexos/{id}/download', [AnexoController::class, 'download']);
+Route::delete('/anexos/{id}', [AnexoController::class, 'destroy']);
 
 // ── Tramitação entre Poderes ────────────────────────────────────────
 Route::get('/tramitacoes-poderes', [TramitacaoPoderesController::class, 'index']);

@@ -79,13 +79,38 @@ final class ProposicaoController extends Controller
         }
     }
 
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $proposicao = Proposicao::findOrFail($id);
+        $this->authorize('update', $proposicao);
+
+        $validated = $request->validate([
+            'ementa'                     => ['sometimes', 'required', 'string', 'max:500'],
+            'justificativa'              => ['nullable', 'string'],
+            'conteudo'                   => ['nullable', 'string'],
+            'area_tematica'              => ['nullable', 'string', 'max:100'],
+            'dispositivos_legais'        => ['nullable', 'string', 'max:500'],
+            'partido_bancada'            => ['nullable', 'string', 'max:100'],
+            'visibilidade_publica'       => ['nullable', 'boolean'],
+            'dados_pessoais'             => ['nullable', 'array'],
+            'metadata'                   => ['nullable', 'array'],
+        ]);
+
+        try {
+            $proposicao = $this->proposicaoService->atualizar($proposicao, $validated);
+            return response()->json($proposicao->load('tipoInstrumento', 'autorPrincipal'));
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
     public function show(int $id): JsonResponse
     {
         $proposicao = Proposicao::with([
             'tipoInstrumento',
             'autorPrincipal',
             'autores.usuario',
-            'anexos',
+            'anexos.uploader:id,name',
             'tramitacoesPoderes',
             'etapasTramitacao',
         ])->findOrFail($id);
@@ -112,7 +137,7 @@ final class ProposicaoController extends Controller
             ->get();
 
         return response()->json([
-            'proposicao'           => $proposicao->load('tipoInstrumento', 'autorPrincipal'),
+            'proposicao'           => $proposicao->load('tipoInstrumento', 'autorPrincipal', 'anexos.uploader:id,name'),
             'tramitacoes_poderes'  => $tramitacoesPoderes,
             'etapas_internas'      => $etapasInternas,
         ]);

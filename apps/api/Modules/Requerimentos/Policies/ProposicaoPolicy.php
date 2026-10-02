@@ -87,6 +87,29 @@ final class ProposicaoPolicy
         return $this->doTenant($proposicao) && $user->hasPermission('requerimentos.delete');
     }
 
+    /**
+     * Anexar documentos é uma ação mais leve que `update` (não altera o conteúdo protocolado):
+     * o autor/coautor da proposição pode anexar mesmo sem `requerimentos.edit`, permissão que
+     * por padrão o perfil "Autor de Proposições" não tem (só view+create).
+     */
+    public function anexar(User $user, Proposicao $proposicao): bool
+    {
+        if ($user->is_platform_admin) {
+            return true;
+        }
+
+        if (! $this->doTenant($proposicao)) {
+            return false;
+        }
+
+        if ($proposicao->autor_principal_id === $user->id
+            || $proposicao->autores()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
+        return $user->hasPermission('requerimentos.edit') || $user->hasPermission('requerimentos.admin');
+    }
+
     public function encaminhar(User $user, Proposicao $proposicao): bool
     {
         if ($user->is_platform_admin) {

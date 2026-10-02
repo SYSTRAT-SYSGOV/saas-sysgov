@@ -1,17 +1,17 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, Button } from '@sysgov/ui';
-import { FileText, Plus, RefreshCw, Search, Eye } from 'lucide-react';
+import { FileText, Plus, RefreshCw, Search, Eye, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { DataTable, type ColumnDef } from '@/components/ui/DataTable';
 import { SearchInput } from '@/components/ui/SearchInput';
-import { Modal } from '@sysgov/ui';
 import { MiniKpiCard, StatusBadgeProposicao, FiltrosProposicao } from '../components';
 import type { StatusProposicao, FiltrosProposicaoValues } from '../components';
 import { requerimentosApi } from '../api';
 import type { Proposicao, TipoInstrumento, PaginatedResponse, KpiAutor } from '../api';
-import { CriarProposicaoModal } from '../views/CriarProposicaoModal';
+import { ProposicaoFormPage } from '../pages/ProposicaoFormPage';
 import { DetalhesProposicaoModal } from '../views/DetalhesProposicaoModal';
 import { useAuth } from '@/core/auth/useAuth';
 
@@ -29,9 +29,21 @@ export const ProposicoesView: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
-  // Modais
-  const [showCriar, setShowCriar] = useState(false);
+  // Tela cheia de criar/editar (mesmo padrão de LicitaModule/CursosModule: query
+  // string pra permitir voltar/compartilhar o link, em vez de só useState local).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const formParam = searchParams.get('form');
+  const formProposicaoId = formParam === null ? null : formParam === 'novo' ? null : Number(formParam);
+  const mostrarForm = formParam !== null;
+
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const abrirCriar = () => setSearchParams({ form: 'novo' });
+  const abrirEditar = (id: number) => setSearchParams({ form: String(id) });
+  const fecharForm = () => {
+    searchParams.delete('form');
+    setSearchParams(searchParams);
+  };
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -125,16 +137,32 @@ export const ProposicoesView: React.FC = () => {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
-        <Button variant="ghost" size="sm" onClick={() => setSelectedId(row.original.id)}>
-          <Eye className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedId(row.original.id)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => abrirEditar(row.original.id)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
       ),
-      size: 50,
+      size: 80,
     },
   ];
 
   if (error) {
     return <ScreenState type="error" title="Erro ao carregar" description={error} actionLabel="Tentar novamente" onAction={carregar} />;
+  }
+
+  if (mostrarForm) {
+    return (
+      <ProposicaoFormPage
+        proposicaoId={formProposicaoId}
+        tipos={tipos}
+        onBack={fecharForm}
+        onSaved={() => { fecharForm(); carregar(); }}
+      />
+    );
   }
 
   const tipoOptions = tipos
@@ -148,7 +176,7 @@ export const ProposicoesView: React.FC = () => {
         title="Proposições"
         subtitle="Gerencie requerimentos, indicações, projetos de lei e demais instrumentos legislativos"
         actions={
-          <Button onClick={() => setShowCriar(true)}>
+          <Button onClick={abrirCriar}>
             <Plus className="h-4 w-4 mr-2" />
             Nova Proposição
           </Button>
@@ -210,7 +238,7 @@ export const ProposicoesView: React.FC = () => {
           title="Nenhuma proposição encontrada"
           description="Crie uma nova proposição ou ajuste os filtros."
           action={
-            <Button onClick={() => setShowCriar(true)}>
+            <Button onClick={abrirCriar}>
               <Plus className="h-4 w-4 mr-2" />
               Nova Proposição
             </Button>
@@ -228,18 +256,12 @@ export const ProposicoesView: React.FC = () => {
         </Card>
       )}
 
-      {/* ── Modais ───────────────────────────────────────────────────── */}
-      {showCriar && (
-        <CriarProposicaoModal
-          tipos={tipos}
-          onClose={() => setShowCriar(false)}
-          onCreated={() => { setShowCriar(false); carregar(); }}
-        />
-      )}
+      {/* ── Modal de detalhes ────────────────────────────────────────── */}
       {selectedId && (
         <DetalhesProposicaoModal
           id={selectedId}
           onClose={() => setSelectedId(null)}
+          onEdit={() => { setSelectedId(null); abrirEditar(selectedId); }}
         />
       )}
     </div>

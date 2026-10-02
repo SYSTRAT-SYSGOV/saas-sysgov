@@ -6,6 +6,7 @@ namespace Modules\Requerimentos\Models;
 
 use App\Models\Concerns\TenantAware;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
@@ -49,5 +50,17 @@ final class Anexo extends Model
     public function anexavel(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * Nome deliberadamente diferente de `uploaded_by` (a FK): Eloquent serializa relações
+     * convertendo a chave para snake_case, e `uploadedBy` colidiria com o atributo
+     * `uploaded_by` (sobrescreveria o id inteiro pelo objeto User no JSON).
+     *
+     * @return BelongsTo<\App\Models\User, $this>
+     */
+    public function uploader(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'uploaded_by');
     }
 }

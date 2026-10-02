@@ -13,6 +13,18 @@ export interface TipoInstrumento {
   ordem: number;
 }
 
+export interface Anexo {
+  id: number;
+  anexavel_id: number;
+  anexavel_type: string;
+  nome_arquivo: string;
+  mime_type: string;
+  tamanho_bytes: number;
+  uploaded_by: number;
+  created_at: string;
+  uploader?: { id: number; name: string };
+}
+
 export interface Proposicao {
   id: number;
   tenant_id: number;
@@ -36,6 +48,7 @@ export interface Proposicao {
   updated_at: string;
   tipo_instrumento?: TipoInstrumento;
   autor_principal?: { id: number; name: string };
+  anexos?: Anexo[];
 }
 
 export interface TramitacaoPoderes {
@@ -134,12 +147,48 @@ export const requerimentosApi = {
   criarProposicao: (data: Record<string, unknown>) =>
     apiClient.post<Proposicao>('/requerimentos/proposicoes', data),
 
+  atualizarProposicao: (id: number, data: Record<string, unknown>) =>
+    apiClient.patch<Proposicao>(`/requerimentos/proposicoes/${id}`, data),
+
   getHistorico: (id: number) =>
     apiClient.get<{
       proposicao: Proposicao;
       tramitacoes_poderes: TramitacaoPoderes[];
       etapas_internas: unknown[];
     }>(`/requerimentos/proposicoes/${id}/historico`),
+
+  // Anexos
+  // `apiClient` fixa `Content-Type: application/json` como header padrão da instância, e esse
+  // axios não o substitui sozinho para corpo FormData — sem o `undefined` explícito abaixo, o
+  // arquivo é serializado como JSON (perde o binário) em vez de multipart com boundary.
+  anexarNaProposicao: (proposicaoId: number, arquivo: File) => {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    return apiClient.post<Anexo>(`/requerimentos/proposicoes/${proposicaoId}/anexos`, form, {
+      headers: { 'Content-Type': undefined },
+    });
+  },
+
+  anexarNaResposta: (respostaId: number, arquivo: File) => {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    return apiClient.post<Anexo>(`/requerimentos/respostas/${respostaId}/anexos`, form, {
+      headers: { 'Content-Type': undefined },
+    });
+  },
+
+  excluirAnexo: (anexoId: number) =>
+    apiClient.delete<{ deleted: boolean }>(`/requerimentos/anexos/${anexoId}`),
+
+  baixarAnexo: async (anexo: Anexo): Promise<void> => {
+    const resposta = await apiClient.get(`/requerimentos/anexos/${anexo.id}/download`, { responseType: 'blob' });
+    const url = URL.createObjectURL(resposta.data as Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = anexo.nome_arquivo;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 
   // Minhas Proposições
   getMinhasProposicoes: (params?: { per_page?: number; page?: number }) =>
