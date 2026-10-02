@@ -1,24 +1,22 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Card, CardContent, Button } from '@sysgov/ui';
-import { FileText, Plus, RefreshCw, Search, Eye, Pencil, Send } from 'lucide-react';
+import { FileText, Plus, RefreshCw, Eye, Pencil, Send } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { DataTable, type ColumnDef } from '@/components/ui/DataTable';
+import { DataTable } from '@/components/ui/DataTable';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { MiniKpiCard, StatusBadgeProposicao, FiltrosProposicao } from '../components';
 import type { StatusProposicao, FiltrosProposicaoValues } from '../components';
 import { requerimentosApi } from '../api';
-import type { Proposicao, TipoInstrumento, PaginatedResponse, KpiAutor } from '../api';
+import type { Proposicao, TipoInstrumento, KpiAutor } from '../api';
 import { ProposicaoFormPage } from '../pages/ProposicaoFormPage';
 import { DetalhesProposicaoModal } from '../views/DetalhesProposicaoModal';
 import { EncaminharProposicaoModal } from '../views/EncaminharProposicaoModal';
-import { useAuth } from '@/core/auth/useAuth';
 
 export const ProposicoesView: React.FC = () => {
-  const { user } = useAuth();
-
   const [proposicoes, setProposicoes] = useState<Proposicao[]>([]);
   const [tipos, setTipos] = useState<TipoInstrumento[]>([]);
   const [kpis, setKpis] = useState<KpiAutor | null>(null);
@@ -26,9 +24,6 @@ export const ProposicoesView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [filtros, setFiltros] = useState<FiltrosProposicaoValues>({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
 
   // Tela cheia de criar/editar (mesmo padrão de LicitaModule/CursosModule: query
   // string pra permitir voltar/compartilhar o link, em vez de só useState local).
@@ -51,16 +46,20 @@ export const ProposicoesView: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      // DataTable pagina no cliente (não aceita page/total do servidor) — busca um lote
+      // grande de uma vez, igual ao padrão já usado em AccessManagement.
       const [tiposRes, propsRes, minhasRes] = await Promise.all([
         requerimentosApi.getTiposInstrumento(),
-        requerimentosApi.getProposicoes({ ...filtros, per_page: 15, page }),
+        requerimentosApi.getProposicoes({
+          ...filtros,
+          exercicio: filtros.exercicio ? Number(filtros.exercicio) : undefined,
+          per_page: 200,
+        }),
         requerimentosApi.getMinhasProposicoes(),
       ]);
 
       setTipos(tiposRes.data);
       setProposicoes(propsRes.data.data);
-      setTotalPages(propsRes.data.last_page);
-      setTotal(propsRes.data.total);
       setKpis(minhasRes.data.kpis);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar proposições';
@@ -68,7 +67,7 @@ export const ProposicoesView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filtros, page]);
+  }, [filtros]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -85,7 +84,6 @@ export const ProposicoesView: React.FC = () => {
   const handleLimparFiltros = () => {
     setFiltros({});
     setSearchTerm('');
-    setPage(1);
   };
 
   const columns: ColumnDef<Proposicao>[] = [
@@ -244,12 +242,8 @@ export const ProposicoesView: React.FC = () => {
           icon={<FileText className="h-10 w-10" />}
           title="Nenhuma proposição encontrada"
           description="Crie uma nova proposição ou ajuste os filtros."
-          action={
-            <Button onClick={abrirCriar}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Proposição
-            </Button>
-          }
+          actionLabel="Nova Proposição"
+          onAction={abrirCriar}
         />
       ) : (
         <Card>
@@ -257,7 +251,7 @@ export const ProposicoesView: React.FC = () => {
             <DataTable
               columns={columns}
               data={proposicoesFiltradas}
-              pagination={{ page, totalPages, total, onPageChange: setPage }}
+              pageSize={15}
             />
           </CardContent>
         </Card>

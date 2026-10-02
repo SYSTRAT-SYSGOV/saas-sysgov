@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Clock, CheckCircle2, Send, AlertTriangle } from 'lucide-react';
 
-interface TimelineEvent {
+export interface TimelineEvent {
   id: number;
   tipo: 'tramitacao_poderes' | 'etapa_interna' | 'status_change';
   titulo: string;

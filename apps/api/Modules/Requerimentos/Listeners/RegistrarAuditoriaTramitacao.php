@@ -25,13 +25,15 @@ final class RegistrarAuditoriaTramitacao
             return;
         }
 
+        // Depois do guard acima, $event::class só pode ser um dos 5 em $loggableEvents — o
+        // último (PrazoVencido) vira `default` porque é o único que sobra por eliminação
+        // (Larastan aponta a comparação explícita como sempre verdadeira, logo morta).
         match ($event::class) {
             \Modules\Requerimentos\Events\ProposicaoStatusChanged::class => $this->registrarMudancaStatus($event),
             \Modules\Requerimentos\Events\TramitacaoEncaminhada::class => $this->registrarTramitacao($event, 'proposicao.tramitacao_encaminhada'),
             \Modules\Requerimentos\Events\TramitacaoRecebida::class     => $this->registrarTramitacao($event, 'proposicao.tramitacao_recebida'),
             \Modules\Requerimentos\Events\TramitacaoRespondida::class   => $this->registrarTramitacao($event, 'proposicao.tramitacao_respondida'),
-            \Modules\Requerimentos\Events\PrazoVencido::class          => $this->registrarTramitacao($event, 'proposicao.prazo_vencido'),
-            default => null,
+            default => $this->registrarTramitacao($event, 'proposicao.prazo_vencido'),
         };
     }
 

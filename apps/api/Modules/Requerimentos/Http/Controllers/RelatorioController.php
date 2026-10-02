@@ -60,7 +60,9 @@ final class RelatorioController extends Controller
             ->map(fn ($item) => [
                 'tipo'  => $item->tipoInstrumento?->nome,
                 'slug'  => $item->tipoInstrumento?->slug,
-                'total' => $item->total,
+                // `total` vem do selectRaw (count(*)), não é uma coluna real do model —
+                // getAttribute() evita o "undefined property" do Larastan em cima de Proposicao.
+                'total' => (int) $item->getAttribute('total'),
             ]);
 
         $porStatus = (clone $query)->selectRaw('status, count(*) as total')
@@ -82,7 +84,7 @@ final class RelatorioController extends Controller
             ->get()
             ->map(fn ($item) => [
                 'autor' => $item->autorPrincipal?->name,
-                'total' => $item->total,
+                'total' => (int) $item->getAttribute('total'),
             ]);
 
         return response()->json([
@@ -110,7 +112,7 @@ final class RelatorioController extends Controller
         // DATEDIFF() é específico do MySQL (quebra na suíte padrão, que roda em SQLite) — a
         // diferença de dias é calculada em PHP com os dois `date` já convertidos em Carbon.
         $stats = \Modules\Requerimentos\Models\TramitacaoPoderes::query()
-            ->whereHas('proposicao', fn ($q) => $q->doExercicio($exercicio))
+            ->whereHas('proposicao', fn ($q) => $q->where('exercicio', $exercicio))
             ->whereNotNull('data_recebimento')
             ->whereNotNull('data_encaminhamento')
             ->select(['proposicao_id', 'data_encaminhamento', 'data_recebimento'])
@@ -124,10 +126,11 @@ final class RelatorioController extends Controller
                 continue;
             }
 
-            $slug = $proposicao->tipoInstrumento?->slug ?? 'desconhecido';
+            // tipo_instrumento_id é obrigatório na Proposicao — a relação nunca vem nula aqui.
+            $slug = $proposicao->tipoInstrumento->slug;
             if (! isset($porTipo[$slug])) {
                 $porTipo[$slug] = [
-                    'tipo'   => $proposicao->tipoInstrumento?->nome ?? $slug,
+                    'tipo'   => $proposicao->tipoInstrumento->nome,
                     'dias'   => [],
                 ];
             }
@@ -138,11 +141,9 @@ final class RelatorioController extends Controller
         foreach ($porTipo as $slug => $data) {
             $dias = $data['dias'];
             sort($dias);
+            // $porTipo[$slug] só existe quando pelo menos um 'dias[]' já foi empilhado (ver
+            // laço acima) — $count nunca é 0 aqui.
             $count = count($dias);
-
-            if ($count === 0) {
-                continue;
-            }
 
             $media = array_sum($dias) / $count;
             $mediana = $count % 2 === 0
@@ -182,7 +183,7 @@ final class RelatorioController extends Controller
         $exercicio = $request->input('exercicio', (int) date('Y'));
 
         $tramitacoes = \Modules\Requerimentos\Models\TramitacaoPoderes::query()
-            ->whereHas('proposicao', fn ($q) => $q->doExercicio($exercicio))
+            ->whereHas('proposicao', fn ($q) => $q->where('exercicio', $exercicio))
             ->with('proposicao.tipoInstrumento')
             ->get();
 
@@ -214,9 +215,10 @@ final class RelatorioController extends Controller
                     $porTipo[$slug]['vencido']++;
                     break;
                 default:
-                    if ($t->data_limite_resposta && $t->data_limite_resposta->isPast()) {
+                    // data_limite_resposta é obrigatória na TramitacaoPoderes — nunca nula aqui.
+                    if ($t->data_limite_resposta->isPast()) {
                         $porTipo[$slug]['vencido']++;
-                    } elseif ($t->data_limite_resposta && $t->data_limite_resposta->diffInDays(now()) <= 5) {
+                    } elseif ($t->data_limite_resposta->diffInDays(now()) <= 5) {
                         $porTipo[$slug]['em_alerta']++;
                     } else {
                         $porTipo[$slug]['no_prazo']++;
@@ -227,17 +229,19 @@ final class RelatorioController extends Controller
 
         $resultado = [];
         foreach ($porTipo as $slug => $data) {
+            // $total só existe aqui depois de pelo menos um incremento (ver laço acima) —
+            // nunca é 0, então as percentagens não precisam de guarda contra divisão por zero.
             $total = $data['total'];
             $resultado[] = [
                 'tipo'                => $data['tipo'],
                 'slug'                => $slug,
                 'total'               => $total,
                 'no_prazo'            => $data['no_prazo'],
-                'no_prazo_pct'        => $total > 0 ? round($data['no_prazo'] / $total * 100, 1) : 0,
+                'no_prazo_pct'        => round($data['no_prazo'] / $total * 100, 1),
                 'em_alerta'           => $data['em_alerta'],
-                'em_alerta_pct'       => $total > 0 ? round($data['em_alerta'] / $total * 100, 1) : 0,
+                'em_alerta_pct'       => round($data['em_alerta'] / $total * 100, 1),
                 'vencido'             => $data['vencido'],
-                'vencido_pct'         => $total > 0 ? round($data['vencido'] / $total * 100, 1) : 0,
+                'vencido_pct'         => round($data['vencido'] / $total * 100, 1),
             ];
         }
 

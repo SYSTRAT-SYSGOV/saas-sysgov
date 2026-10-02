@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui/Tabs';
+import { Tabs } from '@/components/ui/Tabs';
 import type { TabsItem } from '@/components/ui/Tabs';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { ScreenState } from '@/components/ui/ScreenState';
-import { MiniKpiCard } from './components';
 import { requerimentosApi } from './api';
-import type { Notificacao } from './api';
-import { FileText, Bell, ArrowLeftRight, BarChart3, ShieldCheck } from 'lucide-react';
+import { FileText, Bell, ArrowLeftRight, BarChart3 } from 'lucide-react';
 import { ProposicoesView } from './views/ProposicoesView';
 import { MinhasProposicoesView } from './views/MinhasProposicoesView';
 import { TramitacoesView } from './views/TramitacoesView';
@@ -25,7 +22,7 @@ export const RequerimentosModule: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  const tabs: TabsItem[] = [
+  const tabs: TabsItem<RequerimentosTab>[] = [
     { key: 'proposicoes',   label: 'Proposições',          icon: <FileText className="h-4 w-4" /> },
     { key: 'minhas',        label: 'Minhas Proposições',   icon: <FileText className="h-4 w-4" /> },
     { key: 'tramitacoes',   label: 'Tramitações',          icon: <ArrowLeftRight className="h-4 w-4" /> },
@@ -47,7 +44,7 @@ export const RequerimentosModule: React.FC = () => {
       />
 
       <div className="mt-6">
-        <Tabs items={tabs} activeTab={activeTab} onChange={(t) => setActiveTab(t as RequerimentosTab)} />
+        <Tabs items={tabs} value={activeTab} onChange={setActiveTab} />
 
         <div className="mt-6">
           {activeTab === 'proposicoes' && <ProposicoesView />}

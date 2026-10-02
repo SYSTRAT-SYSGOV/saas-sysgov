@@ -76,8 +76,8 @@ export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = (
               t.status === 'vencido' ? 'Prazo vencido' : t.status,
       descricao: t.observacao ?? `Tramitação ${t.poder_origem} → ${t.poder_destino}`,
       data: new Date(t.created_at).toLocaleString('pt-BR'),
-      status: t.status === 'respondido' ? 'concluido' :
-              t.status === 'vencido' ? 'atrasado' : 'concluido',
+      // 'respondido' e o fallback já caíam ambos em 'concluido' — só 'vencido' diverge.
+      status: (t.status === 'vencido' ? 'atrasado' : 'concluido') as TimelineEvent['status'],
     })),
   ];
 

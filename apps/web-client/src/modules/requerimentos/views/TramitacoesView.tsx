@@ -161,7 +161,7 @@ export const TramitacoesView: React.FC = () => {
               <Button variant="outline" onClick={() => setSelectedTramitacao(null)}>
                 Cancelar
               </Button>
-              <Button onClick={handleResponder} disabled={!respostaTexto.trim() || enviandoResposta} loading={enviandoResposta}>
+              <Button onClick={handleResponder} disabled={!respostaTexto.trim() || enviandoResposta} isLoading={enviandoResposta}>
                 <Send className="h-4 w-4 mr-2" />
                 Enviar Resposta
               </Button>
