@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Card, CardContent, Badge, Button } from '@sysgov/ui';
-import { Eye, Clock, Pencil } from 'lucide-react';
+import { Eye, Clock, Pencil, Send } from 'lucide-react';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { StatusBadgeProposicao, AnexosList } from '../components';
 import type { StatusProposicao } from '../components';
@@ -14,9 +14,11 @@ interface DetalhesProposicaoModalProps {
   onClose: () => void;
   /** Quando informado, mostra o botão "Editar" (só habilitado enquanto `status === 'protocolado'` — a API bloqueia edição após o encaminhamento). */
   onEdit?: () => void;
+  /** Quando informado, mostra o botão "Encaminhar" (só enquanto `status === 'protocolado'`). Recebe a proposição já carregada. */
+  onEncaminhar?: (proposicao: Proposicao) => void;
 }
 
-export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = ({ id, onClose, onEdit }) => {
+export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = ({ id, onClose, onEdit, onEncaminhar }) => {
   const [proposicao, setProposicao] = useState<Proposicao | null>(null);
   const [tramitacoes, setTramitacoes] = useState<TramitacaoPoderes[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,11 +90,21 @@ export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = (
       title={proposicao.numero}
       description={proposicao.ementa}
       headerActions={
-        onEdit && proposicao.status === 'protocolado' ? (
-          <Button variant="outline" size="sm" onClick={onEdit}>
-            <Pencil className="h-3.5 w-3.5 mr-1.5" />
-            Editar
-          </Button>
+        proposicao.status === 'protocolado' ? (
+          <div className="flex items-center gap-2">
+            {onEncaminhar && (
+              <Button variant="outline" size="sm" onClick={() => onEncaminhar(proposicao)}>
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Encaminhar
+              </Button>
+            )}
+            {onEdit && (
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Editar
+              </Button>
+            )}
+          </div>
         ) : undefined
       }
     >

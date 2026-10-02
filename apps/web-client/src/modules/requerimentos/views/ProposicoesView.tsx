@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, Button } from '@sysgov/ui';
-import { FileText, Plus, RefreshCw, Search, Eye, Pencil } from 'lucide-react';
+import { FileText, Plus, RefreshCw, Search, Eye, Pencil, Send } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -13,6 +13,7 @@ import { requerimentosApi } from '../api';
 import type { Proposicao, TipoInstrumento, PaginatedResponse, KpiAutor } from '../api';
 import { ProposicaoFormPage } from '../pages/ProposicaoFormPage';
 import { DetalhesProposicaoModal } from '../views/DetalhesProposicaoModal';
+import { EncaminharProposicaoModal } from '../views/EncaminharProposicaoModal';
 import { useAuth } from '@/core/auth/useAuth';
 
 export const ProposicoesView: React.FC = () => {
@@ -37,6 +38,7 @@ export const ProposicoesView: React.FC = () => {
   const mostrarForm = formParam !== null;
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [encaminharProposicao, setEncaminharProposicao] = useState<Proposicao | null>(null);
 
   const abrirCriar = () => setSearchParams({ form: 'novo' });
   const abrirEditar = (id: number) => setSearchParams({ form: String(id) });
@@ -144,9 +146,14 @@ export const ProposicoesView: React.FC = () => {
           <Button variant="ghost" size="sm" onClick={() => abrirEditar(row.original.id)}>
             <Pencil className="h-4 w-4" />
           </Button>
+          {row.original.status === 'protocolado' && (
+            <Button variant="ghost" size="sm" onClick={() => setEncaminharProposicao(row.original)}>
+              <Send className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
-      size: 80,
+      size: 110,
     },
   ];
 
@@ -262,6 +269,15 @@ export const ProposicoesView: React.FC = () => {
           id={selectedId}
           onClose={() => setSelectedId(null)}
           onEdit={() => { setSelectedId(null); abrirEditar(selectedId); }}
+          onEncaminhar={(p) => { setSelectedId(null); setEncaminharProposicao(p); }}
+        />
+      )}
+
+      {encaminharProposicao && (
+        <EncaminharProposicaoModal
+          proposicao={encaminharProposicao}
+          onClose={() => setEncaminharProposicao(null)}
+          onEncaminhado={() => { setEncaminharProposicao(null); carregar(); }}
         />
       )}
     </div>

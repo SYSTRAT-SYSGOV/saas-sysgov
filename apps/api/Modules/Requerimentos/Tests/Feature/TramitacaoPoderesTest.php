@@ -113,4 +113,21 @@ final class TramitacaoPoderesTest extends TestCase
             'poder_destino' => 'prefeitura',
         ])->assertNotFound();
     }
+
+    public function test_nao_permite_reencaminhar_proposicao_ja_encaminhada(): void
+    {
+        $proposicaoId = $this->criarProposicao();
+
+        $this->como($this->tramitador, $this->tenant)->postJson('/api/requerimentos/tramitacoes-poderes', [
+            'proposicao_id' => $proposicaoId,
+            'poder_origem'  => 'camara',
+            'poder_destino' => 'prefeitura',
+        ])->assertCreated();
+
+        $this->como($this->tramitador, $this->tenant)->postJson('/api/requerimentos/tramitacoes-poderes', [
+            'proposicao_id' => $proposicaoId,
+            'poder_origem'  => 'camara',
+            'poder_destino' => 'prefeitura',
+        ])->assertStatus(422);
+    }
 }

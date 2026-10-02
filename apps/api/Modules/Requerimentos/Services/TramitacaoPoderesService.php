@@ -20,6 +20,10 @@ final class TramitacaoPoderesService
      */
     public function encaminhar(Proposicao $proposicao, array $dados, User $remetente): TramitacaoPoderes
     {
+        if ($proposicao->status !== Proposicao::STATUS_PROTOCOLADO) {
+            throw new \DomainException('Proposição não está protocolada e não pode ser encaminhada.');
+        }
+
         if ($dados['poder_origem'] === $dados['poder_destino']) {
             throw new \DomainException('O Poder de origem e destino devem ser diferentes.');
         }
