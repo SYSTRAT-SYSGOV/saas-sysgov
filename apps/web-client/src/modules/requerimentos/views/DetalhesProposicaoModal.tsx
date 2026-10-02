@@ -83,7 +83,7 @@ export const DetalhesProposicaoModal: React.FC<DetalhesProposicaoModalProps> = (
     <Modal
       open
       onClose={onClose}
-      size="xl"
+      size="full"
       icon={<Eye className="h-5 w-5" />}
       title={proposicao.numero}
       description={proposicao.ementa}
