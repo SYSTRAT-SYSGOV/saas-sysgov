@@ -1,0 +1,39 @@
+{
+    "name": "Requerimentos",
+    "alias": "requerimentos",
+    "description": "Módulo de Requerimentos — digitalização do fluxo de tramitação de proposições legislativas e demandas institucionais entre a Câmara Municipal e a Prefeitura Municipal.",
+    "priority": 40,
+    "providers": [
+        "Modules\\Requerimentos\\Providers\\RequerimentosServiceProvider",
+        "Modules\\Requerimentos\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "OrgChart"
+    ],
+    "menu": {
+        "group": "GESTÃO LEGISLATIVA",
+        "label": "Requerimentos",
+        "icon": "FileText",
+        "order": 40,
+        "permission": "requerimentos.view",
+        "children": [
+            { "label": "Proposições",           "route": "requerimentos.proposicoes",     "permission": "requerimentos.view",     "icon": "ScrollText" },
+            { "label": "Minhas Proposições",    "route": "requerimentos.minhas",          "permission": "requerimentos.view",     "icon": "UserCheck" },
+            { "label": "Tramitações",           "route": "requerimentos.tramitacoes",     "permission": "requerimentos.tramitar", "icon": "ArrowLeftRight" },
+            { "label": "Relatórios",            "route": "requerimentos.relatorios",      "permission": "requerimentos.relatorios","icon": "BarChart3" },
+            { "label": "Auditoria",             "route": "requerimentos.auditoria",       "permission": "requerimentos.auditoria", "icon": "ShieldCheck" }
+        ]
+    },
+    "permissions": [
+        "requerimentos.view",
+        "requerimentos.create",
+        "requerimentos.edit",
+        "requerimentos.delete",
+        "requerimentos.tramitar",
+        "requerimentos.responder",
+        "requerimentos.relatorios",
+        "requerimentos.auditoria",
+        "requerimentos.admin"
+    ]
+}
