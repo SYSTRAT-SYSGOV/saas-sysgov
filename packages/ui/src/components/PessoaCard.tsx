@@ -11,7 +11,9 @@ export interface PessoaCardData {
   nome: string;
   nome_social?: string | null;
   cpf_mascarado: string;
-  status?: 'ativo' | 'inativo';
+  status?: 'ativo' | 'inativo' | 'falecido';
+  falecido?: boolean;
+  data_falecimento?: string | null;
   email?: string | null;
   telefone?: string | null;
   vinculos?: PessoaVinculoData[];
@@ -32,7 +34,8 @@ export const PessoaCard: React.FC<PessoaCardProps> = ({
   compact = false,
   className,
 }) => {
-  const isAtivo = pessoa.status !== 'inativo';
+  const isFalecido = pessoa.falecido || pessoa.status === 'falecido';
+  const isAtivo = !isFalecido && pessoa.status !== 'inativo';
 
   if (compact) {
     return (
@@ -55,9 +58,15 @@ export const PessoaCard: React.FC<PessoaCardProps> = ({
             </div>
             <div className="flex items-center gap-2 text-xs text-gov-text-secondary mt-0.5">
               <span className="font-mono tabular-nums">{pessoa.cpf_mascarado}</span>
-              <Badge variant={isAtivo ? 'success' : 'neutral'} className="text-[10px] px-1.5 py-0 h-4">
-                {isAtivo ? 'Ativo' : 'Inativo'}
-              </Badge>
+              {isFalecido ? (
+                <span className="inline-flex items-center px-1.5 py-0 h-4 rounded text-[10px] font-semibold bg-neutral-800 text-neutral-200 border border-neutral-700">
+                  Falecido(a)
+                </span>
+              ) : (
+                <Badge variant={isAtivo ? 'success' : 'neutral'} className="text-[10px] px-1.5 py-0 h-4">
+                  {isAtivo ? 'Ativo' : 'Inativo'}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -101,24 +110,30 @@ export const PessoaCard: React.FC<PessoaCardProps> = ({
                 {pessoa.nome_social && (
                   <span className="text-xs text-gov-text-secondary italic">({pessoa.nome_social})</span>
                 )}
-                <Badge variant={isAtivo ? 'success' : 'neutral'} className="text-xs">
-                  {isAtivo ? 'Ativo' : 'Inativo'}
-                </Badge>
+                {isFalecido ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-neutral-800 text-neutral-200 border border-neutral-700">
+                    Falecido(a) {pessoa.data_falecimento ? `(${pessoa.data_falecimento})` : ''}
+                  </span>
+                ) : (
+                  <Badge variant={isAtivo ? 'success' : 'neutral'} className="text-xs">
+                    {isAtivo ? 'Ativo' : 'Inativo'}
+                  </Badge>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gov-text-secondary">
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 shrink-0">
                   <ShieldCheck className="size-3.5 text-gov-primary" />
                   CPF: <strong className="font-mono tabular-nums text-gov-text-primary">{pessoa.cpf_mascarado}</strong>
                 </span>
                 {pessoa.email && (
-                  <span className="flex items-center gap-1 truncate">
-                    <Mail className="size-3.5" />
-                    <span>{pessoa.email}</span>
+                  <span className="flex items-center gap-1 truncate max-w-[240px]" title={pessoa.email}>
+                    <Mail className="size-3.5 shrink-0" />
+                    <span className="truncate">{pessoa.email}</span>
                   </span>
                 )}
                 {pessoa.telefone && (
-                  <span className="flex items-center gap-1 font-mono tabular-nums">
+                  <span className="flex items-center gap-1 font-mono tabular-nums shrink-0">
                     <Phone className="size-3.5" />
                     <span>{pessoa.telefone}</span>
                   </span>

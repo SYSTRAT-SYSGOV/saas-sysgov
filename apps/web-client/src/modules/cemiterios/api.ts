@@ -86,6 +86,7 @@ export interface Concessionario {
   titular_falecido?: boolean; data_falecimento_titular?: string | null; processo_inventario?: string | null;
   cep?: string | null; logradouro?: string | null; numero?: string | null; complemento?: string | null;
   bairro?: string | null; cidade?: string | null; uf?: string | null;
+  pessoa?: { id: number; nome: string; nome_social?: string | null; cpf_mascarado: string; status: string };
 }
 export interface Concessao {
   id: number; numero: string; processo_administrativo?: string | null; plot_id: number; holder_id: number; modalidade: 'temporaria' | 'perpetua'; inicio: string;

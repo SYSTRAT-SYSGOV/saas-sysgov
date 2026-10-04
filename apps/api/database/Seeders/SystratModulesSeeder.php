@@ -28,12 +28,7 @@ final class SystratModulesSeeder extends Seeder
         $sysTenant = Tenant::where('slug', 'systrat')->first();
 
         if (!$sysTenant) {
-            $this->command?->warn('Tenant SYSTRAT inexistente — rode o RbacSeeder antes.');
-            return;
-        }
-
-        if ($sysTenant->modules()->exists()) {
-            $this->command?->info('SYSTRAT já tem módulos vinculados — nada a fazer.');
+            $this->command->warn('Tenant SYSTRAT inexistente — rode o RbacSeeder antes.');
             return;
         }
 
@@ -41,8 +36,8 @@ final class SystratModulesSeeder extends Seeder
         foreach (Module::query()->pluck('id') as $moduleId) {
             $pivot[$moduleId] = ['enabled' => true, 'monthly_fee_cents' => 0, 'settings' => json_encode([])];
         }
-        $sysTenant->modules()->attach($pivot);
+        $sysTenant->modules()->syncWithoutDetaching($pivot);
 
-        $this->command?->info(count($pivot) . ' módulos liberados no tenant SYSTRAT.');
+        $this->command->info(count($pivot) . ' módulos garantidos no catálogo do tenant SYSTRAT.');
     }
 }

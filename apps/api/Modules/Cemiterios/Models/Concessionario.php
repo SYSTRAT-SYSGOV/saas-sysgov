@@ -60,10 +60,13 @@ final class Concessionario extends Model
     protected static function booted(): void
     {
         static::saving(function (self $holder): void {
-            if ($holder->pessoa_id && $holder->pessoa) {
-                $holder->documento = (string) $holder->pessoa->cpf;
-                $holder->documento_hash = (string) $holder->pessoa->cpf_hash;
-                return;
+            if ($holder->pessoa_id) {
+                $pessoa = $holder->pessoa ?: \Modules\Pessoas\Models\Pessoa::find($holder->pessoa_id);
+                if ($pessoa) {
+                    $holder->documento = (string) $pessoa->cpf;
+                    $holder->documento_hash = (string) $pessoa->cpf_hash;
+                    return;
+                }
             }
             $holder->documento = Documento::somenteDigitos((string) $holder->documento);
             $holder->documento_hash = Documento::hash($holder->documento);

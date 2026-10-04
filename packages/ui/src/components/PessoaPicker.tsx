@@ -10,7 +10,9 @@ export interface PessoaPickerOption {
   nome: string;
   nome_social?: string | null;
   cpf_mascarado: string;
-  status?: 'ativo' | 'inativo';
+  status?: 'ativo' | 'inativo' | 'falecido';
+  falecido?: boolean;
+  data_falecimento?: string | null;
 }
 
 export interface PessoaPickerProps {
@@ -74,6 +76,13 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Carrega opções iniciais ao abrir o dropdown se estiver vazio
+  React.useEffect(() => {
+    if (isOpen && internalOptions.length === 0 && onSearch) {
+      void handleSearch('');
+    }
+  }, [isOpen]);
 
   const handleSearch = async (term: string) => {
     setSearchTerm(term);
@@ -144,6 +153,11 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
               <span className="text-xs text-gov-text-secondary font-mono tabular-nums bg-gov-border/30 dark:bg-white/5 px-1.5 py-0.5 rounded shrink-0">
                 {selected.cpf_mascarado}
               </span>
+              {selected.falecido && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-neutral-800 text-neutral-200 border border-neutral-700 shrink-0">
+                  Falecido(a)
+                </span>
+              )}
             </div>
           ) : (
             <span className="text-gov-text-secondary/70 truncate">{placeholder}</span>
@@ -198,15 +212,23 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
                         : 'hover:bg-gov-border/30 dark:hover:bg-white/5 text-gov-text-primary'
                     )}
                   >
-                    <div className="min-w-0 pr-2">
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="flex items-center gap-2 min-w-0" title={pessoa.nome_social ? `${pessoa.nome} (${pessoa.nome_social})` : pessoa.nome}>
                         <span className="truncate">{pessoa.nome}</span>
                         {pessoa.nome_social && (
-                          <span className="text-xs text-gov-text-secondary">({pessoa.nome_social})</span>
+                          <span className="text-xs text-gov-text-secondary truncate shrink-0">({pessoa.nome_social})</span>
+                        )}
+                        {pessoa.falecido && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-neutral-800 text-neutral-200 border border-neutral-700 shrink-0">
+                            Falecido(a)
+                          </span>
                         )}
                       </div>
-                      <div className="text-xs text-gov-text-secondary font-mono tabular-nums mt-0.5">
-                        {pessoa.cpf_mascarado}
+                      <div className="flex items-center gap-2 text-xs text-gov-text-secondary font-mono tabular-nums mt-0.5 truncate">
+                        <span>{pessoa.cpf_mascarado}</span>
+                        {pessoa.falecido && pessoa.data_falecimento && (
+                          <span className="text-[11px] text-neutral-400">Óbito: {pessoa.data_falecimento}</span>
+                        )}
                       </div>
                     </div>
                     {isSelected && <Check className="size-4 shrink-0 text-gov-primary" />}

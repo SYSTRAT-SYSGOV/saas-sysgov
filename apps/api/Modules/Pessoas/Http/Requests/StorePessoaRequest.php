@@ -55,7 +55,23 @@ final class StorePessoaRequest extends FormRequest
             'nacionalidade' => ['nullable', 'string', 'max:60'],
             'naturalidade' => ['nullable', 'string', 'max:100'],
             'nis' => ['nullable', 'string', 'max:20'],
-            'status' => ['sometimes', Rule::in(['ativo', 'inativo'])],
+            'status' => ['sometimes', Rule::in(['ativo', 'inativo', 'falecido'])],
+            'falecido' => ['sometimes', 'boolean'],
+            'data_falecimento' => [
+                'nullable',
+                'date',
+                'before_or_equal:today',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if ($this->filled('data_nascimento') && $this->filled('data_falecimento')) {
+                        if (strtotime((string) $value) < strtotime((string) $this->input('data_nascimento'))) {
+                            $fail('A data de falecimento não pode ser anterior à data de nascimento.');
+                        }
+                    }
+                },
+            ],
+            'certidao_obito_numero' => ['nullable', 'string', 'max:50'],
+            'cartorio_obito' => ['nullable', 'string', 'max:150'],
+            'observacao_obito' => ['nullable', 'string', 'max:1000'],
         ];
     }
 

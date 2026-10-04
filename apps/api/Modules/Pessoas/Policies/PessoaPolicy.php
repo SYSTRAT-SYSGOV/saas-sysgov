@@ -64,6 +64,12 @@ final readonly class PessoaPolicy
         return $this->temPermissao($user, 'cadastros.pessoas.import');
     }
 
+    public function viewSensitive(User $user, Pessoa $pessoa): bool
+    {
+        return $this->temPermissao($user, 'cadastros.pessoas.view_sensitive')
+            && $this->mesmoTenant($user, $pessoa);
+    }
+
     private function temPermissao(User $user, string $permissao): bool
     {
         return (bool) $user->getAttribute('is_platform_admin')

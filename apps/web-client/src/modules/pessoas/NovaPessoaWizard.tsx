@@ -7,11 +7,28 @@ import {
   Search,
   Loader2,
   CheckCircle,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { Button, Modal, Select, Switch, Input, Field } from '@/components/ui';
+import { cn } from '@sysgov/ui';
 import { pessoasApi, TIPOS_VINCULO, type TipoVinculo } from './api';
 import { useCep } from './hooks/useCep';
 import { ErroBox, useAcao } from './views/comum';
+
+function validarCpf(cpfLimpo: string): boolean {
+  if (cpfLimpo.length !== 11 || /^(\d)\1{10}$/.test(cpfLimpo)) return false;
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += parseInt(cpfLimpo[i] ?? '0', 10) * (10 - i);
+  let resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(cpfLimpo[9] ?? '0', 10)) return false;
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += parseInt(cpfLimpo[i] ?? '0', 10) * (11 - i);
+  resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  return resto === parseInt(cpfLimpo[10] ?? '0', 10);
+}
 
 const opcoesVinculo = Object.entries(TIPOS_VINCULO).map(([value, label]) => ({ value, label }));
 
@@ -54,6 +71,10 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
     nacionalidade: 'Brasileira',
     naturalidade: '',
     nis: '',
+    falecido: false,
+    data_falecimento: '',
+    certidao_obito_numero: '',
+    cartorio_obito: '',
   });
 
   // Etapa 2: Vínculo
@@ -210,6 +231,17 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
 
   const criarPessoa = async () => {
     setErro(null);
+    if (civil.falecido) {
+      if (!civil.data_falecimento) {
+        setErro({ status: 422, mensagem: 'Informe a data de falecimento da pessoa.' });
+        return;
+      }
+      if (civil.data_nascimento && civil.data_falecimento < civil.data_nascimento) {
+        setErro({ status: 422, mensagem: 'A data de falecimento não pode ser anterior à data de nascimento.' });
+        return;
+      }
+    }
+
     const dadosEnvio: Record<string, unknown> = {
       nome: civil.nome.trim(),
       cpf: civil.cpf,
@@ -222,6 +254,10 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
       nacionalidade: civil.nacionalidade.trim() || undefined,
       naturalidade: civil.naturalidade.trim() || undefined,
       nis: civil.nis.trim() || undefined,
+      falecido: civil.falecido,
+      data_falecimento: civil.falecido && civil.data_falecimento ? civil.data_falecimento : undefined,
+      certidao_obito_numero: civil.falecido && civil.certidao_obito_numero.trim() ? civil.certidao_obito_numero.trim() : undefined,
+      cartorio_obito: civil.falecido && civil.cartorio_obito.trim() ? civil.cartorio_obito.trim() : undefined,
     };
 
     const pessoa = await executar(() => pessoasApi.criar(dadosEnvio));
@@ -317,7 +353,7 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
         </div>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
         {/* STEPPER VISUAL */}
         <div className="grid grid-cols-4 gap-2 border-b border-border pb-4">
           {passosConfig.map((item) => {
@@ -390,6 +426,23 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
                     onChange={(e) => handleCpfChange(e.target.value)}
                     required
                   />
+                  {(() => {
+                    const cpfL = civil.cpf.replace(/\D/g, '');
+                    const cComp = cpfL.length === 11;
+                    const cVal = cComp && validarCpf(cpfL);
+                    if (!cComp) return null;
+                    return (
+                      <span
+                        className={cn(
+                          'text-xs flex items-center gap-1 font-medium mt-1',
+                          cVal ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
+                        )}
+                      >
+                        {cVal ? <CheckCircle2 className="size-3.5" /> : <AlertCircle className="size-3.5" />}
+                        {cVal ? 'CPF válido' : 'Dígitos verificadores inválidos'}
+                      </span>
+                    );
+                  })()}
                 </Field>
               </div>
 
@@ -489,6 +542,58 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
                     />
                   </Field>
                 </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-border">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                Situação Vital
+              </h4>
+              <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-3">
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={civil.falecido}
+                    onChange={(e) => setCivil({ ...civil, falecido: e.target.checked })}
+                    className="rounded border-input text-primary focus:ring-primary/30"
+                  />
+                  <span>Pessoa Falecida (Registro de Óbito)</span>
+                </label>
+
+                {civil.falecido && (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 pt-3 border-t border-border/50">
+                    <div>
+                      <Field label="Data do Falecimento" required>
+                        <Input
+                          type="date"
+                          className="font-mono tabular-nums"
+                          value={civil.data_falecimento}
+                          onChange={(e) => setCivil({ ...civil, data_falecimento: e.target.value })}
+                          required={civil.falecido}
+                        />
+                      </Field>
+                    </div>
+                    <div>
+                      <Field label="Nº Certidão de Óbito">
+                        <Input
+                          className="font-mono tabular-nums"
+                          placeholder="Termo / Certidão"
+                          value={civil.certidao_obito_numero}
+                          onChange={(e) => setCivil({ ...civil, certidao_obito_numero: e.target.value })}
+                        />
+                      </Field>
+                    </div>
+                    <div>
+                      <Field label="Cartório de Registro">
+                        <Input
+                          placeholder="Ofício de Registro Civil"
+                          value={civil.cartorio_obito}
+                          onChange={(e) => setCivil({ ...civil, cartorio_obito: e.target.value })}
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

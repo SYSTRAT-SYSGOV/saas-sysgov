@@ -30,7 +30,7 @@ final readonly class PessoaService
     }
 
     /**
-     * @param array{q?: string, tipo_vinculo?: string, status?: string, per_page?: int} $filtros
+     * @param array{q?: string, tipo_vinculo?: string, status?: string, per_page?: int, falecido?: bool|string|int} $filtros
      * @return LengthAwarePaginator<int, Pessoa>
      */
     public function listar(array $filtros = []): LengthAwarePaginator
@@ -38,11 +38,31 @@ final readonly class PessoaService
         return Pessoa::query()
             ->with(['vinculos', 'usuario'])
             ->when($filtros['q'] ?? null, function ($query, string $q): void {
-                $digitos = Documento::somenteDigitos($q);
+                $qLimpo = trim($q);
+                if ($qLimpo === '') {
+                    return;
+                }
+                $digitos = Documento::somenteDigitos($qLimpo);
+
                 if (strlen($digitos) === 11) {
-                    $query->where('cpf_hash', Documento::hash($digitos));
+                    $query->where(function ($sub) use ($digitos, $qLimpo): void {
+                        $sub->where('cpf_hash', Documento::hash($digitos))
+                            ->orWhere('nome', 'like', "%{$qLimpo}%")
+                            ->orWhere('nome_social', 'like', "%{$qLimpo}%");
+                    });
+                } elseif (strlen($digitos) >= 3 && preg_match('/^[0-9.\-\s]+$/', $qLimpo)) {
+                    // Busca parcial por CPF (quando usuário digita números/máscara)
+                    $candidatos = Pessoa::query()
+                        ->select(['id', 'cpf'])
+                        ->limit(500)
+                        ->get();
+                    $ids = $candidatos->filter(fn ($p) => str_contains((string) $p->cpf, $digitos))->pluck('id')->all();
+                    $query->whereIn('id', $ids);
                 } else {
-                    $query->where('nome', 'like', "%{$q}%");
+                    $query->where(function ($sub) use ($qLimpo): void {
+                        $sub->where('nome', 'like', "%{$qLimpo}%")
+                            ->orWhere('nome_social', 'like', "%{$qLimpo}%");
+                    });
                 }
             })
             ->when($filtros['tipo_vinculo'] ?? null, fn ($query, string $tipo) => $query->whereHas(
@@ -50,8 +70,40 @@ final readonly class PessoaService
                 fn ($vinculo) => $vinculo->where('tipo_vinculo', $tipo)
             ))
             ->when($filtros['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
+            ->when(isset($filtros['falecido']), fn ($query) => $query->where('falecido', filter_var($filtros['falecido'], FILTER_VALIDATE_BOOLEAN)))
             ->orderBy('nome')
             ->paginate((int) ($filtros['per_page'] ?? 25));
+    }
+
+    /**
+     * Registra o falecimento da pessoa física no cadastro central (MDM).
+     */
+    public function marcarFalecimento(
+        Pessoa $pessoa,
+        string $dataFalecimento,
+        ?string $certidao = null,
+        ?string $cartorio = null,
+        ?string $observacao = null
+    ): Pessoa {
+        $dados = [
+            'falecido' => true,
+            'data_falecimento' => $dataFalecimento,
+            'status' => 'falecido',
+        ];
+
+        if ($certidao !== null) {
+            $dados['certidao_obito_numero'] = $certidao;
+        }
+        if ($cartorio !== null) {
+            $dados['cartorio_obito'] = $cartorio;
+        }
+        if ($observacao !== null) {
+            $dados['observacao_obito'] = $observacao;
+        }
+
+        $pessoa->update($dados);
+
+        return $pessoa;
     }
 
     /** @param array<string, mixed> $dados */

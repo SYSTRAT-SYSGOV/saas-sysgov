@@ -79,6 +79,21 @@ final class PessoaController extends Controller
     {
         $this->authorize('view', $pessoa);
 
+        if ($request->boolean('reveal_sensitive')) {
+            $this->authorize('viewSensitive', $pessoa);
+            $this->audit->record(
+                'pessoas',
+                'pessoa.sensivel_visualizado',
+                "Dados sensíveis da Pessoa #{$pessoa->id} visualizados por " . ($request->user()->email ?? 'desconhecido'),
+                null,
+                [
+                    'pessoa_id' => $pessoa->id,
+                    'ip' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ]
+            );
+        }
+
         $pessoa->load(['vinculos', 'documentos', 'enderecos', 'contatos', 'usuario']);
 
         return response()->json(new PessoaResource($pessoa));
@@ -237,5 +252,27 @@ final class PessoaController extends Controller
         $this->audit->record('pessoas', 'pessoa.contato_removido', "Contato #{$contato->id}", $antes, null);
 
         return response()->json(['deleted' => true]);
+    }
+
+    public function auditarAcessoSensivel(Request $request, Pessoa $pessoa): JsonResponse
+    {
+        $this->authorize('viewSensitive', $pessoa);
+
+        $this->audit->record(
+            'pessoas',
+            'pessoa.sensivel_visualizado',
+            "Dados sensíveis da Pessoa #{$pessoa->id} visualizados por " . ($request->user()->email ?? 'desconhecido'),
+            null,
+            [
+                'pessoa_id' => $pessoa->id,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'cpf' => (string) $pessoa->cpf,
+        ]);
     }
 }

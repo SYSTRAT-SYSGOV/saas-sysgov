@@ -318,5 +318,109 @@ final class ConcessoesTest extends CemiteriosTestCase
             ->getJson("/api/cemiterios/concessoes/{$concessao->id}/historico")
             ->assertNotFound();
     }
+
+    public function test_concessionario_persiste_e_retorna_pessoa_id_e_relacionamento(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $cpf = $this->cpfValido();
+        $jazigo = $this->novoJazigo(1, false);
+
+        $pessoa = \Modules\Pessoas\Models\Pessoa::create([
+            'nome' => 'Maria Silva MDM',
+            'cpf' => $cpf,
+            'status' => 'ativo',
+        ]);
+
+        $res = $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessionarios', [
+            'pessoa_id' => $pessoa->id,
+            'nome' => 'Maria Silva MDM',
+            'documento' => $cpf,
+            'email' => 'maria@mdm.gov.br',
+        ])->assertCreated();
+
+        $concessionarioId = $res->json('id');
+        self::assertEquals($pessoa->id, $res->json('pessoa_id'));
+        self::assertNotNull($res->json('pessoa'));
+        self::assertEquals('Maria Silva MDM', $res->json('pessoa.nome'));
+
+        $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessoes', [
+            'plot_id' => $jazigo->id,
+            'holder_id' => $concessionarioId,
+            'modalidade' => 'perpetua',
+            'lock_version' => 0,
+        ])->assertCreated();
+
+        $listagem = $this->como($admin, $this->tenant)->getJson('/api/cemiterios/concessoes')
+            ->assertOk();
+        self::assertEquals($pessoa->id, $listagem->json('data.0.concessionario.pessoa_id'));
+        self::assertNotNull($listagem->json('data.0.concessionario.pessoa'));
+    }
+
+    public function test_vincular_concessionario_legado_ao_mdm_via_put(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $cpfLegado = $this->cpfValido();
+        $cpfNovo = $this->cpfValido();
+
+        $titularId = $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessionarios', [
+            'nome' => 'Titular Legado Antigo',
+            'documento' => $cpfLegado,
+        ])->assertCreated()->json('id');
+
+        $this->noTenant($this->tenant);
+        $pessoa = \Modules\Pessoas\Models\Pessoa::create([
+            'nome' => 'Pessoa Mestre Vinculada',
+            'cpf' => $cpfNovo,
+            'status' => 'ativo',
+        ]);
+
+        $res = $this->como($admin, $this->tenant)->putJson("/api/cemiterios/concessionarios/{$titularId}", [
+            'pessoa_id' => $pessoa->id,
+            'nome' => 'Pessoa Mestre Vinculada',
+            'documento' => '123.***.***-00',
+            'endereco' => 'Rua das Flores, nº 100, Centro/SP, CEP: 01001-000',
+        ])->assertOk();
+
+        self::assertEquals($pessoa->id, $res->json('pessoa_id'));
+        self::assertNotNull($res->json('pessoa'));
+        self::assertEquals('Pessoa Mestre Vinculada', $res->json('pessoa.nome'));
+
+        $titularAtualizado = Concessionario::find($titularId);
+        self::assertEquals($pessoa->id, $titularAtualizado->pessoa_id);
+        self::assertEquals($cpfNovo, $titularAtualizado->documento);
+    }
+
+    public function test_sincroniza_falecimento_do_titular_concessionario_com_a_pessoa_mdm(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $cpf = $this->cpfValido();
+
+        $this->noTenant($this->tenant);
+        $pessoa = \Modules\Pessoas\Models\Pessoa::create([
+            'nome' => 'Cidadão Teste Sincronização',
+            'cpf' => $cpf,
+            'status' => 'ativo',
+            'falecido' => false,
+        ]);
+
+        $titularId = $this->como($admin, $this->tenant)->postJson('/api/cemiterios/concessionarios', [
+            'pessoa_id' => $pessoa->id,
+            'nome' => 'Cidadão Teste Sincronização',
+            'documento' => $cpf,
+        ])->assertCreated()->json('id');
+
+        // Atualiza titular marcando como falecido
+        $this->como($admin, $this->tenant)->putJson("/api/cemiterios/concessionarios/{$titularId}", [
+            'titular_falecido' => true,
+            'data_falecimento_titular' => '2026-05-20',
+        ])->assertOk();
+
+        // Verifica na base de dados que a Pessoa mestre foi atualizada
+        $pessoaAtualizada = \Modules\Pessoas\Models\Pessoa::find($pessoa->id);
+        self::assertTrue((bool) $pessoaAtualizada->falecido);
+        self::assertEquals('2026-05-20', $pessoaAtualizada->data_falecimento->format('Y-m-d'));
+        self::assertEquals('falecido', $pessoaAtualizada->status);
+    }
 }
+
 

@@ -38,6 +38,9 @@ import {
   Loader2,
   Compass,
   FileSignature,
+  UserPlus,
+  UserCheck,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -58,6 +61,10 @@ import { SecaoVistoriasJazigo } from './SecaoVistoriasJazigo';
 import { ModalNovaVistoriaJazigo } from './ModalNovaVistoriaJazigo';
 import { ModalQrCodeJazigo } from './ModalQrCodeJazigo';
 import { ModalFichaCadastral } from './ModalFichaCadastral';
+import { PessoaPicker, PessoaFormModal, type NovoCadastroRapidoPessoaInput } from '@sysgov/ui';
+import { usePessoaPicker } from '@/modules/pessoas/hooks';
+import { pessoasApi } from '@/modules/pessoas/api';
+import { ModalFichaPessoa } from '@/modules/pessoas/views/ModalFichaPessoa';
 
 
 export function formatarCpfCnpj(doc: string | null | undefined): string {
@@ -347,8 +354,108 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
     }
   };
 
+  // Integração com o Hub MDM de Pessoas
+  const { buscarPessoas, criarPessoaRapido } = usePessoaPicker();
+  const [pessoaModalId, setPessoaModalId] = useState<number | null>(null);
+  const [modalNovoTitularRapido, setModalNovoTitularRapido] = useState(false);
+  const [modalNovaConcessao, setModalNovaConcessao] = useState(false);
+  const [salvandoNovaConcessao, setSalvandoNovaConcessao] = useState(false);
+  const [novaConcessaoTitularRapido, setNovaConcessaoTitularRapido] = useState(false);
+  const [formNovaConcessao, setFormNovaConcessao] = useState<{
+    modalidade: 'temporaria' | 'perpetua';
+    processo_administrativo: string;
+    inicio: string;
+    holder_id: number | null;
+    pessoa_id: number | null;
+    pessoa_nome: string;
+    pessoa_doc: string;
+    anos: number;
+  }>({
+    modalidade: 'temporaria',
+    processo_administrativo: '',
+    inicio: new Date().toISOString().slice(0, 10),
+    holder_id: null,
+    pessoa_id: null,
+    pessoa_nome: '',
+    pessoa_doc: '',
+    anos: 5,
+  });
+
+  const abrirNovaConcessao = () => {
+    setFormNovaConcessao({
+      modalidade: 'temporaria',
+      processo_administrativo: '',
+      inicio: new Date().toISOString().slice(0, 10),
+      holder_id: null,
+      pessoa_id: null,
+      pessoa_nome: '',
+      pessoa_doc: '',
+      anos: 5,
+    });
+    setModalNovaConcessao(true);
+  };
+
+  const salvarNovaConcessao = async () => {
+    if (!j?.id) return;
+    if (!formNovaConcessao.pessoa_id && !formNovaConcessao.holder_id) {
+      alert('Selecione ou cadastre o titular concessionário no seletor de pessoas.');
+      return;
+    }
+    setSalvandoNovaConcessao(true);
+    try {
+      let holderId = formNovaConcessao.holder_id;
+      if (!holderId && formNovaConcessao.pessoa_id) {
+        const pessoa = await pessoasApi.obter(formNovaConcessao.pessoa_id);
+        const primEnd = pessoa.enderecos?.[0];
+        const endStr = primEnd
+          ? `${primEnd.logradouro || ''}, ${primEnd.numero || 's/n'}${primEnd.bairro ? ` - ${primEnd.bairro}` : ''}${primEnd.cidade ? ` - ${primEnd.cidade}/${primEnd.uf}` : ''}`
+          : null;
+        const emailCtc = pessoa.contatos?.find((c) => c.tipo === 'email')?.valor || null;
+        const telCtc = pessoa.contatos?.find((c) => c.tipo === 'celular' || c.tipo === 'telefone')?.valor || null;
+
+        const novoHolder = await cemiteriosApi.criarTitular({
+          pessoa_id: pessoa.id,
+          nome: pessoa.nome,
+          documento: pessoa.cpf_mascarado,
+          email: emailCtc,
+          telefone: telCtc,
+          endereco: endStr,
+          base_legal: 'execucao_contrato',
+        });
+        holderId = novoHolder.id;
+      }
+
+      if (!holderId) return;
+
+      await cemiteriosApi.conceder({
+        plot_id: j.id,
+        holder_id: holderId,
+        modalidade: formNovaConcessao.modalidade,
+        inicio: formNovaConcessao.inicio || undefined,
+        processo_administrativo: formNovaConcessao.processo_administrativo || undefined,
+        lock_version: j.lock_version,
+      });
+
+      setModalNovaConcessao(false);
+      setAlertaSucesso('Nova concessão outorgada com sucesso e titular vinculado ao cadastro central (MDM)!');
+      await Promise.all([concessoes.recarregar(), detalhe.recarregar(), historico.recarregar()]);
+      onAlterado?.();
+    } catch (e: any) {
+      console.error('Erro ao conceder jazigo:', e);
+      const msg =
+        e?.response?.data?.errors
+          ? Object.values(e.response.data.errors).flat().join(' ')
+          : e?.response?.data?.message || e?.message || 'Falha ao outorgar concessão.';
+      alert(`Não foi possível outorgar a concessão: ${msg}`);
+    } finally {
+      setSalvandoNovaConcessao(false);
+    }
+  };
+
   // Estados para edição do Titular Concessionário com campos separados de endereço
   const [editandoTitular, setEditandoTitular] = useState(false);
+  const [erroTitular, setErroTitular] = useState<string | null>(null);
+  const [alertaSucesso, setAlertaSucesso] = useState<string | null>(null);
   const [formTitular, setFormTitular] = useState<Partial<Concessionario>>({});
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [msgCep, setMsgCep] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
@@ -365,6 +472,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
   const abrirEdicaoTitular = () => {
     if (!concessaoAtiva?.concessionario) return;
     const c = concessaoAtiva.concessionario;
+    setErroTitular(null);
     setMsgCep(null);
 
     const endStr = c.endereco ?? '';
@@ -381,6 +489,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
     });
 
     setFormTitular({
+      pessoa_id: c.pessoa_id ?? null,
       nome: c.nome ?? '',
       documento: c.documento ?? '',
       email: c.email ?? '',
@@ -428,6 +537,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
   const salvarTitular = async () => {
     if (!concessaoAtiva?.concessionario?.id) return;
     setSalvandoEdicao(true);
+    setErroTitular(null);
     try {
       const partesEndereco: string[] = [];
       if (formEndereco.logradouro.trim()) partesEndereco.push(formEndereco.logradouro.trim());
@@ -441,9 +551,14 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
       if (formEndereco.cep.trim()) partesEndereco.push(`CEP: ${formEndereco.cep.trim()}`);
       const enderecoCompleto = partesEndereco.join(', ');
 
+      const docEnvio = formTitular.pessoa_id
+        ? (formTitular.documento && !formTitular.documento.includes('*') ? formTitular.documento.replace(/\D/g, '') : undefined)
+        : (formTitular.documento ? formTitular.documento.replace(/\D/g, '') : undefined);
+
       await cemiteriosApi.atualizarConcessionario(concessaoAtiva.concessionario.id, {
         ...formTitular,
-        documento: formTitular.documento ? formTitular.documento.replace(/\D/g, '') : undefined,
+        pessoa_id: formTitular.pessoa_id,
+        documento: docEnvio,
         endereco: enderecoCompleto || null,
         cep: formEndereco.cep || null,
         logradouro: formEndereco.logradouro || null,
@@ -453,11 +568,18 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
         cidade: formEndereco.cidade || null,
         uf: formEndereco.uf || null,
       });
+
       setEditandoTitular(false);
+      setAlertaSucesso('Registro salvo com sucesso! O titular concessionário foi atualizado e vinculado ao cadastro central (MDM).');
       await Promise.all([concessoes.recarregar(), detalhe.recarregar(), historico.recarregar()]);
       onAlterado?.();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Erro ao atualizar titular:', e);
+      const msg =
+        e?.response?.data?.errors
+          ? Object.values(e.response.data.errors).flat().join(' ')
+          : e?.response?.data?.message || e?.message || 'Falha ao salvar as alterações do titular concessionário.';
+      setErroTitular(msg);
     } finally {
       setSalvandoEdicao(false);
     }
@@ -1101,6 +1223,23 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
 
                   {concessaoAtiva ? (
                     <div className="space-y-4">
+                      {alertaSucesso && (
+                        <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs flex items-center justify-between gap-2 shadow-xs">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                            <span className="font-medium">{alertaSucesso}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAlertaSucesso(null)}
+                            className="text-emerald-400 hover:text-emerald-200 transition-colors p-1"
+                            title="Fechar alerta"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+
                       <Card className="p-4 border-border space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2.5">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -1117,24 +1256,69 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
                               </Badge>
                             )}
                           </div>
-                          {pode && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={abrirEdicaoTitular}
-                              className="h-8 text-xs gap-1.5 font-medium"
-                            >
-                              <Edit className="h-3.5 w-3.5" /> Editar Titular
-                            </Button>
-                          )}
+                          <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                            {concessaoAtiva.concessionario?.pessoa_id ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPessoaModalId(concessaoAtiva.concessionario?.pessoa_id ?? null)}
+                                className="h-8 text-xs gap-1.5 font-medium border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                title="Abrir ficha cadastral completa no Cadastro Central de Pessoas (MDM)"
+                              >
+                                <UserCheck className="h-3.5 w-3.5" /> Ficha Cadastral (MDM)
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={abrirEdicaoTitular}
+                                className="h-8 text-xs gap-1.5 font-medium border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                                title="Vincular titular a uma pessoa física no cadastro central"
+                              >
+                                <UserPlus className="h-3.5 w-3.5" /> Vincular ao MDM
+                              </Button>
+                            )}
+                            {pode && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={abrirEdicaoTitular}
+                                className="h-8 text-xs gap-1.5 font-medium"
+                              >
+                                <Edit className="h-3.5 w-3.5" /> Editar Titular
+                              </Button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                           <div>
                             <span className="text-muted-foreground block text-[11px]">Titular da Concessão:</span>
-                            <span className="font-semibold text-foreground block text-sm">
-                              {concessaoAtiva.concessionario?.nome ?? 'Não informado'}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => concessaoAtiva.concessionario?.pessoa_id && setPessoaModalId(concessaoAtiva.concessionario.pessoa_id)}
+                                className={cn(
+                                  "font-semibold text-sm text-left truncate max-w-[260px]",
+                                  concessaoAtiva.concessionario?.pessoa_id
+                                    ? "text-primary hover:underline cursor-pointer flex items-center gap-1"
+                                    : "text-foreground"
+                                )}
+                                title={concessaoAtiva.concessionario?.pessoa_id ? "Abrir ficha de pessoa no MDM" : undefined}
+                              >
+                                <span>{concessaoAtiva.concessionario?.nome ?? 'Não informado'}</span>
+                                {concessaoAtiva.concessionario?.pessoa_id && <ExternalLink className="h-3 w-3 inline text-primary/70 shrink-0" />}
+                              </button>
+                              {concessaoAtiva.concessionario?.pessoa_id ? (
+                                <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/30 bg-emerald-500/10">
+                                  MDM Ativo
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10">
+                                  Legado
+                                </Badge>
+                              )}
+                            </div>
                             <Mono className="text-xs font-semibold text-foreground block mt-0.5">
                               CPF/CNPJ: {concessaoAtiva.concessionario?.documento
                                 ? formatarCpfCnpj(concessaoAtiva.concessionario.documento)
@@ -1226,12 +1410,23 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
                       </Card>
                     </div>
                   ) : (
-                    <div className="p-8 text-center border border-dashed border-border rounded-lg space-y-2">
-                      <User className="h-8 w-8 text-muted-foreground mx-auto" />
+                    <div className="p-8 text-center border border-dashed border-border rounded-lg space-y-3 bg-muted/10">
+                      <FileSignature className="h-10 w-10 text-muted-foreground mx-auto" />
                       <h4 className="text-sm font-semibold text-foreground">Nenhuma Concessão Vinculada</h4>
                       <p className="text-xs text-muted-foreground max-w-md mx-auto">
                         Este túmulo encontra-se cadastrado como cova pública, unidade disponível ou pendente de outorga de concessão formal.
                       </p>
+                      {pode && (
+                        <div className="pt-2">
+                          <Button
+                            size="sm"
+                            onClick={abrirNovaConcessao}
+                            className="gap-2 text-xs font-medium"
+                          >
+                            <UserPlus className="h-4 w-4" /> Outorgar Concessão / Vincular Titular
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1837,6 +2032,75 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
         size="xl"
       >
         <div className="space-y-4">
+          {erroTitular && (
+            <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <span>{erroTitular}</span>
+            </div>
+          )}
+
+          {/* Seletor MDM de Pessoas */}
+          <div className="p-3 border border-primary/20 bg-primary/5 rounded-lg space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <UserCheck className="h-4 w-4 text-primary" />
+                <span>Vincular com o Cadastro Central de Pessoas (MDM)</span>
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Busque por nome ou CPF no cadastro geral
+              </span>
+            </div>
+            <PessoaPicker
+              value={formTitular.pessoa_id ?? null}
+              onChange={async (pessoaId, option) => {
+                setErroTitular(null);
+                const ehFalecido = Boolean(option?.falecido || option?.status === 'falecido');
+                setFormTitular((prev) => ({
+                  ...prev,
+                  pessoa_id: pessoaId,
+                  nome: option?.nome || prev.nome,
+                  documento: option?.cpf_mascarado || prev.documento,
+                  titular_falecido: ehFalecido ? true : prev.titular_falecido,
+                  data_falecimento_titular: ehFalecido && option?.data_falecimento ? option.data_falecimento : prev.data_falecimento_titular,
+                }));
+                if (pessoaId) {
+                  try {
+                    const detalhes = await pessoasApi.obter(pessoaId);
+                    if (detalhes) {
+                      const primEndereco = detalhes.enderecos?.[0];
+                      if (primEndereco) {
+                        setFormEndereco({
+                          cep: primEndereco.cep || '',
+                          logradouro: primEndereco.logradouro || '',
+                          numero: primEndereco.numero || '',
+                          complemento: primEndereco.complemento || '',
+                          bairro: primEndereco.bairro || '',
+                          cidade: primEndereco.cidade || '',
+                          uf: primEndereco.uf || '',
+                        });
+                      }
+                      const emailCtc = detalhes.contatos?.find((c) => c.tipo === 'email')?.valor;
+                      const telCtc = detalhes.contatos?.find((c) => c.tipo === 'celular' || c.tipo === 'telefone')?.valor;
+                      const pessoaFalecida = Boolean(detalhes.falecido || detalhes.status === 'falecido');
+                      setFormTitular((prev) => ({
+                        ...prev,
+                        email: emailCtc || prev.email,
+                        telefone: telCtc || prev.telefone,
+                        titular_falecido: pessoaFalecida ? true : prev.titular_falecido,
+                        data_falecimento_titular: pessoaFalecida && detalhes.data_falecimento ? detalhes.data_falecimento : prev.data_falecimento_titular,
+                      }));
+                    }
+                  } catch (e) {
+                    console.warn('Erro ao carregar detalhes adicionais da pessoa selecionada:', e);
+                  }
+                }
+              }}
+              onSearch={buscarPessoas}
+              onCreatePessoa={criarPessoaRapido}
+              placeholder="Pesquisar munícipe por nome ou CPF no cadastro mestre..."
+            />
+          </div>
+
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">
               1. Identificação e Contatos do Titular
@@ -2313,6 +2577,184 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
           </div>
         </div>
       </Modal>
+
+      {/* Modal de Outorga de Nova Concessão com Titular Integrado ao MDM */}
+      <Modal
+        open={modalNovaConcessao}
+        onClose={() => setModalNovaConcessao(false)}
+        title="Outorgar Nova Concessão / Vincular Titular"
+        description="Vincule um concessionário titular do cadastro central de pessoas (MDM) e registre a modalidade, vigência e termo da concessão."
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2 p-3 bg-muted/20 border border-border/70 rounded-lg">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-primary" />
+                <span>Titular Concessionário Obrigatório (MDM) *</span>
+              </label>
+              <span className="text-[11px] text-muted-foreground">Busca centralizada por Nome ou CPF</span>
+            </div>
+            <PessoaPicker
+              value={formNovaConcessao.pessoa_id}
+              onChange={(pessoaId, option) => {
+                setFormNovaConcessao((prev) => ({
+                  ...prev,
+                  pessoa_id: pessoaId,
+                  pessoa_nome: option?.nome || '',
+                  pessoa_doc: option?.cpf_mascarado || '',
+                }));
+              }}
+              onSearch={buscarPessoas}
+              onCreatePessoa={criarPessoaRapido}
+              placeholder="Pesquisar munícipe titular no cadastro central de pessoas..."
+            />
+            {formNovaConcessao.pessoa_id && (
+              <div className="flex items-center justify-between bg-card p-2 rounded border border-border text-xs">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <span className="font-semibold text-foreground">{formNovaConcessao.pessoa_nome}</span>
+                  <span className="font-mono text-muted-foreground">({formNovaConcessao.pessoa_doc})</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPessoaModalId(formNovaConcessao.pessoa_id)}
+                  className="text-primary hover:underline h-7 text-xs gap-1"
+                >
+                  <ExternalLink className="h-3 w-3" /> Ficha Cadastral
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">
+              Dados do Termo & Outorga Municipal
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Modalidade da Concessão *
+                </label>
+                <Select
+                  value={formNovaConcessao.modalidade}
+                  onChange={(val) => setFormNovaConcessao((p) => ({ ...p, modalidade: val as 'temporaria' | 'perpetua' }))}
+                  options={[
+                    { value: 'temporaria', label: 'Temporária (Prazo Determinado)' },
+                    { value: 'perpetua', label: 'Perpétua (Direito Real de Uso)' },
+                  ]}
+                  className="text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Data de Início da Outorga *
+                </label>
+                <Input
+                  type="date"
+                  value={formNovaConcessao.inicio}
+                  onChange={(e) => setFormNovaConcessao((p) => ({ ...p, inicio: e.target.value }))}
+                  className="text-xs font-mono h-9"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Processo Administrativo / Termo de Outorga
+                </label>
+                <Input
+                  type="text"
+                  value={formNovaConcessao.processo_administrativo}
+                  onChange={(e) => setFormNovaConcessao((p) => ({ ...p, processo_administrativo: e.target.value }))}
+                  placeholder="Ex: Proc. Adm. 2026/04918 - Termo nº 124/2026"
+                  className="text-xs font-mono h-9"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setModalNovaConcessao(false)} disabled={salvandoNovaConcessao}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={salvarNovaConcessao}
+              disabled={salvandoNovaConcessao || !formNovaConcessao.pessoa_id}
+              className="gap-1.5"
+            >
+              {salvandoNovaConcessao ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Outorgando...</span>
+                </>
+              ) : (
+                <>
+                  <FileSignature className="h-4 w-4" />
+                  <span>Outorgar Concessão</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Visualização Completa da Ficha Cadastral no Cadastro Mestre de Pessoas (MDM) */}
+      {pessoaModalId && (
+        <ModalFichaPessoa
+          pessoaId={pessoaModalId}
+          onFechar={() => setPessoaModalId(null)}
+          onAtualizado={() => {
+            void concessoes.recarregar();
+            void detalhe.recarregar();
+          }}
+        />
+      )}
+
+      {/* Cadastro Rápido de Pessoa Física ao Editar Titular */}
+      <PessoaFormModal
+        open={modalNovoTitularRapido}
+        onClose={() => setModalNovoTitularRapido(false)}
+        title="Cadastro Rápido de Munícipe (Titular)"
+        onSubmit={async (dados) => {
+          try {
+            const novaPessoa = await criarPessoaRapido(dados);
+            setFormTitular((prev) => ({
+              ...prev,
+              pessoa_id: novaPessoa.id,
+              nome: novaPessoa.nome,
+              documento: novaPessoa.cpf_mascarado,
+            }));
+            setModalNovoTitularRapido(false);
+          } catch (e) {
+            console.error('Erro ao cadastrar pessoa rapidamente:', e);
+          }
+        }}
+      />
+
+      {/* Cadastro Rápido de Pessoa Física na Outorga de Nova Concessão */}
+      <PessoaFormModal
+        open={novaConcessaoTitularRapido}
+        onClose={() => setNovaConcessaoTitularRapido(false)}
+        title="Cadastro Rápido de Concessionário Titular"
+        onSubmit={async (dados) => {
+          try {
+            const novaPessoa = await criarPessoaRapido(dados);
+            setFormNovaConcessao((prev) => ({
+              ...prev,
+              pessoa_id: novaPessoa.id,
+              pessoa_nome: novaPessoa.nome,
+              pessoa_doc: novaPessoa.cpf_mascarado,
+            }));
+            setNovaConcessaoTitularRapido(false);
+          } catch (e) {
+            console.error('Erro ao cadastrar pessoa rapidamente na nova concessão:', e);
+          }
+        }}
+      />
     </>
   );
 };

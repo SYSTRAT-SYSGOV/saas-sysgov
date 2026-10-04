@@ -41,7 +41,7 @@ final class JazigoController extends Controller
                     $q->vigentes()
                         ->orderByDesc('id')
                         ->select('id', 'plot_id', 'holder_id', 'numero', 'tipo', 'estado', 'data_inicio', 'data_fim')
-                        ->with('concessionario:id,nome,documento,titular_falecido');
+                        ->with('concessionario:id,pessoa_id,nome,documento,titular_falecido');
                 },
                 'inumacoes' => function ($q) {
                     $q->where('situacao', 'confirmada')

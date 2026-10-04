@@ -25,8 +25,16 @@ final class PessoaResource extends JsonResource
                 'nome_social' => $this->nome_social,
                 'cpf_mascarado' => $this->cpf_mascarado,
                 'status' => $this->status,
+                'falecido' => (bool) $this->falecido,
+                'data_falecimento' => $this->data_falecimento?->format('Y-m-d'),
             ];
         }
+
+        $user = $request->user();
+        $podeVerSensivel = $user !== null && (
+            (bool) $user->getAttribute('is_platform_admin')
+            || $user->can('viewSensitive', $this->resource)
+        );
 
         return [
             'id' => $this->id,
@@ -34,6 +42,8 @@ final class PessoaResource extends JsonResource
             'nome' => $this->nome,
             'nome_social' => $this->nome_social,
             'cpf_mascarado' => $this->cpf_mascarado,
+            'pode_desmascarar' => $podeVerSensivel,
+            'cpf_desmascarado' => $this->when($podeVerSensivel && $request->boolean('reveal_sensitive'), fn () => (string) $this->cpf),
             'data_nascimento' => $this->data_nascimento?->format('Y-m-d'),
             'sexo' => $this->sexo,
             'nome_mae' => $this->nome_mae,
@@ -43,6 +53,11 @@ final class PessoaResource extends JsonResource
             'naturalidade' => $this->naturalidade,
             'nis' => $this->nis,
             'status' => $this->status,
+            'falecido' => (bool) $this->falecido,
+            'data_falecimento' => $this->data_falecimento?->format('Y-m-d'),
+            'certidao_obito_numero' => $this->certidao_obito_numero,
+            'cartorio_obito' => $this->cartorio_obito,
+            'observacao_obito' => $this->observacao_obito,
             'vinculos' => PessoaVinculoResource::collection($this->whenLoaded('vinculos')),
             'documentos' => PessoaDocumentoResource::collection($this->whenLoaded('documentos')),
             'enderecos' => PessoaEnderecoResource::collection($this->whenLoaded('enderecos')),

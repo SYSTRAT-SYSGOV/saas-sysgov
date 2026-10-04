@@ -10,6 +10,8 @@ import { DrawerHistoricoConcessao } from './DrawerHistoricoConcessao';
 import { PessoaPicker } from '@sysgov/ui';
 import { usePessoaPicker } from '@/modules/pessoas/hooks';
 import { pessoasApi } from '@/modules/pessoas/api';
+import { ModalFichaPessoa } from '@/modules/pessoas/views/ModalFichaPessoa';
+import { ExternalLink } from 'lucide-react';
 
 const SITUACAO: Record<string, 'success' | 'warning' | 'danger'> = { vigente: 'success', expirada: 'warning', extinta: 'danger' };
 const MOTIVO_EXTINCAO_LABEL: Record<string, string> = { renuncia: 'Renúncia voluntária', abandono: 'Abandono (processo administrativo)' };
@@ -55,6 +57,7 @@ export const ConcessoesView: React.FC = () => {
   const [historico, setHistorico] = useState<Concessao | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [filtros, setFiltros] = useState<FiltrosConcessoesAvancados>(FILTROS_INICIAIS);
+  const [pessoaModalId, setPessoaModalId] = useState<number | null>(null);
 
   const setoresDisponiveis = cemiterioAtivo?.setores ?? [];
 
@@ -92,16 +95,31 @@ export const ConcessoesView: React.FC = () => {
       id: 'titular',
       header: 'Concessionário',
       accessorFn: (r) => r.concessionario?.nome ?? '',
-      cell: ({ row }) => (
-        <div>
-          <span className="font-medium text-foreground">{row.original.concessionario?.nome ?? '—'}</span>
-          {row.original.concessionario?.titular_falecido && (
-            <span className="ml-2 inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-              ⚠️ Titular Falecido
-            </span>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const c = row.original.concessionario;
+        return (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {c?.pessoa_id ? (
+              <button
+                type="button"
+                onClick={() => setPessoaModalId(c.pessoa_id!)}
+                className="font-medium text-primary hover:underline cursor-pointer flex items-center gap-1 text-left"
+                title="Abrir ficha cadastral central (MDM)"
+              >
+                <span>{c.nome}</span>
+                <ExternalLink className="h-3 w-3 inline text-primary/70 shrink-0" />
+              </button>
+            ) : (
+              <span className="font-medium text-foreground">{c?.nome ?? '—'}</span>
+            )}
+            {c?.titular_falecido && (
+              <span className="inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                ⚠️ Titular Falecido
+              </span>
+            )}
+          </div>
+        );
+      },
       meta: { exportHeader: 'Concessionário', exportValue: (r) => r.concessionario?.nome ?? '' },
     },
     {
@@ -161,16 +179,35 @@ export const ConcessoesView: React.FC = () => {
     {
       id: 'nome',
       header: 'Nome',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-foreground">{row.original.nome}</span>
-          {row.original.pessoa_id && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium">
-              Cadastro Central
-            </span>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const t = row.original;
+        return (
+          <div className="flex items-center gap-2">
+            {t.pessoa_id ? (
+              <button
+                type="button"
+                onClick={() => setPessoaModalId(t.pessoa_id!)}
+                className="font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1 text-left"
+                title="Abrir ficha cadastral central (MDM)"
+              >
+                <span>{t.nome}</span>
+                <ExternalLink className="h-3 w-3 inline text-primary/70 shrink-0" />
+              </button>
+            ) : (
+              <span className="font-semibold text-foreground">{t.nome}</span>
+            )}
+            {t.pessoa_id ? (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-medium">
+                MDM Ativo
+              </span>
+            ) : (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-medium">
+                Legado
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     { id: 'doc', header: 'CPF/CNPJ', accessorKey: 'documento_mascarado', cell: ({ row }) => <Mono>{row.original.documento_mascarado}</Mono> },
     {
@@ -346,6 +383,17 @@ export const ConcessoesView: React.FC = () => {
       />
 
       <DrawerHistoricoConcessao concessao={historico} onFechar={() => setHistorico(null)} />
+
+      {pessoaModalId && (
+        <ModalFichaPessoa
+          pessoaId={pessoaModalId}
+          onFechar={() => setPessoaModalId(null)}
+          onAtualizado={() => {
+            void titulares.recarregar();
+            void concessoes.recarregar();
+          }}
+        />
+      )}
     </div>
   );
 };

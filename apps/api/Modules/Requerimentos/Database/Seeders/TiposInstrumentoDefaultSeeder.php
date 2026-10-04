@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Requerimentos\Database\Seeders;
 
+use App\Models\Tenant;
+use App\Support\TenantContext;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Modules\Requerimentos\Models\TipoInstrumento;
 
 final class TiposInstrumentoDefaultSeeder extends Seeder
@@ -38,9 +39,9 @@ final class TiposInstrumentoDefaultSeeder extends Seeder
                 'poder_origem' => 'camara',
                 'prazo_regimental_dias' => null,
                 'exige_tramitacao_interna' => true,
-                'campos_especificos' => json_encode([
+                'campos_especificos' => [
                     'etapas' => ['protocolo', 'comissao_constituicao_justica', 'comissao_financas', 'pauta', 'votacao', 'sancao', 'publicacao'],
-                ]),
+                ],
                 'ordem' => 3,
             ],
             [
@@ -50,9 +51,9 @@ final class TiposInstrumentoDefaultSeeder extends Seeder
                 'poder_origem' => 'camara',
                 'prazo_regimental_dias' => null,
                 'exige_tramitacao_interna' => true,
-                'campos_especificos' => json_encode([
+                'campos_especificos' => [
                     'etapas' => ['protocolo', 'comissao_constituicao_justica', 'pauta', 'votacao', 'publicacao'],
-                ]),
+                ],
                 'ordem' => 4,
             ],
             [
@@ -62,9 +63,9 @@ final class TiposInstrumentoDefaultSeeder extends Seeder
                 'poder_origem' => 'camara',
                 'prazo_regimental_dias' => null,
                 'exige_tramitacao_interna' => true,
-                'campos_especificos' => json_encode([
+                'campos_especificos' => [
                     'etapas' => ['protocolo', 'comissao_constituicao_justica', 'pauta', 'votacao', 'publicacao'],
-                ]),
+                ],
                 'ordem' => 5,
             ],
             [
@@ -74,9 +75,9 @@ final class TiposInstrumentoDefaultSeeder extends Seeder
                 'poder_origem' => 'camara',
                 'prazo_regimental_dias' => null,
                 'exige_tramitacao_interna' => true,
-                'campos_especificos' => json_encode([
+                'campos_especificos' => [
                     'etapas' => ['protocolo', 'pauta', 'votacao'],
-                ]),
+                ],
                 'ordem' => 6,
             ],
             [
@@ -99,10 +100,30 @@ final class TiposInstrumentoDefaultSeeder extends Seeder
             ],
         ];
 
+        $tenantContext = app(TenantContext::class);
+
+        if ($tenantContext->hasTenant()) {
+            $this->seedParaTenant($tenantContext->get(), $tipos);
+            return;
+        }
+
+        foreach (Tenant::all() as $tenant) {
+            $this->seedParaTenant($tenant, $tipos);
+        }
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $tipos
+     */
+    private function seedParaTenant(Tenant $tenant, array $tipos): void
+    {
         foreach ($tipos as $tipo) {
-            TipoInstrumento::firstOrCreate(
-                ['slug' => $tipo['slug']],
-                $tipo
+            TipoInstrumento::withoutGlobalScopes()->firstOrCreate(
+                [
+                    'tenant_id' => $tenant->id,
+                    'slug' => $tipo['slug'],
+                ],
+                array_merge($tipo, ['tenant_id' => $tenant->id])
             );
         }
     }

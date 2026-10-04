@@ -9,11 +9,8 @@ export function usePessoaPicker(initialPessoaId?: number | null) {
   const cacheRef = useRef<Map<string, PessoaPickerOption[]>>(new Map());
 
   // Busca compacta com cache
-  const buscarPessoas = useCallback(async (termo: string): Promise<PessoaPickerOption[]> => {
+  const buscarPessoas = useCallback(async (termo: string = ''): Promise<PessoaPickerOption[]> => {
     const termoLimpo = termo.trim();
-    if (!termoLimpo) {
-      return [];
-    }
 
     if (cacheRef.current.has(termoLimpo)) {
       return cacheRef.current.get(termoLimpo)!;
@@ -22,13 +19,15 @@ export function usePessoaPicker(initialPessoaId?: number | null) {
     setLoading(true);
     setErro(null);
     try {
-      const res = await pessoasApi.buscarCompacto(termoLimpo, 10);
+      const res = await pessoasApi.buscarCompacto(termoLimpo, 15);
       const options: PessoaPickerOption[] = (res.data ?? []).map((p: PessoaCompacta) => ({
         id: p.id,
         nome: p.nome,
         nome_social: p.nome_social,
         cpf_mascarado: p.cpf_mascarado,
         status: p.status,
+        falecido: Boolean(p.falecido),
+        data_falecimento: p.data_falecimento ?? null,
       }));
 
       cacheRef.current.set(termoLimpo, options);
@@ -54,6 +53,8 @@ export function usePessoaPicker(initialPessoaId?: number | null) {
         nome_social: p.nome_social,
         cpf_mascarado: p.cpf_mascarado,
         status: p.status,
+        falecido: Boolean(p.falecido),
+        data_falecimento: p.data_falecimento ?? null,
       };
       setSelectedPessoa(option);
       return option;
@@ -77,6 +78,7 @@ export function usePessoaPicker(initialPessoaId?: number | null) {
         nome_social: dados.nome_social,
         data_nascimento: dados.data_nascimento,
         sexo: dados.sexo,
+        nome_mae: dados.nome_mae,
       });
 
       // Se tiver contato informado, adiciona em seguida

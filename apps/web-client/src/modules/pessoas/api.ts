@@ -40,11 +40,12 @@ export interface PessoaCompacta {
   nome: string;
   nome_social: string | null;
   cpf_mascarado: string;
-  status: 'ativo' | 'inativo';
+  status: 'ativo' | 'inativo' | 'falecido';
+  falecido?: boolean;
+  data_falecimento?: string | null;
 }
 
 export interface Pessoa {
-
   id: number;
   nome: string;
   nome_social: string | null;
@@ -57,7 +58,14 @@ export interface Pessoa {
   nacionalidade: string | null;
   naturalidade: string | null;
   nis: string | null;
-  status: 'ativo' | 'inativo';
+  status: 'ativo' | 'inativo' | 'falecido';
+  falecido?: boolean;
+  data_falecimento?: string | null;
+  certidao_obito_numero?: string | null;
+  cartorio_obito?: string | null;
+  observacao_obito?: string | null;
+  pode_desmascarar?: boolean;
+  cpf_desmascarado?: string;
   vinculos?: PessoaVinculo[];
   documentos?: PessoaDocumento[];
   enderecos?: PessoaEndereco[];
@@ -121,7 +129,8 @@ const del = async <T,>(url: string) => (await apiClient.delete<T>(`${base}${url}
 export const pessoasApi = {
   listar: (filtros: Record<string, unknown> = {}) => get<Paginado<Pessoa>>('', filtros),
   buscarCompacto: (q: string, per_page: number = 10) => get<Paginado<PessoaCompacta>>('', { q, compact: true, per_page }),
-  obter: (id: number) => get<Pessoa>(`/${id}`),
+  obter: (id: number, params?: { reveal_sensitive?: boolean }) => get<Pessoa>(`/${id}`, params),
+  auditarAcessoSensivel: (id: number) => post<{ status: string; cpf: string }>(`/${id}/auditar-acesso-sensivel`),
   criar: (dados: Record<string, unknown>) => post<Pessoa>('', dados),
   atualizar: (id: number, dados: Record<string, unknown>) => put<Pessoa>(`/${id}`, dados),
   excluir: (id: number) => del<{ deleted: boolean }>(`/${id}`),

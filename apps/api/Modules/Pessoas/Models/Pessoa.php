@@ -31,6 +31,11 @@ use Modules\Pessoas\Support\Documento;
  * @property string|null $naturalidade
  * @property string|null $nis
  * @property string $status
+ * @property bool $falecido
+ * @property \Illuminate\Support\Carbon|null $data_falecimento
+ * @property string|null $certidao_obito_numero
+ * @property string|null $cartorio_obito
+ * @property string|null $observacao_obito
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
@@ -62,6 +67,8 @@ final class Pessoa extends Model
         'nome_pai' => 'encrypted',
         'nis' => 'encrypted',
         'data_nascimento' => 'date',
+        'falecido' => 'boolean',
+        'data_falecimento' => 'date',
     ];
 
     protected static function booted(): void
@@ -69,7 +76,28 @@ final class Pessoa extends Model
         static::saving(function (self $pessoa): void {
             $pessoa->cpf = Documento::somenteDigitos((string) $pessoa->cpf);
             $pessoa->cpf_hash = Documento::hash($pessoa->cpf);
+            if ($pessoa->falecido && $pessoa->status === 'ativo') {
+                $pessoa->status = 'falecido';
+            }
         });
+    }
+
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder<self> $query
+     * @return \Illuminate\Database\Eloquent\Builder<self>
+     */
+    public function scopeFalecidos(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('falecido', true);
+    }
+
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder<self> $query
+     * @return \Illuminate\Database\Eloquent\Builder<self>
+     */
+    public function scopeVivos(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('falecido', false);
     }
 
     public function getCpfMascaradoAttribute(): string

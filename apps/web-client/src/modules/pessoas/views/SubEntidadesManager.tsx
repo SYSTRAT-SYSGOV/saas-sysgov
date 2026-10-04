@@ -237,12 +237,12 @@ export const SubEntidadesManager: React.FC<SubEntidadesManagerProps> = ({
                 key={d.id}
                 className="flex items-center justify-between rounded-md border border-border/60 bg-muted/20 p-2.5 text-sm"
               >
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 min-w-0 flex-1 mr-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold uppercase text-xs text-muted-foreground">{d.tipo}</span>
                     <Mono className="font-semibold text-foreground">{d.numero}</Mono>
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground truncate" title={[d.orgao_emissor ? `Órgão: ${d.orgao_emissor}` : null, d.uf_emissao ? `UF: ${d.uf_emissao}` : null, d.data_emissao ? `Emissão: ${formatarData(d.data_emissao)}` : null].filter(Boolean).join(' • ') || 'Sem dados complementares'}>
                     {[
                       d.orgao_emissor ? `Órgão: ${d.orgao_emissor}` : null,
                       d.uf_emissao ? `UF: ${d.uf_emissao}` : null,
@@ -296,12 +296,12 @@ export const SubEntidadesManager: React.FC<SubEntidadesManagerProps> = ({
                 key={e.id}
                 className="flex items-center justify-between rounded-md border border-border/60 bg-muted/20 p-2.5 text-sm"
               >
-                <div className="space-y-0.5">
-                  <div className="font-medium text-foreground text-xs">
+                <div className="space-y-0.5 min-w-0 flex-1 mr-2">
+                  <div className="font-medium text-foreground text-xs truncate" title={[e.logradouro, e.numero].filter(Boolean).join(', ') + (e.complemento ? ` - ${e.complemento}` : '')}>
                     {[e.logradouro, e.numero].filter(Boolean).join(', ') || 'Logradouro não informado'}
                     {e.complemento ? ` - ${e.complemento}` : ''}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground truncate" title={[e.bairro, [e.cidade, e.uf].filter(Boolean).join('/'), e.cep ? `CEP: ${e.cep}` : null].filter(Boolean).join(' • ')}>
                     {[
                       e.bairro,
                       [e.cidade, e.uf].filter(Boolean).join('/'),
@@ -355,9 +355,9 @@ export const SubEntidadesManager: React.FC<SubEntidadesManagerProps> = ({
                 key={c.id}
                 className="flex items-center justify-between rounded-md border border-border/60 bg-muted/20 p-2.5 text-sm"
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <Mono className="font-medium text-foreground text-xs">{c.valor}</Mono>
+                <div className="space-y-1 min-w-0 flex-1 mr-2">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    <Mono className="font-medium text-foreground text-xs truncate max-w-[220px]" title={c.valor}>{c.valor}</Mono>
                     <StatusChip label={c.tipo} variant="neutral" />
                     {c.principal && <StatusChip label="Principal" variant="success" />}
                   </div>

@@ -13,16 +13,33 @@ export const PromoverPessoaModal: React.FC<{
   const opcoesPapel = (papeis.dados ?? []).map((r) => ({ value: String(r.id), label: r.name }));
 
   return (
-    <FormModal aberto={pessoa !== null} titulo="Promover a usuário do SYSGOV" rotuloEnviar="Promover" onFechar={onFechar}
+    <FormModal
+      aberto={pessoa !== null}
+      titulo="Promover a usuário do SYSGOV"
+      descricao={pessoa ? `Identificação: ${pessoa.nome} • CPF: ${pessoa.cpf_mascarado}` : undefined}
+      rotuloEnviar="Promover a Usuário"
+      onFechar={onFechar}
       campos={[
-        { nome: 'email', rotulo: 'E-mail de acesso', obrigatorio: true, dica: 'Senha definida no primeiro acesso.' },
-        { nome: 'role_id', rotulo: 'Papel (role)', tipo: 'select', obrigatorio: true, opcoes: opcoesPapel },
+        {
+          nome: 'email',
+          rotulo: 'E-mail de acesso institucional',
+          obrigatorio: true,
+          dica: 'O usuário receberá instruções para o primeiro acesso ao sistema.',
+        },
+        {
+          nome: 'role_id',
+          rotulo: 'Papel de acesso (Perfil/Role)',
+          tipo: 'select',
+          obrigatorio: true,
+          opcoes: opcoesPapel,
+        },
       ]}
       onEnviar={async (v) => {
         if (!pessoa) return;
         await pessoasApi.promover(pessoa.id, { email: String(v.email), role_id: Number(v.role_id) });
         await onPromovido();
-      }} />
+      }}
+    />
   );
 };
 

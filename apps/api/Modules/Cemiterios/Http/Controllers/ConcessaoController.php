@@ -59,11 +59,36 @@ final class ConcessaoController extends Controller
 
         $dados = $this->validarTitular($request, null);
         $tipoDoc = Documento::tipo($dados['documento']);
-        if (!empty($dados['pessoa_id']) && str_contains((string) $dados['documento'], '*')) {
-            $tipoDoc = 'cpf';
+        if (!empty($dados['pessoa_id'])) {
+            $pessoa = \Modules\Pessoas\Models\Pessoa::find($dados['pessoa_id']);
+            if ($pessoa) {
+                $dados['documento'] = (string) $pessoa->cpf;
+                $tipoDoc = 'cpf';
+                if (empty($dados['nome'])) {
+                    $dados['nome'] = $pessoa->nome;
+                }
+                if ($pessoa->falecido && empty($dados['titular_falecido'])) {
+                    $dados['titular_falecido'] = true;
+                    $dados['data_falecimento_titular'] = $dados['data_falecimento_titular'] ?? $pessoa->data_falecimento?->format('Y-m-d');
+                }
+            }
         }
         $titular = Concessionario::create($dados + ['tipo_doc' => $tipoDoc]);
         $this->audit->record('cemiterios', 'concessionario.created', "Concessionario #{$titular->id}", null, $titular->toArray());
+
+        if (!empty($titular->pessoa_id) && $titular->titular_falecido) {
+            $pessoa = $titular->pessoa ?: \Modules\Pessoas\Models\Pessoa::find($titular->pessoa_id);
+            if ($pessoa) {
+                $dtFalecimento = $titular->data_falecimento_titular ? $titular->data_falecimento_titular->format('Y-m-d') : ($pessoa->data_falecimento?->format('Y-m-d') ?? now()->format('Y-m-d'));
+                app(\Modules\Pessoas\Services\PessoaService::class)->marcarFalecimento(
+                    $pessoa,
+                    $dtFalecimento,
+                    null,
+                    null,
+                    'Óbito de titular concessionário #' . $titular->id . ' registrado no módulo de Cemitérios'
+                );
+            }
+        }
 
         return response()->json($titular->load('pessoa'), 201);
     }
@@ -74,15 +99,40 @@ final class ConcessaoController extends Controller
 
         $titular = Concessionario::findOrFail($id);
         $dados = $this->validarTitular($request, $titular);
-        if (isset($dados['documento'])) {
-            $dados['tipo_doc'] = (!empty($dados['pessoa_id']) && str_contains((string) $dados['documento'], '*'))
-                ? 'cpf'
-                : Documento::tipo($dados['documento']);
+        if (!empty($dados['pessoa_id'])) {
+            $pessoa = \Modules\Pessoas\Models\Pessoa::find($dados['pessoa_id']);
+            if ($pessoa) {
+                $dados['documento'] = (string) $pessoa->cpf;
+                $dados['tipo_doc'] = 'cpf';
+                if (empty($dados['nome'])) {
+                    $dados['nome'] = $pessoa->nome;
+                }
+                if ($pessoa->falecido && !isset($dados['titular_falecido'])) {
+                    $dados['titular_falecido'] = true;
+                    $dados['data_falecimento_titular'] = $dados['data_falecimento_titular'] ?? $pessoa->data_falecimento?->format('Y-m-d');
+                }
+            }
+        } elseif (isset($dados['documento'])) {
+            $dados['tipo_doc'] = Documento::tipo($dados['documento']);
         }
 
         $antes = $titular->toArray();
         $titular->update($dados);
         $this->audit->record('cemiterios', 'concessionario.updated', "Concessionario #{$id}", $antes, $titular->toArray());
+
+        if (!empty($titular->pessoa_id) && $titular->titular_falecido) {
+            $pessoa = $titular->pessoa ?: \Modules\Pessoas\Models\Pessoa::find($titular->pessoa_id);
+            if ($pessoa) {
+                $dtFalecimento = $titular->data_falecimento_titular ? $titular->data_falecimento_titular->format('Y-m-d') : ($pessoa->data_falecimento?->format('Y-m-d') ?? now()->format('Y-m-d'));
+                app(\Modules\Pessoas\Services\PessoaService::class)->marcarFalecimento(
+                    $pessoa,
+                    $dtFalecimento,
+                    null,
+                    null,
+                    'Óbito de titular concessionário #' . $titular->id . ' atualizado no módulo de Cemitérios'
+                );
+            }
+        }
 
         $titular->makeVisible(['documento']);
 
@@ -97,7 +147,8 @@ final class ConcessaoController extends Controller
             'jazigo:id,codigo,park_id,sector_id,estado,processo_administrativo',
             'jazigo.cemiterio:id,nome',
             'jazigo.setor:id,codigo',
-            'concessionario:id,nome,documento,tipo_doc,email,telefone,endereco,titular_falecido,data_falecimento_titular,processo_inventario',
+            'concessionario:id,pessoa_id,nome,documento,tipo_doc,email,telefone,endereco,titular_falecido,data_falecimento_titular,processo_inventario',
+            'concessionario.pessoa:id,nome,nome_social,cpf,status',
         ])
             ->withCount('guias')
             ->withExists(['guias as inadimplente' => fn ($q) => $q->where('situacao', 'emitida')->whereDate('vencimento', '<', today())])
@@ -172,7 +223,7 @@ final class ConcessaoController extends Controller
     {
         $this->autorizar($request, 'cemiterios.view');
 
-        return response()->json(Concessao::with(['jazigo.cemiterio:id,nome', 'concessionario'])->findOrFail($id));
+        return response()->json(Concessao::with(['jazigo.cemiterio:id,nome', 'concessionario.pessoa'])->findOrFail($id));
     }
 
     public function store(Request $request): JsonResponse
@@ -270,7 +321,7 @@ final class ConcessaoController extends Controller
             'pessoa_id' => ['nullable', 'integer', 'exists:pessoas,id'],
             'nome' => [$obrigatorio, 'string', 'max:255'],
             'documento' => [$obrigatorio, 'string', function (string $campo, mixed $valor, Closure $falha) use ($request, $atual): void {
-                if ($request->filled('pessoa_id') && str_contains((string) $valor, '*')) {
+                if ($request->filled('pessoa_id')) {
                     return;
                 }
                 if (!Documento::valido((string) $valor)) {

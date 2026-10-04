@@ -25,6 +25,7 @@ Route::post('/', [PessoaController::class, 'store']);
 Route::get('/{pessoa}', [PessoaController::class, 'show']);
 Route::put('/{pessoa}', [PessoaController::class, 'update']);
 Route::delete('/{pessoa}', [PessoaController::class, 'destroy']);
+Route::post('/{pessoa}/auditar-acesso-sensivel', [PessoaController::class, 'auditarAcessoSensivel']);
 
 Route::post('/{pessoa}/vinculos', [PessoaController::class, 'storeVinculo']);
 Route::post('/{pessoa}/vinculos/{vinculo}/encerrar', [PessoaController::class, 'encerrarVinculo']);

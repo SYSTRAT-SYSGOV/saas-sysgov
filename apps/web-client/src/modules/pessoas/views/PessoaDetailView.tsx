@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Plus, CheckCircle2, User, Briefcase, Contact, Pencil, AlertTriangle } from 'lucide-react';
+import {
+  ShieldCheck,
+  Plus,
+  CheckCircle2,
+  User,
+  Briefcase,
+  Contact,
+  Pencil,
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  ShieldAlert,
+} from 'lucide-react';
 import { Button, Modal, StatusChip, Field, Input, Select } from '@/components/ui';
-import { TIPOS_VINCULO, type Pessoa, type PessoaVinculo, type TipoVinculo } from '../api';
+import { TIPOS_VINCULO, pessoasApi, type Pessoa, type PessoaVinculo, type TipoVinculo } from '../api';
 import { useVinculos } from '../hooks/useVinculos';
 import { ErroBox, FormModal, Mono, useAcao, formatarData } from './comum';
 import { SubEntidadesManager } from './SubEntidadesManager';
@@ -53,6 +67,33 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
   const [vinculoEncerrando, setVinculoEncerrando] = useState<PessoaVinculo | null>(null);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
+  const [cpfRevelado, setCpfRevelado] = useState<string | null>(pessoa.cpf_desmascarado ?? null);
+  const [revelandoCpf, setRevelandoCpf] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+
+  const alternarRevelacaoCpf = async () => {
+    if (cpfRevelado) {
+      setCpfRevelado(null);
+      return;
+    }
+    setRevelandoCpf(true);
+    try {
+      const res = await pessoasApi.auditarAcessoSensivel(pessoa.id);
+      setCpfRevelado(res.cpf);
+    } catch {
+      // Ignora falha de autorização
+    } finally {
+      setRevelandoCpf(false);
+    }
+  };
+
+  const copiarCpf = async () => {
+    const valor = cpfRevelado || pessoa.cpf_mascarado;
+    await navigator.clipboard.writeText(valor);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  };
+
   const { erro: erroAcao, executar } = useAcao();
   const {
     enviando: enviandoVinculo,
@@ -72,6 +113,11 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
     nacionalidade: '',
     naturalidade: '',
     nis: '',
+    falecido: false,
+    data_falecimento: '',
+    certidao_obito_numero: '',
+    cartorio_obito: '',
+    observacao_obito: '',
   });
 
   const abrirEditarCivil = () => {
@@ -86,6 +132,11 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
       nacionalidade: pessoa.nacionalidade ?? 'Brasileira',
       naturalidade: pessoa.naturalidade ?? '',
       nis: pessoa.nis ?? '',
+      falecido: Boolean(pessoa.falecido || pessoa.status === 'falecido'),
+      data_falecimento: pessoa.data_falecimento ?? '',
+      certidao_obito_numero: pessoa.certidao_obito_numero ?? '',
+      cartorio_obito: pessoa.cartorio_obito ?? '',
+      observacao_obito: pessoa.observacao_obito ?? '',
     });
     setModalEditarCivil(true);
   };
@@ -122,7 +173,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
         open
         onClose={onFechar}
         title={pessoa.nome}
-        description={`CPF ${pessoa.cpf_mascarado} • Situação cadastral: ${pessoa.status.toUpperCase()}`}
+        description={`CPF ${cpfRevelado ?? pessoa.cpf_mascarado} • Situação cadastral: ${pessoa.status.toUpperCase()}${pessoa.falecido || pessoa.status === 'falecido' ? ' • FALECIDO(A)' : ''}`}
         size="2xl"
         footer={
           <div className="flex w-full items-center justify-between gap-2">
@@ -162,7 +213,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
           </div>
         }
       >
-        <div className="space-y-6">
+        <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
           <ErroBox erro={erroAcao ?? erroVinculo} />
 
           {/* BARRA DE NAVEGAÇÃO ENTRE ABAS */}
@@ -190,7 +241,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
 
           {/* ABA 1: DADOS CIVIS E FILIAÇÃO */}
           {abaAtiva === 'dados-civis' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold">Identificação Civil e Registro Geral</h3>
@@ -205,7 +256,57 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
                 )}
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {/* CARD DESTAQUE CPF & PRIVACIDADE LGPD */}
+              <div className="rounded-lg border border-border/80 bg-card p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Cadastro de Pessoa Física (CPF)
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Mono className="text-base font-bold text-foreground">
+                        {cpfRevelado ? cpfRevelado : pessoa.cpf_mascarado}
+                      </Mono>
+                      {pessoa.pode_desmascarar && (
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => void alternarRevelacaoCpf()}
+                          disabled={revelandoCpf}
+                          className="h-7 px-2 text-xs flex items-center gap-1 text-primary hover:text-primary-dark"
+                          title={cpfRevelado ? 'Ocultar CPF completo' : 'Revelar CPF completo (Auditado LGPD)'}
+                        >
+                          {cpfRevelado ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          <span>{revelandoCpf ? 'Carregando...' : cpfRevelado ? 'Ocultar' : 'Revelar (Admin)'}</span>
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => void copiarCpf()}
+                        className="h-7 px-2 text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                        title="Copiar CPF"
+                      >
+                        {copiado ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        <span>{copiado ? 'Copiado!' : 'Copiar'}</span>
+                      </Button>
+                    </div>
+                  </div>
+                  {pessoa.pode_desmascarar ? (
+                    <div className="text-[11px] flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-full font-medium shrink-0 self-start sm:self-auto">
+                      <ShieldCheck className="h-4 w-4" /> Visualização administrativa completa autorizada
+                    </div>
+                  ) : (
+                    <div className="text-[11px] flex items-center gap-1.5 bg-muted text-muted-foreground px-3 py-1.5 rounded-full font-medium shrink-0 self-start sm:self-auto">
+                      <ShieldAlert className="h-4 w-4" /> Mascaramento de privacidade LGPD ativo
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-lg border border-border/80 bg-muted/10 p-3.5">
                   <div className="text-xs text-muted-foreground">Nome Social</div>
                   <div className="mt-1 text-sm font-medium text-foreground">{pessoa.nome_social || '—'}</div>
@@ -253,6 +354,39 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
                   <div className="mt-1 text-sm font-medium text-foreground">
                     {pessoa.nis ? <Mono>{pessoa.nis}</Mono> : '—'}
                   </div>
+                </div>
+              </div>
+
+              {/* SITUAÇÃO VITAL / ÓBITO */}
+              <div className="rounded-lg border border-border/80 bg-card p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Situação Vital
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      {pessoa.falecido || pessoa.status === 'falecido' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-neutral-800 text-neutral-200 border border-neutral-700">
+                          Falecido(a)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          Cidadão(ã) Ativo / Sem Registro de Óbito
+                        </span>
+                      )}
+                      {pessoa.data_falecimento && (
+                        <span className="text-xs text-muted-foreground">
+                          Falecimento em: <Mono className="font-semibold text-foreground">{formatarData(pessoa.data_falecimento)}</Mono>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {pessoa.certidao_obito_numero && (
+                    <div className="text-xs text-muted-foreground">
+                      Certidão de Óbito: <Mono className="text-foreground">{pessoa.certidao_obito_numero}</Mono>
+                      {pessoa.cartorio_obito ? ` • ${pessoa.cartorio_obito}` : ''}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -517,6 +651,58 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
                   onChange={(e) => setFormCivil({ ...formCivil, nis: e.target.value })}
                 />
               </Field>
+            </div>
+
+            <div className="sm:col-span-2 lg:col-span-3 pt-3 border-t border-border">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                Situação Vital / Óbito
+              </h4>
+              <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-3">
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={formCivil.falecido}
+                    onChange={(e) => setFormCivil({ ...formCivil, falecido: e.target.checked })}
+                    className="rounded border-input text-primary focus:ring-primary/30"
+                  />
+                  <span>Pessoa Falecida (Registro de Óbito)</span>
+                </label>
+
+                {formCivil.falecido && (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 pt-3 border-t border-border/50">
+                    <div>
+                      <Field label="Data do Falecimento" required>
+                        <Input
+                          type="date"
+                          className="font-mono tabular-nums"
+                          value={formCivil.data_falecimento}
+                          onChange={(e) => setFormCivil({ ...formCivil, data_falecimento: e.target.value })}
+                          required={formCivil.falecido}
+                        />
+                      </Field>
+                    </div>
+                    <div>
+                      <Field label="Nº Certidão de Óbito">
+                        <Input
+                          className="font-mono tabular-nums"
+                          placeholder="Número da certidão"
+                          value={formCivil.certidao_obito_numero}
+                          onChange={(e) => setFormCivil({ ...formCivil, certidao_obito_numero: e.target.value })}
+                        />
+                      </Field>
+                    </div>
+                    <div>
+                      <Field label="Cartório de Registro Civil">
+                        <Input
+                          placeholder="Ofício de Registro"
+                          value={formCivil.cartorio_obito}
+                          onChange={(e) => setFormCivil({ ...formCivil, cartorio_obito: e.target.value })}
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </form>

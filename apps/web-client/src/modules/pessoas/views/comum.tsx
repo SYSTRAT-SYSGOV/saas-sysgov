@@ -48,8 +48,8 @@ export function useAcao() {
   return { erro, setErro, enviando, executar };
 }
 
-export const Mono: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <span className={`font-mono tabular-nums ${className}`}>{children}</span>
+export const Mono: React.FC<{ children: React.ReactNode; className?: string; title?: string }> = ({ children, className = '', title }) => (
+  <span className={`font-mono tabular-nums ${className}`} title={title}>{children}</span>
 );
 
 /** Formata data ISO ("1982-05-28") para o padrão brasileiro ("28/05/1982") sem deslocamento de fuso. */
@@ -125,13 +125,14 @@ export const CamposFormulario: React.FC<{
 export const FormModal: React.FC<{
   aberto: boolean;
   titulo: string;
+  descricao?: string;
   campos: CampoForm[];
   iniciais?: Record<string, unknown>;
   rotuloEnviar?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   onFechar: () => void;
   onEnviar: (valores: Record<string, unknown>) => Promise<unknown>;
-}> = ({ aberto, titulo, campos, iniciais = {}, rotuloEnviar = 'Salvar', size = 'xl', onFechar, onEnviar }) => {
+}> = ({ aberto, titulo, descricao, campos, iniciais = {}, rotuloEnviar = 'Salvar', size = 'xl', onFechar, onEnviar }) => {
   const [valores, setValores] = useState<Record<string, unknown>>(iniciais);
   const { erro, enviando, executar, setErro } = useAcao();
   const formId = `form-${titulo.replace(/\W+/g, '-').toLowerCase()}`;
@@ -157,6 +158,7 @@ export const FormModal: React.FC<{
       open={aberto}
       onClose={onFechar}
       title={titulo}
+      description={descricao}
       size={size}
       footer={
         <div className="flex justify-end gap-2">

@@ -3,18 +3,27 @@ set -e
 
 # Configura e ativa OPcache para PHP CLI (acelera drasticamente o Laravel no Docker em Windows)
 if [ -d "/usr/local/etc/php/conf.d" ]; then
+  mkdir -p /tmp/opcache && chmod 777 /tmp/opcache
   cat << 'EOF' > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
 zend_extension=opcache.so
 opcache.enable=1
 opcache.enable_cli=1
 opcache.memory_consumption=256
-opcache.max_accelerated_files=20000
-opcache.revalidate_freq=2
+opcache.interned_strings_buffer=32
+opcache.max_accelerated_files=50000
+opcache.revalidate_freq=60
 opcache.validate_timestamps=1
+opcache.file_cache=/tmp/opcache
+opcache.file_cache_fallback=1
+opcache.fast_shutdown=1
+opcache.jit=tracing
+opcache.jit_buffer_size=64M
+realpath_cache_size=4096K
+realpath_cache_ttl=600
 EOF
 fi
 
-export PHP_CLI_SERVER_WORKERS="${PHP_CLI_SERVER_WORKERS:-6}"
+export PHP_CLI_SERVER_WORKERS="${PHP_CLI_SERVER_WORKERS:-10}"
 
 # Espera o MySQL aceitar conexões antes de migrar — evita falhar de cara
 # quando o container 'api' sobe mais rápido que o 'mysql' (comum em
@@ -51,6 +60,11 @@ done
 # habilitar o módulo. Idempotente (updateOrCreate).
 php artisan db:seed --class='Modules\Cursos\Database\Seeders\CursosRbacSeeder' --force
 
+# Perfis-template do módulo Requerimentos (Administrador, Autor, Tramitador) e
+# tipos padrão de proposições (Requerimento, Indicação, etc.). Idempotente.
+php artisan db:seed --class='Modules\Requerimentos\Database\Seeders\RequerimentosRbacSeeder' --force
+php artisan db:seed --class='Modules\Requerimentos\Database\Seeders\TiposInstrumentoDefaultSeeder' --force
+
 # Libera todos os módulos no tenant SYSTRAT num banco novo — sem isso o
 # Painel do Cliente dá "Acesso Negado" até alguém habilitar os módulos no
 # Admin Suite. Precisa vir depois do module:register (senão capd/client/admin
@@ -69,5 +83,9 @@ php artisan sysgov:seed-menus
 # inacessíveis por URL (404). Idempotente: o comando já detecta e pula
 # se o link existir.
 php artisan storage:link || true
+
+# Pré-compila configurações e rotas para máxima velocidade no Docker (elimina I/O repetido no Windows)
+php artisan config:cache
+php artisan route:cache
 
 exec "$@"

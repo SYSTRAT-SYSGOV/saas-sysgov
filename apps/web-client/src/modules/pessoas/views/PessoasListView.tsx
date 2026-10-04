@@ -49,32 +49,57 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
 
   const colunas = useMemo<ColumnDef<Pessoa, unknown>[]>(
     () => [
-      { id: 'nome', header: 'Nome', accessorKey: 'nome' },
+      {
+        id: 'nome',
+        header: 'Nome',
+        cell: ({ row }) => (
+          <div className="min-w-0 max-w-xs" title={row.original.nome_social ? `${row.original.nome} (${row.original.nome_social})` : row.original.nome}>
+            <div className="font-medium text-foreground truncate">{row.original.nome}</div>
+            {row.original.nome_social && (
+              <div className="text-xs text-muted-foreground truncate">({row.original.nome_social})</div>
+            )}
+          </div>
+        ),
+      },
       {
         id: 'cpf',
         header: 'CPF',
-        cell: ({ row }) => <Mono>{row.original.cpf_mascarado}</Mono>,
+        cell: ({ row }) => <span className="font-mono tabular-nums whitespace-nowrap">{row.original.cpf_mascarado}</span>,
       },
       {
         id: 'vinculos',
         header: 'Vínculos',
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1">
-            {(row.original.vinculos ?? []).map((v) => (
-              <StatusChip key={v.id} label={TIPOS_VINCULO[v.tipo_vinculo]} variant="info" />
-            ))}
+          <div className="flex flex-wrap gap-1 max-w-sm">
+            {(row.original.vinculos ?? []).length > 0 ? (
+              (row.original.vinculos ?? []).map((v) => (
+                <StatusChip key={v.id} label={TIPOS_VINCULO[v.tipo_vinculo]} variant="info" />
+              ))
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
           </div>
         ),
       },
       {
         id: 'status',
         header: 'Status',
-        cell: ({ row }) => (
-          <StatusChip
-            label={row.original.status}
-            variant={row.original.status === 'ativo' ? 'success' : 'neutral'}
-          />
-        ),
+        cell: ({ row }) => {
+          const isFalecido = row.original.falecido || row.original.status === 'falecido';
+          if (isFalecido) {
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-neutral-800 text-neutral-200 border border-neutral-700">
+                Falecido(a)
+              </span>
+            );
+          }
+          return (
+            <StatusChip
+              label={row.original.status}
+              variant={row.original.status === 'ativo' ? 'success' : 'neutral'}
+            />
+          );
+        },
       },
       {
         id: 'acoes',

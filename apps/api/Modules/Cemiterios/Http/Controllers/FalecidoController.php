@@ -47,6 +47,19 @@ final class FalecidoController extends Controller
         $falecido = Falecido::create($this->validar($request, 'required'));
         $this->audit->record('cemiterios', 'falecido.created', "Falecido #{$falecido->id}", null, $falecido->toArray());
 
+        if (!empty($falecido->pessoa_id)) {
+            $pessoa = \Modules\Pessoas\Models\Pessoa::find($falecido->pessoa_id);
+            if ($pessoa) {
+                app(\Modules\Pessoas\Services\PessoaService::class)->marcarFalecimento(
+                    $pessoa,
+                    $falecido->falecimento->format('Y-m-d'),
+                    $falecido->certidao_numero,
+                    $falecido->certidao_cartorio,
+                    'Registro de óbito lançado no módulo de Cemitérios'
+                );
+            }
+        }
+
         return response()->json($falecido, 201);
     }
 
@@ -58,6 +71,19 @@ final class FalecidoController extends Controller
         $antes = $falecido->toArray();
         $falecido->update($this->validar($request, 'sometimes'));
         $this->audit->record('cemiterios', 'falecido.updated', "Falecido #{$id}", $antes, $falecido->toArray());
+
+        if (!empty($falecido->pessoa_id)) {
+            $pessoa = \Modules\Pessoas\Models\Pessoa::find($falecido->pessoa_id);
+            if ($pessoa) {
+                app(\Modules\Pessoas\Services\PessoaService::class)->marcarFalecimento(
+                    $pessoa,
+                    $falecido->falecimento->format('Y-m-d'),
+                    $falecido->certidao_numero,
+                    $falecido->certidao_cartorio,
+                    'Registro de óbito atualizado no módulo de Cemitérios'
+                );
+            }
+        }
 
         return response()->json($falecido);
     }
@@ -81,6 +107,7 @@ final class FalecidoController extends Controller
     private function validar(Request $request, string $obrigatorio): array
     {
         return $request->validate([
+            'pessoa_id' => ['nullable', 'integer', 'exists:pessoas,id'],
             'nome' => [$obrigatorio, 'string', 'max:255'],
             'nascimento' => ['nullable', 'date', 'before_or_equal:falecimento'],
             'falecimento' => [$obrigatorio, 'date', 'before_or_equal:today'],

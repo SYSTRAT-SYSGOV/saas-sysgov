@@ -6,7 +6,7 @@ services:
     depends_on: [mysql, redis]
     env_file: ./apps/api/.env.docker
     environment:
-      PHP_CLI_SERVER_WORKERS: 6
+      PHP_CLI_SERVER_WORKERS: 10
     command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000", "--no-reload"]
     ports: ["8000:8000"]
     volumes:
@@ -15,6 +15,14 @@ services:
       - /var/www/html/vendor
   mysql:
     image: mysql:8.4
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=256M
+      - --innodb-log-buffer-size=32M
+      - --innodb-flush-log-at-trx-commit=2
+      - --sync-binlog=0
     environment:
       MYSQL_DATABASE: sysgov
       MYSQL_USER: sysgov
