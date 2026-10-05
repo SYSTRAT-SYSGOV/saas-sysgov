@@ -32,6 +32,10 @@ final class SystratModulesSeeder extends Seeder
             return;
         }
 
+        if ($sysTenant->modules()->exists()) {
+            return;
+        }
+
         $pivot = [];
         foreach (Module::query()->pluck('id') as $moduleId) {
             $pivot[$moduleId] = ['enabled' => true, 'monthly_fee_cents' => 0, 'settings' => json_encode([])];

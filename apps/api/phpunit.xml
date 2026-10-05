@@ -17,12 +17,18 @@
         </exclude>
     </groups>
     <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="CACHE_STORE" value="array"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="AUTH_GUARD" value="web"/>
-        <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost"/>
+        <!-- force="true" em todas: o container de dev já define APP_ENV=local,
+             CACHE_STORE=redis e SESSION_DRIVER=redis como env real do processo, que
+             vence o <env> do phpunit.xml sem force — isso fazia os testes rodarem
+             contra Redis real (cache vazando entre execuções) e com APP_ENV=local
+             (bypass indevido de regras como MFA que só deveriam valer em bootstrap
+             local de desenvolvimento, nunca em teste automatizado). -->
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="AUTH_GUARD" value="web" force="true"/>
+        <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost" force="true"/>
         <env name="DB_CONNECTION" value="sqlite" force="true"/>
         <env name="DB_DATABASE" value=":memory:" force="true"/>
     </php>
