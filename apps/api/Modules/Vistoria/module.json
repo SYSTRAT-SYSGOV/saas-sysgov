@@ -1,0 +1,29 @@
+{
+    "name": "Vistoria",
+    "alias": "vistoria",
+    "description": "Digitalização da fiscalização de campo da Secretaria de Agricultura: planejamento de vistorias, execução offline em tablet, lavratura de auto de infração com assinatura em tela e tramitação do processo sancionatório decorrente.",
+    "priority": 50,
+    "providers": [
+        "Modules\\Vistoria\\Providers\\VistoriaServiceProvider",
+        "Modules\\Vistoria\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Pessoas",
+        "OrgChart"
+    ],
+    "menu": {
+        "group": "GESTÃO & FISCALIZAÇÃO",
+        "label": "Vistoria e Inspeção",
+        "icon": "ClipboardCheck",
+        "order": 50,
+        "permission": "vistoria.view"
+    },
+    "permissions": {
+        "vistoria.view": "Visualizar módulo de Vistoria e Inspeção",
+        "vistoria.locais.manage": "Cadastrar e editar locais fiscalizáveis",
+        "vistoria.ordens.manage": "Planejar, distribuir e reatribuir ordens de serviço",
+        "vistoria.formularios.manage": "Criar e editar modelos de formulário/checklist",
+        "vistoria.chefia": "Acesso administrativo integral da chefia da Secretaria"
+    }
+}

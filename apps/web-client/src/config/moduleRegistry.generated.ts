@@ -21,6 +21,7 @@ const ClientComponent = lazy(async () => ({ default: () => React.createElement(M
 const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
 const RequerimentosComponent = lazy(() => import('@/modules/requerimentos/RequerimentosModule'));
+const VistoriaComponent = lazy(() => import('@/modules/vistoria/VistoriaModule'));
 
 export interface ModuleDefinition {
   id: string;
@@ -198,6 +199,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['requerimentos'],
     requiredPermission: 'requerimentos.view',
     icon: 'FileText',
+  },
+  vistoria: {
+    id: 'vistoria',
+    name: "Vistoria",
+    component: VistoriaComponent,
+    routePath: 'vistoria',
+    routes: ['vistoria'],
+    requiredPermission: 'vistoria.view',
+    icon: 'ClipboardCheck',
   }
 };
 
