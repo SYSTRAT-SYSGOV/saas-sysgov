@@ -7,6 +7,7 @@ namespace Modules\Vistoria\Services;
 use App\Models\User;
 use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Modules\OrgChart\Models\OrgUnit;
 use Modules\OrgChart\Models\OrgUnitUser;
@@ -101,5 +102,33 @@ final class OrdemServicoService
         OrdemServicoAtribuida::dispatch($ordem);
 
         return $ordem;
+    }
+
+    /**
+     * Listagem para a tela de planejamento: chefia (`vistoria.ordens.manage`) vê todas as ordens
+     * do tenant; fiscal sem essa permissão só vê as próprias (mesmo critério de
+     * `OrdemServicoPolicy::view()`, aplicado aqui à listagem).
+     *
+     * @param array<string, mixed> $filtros
+     *
+     * @return LengthAwarePaginator<int, OrdemServico>
+     */
+    public function listar(User $user, array $filtros): LengthAwarePaginator
+    {
+        $query = OrdemServico::query()->with(['local', 'orgUnit', 'fiscal'])->orderBy('data_prevista');
+
+        if (! $user->is_platform_admin && ! $user->hasPermission('vistoria.ordens.manage')) {
+            $query->where('fiscal_id', $user->id);
+        }
+
+        if ($status = $filtros['status'] ?? null) {
+            $query->where('status', $status);
+        }
+
+        if ($criticidade = $filtros['criticidade'] ?? null) {
+            $query->where('criticidade', $criticidade);
+        }
+
+        return $query->paginate((int) ($filtros['per_page'] ?? 15));
     }
 }

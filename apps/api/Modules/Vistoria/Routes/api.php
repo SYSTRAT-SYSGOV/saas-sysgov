@@ -15,7 +15,9 @@ Route::patch('/locais/{id}', [LocalFiscalizavelController::class, 'update'])->na
 Route::delete('/locais/{id}', [LocalFiscalizavelController::class, 'destroy'])->name('vistoria.locais.destroy');
 
 // ── Ordens de serviço de vistoria ─────────────────────────────────────────
+Route::get('/ordens-servico', [OrdemServicoController::class, 'index'])->name('vistoria.ordens-servico.index');
 Route::post('/ordens-servico', [OrdemServicoController::class, 'store'])->name('vistoria.ordens-servico.store');
 Route::get('/ordens-servico/minha-agenda', [OrdemServicoController::class, 'minhaAgenda'])->name('vistoria.ordens-servico.minha-agenda');
+Route::get('/ordens-servico/{id}', [OrdemServicoController::class, 'show'])->name('vistoria.ordens-servico.show');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).

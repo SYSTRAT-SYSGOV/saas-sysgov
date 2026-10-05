@@ -6,6 +6,7 @@ namespace Modules\Vistoria\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Modules\Vistoria\Http\Requests\StoreOrdemServicoRequest;
 use Modules\Vistoria\Models\OrdemServico;
 use Modules\Vistoria\Services\OrdemServicoService;
@@ -15,6 +16,21 @@ final class OrdemServicoController extends Controller
     public function __construct(
         private readonly OrdemServicoService $service,
     ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', OrdemServico::class);
+
+        return response()->json($this->service->listar($request->user(), $request->only(['status', 'criticidade', 'per_page'])));
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        $ordem = OrdemServico::with(['local', 'orgUnit', 'fiscal'])->findOrFail($id);
+        $this->authorize('view', $ordem);
+
+        return response()->json($ordem);
+    }
 
     public function store(StoreOrdemServicoRequest $request): JsonResponse
     {

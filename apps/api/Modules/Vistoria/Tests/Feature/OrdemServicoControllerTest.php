@@ -105,6 +105,68 @@ final class OrdemServicoControllerTest extends TestCase
         $response->assertStatus(200)->assertJsonCount(0);
     }
 
+    public function test_chefia_lista_todas_as_ordens_do_tenant(): void
+    {
+        [$local, $orgUnit, $fiscal] = $this->montarLocalEUnidade();
+        $outroFiscal = $this->usuarioComPermissao($this->tenant, ['vistoria.view'], 'Outro Fiscal');
+
+        $this->noTenant($this->tenant, function () use ($local, $orgUnit, $fiscal, $outroFiscal) {
+            OrdemServico::create([
+                'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $fiscal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => now()->addDay()->toDateString(),
+            ]);
+            OrdemServico::create([
+                'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $outroFiscal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => now()->addDays(2)->toDateString(),
+            ]);
+        });
+
+        $response = $this->como($this->chefia, $this->tenant)->getJson('/api/vistoria/ordens-servico');
+
+        $response->assertStatus(200)->assertJsonCount(2, 'data');
+    }
+
+    public function test_fiscal_so_lista_as_proprias_ordens(): void
+    {
+        [$local, $orgUnit, $fiscal] = $this->montarLocalEUnidade();
+        $outroFiscal = $this->usuarioComPermissao($this->tenant, ['vistoria.view'], 'Outro Fiscal');
+
+        $this->noTenant($this->tenant, function () use ($local, $orgUnit, $fiscal, $outroFiscal) {
+            OrdemServico::create([
+                'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $fiscal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => now()->addDay()->toDateString(),
+            ]);
+            OrdemServico::create([
+                'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $outroFiscal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => now()->addDays(2)->toDateString(),
+            ]);
+        });
+
+        $response = $this->como($fiscal, $this->tenant)->getJson('/api/vistoria/ordens-servico');
+
+        $response->assertStatus(200)->assertJsonCount(1, 'data')->assertJsonPath('data.0.fiscal_id', $fiscal->id);
+    }
+
+    public function test_exibe_uma_ordem_de_servico(): void
+    {
+        [$local, $orgUnit, $fiscal] = $this->montarLocalEUnidade();
+        $ordem = $this->noTenant($this->tenant, fn () => OrdemServico::create([
+            'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $fiscal->id,
+            'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => now()->addDay()->toDateString(),
+        ]));
+
+        $this->como($this->chefia, $this->tenant)
+            ->getJson("/api/vistoria/ordens-servico/{$ordem->id}")
+            ->assertStatus(200)
+            ->assertJsonPath('id', $ordem->id);
+
+        // Outro fiscal (sem vistoria.ordens.manage) não pode ver a ordem de um fiscal diferente.
+        $outroFiscal = $this->usuarioComPermissao($this->tenant, ['vistoria.view'], 'Outro Fiscal');
+        $this->como($outroFiscal, $this->tenant)
+            ->getJson("/api/vistoria/ordens-servico/{$ordem->id}")
+            ->assertStatus(403);
+    }
+
     /**
      * @return array{0: LocalFiscalizavel, 1: OrgUnit, 2: User|null}
      */

@@ -23,6 +23,36 @@ export interface LocalFiscalizavel {
   proprietario?: { id: number; nome: string; cpf_mascarado?: string };
 }
 
+export type TipoAcaoOrdemServico =
+  | 'vistoria_rotina'
+  | 'inspecao_sanitaria'
+  | 'atendimento_denuncia'
+  | 'reinspecao'
+  | 'autuacao';
+
+export type CriticidadeOrdemServico = 'baixa' | 'media' | 'alta' | 'urgente';
+
+export type StatusOrdemServico = 'agendada' | 'em_execucao' | 'concluida' | 'cancelada';
+
+export interface OrdemServico {
+  id: number;
+  tenant_id: number;
+  local_id: number;
+  org_unit_id: number;
+  fiscal_id: number | null;
+  tipo_acao: TipoAcaoOrdemServico;
+  criticidade: CriticidadeOrdemServico;
+  status: StatusOrdemServico;
+  resultado: string | null;
+  data_prevista: string;
+  roteiro_deslocamento: string | null;
+  created_at: string;
+  updated_at: string;
+  local?: { id: number; nome: string };
+  org_unit?: { id: number; name: string };
+  fiscal?: { id: number; name: string };
+}
+
 export interface OrdemServicoHistorico {
   id: number;
   local_id: number;
@@ -60,6 +90,23 @@ export interface LocalFiscalizavelPayload {
   endereco?: string | null;
 }
 
+export interface OrdemServicoIndexParams {
+  status?: StatusOrdemServico;
+  criticidade?: CriticidadeOrdemServico;
+  per_page?: number;
+  page?: number;
+}
+
+export interface OrdemServicoPayload {
+  local_id: number;
+  org_unit_id: number;
+  fiscal_id?: number | null;
+  tipo_acao: TipoAcaoOrdemServico;
+  criticidade?: CriticidadeOrdemServico;
+  data_prevista: string;
+  roteiro_deslocamento?: string | null;
+}
+
 // ── API ────────────────────────────────────────────────────────────
 export const vistoriaApi = {
   listarLocais: (params?: LocalFiscalizavelIndexParams) =>
@@ -79,4 +126,13 @@ export const vistoriaApi = {
 
   obterHistoricoLocal: (id: number) =>
     apiClient.get<OrdemServicoHistorico[]>(`/vistoria/locais/${id}/historico`),
+
+  listarOrdensServico: (params?: OrdemServicoIndexParams) =>
+    apiClient.get<PaginatedResponse<OrdemServico>>('/vistoria/ordens-servico', { params }),
+
+  obterOrdemServico: (id: number) =>
+    apiClient.get<OrdemServico>(`/vistoria/ordens-servico/${id}`),
+
+  criarOrdemServico: (data: OrdemServicoPayload) =>
+    apiClient.post<OrdemServico>('/vistoria/ordens-servico', data),
 };
