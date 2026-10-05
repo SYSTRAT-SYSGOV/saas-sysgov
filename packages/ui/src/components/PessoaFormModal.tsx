@@ -274,7 +274,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
               onChange={(e) => setSexo(e.target.value as 'M' | 'F' | 'outro')}
               disabled={isBusy}
               className={cn(
-                'w-full h-9 px-3 text-sm bg-white dark:bg-[#101a3a] border border-gov-border dark:border-[#1a2a52] rounded-lg',
+                'w-full h-9 px-3 text-sm bg-popover border border-gov-border rounded-lg',
                 'text-gov-text-primary focus:outline-none focus:ring-2 focus:ring-gov-primary/30 focus:border-gov-primary'
               )}
             >
@@ -284,7 +284,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
             </select>
           </div>
 
-          <div className="md:col-span-2 pt-2 border-t border-gov-border/60 dark:border-[#1a2a52]/60">
+          <div className="md:col-span-2 pt-2 border-t border-gov-border/60">
             <span className="block text-xs font-semibold text-gov-text-secondary uppercase tracking-wider mb-2">
               Contato Inicial (Opcional)
             </span>
@@ -295,7 +295,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
                   onChange={(e) => setContatoTipo(e.target.value as 'celular' | 'email' | 'telefone')}
                   disabled={isBusy}
                   className={cn(
-                    'w-full h-9 px-3 text-sm bg-white dark:bg-[#101a3a] border border-gov-border dark:border-[#1a2a52] rounded-lg',
+                    'w-full h-9 px-3 text-sm bg-popover border border-gov-border rounded-lg',
                     'text-gov-text-primary focus:outline-none focus:ring-2 focus:ring-gov-primary/30 focus:border-gov-primary'
                   )}
                 >
@@ -322,7 +322,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
           </div>
 
           {/* Situação Vital / Óbito */}
-          <div className="md:col-span-2 p-3 rounded-lg border border-gov-border/60 dark:border-[#1a2a52] bg-neutral-50/50 dark:bg-white/[0.02]">
+          <div className="md:col-span-2 p-3 rounded-lg border border-gov-border/60 bg-gov-border/10">
             <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gov-text-primary">
               <input
                 type="checkbox"
@@ -335,7 +335,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
             </label>
 
             {falecido && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-gov-border/40 dark:border-[#1a2a52]/40">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-gov-border/40">
                 <div>
                   <label className="block text-xs font-semibold text-gov-text-secondary uppercase tracking-wider mb-1">
                     Data do Falecimento <span className="text-destructive">*</span>

@@ -138,7 +138,7 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
           }
         }}
         className={cn(
-          'flex items-center justify-between w-full min-h-[40px] px-3 py-2 text-sm bg-white dark:bg-[#101a3a] border border-gov-border dark:border-[#1a2a52] rounded-lg transition-all',
+          'flex items-center justify-between w-full min-h-[40px] px-3 py-2 text-sm bg-popover border border-gov-border rounded-lg transition-all',
           disabled ? 'opacity-60 cursor-not-allowed bg-gov-border/10' : 'cursor-pointer hover:border-gov-primary/50',
           isOpen && 'border-gov-primary ring-2 ring-gov-primary/20'
         )}
@@ -181,8 +181,8 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
 
       {/* Dropdown de opções */}
       {isOpen && (
-        <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white dark:bg-[#101a3a] border border-gov-border dark:border-[#1a2a52] rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95">
-          <div className="p-2 border-b border-gov-border/60 dark:border-[#1a2a52]/60">
+        <div className="absolute z-50 left-0 right-0 mt-1.5 bg-popover border border-gov-border rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95">
+          <div className="p-2 border-b border-gov-border/60">
             <PessoaSearchInput
               value={searchTerm}
               onChange={handleSearch}
@@ -192,7 +192,7 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
             />
           </div>
 
-          <div className="max-h-60 overflow-y-auto p-1 divide-y divide-gov-border/30 dark:divide-[#1a2a52]/30">
+          <div className="max-h-60 overflow-y-auto p-1 divide-y divide-gov-border/30">
             {loading ? (
               <div className="flex items-center justify-center py-6 text-gov-text-secondary gap-2 text-xs">
                 <Loader2 className="size-4 animate-spin text-gov-primary" />
@@ -243,7 +243,7 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
           </div>
 
           {canCreate && onCreatePessoa && (
-            <div className="p-2 bg-gov-border/15 dark:bg-white/[0.02] border-t border-gov-border/60 dark:border-[#1a2a52]/60">
+            <div className="p-2 bg-gov-border/15 border-t border-gov-border/60">
               <Button
                 type="button"
                 variant="outline"

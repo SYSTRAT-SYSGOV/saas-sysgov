@@ -52,7 +52,7 @@ export const PessoaSearchInput: React.FC<PessoaSearchInputProps> = ({
         onChange={(e) => setInternalValue(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          'w-full pl-9 pr-9 py-2 text-sm bg-white dark:bg-[#101a3a] border border-gov-border dark:border-[#1a2a52] rounded-lg',
+          'w-full pl-9 pr-9 py-2 text-sm bg-popover border border-gov-border rounded-lg',
           'text-gov-text-primary placeholder:text-gov-text-secondary/70 focus:outline-none focus:ring-2 focus:ring-gov-primary/30 focus:border-gov-primary transition-all'
         )}
         {...props}
