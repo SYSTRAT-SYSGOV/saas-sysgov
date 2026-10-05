@@ -21,7 +21,7 @@ final class PessoaDadosCadastraisTest extends PessoasTestCase
 
     public function test_pessoa_admite_multiplos_documentos(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
 
         $pessoa->documentos()->create(['tipo' => 'rg', 'numero' => '1234567']);
         $pessoa->documentos()->create(['tipo' => 'titulo_eleitor', 'numero' => '987654321']);
@@ -31,7 +31,7 @@ final class PessoaDadosCadastraisTest extends PessoasTestCase
 
     public function test_pessoa_admite_multiplos_enderecos_sem_sobrescrever_o_anterior(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
 
         $enderecoAntigo = $pessoa->enderecos()->create(['cep' => '80000-000', 'cidade' => 'Curitiba', 'uf' => 'PR']);
         $pessoa->enderecos()->create(['cep' => '81000-000', 'cidade' => 'Curitiba', 'uf' => 'PR']);
@@ -42,7 +42,7 @@ final class PessoaDadosCadastraisTest extends PessoasTestCase
 
     public function test_marcar_novo_contato_principal_desmarca_o_anterior_do_mesmo_tipo(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
 
         $emailAntigo = $pessoa->contatos()->create(['tipo' => 'email', 'valor' => 'antigo@teste.gov.br', 'principal' => true]);
         $emailNovo = $pessoa->contatos()->create(['tipo' => 'email', 'valor' => 'novo@teste.gov.br', 'principal' => true]);
@@ -53,7 +53,7 @@ final class PessoaDadosCadastraisTest extends PessoasTestCase
 
     public function test_vinculo_cadastrado_com_matricula_a_armazena_corretamente(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
 
         $resposta = $this->como($this->admin($this->tenant), $this->tenant)
             ->postJson("/api/pessoas/{$pessoa->id}/vinculos", ['tipo_vinculo' => 'servidor_carreira', 'matricula' => 'MAT-00123']);
@@ -64,7 +64,7 @@ final class PessoaDadosCadastraisTest extends PessoasTestCase
 
     public function test_documento_cadastrado_com_uf_e_data_de_emissao_os_armazena(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
 
         $resposta = $this->como($this->admin($this->tenant), $this->tenant)
             ->postJson("/api/pessoas/{$pessoa->id}/documentos", ['tipo' => 'rg', 'numero' => '1234567', 'uf_emissao' => 'PR', 'data_emissao' => '2020-01-15']);
@@ -77,7 +77,7 @@ final class PessoaDadosCadastraisTest extends PessoasTestCase
 
     public function test_contato_sem_autoriza_notificacoes_informado_assume_autorizado_por_padrao(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
 
         $this->como($this->admin($this->tenant), $this->tenant)
             ->postJson("/api/pessoas/{$pessoa->id}/contatos", ['tipo' => 'email', 'valor' => 'maria@teste.gov.br'])

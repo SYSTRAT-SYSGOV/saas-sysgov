@@ -31,7 +31,7 @@ final class PessoaControllerTest extends PessoasTestCase
 
     public function test_edicao_sem_permissao_e_rejeitada(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
         $usuario = $this->usuario($this->tenant, ['cadastros.pessoas.view']);
 
         $this->como($usuario, $this->tenant)
@@ -43,7 +43,7 @@ final class PessoaControllerTest extends PessoasTestCase
 
     public function test_adiciona_documento_endereco_e_contato_via_api(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
         $admin = $this->como($this->admin($this->tenant), $this->tenant);
 
         $admin->postJson("/api/pessoas/{$pessoa->id}/documentos", ['tipo' => 'rg', 'numero' => '1234567'])->assertCreated();
@@ -57,8 +57,8 @@ final class PessoaControllerTest extends PessoasTestCase
 
     public function test_lista_e_busca_pessoas(): void
     {
-        Pessoa::create(['nome' => 'Ana', 'cpf' => $this->cpfValido()]);
-        Pessoa::create(['nome' => 'Bruno', 'cpf' => $this->cpfValido()]);
+        Pessoa::create(['nome' => 'Ana', 'documento' => $this->cpfValido()]);
+        Pessoa::create(['nome' => 'Bruno', 'documento' => $this->cpfValido()]);
 
         $this->como($this->admin($this->tenant), $this->tenant)
             ->getJson('/api/pessoas?q=Ana')
@@ -66,12 +66,59 @@ final class PessoaControllerTest extends PessoasTestCase
             ->assertJsonPath('total', 1);
     }
 
+    public function test_lista_pessoas_com_filtros_avancados_de_situacao_vital_data_nascimento_e_sexo(): void
+    {
+        Pessoa::create([
+            'nome' => 'Clara Viva',
+            'documento' => $this->cpfValido(),
+            'data_nascimento' => '1985-06-10',
+            'sexo' => 'feminino',
+        ]);
+        Pessoa::create([
+            'nome' => 'Davi Vivo',
+            'documento' => $this->cpfValido(),
+            'data_nascimento' => '2000-01-01',
+            'sexo' => 'masculino',
+        ]);
+        $falecida = Pessoa::create([
+            'nome' => 'Elisa Falecida',
+            'documento' => $this->cpfValido(),
+            'data_nascimento' => '1950-03-20',
+            'sexo' => 'feminino',
+            'falecido' => true,
+            'data_falecimento' => '2020-01-01',
+            'status' => 'falecido',
+        ]);
+
+        $admin = $this->como($this->admin($this->tenant), $this->tenant);
+
+        $admin->getJson('/api/pessoas?falecido=1')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.id', $falecida->id);
+
+        $admin->getJson('/api/pessoas?data_nascimento_de=1980-01-01&data_nascimento_ate=1999-12-31')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.nome', 'Clara Viva');
+
+        $admin->getJson('/api/pessoas?sexo=feminino')
+            ->assertOk()
+            ->assertJsonPath('total', 2);
+
+        // Filtros combinados: sexo feminino + faixa de nascimento restrita apenas à falecida
+        $admin->getJson('/api/pessoas?sexo=feminino&data_nascimento_de=1940-01-01&data_nascimento_ate=1960-01-01&falecido=1')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.id', $falecida->id);
+    }
+
     public function test_lista_compacta_retorna_apenas_campos_publicos_enxutos(): void
     {
         $pessoa = Pessoa::create([
             'nome' => 'Carlos Compacto',
             'nome_social' => 'Carlinhos',
-            'cpf' => $this->cpfValido(),
+            'documento' => $this->cpfValido(),
             'data_nascimento' => '1990-05-15',
             'nome_mae' => 'Dona Maria',
         ]);
@@ -94,7 +141,7 @@ final class PessoaControllerTest extends PessoasTestCase
     public function test_usuario_comum_visualiza_apenas_cpf_mascarado(): void
     {
         $cpf = $this->cpfValido();
-        $pessoa = Pessoa::create(['nome' => 'Joao Sigiloso', 'cpf' => $cpf]);
+        $pessoa = Pessoa::create(['nome' => 'Joao Sigiloso', 'documento' => $cpf]);
         $usuario = $this->usuario($this->tenant, ['cadastros.pessoas.view']);
 
         $resposta = $this->como($usuario, $this->tenant)
@@ -110,7 +157,7 @@ final class PessoaControllerTest extends PessoasTestCase
     public function test_admin_tem_flag_pode_desmascarar_e_consegue_revelar_com_auditoria(): void
     {
         $cpf = $this->cpfValido();
-        $pessoa = Pessoa::create(['nome' => 'Joao Sigiloso', 'cpf' => $cpf]);
+        $pessoa = Pessoa::create(['nome' => 'Joao Sigiloso', 'documento' => $cpf]);
         $admin = $this->admin($this->tenant);
 
         // Sem reveal_sensitive: pode_desmascarar é true, mas não vem cpf_desmascarado ainda
@@ -135,7 +182,7 @@ final class PessoaControllerTest extends PessoasTestCase
     public function test_auditar_acesso_sensivel_via_endpoint(): void
     {
         $cpf = $this->cpfValido();
-        $pessoa = Pessoa::create(['nome' => 'Joao Sigiloso', 'cpf' => $cpf]);
+        $pessoa = Pessoa::create(['nome' => 'Joao Sigiloso', 'documento' => $cpf]);
         $admin = $this->admin($this->tenant);
 
         $resposta = $this->como($admin, $this->tenant)
@@ -149,7 +196,7 @@ final class PessoaControllerTest extends PessoasTestCase
 
     public function test_usuario_sem_permissao_tem_acesso_sensivel_rejeitado(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Joao Sigiloso', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Joao Sigiloso', 'documento' => $this->cpfValido()]);
         $usuario = $this->usuario($this->tenant, ['cadastros.pessoas.view']);
 
         $this->como($usuario, $this->tenant)
@@ -168,7 +215,7 @@ final class PessoaControllerTest extends PessoasTestCase
         $admin = $this->admin($this->tenant);
         $pessoa = Pessoa::create([
             'nome' => 'Cidadão Para Falecimento',
-            'cpf' => $this->cpfValido(),
+            'documento' => $this->cpfValido(),
             'data_nascimento' => '1960-01-01',
             'status' => 'ativo',
         ]);

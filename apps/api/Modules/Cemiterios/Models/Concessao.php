@@ -49,6 +49,13 @@ final class Concessao extends Model
 
     protected $guarded = ['id', 'tenant_id'];
 
+    /**
+     * Aliases legados (modalidade/inicio/termino/situacao) mantidos como atributos computados:
+     * o painel administrativo e o portal do concessionário ainda consomem esses nomes, herdados
+     * do schema anterior à migração `align_concessions_columns_with_canonical_schema`.
+     */
+    protected $appends = ['modalidade', 'inicio', 'termino', 'situacao'];
+
     protected $casts = [
         'data_inicio' => 'date',
         'data_fim' => 'date',
@@ -113,5 +120,37 @@ final class Concessao extends Model
     public function scopeVigentes(EloquentBuilder $query): EloquentBuilder
     {
         return $query->whereIn('estado', self::ESTADOS_VIGENTES);
+    }
+
+    /** Alias legado de `tipo`. */
+    public function getModalidadeAttribute(): string
+    {
+        return (string) ($this->attributes['tipo'] ?? '');
+    }
+
+    /** Alias legado de `data_inicio`. */
+    public function getInicioAttribute(): ?string
+    {
+        return $this->data_inicio?->toDateString();
+    }
+
+    /** Alias legado de `data_fim`. */
+    public function getTerminoAttribute(): ?string
+    {
+        return $this->data_fim?->toDateString();
+    }
+
+    /** Alias legado de `estado`, reduzido às 3 categorias antigas (vigente|expirada|extinta). */
+    public function getSituacaoAttribute(): string
+    {
+        if (in_array($this->estado, self::ESTADOS_EXTINTOS, true)) {
+            return 'extinta';
+        }
+
+        if ($this->estado === 'Vencida') {
+            return 'expirada';
+        }
+
+        return 'vigente';
     }
 }

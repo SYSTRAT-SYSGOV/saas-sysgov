@@ -40,6 +40,7 @@ import {
   FileSignature,
   UserPlus,
   UserCheck,
+  ArrowUpCircle,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -173,6 +174,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
   const { can } = useCan();
   const pode = can('cemiterios.inventario.manage') || can('cemiterios.gis.edit');
   const podeFinanceiro = can('cemiterios.financeiro.manage');
+  const podeTransferir = can('cemiterios.concessoes.manage');
   const { navegarParaMapa } = useCemiteriosNavigation();
   const id = jazigo?.id ?? null;
 
@@ -469,6 +471,17 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
     uf: '',
   });
 
+  // Estados para transferência inter vivos do titular (habilita uma nova pessoa como titular principal)
+  const [transferindoTitular, setTransferindoTitular] = useState(false);
+  const [novoTitularPessoaId, setNovoTitularPessoaId] = useState<number | null>(null);
+  const [processoTransferencia, setProcessoTransferencia] = useState('');
+  const [erroTransferencia, setErroTransferencia] = useState<string | null>(null);
+  const [salvandoTransferencia, setSalvandoTransferencia] = useState(false);
+
+  // Promoção direta de um co-titular/sucessor já vinculado a titular principal (sem nova busca no MDM)
+  const [promovendoCoTitular, setPromovendoCoTitular] = useState<Concessao | null>(null);
+  const [erroPromocao, setErroPromocao] = useState<string | null>(null);
+
   const abrirEdicaoTitular = () => {
     if (!concessaoAtiva?.concessionario) return;
     const c = concessaoAtiva.concessionario;
@@ -582,6 +595,66 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
       setErroTitular(msg);
     } finally {
       setSalvandoEdicao(false);
+    }
+  };
+
+  const abrirTransferenciaTitular = () => {
+    setNovoTitularPessoaId(null);
+    setProcessoTransferencia('');
+    setErroTransferencia(null);
+    setTransferindoTitular(true);
+  };
+
+  const salvarTransferenciaTitular = async () => {
+    if (!concessaoAtiva?.id || !novoTitularPessoaId) return;
+    setSalvandoTransferencia(true);
+    setErroTransferencia(null);
+    try {
+      await cemiteriosApi.transferirTitular(concessaoAtiva.id, {
+        pessoa_id: novoTitularPessoaId,
+        processo_administrativo: processoTransferencia.trim() || undefined,
+      });
+
+      setTransferindoTitular(false);
+      setAlertaSucesso('Titularidade transferida com sucesso! O novo titular foi vinculado ao cadastro central (MDM).');
+      await Promise.all([concessoes.recarregar(), detalhe.recarregar(), historico.recarregar()]);
+      onAlterado?.();
+    } catch (e: any) {
+      console.error('Erro ao transferir titularidade:', e);
+      const msg =
+        e?.response?.data?.errors
+          ? Object.values(e.response.data.errors).flat().join(' ')
+          : e?.response?.data?.message || e?.message || 'Falha ao transferir a titularidade da concessão.';
+      setErroTransferencia(msg);
+    } finally {
+      setSalvandoTransferencia(false);
+    }
+  };
+
+  const confirmarPromocaoCoTitular = async (motivo: string) => {
+    const coTitular = promovendoCoTitular;
+    const principal = todasConcessoes[0];
+    setPromovendoCoTitular(null);
+    if (!coTitular?.concessionario?.id || !principal?.id) return;
+    setErroPromocao(null);
+    try {
+      // O backend consolida automaticamente: qualquer outro termo Ativo que esse mesmo
+      // concessionário já detenha neste jazigo é encerrado por renúncia na mesma operação.
+      await cemiteriosApi.transferirTitular(principal.id, {
+        holder_id: coTitular.concessionario.id,
+        processo_administrativo: motivo || undefined,
+      });
+
+      setAlertaSucesso(`${coTitular.concessionario.nome} promovido(a) a titular principal com sucesso!`);
+      await Promise.all([concessoes.recarregar(), detalhe.recarregar(), historico.recarregar()]);
+      onAlterado?.();
+    } catch (e: any) {
+      console.error('Erro ao promover co-titular a titular principal:', e);
+      const msg =
+        e?.response?.data?.errors
+          ? Object.values(e.response.data.errors).flat().join(' ')
+          : e?.response?.data?.message || e?.message || 'Falha ao promover o co-titular a titular principal.';
+      setErroPromocao(msg);
     }
   };
 
@@ -1172,54 +1245,81 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
               {/* ── ABA 2: CONCESSÃO & TITULARES ── */}
               {subAba === 'concessao' && (
                 <div className="space-y-4">
-                  {todasConcessoes.length > 1 && (
-                    <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                          <Users className="h-4 w-4 text-primary" />
-                          <span>Titulares e Co-concessionários Vinculados ({todasConcessoes.length})</span>
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          Selecione o termo abaixo para visualizar ou editar os dados cadastrais
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        {todasConcessoes.map((c, idx) => {
-                          const ativa = c.id === concessaoAtiva?.id;
-                          const isPrincipal = idx === 0;
-                          return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => setConcessaoIdSelecionada(c.id)}
-                              className={cn(
-                                "px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer border text-left",
-                                ativa
-                                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                                  : "bg-card text-foreground hover:bg-muted/80 border-border"
-                              )}
-                            >
-                              <FileSignature className="h-3.5 w-3.5 shrink-0" />
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-bold">{c.numero}</span>
-                                  <span className={cn(
-                                    "text-[10px] px-1.5 py-0.2 rounded font-normal",
-                                    ativa ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
-                                  )}>
-                                    {isPrincipal ? 'Titular Principal' : `Cotitular #${idx + 1}`}
-                                  </span>
-                                </div>
-                                <span className={cn("text-[11px] block truncate max-w-[220px]", ativa ? "text-primary-foreground/90" : "text-muted-foreground")}>
-                                  {c.concessionario?.nome ?? 'Sem titular'}
-                                </span>
+                  {(() => {
+                    const concessoesVigentes = todasConcessoes.filter((c) => c.situacao !== 'extinta');
+                    return concessoesVigentes.length > 1 && (
+                      <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                            <Users className="h-4 w-4 text-primary" />
+                            <span>Titulares e Co-concessionários Vinculados ({concessoesVigentes.length})</span>
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
+                            Selecione o termo abaixo para visualizar ou editar os dados cadastrais
+                          </span>
+                        </div>
+                        {erroPromocao && (
+                          <div className="p-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                            <span>{erroPromocao}</span>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-stretch gap-2 pt-1">
+                          {concessoesVigentes.map((c, idx) => {
+                            const ativa = c.id === concessaoAtiva?.id;
+                            const isPrincipal = c.id === todasConcessoes[0]?.id;
+                            return (
+                              <div
+                                key={c.id}
+                                className={cn(
+                                  "flex items-stretch rounded-lg border overflow-hidden",
+                                  ativa ? "border-primary shadow-sm" : "border-border"
+                                )}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => setConcessaoIdSelecionada(c.id)}
+                                  className={cn(
+                                    "px-3 py-2 text-xs font-medium transition-all flex items-center gap-2 cursor-pointer text-left",
+                                    ativa
+                                      ? "bg-primary text-primary-foreground"
+                                      : "bg-card text-foreground hover:bg-muted/80"
+                                  )}
+                                >
+                                  <FileSignature className="h-3.5 w-3.5 shrink-0" />
+                                  <div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold">{c.numero}</span>
+                                      <span className={cn(
+                                        "text-[10px] px-1.5 py-0.2 rounded font-normal",
+                                        ativa ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                                      )}>
+                                        {isPrincipal ? 'Titular Principal' : `Cotitular #${idx + 1}`}
+                                      </span>
+                                    </div>
+                                    <span className={cn("text-[11px] block truncate max-w-[220px]", ativa ? "text-primary-foreground/90" : "text-muted-foreground")}>
+                                      {c.concessionario?.nome ?? 'Sem titular'}
+                                    </span>
+                                  </div>
+                                </button>
+                                {podeTransferir && !isPrincipal && c.concessionario && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPromovendoCoTitular(c)}
+                                    className="px-2 flex items-center justify-center bg-card hover:bg-primary/10 text-primary border-l border-border shrink-0"
+                                    title={`Promover ${c.concessionario.nome} a titular principal`}
+                                  >
+                                    <ArrowUpCircle className="h-4 w-4" />
+                                  </button>
+                                )}
                               </div>
-                            </button>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {concessaoAtiva ? (
                     <div className="space-y-4">
@@ -1286,6 +1386,17 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
                                 className="h-8 text-xs gap-1.5 font-medium"
                               >
                                 <Edit className="h-3.5 w-3.5" /> Editar Titular
+                              </Button>
+                            )}
+                            {podeTransferir && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={abrirTransferenciaTitular}
+                                className="h-8 text-xs gap-1.5 font-medium"
+                                title="Transferência inter vivos: habilita uma nova pessoa como titular principal desta concessão"
+                              >
+                                <UserPlus className="h-3.5 w-3.5" /> Transferir Titular
                               </Button>
                             )}
                           </div>
@@ -1798,6 +1909,19 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
         confirmLabel="Confirmar Transição"
         destructive={!emManutencao}
         reasonPlaceholder="Descreva o motivo da alteração de estado..."
+      />
+
+      {/* Confirmação: promover co-titular/sucessor já vinculado a titular principal */}
+      <ConfirmDialog
+        open={promovendoCoTitular !== null}
+        onClose={() => setPromovendoCoTitular(null)}
+        onConfirm={(motivo: string) => void confirmarPromocaoCoTitular(motivo)}
+        requireReason={false}
+        destructive={false}
+        title="Promover a Titular Principal"
+        description={`Transferência inter vivos (RF-11..RF-14): "${promovendoCoTitular?.concessionario?.nome ?? ''}" passará a ser o titular principal da concessão ${todasConcessoes[0]?.numero ?? ''}, sem necessidade de nova busca no cadastro central — a pessoa já está vinculada como co-titular/sucessor neste jazigo. O termo de co-titular ${promovendoCoTitular?.numero ?? ''} que ela ocupava hoje será encerrado por consolidação, evitando duplicidade na lista de titulares.`}
+        confirmLabel="Promover a Titular Principal"
+        reasonPlaceholder="Processo administrativo (opcional)..."
       />
 
       {/* Modais Vinculados de Identificação e Vistoria */}
@@ -2347,6 +2471,59 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
             </Button>
             <Button size="sm" onClick={salvarTitular} disabled={salvandoEdicao || !formTitular.nome?.trim()}>
               {salvandoEdicao ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal de Transferência Inter Vivos do Titular */}
+      <Modal
+        open={transferindoTitular}
+        onClose={() => setTransferindoTitular(false)}
+        title="Transferir Titularidade da Concessão"
+        description="Transferência inter vivos (RF-11..RF-14): vincula uma nova pessoa do cadastro central (MDM) como titular principal desta concessão vigente, preservando o histórico do titular anterior."
+        size="lg"
+      >
+        <div className="space-y-4">
+          {erroTransferencia && (
+            <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <span>{erroTransferencia}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Novo Titular (Pessoa Física) *
+            </label>
+            <PessoaPicker
+              value={novoTitularPessoaId}
+              onChange={(pessoaId) => setNovoTitularPessoaId(pessoaId)}
+              onSearch={buscarPessoas}
+              onCreatePessoa={criarPessoaRapido}
+              placeholder="Buscar nova pessoa titular por nome ou CPF..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">
+              Processo Administrativo (opcional)
+            </label>
+            <Input
+              type="text"
+              value={processoTransferencia}
+              onChange={(e) => setProcessoTransferencia(e.target.value)}
+              placeholder="Ex: Proc. 0001234-56.2024.8.26.0000"
+              className="text-xs font-mono h-9"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setTransferindoTitular(false)} disabled={salvandoTransferencia}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={salvarTransferenciaTitular} disabled={salvandoTransferencia || !novoTitularPessoaId}>
+              {salvandoTransferencia ? 'Transferindo...' : 'Transferir Titularidade'}
             </Button>
           </div>
         </div>

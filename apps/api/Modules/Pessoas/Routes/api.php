@@ -16,6 +16,7 @@ Route::pattern('vinculo', '[0-9]+');
 Route::pattern('documento', '[0-9]+');
 Route::pattern('endereco', '[0-9]+');
 Route::pattern('contato', '[0-9]+');
+Route::pattern('socio', '[0-9]+');
 Route::pattern('integracao', '[0-9]+');
 Route::pattern('syncLog', '[0-9]+');
 
@@ -41,6 +42,10 @@ Route::delete('/{pessoa}/enderecos/{endereco}', [PessoaController::class, 'destr
 Route::post('/{pessoa}/contatos', [PessoaController::class, 'storeContato']);
 Route::put('/{pessoa}/contatos/{contato}', [PessoaController::class, 'updateContato']);
 Route::delete('/{pessoa}/contatos/{contato}', [PessoaController::class, 'destroyContato']);
+
+Route::post('/{pessoa}/socios', [PessoaController::class, 'storeSocio']);
+Route::put('/{pessoa}/socios/{socio}', [PessoaController::class, 'updateSocio']);
+Route::post('/{pessoa}/socios/{socio}/encerrar', [PessoaController::class, 'encerrarSocio']);
 
 Route::post('/{pessoa}/promover', [PromocaoController::class, 'promover']);
 

@@ -8,7 +8,7 @@ export interface Paginado<T> {
   total: number;
 }
 
-export type TipoVinculo = 'servidor_carreira' | 'estagiario' | 'comissionado' | 'clt' | 'municipe' | 'contribuinte' | 'aluno' | 'paciente';
+export type TipoVinculo = 'servidor_carreira' | 'estagiario' | 'comissionado' | 'clt' | 'municipe' | 'contribuinte' | 'aluno' | 'paciente' | 'fornecedor' | 'contratada' | 'concessionaria' | 'permissionaria' | 'credenciada';
 
 export const TIPOS_VINCULO: Record<TipoVinculo, string> = {
   servidor_carreira: 'Servidor de carreira',
@@ -19,7 +19,27 @@ export const TIPOS_VINCULO: Record<TipoVinculo, string> = {
   contribuinte: 'Contribuinte',
   aluno: 'Aluno',
   paciente: 'Paciente',
+  fornecedor: 'Fornecedor',
+  contratada: 'Contratada',
+  concessionaria: 'Concessionária',
+  permissionaria: 'Permissionária',
+  credenciada: 'Credenciada',
 };
+
+export type TipoPessoa = 'fisica' | 'juridica';
+export type PapelSocio = 'socio' | 'socio_administrador' | 'representante_legal';
+
+export interface PessoaSocio {
+  id: number;
+  pessoa_id: number;
+  socio_pessoa_id: number;
+  socio_nome?: string | null;
+  socio_documento_mascarado?: string | null;
+  percentual_participacao: string | null;
+  papel: PapelSocio;
+  data_entrada: string | null;
+  data_saida: string | null;
+}
 
 export interface PessoaVinculo {
   id: number;
@@ -37,6 +57,7 @@ export interface PessoaUsuarioVinculo { id: number; user_id: number; promovido_e
 
 export interface PessoaCompacta {
   id: number;
+  tipo?: TipoPessoa;
   nome: string;
   nome_social: string | null;
   cpf_mascarado: string;
@@ -47,9 +68,18 @@ export interface PessoaCompacta {
 
 export interface Pessoa {
   id: number;
+  tipo: TipoPessoa;
   nome: string;
   nome_social: string | null;
+  razao_social?: string | null;
+  nome_fantasia?: string | null;
+  inscricao_estadual?: string | null;
+  inscricao_municipal?: string | null;
+  porte?: 'ME' | 'EPP' | 'DEMAIS' | null;
+  natureza_juridica?: string | null;
+  responsavel_id?: number | null;
   cpf_mascarado: string;
+  documento_mascarado?: string;
   data_nascimento: string | null;
   sexo: string | null;
   nome_mae: string | null;
@@ -70,6 +100,7 @@ export interface Pessoa {
   documentos?: PessoaDocumento[];
   enderecos?: PessoaEndereco[];
   contatos?: PessoaContato[];
+  socios?: PessoaSocio[];
   usuario?: PessoaUsuarioVinculo | null;
 }
 
@@ -147,6 +178,9 @@ export const pessoasApi = {
   adicionarContato: (pessoaId: number, dados: { tipo: PessoaContato['tipo']; valor: string; principal?: boolean; autoriza_notificacoes?: boolean }) => post<PessoaContato>(`/${pessoaId}/contatos`, dados),
   atualizarContato: (pessoaId: number, contatoId: number, dados: Partial<PessoaContato>) => put<PessoaContato>(`/${pessoaId}/contatos/${contatoId}`, dados),
   excluirContato: (pessoaId: number, contatoId: number) => del<{ deleted: boolean }>(`/${pessoaId}/contatos/${contatoId}`),
+  adicionarSocio: (pessoaId: number, dados: { socio_pessoa_id: number; percentual_participacao?: number; papel?: PapelSocio; data_entrada?: string }) => post<PessoaSocio>(`/${pessoaId}/socios`, dados),
+  atualizarSocio: (pessoaId: number, socioId: number, dados: Partial<PessoaSocio>) => put<PessoaSocio>(`/${pessoaId}/socios/${socioId}`, dados),
+  encerrarSocio: (pessoaId: number, socioId: number, fim?: string) => post<PessoaSocio>(`/${pessoaId}/socios/${socioId}/encerrar`, fim ? { fim } : {}),
   promover: (pessoaId: number, dados: { email: string; role_id: number }) => post<PessoaUsuarioVinculo>(`/${pessoaId}/promover`, dados),
   importar: (documento: string) => post<{ message: string }>('/importacoes', { documento }),
   exportarCsv: async () => {
@@ -163,4 +197,9 @@ export const pessoasApi = {
   atualizarIntegracao: (id: number, dados: Record<string, unknown>) => put<PessoaIntegracao>(`/integracoes/${id}`, dados),
   listarSyncLogs: (filtros: Record<string, unknown> = {}) => get<Paginado<PessoaSyncLog>>('/sync-logs', filtros),
   reprocessarSyncLog: (id: number) => post<{ message: string }>(`/sync-logs/${id}/reprocessar`),
+};
+
+export const pessoasClient = {
+  ...pessoasApi,
+  list: (params: Record<string, unknown> = {}) => pessoasApi.listar(params),
 };

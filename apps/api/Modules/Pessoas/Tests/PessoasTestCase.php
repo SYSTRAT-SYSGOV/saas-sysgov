@@ -103,4 +103,27 @@ abstract class PessoasTestCase extends TestCase
 
         return implode('', $n);
     }
+
+    /** Gera um CNPJ com dígitos verificadores válidos. */
+    protected function cnpjValido(): string
+    {
+        $n = array_map(fn () => random_int(0, 9), range(1, 12));
+        $pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        $pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+
+        $calcular = function (array $digitos, array $pesos): int {
+            $soma = 0;
+            foreach ($pesos as $i => $peso) {
+                $soma += (int) $digitos[$i] * $peso;
+            }
+            $resto = $soma % 11;
+
+            return $resto < 2 ? 0 : 11 - $resto;
+        };
+
+        $n[] = $calcular($n, $pesos1);
+        $n[] = $calcular($n, $pesos2);
+
+        return implode('', $n);
+    }
 }

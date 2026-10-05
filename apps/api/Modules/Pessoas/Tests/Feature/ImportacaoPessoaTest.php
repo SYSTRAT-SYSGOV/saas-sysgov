@@ -24,7 +24,7 @@ final class ImportacaoPessoaTest extends PessoasTestCase
     public function test_importacao_com_cpf_existente_atualiza_em_vez_de_duplicar(): void
     {
         $cpf = $this->cpfValido();
-        $pessoa = Pessoa::create(['nome' => 'Nome Antigo', 'cpf' => $cpf]);
+        $pessoa = Pessoa::create(['nome' => 'Nome Antigo', 'documento' => $cpf]);
 
         $resultado = $this->service->importar(['cpf' => $cpf, 'nome' => 'Nome Atualizado']);
 

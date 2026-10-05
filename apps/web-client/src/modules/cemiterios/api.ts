@@ -80,13 +80,38 @@ export interface Trasladacao {
   jazigoOrigem?: Pick<Jazigo, 'id' | 'codigo'>;
   jazigoDestino?: Pick<Jazigo, 'id' | 'codigo'>;
 }
+export interface ContatoAdicional {
+  tipo: 'celular' | 'telefone' | 'email' | 'whatsapp' | 'outro';
+  valor: string;
+  descricao?: string;
+}
+
 export interface Concessionario {
-  id: number; pessoa_id?: number | null; nome: string; tipo_doc: 'cpf' | 'cnpj'; documento_mascarado: string; documento?: string;
-  email: string | null; telefone: string | null; endereco: string | null; base_legal: string;
-  titular_falecido?: boolean; data_falecimento_titular?: string | null; processo_inventario?: string | null;
-  cep?: string | null; logradouro?: string | null; numero?: string | null; complemento?: string | null;
-  bairro?: string | null; cidade?: string | null; uf?: string | null;
+  id: number;
+  pessoa_id?: number | null;
+  nome: string;
+  tipo_doc: 'cpf' | 'cnpj';
+  documento_mascarado: string;
+  documento_desmascarado?: string;
+  documento?: string;
+  email: string | null;
+  telefone: string | null;
+  contatos_adicionais?: ContatoAdicional[] | null;
+  endereco: string | null;
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  observacoes?: string | null;
+  base_legal: string;
+  titular_falecido?: boolean;
+  data_falecimento_titular?: string | null;
+  processo_inventario?: string | null;
   pessoa?: { id: number; nome: string; nome_social?: string | null; cpf_mascarado: string; status: string };
+  concessoes?: { id: number; numero: string; situacao: string; jazigo?: { id: number; codigo: string } }[];
 }
 export interface Concessao {
   id: number; numero: string; processo_administrativo?: string | null; plot_id: number; holder_id: number; modalidade: 'temporaria' | 'perpetua'; inicio: string;
@@ -746,6 +771,8 @@ export const cemiteriosApi = {
   conceder: (dados: { plot_id: number; holder_id: number; modalidade: string; lock_version: number; inicio?: string; processo_administrativo?: string }) => post<Concessao>('/concessoes', dados),
   renovar: (id: number) => post<{ concessao: Concessao; guia: Guia }>(`/concessoes/${id}/renovar`),
   renunciarConcessao: (id: number, dados: { motivo: string; processo_administrativo?: string }) => post<Concessao>(`/concessoes/${id}/renunciar`, dados),
+  transferirTitular: (id: number, dados: { pessoa_id?: number; holder_id?: number; processo_administrativo?: string }) =>
+    post<Concessao>(`/concessoes/${id}/transferir-titular`, dados),
   historicoConcessao: (id: number) => get<Paginado<EventoAuditoria>>(`/concessoes/${id}/historico`),
 
   // Sucessão Hereditária (Nova API RF-SUCESSAO)

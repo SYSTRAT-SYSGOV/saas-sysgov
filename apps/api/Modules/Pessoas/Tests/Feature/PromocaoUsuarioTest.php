@@ -27,7 +27,7 @@ final class PromocaoUsuarioTest extends PessoasTestCase
 
     public function test_promove_pessoa_a_usuario_vinculando_por_cpf_e_auditando(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
         $role = Role::create(['name' => 'Munícipe Autenticado', 'slug' => 'municipe_' . $pessoa->id, 'scope' => 'tenant', 'tenant_id' => $this->tenant->id, 'guard_name' => 'web']);
         $admin = $this->admin($this->tenant);
 
@@ -41,12 +41,21 @@ final class PromocaoUsuarioTest extends PessoasTestCase
 
     public function test_pessoa_ja_promovida_nao_pode_ser_promovida_de_novo(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
         $role = Role::create(['name' => 'Munícipe', 'slug' => 'municipe_' . $pessoa->id, 'scope' => 'tenant', 'tenant_id' => $this->tenant->id, 'guard_name' => 'web']);
 
         $this->service->promover($pessoa, 'maria@teste.gov.br', $role, null);
 
         $this->expectException(RegraNegocioException::class);
         $this->service->promover($pessoa, 'maria2@teste.gov.br', $role, null);
+    }
+
+    public function test_pessoa_juridica_nao_pode_ser_promovida(): void
+    {
+        $juridica = Pessoa::factory()->juridica()->create();
+        $role = Role::create(['name' => 'Fornecedor', 'slug' => 'fornecedor_' . $juridica->id, 'scope' => 'tenant', 'tenant_id' => $this->tenant->id, 'guard_name' => 'web']);
+
+        $this->expectException(RegraNegocioException::class);
+        $this->service->promover($juridica, 'contato@empresa.com', $role, null);
     }
 }

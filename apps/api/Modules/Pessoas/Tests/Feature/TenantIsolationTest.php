@@ -34,18 +34,21 @@ final class TenantIsolationTest extends PessoasTestCase
     {
         app(TenantContext::class)->clear();
         $this->expectException(\LogicException::class);
-        Pessoa::create(['nome' => 'Órfã', 'cpf' => $this->cpfValido()]);
+        Pessoa::create(['nome' => 'Órfã', 'documento' => $this->cpfValido()]);
     }
 
     private function popular(Tenant $tenant): void
     {
         $this->noTenant($tenant);
 
-        $pessoa = Pessoa::create(['nome' => 'Pessoa A', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Pessoa A', 'documento' => $this->cpfValido()]);
         $pessoa->vinculos()->create(['tipo_vinculo' => 'municipe', 'inicio' => today()->toDateString()]);
         $pessoa->documentos()->create(['tipo' => 'rg', 'numero' => '1111111']);
         $pessoa->enderecos()->create(['cep' => '80000-000', 'cidade' => 'Curitiba', 'uf' => 'PR']);
         $pessoa->contatos()->create(['tipo' => 'email', 'valor' => 'a@teste.gov.br', 'principal' => true]);
+
+        $juridica = Pessoa::factory()->juridica()->create();
+        $juridica->socios()->create(['socio_pessoa_id' => $pessoa->id, 'papel' => 'socio']);
 
         $usuario = User::create(['name' => 'Usuário A', 'email' => 'usuario-a-' . $tenant->id . '@teste.gov.br', 'password' => bcrypt('secret')]);
         $pessoa->usuario()->create(['user_id' => $usuario->id, 'promovido_em' => now()]);

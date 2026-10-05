@@ -104,6 +104,50 @@ describe('Componentes Reutilizáveis de Pessoa MDM (@sysgov/ui)', () => {
     expect(handleChange).toHaveBeenCalledWith(1, mockOptions[0]);
   });
 
+  it('PessoaPicker suporta props controladas pessoas, onSelect e onQuickCreate', () => {
+    const mockPessoas = [
+      {
+        id: 10,
+        nome: 'Servidor Central',
+        cpf_mascarado: '***.777.888-**',
+        status: 'ativo' as const,
+      },
+    ];
+
+    const handleSelect = vi.fn();
+    const handleQuickCreate = vi.fn();
+
+    const { rerender } = render(
+      <PessoaPicker
+        pessoas={[]}
+        onSelect={handleSelect}
+        onQuickCreate={handleQuickCreate}
+        canCreate={true}
+      />
+    );
+
+    // Abre popover
+    fireEvent.click(screen.getByRole('button'));
+
+    // Lista vazia exibe botão de cadastro rápido
+    expect(screen.getByText('Nenhuma pessoa encontrada com o termo informado.')).toBeInTheDocument();
+    const btnNovo = screen.getByText('Cadastrar Nova Pessoa');
+    expect(btnNovo).toBeInTheDocument();
+    fireEvent.click(btnNovo);
+    expect(handleQuickCreate).toHaveBeenCalledTimes(1);
+
+    // Se canCreate=false, botão não é exibido
+    rerender(
+      <PessoaPicker
+        pessoas={[]}
+        onSelect={handleSelect}
+        onQuickCreate={handleQuickCreate}
+        canCreate={false}
+      />
+    );
+    expect(screen.queryByText('Cadastrar Nova Pessoa')).not.toBeInTheDocument();
+  });
+
   it('PessoaFormModal valida campos obrigatórios e rejeita CPF inválido', async () => {
     const handleSubmit = vi.fn();
     const handleClose = vi.fn();

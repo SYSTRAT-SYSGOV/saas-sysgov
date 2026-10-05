@@ -54,6 +54,80 @@ final class ConcessoesTest extends CemiteriosTestCase
         self::assertStringNotContainsString('ana@x.com', (string) $bruto->email);
     }
 
+    public function test_atualizar_concessionario_persiste_dados_completos(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $titular = Concessionario::create(['nome' => 'Ana', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
+
+        $payload = [
+            'nome' => 'Ana Editada',
+            'email' => 'ana.editada@x.com',
+            'telefone' => '11999998888',
+            'cep' => '01310-100',
+            'logradouro' => 'Av. Paulista',
+            'numero' => '1000',
+            'bairro' => 'Bela Vista',
+            'cidade' => 'São Paulo',
+            'uf' => 'SP',
+            'observacoes' => 'Nota de teste',
+            'base_legal' => 'execucao_contrato',
+            'titular_falecido' => false,
+        ];
+
+        $this->como($admin, $this->tenant)
+            ->putJson("/api/cemiterios/concessionarios/{$titular->id}", $payload)
+            ->assertOk();
+
+        $titular->refresh();
+        self::assertSame('Ana Editada', $titular->nome);
+        self::assertSame('Av. Paulista', $titular->logradouro);
+    }
+
+    public function test_atualizar_concessionario_vinculado_ao_mdm_persiste_dados(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $pessoa = \Modules\Pessoas\Models\Pessoa::create(['nome' => 'Bruno MDM', 'documento' => $this->cpfValido()]);
+        $titular = Concessionario::create(['nome' => 'Bruno', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido(), 'pessoa_id' => $pessoa->id]);
+
+        $payload = [
+            'pessoa_id' => $pessoa->id,
+            'nome' => 'Bruno Editado',
+            'email' => 'bruno@x.com',
+            'telefone' => '11988887777',
+            'base_legal' => 'execucao_contrato',
+            'titular_falecido' => false,
+        ];
+
+        $this->como($admin, $this->tenant)
+            ->putJson("/api/cemiterios/concessionarios/{$titular->id}", $payload)
+            ->assertOk();
+
+        $titular->refresh();
+        self::assertSame('Bruno Editado', $titular->nome);
+        self::assertSame('bruno@x.com', $titular->email);
+    }
+
+    public function test_vincular_concessionario_legado_a_pessoa_ja_titular_retorna_422_em_vez_de_500(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $pessoa = \Modules\Pessoas\Models\Pessoa::create(['nome' => 'Carlos Gomes', 'documento' => $this->cpfValido()]);
+        $titularExistente = Concessionario::create(['nome' => 'Carlos Gomes', 'tipo_doc' => 'cpf', 'documento' => (string) $pessoa->documento, 'pessoa_id' => $pessoa->id]);
+        $legado = Concessionario::create(['nome' => '.', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
+
+        $resposta = $this->como($admin, $this->tenant)
+            ->putJson("/api/cemiterios/concessionarios/{$legado->id}", [
+                'pessoa_id' => $pessoa->id,
+                'nome' => 'Carlos Fernando Gomes',
+                'base_legal' => 'execucao_contrato',
+            ]);
+
+        $resposta->assertStatus(422)->assertJsonValidationErrors('pessoa_id');
+
+        $legado->refresh();
+        self::assertSame('.', $legado->nome);
+        self::assertNotSame($titularExistente->id, $legado->id);
+    }
+
     // 3.2
 
     public function test_concessao_temporaria_e_perpetua_ativam_o_jazigo(): void
@@ -288,6 +362,71 @@ final class ConcessoesTest extends CemiteriosTestCase
             ->assertStatus(422)->assertJsonPath('code', 'concessao.nao_renunciavel');
     }
 
+    // cemiterio/regras-concessao-sucessao — transferência inter vivos (novo titular via MDM)
+
+    public function test_transferencia_inter_vivos_habilita_nova_pessoa_como_titular(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $jazigo = $this->novoJazigo(2, true);
+        $concessao = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
+        $holderAntigo = $concessao->holder_id;
+
+        $this->noTenant($this->tenant);
+        $pessoa = \Modules\Pessoas\Models\Pessoa::create([
+            'nome' => 'Novo Titular MDM',
+            'cpf' => $this->cpfValido(),
+            'status' => 'ativo',
+        ]);
+
+        $res = $this->como($admin, $this->tenant)->postJson("/api/cemiterios/concessoes/{$concessao->id}/transferir-titular", [
+            'pessoa_id' => $pessoa->id,
+        ])->assertOk()->assertJsonPath('estado', 'Transferida');
+
+        $novoHolderId = $res->json('holder_id');
+        self::assertNotEquals($holderAntigo, $novoHolderId);
+
+        $this->noTenant($this->tenant);
+        $novoTitular = Concessionario::find($novoHolderId);
+        self::assertEquals($pessoa->id, $novoTitular->pessoa_id);
+        self::assertEquals('Novo Titular MDM', $novoTitular->nome);
+    }
+
+    public function test_transferencia_inter_vivos_exige_pessoa_ou_holder(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $jazigo = $this->novoJazigo(2, true);
+        $concessao = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
+
+        $this->como($admin, $this->tenant)->postJson("/api/cemiterios/concessoes/{$concessao->id}/transferir-titular", [])
+            ->assertUnprocessable()->assertJsonValidationErrors('pessoa_id');
+    }
+
+    public function test_transferencia_consolida_outro_termo_ativo_do_mesmo_titular_no_jazigo(): void
+    {
+        $admin = $this->admin($this->tenant);
+        $jazigo = $this->novoJazigo(2, true);
+        $principal = Concessao::where('plot_id', $jazigo->id)->firstOrFail();
+
+        $coTitular = Concessionario::create(['nome' => 'Co-titular Pré-existente', 'tipo_doc' => 'cpf', 'documento' => $this->cpfValido()]);
+        $segundoTermo = Concessao::create([
+            'numero' => $principal->numero . '-2',
+            'plot_id' => $jazigo->id,
+            'holder_id' => $coTitular->id,
+            'tipo' => $principal->tipo,
+            'data_inicio' => $principal->data_inicio,
+            'estado' => 'Ativa',
+            'lock_version' => 0,
+        ]);
+
+        $this->como($admin, $this->tenant)->postJson("/api/cemiterios/concessoes/{$principal->id}/transferir-titular", [
+            'holder_id' => $coTitular->id,
+        ])->assertOk()->assertJsonPath('holder_id', $coTitular->id);
+
+        $segundoTermo->refresh();
+        self::assertEquals('Caduca', $segundoTermo->estado);
+        self::assertEquals('renuncia', $segundoTermo->motivo_extincao);
+    }
+
     // cemiterio/concessoes-gestao — histórico auditável
 
     public function test_historico_lista_eventos_de_criacao_e_renovacao(): void
@@ -370,7 +509,7 @@ final class ConcessoesTest extends CemiteriosTestCase
         $this->noTenant($this->tenant);
         $pessoa = \Modules\Pessoas\Models\Pessoa::create([
             'nome' => 'Pessoa Mestre Vinculada',
-            'cpf' => $cpfNovo,
+            'documento' => $cpfNovo,
             'status' => 'ativo',
         ]);
 

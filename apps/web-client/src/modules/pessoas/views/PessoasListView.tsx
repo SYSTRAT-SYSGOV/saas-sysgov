@@ -1,17 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { UserPlus, Users, Download, ShieldCheck, FileDown } from 'lucide-react';
-import { Button, DataTable, PageHeader, Select, StatusChip } from '@/components/ui';
-import { TIPOS_VINCULO, type Pessoa, type TipoVinculo } from '../api';
+import { UserPlus, Users, ShieldCheck, FileDown, Upload } from 'lucide-react';
+import { Button, DataTable, PageHeader, StatusChip } from '@/components/ui';
+import { TIPOS_VINCULO, type Pessoa } from '../api';
 import { NovaPessoaWizard } from '../NovaPessoaWizard';
-import { ErroBox, FormModal, Mono } from './comum';
+import { ErroBox } from './comum';
+import { FiltrosAvancadosPessoas } from './FiltrosAvancadosPessoas';
+import { ModalImportadorPessoas } from './ModalImportadorPessoas';
 import { usePessoas } from '../hooks/usePessoas';
 
-const opcoesVinculo = Object.entries(TIPOS_VINCULO).map(([value, label]) => ({ value, label }));
-const opcoesStatus = [
-  { value: 'ativo', label: 'Ativo' },
-  { value: 'inativo', label: 'Inativo' },
-];
+function rotuloStatus(pessoa: Pessoa): string {
+  if (pessoa.falecido || pessoa.status === 'falecido') return 'Falecido(a)';
+  return pessoa.status === 'ativo' ? 'Ativo' : 'Inativo';
+}
 
 interface PessoasListViewProps {
   podeGerenciar: boolean;
@@ -37,21 +38,38 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
     carregando,
     erro,
     exportando,
-    filtros: { busca, setBusca, tipoVinculo, setTipoVinculo, status, setStatus },
+    filtros: {
+      busca,
+      setBusca,
+      tipo,
+      setTipo,
+      tipoVinculo,
+      setTipoVinculo,
+      status,
+      setStatus,
+      falecido,
+      setFalecido,
+      sexo,
+      setSexo,
+      dataNascimentoDe,
+      setDataNascimentoDe,
+      dataNascimentoAte,
+      setDataNascimentoAte,
+    },
     recarregar,
     exportarCsv,
-    importarPorCpf,
   } = usePessoas();
 
   const [wizardAberto, setWizardAberto] = useState(false);
-  const [modalImportar, setModalImportar] = useState(false);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [modalImportarMassa, setModalImportarMassa] = useState(false);
 
   const colunas = useMemo<ColumnDef<Pessoa, unknown>[]>(
     () => [
       {
         id: 'nome',
         header: 'Nome',
+        size: 260,
+        meta: { exportValue: (p: Pessoa) => p.nome },
         cell: ({ row }) => (
           <div className="min-w-0 max-w-xs" title={row.original.nome_social ? `${row.original.nome} (${row.original.nome_social})` : row.original.nome}>
             <div className="font-medium text-foreground truncate">{row.original.nome}</div>
@@ -62,13 +80,28 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
         ),
       },
       {
-        id: 'cpf',
-        header: 'CPF',
+        id: 'tipo',
+        header: 'Tipo',
+        size: 110,
+        meta: { exportValue: (p: Pessoa) => (p.tipo === 'juridica' ? 'Jurídica' : 'Física') },
+        cell: ({ row }) => (
+          <StatusChip
+            label={row.original.tipo === 'juridica' ? 'Jurídica' : 'Física'}
+            variant={row.original.tipo === 'juridica' ? 'info' : 'neutral'}
+          />
+        ),
+      },
+      {
+        id: 'documento',
+        header: 'CPF/CNPJ',
+        size: 170,
+        meta: { exportValue: (p: Pessoa) => p.cpf_mascarado },
         cell: ({ row }) => <span className="font-mono tabular-nums whitespace-nowrap">{row.original.cpf_mascarado}</span>,
       },
       {
         id: 'vinculos',
         header: 'Vínculos',
+        size: 220,
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1 max-w-sm">
             {(row.original.vinculos ?? []).length > 0 ? (
@@ -84,6 +117,8 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
       {
         id: 'status',
         header: 'Status',
+        size: 140,
+        meta: { exportValue: (p: Pessoa) => rotuloStatus(p) },
         cell: ({ row }) => {
           const isFalecido = row.original.falecido || row.original.status === 'falecido';
           if (isFalecido) {
@@ -104,6 +139,7 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
       {
         id: 'acoes',
         header: '',
+        size: 160,
         cell: ({ row }) => (
           <div className="flex gap-1 justify-end">
             {podePromover && !row.original.usuario && (
@@ -141,34 +177,14 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
         )}
       </div>
 
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          <input
-            className="h-9 w-64 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Buscar por nome ou CPF…"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-          />
-          <Select
-            value={tipoVinculo}
-            onChange={(v) => setTipoVinculo(v as TipoVinculo | null)}
-            options={opcoesVinculo}
-            placeholder="Todos os vínculos"
-          />
-          <Select
-            value={status}
-            onChange={(v) => setStatus(v as 'ativo' | 'inativo' | null)}
-            options={opcoesStatus}
-            placeholder="Todos os status"
-          />
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <div className="flex gap-2">
           <Button variant="outline" disabled={exportando} onClick={() => void exportarCsv()}>
             <FileDown className="h-4 w-4 mr-1" /> {exportando ? 'Exportando…' : 'Exportar CSV'}
           </Button>
           {podeGerenciar && podeImportar && (
-            <Button variant="outline" onClick={() => setModalImportar(true)}>
-              <Download className="h-4 w-4 mr-1" /> Importar por CPF
+            <Button variant="outline" onClick={() => setModalImportarMassa(true)}>
+              <Upload className="h-4 w-4 mr-1" /> Importar planilha
             </Button>
           )}
           {podeGerenciar && (
@@ -179,11 +195,34 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
         </div>
       </div>
 
-      {aviso && (
-        <p className="rounded-md border border-border bg-accent/50 p-3 text-sm text-foreground" role="status">
-          {aviso}
-        </p>
-      )}
+      <FiltrosAvancadosPessoas
+        busca={busca}
+        onBuscaChange={setBusca}
+        tipo={tipo}
+        onTipoChange={setTipo}
+        tipoVinculo={tipoVinculo}
+        onTipoVinculoChange={setTipoVinculo}
+        status={status}
+        onStatusChange={setStatus}
+        falecido={falecido}
+        onFalecidoChange={setFalecido}
+        sexo={sexo}
+        onSexoChange={setSexo}
+        dataNascimentoDe={dataNascimentoDe}
+        onDataNascimentoDeChange={setDataNascimentoDe}
+        dataNascimentoAte={dataNascimentoAte}
+        onDataNascimentoAteChange={setDataNascimentoAte}
+        onLimparFiltros={() => {
+          setBusca('');
+          setTipo(null);
+          setTipoVinculo(null);
+          setStatus(null);
+          setFalecido(null);
+          setSexo(null);
+          setDataNascimentoDe('');
+          setDataNascimentoAte('');
+        }}
+      />
 
       <ErroBox erro={erro} />
 
@@ -192,6 +231,10 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
         data={resultado?.data ?? []}
         loading={carregando}
         emptyText="Nenhuma pessoa cadastrada."
+        fixedLayout
+        exportable
+        exportFileName="pessoas"
+        exportTitle="Cadastro de Pessoas"
       />
 
       {wizardAberto && (
@@ -204,16 +247,11 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
         />
       )}
 
-      <FormModal
-        aberto={modalImportar}
-        titulo="Importar pessoa do sistema da prefeitura"
-        rotuloEnviar="Importar pessoa"
-        size="lg"
-        onFechar={() => setModalImportar(false)}
-        campos={[{ nome: 'documento', rotulo: 'CPF', obrigatorio: true, mono: true }]}
-        onEnviar={async (v) => {
-          await importarPorCpf(String(v.documento));
-          setAviso('Importação agendada via mensageria — a pessoa aparecerá na lista assim que o sincronismo for concluído.');
+      <ModalImportadorPessoas
+        aberto={modalImportarMassa}
+        onFechar={() => setModalImportarMassa(false)}
+        onSucesso={() => {
+          void recarregar();
         }}
       />
     </div>

@@ -62,7 +62,7 @@ O sistema SHALL excluir uma pessoa de forma lógica (soft delete), nunca removen
 - **THEN** o sistema rejeita a duplicação da mesma forma que rejeitaria para uma pessoa não excluída
 
 ### Requirement: Busca e listagem de pessoas
-O sistema SHALL permitir localizar pessoas por nome ou CPF e filtrar a listagem por tipo de vínculo e por status da pessoa. A listagem SHALL incluir os vínculos de cada pessoa retornada, sem exigir uma consulta adicional por pessoa.
+O sistema SHALL permitir localizar pessoas por nome ou CPF e filtrar a listagem por tipo de vínculo, por status da pessoa, por situação vital (falecido ou vivo) e por faixa de data de nascimento e sexo, combinando os filtros entre si. A listagem SHALL incluir os vínculos de cada pessoa retornada, sem exigir uma consulta adicional por pessoa, SHALL permitir ordenação pelas colunas nome, CPF e status, e SHALL permitir a exportação, nos formatos CSV, XLSX e PDF, das linhas resultantes dos filtros aplicados.
 
 #### Scenario: Busca por CPF
 - **WHEN** o usuário busca por um CPF válido cadastrado no tenant
@@ -75,6 +75,59 @@ O sistema SHALL permitir localizar pessoas por nome ou CPF e filtrar a listagem 
 #### Scenario: Listagem traz os vínculos de cada pessoa
 - **WHEN** a listagem de pessoas é consultada
 - **THEN** cada pessoa retornada inclui seus vínculos, permitindo exibi-los na própria listagem sem uma requisição por pessoa
+
+#### Scenario: Filtro por situação vital
+- **WHEN** o usuário filtra a listagem para exibir apenas pessoas falecidas
+- **THEN** o sistema retorna somente pessoas com `falecido` igual a verdadeiro
+
+#### Scenario: Filtro por faixa de data de nascimento
+- **WHEN** o usuário informa uma data inicial e uma data final para filtrar por data de nascimento
+- **THEN** o sistema retorna apenas pessoas cuja data de nascimento esteja dentro do intervalo informado, inclusive nos extremos
+
+#### Scenario: Filtros combinados
+- **WHEN** o usuário aplica simultaneamente busca textual, tipo de vínculo e situação vital
+- **THEN** o sistema retorna apenas as pessoas que satisfazem todos os filtros aplicados ao mesmo tempo
+
+#### Scenario: Ordenação por coluna
+- **WHEN** o usuário clica no cabeçalho da coluna de nome, CPF ou status na listagem
+- **THEN** o sistema reordena as linhas exibidas de acordo com a coluna e o sentido (ascendente/descendente) escolhidos
+
+#### Scenario: Exportação das linhas filtradas
+- **WHEN** o usuário aciona a exportação da listagem com filtros aplicados
+- **THEN** o sistema gera o arquivo no formato escolhido (CSV, XLSX ou PDF) contendo apenas as linhas que atendem aos filtros vigentes no momento da exportação
+
+### Requirement: Área de rolagem única por modal
+O sistema SHALL apresentar, em cada modal (diálogo) do módulo de Cadastro de Pessoas, no máximo uma área de rolagem vertical para o conteúdo, sem aninhar uma segunda área de rolagem dentro da área de rolagem padrão do componente de diálogo do design system.
+
+#### Scenario: Modal de novo cadastro sem rolagem duplicada
+- **WHEN** o conteúdo do assistente de novo cadastro de pessoa excede a altura visível do modal
+- **THEN** o sistema exibe apenas uma barra de rolagem vertical, controlada pelo próprio diálogo, sem uma segunda área de rolagem aninhada dentro do conteúdo
+
+#### Scenario: Modal de detalhe sem rolagem duplicada
+- **WHEN** o conteúdo da ficha detalhada de uma pessoa excede a altura visível do modal
+- **THEN** o sistema exibe apenas uma barra de rolagem vertical, controlada pelo próprio diálogo, sem uma segunda área de rolagem aninhada dentro do conteúdo
+
+### Requirement: Modais ergonômicos e completos para o ciclo de vida da pessoa física
+O sistema SHALL fornecer modais enriquecidos e ergonômicos construídos exclusivamente a partir dos primitivos do pacote `@sysgov/ui` para todo o ciclo de vida da pessoa: wizard de criação guiada (`NovaPessoaWizard`), modal de detalhe e gestão (`PessoaDetailView`), modal de promoção a usuário (`PromoverPessoaModal`) e modais de sub-entidades (documentos com emissão e UF, endereços com consulta integrada de CEP e contatos com canais e notificações), garantindo fluxo contínuo sem travamentos.
+
+#### Scenario: Cadastro completo no Wizard com preenchimento de CEP
+- **WHEN** o usuário informa um CEP válido durante a etapa de endereço do wizard de nova pessoa
+- **THEN** o sistema busca e preenche automaticamente logradouro, bairro, cidade e UF, mantendo o foco pronto para o número predial
+
+#### Scenario: Gestão de múltiplos documentos e contatos em modais dedicados
+- **WHEN** o operador adiciona ou edita um documento civil no modal de sub-entidades
+- **THEN** o sistema valida o tipo de documento, UF de emissão e órgão emissor em formulário tipado com feedback em tempo real
+
+### Requirement: Prevenção de quebra de layout e tipografia técnica consistente
+O sistema SHALL aplicar tipografia monoespaçada `JetBrains Mono` (`font-mono tabular-nums`) em todos os dados numéricos e identificadores (CPF, RG, NIS, CEP, datas, telefones e matrículas funcionais) e implementar regras rígidas de contenção de layout (`truncate`, `break-words`, `min-w-0` e tooltips informativos) em colunas de tabelas, cards e modais, prevenindo quebra indesejada de palavras ou estouro visual em qualquer resolução de tela.
+
+#### Scenario: Exibição de nomes ou e-mails extensos sem distorção
+- **WHEN** uma pessoa com nome civil longo ou endereço de e-mail corporativo extenso é exibida na tabela ou nos cards do modal
+- **THEN** o sistema trunca graciosamente o texto mantendo o alinhamento dos botões e exibe o conteúdo integral ao passar o cursor (tooltip)
+
+#### Scenario: Identificadores técnicos formatados em monoespaçamento
+- **WHEN** datas de vigência, CPF, matrícula ou números de documentos são renderizados na interface
+- **THEN** os caracteres utilizam `font-mono tabular-nums` assegurando legibilidade e alinhamento vertical perfeito
 
 ### Requirement: Promoção a usuário por ação explícita e auditada
 O sistema SHALL promover uma pessoa a usuário apenas por ação explícita de um administrador com a permissão `cadastros.pessoas.promote`, nunca automaticamente a partir de cadastro ou importação. A ação de promover SHALL estar acessível tanto a partir do detalhe da pessoa quanto diretamente da listagem, para uma pessoa que ainda não possui usuário vinculado.
@@ -184,15 +237,30 @@ O sistema SHALL validar todas as ações de escrita do módulo por Form Requests
 - **THEN** o sistema rejeita a requisição com erro de validação e não cria o vínculo
 
 ### Requirement: Serialização estrita via API Resources sem exposição de dados sensíveis
-O sistema SHALL serializar todas as respostas da API contendo pessoas, vínculos, documentos, endereços e contatos por meio de API Resources dedicados, garantindo a proteção da privacidade e conformidade com a LGPD ao retornar exclusivamente o `cpf_mascarado`, nunca expondo os atributos `cpf` ou `cpf_hash` em nenhuma resposta.
+O sistema SHALL serializar todas as respostas da API contendo pessoas, vínculos, documentos, endereços e contatos por meio de API Resources dedicados, garantindo a proteção da privacidade e conformidade com a LGPD. Para usuários padrão e consultas gerais, o sistema SHALL retornar exclusivamente o `cpf_mascarado`, nunca expondo `cpf` ou `cpf_hash` em texto puro. Para usuários com perfil de administrador ou permissão explícita `cadastros.pessoas.view_sensitive`, o sistema SHALL admitir a visualização dos dados civis completos sob demanda (`cpf_desmascarado`), registrando auditoria de acesso.
 
 #### Scenario: CPF nunca serializado
-- **WHEN** a API retorna o detalhe ou a listagem de pessoas
+- **WHEN** a API retorna o detalhe ou a listagem de pessoas para requisições comuns sem privilégios administrativos
 - **THEN** a resposta JSON contém apenas o campo `cpf_mascarado` (com formato mascarado), sem os campos `cpf` em texto puro ou `cpf_hash`
+
+#### Scenario: Desmascaramento autorizado para administradores
+- **WHEN** um usuário com permissão `cadastros.pessoas.view_sensitive` ou perfil de administrador solicita a visualização completa do registro de uma pessoa
+- **THEN** a API disponibiliza os campos civis completos e registra no `audit_logs` a visualização do dado sensível
 
 #### Scenario: Serialização consistente de sub-entidades
 - **WHEN** a API retorna documentos, endereços ou contatos vinculados a uma pessoa
 - **THEN** a resposta é formatada pelos respectivos API Resources garantindo tipos padronizados e omissão de chaves internas desnecessárias
+
+### Requirement: Visualização completa e desmascaramento sob demanda de dados sensíveis para administradores
+O sistema SHALL prover na interface do módulo de pessoas e em seus modais a capacidade de visualizar dados completos (como CPF, filiação e documentos completos) exclusivamente para perfis de administrador ou usuários autorizados, mantendo o mascaramento visual ativo por padrão com botão de revelação/cópia rápida protegido por autorização e auditoria.
+
+#### Scenario: Revelação de CPF restrita a administradores
+- **WHEN** um administrador clica para revelar o CPF completo no modal de detalhe da pessoa
+- **THEN** o sistema exibe o documento formatado em `JetBrains Mono` com botão de cópia rápida e emite registro de auditoria
+
+#### Scenario: Bloqueio de visualização sensível para operadores comuns
+- **WHEN** um usuário comum abre o modal de detalhe ou consulta uma pessoa
+- **THEN** o CPF permanece estritamente mascarado (ex: `***.456.789-**`) e o botão de revelação fica indisponível
 
 ### Requirement: Autorização granular e integridade de recurso via PessoaPolicy
 O sistema SHALL autorizar cada operação do módulo por meio da `PessoaPolicy`, combinando a checagem das permissões de RBAC (`cadastros.pessoas.view`, `cadastros.pessoas.create`, `cadastros.pessoas.update`, `cadastros.pessoas.delete`, `cadastros.pessoas.promote`, `cadastros.pessoas.import`) com regras de integridade do recurso, impedindo a exclusão de qualquer pessoa que possua vínculos ativos vigentes.
@@ -270,6 +338,13 @@ O sistema SHALL disponibilizar suporte para que outros módulos do ecossistema S
 #### Scenario: Vínculo de operador com pessoa
 - **WHEN** um operador de cemitério é cadastrado associando o identificador de uma pessoa física previamente registrada
 - **THEN** o registro do operador referencia a pessoa correspondente do cadastro único, mantendo os dados civis centralizados e sem redundância
+
+### Requirement: Hub central de dados mestres de pessoas para consumo compartilhado entre módulos
+O sistema SHALL disponibilizar no `@sysgov/ui` e no `web-client` componentes e hooks universais de integração de pessoas (`PessoaPicker`, `usePessoaPicker`, `PessoaCard`, `PessoaBadge`), permitindo que qualquer módulo satélite (Requerimentos, Cemitérios, RH, Protocolo, Financeiro, CAPD, Cursos) realize busca rápida por nome/CPF com debounce, seleção fluida e cadastro rápido inline sem descontinuar a tarefa do operador.
+
+#### Scenario: Seleção rápida e cadastro inline a partir de outro módulo
+- **WHEN** um operador está em um formulário de outro módulo (ex.: Requerimento ou Concessão de Cemitério) e a pessoa ainda não existe
+- **THEN** o componente permite abrir o modal de cadastro rápido de pessoa, salvar o registro e já selecioná-lo automaticamente no formulário de origem
 
 ### Requirement: Registro e Manutenção de Situação Vital (Óbito)
 O sistema SHALL permitir o registro e manutenção formal da situação vital da pessoa física no cadastro mestre (MDM), armazenando os campos `falecido` (booleano), `data_falecimento` (data), `certidao_obito_numero` (string opcional), `cartorio_obito` (string opcional) e `observacao_obito` (texto opcional).

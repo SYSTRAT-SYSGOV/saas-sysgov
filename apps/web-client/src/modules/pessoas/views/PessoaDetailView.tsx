@@ -15,10 +15,19 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { Button, Modal, StatusChip, Field, Input, Select } from '@/components/ui';
-import { TIPOS_VINCULO, pessoasApi, type Pessoa, type PessoaVinculo, type TipoVinculo } from '../api';
+import { PessoaPicker } from '@sysgov/ui';
+import { TIPOS_VINCULO, pessoasApi, type Pessoa, type PessoaVinculo, type TipoVinculo, type PapelSocio } from '../api';
 import { useVinculos } from '../hooks/useVinculos';
+import { useSocios } from '../hooks/useSocios';
+import { usePessoaPicker } from '../hooks/usePessoaPicker';
 import { ErroBox, FormModal, Mono, useAcao, formatarData } from './comum';
 import { SubEntidadesManager } from './SubEntidadesManager';
+
+const opcoesPapelSocio: { value: PapelSocio; label: string }[] = [
+  { value: 'socio', label: 'Sócio(a)' },
+  { value: 'socio_administrador', label: 'Sócio(a) Administrador(a)' },
+  { value: 'representante_legal', label: 'Representante Legal' },
+];
 
 const opcoesVinculo = Object.entries(TIPOS_VINCULO).map(([value, label]) => ({ value, label }));
 
@@ -36,7 +45,7 @@ const opcoesEstadoCivil = [
   { value: 'União Estável', label: 'União Estável' },
 ];
 
-type AbaDetalhe = 'dados-civis' | 'vinculos' | 'sub-entidades';
+type AbaDetalhe = 'dados-civis' | 'vinculos' | 'sub-entidades' | 'socios';
 
 interface PessoaDetailViewProps {
   pessoa: Pessoa;
@@ -102,6 +111,18 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
     encerrarVinculo,
   } = useVinculos(onAtualizado);
 
+  const isJuridica = pessoa.tipo === 'juridica';
+
+  const [modalSocio, setModalSocio] = useState(false);
+  const [socioEncerrando, setSocioEncerrando] = useState<number | null>(null);
+  const [formSocio, setFormSocio] = useState({
+    papel: 'socio' as PapelSocio,
+    percentual_participacao: '',
+    data_entrada: '',
+  });
+  const { erro: erroSocio, enviando: enviandoSocio, adicionarSocio, encerrarSocio } = useSocios(onAtualizado);
+  const { selectedPessoa: socioSelecionado, setSelectedPessoa: setSocioSelecionado, buscarPessoas: buscarSocios } = usePessoaPicker();
+
   const [formCivil, setFormCivil] = useState({
     nome: '',
     nome_social: '',
@@ -143,7 +164,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
 
   const salvarCivil = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await executar(() => onSalvarEdicaoCivil(formCivil));
+    const res = await executar(async () => (await onSalvarEdicaoCivil(formCivil)) ?? true);
     if (res) {
       setModalEditarCivil(false);
       await onAtualizado();
@@ -154,7 +175,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
   const possuiVinculosAtivos = vinculosAtivos.length > 0;
 
   const abas = [
-    { id: 'dados-civis' as AbaDetalhe, label: 'Identificação & Filiação', icon: User },
+    { id: 'dados-civis' as AbaDetalhe, label: isJuridica ? 'Identificação' : 'Identificação & Filiação', icon: User },
     {
       id: 'vinculos' as AbaDetalhe,
       label: `Vínculos Funcionais (${pessoa.vinculos?.length ?? 0})`,
@@ -165,6 +186,9 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
       label: `Documentos, Endereços e Contatos`,
       icon: Contact,
     },
+    ...(isJuridica
+      ? [{ id: 'socios' as AbaDetalhe, label: `Quadro Societário (${pessoa.socios?.length ?? 0})`, icon: ShieldCheck }]
+      : []),
   ];
 
   return (
@@ -173,7 +197,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
         open
         onClose={onFechar}
         title={pessoa.nome}
-        description={`CPF ${cpfRevelado ?? pessoa.cpf_mascarado} • Situação cadastral: ${pessoa.status.toUpperCase()}${pessoa.falecido || pessoa.status === 'falecido' ? ' • FALECIDO(A)' : ''}`}
+        description={`${isJuridica ? 'CNPJ' : 'CPF'} ${cpfRevelado ?? pessoa.cpf_mascarado} • Situação cadastral: ${pessoa.status.toUpperCase()}${!isJuridica && (pessoa.falecido || pessoa.status === 'falecido') ? ' • FALECIDO(A)' : ''}`}
         size="2xl"
         footer={
           <div className="flex w-full items-center justify-between gap-2">
@@ -213,7 +237,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
           </div>
         }
       >
-        <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
+        <div className="space-y-6">
           <ErroBox erro={erroAcao ?? erroVinculo} />
 
           {/* BARRA DE NAVEGAÇÃO ENTRE ABAS */}
@@ -489,6 +513,68 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
           {abaAtiva === 'sub-entidades' && (
             <SubEntidadesManager pessoa={pessoa} podeGerenciar={podeGerenciar} onAtualizado={onAtualizado} />
           )}
+
+          {/* ABA 4: QUADRO SOCIETÁRIO (SOMENTE PESSOA JURÍDICA) */}
+          {abaAtiva === 'socios' && isJuridica && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold">Quadro Societário</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Sócios e representantes legais, referenciando pessoas físicas já cadastradas no MDM.
+                  </p>
+                </div>
+                {podeGerenciar && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setFormSocio({ papel: 'socio', percentual_participacao: '', data_entrada: '' });
+                      setSocioSelecionado(null);
+                      setModalSocio(true);
+                    }}
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar sócio
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(pessoa.socios ?? []).map((s) => {
+                  const isAtivo = !s.data_saida;
+                  return (
+                    <div
+                      key={s.id}
+                      className="flex items-center justify-between rounded-lg border border-border/80 bg-card p-4 transition-all"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground text-sm">{s.socio_nome ?? `Pessoa #${s.socio_pessoa_id}`}</span>
+                          <StatusChip label={isAtivo ? 'Vigente' : 'Encerrado'} variant={isAtivo ? 'success' : 'neutral'} />
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-0.5">
+                          <div>{opcoesPapelSocio.find((p) => p.value === s.papel)?.label ?? s.papel}</div>
+                          {s.socio_documento_mascarado && <Mono>{s.socio_documento_mascarado}</Mono>}
+                          {s.percentual_participacao && <div>Participação: {s.percentual_participacao}%</div>}
+                        </div>
+                      </div>
+                      {podeGerenciar && isAtivo && (
+                        <Button size="xs" variant="outline" onClick={() => setSocioEncerrando(s.id)}>
+                          Encerrar
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {(pessoa.socios ?? []).length === 0 && (
+                <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+                  Nenhum sócio cadastrado para esta pessoa jurídica.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -532,6 +618,92 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
           if (!vinculoEncerrando) return;
           await encerrarVinculo(pessoa.id, vinculoEncerrando.id, v.fim ? String(v.fim) : undefined);
           setVinculoEncerrando(null);
+        }}
+      />
+
+      {/* MODAL ADICIONAR SÓCIO */}
+      <Modal
+        open={modalSocio}
+        onClose={() => setModalSocio(false)}
+        title="Adicionar sócio ao quadro societário"
+        description="O sócio deve ser uma pessoa física já cadastrada no MDM."
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" type="button" onClick={() => setModalSocio(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={!socioSelecionado || enviandoSocio}
+              onClick={async () => {
+                if (!socioSelecionado) return;
+                const ok = await adicionarSocio(pessoa.id, {
+                  socio_pessoa_id: socioSelecionado.id,
+                  papel: formSocio.papel,
+                  percentual_participacao: formSocio.percentual_participacao ? Number(formSocio.percentual_participacao) : undefined,
+                  data_entrada: formSocio.data_entrada || undefined,
+                });
+                if (ok) setModalSocio(false);
+              }}
+            >
+              Adicionar
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <ErroBox erro={erroSocio} />
+          <Field label="Pessoa Física (Sócio)" required>
+            <PessoaPicker
+              selectedPessoa={socioSelecionado}
+              onSelect={(_, p) => setSocioSelecionado(p ?? null)}
+              onSearch={buscarSocios}
+              placeholder="Buscar pessoa física por nome ou CPF..."
+              canCreate={false}
+            />
+          </Field>
+          <Field label="Papel">
+            <Select
+              value={formSocio.papel}
+              onChange={(v) => setFormSocio({ ...formSocio, papel: (v as PapelSocio) || 'socio' })}
+              options={opcoesPapelSocio}
+            />
+          </Field>
+          <Field label="Percentual de Participação (%)">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              className="font-mono tabular-nums"
+              value={formSocio.percentual_participacao}
+              onChange={(e) => setFormSocio({ ...formSocio, percentual_participacao: e.target.value })}
+            />
+          </Field>
+          <Field label="Data de Entrada">
+            <Input
+              type="date"
+              className="font-mono tabular-nums"
+              value={formSocio.data_entrada}
+              onChange={(e) => setFormSocio({ ...formSocio, data_entrada: e.target.value })}
+            />
+          </Field>
+        </div>
+      </Modal>
+
+      {/* MODAL ENCERRAR SÓCIO */}
+      <FormModal
+        aberto={socioEncerrando !== null}
+        titulo="Encerrar participação societária"
+        rotuloEnviar="Confirmar encerramento"
+        onFechar={() => setSocioEncerrando(null)}
+        campos={[
+          { nome: 'fim', rotulo: 'Data de saída', tipo: 'date', dica: 'Deixe em branco para registrar a data atual.' },
+        ]}
+        onEnviar={async (v) => {
+          if (!socioEncerrando) return;
+          await encerrarSocio(pessoa.id, socioEncerrando, v.fim ? String(v.fim) : undefined);
+          setSocioEncerrando(null);
         }}
       />
 

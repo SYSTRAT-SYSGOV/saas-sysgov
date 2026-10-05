@@ -21,7 +21,7 @@ final class ContatoPrincipalRegraTest extends PessoasTestCase
 
     public function test_novo_contato_principal_desmarca_anterior_do_mesmo_tipo(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Lucas Silva', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Lucas Silva', 'documento' => $this->cpfValido()]);
         $admin = $this->como($this->admin($this->tenant), $this->tenant);
 
         // 1º celular (principal)
@@ -47,7 +47,7 @@ final class ContatoPrincipalRegraTest extends PessoasTestCase
 
     public function test_atualizar_contato_secundario_para_principal_desmarca_o_outro(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Lucas Silva', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Lucas Silva', 'documento' => $this->cpfValido()]);
         $c1 = $pessoa->contatos()->create(['tipo' => 'email', 'valor' => 'um@teste.gov.br', 'principal' => true]);
         $c2 = $pessoa->contatos()->create(['tipo' => 'email', 'valor' => 'dois@teste.gov.br', 'principal' => false]);
 
@@ -63,7 +63,7 @@ final class ContatoPrincipalRegraTest extends PessoasTestCase
 
     public function test_excluir_contato_principal_promove_automaticamente_outro_do_mesmo_tipo(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Lucas Silva', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Lucas Silva', 'documento' => $this->cpfValido()]);
         $c1 = $pessoa->contatos()->create(['tipo' => 'celular', 'valor' => '(41) 98888-1111', 'principal' => true]);
         $c2 = $pessoa->contatos()->create(['tipo' => 'celular', 'valor' => '(41) 98888-2222', 'principal' => false]);
 

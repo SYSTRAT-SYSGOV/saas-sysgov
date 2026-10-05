@@ -14,6 +14,34 @@ vi.mock('@/core/rbac/useCan', () => ({
   }),
 }));
 
+vi.mock('@/modules/pessoas/api', () => ({
+  pessoasApi: {
+    listar: vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 10,
+          nome: 'Mariana Silva Central',
+          cpf_mascarado: '***.888.999-**',
+          status: 'ativo',
+        },
+      ],
+      total: 1,
+      current_page: 1,
+      last_page: 1,
+      per_page: 20,
+    }),
+    obter: vi.fn().mockResolvedValue({
+      id: 10,
+      nome: 'Mariana Silva Central',
+      cpf_mascarado: '***.888.999-**',
+      status: 'ativo',
+    }),
+    criar: vi.fn(),
+    adicionarContato: vi.fn(),
+  },
+  erroApi: (e: any) => ({ mensagem: e?.message || 'Erro' }),
+}));
+
 const mockOperadores: any = {
   data: [
     {
@@ -52,12 +80,36 @@ const mockOperadores: any = {
       situacao: 'ativo' as const,
       observacoes: 'Pedreiro credenciado.',
     },
+    {
+      id: 3,
+      tipo: 'coveiro' as const,
+      nome: 'Nome Legado Desatualizado',
+      pessoa_id: 10,
+      pessoa: {
+        id: 10,
+        nome: 'Mariana Silva Central',
+        cpf_mascarado: '***.888.999-**',
+      },
+      documento_mascarado: '***.000.000-**',
+      telefone: '(11) 96666-5555',
+      matricula_funcional: 'MAT-3322',
+      park_id: null,
+      alvara_numero: null,
+      alvara_validade: null,
+      aso_validade: null,
+      epi_ultimo_registro: null,
+      is_alvara_vencido: false,
+      status_alvara: 'dispensado' as const,
+      status_saude_ocupacional: 'valido' as const,
+      situacao: 'ativo' as const,
+      observacoes: 'Vinculado ao cadastro central.',
+    },
   ],
-  total: 2,
+  total: 3,
   current_page: 1,
   last_page: 1,
   stats: {
-    total_coveiros: 1,
+    total_coveiros: 2,
     total_pedreiros: 1,
     alvaras_vencendo: 0,
     alvaras_vencidos: 0,
@@ -130,12 +182,19 @@ describe('OperadoresView Component', () => {
     expect(screen.getByText('Alvarás Vencidos', { selector: 'span' })).toBeInTheDocument();
 
     await waitFor(() => {
+      // Legados sem pessoa_id
       expect(screen.getByText('Sebastião Coveiro')).toBeInTheDocument();
       expect(screen.getByText('José das Obras')).toBeInTheDocument();
-      expect(screen.getByText('Coveiro Municipal')).toBeInTheDocument();
+      expect(screen.getAllByText('Coveiro Municipal').length).toBeGreaterThan(0);
       expect(screen.getByText('Pedreiro de Obras')).toBeInTheDocument();
       expect(screen.getByText(/Doc: \*\*\*\.222\.333-\*\*/)).toBeInTheDocument();
       expect(screen.getAllByText('ASO Válido').length).toBeGreaterThan(0);
+
+      // Vinculado ao cadastro central (pessoa_id)
+      expect(screen.getByText('Mariana Silva Central')).toBeInTheDocument();
+      expect(screen.getByText('Cadastro Central')).toBeInTheDocument();
+      expect(screen.getByText(/Doc: \*\*\*\.888\.999-\*\*/)).toBeInTheDocument();
+      expect(screen.queryByText('Nome Legado Desatualizado')).not.toBeInTheDocument();
     });
   });
 

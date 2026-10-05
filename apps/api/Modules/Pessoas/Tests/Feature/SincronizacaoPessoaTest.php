@@ -37,7 +37,7 @@ final class SincronizacaoPessoaTest extends PessoasTestCase
         self::assertSame($cpf, $log->refresh()->cpf);
 
         // O restante do módulo continua funcionando normalmente.
-        self::assertSame(1, Pessoa::create(['nome' => 'Outra Pessoa', 'cpf' => $this->cpfValido()])->id ? 1 : 0);
+        self::assertSame(1, Pessoa::create(['nome' => 'Outra Pessoa', 'documento' => $this->cpfValido()])->id ? 1 : 0);
     }
 
     public function test_sincronizacao_com_sucesso_importa_a_pessoa_e_registra_log(): void

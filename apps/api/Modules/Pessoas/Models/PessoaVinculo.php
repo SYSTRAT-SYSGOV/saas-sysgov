@@ -36,6 +36,7 @@ final class PessoaVinculo extends Model
     public const TIPOS = [
         'servidor_carreira', 'estagiario', 'comissionado', 'clt',
         'municipe', 'contribuinte', 'aluno', 'paciente',
+        'fornecedor', 'contratada', 'concessionaria', 'permissionaria', 'credenciada',
     ];
 
     protected $table = 'pessoas_vinculos';

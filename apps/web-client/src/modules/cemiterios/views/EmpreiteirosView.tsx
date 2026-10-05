@@ -1,19 +1,44 @@
 import React, { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button, DataTable, StatusChip, Tabs } from '@/components/ui';
+import { useCan } from '@/core/rbac/useCan';
 import { cemiteriosApi, formatarData, type AlvaraObra, type Empreiteiro } from '../api';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
 import { useCemiteriosNavigation } from '../CemiteriosContext';
-import { PessoaPicker } from '@sysgov/ui';
-import { usePessoaPicker } from '@/modules/pessoas/hooks';
+import { PessoaPicker, PessoaCard, PessoaFormModal, type NovoCadastroRapidoPessoaInput, type PessoaPickerOption } from '@sysgov/ui';
+import { usePessoas } from '@/modules/pessoas/hooks';
 import { pessoasApi } from '@/modules/pessoas/api';
 
 const SITUACAO: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { apto: 'success', inapto: 'warning', suspenso: 'danger', cancelado: 'neutral' };
 
 /** Empreiteiros com alvará anual, alvarás de obra e penalidades (RF-29..RF-32). */
 export const EmpreiteirosView: React.FC = () => {
+  const { can } = useCan();
   const { cemiterioAtivoId } = useCemiteriosNavigation();
-  const { buscarPessoas, criarPessoaRapido } = usePessoaPicker();
+  const {
+    pessoas: pessoasList,
+    loading: loadingPessoas,
+    setBusca: setBuscaPessoas,
+    recarregar: recarregarPessoas,
+  } = usePessoas({ porPagina: 20 });
+
+  const [modalPessoaRapida, setModalPessoaRapida] = useState(false);
+  const [pessoaSelecionadaEmpreiteiro, setPessoaSelecionadaEmpreiteiro] = useState<PessoaPickerOption | null>(null);
+
+  const pessoasOptions = useMemo<PessoaPickerOption[]>(
+    () =>
+      pessoasList.map((p) => ({
+        id: p.id,
+        nome: p.nome,
+        nome_social: p.nome_social,
+        cpf_mascarado: p.cpf_mascarado,
+        status: p.status,
+        falecido: Boolean(p.falecido),
+        data_falecimento: p.data_falecimento ?? null,
+      })),
+    [pessoasList]
+  );
+
   const [aba, setAba] = useState<'empreiteiros' | 'obras'>('empreiteiros');
   const [modal, setModal] = useState<{ tipo: 'novo' | 'alvara' | 'penalidade' | 'obra'; alvo?: Empreiteiro } | null>(null);
   const empreiteiros = useDados(() => cemiteriosApi.empreiteiros(), []);
@@ -28,18 +53,28 @@ export const EmpreiteirosView: React.FC = () => {
     {
       id: 'nome',
       header: 'Nome',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-foreground">{row.original.nome}</span>
-          {row.original.pessoa_id && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium">
-              Cadastro Central
-            </span>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const nomeExibicao = row.original.pessoa?.nome ?? row.original.nome;
+        return (
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-foreground">{nomeExibicao}</span>
+            {row.original.pessoa_id && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium">
+                Cadastro Central
+              </span>
+            )}
+          </div>
+        );
+      },
     },
-    { id: 'doc', header: 'CPF/CNPJ', cell: ({ row }) => <Mono>{row.original.documento_mascarado}</Mono> },
+    {
+      id: 'doc',
+      header: 'CPF/CNPJ',
+      cell: ({ row }) => {
+        const docExibicao = row.original.pessoa?.cpf_mascarado ?? row.original.documento_mascarado;
+        return <Mono>{docExibicao}</Mono>;
+      },
+    },
     { id: 'rt', header: 'Responsável técnico', accessorFn: (r) => r.responsavel_tecnico ?? '—' },
     { id: 'situacao', header: 'Situação', cell: ({ row }) => <StatusChip label={row.original.situacao} variant={SITUACAO[row.original.situacao]} /> },
     {
@@ -91,7 +126,13 @@ export const EmpreiteirosView: React.FC = () => {
         ? <DataTable columns={colEmpreiteiros} data={empreiteiros.dados?.data ?? []} loading={empreiteiros.carregando} searchable emptyText="Nenhum empreiteiro." />
         : <DataTable columns={colObras} data={obras.dados?.data ?? []} loading={obras.carregando} emptyText="Nenhuma obra." />}
 
-      <FormModal aberto={modal?.tipo === 'novo'} titulo="Novo empreiteiro" onFechar={() => setModal(null)}
+      <FormModal
+        aberto={modal?.tipo === 'novo'}
+        titulo="Novo empreiteiro"
+        onFechar={() => {
+          setModal(null);
+          setPessoaSelecionadaEmpreiteiro(null);
+        }}
         campos={[
           {
             nome: 'pessoa_id',
@@ -99,44 +140,78 @@ export const EmpreiteirosView: React.FC = () => {
             tipo: 'custom',
             dica: 'Opcional. Preencha se o empreiteiro for uma pessoa física cadastrada no município.',
             renderCustom: (valor, onChange, setValores) => (
-              <PessoaPicker
-                value={valor ? Number(valor) : null}
-                onChange={async (id, pessoaOption) => {
-                  onChange(id);
-                  if (id && setValores) {
-                    if (pessoaOption) {
-                      setValores((prev) => ({
-                        ...prev,
-                        nome: pessoaOption.nome || prev.nome,
-                        documento: pessoaOption.cpf_mascarado || prev.documento,
-                      }));
-                    }
-                    try {
-                      const detalhes = await pessoasApi.obter(id);
-                      if (detalhes) {
+              <div className="space-y-3">
+                <PessoaPicker
+                  value={valor ? Number(valor) : null}
+                  pessoas={pessoasOptions}
+                  loading={loadingPessoas}
+                  onSearch={(termo) => setBuscaPessoas(termo)}
+                  onSelect={async (id, pessoaOption) => {
+                    onChange(id);
+                    if (id && pessoaOption) {
+                      setPessoaSelecionadaEmpreiteiro(pessoaOption);
+                      if (setValores) {
                         setValores((prev) => ({
                           ...prev,
-                          nome: detalhes.nome || prev.nome,
-                          documento: detalhes.cpf_mascarado || prev.documento,
-                          responsavel_tecnico: detalhes.nome || prev.responsavel_tecnico,
+                          nome: pessoaOption.nome || prev.nome,
+                          documento: pessoaOption.cpf_mascarado || prev.documento,
+                          responsavel_tecnico: pessoaOption.nome || prev.responsavel_tecnico,
                         }));
+                        try {
+                          const detalhes = await pessoasApi.obter(id);
+                          if (detalhes) {
+                            setValores((prev) => ({
+                              ...prev,
+                              nome: detalhes.nome || prev.nome,
+                              documento: detalhes.cpf_mascarado || prev.documento,
+                              responsavel_tecnico: detalhes.nome || prev.responsavel_tecnico,
+                            }));
+                          }
+                        } catch (e) {
+                          console.warn('Não foi possível obter detalhes adicionais da pessoa civil:', e);
+                        }
                       }
-                    } catch (e) {
-                      console.warn('Não foi possível obter detalhes adicionais da pessoa civil:', e);
+                    } else {
+                      setPessoaSelecionadaEmpreiteiro(null);
                     }
-                  }
-                }}
-                onSearch={buscarPessoas}
-                onCreatePessoa={criarPessoaRapido}
-                placeholder="Buscar por nome ou CPF no cadastro geral..."
-              />
+                  }}
+                  canCreate={can('cadastros.pessoas.create')}
+                  onQuickCreate={() => setModalPessoaRapida(true)}
+                  placeholder="Buscar por nome ou CPF no cadastro geral..."
+                />
+                {pessoaSelecionadaEmpreiteiro && (
+                  <PessoaCard
+                    compact
+                    pessoa={{
+                      id: pessoaSelecionadaEmpreiteiro.id,
+                      nome: pessoaSelecionadaEmpreiteiro.nome,
+                      nome_social: pessoaSelecionadaEmpreiteiro.nome_social,
+                      cpf_mascarado: pessoaSelecionadaEmpreiteiro.cpf_mascarado,
+                      status: pessoaSelecionadaEmpreiteiro.status,
+                    }}
+                  />
+                )}
+              </div>
             ),
           },
           { nome: 'nome', rotulo: 'Nome / razão social', obrigatorio: true },
           { nome: 'documento', rotulo: 'CPF ou CNPJ', obrigatorio: true },
           { nome: 'responsavel_tecnico', rotulo: 'Responsável técnico' },
         ]}
-        onEnviar={async (v) => { await cemiteriosApi.criarEmpreiteiro(v as { nome: string; documento: string; pessoa_id?: number }); await recarregar(); }} />
+        onEnviar={async (v) => {
+          const nomeFinal = (v.nome as string) || pessoaSelecionadaEmpreiteiro?.nome || '';
+          const docFinal = (v.documento as string) || pessoaSelecionadaEmpreiteiro?.cpf_mascarado || '';
+          await cemiteriosApi.criarEmpreiteiro({
+            nome: nomeFinal,
+            documento: docFinal,
+            responsavel_tecnico: v.responsavel_tecnico ? String(v.responsavel_tecnico) : undefined,
+            pessoa_id: v.pessoa_id ? Number(v.pessoa_id) : (pessoaSelecionadaEmpreiteiro?.id ?? undefined),
+          });
+          setModal(null);
+          setPessoaSelecionadaEmpreiteiro(null);
+          await recarregar();
+        }}
+      />
       <FormModal aberto={modal?.tipo === 'alvara'} titulo={`Alvará anual — ${modal?.alvo?.nome ?? ''}`} onFechar={() => setModal(null)}
         campos={[{ nome: 'numero', rotulo: 'Número', obrigatorio: true }, { nome: 'validade', rotulo: 'Validade', tipo: 'date', obrigatorio: true }]}
         onEnviar={async (v) => { await cemiteriosApi.alvaraAnual(Number(modal?.alvo?.id), v as { numero: string; validade: string }); await recarregar(); }} />
@@ -158,6 +233,53 @@ export const EmpreiteirosView: React.FC = () => {
           { nome: 'descricao', rotulo: 'Descrição da obra', tipo: 'textarea', obrigatorio: true },
         ]}
         onEnviar={async (v) => { await cemiteriosApi.criarObra({ ...v, contractor_id: Number(v.contractor_id), plot_id: Number(v.plot_id) }); await recarregar(); }} />
+
+      {/* Modal: Cadastro Rápido de Pessoa Física (MDM) */}
+      <PessoaFormModal
+        open={modalPessoaRapida}
+        onClose={() => setModalPessoaRapida(false)}
+        onSubmit={async (dados: NovoCadastroRapidoPessoaInput) => {
+          try {
+            const nova = await pessoasApi.criar({
+              nome: dados.nome,
+              cpf: dados.cpf,
+              nome_social: dados.nome_social,
+              data_nascimento: dados.data_nascimento,
+              sexo: dados.sexo,
+              nome_mae: dados.nome_mae,
+            });
+
+            if (dados.contato_tipo && dados.contato_valor) {
+              try {
+                await pessoasApi.adicionarContato(nova.id, {
+                  tipo: dados.contato_tipo,
+                  valor: dados.contato_valor,
+                  principal: true,
+                  autoriza_notificacoes: true,
+                });
+              } catch {
+                // opcional
+              }
+            }
+
+            await recarregarPessoas();
+            const optionNova: PessoaPickerOption = {
+              id: nova.id,
+              nome: nova.nome,
+              nome_social: nova.nome_social,
+              cpf_mascarado: nova.cpf_mascarado,
+              status: nova.status,
+            };
+
+            setPessoaSelecionadaEmpreiteiro(optionNova);
+            setModalPessoaRapida(false);
+            return true;
+          } catch (e) {
+            console.error('Erro ao cadastrar pessoa rápida:', e);
+            throw e;
+          }
+        }}
+      />
     </div>
   );
 };

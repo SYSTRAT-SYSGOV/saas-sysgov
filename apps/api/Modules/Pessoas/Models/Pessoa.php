@@ -7,6 +7,7 @@ namespace Modules\Pessoas\Models;
 use App\Models\Concerns\TenantAware;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -14,14 +15,22 @@ use Modules\Pessoas\Database\Factories\PessoaFactory;
 use Modules\Pessoas\Support\Documento;
 
 /**
- * Cadastro único de pessoa física por tenant (identidade civil).
+ * Cadastro único de pessoa física ou jurídica por tenant (MDM).
  *
  * @property int $id
  * @property int $tenant_id
- * @property string $cpf
- * @property string $cpf_hash
+ * @property string $tipo
+ * @property string $documento
+ * @property string $documento_hash
  * @property string $nome
  * @property string|null $nome_social
+ * @property string|null $razao_social
+ * @property string|null $nome_fantasia
+ * @property string|null $inscricao_estadual
+ * @property string|null $inscricao_municipal
+ * @property string|null $porte
+ * @property string|null $natureza_juridica
+ * @property int|null $responsavel_id
  * @property \Illuminate\Support\Carbon|null $data_nascimento
  * @property string|null $sexo
  * @property string|null $nome_mae
@@ -39,6 +48,7 @@ use Modules\Pessoas\Support\Documento;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read string $documento_mascarado
  * @property-read string $cpf_mascarado
  */
 final class Pessoa extends Model
@@ -55,14 +65,20 @@ final class Pessoa extends Model
 
     protected $table = 'pessoas';
 
-    protected $guarded = ['id', 'tenant_id', 'cpf_hash'];
+    /** Espelha o DEFAULT 'fisica' da coluna no banco — necessário para que uma instância
+     *  recém-criada sem `tipo` explícito já reflita o tipo correto em memória, sem exigir
+     *  um refresh() após o insert (ex.: PromocaoUsuarioService::promover() checando o tipo
+     *  logo após Pessoa::create() sem informar `tipo`). */
+    protected $attributes = ['tipo' => 'fisica'];
 
-    protected $hidden = ['cpf', 'cpf_hash'];
+    protected $guarded = ['id', 'tenant_id', 'documento_hash'];
 
-    protected $appends = ['cpf_mascarado'];
+    protected $hidden = ['documento', 'documento_hash'];
+
+    protected $appends = ['documento_mascarado', 'cpf_mascarado'];
 
     protected $casts = [
-        'cpf' => 'encrypted',
+        'documento' => 'encrypted',
         'nome_mae' => 'encrypted',
         'nome_pai' => 'encrypted',
         'nis' => 'encrypted',
@@ -74,10 +90,15 @@ final class Pessoa extends Model
     protected static function booted(): void
     {
         static::saving(function (self $pessoa): void {
-            $pessoa->cpf = Documento::somenteDigitos((string) $pessoa->cpf);
-            $pessoa->cpf_hash = Documento::hash($pessoa->cpf);
+            $pessoa->documento = Documento::somenteDigitos((string) $pessoa->documento);
+            $pessoa->documento_hash = Documento::hash($pessoa->documento);
             if ($pessoa->falecido && $pessoa->status === 'ativo') {
                 $pessoa->status = 'falecido';
+            }
+            // `nome` é NOT NULL e serve de rótulo genérico de exibição (ex.: PessoaPicker);
+            // para jurídica, espelha a razão social, sem precisar de campo extra no Resource.
+            if ($pessoa->tipo === 'juridica' && $pessoa->razao_social) {
+                $pessoa->nome = $pessoa->razao_social;
             }
         });
     }
@@ -100,19 +121,37 @@ final class Pessoa extends Model
         return $query->where('falecido', false);
     }
 
-    public function getCpfMascaradoAttribute(): string
+    public function getDocumentoMascaradoAttribute(): string
     {
         try {
-            return Documento::mascarar((string) $this->cpf);
+            return Documento::mascarar((string) $this->documento);
         } catch (\Throwable) {
             return '—';
         }
+    }
+
+    /** Alias de compatibilidade — contrato de API existente para pessoa física. */
+    public function getCpfMascaradoAttribute(): string
+    {
+        return $this->getDocumentoMascaradoAttribute();
     }
 
     /** @return HasMany<PessoaVinculo, $this> */
     public function vinculos(): HasMany
     {
         return $this->hasMany(PessoaVinculo::class);
+    }
+
+    /** @return HasMany<PessoaSocio, $this> */
+    public function socios(): HasMany
+    {
+        return $this->hasMany(PessoaSocio::class, 'pessoa_id');
+    }
+
+    /** @return BelongsTo<Pessoa, $this> */
+    public function responsavel(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'responsavel_id');
     }
 
     /** @return HasMany<PessoaDocumento, $this> */

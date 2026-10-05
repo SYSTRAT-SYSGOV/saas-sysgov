@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { Cross, FileSignature, HardHat, LayoutGrid, Map, Receipt, Camera, ClipboardList, Scale, Users } from 'lucide-react';
+import { Cross, FileSignature, HardHat, LayoutGrid, Receipt, Camera, ClipboardList, Scale, Users } from 'lucide-react';
 import { PageHeader, Tabs } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import { InventarioView } from './views/InventarioView';
-import { MapaView } from './views/MapaView';
+// import { MapaView } from './views/MapaView'; // aba "Mapa GIS" temporariamente desativada
 import { OperacoesView } from './views/OperacoesView';
 import { ConcessoesView } from './views/ConcessoesView';
 import { SucessaoView } from './views/SucessaoView';
@@ -30,7 +30,8 @@ export interface CemiteriosModuleProps {
 /** Espelha `module.json#menu.children` (mesma ordem e permissões). */
 const ABAS = [
   { key: 'inventario', label: 'Inventário', icon: LayoutGrid, permissao: 'cemiterios.view', Componente: InventarioView },
-  { key: 'mapa', label: 'Mapa GIS', icon: Map, permissao: 'cemiterios.view', Componente: MapaView },
+  // Aba "Mapa GIS" temporariamente desativada a pedido do time — não será usada neste momento.
+  // { key: 'mapa', label: 'Mapa GIS', icon: Map, permissao: 'cemiterios.view', Componente: MapaView },
   { key: 'operacoes', label: 'Operações', icon: ClipboardList, permissao: 'cemiterios.view', Componente: OperacoesView },
   { key: 'concessoes', label: 'Concessões', icon: FileSignature, permissao: 'cemiterios.concessoes.manage', Componente: ConcessoesView },
   { key: 'sucessao', label: 'Sucessão Hereditária', icon: Scale, permissao: 'cemiterios.sucessao.view', Componente: SucessaoView },

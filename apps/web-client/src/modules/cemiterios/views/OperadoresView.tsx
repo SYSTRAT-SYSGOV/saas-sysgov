@@ -24,8 +24,8 @@ import { useCemiteriosNavigation } from '../CemiteriosContext';
 import { HistoricoCredenciamentoOperador } from '../components/HistoricoCredenciamentoOperador';
 import { SancoesOperador } from '../components/SancoesOperador';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
-import { PessoaPicker, PessoaCard } from '@sysgov/ui';
-import { usePessoaPicker } from '@/modules/pessoas/hooks';
+import { PessoaPicker, PessoaCard, PessoaFormModal, type NovoCadastroRapidoPessoaInput, type PessoaPickerOption } from '@sysgov/ui';
+import { usePessoas } from '@/modules/pessoas/hooks';
 import { pessoasApi } from '@/modules/pessoas/api';
 
 
@@ -60,7 +60,30 @@ export const OperadoresView: React.FC = () => {
   const [sancoesOperador, setSancoesOperador] = useState<OperadorCemiterio | null>(null);
 
   const { erro, executar } = useAcao();
-  const { buscarPessoas, criarPessoaRapido } = usePessoaPicker();
+  const {
+    pessoas: pessoasList,
+    loading: loadingPessoas,
+    setBusca: setBuscaPessoas,
+    recarregar: recarregarPessoas,
+  } = usePessoas({ porPagina: 20 });
+
+  const [modalPessoaRapida, setModalPessoaRapida] = useState(false);
+  const [pessoaSelecionadaNovo, setPessoaSelecionadaNovo] = useState<PessoaPickerOption | null>(null);
+  const [pessoaSelecionadaEditando, setPessoaSelecionadaEditando] = useState<PessoaPickerOption | null>(null);
+
+  const pessoasOptions = useMemo<PessoaPickerOption[]>(
+    () =>
+      pessoasList.map((p) => ({
+        id: p.id,
+        nome: p.nome,
+        nome_social: p.nome_social,
+        cpf_mascarado: p.cpf_mascarado,
+        status: p.status,
+        falecido: Boolean(p.falecido),
+        data_falecimento: p.data_falecimento ?? null,
+      })),
+    [pessoasList]
+  );
 
   const abrirEdicao = async (o: OperadorCemiterio) => {
     if (o.pessoa_id && (!o.telefone || !o.email || !o.matricula_funcional || !o.documento_mascarado || o.documento_mascarado === '—')) {
@@ -76,6 +99,14 @@ export const OperadoresView: React.FC = () => {
           const vinculoServidor = detalhes.vinculos?.find(
             (v) => Boolean(v.matricula)
           );
+
+          setPessoaSelecionadaEditando({
+            id: detalhes.id,
+            nome: detalhes.nome,
+            nome_social: detalhes.nome_social,
+            cpf_mascarado: detalhes.cpf_mascarado,
+            status: detalhes.status,
+          });
 
           setOperadorEditando({
             ...o,
@@ -95,6 +126,15 @@ export const OperadoresView: React.FC = () => {
       } catch (e) {
         console.warn('Não foi possível obter dados adicionais para edição:', e);
       }
+    }
+    if (o.pessoa) {
+      setPessoaSelecionadaEditando({
+        id: o.pessoa.id,
+        nome: o.pessoa.nome,
+        cpf_mascarado: o.pessoa.cpf_mascarado,
+      });
+    } else {
+      setPessoaSelecionadaEditando(null);
     }
     setOperadorEditando(o);
   };
@@ -123,22 +163,27 @@ export const OperadoresView: React.FC = () => {
     {
       id: 'nome',
       header: 'Nome do Profissional',
-      cell: ({ row }) => (
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-foreground">{row.original.nome}</span>
-            {row.original.pessoa_id && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium">
-                Cadastro Central
-              </span>
-            )}
+      cell: ({ row }) => {
+        const o = row.original;
+        const nomeExibicao = o.pessoa?.nome ?? o.nome;
+        const docExibicao = o.pessoa?.cpf_mascarado ?? o.documento_mascarado;
+        return (
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-foreground">{nomeExibicao}</span>
+              {o.pessoa_id && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium">
+                  Cadastro Central
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground font-mono mt-0.5">
+              {docExibicao ? `Doc: ${docExibicao}` : '—'}
+              {o.telefone ? ` • Tel: ${o.telefone}` : ''}
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground font-mono mt-0.5">
-            {row.original.documento_mascarado ? `Doc: ${row.original.documento_mascarado}` : '—'}
-            {row.original.telefone ? ` • Tel: ${row.original.telefone}` : ''}
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       id: 'tipo',
@@ -402,52 +447,70 @@ export const OperadoresView: React.FC = () => {
             tipo: 'custom',
             dica: 'Opcional. Selecione uma pessoa para vincular e evitar duplicidade de cadastro civil.',
             renderCustom: (valor, onChange, setValores) => (
-              <PessoaPicker
-                value={valor ? Number(valor) : null}
-                onChange={async (id, pessoaOption) => {
-                  onChange(id);
-                  if (id && setValores) {
-                    // Preenchimento imediato a partir dos dados locais do picker
-                    if (pessoaOption) {
-                      setValores((prev) => ({
-                        ...prev,
-                        nome: pessoaOption.nome || prev.nome,
-                        cpf_cnpj: pessoaOption.cpf_mascarado || prev.cpf_cnpj,
-                      }));
-                    }
-                    // Busca dados cadastrais completos (contatos e vínculos funcionais)
-                    try {
-                      const detalhes = await pessoasApi.obter(id);
-                      if (detalhes) {
-                        const telPrincipal = detalhes.contatos?.find(
-                          (c) => c.tipo === 'celular' || c.tipo === 'telefone'
-                        )?.valor;
-                        const emailPrincipal = detalhes.contatos?.find(
-                          (c) => c.tipo === 'email'
-                        )?.valor;
-                        const vinculoServidor = detalhes.vinculos?.find(
-                          (v) => Boolean(v.matricula)
-                        );
-
+              <div className="space-y-3">
+                <PessoaPicker
+                  value={valor ? Number(valor) : null}
+                  pessoas={pessoasOptions}
+                  loading={loadingPessoas}
+                  onSearch={(termo) => setBuscaPessoas(termo)}
+                  onSelect={async (id, pessoaOption) => {
+                    onChange(id);
+                    if (id && pessoaOption) {
+                      setPessoaSelecionadaNovo(pessoaOption);
+                      if (setValores) {
                         setValores((prev) => ({
                           ...prev,
-                          nome: detalhes.nome || prev.nome,
-                          cpf_cnpj: detalhes.cpf_mascarado || prev.cpf_cnpj,
-                          telefone: telPrincipal || prev.telefone,
-                          email: emailPrincipal || prev.email,
-                          matricula_funcional: vinculoServidor?.matricula || prev.matricula_funcional,
-                          tipo: vinculoServidor ? 'coveiro' : prev.tipo,
+                          nome: pessoaOption.nome || prev.nome,
+                          cpf_cnpj: pessoaOption.cpf_mascarado || prev.cpf_cnpj,
                         }));
+                        try {
+                          const detalhes = await pessoasApi.obter(id);
+                          if (detalhes) {
+                            const telPrincipal = detalhes.contatos?.find(
+                              (c) => c.tipo === 'celular' || c.tipo === 'telefone'
+                            )?.valor;
+                            const emailPrincipal = detalhes.contatos?.find(
+                              (c) => c.tipo === 'email'
+                            )?.valor;
+                            const vinculoServidor = detalhes.vinculos?.find(
+                              (v) => Boolean(v.matricula)
+                            );
+
+                            setValores((prev) => ({
+                              ...prev,
+                              nome: detalhes.nome || prev.nome,
+                              cpf_cnpj: detalhes.cpf_mascarado || prev.cpf_cnpj,
+                              telefone: telPrincipal || prev.telefone,
+                              email: emailPrincipal || prev.email,
+                              matricula_funcional: vinculoServidor?.matricula || prev.matricula_funcional,
+                              tipo: vinculoServidor ? 'coveiro' : prev.tipo,
+                            }));
+                          }
+                        } catch (e) {
+                          console.warn('Não foi possível obter detalhes adicionais da pessoa civil:', e);
+                        }
                       }
-                    } catch (e) {
-                      console.warn('Não foi possível obter detalhes adicionais da pessoa civil:', e);
+                    } else {
+                      setPessoaSelecionadaNovo(null);
                     }
-                  }
-                }}
-                onSearch={buscarPessoas}
-                onCreatePessoa={criarPessoaRapido}
-                placeholder="Buscar por nome ou CPF no cadastro geral..."
-              />
+                  }}
+                  canCreate={can('cadastros.pessoas.create')}
+                  onQuickCreate={() => setModalPessoaRapida(true)}
+                  placeholder="Buscar por nome ou CPF no cadastro geral..."
+                />
+                {pessoaSelecionadaNovo && (
+                  <PessoaCard
+                    compact
+                    pessoa={{
+                      id: pessoaSelecionadaNovo.id,
+                      nome: pessoaSelecionadaNovo.nome,
+                      nome_social: pessoaSelecionadaNovo.nome_social,
+                      cpf_mascarado: pessoaSelecionadaNovo.cpf_mascarado,
+                      status: pessoaSelecionadaNovo.status,
+                    }}
+                  />
+                )}
+              </div>
             ),
           },
           { nome: 'nome', rotulo: 'Nome Completo', obrigatorio: true },
@@ -475,13 +538,17 @@ export const OperadoresView: React.FC = () => {
           tipo: 'coveiro',
           park_id: cemiterioAtivoId ? String(cemiterioAtivoId) : undefined,
         }}
-        onFechar={() => setModalNovo(false)}
+        onFechar={() => {
+          setModalNovo(false);
+          setPessoaSelecionadaNovo(null);
+        }}
         onEnviar={async (v: Record<string, unknown>) => {
           const cpfRaw = v.cpf_cnpj ? String(v.cpf_cnpj) : undefined;
           const cpfParaEnvio = cpfRaw && !cpfRaw.includes('*') ? cpfRaw : undefined;
+          const nomeFinal = (v.nome as string) || pessoaSelecionadaNovo?.nome || '';
           await cemiteriosApi.criarOperador({
-            pessoa_id: v.pessoa_id ? Number(v.pessoa_id) : undefined,
-            nome: String(v.nome),
+            pessoa_id: v.pessoa_id ? Number(v.pessoa_id) : (pessoaSelecionadaNovo?.id ?? undefined),
+            nome: nomeFinal,
             tipo: v.tipo as 'coveiro' | 'pedreiro',
             cpf_cnpj: cpfParaEnvio,
             matricula_funcional: v.matricula_funcional ? String(v.matricula_funcional) : undefined,
@@ -495,6 +562,7 @@ export const OperadoresView: React.FC = () => {
             situacao: 'ativo',
           });
           setModalNovo(false);
+          setPessoaSelecionadaNovo(null);
           await operadores.recarregar();
         }}
       />
@@ -510,50 +578,70 @@ export const OperadoresView: React.FC = () => {
             tipo: 'custom',
             dica: 'Pessoa física do cadastro único municipal vinculada a este profissional.',
             renderCustom: (valor, onChange, setValores) => (
-              <PessoaPicker
-                value={valor ? Number(valor) : null}
-                onChange={async (id, pessoaOption) => {
-                  onChange(id);
-                  if (id && setValores) {
-                    if (pessoaOption) {
-                      setValores((prev) => ({
-                        ...prev,
-                        nome: pessoaOption.nome || prev.nome,
-                        cpf_cnpj: pessoaOption.cpf_mascarado || prev.cpf_cnpj,
-                      }));
-                    }
-                    try {
-                      const detalhes = await pessoasApi.obter(id);
-                      if (detalhes) {
-                        const telPrincipal = detalhes.contatos?.find(
-                          (c) => c.tipo === 'celular' || c.tipo === 'telefone'
-                        )?.valor;
-                        const emailPrincipal = detalhes.contatos?.find(
-                          (c) => c.tipo === 'email'
-                        )?.valor;
-                        const vinculoServidor = detalhes.vinculos?.find(
-                          (v) => Boolean(v.matricula)
-                        );
-
+              <div className="space-y-3">
+                <PessoaPicker
+                  value={valor ? Number(valor) : null}
+                  pessoas={pessoasOptions}
+                  loading={loadingPessoas}
+                  onSearch={(termo) => setBuscaPessoas(termo)}
+                  onSelect={async (id, pessoaOption) => {
+                    onChange(id);
+                    if (id && pessoaOption) {
+                      setPessoaSelecionadaEditando(pessoaOption);
+                      if (setValores) {
                         setValores((prev) => ({
                           ...prev,
-                          nome: detalhes.nome || prev.nome,
-                          cpf_cnpj: detalhes.cpf_mascarado || prev.cpf_cnpj,
-                          telefone: telPrincipal || prev.telefone,
-                          email: emailPrincipal || prev.email,
-                          matricula_funcional: vinculoServidor?.matricula || prev.matricula_funcional,
-                          tipo: vinculoServidor ? 'coveiro' : prev.tipo,
+                          nome: pessoaOption.nome || prev.nome,
+                          cpf_cnpj: pessoaOption.cpf_mascarado || prev.cpf_cnpj,
                         }));
+                        try {
+                          const detalhes = await pessoasApi.obter(id);
+                          if (detalhes) {
+                            const telPrincipal = detalhes.contatos?.find(
+                              (c) => c.tipo === 'celular' || c.tipo === 'telefone'
+                            )?.valor;
+                            const emailPrincipal = detalhes.contatos?.find(
+                              (c) => c.tipo === 'email'
+                            )?.valor;
+                            const vinculoServidor = detalhes.vinculos?.find(
+                              (v) => Boolean(v.matricula)
+                            );
+
+                            setValores((prev) => ({
+                              ...prev,
+                              nome: detalhes.nome || prev.nome,
+                              cpf_cnpj: detalhes.cpf_mascarado || prev.cpf_cnpj,
+                              telefone: telPrincipal || prev.telefone,
+                              email: emailPrincipal || prev.email,
+                              matricula_funcional: vinculoServidor?.matricula || prev.matricula_funcional,
+                              tipo: vinculoServidor ? 'coveiro' : prev.tipo,
+                            }));
+                          }
+                        } catch (e) {
+                          console.warn('Não foi possível obter detalhes adicionais da pessoa civil:', e);
+                        }
                       }
-                    } catch (e) {
-                      console.warn('Não foi possível obter detalhes adicionais da pessoa civil:', e);
+                    } else {
+                      setPessoaSelecionadaEditando(null);
                     }
-                  }
-                }}
-                onSearch={buscarPessoas}
-                onCreatePessoa={criarPessoaRapido}
-                placeholder="Buscar por nome ou CPF no cadastro geral..."
-              />
+                  }}
+                  canCreate={can('cadastros.pessoas.create')}
+                  onQuickCreate={() => setModalPessoaRapida(true)}
+                  placeholder="Buscar por nome ou CPF no cadastro geral..."
+                />
+                {pessoaSelecionadaEditando && (
+                  <PessoaCard
+                    compact
+                    pessoa={{
+                      id: pessoaSelecionadaEditando.id,
+                      nome: pessoaSelecionadaEditando.nome,
+                      nome_social: pessoaSelecionadaEditando.nome_social,
+                      cpf_mascarado: pessoaSelecionadaEditando.cpf_mascarado,
+                      status: pessoaSelecionadaEditando.status,
+                    }}
+                  />
+                )}
+              </div>
             ),
           },
           { nome: 'nome', rotulo: 'Nome Completo', obrigatorio: true },
@@ -722,6 +810,58 @@ export const OperadoresView: React.FC = () => {
       >
         {sancoesOperador && <SancoesOperador operadorId={sancoesOperador.id} podeGerenciar={gerencia} />}
       </Modal>
+
+      {/* Modal: Cadastro Rápido de Pessoa Física (MDM) */}
+      <PessoaFormModal
+        open={modalPessoaRapida}
+        onClose={() => setModalPessoaRapida(false)}
+        onSubmit={async (dados: NovoCadastroRapidoPessoaInput) => {
+          try {
+            const nova = await pessoasApi.criar({
+              nome: dados.nome,
+              cpf: dados.cpf,
+              nome_social: dados.nome_social,
+              data_nascimento: dados.data_nascimento,
+              sexo: dados.sexo,
+              nome_mae: dados.nome_mae,
+            });
+
+            if (dados.contato_tipo && dados.contato_valor) {
+              try {
+                await pessoasApi.adicionarContato(nova.id, {
+                  tipo: dados.contato_tipo,
+                  valor: dados.contato_valor,
+                  principal: true,
+                  autoriza_notificacoes: true,
+                });
+              } catch {
+                // Contato é opcional, não falha o cadastro principal
+              }
+            }
+
+            await recarregarPessoas();
+            const optionNova: PessoaPickerOption = {
+              id: nova.id,
+              nome: nova.nome,
+              nome_social: nova.nome_social,
+              cpf_mascarado: nova.cpf_mascarado,
+              status: nova.status,
+            };
+
+            if (modalNovo) {
+              setPessoaSelecionadaNovo(optionNova);
+            } else if (operadorEditando) {
+              setPessoaSelecionadaEditando(optionNova);
+            }
+
+            setModalPessoaRapida(false);
+            return true;
+          } catch (e) {
+            console.error('Erro ao cadastrar pessoa rápida:', e);
+            throw e;
+          }
+        }}
+      />
     </div>
   );
 };

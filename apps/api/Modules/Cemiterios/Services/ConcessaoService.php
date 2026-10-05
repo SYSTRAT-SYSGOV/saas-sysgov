@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Modules\Cemiterios\Listeners\EnviarEmail;
 use Modules\Cemiterios\Models\Concessao;
+use Modules\Cemiterios\Models\Concessionario;
 use Modules\Cemiterios\Models\Guia;
 use Modules\Cemiterios\Models\Jazigo;
 use Modules\Cemiterios\Support\ConflitoVersaoException;

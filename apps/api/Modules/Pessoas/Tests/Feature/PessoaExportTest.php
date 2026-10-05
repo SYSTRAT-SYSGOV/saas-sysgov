@@ -22,7 +22,7 @@ final class PessoaExportTest extends PessoasTestCase
 
     public function test_exporta_pessoas_em_json_com_manifest_versionado(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
         $pessoa->vinculos()->create(['tipo_vinculo' => 'municipe', 'inicio' => today()->toDateString()]);
 
         $resposta = $this->como($this->admin($this->tenant), $this->tenant)->getJson('/api/pessoas/export');
@@ -38,7 +38,7 @@ final class PessoaExportTest extends PessoasTestCase
 
     public function test_exporta_pessoas_em_csv(): void
     {
-        Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
 
         $resposta = $this->como($this->admin($this->tenant), $this->tenant)->get('/api/pessoas/export?format=csv');
 

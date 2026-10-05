@@ -56,16 +56,18 @@ final readonly class PessoaExportService
         }
 
         fwrite($handle, "\xEF\xBB\xBF");
-        fputcsv($handle, ['ID', 'Nome', 'Nome_Social', 'CPF', 'Data_Nascimento', 'Status'], ';');
+        fputcsv($handle, ['ID', 'Nome', 'Nome_Social', 'CPF', 'Data_Nascimento', 'Status', 'Tipo', 'Razao_Social'], ';');
 
         foreach ($pessoas as $pessoa) {
             fputcsv($handle, [
                 $pessoa->id,
                 $pessoa->nome,
                 $pessoa->nome_social ?? '',
-                $pessoa->cpf,
+                $pessoa->documento,
                 $pessoa->data_nascimento?->format('d/m/Y') ?? '',
                 $pessoa->status,
+                $pessoa->tipo,
+                $pessoa->razao_social ?? '',
             ], ';');
         }
 
@@ -83,9 +85,11 @@ final readonly class PessoaExportService
     {
         return [
             'id' => $p->id,
+            'tipo' => $p->tipo,
             'nome' => $p->nome,
             'nome_social' => $p->nome_social,
-            'cpf' => $p->cpf,
+            'razao_social' => $p->razao_social,
+            'documento' => $p->documento,
             'data_nascimento' => $p->data_nascimento?->toDateString(),
             'sexo' => $p->sexo,
             'estado_civil' => $p->estado_civil,

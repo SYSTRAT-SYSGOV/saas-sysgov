@@ -21,7 +21,7 @@ final class PessoaVinculoTest extends PessoasTestCase
 
     public function test_pessoa_acumula_multiplos_vinculos_sem_duplicar_cadastro(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
 
         $pessoa->vinculos()->create(['tipo_vinculo' => 'servidor_carreira', 'inicio' => '2020-01-01']);
         $pessoa->vinculos()->create(['tipo_vinculo' => 'municipe', 'inicio' => '2020-01-01']);
@@ -36,12 +36,24 @@ final class PessoaVinculoTest extends PessoasTestCase
 
     public function test_encerrar_vinculo_grava_fim_sem_excluir_o_registro(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
         $vinculo = $pessoa->vinculos()->create(['tipo_vinculo' => 'comissionado', 'inicio' => '2024-01-01']);
 
         $vinculo->update(['fim' => '2026-01-01']);
 
         self::assertSame(1, $pessoa->vinculos()->count());
+        self::assertSame('2026-01-01', $vinculo->refresh()->fim->toDateString());
+    }
+
+    public function test_pessoa_juridica_recebe_vinculo_fornecedor_como_qualquer_outro(): void
+    {
+        $juridica = Pessoa::factory()->juridica()->create();
+        $vinculo = $juridica->vinculos()->create(['tipo_vinculo' => 'fornecedor', 'inicio' => '2024-01-01']);
+
+        self::assertSame(1, $juridica->vinculos()->count());
+        self::assertNull($vinculo->fim);
+
+        $vinculo->update(['fim' => '2026-01-01']);
         self::assertSame('2026-01-01', $vinculo->refresh()->fim->toDateString());
     }
 }

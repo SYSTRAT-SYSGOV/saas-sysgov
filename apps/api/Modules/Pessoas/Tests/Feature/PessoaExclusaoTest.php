@@ -25,7 +25,7 @@ final class PessoaExclusaoTest extends PessoasTestCase
 
     public function test_exclusao_preserva_o_historico_relacionado(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
         $vinculo = $pessoa->vinculos()->create(['tipo_vinculo' => 'municipe', 'fim' => '2020-01-01']);
         $documento = $pessoa->documentos()->create(['tipo' => 'rg', 'numero' => '1234567']);
 
@@ -46,7 +46,7 @@ final class PessoaExclusaoTest extends PessoasTestCase
 
     public function test_exclusao_de_pessoa_com_vinculos_ativos_e_rejeitada(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Ativa', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Ativa', 'documento' => $this->cpfValido()]);
         $pessoa->vinculos()->create(['tipo_vinculo' => 'servidor_carreira', 'fim' => null]);
 
         $this->como($this->admin($this->tenant), $this->tenant)
@@ -59,10 +59,10 @@ final class PessoaExclusaoTest extends PessoasTestCase
     public function test_cpf_de_pessoa_excluida_continua_bloqueado_para_reuso(): void
     {
         $cpf = $this->cpfValido();
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $cpf]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $cpf]);
         $pessoa->delete();
 
         $this->expectException(QueryException::class);
-        Pessoa::create(['nome' => 'Outra Pessoa', 'cpf' => $cpf]);
+        Pessoa::create(['nome' => 'Outra Pessoa', 'documento' => $cpf]);
     }
 }

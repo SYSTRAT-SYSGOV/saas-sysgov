@@ -47,7 +47,7 @@ final class Concessionario extends Model
 
     protected $hidden = ['documento', 'documento_hash'];
 
-    protected $appends = ['documento_mascarado'];
+    protected $appends = ['documento_mascarado', 'documento_desmascarado'];
 
     protected $casts = [
         'documento' => 'encrypted',
@@ -55,6 +55,7 @@ final class Concessionario extends Model
         'telefone' => 'encrypted',
         'titular_falecido' => 'boolean',
         'data_falecimento_titular' => 'date',
+        'contatos_adicionais' => 'array',
     ];
 
     protected static function booted(): void
@@ -63,17 +64,29 @@ final class Concessionario extends Model
             if ($holder->pessoa_id) {
                 $pessoa = $holder->pessoa ?: \Modules\Pessoas\Models\Pessoa::find($holder->pessoa_id);
                 if ($pessoa) {
-                    $holder->documento = (string) $pessoa->cpf;
-                    $holder->documento_hash = (string) $pessoa->cpf_hash;
-                    return;
+                    $holder->documento = (string) $pessoa->documento;
+                    $holder->documento_hash = (string) $pessoa->documento_hash;
                 }
+            } else {
+                $holder->documento = Documento::somenteDigitos((string) $holder->documento);
+                $holder->documento_hash = Documento::hash($holder->documento);
             }
-            $holder->documento = Documento::somenteDigitos((string) $holder->documento);
-            $holder->documento_hash = Documento::hash($holder->documento);
+
+            // Compor endereço textual unificado se os campos estruturados estiverem preenchidos
+            if (!empty($holder->logradouro)) {
+                $partes = [
+                    $holder->logradouro . (!empty($holder->numero) ? ", {$holder->numero}" : ', s/n'),
+                    $holder->complemento,
+                    $holder->bairro,
+                    (!empty($holder->cidade) ? $holder->cidade : '') . (!empty($holder->uf) ? "/{$holder->uf}" : ''),
+                    !empty($holder->cep) ? "CEP {$holder->cep}" : '',
+                ];
+                $holder->endereco = implode(' - ', array_filter(array_map(fn ($parte) => trim((string) $parte), $partes)));
+            }
         });
     }
 
-    /** CPF/CNPJ sempre mascarado nas listagens (RN-05). */
+    /** CPF/CNPJ mascarado nas listagens padrão. */
     public function getDocumentoMascaradoAttribute(): string
     {
         if ($this->pessoa_id && $this->pessoa) {
@@ -81,6 +94,19 @@ final class Concessionario extends Model
         }
         try {
             return Documento::mascarar((string) $this->documento);
+        } catch (\Throwable) {
+            return '—';
+        }
+    }
+
+    /** CPF/CNPJ completo desmascarado para gestores administrativos autorizados. */
+    public function getDocumentoDesmascaradoAttribute(): string
+    {
+        if ($this->pessoa_id && $this->pessoa) {
+            return (string) $this->pessoa->documento;
+        }
+        try {
+            return (string) $this->documento;
         } catch (\Throwable) {
             return '—';
         }

@@ -46,8 +46,8 @@ final class Empreiteiro extends Model
     {
         static::saving(function (self $empreiteiro): void {
             if ($empreiteiro->pessoa_id && $empreiteiro->pessoa) {
-                $empreiteiro->documento = (string) $empreiteiro->pessoa->cpf;
-                $empreiteiro->documento_hash = (string) $empreiteiro->pessoa->cpf_hash;
+                $empreiteiro->documento = (string) $empreiteiro->pessoa->documento;
+                $empreiteiro->documento_hash = (string) $empreiteiro->pessoa->documento_hash;
                 return;
             }
             $empreiteiro->documento = Documento::somenteDigitos((string) $empreiteiro->documento);

@@ -16,15 +16,18 @@ import type {
   PessoaDocumento,
   PessoaEndereco,
   PessoaIntegracao,
+  PessoaSocio,
   PessoaSyncLog,
   PessoaUsuarioVinculo,
   PessoaVinculo,
   PromoverPessoaInput,
+  CreateSocioInput,
   UpdateContatoInput,
   UpdateDocumentoInput,
   UpdateEnderecoInput,
   UpdateIntegracaoInput,
   UpdatePessoaInput,
+  UpdateSocioInput,
 } from './types';
 
 export class PessoasClient implements BaseModuleClient {
@@ -104,6 +107,21 @@ export class PessoasClient implements BaseModuleClient {
 
   async deleteContato(pessoaId: number, contatoId: number): Promise<{ deleted: boolean }> {
     return this.api.request(`/${this.moduleName}/${pessoaId}/contatos/${contatoId}`, { method: 'DELETE' });
+  }
+
+  async addSocio(pessoaId: number, input: CreateSocioInput): Promise<PessoaSocio> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/socios`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  async updateSocio(pessoaId: number, socioId: number, input: UpdateSocioInput): Promise<PessoaSocio> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/socios/${socioId}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async encerrarSocio(pessoaId: number, socioId: number, fim?: string): Promise<PessoaSocio> {
+    return this.api.request(`/${this.moduleName}/${pessoaId}/socios/${socioId}/encerrar`, {
+      method: 'POST',
+      body: JSON.stringify(fim ? { fim } : {}),
+    });
   }
 
   async buscarPorDocumento(documento: string): Promise<Pessoa | null> {

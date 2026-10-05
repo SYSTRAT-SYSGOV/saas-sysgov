@@ -188,6 +188,18 @@ final class EmpreiteirosVistoriaTest extends CemiteriosTestCase
         self::assertSame('Ativa', Concessao::where('plot_id', $jazigo->id)->value('estado'));
     }
 
+    public function test_listar_processos_abandono_com_concessao_nao_dispara_erro_de_tipo(): void
+    {
+        $jazigo = $this->jazigoConcedido();
+        $this->processoEmEdital($jazigo, today()->toDateString());
+
+        $resposta = $this->como($this->admin, $this->tenant)->getJson('/api/cemiterios/processos-abandono');
+
+        $resposta->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonStructure(['data' => [['id', 'concessao' => ['id', 'numero', 'estado']]]]);
+    }
+
     private function empreiteiroApto(string $validade = '2027-12-31'): int
     {
         $id = $this->como($this->admin, $this->tenant)->postJson('/api/cemiterios/empreiteiros', ['nome' => 'Construtora Paz', 'documento' => $this->cpfValido()])

@@ -21,6 +21,9 @@ final class PessoaResource extends JsonResource
         if ($request->boolean('compact')) {
             return [
                 'id' => $this->id,
+                'tipo' => $this->tipo,
+                // `nome` já espelha a razão social para jurídica (ver Pessoa::booted()),
+                // então o PessoaPicker compartilhado não precisa de nenhum campo novo.
                 'nome' => $this->nome,
                 'nome_social' => $this->nome_social,
                 'cpf_mascarado' => $this->cpf_mascarado,
@@ -39,11 +42,21 @@ final class PessoaResource extends JsonResource
         return [
             'id' => $this->id,
             'tenant_id' => $this->tenant_id,
+            'tipo' => $this->tipo,
             'nome' => $this->nome,
             'nome_social' => $this->nome_social,
+            'razao_social' => $this->razao_social,
+            'nome_fantasia' => $this->nome_fantasia,
+            'inscricao_estadual' => $this->inscricao_estadual,
+            'inscricao_municipal' => $this->inscricao_municipal,
+            'porte' => $this->porte,
+            'natureza_juridica' => $this->natureza_juridica,
+            'responsavel_id' => $this->responsavel_id,
+            'documento_mascarado' => $this->documento_mascarado,
             'cpf_mascarado' => $this->cpf_mascarado,
             'pode_desmascarar' => $podeVerSensivel,
-            'cpf_desmascarado' => $this->when($podeVerSensivel && $request->boolean('reveal_sensitive'), fn () => (string) $this->cpf),
+            'documento_desmascarado' => $this->when($podeVerSensivel && $request->boolean('reveal_sensitive'), fn () => (string) $this->documento),
+            'cpf_desmascarado' => $this->when($podeVerSensivel && $request->boolean('reveal_sensitive'), fn () => (string) $this->documento),
             'data_nascimento' => $this->data_nascimento?->format('Y-m-d'),
             'sexo' => $this->sexo,
             'nome_mae' => $this->nome_mae,
@@ -62,6 +75,7 @@ final class PessoaResource extends JsonResource
             'documentos' => PessoaDocumentoResource::collection($this->whenLoaded('documentos')),
             'enderecos' => PessoaEnderecoResource::collection($this->whenLoaded('enderecos')),
             'contatos' => PessoaContatoResource::collection($this->whenLoaded('contatos')),
+            'socios' => PessoaSocioResource::collection($this->whenLoaded('socios')),
             'usuario' => $this->whenLoaded('usuario', fn () => $this->usuario ? [
                 'id' => $this->usuario->id,
                 'user_id' => $this->usuario->user_id,

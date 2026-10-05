@@ -6,7 +6,28 @@ export type TipoVinculoPessoa =
   | 'municipe'
   | 'contribuinte'
   | 'aluno'
-  | 'paciente';
+  | 'paciente'
+  | 'fornecedor'
+  | 'contratada'
+  | 'concessionaria'
+  | 'permissionaria'
+  | 'credenciada';
+
+export type TipoPessoa = 'fisica' | 'juridica';
+
+export type PapelSocio = 'socio' | 'socio_administrador' | 'representante_legal';
+
+export interface PessoaSocio {
+  id: number;
+  pessoa_id: number;
+  socio_pessoa_id: number;
+  socio_nome?: string | null;
+  socio_documento_mascarado?: string | null;
+  percentual_participacao?: string | null;
+  papel: PapelSocio;
+  data_entrada?: string | null;
+  data_saida?: string | null;
+}
 
 export interface PessoaVinculo {
   id: number;
@@ -61,9 +82,18 @@ export interface PessoaUsuarioVinculo {
 export interface Pessoa {
   id: number;
   tenant_id: number;
+  tipo: TipoPessoa;
   cpf_mascarado: string;
+  documento_mascarado?: string;
   nome: string;
   nome_social?: string | null;
+  razao_social?: string | null;
+  nome_fantasia?: string | null;
+  inscricao_estadual?: string | null;
+  inscricao_municipal?: string | null;
+  porte?: 'ME' | 'EPP' | 'DEMAIS' | null;
+  natureza_juridica?: string | null;
+  responsavel_id?: number | null;
   data_nascimento?: string | null;
   sexo?: string | null;
   nome_mae?: string | null;
@@ -77,14 +107,24 @@ export interface Pessoa {
   documentos?: PessoaDocumento[];
   enderecos?: PessoaEndereco[];
   contatos?: PessoaContato[];
+  socios?: PessoaSocio[];
   usuario?: PessoaUsuarioVinculo | null;
   created_at?: string;
   updated_at?: string;
 }
 
 export interface CreatePessoaInput {
-  nome: string;
-  cpf: string;
+  tipo?: TipoPessoa;
+  nome?: string;
+  cpf?: string;
+  razao_social?: string;
+  cnpj?: string;
+  nome_fantasia?: string;
+  inscricao_estadual?: string;
+  inscricao_municipal?: string;
+  porte?: 'ME' | 'EPP' | 'DEMAIS';
+  natureza_juridica?: string;
+  responsavel_id?: number;
   nome_social?: string;
   data_nascimento?: string;
   sexo?: string;
@@ -100,6 +140,7 @@ export type UpdatePessoaInput = Partial<CreatePessoaInput> & { status?: 'ativo' 
 
 export interface PessoaCompacta {
   id: number;
+  tipo?: TipoPessoa;
   nome: string;
   nome_social?: string | null;
   cpf_mascarado: string;
@@ -108,12 +149,26 @@ export interface PessoaCompacta {
 
 export interface ListPessoasParams {
   q?: string;
+  tipo?: TipoPessoa;
   tipo_vinculo?: TipoVinculoPessoa;
   status?: 'ativo' | 'inativo';
+  falecido?: boolean;
+  sexo?: string;
+  data_nascimento_de?: string;
+  data_nascimento_ate?: string;
   per_page?: number;
   page?: number;
   compact?: boolean;
 }
+
+export interface CreateSocioInput {
+  socio_pessoa_id: number;
+  percentual_participacao?: number;
+  papel?: PapelSocio;
+  data_entrada?: string;
+}
+
+export type UpdateSocioInput = Partial<Omit<CreateSocioInput, 'socio_pessoa_id'>> & { data_saida?: string | null };
 
 
 export interface CreateVinculoInput {

@@ -25,12 +25,12 @@ final class CpfUnicidadeEBuscaTest extends PessoasTestCase
         $cpf = $this->cpfValido();
 
         $this->noTenant($this->tenantA);
-        $pessoaA = Pessoa::create(['nome' => 'Pessoa A', 'cpf' => $cpf]);
+        $pessoaA = Pessoa::create(['nome' => 'Pessoa A', 'documento' => $cpf]);
 
         $this->noTenant($this->tenantB);
-        $pessoaB = Pessoa::create(['nome' => 'Pessoa B', 'cpf' => $cpf]);
+        $pessoaB = Pessoa::create(['nome' => 'Pessoa B', 'documento' => $cpf]);
 
-        self::assertSame($pessoaA->cpf_hash, $pessoaB->cpf_hash);
+        self::assertSame($pessoaA->documento_hash, $pessoaB->documento_hash);
         self::assertNotSame($pessoaA->id, $pessoaB->id);
     }
 
@@ -38,7 +38,7 @@ final class CpfUnicidadeEBuscaTest extends PessoasTestCase
     {
         $cpf = $this->cpfValido();
         $this->noTenant($this->tenantA);
-        Pessoa::create(['nome' => 'Titular Existente', 'cpf' => $cpf]);
+        Pessoa::create(['nome' => 'Titular Existente', 'documento' => $cpf]);
 
         $cpfComMascara = substr($cpf, 0, 3) . '.' . substr($cpf, 3, 3) . '.' . substr($cpf, 6, 3) . '-' . substr($cpf, 9, 2);
 
@@ -56,7 +56,7 @@ final class CpfUnicidadeEBuscaTest extends PessoasTestCase
     {
         $cpf = $this->cpfValido();
         $this->noTenant($this->tenantA);
-        $pessoa = Pessoa::create(['nome' => 'Carlos Pereira', 'cpf' => $cpf]);
+        $pessoa = Pessoa::create(['nome' => 'Carlos Pereira', 'documento' => $cpf]);
 
         $admin = $this->como($this->admin($this->tenantA), $this->tenantA);
 

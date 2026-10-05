@@ -10,28 +10,34 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Modules\Pessoas\Http\Controllers\Concerns\AutorizaPermissao;
+use Modules\Pessoas\Http\Requests\EncerrarSocioRequest;
 use Modules\Pessoas\Http\Requests\EncerrarVinculoRequest;
 use Modules\Pessoas\Http\Requests\StoreContatoRequest;
 use Modules\Pessoas\Http\Requests\StoreDocumentoRequest;
 use Modules\Pessoas\Http\Requests\StoreEnderecoRequest;
 use Modules\Pessoas\Http\Requests\StorePessoaRequest;
+use Modules\Pessoas\Http\Requests\StoreSocioRequest;
 use Modules\Pessoas\Http\Requests\StoreVinculoRequest;
 use Modules\Pessoas\Http\Requests\UpdateContatoRequest;
 use Modules\Pessoas\Http\Requests\UpdateDocumentoRequest;
 use Modules\Pessoas\Http\Requests\UpdateEnderecoRequest;
 use Modules\Pessoas\Http\Requests\UpdatePessoaRequest;
+use Modules\Pessoas\Http\Requests\UpdateSocioRequest;
 use Modules\Pessoas\Http\Resources\PessoaContatoResource;
 use Modules\Pessoas\Http\Resources\PessoaDocumentoResource;
 use Modules\Pessoas\Http\Resources\PessoaEnderecoResource;
 use Modules\Pessoas\Http\Resources\PessoaResource;
+use Modules\Pessoas\Http\Resources\PessoaSocioResource;
 use Modules\Pessoas\Http\Resources\PessoaVinculoResource;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Models\PessoaContato;
 use Modules\Pessoas\Models\PessoaDocumento;
 use Modules\Pessoas\Models\PessoaEndereco;
+use Modules\Pessoas\Models\PessoaSocio;
 use Modules\Pessoas\Models\PessoaVinculo;
 use Modules\Pessoas\Services\PessoaExportService;
 use Modules\Pessoas\Services\PessoaService;
+use Modules\Pessoas\Services\SocioService;
 use Modules\Pessoas\Services\VinculoService;
 
 final class PessoaController extends Controller
@@ -41,6 +47,7 @@ final class PessoaController extends Controller
     public function __construct(
         private readonly PessoaService $pessoas,
         private readonly VinculoService $vinculos,
+        private readonly SocioService $socios,
         private readonly PessoaExportService $export,
         private readonly AuditLogger $audit,
     ) {}
@@ -64,7 +71,9 @@ final class PessoaController extends Controller
     {
         $this->authorize('viewAny', Pessoa::class);
 
-        $paginator = $this->pessoas->listar($request->only(['q', 'tipo_vinculo', 'status', 'per_page']));
+        $paginator = $this->pessoas->listar($request->only([
+            'q', 'tipo', 'tipo_vinculo', 'status', 'falecido', 'data_nascimento_de', 'data_nascimento_ate', 'sexo', 'per_page',
+        ]));
 
         return response()->json([
             'data' => PessoaResource::collection($paginator->items()),
@@ -94,7 +103,7 @@ final class PessoaController extends Controller
             );
         }
 
-        $pessoa->load(['vinculos', 'documentos', 'enderecos', 'contatos', 'usuario']);
+        $pessoa->load(['vinculos', 'documentos', 'enderecos', 'contatos', 'socios.socio', 'usuario']);
 
         return response()->json(new PessoaResource($pessoa));
     }
@@ -254,6 +263,34 @@ final class PessoaController extends Controller
         return response()->json(['deleted' => true]);
     }
 
+    public function storeSocio(StoreSocioRequest $request, Pessoa $pessoa): JsonResponse
+    {
+        $this->authorize('update', $pessoa);
+
+        $socio = $this->socios->adicionar($pessoa, $request->validated());
+
+        return response()->json(new PessoaSocioResource($socio->load('socio')), 201);
+    }
+
+    public function updateSocio(UpdateSocioRequest $request, Pessoa $pessoa, PessoaSocio $socio): JsonResponse
+    {
+        $this->authorize('update', $pessoa);
+
+        $socio = $this->socios->atualizar($socio, $request->validated());
+
+        return response()->json(new PessoaSocioResource($socio->load('socio')));
+    }
+
+    public function encerrarSocio(EncerrarSocioRequest $request, Pessoa $pessoa, PessoaSocio $socio): JsonResponse
+    {
+        $this->authorize('update', $pessoa);
+
+        $dados = $request->validated();
+        $this->socios->encerrar($socio, $dados['fim'] ?? null);
+
+        return response()->json(new PessoaSocioResource($socio->load('socio')));
+    }
+
     public function auditarAcessoSensivel(Request $request, Pessoa $pessoa): JsonResponse
     {
         $this->authorize('viewSensitive', $pessoa);
@@ -272,7 +309,8 @@ final class PessoaController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'cpf' => (string) $pessoa->cpf,
+            'documento' => (string) $pessoa->documento,
+            'cpf' => (string) $pessoa->documento,
         ]);
     }
 }

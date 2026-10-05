@@ -23,7 +23,7 @@ final class PromocaoControllerTest extends PessoasTestCase
 
     public function test_admin_promove_pessoa_a_usuario_via_api(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
         $role = Role::create(['name' => 'Munícipe', 'slug' => 'municipe_' . $pessoa->id, 'scope' => 'tenant', 'tenant_id' => $this->tenant->id, 'guard_name' => 'web']);
 
         $this->como($this->admin($this->tenant), $this->tenant)
@@ -35,12 +35,24 @@ final class PromocaoControllerTest extends PessoasTestCase
 
     public function test_promocao_sem_permissao_e_rejeitada(): void
     {
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $this->cpfValido()]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $this->cpfValido()]);
         $role = Role::create(['name' => 'Munícipe', 'slug' => 'municipe_' . $pessoa->id, 'scope' => 'tenant', 'tenant_id' => $this->tenant->id, 'guard_name' => 'web']);
         $usuario = $this->usuario($this->tenant, ['cadastros.pessoas.view']);
 
         $this->como($usuario, $this->tenant)
             ->postJson("/api/pessoas/{$pessoa->id}/promover", ['email' => 'maria@teste.gov.br', 'role_id' => $role->id])
+            ->assertForbidden();
+
+        self::assertSame(0, PessoaUsuario::count());
+    }
+
+    public function test_pessoa_juridica_nao_pode_ser_promovida_via_api(): void
+    {
+        $juridica = Pessoa::factory()->juridica()->create();
+        $role = Role::create(['name' => 'Fornecedor', 'slug' => 'fornecedor_' . $juridica->id, 'scope' => 'tenant', 'tenant_id' => $this->tenant->id, 'guard_name' => 'web']);
+
+        $this->como($this->admin($this->tenant), $this->tenant)
+            ->postJson("/api/pessoas/{$juridica->id}/promover", ['email' => 'contato@empresa.com', 'role_id' => $role->id])
             ->assertForbidden();
 
         self::assertSame(0, PessoaUsuario::count());

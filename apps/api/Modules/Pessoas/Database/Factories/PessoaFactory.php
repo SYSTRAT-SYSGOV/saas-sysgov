@@ -20,8 +20,9 @@ final class PessoaFactory extends Factory
     {
         return [
             'tenant_id' => Tenant::factory(),
+            'tipo' => 'fisica',
             'nome' => 'Cidadão ' . Str::random(6),
-            'cpf' => $this->gerarCpfValido(),
+            'documento' => $this->gerarCpfValido(),
             'nome_social' => null,
             'data_nascimento' => '1990-05-15',
             'sexo' => 'M',
@@ -33,6 +34,52 @@ final class PessoaFactory extends Factory
             'nis' => null,
             'status' => 'ativo',
         ];
+    }
+
+    /** @return static */
+    public function juridica(): self
+    {
+        $razaoSocial = 'Empresa ' . Str::random(6) . ' Ltda';
+
+        return $this->state(fn (array $attrs) => [
+            'tipo' => 'juridica',
+            'nome' => $razaoSocial,
+            'documento' => $this->gerarCnpjValido(),
+            'razao_social' => $razaoSocial,
+            'nome_social' => null,
+            'nome_mae' => null,
+            'nome_pai' => null,
+            'estado_civil' => null,
+            'data_nascimento' => null,
+            'sexo' => null,
+        ]);
+    }
+
+    private function gerarCnpjValido(): string
+    {
+        $n = [];
+        for ($i = 0; $i < 12; $i++) {
+            $n[$i] = random_int(0, 9);
+        }
+
+        $pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        $pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+
+        $soma = 0;
+        foreach ($pesos1 as $i => $peso) {
+            $soma += $n[$i] * $peso;
+        }
+        $resto = $soma % 11;
+        $n[12] = $resto < 2 ? 0 : 11 - $resto;
+
+        $soma = 0;
+        foreach ($pesos2 as $i => $peso) {
+            $soma += $n[$i] * $peso;
+        }
+        $resto = $soma % 11;
+        $n[13] = $resto < 2 ? 0 : 11 - $resto;
+
+        return implode('', $n);
     }
 
     private function gerarCpfValido(): string

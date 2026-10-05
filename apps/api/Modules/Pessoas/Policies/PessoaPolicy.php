@@ -55,7 +55,8 @@ final readonly class PessoaPolicy
 
     public function promote(User $user, Pessoa $pessoa): bool
     {
-        return $this->temPermissao($user, 'cadastros.pessoas.promote')
+        return $pessoa->tipo === 'fisica'
+            && $this->temPermissao($user, 'cadastros.pessoas.promote')
             && $this->mesmoTenant($user, $pessoa);
     }
 

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button, Modal, Select, Switch, Input, Field } from '@/components/ui';
 import { cn } from '@sysgov/ui';
-import { pessoasApi, TIPOS_VINCULO, type TipoVinculo } from './api';
+import { pessoasApi, TIPOS_VINCULO, type TipoVinculo, type TipoPessoa } from './api';
 import { useCep } from './hooks/useCep';
 import { ErroBox, useAcao } from './views/comum';
 
@@ -30,7 +30,29 @@ function validarCpf(cpfLimpo: string): boolean {
   return resto === parseInt(cpfLimpo[10] ?? '0', 10);
 }
 
+function validarCnpj(cnpjLimpo: string): boolean {
+  if (cnpjLimpo.length !== 14 || /^(\d)\1{13}$/.test(cnpjLimpo)) return false;
+  const digitos = cnpjLimpo.split('').map((d) => parseInt(d, 10));
+  const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const calcular = (base: number[], pesos: number[]): number => {
+    const soma = base.reduce((acc, d, i) => acc + d * pesos[i]!, 0);
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  const d1 = calcular(digitos.slice(0, 12), pesos1);
+  if (d1 !== digitos[12]) return false;
+  const d2 = calcular([...digitos.slice(0, 12), d1], pesos2);
+  return d2 === digitos[13];
+}
+
 const opcoesVinculo = Object.entries(TIPOS_VINCULO).map(([value, label]) => ({ value, label }));
+
+const opcoesPorte = [
+  { value: 'ME', label: 'Microempresa (ME)' },
+  { value: 'EPP', label: 'Empresa de Pequeno Porte (EPP)' },
+  { value: 'DEMAIS', label: 'Demais' },
+];
 
 const opcoesSexo = [
   { value: 'M', label: 'Masculino' },
@@ -56,9 +78,10 @@ interface NovaPessoaWizardProps {
 export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, onConcluido }) => {
   const [passo, setPasso] = useState<Passo>(1);
   const [pessoaId, setPessoaId] = useState<number | null>(null);
+  const [tipo, setTipo] = useState<TipoPessoa>('fisica');
 
   // Estados dos formulários por etapa
-  // Etapa 1: Dados Civis
+  // Etapa 1: Dados Civis (pessoa física)
   const [civil, setCivil] = useState({
     nome: '',
     cpf: '',
@@ -75,6 +98,17 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
     data_falecimento: '',
     certidao_obito_numero: '',
     cartorio_obito: '',
+  });
+
+  // Etapa 1: Dados cadastrais (pessoa jurídica)
+  const [juridica, setJuridica] = useState({
+    razao_social: '',
+    nome_fantasia: '',
+    cnpj: '',
+    inscricao_estadual: '',
+    inscricao_municipal: '',
+    porte: '',
+    natureza_juridica: '',
   });
 
   // Etapa 2: Vínculo
@@ -127,6 +161,22 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
       formatado = `${limpo.slice(0, 3)}.${limpo.slice(3)}`;
     }
     setCivil((c) => ({ ...c, cpf: formatado }));
+  };
+
+  // Formatar CNPJ com máscara ao digitar
+  const handleCnpjChange = (valor: string) => {
+    const limpo = valor.replace(/\D/g, '').slice(0, 14);
+    let formatado = limpo;
+    if (limpo.length > 12) {
+      formatado = `${limpo.slice(0, 2)}.${limpo.slice(2, 5)}.${limpo.slice(5, 8)}/${limpo.slice(8, 12)}-${limpo.slice(12)}`;
+    } else if (limpo.length > 8) {
+      formatado = `${limpo.slice(0, 2)}.${limpo.slice(2, 5)}.${limpo.slice(5, 8)}/${limpo.slice(8)}`;
+    } else if (limpo.length > 5) {
+      formatado = `${limpo.slice(0, 2)}.${limpo.slice(2, 5)}.${limpo.slice(5)}`;
+    } else if (limpo.length > 2) {
+      formatado = `${limpo.slice(0, 2)}.${limpo.slice(2)}`;
+    }
+    setJuridica((j) => ({ ...j, cnpj: formatado }));
   };
 
   // Consulta de CEP integrada
@@ -231,6 +281,31 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
 
   const criarPessoa = async () => {
     setErro(null);
+
+    if (tipo === 'juridica') {
+      if (!juridica.razao_social.trim()) {
+        setErro({ status: 422, mensagem: 'Informe a razão social da pessoa jurídica.' });
+        return;
+      }
+
+      const dadosEnvio: Record<string, unknown> = {
+        tipo: 'juridica',
+        razao_social: juridica.razao_social.trim(),
+        cnpj: juridica.cnpj,
+        nome_fantasia: juridica.nome_fantasia.trim() || undefined,
+        inscricao_estadual: juridica.inscricao_estadual.trim() || undefined,
+        inscricao_municipal: juridica.inscricao_municipal.trim() || undefined,
+        porte: juridica.porte || undefined,
+        natureza_juridica: juridica.natureza_juridica.trim() || undefined,
+      };
+
+      const pessoa = await executar(() => pessoasApi.criar(dadosEnvio));
+      if (!pessoa) return;
+      setPessoaId(pessoa.id);
+      setPasso(2);
+      return;
+    }
+
     if (civil.falecido) {
       if (!civil.data_falecimento) {
         setErro({ status: 422, mensagem: 'Informe a data de falecimento da pessoa.' });
@@ -243,6 +318,7 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
     }
 
     const dadosEnvio: Record<string, unknown> = {
+      tipo: 'fisica',
       nome: civil.nome.trim(),
       cpf: civil.cpf,
       nome_social: civil.nome_social.trim() || undefined,
@@ -295,7 +371,7 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
     <Modal
       open
       onClose={onFechar}
-      title="Cadastro de Pessoa Física"
+      title={tipo === 'juridica' ? 'Cadastro de Pessoa Jurídica' : 'Cadastro de Pessoa Física'}
       description="Cadastramento no Master Data (MDM) do ecossistema SYSGOV."
       size="2xl"
       footer={
@@ -353,7 +429,7 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
         </div>
       }
     >
-      <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
+      <div className="space-y-6">
         {/* STEPPER VISUAL */}
         <div className="grid grid-cols-4 gap-2 border-b border-border pb-4">
           {passosConfig.map((item) => {
@@ -395,16 +471,122 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
 
         <ErroBox erro={erro} />
 
-        {/* PASSO 1: IDENTIFICAÇÃO CIVIL */}
+        {/* PASSO 1: IDENTIFICAÇÃO (RAMIFICADA POR TIPO) */}
         {passo === 1 && (
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">1. Identificação Básica</h3>
               <p className="text-xs text-muted-foreground">
-                Informe os dados do documento oficial da pessoa física.
+                Selecione o tipo de pessoa e informe os dados do documento oficial.
               </p>
             </div>
 
+            <Field label="Tipo de Pessoa" required>
+              <Select
+                value={tipo}
+                onChange={(v) => setTipo((v as TipoPessoa) || 'fisica')}
+                options={[
+                  { value: 'fisica', label: 'Pessoa Física' },
+                  { value: 'juridica', label: 'Pessoa Jurídica' },
+                ]}
+              />
+            </Field>
+
+            {tipo === 'juridica' ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="sm:col-span-2">
+                  <Field label="Razão Social" required>
+                    <Input
+                      placeholder="Ex: Construtora Exemplo Ltda"
+                      value={juridica.razao_social}
+                      onChange={(e) => setJuridica({ ...juridica, razao_social: e.target.value })}
+                      required
+                    />
+                  </Field>
+                </div>
+
+                <div>
+                  <Field label="CNPJ" required hint="Validação algorítmica de 14 dígitos">
+                    <Input
+                      className="font-mono tabular-nums"
+                      placeholder="00.000.000/0000-00"
+                      value={juridica.cnpj}
+                      onChange={(e) => handleCnpjChange(e.target.value)}
+                      required
+                    />
+                    {(() => {
+                      const cnpjL = juridica.cnpj.replace(/\D/g, '');
+                      const cComp = cnpjL.length === 14;
+                      const cVal = cComp && validarCnpj(cnpjL);
+                      if (!cComp) return null;
+                      return (
+                        <span
+                          className={cn(
+                            'text-xs flex items-center gap-1 font-medium mt-1',
+                            cVal ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
+                          )}
+                        >
+                          {cVal ? <CheckCircle2 className="size-3.5" /> : <AlertCircle className="size-3.5" />}
+                          {cVal ? 'CNPJ válido' : 'Dígitos verificadores inválidos'}
+                        </span>
+                      );
+                    })()}
+                  </Field>
+                </div>
+
+                <div>
+                  <Field label="Nome Fantasia">
+                    <Input
+                      placeholder="Nome comercial"
+                      value={juridica.nome_fantasia}
+                      onChange={(e) => setJuridica({ ...juridica, nome_fantasia: e.target.value })}
+                    />
+                  </Field>
+                </div>
+
+                <div>
+                  <Field label="Inscrição Estadual">
+                    <Input
+                      className="font-mono tabular-nums"
+                      value={juridica.inscricao_estadual}
+                      onChange={(e) => setJuridica({ ...juridica, inscricao_estadual: e.target.value })}
+                    />
+                  </Field>
+                </div>
+
+                <div>
+                  <Field label="Inscrição Municipal">
+                    <Input
+                      className="font-mono tabular-nums"
+                      value={juridica.inscricao_municipal}
+                      onChange={(e) => setJuridica({ ...juridica, inscricao_municipal: e.target.value })}
+                    />
+                  </Field>
+                </div>
+
+                <div>
+                  <Field label="Porte">
+                    <Select
+                      value={juridica.porte || null}
+                      onChange={(v) => setJuridica({ ...juridica, porte: String(v ?? '') })}
+                      options={opcoesPorte}
+                      placeholder="Selecione o porte"
+                    />
+                  </Field>
+                </div>
+
+                <div>
+                  <Field label="Natureza Jurídica">
+                    <Input
+                      placeholder="Ex: Sociedade Empresária Limitada"
+                      value={juridica.natureza_juridica}
+                      onChange={(e) => setJuridica({ ...juridica, natureza_juridica: e.target.value })}
+                    />
+                  </Field>
+                </div>
+              </div>
+            ) : (
+            <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="sm:col-span-2">
                 <Field label="Nome Completo" required>
@@ -596,6 +778,8 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
                 )}
               </div>
             </div>
+            </>
+            )}
           </div>
         )}
 

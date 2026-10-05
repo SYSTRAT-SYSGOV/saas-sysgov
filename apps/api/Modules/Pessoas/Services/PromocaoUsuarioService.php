@@ -22,6 +22,10 @@ final readonly class PromocaoUsuarioService
 
     public function promover(Pessoa $pessoa, string $email, Role $role, ?int $promovidoPor): PessoaUsuario
     {
+        if ($pessoa->tipo !== 'fisica') {
+            throw new RegraNegocioException('pessoa.juridica_nao_promovivel', 'Apenas pessoa física pode ser promovida a usuário.');
+        }
+
         if ($pessoa->usuario()->exists()) {
             throw new RegraNegocioException('pessoa.ja_promovida', 'Esta pessoa já possui usuário vinculado.');
         }

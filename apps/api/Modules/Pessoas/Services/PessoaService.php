@@ -12,25 +12,45 @@ use Modules\Pessoas\Models\PessoaDocumento;
 use Modules\Pessoas\Models\PessoaEndereco;
 use Modules\Pessoas\Support\Documento;
 
-/** Cadastro, atualização e busca de pessoas físicas e suas sub-entidades (MDM). */
+/** Cadastro, atualização e busca de pessoas físicas e jurídicas e suas sub-entidades (MDM). */
 final readonly class PessoaService
 {
     /** @param array<string, mixed> $dados */
     public function criar(array $dados): Pessoa
     {
-        return Pessoa::create($dados);
+        return Pessoa::create($this->normalizarDocumento($dados));
     }
 
     /** @param array<string, mixed> $dados */
     public function atualizar(Pessoa $pessoa, array $dados): Pessoa
     {
-        $pessoa->update($dados);
+        $pessoa->update($this->normalizarDocumento($dados));
 
         return $pessoa;
     }
 
     /**
-     * @param array{q?: string, tipo_vinculo?: string, status?: string, per_page?: int, falecido?: bool|string|int} $filtros
+     * Mapeia os campos de entrada `cpf`/`cnpj` (contrato de API por tipo, ver design.md
+     * Decisão 4) para a coluna única `documento`.
+     *
+     * @param array<string, mixed> $dados
+     * @return array<string, mixed>
+     */
+    private function normalizarDocumento(array $dados): array
+    {
+        if (array_key_exists('cnpj', $dados)) {
+            $dados['documento'] = $dados['cnpj'];
+            unset($dados['cnpj']);
+        } elseif (array_key_exists('cpf', $dados)) {
+            $dados['documento'] = $dados['cpf'];
+            unset($dados['cpf']);
+        }
+
+        return $dados;
+    }
+
+    /**
+     * @param array{q?: string, tipo?: string, tipo_vinculo?: string, status?: string, per_page?: int, falecido?: bool|string|int, data_nascimento_de?: string, data_nascimento_ate?: string, sexo?: string} $filtros
      * @return LengthAwarePaginator<int, Pessoa>
      */
     public function listar(array $filtros = []): LengthAwarePaginator
@@ -46,31 +66,48 @@ final readonly class PessoaService
 
                 if (strlen($digitos) === 11) {
                     $query->where(function ($sub) use ($digitos, $qLimpo): void {
-                        $sub->where('cpf_hash', Documento::hash($digitos))
+                        $sub->where(function ($doc) use ($digitos): void {
+                            $doc->where('tipo', 'fisica')->where('documento_hash', Documento::hash($digitos));
+                        })
                             ->orWhere('nome', 'like', "%{$qLimpo}%")
-                            ->orWhere('nome_social', 'like', "%{$qLimpo}%");
+                            ->orWhere('nome_social', 'like', "%{$qLimpo}%")
+                            ->orWhere('razao_social', 'like', "%{$qLimpo}%");
                     });
-                } elseif (strlen($digitos) >= 3 && preg_match('/^[0-9.\-\s]+$/', $qLimpo)) {
-                    // Busca parcial por CPF (quando usuário digita números/máscara)
+                } elseif (strlen($digitos) === 14) {
+                    $query->where(function ($sub) use ($digitos, $qLimpo): void {
+                        $sub->where(function ($doc) use ($digitos): void {
+                            $doc->where('tipo', 'juridica')->where('documento_hash', Documento::hash($digitos));
+                        })
+                            ->orWhere('razao_social', 'like', "%{$qLimpo}%")
+                            ->orWhere('nome_fantasia', 'like', "%{$qLimpo}%");
+                    });
+                } elseif (strlen($digitos) >= 3 && preg_match('/^[0-9.\-\/\s]+$/', $qLimpo)) {
+                    // Busca parcial por documento (quando usuário digita números/máscara incompletos)
                     $candidatos = Pessoa::query()
-                        ->select(['id', 'cpf'])
+                        ->select(['id', 'documento'])
                         ->limit(500)
                         ->get();
-                    $ids = $candidatos->filter(fn ($p) => str_contains((string) $p->cpf, $digitos))->pluck('id')->all();
+                    $ids = $candidatos->filter(fn ($p) => str_contains((string) $p->documento, $digitos))->pluck('id')->all();
                     $query->whereIn('id', $ids);
                 } else {
                     $query->where(function ($sub) use ($qLimpo): void {
                         $sub->where('nome', 'like', "%{$qLimpo}%")
-                            ->orWhere('nome_social', 'like', "%{$qLimpo}%");
+                            ->orWhere('nome_social', 'like', "%{$qLimpo}%")
+                            ->orWhere('razao_social', 'like', "%{$qLimpo}%")
+                            ->orWhere('nome_fantasia', 'like', "%{$qLimpo}%");
                     });
                 }
             })
+            ->when($filtros['tipo'] ?? null, fn ($query, string $tipo) => $query->where('tipo', $tipo))
             ->when($filtros['tipo_vinculo'] ?? null, fn ($query, string $tipo) => $query->whereHas(
                 'vinculos',
                 fn ($vinculo) => $vinculo->where('tipo_vinculo', $tipo)
             ))
             ->when($filtros['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when(isset($filtros['falecido']), fn ($query) => $query->where('falecido', filter_var($filtros['falecido'], FILTER_VALIDATE_BOOLEAN)))
+            ->when($filtros['data_nascimento_de'] ?? null, fn ($query, string $data) => $query->whereDate('data_nascimento', '>=', $data))
+            ->when($filtros['data_nascimento_ate'] ?? null, fn ($query, string $data) => $query->whereDate('data_nascimento', '<=', $data))
+            ->when($filtros['sexo'] ?? null, fn ($query, string $sexo) => $query->where('sexo', $sexo))
             ->orderBy('nome')
             ->paginate((int) ($filtros['per_page'] ?? 25));
     }

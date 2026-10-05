@@ -56,7 +56,7 @@ final class SyncLogControllerTest extends PessoasTestCase
         Http::fake(['prefeitura.example/*' => Http::response(['nome' => 'Pessoa Atualizada'])]);
         $integracao = PessoaIntegracao::create(['nome' => 'Cadastro Único', 'api_url' => 'https://prefeitura.example/api', 'is_active' => true]);
         $cpf = $this->cpfValido();
-        Pessoa::create(['nome' => 'Pessoa Original', 'cpf' => $cpf]);
+        Pessoa::create(['nome' => 'Pessoa Original', 'documento' => $cpf]);
         $log = PessoaSyncLog::create(['integracao_id' => $integracao->id, 'cpf' => $cpf, 'tipo' => 'importacao_pessoa', 'direcao' => 'inbound', 'status' => 'erro', 'registros_processados' => 1, 'registros_sucesso' => 0, 'registros_falha' => 1]);
 
         $this->como($this->admin($this->tenant), $this->tenant)

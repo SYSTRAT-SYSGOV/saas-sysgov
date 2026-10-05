@@ -120,6 +120,7 @@ export interface CampoForm {
   dica?: string;
   multiplo?: boolean;
   aceitar?: string;
+  colSpan?: 1 | 2;
   renderCustom?: (
     valor: unknown,
     onChange: (val: unknown) => void,
@@ -236,14 +237,17 @@ export const FormModal: React.FC<{
         </div>
       }
     >
-      <form id={formId} onSubmit={enviar} className="grid gap-3 sm:grid-cols-2">
-        {campos.map((c) => (
-          <div key={c.nome} className={c.tipo === 'textarea' ? 'sm:col-span-2' : ''}>
-            <Field label={c.rotulo} required={c.obrigatorio} hint={c.dica} error={erro?.campos?.[c.nome]?.[0]}>
-              {controle(c)}
-            </Field>
-          </div>
-        ))}
+      <form id={formId} onSubmit={enviar} className="grid gap-4 sm:grid-cols-2">
+        {campos.map((c) => {
+          const ocupaDuasColunas = c.colSpan === 2 || (c.colSpan !== 1 && (c.tipo === 'textarea' || c.tipo === 'custom'));
+          return (
+            <div key={c.nome} className={ocupaDuasColunas ? 'sm:col-span-2' : 'col-span-1'}>
+              <Field label={c.rotulo} required={c.obrigatorio} hint={c.dica} error={erro?.campos?.[c.nome]?.[0]}>
+                {controle(c)}
+              </Field>
+            </div>
+          );
+        })}
       </form>
       <div className="mt-3"><ErroBox erro={erro} /></div>
     </Modal>
@@ -264,3 +268,20 @@ export function aninhar(valores: Record<string, unknown>): Record<string, unknow
   });
   return saida;
 }
+
+/**
+ * Sanitiza campos textuais legados (como nomes, endereços e anotações importadas).
+ * Registros legados frequentemente contêm apenas ".", "-", "sem nome" ou espaços.
+ * Retorna null quando o valor não contiver conteúdo real identificável.
+ */
+export function sanitizarTextoLegado(valor?: string | null): string | null {
+  if (!valor) return null;
+  const limpo = valor.trim();
+  if (!limpo || /^[\s.\-_/\\*]+$/.test(limpo)) return null;
+  const minusculo = limpo.toLowerCase();
+  if (['sem nome', 'nao informado', 'não informado', 'indefinido', 'desconhecido', 'n/d', 'null', 'undefined'].includes(minusculo)) {
+    return null;
+  }
+  return limpo;
+}
+

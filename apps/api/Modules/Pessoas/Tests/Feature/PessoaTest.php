@@ -24,28 +24,28 @@ final class PessoaTest extends PessoasTestCase
     public function test_cadastro_unico_por_tenant_rejeita_cpf_duplicado(): void
     {
         $cpf = $this->cpfValido();
-        Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $cpf]);
+        Pessoa::create(['nome' => 'Maria Titular', 'documento' => $cpf]);
 
         $this->expectException(QueryException::class);
-        Pessoa::create(['nome' => 'Outra Pessoa', 'cpf' => $cpf]);
+        Pessoa::create(['nome' => 'Outra Pessoa', 'documento' => $cpf]);
     }
 
     public function test_mesmo_cpf_e_permitido_em_tenants_diferentes(): void
     {
         $cpf = $this->cpfValido();
-        Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $cpf]);
+        Pessoa::create(['nome' => 'Maria Titular', 'documento' => $cpf]);
 
         $outroTenant = $this->criarTenant('pref-b');
         $this->noTenant($outroTenant);
 
-        $pessoaB = Pessoa::create(['nome' => 'Maria Titular (B)', 'cpf' => $cpf]);
+        $pessoaB = Pessoa::create(['nome' => 'Maria Titular (B)', 'documento' => $cpf]);
         self::assertSame($outroTenant->id, $pessoaB->tenant_id);
     }
 
     public function test_cpf_e_cifrado_e_mascarado(): void
     {
         $cpf = $this->cpfValido();
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $cpf]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $cpf]);
 
         self::assertNotSame($cpf, $pessoa->getRawOriginal('cpf'));
         self::assertStringStartsWith('***.', $pessoa->cpf_mascarado);

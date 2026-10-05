@@ -89,7 +89,6 @@ export const InventarioView: React.FC = () => {
   const { can } = useCan();
   const gerencia = can('cemiterios.inventario.manage');
   const {
-    navegarParaMapa,
     cemiterioAtivoId,
     cemiterioAtivo,
     cemiteriosDisponiveis,
@@ -602,31 +601,13 @@ export const InventarioView: React.FC = () => {
             >
               <FileText className="h-3.5 w-3.5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                navegarParaMapa({
-                  jazigoId: row.original.id,
-                  codigo: row.original.codigo,
-                  lat: row.original.lat,
-                  lng: row.original.lng,
-                });
-              }}
-              title="Ver no Mapa GIS"
-              aria-label="Ver no Mapa GIS"
-              className="h-7 w-7 p-0 text-primary hover:text-primary/80"
-            >
-              <MapPin className="h-3.5 w-3.5" />
-            </Button>
           </div>
         ),
       },
     ];
 
     return cols;
-  }, [jazigosFiltrados, selecionadosIds, parqueIdEfetivo, navegarParaMapa]);
+  }, [jazigosFiltrados, selecionadosIds, parqueIdEfetivo]);
 
   const jazigosSelecionados = useMemo(
     () => todosJazigos.filter((j) => selecionadosIds.has(j.id)),

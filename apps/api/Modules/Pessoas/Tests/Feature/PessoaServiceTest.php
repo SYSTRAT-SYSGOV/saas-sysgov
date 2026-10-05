@@ -25,7 +25,7 @@ final class PessoaServiceTest extends PessoasTestCase
     public function test_busca_por_cpf_com_mascara_encontra_a_pessoa(): void
     {
         $cpf = $this->cpfValido();
-        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'cpf' => $cpf]);
+        $pessoa = Pessoa::create(['nome' => 'Maria Titular', 'documento' => $cpf]);
 
         $cpfMascarado = substr($cpf, 0, 3) . '.' . substr($cpf, 3, 3) . '.' . substr($cpf, 6, 3) . '-' . substr($cpf, 9, 2);
         $resultado = $this->service->listar(['q' => $cpfMascarado]);
@@ -36,10 +36,10 @@ final class PessoaServiceTest extends PessoasTestCase
 
     public function test_filtro_por_tipo_de_vinculo_retorna_apenas_quem_tem_o_vinculo(): void
     {
-        $municipe = Pessoa::create(['nome' => 'Munícipe', 'cpf' => $this->cpfValido()]);
+        $municipe = Pessoa::create(['nome' => 'Munícipe', 'documento' => $this->cpfValido()]);
         $municipe->vinculos()->create(['tipo_vinculo' => 'municipe', 'inicio' => today()->toDateString()]);
 
-        $servidor = Pessoa::create(['nome' => 'Servidor', 'cpf' => $this->cpfValido()]);
+        $servidor = Pessoa::create(['nome' => 'Servidor', 'documento' => $this->cpfValido()]);
         $servidor->vinculos()->create(['tipo_vinculo' => 'servidor_carreira', 'inicio' => today()->toDateString()]);
 
         $resultado = $this->service->listar(['tipo_vinculo' => 'municipe']);
@@ -50,11 +50,11 @@ final class PessoaServiceTest extends PessoasTestCase
 
     public function test_listar_traz_vinculos_e_usuario_sem_consulta_adicional_por_pessoa(): void
     {
-        $pessoa1 = Pessoa::create(['nome' => 'Ana', 'cpf' => $this->cpfValido()]);
+        $pessoa1 = Pessoa::create(['nome' => 'Ana', 'documento' => $this->cpfValido()]);
         $pessoa1->vinculos()->create(['tipo_vinculo' => 'municipe']);
-        $pessoa2 = Pessoa::create(['nome' => 'Bruno', 'cpf' => $this->cpfValido()]);
+        $pessoa2 = Pessoa::create(['nome' => 'Bruno', 'documento' => $this->cpfValido()]);
         $pessoa2->vinculos()->create(['tipo_vinculo' => 'servidor_carreira']);
-        $pessoa3 = Pessoa::create(['nome' => 'Carla', 'cpf' => $this->cpfValido()]);
+        $pessoa3 = Pessoa::create(['nome' => 'Carla', 'documento' => $this->cpfValido()]);
 
         $resultado = $this->service->listar();
 

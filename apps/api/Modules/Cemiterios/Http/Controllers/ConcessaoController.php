@@ -10,6 +10,7 @@ use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Modules\Cemiterios\Http\Controllers\Concerns\AutorizaPermissao;
 use Modules\Cemiterios\Models\Concessao;
 use Modules\Cemiterios\Models\Concessionario;
@@ -32,13 +33,29 @@ final class ConcessaoController extends Controller
         $q = trim((string) $request->query('q'));
         $perPage = min(max((int) $request->query('per_page', 30), 1), 100);
 
+        $tipoDoc = $request->query('tipo_doc');
+        $origem = $request->query('origem');
+        $situacaoVital = $request->query('situacao_vital');
+        $baseLegal = $request->query('base_legal');
+
         return response()->json(
             Concessionario::query()
-                ->with('pessoa')
-                ->select(['id', 'tenant_id', 'pessoa_id', 'nome', 'documento', 'tipo_doc', 'titular_falecido', 'email', 'telefone'])
+                ->with(['pessoa', 'concessoes.jazigo:id,codigo'])
+                ->select([
+                    'id', 'tenant_id', 'pessoa_id', 'nome', 'documento', 'tipo_doc',
+                    'titular_falecido', 'data_falecimento_titular', 'processo_inventario',
+                    'email', 'telefone', 'endereco', 'cep', 'logradouro', 'numero', 'complemento',
+                    'bairro', 'cidade', 'uf', 'contatos_adicionais', 'observacoes', 'base_legal'
+                ])
                 ->when($q !== '', fn ($query) => strlen(Documento::somenteDigitos($q)) >= 11
                     ? $query->where('documento_hash', Documento::hash($q))
                     : $query->where('nome', 'like', "%{$q}%"))
+                ->when($tipoDoc && $tipoDoc !== 'todos', fn ($query) => $query->where('tipo_doc', $tipoDoc))
+                ->when($origem === 'mdm', fn ($query) => $query->whereNotNull('pessoa_id'))
+                ->when($origem === 'legado', fn ($query) => $query->whereNull('pessoa_id'))
+                ->when($situacaoVital === 'falecido', fn ($query) => $query->where('titular_falecido', true))
+                ->when($situacaoVital === 'regular', fn ($query) => $query->where(fn ($sub) => $sub->where('titular_falecido', false)->orWhereNull('titular_falecido')))
+                ->when($baseLegal && $baseLegal !== 'todas', fn ($query) => $query->where('base_legal', $baseLegal))
                 ->orderBy('nome')
                 ->paginate($perPage)
         );
@@ -62,7 +79,8 @@ final class ConcessaoController extends Controller
         if (!empty($dados['pessoa_id'])) {
             $pessoa = \Modules\Pessoas\Models\Pessoa::find($dados['pessoa_id']);
             if ($pessoa) {
-                $dados['documento'] = (string) $pessoa->cpf;
+                $this->garantirPessoaSemConcessionarioDuplicado($pessoa, null);
+                $dados['documento'] = (string) $pessoa->documento;
                 $tipoDoc = 'cpf';
                 if (empty($dados['nome'])) {
                     $dados['nome'] = $pessoa->nome;
@@ -102,7 +120,8 @@ final class ConcessaoController extends Controller
         if (!empty($dados['pessoa_id'])) {
             $pessoa = \Modules\Pessoas\Models\Pessoa::find($dados['pessoa_id']);
             if ($pessoa) {
-                $dados['documento'] = (string) $pessoa->cpf;
+                $this->garantirPessoaSemConcessionarioDuplicado($pessoa, $titular->id);
+                $dados['documento'] = (string) $pessoa->documento;
                 $dados['tipo_doc'] = 'cpf';
                 if (empty($dados['nome'])) {
                     $dados['nome'] = $pessoa->nome;
@@ -137,6 +156,26 @@ final class ConcessaoController extends Controller
         $titular->makeVisible(['documento']);
 
         return response()->json($titular->load('pessoa'));
+    }
+
+    /**
+     * Impede vincular um munícipe que já é titular de outro registro (mesmo CPF/CNPJ) — a
+     * cópia do documento do munícipe para `$dados['documento']` violaria a constraint
+     * única (tenant_id, documento_hash) com um 500 de SQL em vez de um erro claro.
+     */
+    private function garantirPessoaSemConcessionarioDuplicado(\Modules\Pessoas\Models\Pessoa $pessoa, ?int $idAtual): void
+    {
+        $hash = Documento::hash((string) $pessoa->documento);
+        $duplicado = Concessionario::withTrashed()
+            ->where('documento_hash', $hash)
+            ->when($idAtual, fn ($q) => $q->whereKeyNot($idAtual))
+            ->first();
+
+        if ($duplicado) {
+            throw ValidationException::withMessages([
+                'pessoa_id' => ["Este munícipe já é titular do registro #{$duplicado->id} ({$duplicado->nome}). Vincule as concessões a esse registro em vez de criar um duplicado."],
+            ]);
+        }
     }
 
     public function index(Request $request): JsonResponse
@@ -297,6 +336,66 @@ final class ConcessaoController extends Controller
         return response()->json($concessao->load('jazigo'));
     }
 
+    /** Transferência inter vivos: habilita uma nova pessoa (MDM) como titular principal da concessão vigente. */
+    public function transferirTitular(Request $request, int $id): JsonResponse
+    {
+        $this->autorizar($request, 'cemiterios.concessoes.manage');
+
+        $dados = $request->validate([
+            'holder_id' => ['nullable', 'integer', 'exists:concession_holders,id'],
+            'pessoa_id' => ['nullable', 'required_without:holder_id', 'integer', 'exists:pessoas,id'],
+            'processo_administrativo' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $concessao = Concessao::findOrFail($id);
+        $antes = $concessao->toArray();
+
+        $holderId = $dados['holder_id'] ?? null;
+        if (!$holderId) {
+            $pessoa = \Modules\Pessoas\Models\Pessoa::findOrFail($dados['pessoa_id']);
+            $titular = Concessionario::firstOrNew(['pessoa_id' => $pessoa->id]);
+            if (!$titular->exists) {
+                $titular->fill(['nome' => $pessoa->nome, 'tipo_doc' => 'cpf', 'base_legal' => 'execucao_contrato']);
+                $titular->save();
+                $this->audit->record('cemiterios', 'concessionario.created', "Concessionario #{$titular->id}", null, $titular->toArray());
+            }
+            $holderId = $titular->id;
+        }
+
+        $concessao = $this->concessoes->transferir($concessao, $holderId, $dados['processo_administrativo'] ?? null);
+        $this->audit->record('cemiterios', 'concessao.transferida', "Concessao #{$id}", $antes, $concessao->toArray());
+
+        $this->consolidarOutrosTermosDoMesmoTitular($concessao);
+
+        return response()->json($concessao->load(['jazigo', 'concessionario.pessoa']));
+    }
+
+    /**
+     * Após transferir a titularidade, evita que o mesmo concessionário fique com dois termos
+     * simultaneamente vigentes sobre o mesmo jazigo (ex.: era co-titular e virou titular
+     * principal) encerrando por consolidação os demais termos Ativos dele no mesmo plot_id.
+     */
+    private function consolidarOutrosTermosDoMesmoTitular(Concessao $principal): void
+    {
+        Concessao::where('plot_id', $principal->plot_id)
+            ->where('holder_id', $principal->holder_id)
+            ->where('id', '!=', $principal->id)
+            ->where('estado', 'Ativa')
+            ->get()
+            ->each(function (Concessao $duplicada) use ($principal) {
+                $antes = $duplicada->toArray();
+                try {
+                    $duplicada = $this->concessoes->renunciar(
+                        $duplicada,
+                        "Consolidado(a) como titular principal da concessão {$principal->numero}.",
+                    );
+                    $this->audit->record('cemiterios', 'concessao.renunciada', "Concessao #{$duplicada->id}", $antes, $duplicada->toArray());
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            });
+    }
+
     public function historico(Request $request, int $id): JsonResponse
     {
         $this->autorizar($request, 'cemiterios.view');
@@ -340,6 +439,18 @@ final class ConcessaoController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'telefone' => ['nullable', 'string', 'max:30'],
             'endereco' => ['nullable', 'string', 'max:500'],
+            'cep' => ['nullable', 'string', 'max:10'],
+            'logradouro' => ['nullable', 'string', 'max:255'],
+            'numero' => ['nullable', 'string', 'max:20'],
+            'complemento' => ['nullable', 'string', 'max:100'],
+            'bairro' => ['nullable', 'string', 'max:100'],
+            'cidade' => ['nullable', 'string', 'max:100'],
+            'uf' => ['nullable', 'string', 'max:2'],
+            'contatos_adicionais' => ['nullable', 'array'],
+            'contatos_adicionais.*.tipo' => ['required_with:contatos_adicionais', 'string', 'max:30'],
+            'contatos_adicionais.*.valor' => ['required_with:contatos_adicionais', 'string', 'max:100'],
+            'contatos_adicionais.*.descricao' => ['nullable', 'string', 'max:100'],
+            'observacoes' => ['nullable', 'string', 'max:2000'],
             'base_legal' => ['sometimes', Rule::in(['execucao_contrato', 'obrigacao_legal', 'consentimento'])],
             'titular_falecido' => ['sometimes', 'boolean'],
             'data_falecimento_titular' => ['nullable', 'date'],
