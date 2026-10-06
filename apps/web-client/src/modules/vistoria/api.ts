@@ -123,6 +123,68 @@ export interface SincronizarExecucaoPayload {
   concluido_em_dispositivo?: string | null;
 }
 
+export type TipoDocumento = 'auto_infracao' | 'notificacao' | 'termo_embargo' | 'termo_apreensao';
+
+export type StatusAssinaturaDocumento = 'pendente' | 'assinada' | 'recusada';
+
+export interface Documento {
+  id: number;
+  tenant_id: number;
+  execucao_id: number;
+  autuado_pessoa_id: number | null;
+  tipo: TipoDocumento;
+  numero: string;
+  numero_sequencial: number;
+  exercicio: number;
+  irregularidade: string | null;
+  enquadramento_legal: string | null;
+  prazo_dias: number | null;
+  prazo_limite: string | null;
+  dados_autuado: { nome: string; nome_local?: string; endereco?: string | null } | null;
+  caminho_pdf: string | null;
+  assinatura_status: StatusAssinaturaDocumento;
+}
+
+export interface EmitirDocumentoPayload {
+  tipo: TipoDocumento;
+  irregularidade?: string | null;
+  enquadramento_legal?: string | null;
+  prazo_dias?: number | null;
+}
+
+export type PapelAssinatura = 'autuado' | 'responsavel' | 'testemunha';
+
+export interface Assinatura {
+  id: number;
+  tenant_id: number;
+  documento_id: number;
+  testemunha_pessoa_id: number | null;
+  client_uuid: string;
+  papel: PapelAssinatura;
+  status: 'assinada' | 'recusada';
+  tracado_vetorial: Array<Array<{ x: number; y: number }>> | null;
+  imagem_path: string | null;
+  hash_sha256: string | null;
+  motivo_recusa: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  coletado_em_dispositivo: string | null;
+  assinado_em: string | null;
+}
+
+export interface SincronizarAssinaturaPayload {
+  client_uuid: string;
+  papel: PapelAssinatura;
+  status: 'assinada' | 'recusada';
+  tracado_vetorial?: Array<Array<{ x: number; y: number }>>;
+  imagem_base64?: string;
+  motivo?: string;
+  testemunha_pessoa_id?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  coletado_em_dispositivo?: string | null;
+}
+
 export interface ModeloFormularioPayload {
   tipo_fiscalizacao: string;
   nome: string;
@@ -223,4 +285,12 @@ export const vistoriaApi = {
 
   criarModeloFormulario: (data: ModeloFormularioPayload) =>
     apiClient.post<ModeloFormulario>('/vistoria/formularios', data),
+
+  emitirDocumento: (execucaoId: number, data: EmitirDocumentoPayload) =>
+    apiClient.post<Documento>(`/vistoria/execucoes/${execucaoId}/documentos`, data),
+
+  sincronizarAssinatura: (documentoId: number, data: SincronizarAssinaturaPayload, clientUuid: string) =>
+    apiClient.post<Assinatura>(`/vistoria/documentos/${documentoId}/assinaturas/sincronizar`, data, {
+      headers: { 'Idempotency-Key': clientUuid },
+    }),
 };

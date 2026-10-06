@@ -61,10 +61,25 @@ seção 7 (assinatura) precisar de uma superfície de UI de qualquer forma.
 
 ## 7. Assinatura e Rubrica em Tela
 
-- [ ] 7.1 Criar migration `vistoria_assinaturas` com armazenamento do traçado vetorial (JSON de pontos) e da imagem rasterizada (PNG), vinculada ao documento por hash `sha256`, e verificar a persistência de ambos os formatos.
-- [ ] 7.2 Implementar componente de captura de assinatura touch em `apps/web-client` (canvas) reutilizável entre autuado/responsável/testemunha e verificar a captura em dispositivo touch e com mouse.
-- [ ] 7.3 Implementar `AssinaturaService::registrarRecusa()` com motivo e vinculação de testemunha (resolvida via Cadastro Único) e verificar a persistência e a descrição no PDF final.
-- [ ] 7.4 Implementar uso do timestamp do servidor (não do dispositivo) como data/hora oficial da assinatura no momento da sincronização, mantendo o timestamp do dispositivo como metadado complementar, e verificar via teste simulando relógio de dispositivo divergente.
+- [x] 7.1 Criar migration `vistoria_assinaturas` com armazenamento do traçado vetorial (JSON de pontos) e da imagem rasterizada (PNG), vinculada ao documento por hash `sha256`, e verificar a persistência de ambos os formatos. Idempotente por `client_uuid` (mesmo padrão de `vistoria_execucoes`), já que a coleta pode acontecer offline e ser sincronizada depois.
+- [x] 7.2 Implementar componente de captura de assinatura touch em `apps/web-client` (canvas) reutilizável entre autuado/responsável/testemunha e verificar a captura em dispositivo touch e com mouse. `campo/SignaturePad.tsx` usa Pointer Events (unifica touch/caneta/mouse num único handler), exportando traçado vetorial + PNG via `ref.exportar()`.
+- [x] 7.3 Implementar `AssinaturaService::registrarRecusa()` com motivo e vinculação de testemunha (resolvida via Cadastro Único) e verificar a persistência e a descrição no PDF final. `DocumentoService::regenerarPdf()` reconstrói o PDF embutindo a assinatura (imagem) ou a descrição formal da recusa (motivo + testemunha) após cada coleta.
+- [x] 7.4 Implementar uso do timestamp do servidor (não do dispositivo) como data/hora oficial da assinatura no momento da sincronização, mantendo o timestamp do dispositivo como metadado complementar, e verificar via teste simulando relógio de dispositivo divergente. `assinado_em = now()` do servidor; `coletado_em_dispositivo` guarda o timestamp do cliente só como metadado — coberto por `AssinaturaServiceTest::test_sincroniza_assinatura_com_hash_sha256_e_timestamp_do_servidor` com relógio de dispositivo simulado em 2020.
+
+**Integração com a seção 4**: a coleta de assinatura reaproveita a mesma fila offline
+(`campo/syncEngine.ts`), generalizada para aceitar itens `tipo: 'assinatura'` além de
+`'execucao'` — a emissão do documento (seção 6) continua sendo uma chamada online (precisa
+de conectividade para a numeração), mas a assinatura coletada em seguida pode ser enfileirada
+e sincronizada depois, exatamente como o requisito de negócio pede.
+
+**Escopo explícito desta seção**: `DocumentoAssinaturaPage.tsx` existe e funciona
+(testada ponta a ponta), mas não foi encadeada automaticamente ao fluxo de
+`CampoExecucaoPage.tsx` — a emissão de documento só pode acontecer depois que a execução já
+foi sincronizada no servidor (precisa do `execucao_id`), e o app ainda não rastreia esse
+`execucao_id` pós-sincronização no dispositivo para oferecer "emitir documento" diretamente
+na lista de ordens. Essa amarração fica para quando houver uma superfície de UI natural para
+isso (ex.: ao construir o painel gerencial da seção 11, que já vai listar execuções
+sincronizadas).
 
 ## 8. Evidências Fotográficas e Anexos
 

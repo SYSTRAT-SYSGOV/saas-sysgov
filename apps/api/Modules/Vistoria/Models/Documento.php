@@ -7,6 +7,7 @@ namespace Modules\Vistoria\Models;
 use App\Models\Concerns\TenantAware;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Pessoas\Models\Pessoa;
 
@@ -92,5 +93,11 @@ final class Documento extends Model
     public function autuado(): BelongsTo
     {
         return $this->belongsTo(Pessoa::class, 'autuado_pessoa_id');
+    }
+
+    /** @return HasMany<Assinatura, $this> */
+    public function assinaturas(): HasMany
+    {
+        return $this->hasMany(Assinatura::class, 'documento_id');
     }
 }

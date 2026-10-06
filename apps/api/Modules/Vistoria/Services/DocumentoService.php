@@ -8,6 +8,7 @@ use App\Support\AuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Modules\Vistoria\Models\Assinatura;
 use Modules\Vistoria\Models\Contador;
 use Modules\Vistoria\Models\Documento;
 use Modules\Vistoria\Models\ExecucaoVistoria;
@@ -91,16 +92,31 @@ final class DocumentoService
             return $documento;
         });
 
-        $documento->update(['caminho_pdf' => $this->gerarEArmazenarPdf($documento, $local, $proprietario?->nome)]);
+        $documento->update(['caminho_pdf' => $this->gerarEArmazenarPdf($documento, $local, $proprietario?->nome, null)]);
 
         $this->audit->record('vistoria', 'documento.emitido', "Documento #{$documento->id} ({$documento->numero})", null, $documento->toArray());
 
         return $documento;
     }
 
-    private function gerarEArmazenarPdf(Documento $documento, LocalFiscalizavel $local, ?string $nomeAutuado): string
+    /**
+     * Regera o PDF do documento embutindo a assinatura (ou recusa) mais recente —
+     * chamado pelo `AssinaturaService` depois de registrar a coleta.
+     */
+    public function regenerarPdf(Documento $documento): void
     {
-        $html = $this->construirHtml($documento, $local, $nomeAutuado);
+        $documento->loadMissing('execucao.ordemServico.local.proprietario');
+        $local = $documento->execucao->ordemServico->local;
+        $assinatura = $documento->assinaturas()->latest()->first();
+
+        $documento->update([
+            'caminho_pdf' => $this->gerarEArmazenarPdf($documento, $local, $local->proprietario?->nome, $assinatura),
+        ]);
+    }
+
+    private function gerarEArmazenarPdf(Documento $documento, LocalFiscalizavel $local, ?string $nomeAutuado, ?Assinatura $assinatura): string
+    {
+        $html = $this->construirHtml($documento, $local, $nomeAutuado, $assinatura);
         $pdf = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
 
         $caminho = "vistoria/documentos/{$documento->tenant_id}/" . str_replace('/', '-', $documento->numero) . '.pdf';
@@ -109,7 +125,7 @@ final class DocumentoService
         return $caminho;
     }
 
-    private function construirHtml(Documento $documento, LocalFiscalizavel $local, ?string $nomeAutuado): string
+    private function construirHtml(Documento $documento, LocalFiscalizavel $local, ?string $nomeAutuado, ?Assinatura $assinatura): string
     {
         $titulo = match ($documento->tipo) {
             Documento::TIPO_AUTO_INFRACAO => 'Auto de Infração',
@@ -125,6 +141,7 @@ final class DocumentoService
         $autuado = e($nomeAutuado ?? 'Não identificado no Cadastro Único');
         $localNome = e($local->nome);
         $emissao = now()->format('d/m/Y H:i');
+        $secaoAssinatura = $this->construirSecaoAssinatura($assinatura);
 
         return <<<HTML
             <!DOCTYPE html>
@@ -135,6 +152,8 @@ final class DocumentoService
                 .numero { text-align: center; font-weight: bold; margin-bottom: 20px; }
                 .campo { margin-bottom: 10px; }
                 .label { font-weight: bold; }
+                .assinatura { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; }
+                .assinatura img { max-width: 250px; max-height: 100px; }
             </style></head>
             <body>
                 <h1>{$titulo}</h1>
@@ -145,8 +164,55 @@ final class DocumentoService
                 <div class="campo"><span class="label">Enquadramento legal:</span> {$enquadramento}</div>
                 <div class="campo"><span class="label">Prazo para defesa/regularização:</span> {$prazo}</div>
                 <div class="campo"><span class="label">Emitido em:</span> {$emissao}</div>
+                {$secaoAssinatura}
             </body>
             </html>
             HTML;
+    }
+
+    private function construirSecaoAssinatura(?Assinatura $assinatura): string
+    {
+        if ($assinatura === null) {
+            return '<div class="assinatura"><span class="label">Assinatura:</span> pendente.</div>';
+        }
+
+        $papel = match ($assinatura->papel) {
+            Assinatura::PAPEL_AUTUADO => 'autuado',
+            Assinatura::PAPEL_RESPONSAVEL => 'responsável pelo estabelecimento',
+            Assinatura::PAPEL_TESTEMUNHA => 'testemunha',
+            default => $assinatura->papel,
+        };
+        $dataHora = e($assinatura->assinado_em?->format('d/m/Y H:i') ?? '—');
+
+        if ($assinatura->status === Assinatura::STATUS_RECUSADA) {
+            $motivo = e($assinatura->motivo_recusa ?? '—');
+            $testemunha = $assinatura->testemunha_pessoa_id !== null ? e($assinatura->testemunha->nome) : '—';
+
+            return <<<HTML
+                <div class="assinatura">
+                    <span class="label">Assinatura recusada</span> pelo {$papel} em {$dataHora}.<br>
+                    <span class="label">Motivo:</span> {$motivo}<br>
+                    <span class="label">Testemunha:</span> {$testemunha}
+                </div>
+                HTML;
+        }
+
+        $imagemSrc = $this->imagemEmbutida($assinatura->imagem_path);
+        $imagemHtml = $imagemSrc !== null ? "<br><img src=\"{$imagemSrc}\" alt=\"Assinatura\">" : '';
+
+        return <<<HTML
+            <div class="assinatura">
+                <span class="label">Assinado</span> pelo {$papel} em {$dataHora}.{$imagemHtml}
+            </div>
+            HTML;
+    }
+
+    private function imagemEmbutida(?string $caminho): ?string
+    {
+        if ($caminho === null || ! Storage::disk('public')->exists($caminho)) {
+            return null;
+        }
+
+        return 'data:image/png;base64,' . base64_encode((string) Storage::disk('public')->get($caminho));
     }
 }

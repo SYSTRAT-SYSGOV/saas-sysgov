@@ -2,9 +2,16 @@ import Dexie, { type EntityTable } from 'dexie';
 
 export type StatusFilaSincronizacao = 'pendente' | 'enviando' | 'sincronizado' | 'erro';
 
+export type TipoItemFila = 'execucao' | 'assinatura';
+
 export interface ItemFilaSincronizacao {
   clientUuid: string;
-  ordemServicoId: number;
+  /** 'execucao' (padrão, seção 4) ou 'assinatura' (seção 7) — define para qual endpoint processarFila() envia. */
+  tipo: TipoItemFila;
+  /** Só para tipo === 'execucao'. */
+  ordemServicoId?: number;
+  /** Só para tipo === 'assinatura': documento ao qual a assinatura/recusa se vincula. */
+  documentoId?: number;
   status: StatusFilaSincronizacao;
   payloadCriptografado: string;
   iv: string;

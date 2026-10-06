@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { vistoriaApi } from '../../api';
 import { campoDB } from '../db';
-import { enqueueExecucao, processarFila, contarPendentes } from '../syncEngine';
+import { enqueueExecucao, enqueueAssinatura, processarFila, contarPendentes } from '../syncEngine';
 
 describe('campo/syncEngine', () => {
   beforeEach(async () => {
@@ -72,5 +72,21 @@ describe('campo/syncEngine', () => {
 
     expect(resultado).toEqual({ enviados: 1, falhas: 1 });
     expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it('roteia itens do tipo assinatura para sincronizarAssinatura, não sincronizarExecucao', async () => {
+    const spyAssinatura = vi.spyOn(vistoriaApi, 'sincronizarAssinatura').mockResolvedValue({ data: {} } as any);
+    const spyExecucao = vi.spyOn(vistoriaApi, 'sincronizarExecucao');
+
+    const clientUuid = await enqueueAssinatura(99, { papel: 'autuado', status: 'recusada', motivo: 'Recusou-se' });
+    const resultado = await processarFila();
+
+    expect(resultado).toEqual({ enviados: 1, falhas: 0 });
+    expect(spyAssinatura).toHaveBeenCalledWith(
+      99,
+      expect.objectContaining({ client_uuid: clientUuid, status: 'recusada', motivo: 'Recusou-se' }),
+      clientUuid,
+    );
+    expect(spyExecucao).not.toHaveBeenCalled();
   });
 });

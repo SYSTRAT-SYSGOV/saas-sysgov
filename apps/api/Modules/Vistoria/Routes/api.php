@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Vistoria\Http\Controllers\AssinaturaController;
 use Modules\Vistoria\Http\Controllers\DocumentoController;
 use Modules\Vistoria\Http\Controllers\ExecucaoVistoriaController;
 use Modules\Vistoria\Http\Controllers\FormularioController;
@@ -34,5 +35,8 @@ Route::post('/formularios', [FormularioController::class, 'store'])->name('visto
 // ── Lavratura de documentos (seção 6) ───────────────────────────────────────
 Route::post('/execucoes/{execucaoId}/documentos', [DocumentoController::class, 'store'])->name('vistoria.documentos.store');
 Route::get('/documentos/{id}/pdf', [DocumentoController::class, 'pdf'])->name('vistoria.documentos.pdf');
+
+// ── Assinatura e rubrica em tela (seção 7) ──────────────────────────────────
+Route::post('/documentos/{documentoId}/assinaturas/sincronizar', [AssinaturaController::class, 'sincronizar'])->name('vistoria.assinaturas.sincronizar');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).
