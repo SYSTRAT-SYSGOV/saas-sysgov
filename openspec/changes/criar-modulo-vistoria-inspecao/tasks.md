@@ -23,14 +23,20 @@
 
 ## 4. App de Campo com Suporte Offline (PWA no `web-client`)
 
-- [ ] 4.1 Configurar Web App Manifest e Service Worker (Workbox) em `apps/web-client` para a seção `src/modules/vistoria/campo/`, tornando-a instalável, e verificar a instalação em um tablet/emulador Chrome.
-- [ ] 4.2 Implementar fila local de mutações pendentes em IndexedDB (`dexie` ou `idb`) com `client_uuid` gerado por registro e verificar a persistência local sem conectividade (DevTools offline mode).
-- [ ] 4.3 Implementar download do "pacote do dia" (ordens de serviço do fiscal + histórico dos locais envolvidos) ao abrir o app com conectividade, e verificar o acesso ao histórico offline em seguida.
-- [ ] 4.4 Implementar sincronização automática ao reconectar, enviando cada item da fila com `Idempotency-Key = client_uuid`, e verificar via teste de integração que reenvio do mesmo `client_uuid` não duplica registro no servidor.
-- [ ] 4.5 Implementar endpoints idempotentes no backend (`POST /api/vistoria/execucoes/sincronizar`) que verificam `Idempotency-Key` já processado antes de criar novo registro, e verificar o comportamento com requisições repetidas.
-- [ ] 4.6 Implementar indicador visual de "pendente de sincronização" / "sincronizado" na UI e botão de sincronização manual, e verificar a transição de estado na interface.
-- [ ] 4.7 Implementar criptografia do armazenamento local (IndexedDB) com chave derivada da sessão autenticada e verificar que os dados não ficam legíveis em texto claro no storage do navegador.
-- [ ] 4.8 Implementar compressão client-side de fotos antes de enfileirar (máx. 1920px, qualidade ajustável) e verificar o tamanho do payload antes/depois.
+- [x] 4.1 Configurar Web App Manifest e Service Worker (Workbox) em `apps/web-client` para a seção `src/modules/vistoria/campo/`, tornando-a instalável, e verificar a instalação em um tablet/emulador Chrome. Via `vite-plugin-pwa` (`generateSW`), manifest confirmado em `/manifest.webmanifest` e `dev-dist/sw.js` servidos pelo dev server — instalação real em tablet físico ainda não testada (só via DevTools/manifest).
+- [x] 4.2 Implementar fila local de mutações pendentes em IndexedDB (`dexie` ou `idb`) com `client_uuid` gerado por registro e verificar a persistência local sem conectividade (DevTools offline mode). `campo/db.ts` (Dexie) + `campo/syncEngine.ts`, cobertos por `campo/__tests__/syncEngine.test.ts` com `fake-indexeddb`.
+- [x] 4.3 Implementar download do "pacote do dia" (ordens de serviço do fiscal + histórico dos locais envolvidos) ao abrir o app com conectividade, e verificar o acesso ao histórico offline em seguida. `GET /api/vistoria/pacote-do-dia` + `campo/pacoteDoDia.ts` (grava criptografado no Dexie, leitura 100% offline via `obterPacoteLocal`).
+- [x] 4.4 Implementar sincronização automática ao reconectar, enviando cada item da fila com `Idempotency-Key = client_uuid`, e verificar via teste de integração que reenvio do mesmo `client_uuid` não duplica registro no servidor. `campo/useOnlineStatus.ts` dispara `processarFila()` no evento `online`; idempotência coberta em `ExecucaoVistoriaControllerTest::test_reenvio_com_mesmo_client_uuid_retorna_200_sem_duplicar`.
+- [x] 4.5 Implementar endpoints idempotentes no backend (`POST /api/vistoria/execucoes/sincronizar`) que verificam `Idempotency-Key` já processado antes de criar novo registro, e verificar o comportamento com requisições repetidas. `ExecucaoVistoriaService::sincronizar()` — dedupe por `client_uuid` (unique constraint + checagem na service) e conflito "servidor vence, cliente anexa" (status `suplementar`).
+- [x] 4.6 Implementar indicador visual de "pendente de sincronização" / "sincronizado" na UI e botão de sincronização manual, e verificar a transição de estado na interface. `CampoHomeView.tsx` (badge de pendentes + botão "Sincronizar agora").
+- [x] 4.7 Implementar criptografia do armazenamento local (IndexedDB) com chave derivada da sessão autenticada e verificar que os dados não ficam legíveis em texto claro no storage do navegador. `campo/crypto.ts` (PBKDF2 a partir do token de sessão + AES-GCM), coberto por `campo/__tests__/crypto.test.ts`.
+- [x] 4.8 Implementar compressão client-side de fotos antes de enfileirar (máx. 1920px, qualidade ajustável) e verificar o tamanho do payload antes/depois. `campo/imageCompression.ts`, coberto por `campo/__tests__/imageCompression.test.ts`.
+
+**Escopo explícito desta seção** (ver `design.md`): infraestrutura genérica de offline/sync. O
+conteúdo detalhado do checklist (seção 5), assinatura (seção 7) e evidências com marca d'água (seção 8)
+ainda não existe — o registro `ExecucaoVistoria.dados` guarda por ora um payload JSON genérico, e a tela
+`CampoExecucaoPage.tsx` é um formulário mínimo (observação + 1 foto) só para validar a fila ponta a
+ponta; a UI completa de checklist dinâmico é responsabilidade da seção 5.
 
 ## 5. Formulários Dinâmicos e Checklist
 

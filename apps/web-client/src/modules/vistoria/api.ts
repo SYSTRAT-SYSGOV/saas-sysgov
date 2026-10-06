@@ -63,6 +63,39 @@ export interface OrdemServicoHistorico {
   resultado: string | null;
 }
 
+export type StatusExecucaoVistoria = 'pendente_sincronizacao' | 'sincronizada' | 'suplementar';
+
+export interface ExecucaoVistoria {
+  id: number;
+  tenant_id: number;
+  ordem_servico_id: number;
+  fiscal_id: number;
+  client_uuid: string;
+  status: StatusExecucaoVistoria;
+  dados: Record<string, unknown> | null;
+  iniciado_em_dispositivo: string | null;
+  concluido_em_dispositivo: string | null;
+  sincronizado_em: string | null;
+}
+
+export interface PacoteDoDiaItem {
+  ordem: OrdemServico;
+  historico_local: OrdemServicoHistorico[];
+}
+
+export interface PacoteDoDiaResponse {
+  gerado_em: string;
+  ordens: PacoteDoDiaItem[];
+}
+
+export interface SincronizarExecucaoPayload {
+  client_uuid: string;
+  ordem_servico_id: number;
+  dados?: Record<string, unknown> | null;
+  iniciado_em_dispositivo?: string | null;
+  concluido_em_dispositivo?: string | null;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   current_page: number;
@@ -135,4 +168,12 @@ export const vistoriaApi = {
 
   criarOrdemServico: (data: OrdemServicoPayload) =>
     apiClient.post<OrdemServico>('/vistoria/ordens-servico', data),
+
+  obterPacoteDoDia: () =>
+    apiClient.get<PacoteDoDiaResponse>('/vistoria/pacote-do-dia'),
+
+  sincronizarExecucao: (data: SincronizarExecucaoPayload, clientUuid: string) =>
+    apiClient.post<ExecucaoVistoria>('/vistoria/execucoes/sincronizar', data, {
+      headers: { 'Idempotency-Key': clientUuid },
+    }),
 };
