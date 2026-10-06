@@ -63,6 +63,32 @@ export interface OrdemServicoHistorico {
   resultado: string | null;
 }
 
+export type TipoPergunta = 'multipla_escolha' | 'texto_livre' | 'foto';
+
+export interface Pergunta {
+  id: number;
+  tenant_id: number;
+  modelo_id: number;
+  enunciado: string;
+  tipo: TipoPergunta;
+  opcoes: string[] | null;
+  obrigatoria: boolean;
+  ordem: number;
+  ativo: boolean;
+}
+
+export interface ModeloFormulario {
+  id: number;
+  tenant_id: number;
+  tipo_fiscalizacao: string;
+  nome: string;
+  descricao: string | null;
+  ativo: boolean;
+  // Eloquent serializa a relação perguntasAtivas() como "perguntas_ativas"
+  // (snake_case do nome do método, não do nome do relacionamento de negócio).
+  perguntas_ativas?: Pergunta[];
+}
+
 export type StatusExecucaoVistoria = 'pendente_sincronizacao' | 'sincronizada' | 'suplementar';
 
 export interface ExecucaoVistoria {
@@ -81,6 +107,7 @@ export interface ExecucaoVistoria {
 export interface PacoteDoDiaItem {
   ordem: OrdemServico;
   historico_local: OrdemServicoHistorico[];
+  formulario: ModeloFormulario | null;
 }
 
 export interface PacoteDoDiaResponse {
@@ -94,6 +121,20 @@ export interface SincronizarExecucaoPayload {
   dados?: Record<string, unknown> | null;
   iniciado_em_dispositivo?: string | null;
   concluido_em_dispositivo?: string | null;
+}
+
+export interface ModeloFormularioPayload {
+  tipo_fiscalizacao: string;
+  nome: string;
+  descricao?: string | null;
+  ativo?: boolean;
+  perguntas: Array<{
+    enunciado: string;
+    tipo: TipoPergunta;
+    opcoes?: string[] | null;
+    obrigatoria?: boolean;
+    ordem?: number;
+  }>;
 }
 
 export interface PaginatedResponse<T> {
@@ -176,4 +217,10 @@ export const vistoriaApi = {
     apiClient.post<ExecucaoVistoria>('/vistoria/execucoes/sincronizar', data, {
       headers: { 'Idempotency-Key': clientUuid },
     }),
+
+  listarFormularios: (params?: { tipo_fiscalizacao?: string; per_page?: number }) =>
+    apiClient.get<PaginatedResponse<ModeloFormulario>>('/vistoria/formularios', { params }),
+
+  criarModeloFormulario: (data: ModeloFormularioPayload) =>
+    apiClient.post<ModeloFormulario>('/vistoria/formularios', data),
 };

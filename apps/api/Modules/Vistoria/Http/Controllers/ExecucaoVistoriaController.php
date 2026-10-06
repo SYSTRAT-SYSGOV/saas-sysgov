@@ -31,12 +31,16 @@ final class ExecucaoVistoriaController extends Controller
     {
         $ordem = OrdemServico::findOrFail($request->validated('ordem_servico_id'));
 
-        $resultado = $this->service->sincronizar(
-            $request->user(),
-            $ordem,
-            $request->validated('client_uuid'),
-            $request->validated(),
-        );
+        try {
+            $resultado = $this->service->sincronizar(
+                $request->user(),
+                $ordem,
+                $request->validated('client_uuid'),
+                $request->validated(),
+            );
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json($resultado['execucao'], $resultado['duplicado'] ? 200 : 201);
     }

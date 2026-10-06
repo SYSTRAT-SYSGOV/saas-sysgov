@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Modules\Vistoria\Models\ExecucaoVistoria;
+use Modules\Vistoria\Models\ModeloFormulario;
 use Modules\Vistoria\Models\OrdemServico;
 
 final class ExecucaoVistoriaService
@@ -15,6 +16,7 @@ final class ExecucaoVistoriaService
     public function __construct(
         private AuditLogger $audit,
         private LocalFiscalizavelService $locais,
+        private FormularioService $formularios,
     ) {}
 
     /**
@@ -24,7 +26,13 @@ final class ExecucaoVistoriaService
      * Em caso de conflito (outra execução já sincronizada para a mesma ordem), preserva a
      * primeira e grava esta como `suplementar` — nunca descarta dados coletados em campo.
      *
+     * Quando a ordem tem um modelo de formulário aplicável (resolvido pela classificação de
+     * atividade do local), toda pergunta obrigatória precisa de resposta — caso contrário a
+     * sincronização é recusada — e as respostas são normalizadas em `RespostaChecklist`.
+     *
      * @param array<string, mixed> $dados
+     *
+     * @throws \DomainException quando falta resposta para uma pergunta obrigatória do checklist
      *
      * @return array{execucao: ExecucaoVistoria, duplicado: bool}
      */
@@ -36,7 +44,14 @@ final class ExecucaoVistoriaService
             return ['execucao' => $existente, 'duplicado' => true];
         }
 
-        $execucao = DB::transaction(function () use ($fiscal, $ordem, $clientUuid, $dados): ExecucaoVistoria {
+        $modelo = $this->formularios->resolverParaOrdem($ordem);
+        $respostas = $dados['dados']['respostas'] ?? [];
+
+        if ($modelo) {
+            $this->formularios->validarRespostasObrigatorias($modelo, $respostas);
+        }
+
+        $execucao = DB::transaction(function () use ($fiscal, $ordem, $clientUuid, $dados, $modelo, $respostas): ExecucaoVistoria {
             $jaSincronizada = ExecucaoVistoria::where('ordem_servico_id', $ordem->id)
                 ->where('status', ExecucaoVistoria::STATUS_SINCRONIZADA)
                 ->exists();
@@ -54,6 +69,10 @@ final class ExecucaoVistoriaService
                 'sincronizado_em' => now(),
             ]);
 
+            if ($modelo && $respostas !== []) {
+                $this->formularios->persistirRespostas($registro, $modelo, $respostas);
+            }
+
             if ($status === ExecucaoVistoria::STATUS_SINCRONIZADA) {
                 $ordem->update(['status' => OrdemServico::STATUS_CONCLUIDA]);
             }
@@ -67,10 +86,12 @@ final class ExecucaoVistoriaService
     }
 
     /**
-     * Pacote do dia: ordens de serviço do fiscal com o histórico de vistorias concluídas
-     * de cada local envolvido, para download e acesso offline no dispositivo.
+     * Pacote do dia: ordens de serviço do fiscal, com o histórico de vistorias concluídas
+     * de cada local e o formulário/checklist aplicável, para download e preenchimento
+     * 100% offline no dispositivo (o formulário não pode ser buscado durante a execução
+     * sem conectividade, por isso vai embutido no pacote).
      *
-     * @return array<int, array{ordem: OrdemServico, historico_local: \Illuminate\Database\Eloquent\Collection<int, OrdemServico>}>
+     * @return array<int, array{ordem: OrdemServico, historico_local: \Illuminate\Database\Eloquent\Collection<int, OrdemServico>, formulario: ModeloFormulario|null}>
      */
     public function pacoteDoDia(User $fiscal): array
     {
@@ -83,6 +104,7 @@ final class ExecucaoVistoriaService
         return $ordens->map(fn (OrdemServico $ordem): array => [
             'ordem' => $ordem,
             'historico_local' => $this->locais->obterHistorico($ordem->local),
+            'formulario' => $this->formularios->resolverParaOrdem($ordem),
         ])->all();
     }
 }

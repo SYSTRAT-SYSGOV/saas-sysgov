@@ -40,11 +40,11 @@ ponta; a UI completa de checklist dinâmico é responsabilidade da seção 5.
 
 ## 5. Formulários Dinâmicos e Checklist
 
-- [ ] 5.1 Criar migrations `vistoria_modelos_formulario` e `vistoria_perguntas` com suporte a tipos (`multipla_escolha`, `texto_livre`, `foto`) e flag `obrigatoria`, e verificar a criação das tabelas.
-- [ ] 5.2 Implementar `FormularioService::criarModeloFormulario()` com validação de tipo de fiscalização e verificar a disponibilização imediata do modelo sem deploy.
-- [ ] 5.3 Implementar persistência de `vistoria_respostas_checklist` com captura automática de `latitude`/`longitude` no momento do registro e verificar via teste de feature.
-- [ ] 5.4 Implementar bloqueio de conclusão de vistoria com pergunta obrigatória pendente e verificar o comportamento na UI e na API.
-- [ ] 5.5 Desenvolver a tela de execução de checklist em `apps/web-client/src/modules/vistoria/campo` com componentes exclusivamente do `@sysgov/ui` e verificar a renderização de cada tipo de pergunta.
+- [x] 5.1 Criar migrations `vistoria_modelos_formulario` e `vistoria_perguntas` com suporte a tipos (`multipla_escolha`, `texto_livre`, `foto`) e flag `obrigatoria`, e verificar a criação das tabelas. `tipo_fiscalizacao` reaproveita o mesmo domínio de valores de `vistoria_locais.classificacao_atividade` (producao_animal, producao_vegetal, agroindustria, comercio_insumos, outro) — é por essa classificação do local que o modelo aplicável é resolvido.
+- [x] 5.2 Implementar `FormularioService::criarModeloFormulario()` com validação de tipo de fiscalização e verificar a disponibilização imediata do modelo sem deploy. Endpoint `POST /api/vistoria/formularios` (permissão `vistoria.formularios.manage`) e `GET /api/vistoria/formularios` (listagem/filtro). **Escopo**: só a API — não foi construída uma tela de administração para a chefia cadastrar formulários pela UI (não pedido explicitamente pela seção; cadastro via API/Postman por ora).
+- [x] 5.3 Implementar persistência de `vistoria_respostas_checklist` com captura automática de `latitude`/`longitude` no momento do registro e verificar via teste de feature. Como a execução é offline (seção 4), a captura de geolocalização acontece no dispositivo no momento de cada resposta (`campo/geolocation.ts`) e as respostas são normalizadas em `RespostaChecklist` no servidor durante `POST /vistoria/execucoes/sincronizar` (`FormularioService::persistirRespostas()`).
+- [x] 5.4 Implementar bloqueio de conclusão de vistoria com pergunta obrigatória pendente e verificar o comportamento na UI e na API. UI: `CampoExecucaoPage.tsx` destaca a pergunta pendente e impede o envio. API: `ExecucaoVistoriaService::sincronizar()` recusa (422) a sincronização via `FormularioService::validarRespostasObrigatorias()` — dupla validação, já que o cliente não é confiável.
+- [x] 5.5 Desenvolver a tela de execução de checklist em `apps/web-client/src/modules/vistoria/campo` com componentes exclusivamente do `@sysgov/ui` e verificar a renderização de cada tipo de pergunta. O formulário/checklist aplicável vai embutido no `pacote-do-dia` (`ExecucaoVistoriaService::pacoteDoDia()`) — não pode ser buscado durante a execução offline.
 
 ## 6. Lavratura de Auto de Infração e Documentos
 

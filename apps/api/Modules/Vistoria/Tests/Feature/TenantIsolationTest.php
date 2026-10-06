@@ -13,7 +13,9 @@ use Modules\OrgChart\Models\OrgUnit;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Vistoria\Models\ExecucaoVistoria;
 use Modules\Vistoria\Models\LocalFiscalizavel;
+use Modules\Vistoria\Models\ModeloFormulario;
 use Modules\Vistoria\Models\OrdemServico;
+use Modules\Vistoria\Services\FormularioService;
 use Tests\TestCase;
 
 final class TenantIsolationTest extends TestCase
@@ -111,6 +113,29 @@ final class TenantIsolationTest extends TestCase
 
         app(TenantContext::class)->set($tenantA);
         self::assertSame(1, ExecucaoVistoria::query()->count());
+
+        app(TenantContext::class)->clear();
+    }
+
+    public function test_modelos_formulario_are_strictly_isolated_between_tenants(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Prefeitura A', 'slug' => 'tenant-a-form', 'type' => 'prefeitura', 'status' => 'active']);
+        $tenantB = Tenant::create(['name' => 'Prefeitura B', 'slug' => 'tenant-b-form', 'type' => 'prefeitura', 'status' => 'active']);
+
+        app(TenantContext::class)->set($tenantA);
+        $modeloA = app(FormularioService::class)->criarModeloFormulario([
+            'tipo_fiscalizacao' => 'agroindustria',
+            'nome' => 'Checklist do Tenant A',
+            'perguntas' => [['enunciado' => 'P1', 'tipo' => 'texto_livre']],
+        ]);
+
+        self::assertSame($tenantA->id, $modeloA->tenant_id);
+
+        app(TenantContext::class)->set($tenantB);
+        self::assertSame(0, ModeloFormulario::query()->count(), 'Tenant B não pode enxergar modelos de formulário do Tenant A.');
+
+        app(TenantContext::class)->set($tenantA);
+        self::assertSame(1, ModeloFormulario::query()->count());
 
         app(TenantContext::class)->clear();
     }

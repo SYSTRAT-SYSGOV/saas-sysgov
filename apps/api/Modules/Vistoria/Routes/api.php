@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Vistoria\Http\Controllers\ExecucaoVistoriaController;
+use Modules\Vistoria\Http\Controllers\FormularioController;
 use Modules\Vistoria\Http\Controllers\LocalFiscalizavelController;
 use Modules\Vistoria\Http\Controllers\OrdemServicoController;
 
@@ -24,5 +25,9 @@ Route::get('/ordens-servico/{id}', [OrdemServicoController::class, 'show'])->nam
 // ── App de campo offline (seção 4) ─────────────────────────────────────────
 Route::get('/pacote-do-dia', [ExecucaoVistoriaController::class, 'pacoteDoDia'])->name('vistoria.execucoes.pacote-do-dia');
 Route::post('/execucoes/sincronizar', [ExecucaoVistoriaController::class, 'sincronizar'])->name('vistoria.execucoes.sincronizar');
+
+// ── Formulários dinâmicos e checklist (seção 5) ─────────────────────────────
+Route::get('/formularios', [FormularioController::class, 'index'])->name('vistoria.formularios.index');
+Route::post('/formularios', [FormularioController::class, 'store'])->name('vistoria.formularios.store');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).
