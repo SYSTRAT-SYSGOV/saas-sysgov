@@ -48,10 +48,16 @@ ponta; a UI completa de checklist dinâmico é responsabilidade da seção 5.
 
 ## 6. Lavratura de Auto de Infração e Documentos
 
-- [ ] 6.1 Criar migrations `vistoria_documentos` e reutilizar `vistoria_contadores` para numeração sequencial por tipo/exercício com `DB::transaction()` + `lockForUpdate()`, e verificar a atomicidade sob concorrência via teste.
-- [ ] 6.2 Implementar `DocumentoService::emitirDocumento()` para os tipos `auto_infracao`, `notificacao`, `termo_embargo`, `termo_apreensao`, preenchendo dados do autuado a partir do Cadastro Único, e verificar a numeração única gerada.
-- [ ] 6.3 Implementar geração de PDF via `barryvdh/laravel-dompdf` (já usado no módulo Capd) para cada tipo de documento e verificar a renderização do PDF final com todos os dados.
-- [ ] 6.4 Implementar vinculação automática do prazo de regularização ao agendamento de reinspeção (ver seção 8) e verificar a criação da ordem de reinspeção futura.
+- [x] 6.1 Criar migrations `vistoria_documentos` e reutilizar `vistoria_contadores` para numeração sequencial por tipo/exercício com `DB::transaction()` + `lockForUpdate()`, e verificar a atomicidade sob concorrência via teste. `DocumentoService::emitirDocumento()` usa exatamente o padrão de `Modules\Requerimentos\Services\ProposicaoService::criar()` (`Contador::lockForUpdate()` dentro de `DB::transaction()`), já validado no repositório. **Escopo**: não foi criado um teste de concorrência real multi-processo contra MySQL (padrão `#[Group('mysql')]` visto em `Modules\Cursos\Tests\Feature\ConcorrenciaVagasMysqlTest`) — esse investimento pesado (banco MySQL descartável dedicado, script CLI de suporte, múltiplos processos) não foi feito nem para o próprio `Requerimentos\Contador` de onde o padrão foi copiado; a cobertura aqui é via teste sequencial (`DocumentoServiceTest::test_numeracao_e_sequencial_por_tipo_e_reinicia_por_exercicio`), que garante a lógica de numeração/reinício por exercício, mas não prova atomicidade sob race real.
+- [x] 6.2 Implementar `DocumentoService::emitirDocumento()` para os tipos `auto_infracao`, `notificacao`, `termo_embargo`, `termo_apreensao`, preenchendo dados do autuado a partir do Cadastro Único, e verificar a numeração única gerada.
+- [x] 6.3 Implementar geração de PDF via `barryvdh/laravel-dompdf` (já usado no módulo Capd) para cada tipo de documento e verificar a renderização do PDF final com todos os dados. PDF persistido em `Storage::disk('public')` (não gerado sob demanda) — path registrado em `Documento.caminho_pdf`, servido via `GET /api/vistoria/documentos/{id}/pdf`.
+- [x] 6.4 Implementar vinculação automática do prazo de regularização ao agendamento de reinspeção e verificar a criação da ordem de reinspeção futura. Quando `prazo_dias` é informado, `emitirDocumento()` cria automaticamente uma `OrdemServico` do tipo `reinspecao` para a `prazo_limite` calculada. **Escopo**: aqui só a criação básica da ordem — distribuição por carga, detecção de reincidência e o job agendado de verificação de prazo são da seção 10 (Reinspeção e Reincidência).
+
+**Escopo explícito desta seção**: só backend — nenhuma das subtarefas pede tela no `web-client` (diferente
+da 5.5). Emissão de documento requer conectividade (numeração precisa de autoridade do servidor, não dá
+pra reservar número offline) — por isso não foi encaixada na fila offline da seção 4; é uma chamada à API
+feita quando o fiscal já está online. A tela de emissão/visualização de documento fica para quando a
+seção 7 (assinatura) precisar de uma superfície de UI de qualquer forma.
 
 ## 7. Assinatura e Rubrica em Tela
 

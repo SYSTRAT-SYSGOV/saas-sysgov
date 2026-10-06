@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Vistoria\Http\Controllers\DocumentoController;
 use Modules\Vistoria\Http\Controllers\ExecucaoVistoriaController;
 use Modules\Vistoria\Http\Controllers\FormularioController;
 use Modules\Vistoria\Http\Controllers\LocalFiscalizavelController;
@@ -29,5 +30,9 @@ Route::post('/execucoes/sincronizar', [ExecucaoVistoriaController::class, 'sincr
 // ── Formulários dinâmicos e checklist (seção 5) ─────────────────────────────
 Route::get('/formularios', [FormularioController::class, 'index'])->name('vistoria.formularios.index');
 Route::post('/formularios', [FormularioController::class, 'store'])->name('vistoria.formularios.store');
+
+// ── Lavratura de documentos (seção 6) ───────────────────────────────────────
+Route::post('/execucoes/{execucaoId}/documentos', [DocumentoController::class, 'store'])->name('vistoria.documentos.store');
+Route::get('/documentos/{id}/pdf', [DocumentoController::class, 'pdf'])->name('vistoria.documentos.pdf');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).
