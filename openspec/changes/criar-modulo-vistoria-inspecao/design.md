@@ -88,6 +88,24 @@ Duas premissas de contexto foram verificadas diretamente no repositório antes d
 
 **Racional**: Reaproveita o padrão RBAC + ABAC já descrito em `AGENTS.md`/`CODING_STANDARD.md` (notação `<modulo>.<recurso>.<acao>`), sem inventar mecanismo novo de autorização.
 
+### 8. Criptografia em repouso de dados pessoais sensíveis via cast do Eloquent
+
+**Decisão**: Campos que guardam dado pessoal sensível (ex.: `Documento.dados_autuado`, snapshot do CPF do autuado capturado no momento da emissão) usam o cast `encrypted`/`encrypted:array` do Eloquent, que criptografa/decriptografa de forma transparente usando a `APP_KEY` configurada (via `Illuminate\Contracts\Encryption\Encrypter`, a mesma infraestrutura por trás da facade `Crypt`/`Encryption`). Colunas que viram alvo desse cast migram de `json` nativo pra `text`, já que o valor passa a ser uma string cifrada opaca, não mais um JSON válido (uma coluna `json` do MySQL rejeitaria a gravação).
+
+**Racional**: Mesmo padrão já adotado em `Modules\Pessoas\Models\Pessoa::$cpf` e `Modules\Cemiterios\Models\Falecido::$docs_medicos` — não introduz mecanismo novo de criptografia, reaproveita o que o framework já oferece e o que o resto do monorepo já usa pra CPF/documento. Mantém o dado consultável/decriptável pela aplicação (ao contrário de um hash unidirecional), que é o requisito aqui (precisa reconstituir o CPF pra reimprimir o PDF do auto de infração, por exemplo).
+
+**Alternativas**: Criptografia a nível de banco (MySQL `AES_ENCRYPT`/TDE). Rejeitada — adiciona uma camada de gestão de chave fora do controle da aplicação/Laravel, sem precedente neste repositório, pra um ganho marginal (o cast do Eloquent já protege contra leitura direta do dump/backup do banco, que é a ameaça relevante aqui).
+
+### 9. TLS 1.3 é responsabilidade da infraestrutura de borda, não do código da aplicação
+
+**Decisão**: A sincronização do app de campo (e toda a API do módulo) depende de TLS 1.3 em trânsito, mas essa garantia é de configuração do servidor/load balancer que termina a conexão HTTPS (ex.: diretiva `ssl_protocols TLSv1.3;` num nginx, ou a "Security Policy" do balanceador em um provedor cloud) — não existe nenhum parâmetro de TLS configurável dentro do código Laravel da aplicação (o Artisan serve HTTP puro em desenvolvimento; em produção, a aplicação roda atrás de um proxy reverso que já faz a terminação TLS pra toda a plataforma, não só pra este módulo).
+
+**Racional**: Não há (e não deveria haver) nenhuma dependência ou configuração de TLS no `apps/api` — isso contrariaria a separação de responsabilidades entre aplicação e infraestrutura, e duplicaria uma garantia que já é — ou precisa ser — centralizada pra toda a plataforma (todos os módulos, não só Vistoria, dependem do mesmo HTTPS de borda). Documentar aqui serve pra deixar explícito, pro time de infraestrutura, o requisito mínimo de versão de protocolo esperado (TLS 1.3, não aceitar fallback pra 1.2 ou anterior nas rotas deste módulo), não pra implementá-lo em código.
+
+**Verificação (fora do código)**: inspecionar a configuração do servidor/proxy em produção (`nginx -T | grep ssl_protocols`, ou o console do provedor cloud) e confirmar que `TLSv1.3` está habilitado e que versões anteriores a `TLSv1.2` estão desabilitadas; opcionalmente, validar externamente com `openssl s_client -connect <host>:443 -tls1_3` ou um scanner como o Qualys SSL Labs.
+
+**Alternativas**: Nenhuma — não existe meio de impor versão de TLS a partir do código de uma aplicação Laravel rodando atrás de um proxy reverso; a única alternativa real seria não usar proxy reverso (terminar TLS diretamente no PHP), o que este repositório não faz em nenhum módulo e não seria uma mudança desta proposta.
+
 ## Risks / Trade-offs
 
 - **Primeira capacidade offline-first do monorepo**: não há Service Worker/IndexedDB testado em produção aqui. → **Mitigação**: iniciar com fila de sincronização simples (sem Background Sync API, que tem suporte de browser limitado em alguns tablets Android mais antigos) e fallback explícito de "sincronizar manualmente" visível na UI; cobrir com testes de integração que simulam perda de conectividade.

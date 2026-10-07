@@ -8,6 +8,7 @@ use Modules\Vistoria\Http\Controllers\DocumentoController;
 use Modules\Vistoria\Http\Controllers\EvidenciaController;
 use Modules\Vistoria\Http\Controllers\ExecucaoVistoriaController;
 use Modules\Vistoria\Http\Controllers\FormularioController;
+use Modules\Vistoria\Http\Controllers\IntegracaoController;
 use Modules\Vistoria\Http\Controllers\LocalFiscalizavelController;
 use Modules\Vistoria\Http\Controllers\OrdemServicoController;
 use Modules\Vistoria\Http\Controllers\PainelGerencialController;
@@ -67,5 +68,12 @@ Route::get('/painel/indicadores', [PainelGerencialController::class, 'indicadore
 
 // ── Trilha de auditoria (seção 13) ──────────────────────────────────────────
 Route::get('/vistorias/{id}/auditoria', [VistoriaAuditoriaController::class, 'show'])->name('vistoria.vistorias.auditoria');
+
+// ── Gestão de credenciais de integração M2M (seção 14.3) ────────────────────
+// (autenticado/chefia — diferente do consumo da credencial em si, que é a rota pública
+// registrada em Routes/integracao.php, sem auth:sanctum/resolve.tenant)
+Route::get('/integracoes', [IntegracaoController::class, 'index'])->name('vistoria.integracoes.index');
+Route::post('/integracoes', [IntegracaoController::class, 'store'])->name('vistoria.integracoes.store');
+Route::delete('/integracoes/{id}', [IntegracaoController::class, 'destroy'])->name('vistoria.integracoes.destroy');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).
