@@ -7,6 +7,7 @@ namespace Modules\Vistoria\Tests\Unit;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Modules\OrgChart\Models\OrgUnit;
 use Modules\Pessoas\Models\Pessoa;
@@ -48,6 +49,30 @@ final class DocumentoServiceTest extends TestCase
         self::assertSame('Proprietário Teste', $documento->dados_autuado['nome']);
         self::assertNotNull($documento->caminho_pdf);
         Storage::disk('public')->assertExists($documento->caminho_pdf);
+    }
+
+    public function test_dados_autuado_e_criptografado_em_repouso(): void
+    {
+        $tenant = $this->criarTenant();
+
+        [$documentoId, $cpf] = $this->noTenant($tenant, function () use ($tenant) {
+            [$execucao, , $proprietarioCpf] = $this->montarExecucaoComCpf($tenant);
+
+            $documento = app(DocumentoService::class)->emitirDocumento($execucao, Documento::TIPO_AUTO_INFRACAO, []);
+
+            return [$documento->id, $proprietarioCpf];
+        });
+
+        $valorBruto = DB::table('vistoria_documentos')->where('id', $documentoId)->value('dados_autuado');
+
+        self::assertNotNull($valorBruto);
+        self::assertStringNotContainsString($cpf, $valorBruto);
+        self::assertStringNotContainsString('"cpf"', $valorBruto);
+        json_decode($valorBruto);
+        self::assertNotSame(JSON_ERROR_NONE, json_last_error(), 'O valor bruto não deveria mais ser JSON legível — deve ser texto cifrado.');
+
+        $documento = $this->noTenant($tenant, fn () => Documento::find($documentoId));
+        self::assertSame($cpf, $documento->dados_autuado['cpf']);
     }
 
     public function test_numeracao_e_sequencial_por_tipo_e_reinicia_por_exercicio(): void
@@ -168,5 +193,38 @@ final class DocumentoServiceTest extends TestCase
         ]);
 
         return [$execucao, $fiscal];
+    }
+
+    /**
+     * @return array{0: ExecucaoVistoria, 1: User, 2: string}
+     */
+    private function montarExecucaoComCpf(Tenant $tenant): array
+    {
+        $proprietario = Pessoa::factory()->create(['nome' => 'Proprietário Teste']);
+        $orgUnit = OrgUnit::create(['name' => 'Secretaria de Agricultura', 'code' => 'SEC-AGRI-' . uniqid()]);
+        $local = LocalFiscalizavel::create([
+            'proprietario_pessoa_id' => $proprietario->id,
+            'nome' => 'Fazenda Teste',
+            'tipo' => LocalFiscalizavel::TIPO_PROPRIEDADE_RURAL,
+            'latitude' => -25.4284,
+            'longitude' => -49.2733,
+        ]);
+        $fiscal = $this->usuarioComPermissao($tenant, ['vistoria.view'], 'Fiscal');
+        $ordem = OrdemServico::create([
+            'local_id' => $local->id,
+            'org_unit_id' => $orgUnit->id,
+            'fiscal_id' => $fiscal->id,
+            'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA,
+            'data_prevista' => now()->addDay()->toDateString(),
+        ]);
+        $execucao = ExecucaoVistoria::create([
+            'ordem_servico_id' => $ordem->id,
+            'fiscal_id' => $fiscal->id,
+            'client_uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'status' => ExecucaoVistoria::STATUS_SINCRONIZADA,
+            'sincronizado_em' => now(),
+        ]);
+
+        return [$execucao, $fiscal, $proprietario->cpf];
     }
 }

@@ -29,7 +29,7 @@ use Modules\Pessoas\Models\Pessoa;
  * @property string|null $enquadramento_legal
  * @property int|null $prazo_dias
  * @property \Illuminate\Support\Carbon|null $prazo_limite
- * @property array<string, mixed>|null $dados_autuado
+ * @property array<string, mixed>|null $dados_autuado criptografado em repouso (contém CPF do autuado — LGPD)
  * @property string|null $caminho_pdf
  * @property string $assinatura_status
  */
@@ -81,7 +81,9 @@ final class Documento extends Model
         'exercicio' => 'integer',
         'prazo_dias' => 'integer',
         'prazo_limite' => 'date',
-        'dados_autuado' => 'array',
+        // Criptografado em repouso (contém o CPF do autuado) — mesmo padrão de
+        // Modules\Pessoas\Models\Pessoa::$cpf e Modules\Cemiterios\Models\Falecido::$docs_medicos.
+        'dados_autuado' => 'encrypted:array',
     ];
 
     /** @return BelongsTo<ExecucaoVistoria, $this> */
