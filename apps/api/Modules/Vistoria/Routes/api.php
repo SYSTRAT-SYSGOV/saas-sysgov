@@ -13,6 +13,7 @@ use Modules\Vistoria\Http\Controllers\OrdemServicoController;
 use Modules\Vistoria\Http\Controllers\PainelGerencialController;
 use Modules\Vistoria\Http\Controllers\ProcessoSancionatorioController;
 use Modules\Vistoria\Http\Controllers\ReinspecaoController;
+use Modules\Vistoria\Http\Controllers\VistoriaAuditoriaController;
 
 // ── Locais fiscalizáveis ──────────────────────────────────────────────────
 Route::get('/locais', [LocalFiscalizavelController::class, 'index'])->name('vistoria.locais.index');
@@ -63,5 +64,8 @@ Route::post('/reinspecoes/{id}/regularizacao', [ReinspecaoController::class, 're
 Route::get('/painel/mapa', [PainelGerencialController::class, 'mapa'])->name('vistoria.painel.mapa');
 Route::get('/painel/produtividade', [PainelGerencialController::class, 'produtividade'])->name('vistoria.painel.produtividade');
 Route::get('/painel/indicadores', [PainelGerencialController::class, 'indicadores'])->name('vistoria.painel.indicadores');
+
+// ── Trilha de auditoria (seção 13) ──────────────────────────────────────────
+Route::get('/vistorias/{id}/auditoria', [VistoriaAuditoriaController::class, 'show'])->name('vistoria.vistorias.auditoria');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).

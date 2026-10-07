@@ -25,6 +25,7 @@
         "vistoria.locais.manage": "Cadastrar e editar locais fiscalizáveis",
         "vistoria.ordens.manage": "Planejar, distribuir e reatribuir ordens de serviço",
         "vistoria.formularios.manage": "Criar e editar modelos de formulário/checklist",
-        "vistoria.chefia": "Acesso administrativo integral da chefia da Secretaria"
+        "vistoria.chefia": "Acesso administrativo integral da chefia da Secretaria",
+        "vistoria.auditoria.view": "Consultar a trilha de auditoria completa das vistorias"
     }
 }

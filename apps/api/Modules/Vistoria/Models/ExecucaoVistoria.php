@@ -8,6 +8,7 @@ use App\Models\Concerns\TenantAware;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -68,5 +69,11 @@ final class ExecucaoVistoria extends Model
     public function fiscal(): BelongsTo
     {
         return $this->belongsTo(User::class, 'fiscal_id');
+    }
+
+    /** @return HasMany<Documento, $this> */
+    public function documentos(): HasMany
+    {
+        return $this->hasMany(Documento::class, 'execucao_id');
     }
 }
