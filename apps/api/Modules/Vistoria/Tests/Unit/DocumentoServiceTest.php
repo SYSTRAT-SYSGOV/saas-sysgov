@@ -14,6 +14,7 @@ use Modules\Vistoria\Models\Documento;
 use Modules\Vistoria\Models\ExecucaoVistoria;
 use Modules\Vistoria\Models\LocalFiscalizavel;
 use Modules\Vistoria\Models\OrdemServico;
+use Modules\Vistoria\Models\Reinspecao;
 use Modules\Vistoria\Services\DocumentoService;
 use Modules\Vistoria\Tests\Concerns\CenarioVistoria;
 use Tests\TestCase;
@@ -99,6 +100,26 @@ final class DocumentoServiceTest extends TestCase
         });
 
         self::assertSame(1, $totalReinspecoes);
+    }
+
+    public function test_prazo_de_regularizacao_cria_acompanhamento_de_reinspecao_vinculado_a_ordem_e_documento(): void
+    {
+        $tenant = $this->criarTenant();
+
+        $reinspecao = $this->noTenant($tenant, function () use ($tenant) {
+            [$execucao] = $this->montarExecucao($tenant);
+            $documento = app(DocumentoService::class)->emitirDocumento($execucao, Documento::TIPO_TERMO_EMBARGO, ['prazo_dias' => 10]);
+
+            return Reinspecao::where('documento_id', $documento->id)->first();
+        });
+
+        self::assertNotNull($reinspecao);
+        self::assertSame(Reinspecao::STATUS_PENDENTE, $reinspecao->status);
+        self::assertNotNull($reinspecao->ordem_servico_original_id);
+        self::assertNotNull($reinspecao->ordem_servico_reinspecao_id);
+        self::assertNotSame($reinspecao->ordem_servico_original_id, $reinspecao->ordem_servico_reinspecao_id);
+        // Reaproveita a mesma OS criada pela 6.4 — não duplica.
+        self::assertSame(1, OrdemServico::where('tipo_acao', OrdemServico::TIPO_ACAO_REINSPECAO)->count());
     }
 
     public function test_sem_prazo_nao_cria_reinspecao(): void

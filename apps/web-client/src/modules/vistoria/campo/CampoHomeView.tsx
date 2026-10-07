@@ -68,6 +68,7 @@ export const CampoHomeView: React.FC = () => {
       <CampoExecucaoPage
         ordem={ordemSelecionada.ordem}
         formulario={ordemSelecionada.formulario}
+        reincidencia={ordemSelecionada.reincidencia}
         onBack={() => setOrdemSelecionada(null)}
         onEnfileirado={() => {
           setOrdemSelecionada(null);

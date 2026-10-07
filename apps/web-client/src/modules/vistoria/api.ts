@@ -104,10 +104,16 @@ export interface ExecucaoVistoria {
   sincronizado_em: string | null;
 }
 
+export interface Reincidencia {
+  quantidade_autuacoes_12_meses: number;
+  reincidente: boolean;
+}
+
 export interface PacoteDoDiaItem {
   ordem: OrdemServico;
   historico_local: OrdemServicoHistorico[];
   formulario: ModeloFormulario | null;
+  reincidencia: Reincidencia;
 }
 
 export interface PacoteDoDiaResponse {

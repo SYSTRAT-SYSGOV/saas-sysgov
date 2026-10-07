@@ -107,4 +107,10 @@ final class Documento extends Model
     {
         return $this->hasOne(ProcessoSancionatorio::class, 'documento_id');
     }
+
+    /** @return HasOne<Reinspecao, $this> */
+    public function reinspecao(): HasOne
+    {
+        return $this->hasOne(Reinspecao::class, 'documento_id');
+    }
 }

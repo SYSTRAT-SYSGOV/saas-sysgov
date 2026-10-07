@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Button, Textarea, Select } from '@sysgov/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Textarea, Select, Badge } from '@sysgov/ui';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { ArrowLeft, Camera, ClipboardCheck, AlertCircle } from 'lucide-react';
-import type { OrdemServico, ModeloFormulario, Pergunta } from '../api';
+import { ArrowLeft, Camera, ClipboardCheck, AlertCircle, AlertTriangle } from 'lucide-react';
+import type { OrdemServico, ModeloFormulario, Pergunta, Reincidencia } from '../api';
 import { compressImage } from './imageCompression';
 import { enqueueExecucao } from './syncEngine';
 import { obterCoordenadasAtuais } from './geolocation';
@@ -10,6 +10,7 @@ import { obterCoordenadasAtuais } from './geolocation';
 export interface CampoExecucaoPageProps {
   ordem: OrdemServico;
   formulario: ModeloFormulario | null;
+  reincidencia?: Reincidencia;
   onBack: () => void;
   onEnfileirado: () => void;
 }
@@ -36,7 +37,7 @@ function blobParaBase64(blob: Blob): Promise<string> {
  * Quando a ordem não tem formulário aplicável, cai num formulário mínimo
  * (observação livre), mantendo o fluxo da seção 4 funcionando.
  */
-export const CampoExecucaoPage: React.FC<CampoExecucaoPageProps> = ({ ordem, formulario, onBack, onEnfileirado }) => {
+export const CampoExecucaoPage: React.FC<CampoExecucaoPageProps> = ({ ordem, formulario, reincidencia, onBack, onEnfileirado }) => {
   const [respostas, setRespostas] = useState<Record<number, RespostaEmEdicao>>({});
   const [observacaoLivre, setObservacaoLivre] = useState('');
   const [comprimindoId, setComprimindoId] = useState<number | null>(null);
@@ -132,6 +133,13 @@ export const CampoExecucaoPage: React.FC<CampoExecucaoPageProps> = ({ ordem, for
           </Button>
         }
       />
+
+      {reincidencia?.reincidente && (
+        <Badge variant="warning" className="mt-4 gap-1.5 py-1.5">
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Local reincidente — {reincidencia.quantidade_autuacoes_12_meses} autuação(ões) nos últimos 12 meses
+        </Badge>
+      )}
 
       <Card className="mt-6">
         <CardHeader>

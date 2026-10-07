@@ -153,6 +153,36 @@ final class ExecucaoVistoriaServiceTest extends TestCase
         self::assertArrayHasKey('evidencia_id', $resposta->valor);
     }
 
+    public function test_pacote_do_dia_marca_local_reincidente_quando_ha_autuacao_recente(): void
+    {
+        $tenant = $this->criarTenant();
+
+        $pacote = $this->noTenant($tenant, function () use ($tenant) {
+            [$ordem, $fiscal] = $this->montarOrdem($tenant);
+
+            $execucaoAnterior = ExecucaoVistoria::create([
+                'ordem_servico_id' => $ordem->id,
+                'fiscal_id' => $fiscal->id,
+                'client_uuid' => (string) Str::uuid(),
+                'status' => ExecucaoVistoria::STATUS_SINCRONIZADA,
+                'sincronizado_em' => now(),
+            ]);
+            \Modules\Vistoria\Models\Documento::create([
+                'execucao_id' => $execucaoAnterior->id,
+                'autuado_pessoa_id' => $ordem->local->proprietario_pessoa_id,
+                'tipo' => \Modules\Vistoria\Models\Documento::TIPO_AUTO_INFRACAO,
+                'numero' => 'auto_infracao/' . uniqid(),
+                'numero_sequencial' => 1,
+                'exercicio' => (int) now()->year,
+            ]);
+
+            return app(ExecucaoVistoriaService::class)->pacoteDoDia($fiscal);
+        });
+
+        self::assertSame(1, $pacote[0]['reincidencia']['quantidade_autuacoes_12_meses']);
+        self::assertTrue($pacote[0]['reincidencia']['reincidente']);
+    }
+
     /**
      * @return array{0: OrdemServico, 1: User}
      */

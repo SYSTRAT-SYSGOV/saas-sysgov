@@ -20,6 +20,7 @@ final class DocumentoService
     public function __construct(
         private AuditLogger $audit,
         private ProcessoSancionatorioService $processos,
+        private ReinspecaoService $reinspecoes,
     ) {}
 
     /**
@@ -28,8 +29,8 @@ final class DocumentoService
      * por tipo/exercício (`DB::transaction()` + `lockForUpdate()` em `vistoria_contadores`)
      * e PDF gerado e armazenado ao final.
      *
-     * Quando há prazo de regularização, agenda automaticamente a reinspeção (tarefa 6.4 —
-     * o acompanhamento de reincidência e os jobs recorrentes são da seção 10).
+     * Quando há prazo de regularização, agenda automaticamente a ordem de serviço de
+     * reinspeção (tarefa 6.4) e o acompanhamento do prazo (`ReinspecaoService`, seção 10).
      *
      * @param array<string, mixed> $dados
      *
@@ -48,7 +49,9 @@ final class DocumentoService
         $prazoDias = isset($dados['prazo_dias']) ? (int) $dados['prazo_dias'] : null;
         $prazoLimite = $prazoDias ? now()->addDays($prazoDias)->toDateString() : null;
 
-        $documento = DB::transaction(function () use ($execucao, $tipo, $dados, $proprietario, $exercicio, $prazoDias, $prazoLimite, $ordem, $local): Documento {
+        $ordemReinspecao = null;
+
+        $documento = DB::transaction(function () use ($execucao, $tipo, $dados, $proprietario, $exercicio, $prazoDias, $prazoLimite, $ordem, $local, &$ordemReinspecao): Documento {
             $contador = Contador::where('tipo_slug', $tipo)->where('exercicio', $exercicio)->lockForUpdate()->first();
 
             if (! $contador) {
@@ -79,7 +82,7 @@ final class DocumentoService
             ]);
 
             if ($prazoLimite !== null) {
-                OrdemServico::create([
+                $ordemReinspecao = OrdemServico::create([
                     'local_id' => $ordem->local_id,
                     'org_unit_id' => $ordem->org_unit_id,
                     'fiscal_id' => $ordem->fiscal_id,
@@ -100,6 +103,10 @@ final class DocumentoService
         // Abertura automática do processo sancionatório (seção 9) — só para auto de infração;
         // demais tipos (notificação, termos) não abrem processo.
         $this->processos->abrirAutomaticamente($documento);
+
+        // Acompanhamento de prazo de regularização (seção 10) — reaproveita a OS de
+        // reinspeção já criada acima quando há prazo; sem prazo, agendar() é um no-op.
+        $this->reinspecoes->agendar($documento, $ordemReinspecao);
 
         return $documento;
     }

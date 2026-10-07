@@ -11,6 +11,7 @@ use Modules\Vistoria\Http\Controllers\FormularioController;
 use Modules\Vistoria\Http\Controllers\LocalFiscalizavelController;
 use Modules\Vistoria\Http\Controllers\OrdemServicoController;
 use Modules\Vistoria\Http\Controllers\ProcessoSancionatorioController;
+use Modules\Vistoria\Http\Controllers\ReinspecaoController;
 
 // ── Locais fiscalizáveis ──────────────────────────────────────────────────
 Route::get('/locais', [LocalFiscalizavelController::class, 'index'])->name('vistoria.locais.index');
@@ -51,5 +52,9 @@ Route::post('/processos-sancionatorios/{id}/defesa', [ProcessoSancionatorioContr
 Route::post('/processos-sancionatorios/{id}/julgamento', [ProcessoSancionatorioController::class, 'julgamento'])->name('vistoria.processos.julgamento');
 Route::post('/processos-sancionatorios/{id}/recurso', [ProcessoSancionatorioController::class, 'recurso'])->name('vistoria.processos.recurso');
 Route::post('/processos-sancionatorios/{id}/julgamento-recurso', [ProcessoSancionatorioController::class, 'julgamentoRecurso'])->name('vistoria.processos.julgamento-recurso');
+
+// ── Reinspeção e reincidência (seção 10) ────────────────────────────────────
+Route::get('/reinspecoes/{id}', [ReinspecaoController::class, 'show'])->name('vistoria.reinspecoes.show');
+Route::post('/reinspecoes/{id}/regularizacao', [ReinspecaoController::class, 'regularizacao'])->name('vistoria.reinspecoes.regularizacao');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).

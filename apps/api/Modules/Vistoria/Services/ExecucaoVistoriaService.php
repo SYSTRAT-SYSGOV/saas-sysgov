@@ -91,7 +91,7 @@ final class ExecucaoVistoriaService
      * 100% offline no dispositivo (o formulário não pode ser buscado durante a execução
      * sem conectividade, por isso vai embutido no pacote).
      *
-     * @return array<int, array{ordem: OrdemServico, historico_local: \Illuminate\Database\Eloquent\Collection<int, OrdemServico>, formulario: ModeloFormulario|null}>
+     * @return array<int, array{ordem: OrdemServico, historico_local: \Illuminate\Database\Eloquent\Collection<int, OrdemServico>, formulario: ModeloFormulario|null, reincidencia: array{quantidade_autuacoes_12_meses: int, reincidente: bool}}>
      */
     public function pacoteDoDia(User $fiscal): array
     {
@@ -101,10 +101,18 @@ final class ExecucaoVistoriaService
             ->orderBy('data_prevista')
             ->get();
 
-        return $ordens->map(fn (OrdemServico $ordem): array => [
-            'ordem' => $ordem,
-            'historico_local' => $this->locais->obterHistorico($ordem->local),
-            'formulario' => $this->formularios->resolverParaOrdem($ordem),
-        ])->all();
+        return $ordens->map(function (OrdemServico $ordem): array {
+            $quantidadeAutuacoes = $this->locais->contarAutuacoesRecentes($ordem->local);
+
+            return [
+                'ordem' => $ordem,
+                'historico_local' => $this->locais->obterHistorico($ordem->local),
+                'formulario' => $this->formularios->resolverParaOrdem($ordem),
+                'reincidencia' => [
+                    'quantidade_autuacoes_12_meses' => $quantidadeAutuacoes,
+                    'reincidente' => $quantidadeAutuacoes > 0,
+                ],
+            ];
+        })->all();
     }
 }

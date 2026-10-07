@@ -10,6 +10,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Modules\Pessoas\Models\Pessoa;
+use Modules\Vistoria\Models\Documento;
 use Modules\Vistoria\Models\LocalFiscalizavel;
 use Modules\Vistoria\Models\OrdemServico;
 
@@ -53,6 +54,24 @@ final class LocalFiscalizavelService
             ->where('status', OrdemServico::STATUS_CONCLUIDA)
             ->orderByDesc('data_prevista')
             ->get();
+    }
+
+    /**
+     * Quantidade de autos de infração lavrados contra o local ou seu responsável
+     * (proprietário) nos últimos `$meses` — usado para destacar "local reincidente" na
+     * tela de execução da vistoria (seção 10.3).
+     */
+    public function contarAutuacoesRecentes(LocalFiscalizavel $local, int $meses = 12): int
+    {
+        $desde = now()->subMonths($meses);
+
+        return Documento::where('tipo', Documento::TIPO_AUTO_INFRACAO)
+            ->where('created_at', '>=', $desde)
+            ->where(function ($query) use ($local): void {
+                $query->where('autuado_pessoa_id', $local->proprietario_pessoa_id)
+                    ->orWhereHas('execucao.ordemServico', fn ($q) => $q->where('local_id', $local->id));
+            })
+            ->count();
     }
 
     /**
