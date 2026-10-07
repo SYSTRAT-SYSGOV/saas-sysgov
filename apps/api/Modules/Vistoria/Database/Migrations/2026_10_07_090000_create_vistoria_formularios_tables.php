@@ -20,7 +20,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['tenant_id', 'tipo_fiscalizacao', 'ativo']);
+            $table->index(['tenant_id', 'tipo_fiscalizacao', 'ativo'], 'vistoria_modelo_formulario_tipo_ativo_idx');
         });
 
         Schema::create('vistoria_perguntas', function (Blueprint $table): void {

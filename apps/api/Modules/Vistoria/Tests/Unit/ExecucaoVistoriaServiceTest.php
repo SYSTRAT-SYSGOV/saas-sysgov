@@ -7,12 +7,17 @@ namespace Modules\Vistoria\Tests\Unit;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Modules\OrgChart\Models\OrgUnit;
 use Modules\Pessoas\Models\Pessoa;
+use Modules\Vistoria\Models\Evidencia;
 use Modules\Vistoria\Models\ExecucaoVistoria;
 use Modules\Vistoria\Models\LocalFiscalizavel;
+use Modules\Vistoria\Models\ModeloFormulario;
 use Modules\Vistoria\Models\OrdemServico;
+use Modules\Vistoria\Models\Pergunta;
+use Modules\Vistoria\Models\RespostaChecklist;
 use Modules\Vistoria\Services\ExecucaoVistoriaService;
 use Modules\Vistoria\Tests\Concerns\CenarioVistoria;
 use Tests\TestCase;
@@ -21,6 +26,14 @@ final class ExecucaoVistoriaServiceTest extends TestCase
 {
     use CenarioVistoria;
     use RefreshDatabase;
+
+    private const PNG_1X1_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Storage::fake('public');
+    }
 
     public function test_sincroniza_execucao_e_conclui_a_ordem_de_servico(): void
     {
@@ -83,6 +96,61 @@ final class ExecucaoVistoriaServiceTest extends TestCase
         self::assertSame(ExecucaoVistoria::STATUS_SINCRONIZADA, $primeira->fresh()->status);
         self::assertSame(ExecucaoVistoria::STATUS_SUPLEMENTAR, $segunda->status);
         self::assertSame(2, ExecucaoVistoria::query()->count());
+    }
+
+    public function test_sincroniza_resposta_tipo_foto_como_evidencia_em_vez_de_base64_bruto(): void
+    {
+        $tenant = $this->criarTenant();
+
+        [$resposta, $totalEvidencias] = $this->noTenant($tenant, function () use ($tenant) {
+            $modelo = ModeloFormulario::create(['tipo_fiscalizacao' => 'agroindustria', 'nome' => 'Checklist', 'ativo' => true]);
+            $pergunta = Pergunta::create([
+                'modelo_id' => $modelo->id,
+                'enunciado' => 'Foto da fachada',
+                'tipo' => Pergunta::TIPO_FOTO,
+                'obrigatoria' => true,
+                'ordem' => 0,
+            ]);
+
+            $proprietario = Pessoa::factory()->create();
+            $orgUnit = OrgUnit::create(['name' => 'Secretaria', 'code' => 'SEC-' . uniqid()]);
+            $local = LocalFiscalizavel::create([
+                'proprietario_pessoa_id' => $proprietario->id,
+                'nome' => 'Agroindústria Teste',
+                'tipo' => LocalFiscalizavel::TIPO_ESTABELECIMENTO_COMERCIAL,
+                'classificacao_atividade' => 'agroindustria',
+                'latitude' => -25.4284,
+                'longitude' => -49.2733,
+            ]);
+            $fiscal = $this->usuarioComPermissao($tenant, ['vistoria.view'], 'Fiscal');
+            $ordem = OrdemServico::create([
+                'local_id' => $local->id,
+                'org_unit_id' => $orgUnit->id,
+                'fiscal_id' => $fiscal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA,
+                'data_prevista' => now()->addDay()->toDateString(),
+            ]);
+
+            $resultado = app(ExecucaoVistoriaService::class)->sincronizar($fiscal, $ordem, (string) Str::uuid(), [
+                'dados' => [
+                    'respostas' => [
+                        [
+                            'pergunta_id' => $pergunta->id,
+                            'valor' => 'data:image/png;base64,' . self::PNG_1X1_BASE64,
+                            'latitude' => -25.4284,
+                            'longitude' => -49.2733,
+                        ],
+                    ],
+                ],
+            ]);
+
+            $resposta = RespostaChecklist::where('execucao_id', $resultado['execucao']->id)->where('pergunta_id', $pergunta->id)->first();
+
+            return [$resposta, Evidencia::query()->count()];
+        });
+
+        self::assertSame(1, $totalEvidencias);
+        self::assertArrayHasKey('evidencia_id', $resposta->valor);
     }
 
     /**

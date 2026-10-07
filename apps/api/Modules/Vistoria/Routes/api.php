@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Vistoria\Http\Controllers\AssinaturaController;
 use Modules\Vistoria\Http\Controllers\DocumentoController;
+use Modules\Vistoria\Http\Controllers\EvidenciaController;
 use Modules\Vistoria\Http\Controllers\ExecucaoVistoriaController;
 use Modules\Vistoria\Http\Controllers\FormularioController;
 use Modules\Vistoria\Http\Controllers\LocalFiscalizavelController;
@@ -38,5 +39,9 @@ Route::get('/documentos/{id}/pdf', [DocumentoController::class, 'pdf'])->name('v
 
 // ── Assinatura e rubrica em tela (seção 7) ──────────────────────────────────
 Route::post('/documentos/{documentoId}/assinaturas/sincronizar', [AssinaturaController::class, 'sincronizar'])->name('vistoria.assinaturas.sincronizar');
+
+// ── Evidências fotográficas e anexos (seção 8) ──────────────────────────────
+Route::post('/execucoes/{execucaoId}/evidencias', [EvidenciaController::class, 'store'])->name('vistoria.evidencias.store');
+Route::get('/evidencias/{id}/arquivo', [EvidenciaController::class, 'arquivo'])->name('vistoria.evidencias.arquivo');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).

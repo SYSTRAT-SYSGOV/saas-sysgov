@@ -17,6 +17,7 @@ final class FormularioService
 {
     public function __construct(
         private AuditLogger $audit,
+        private EvidenciaService $evidencias,
     ) {}
 
     /**
@@ -124,22 +125,42 @@ final class FormularioService
      * Persiste as respostas do checklist vinculadas à execução, preservando o
      * georreferenciamento e o timestamp do dispositivo capturados no momento do registro.
      *
+     * Perguntas tipo `foto` chegam com a imagem em base64 no `valor` — em vez de gravar
+     * o payload bruto na coluna, delega ao `EvidenciaService` (seção 8), que separa o
+     * arquivo original da versão com marca d'água, e grava só a referência à evidência
+     * criada.
+     *
      * @param array<int, array{pergunta_id?: int, valor?: mixed, latitude?: float|null, longitude?: float|null, capturado_em?: string|null}> $respostas
      */
     public function persistirRespostas(ExecucaoVistoria $execucao, ModeloFormulario $modelo, array $respostas): void
     {
-        $perguntaIds = $modelo->perguntas()->pluck('id')->all();
+        $perguntas = $modelo->perguntas()->get()->keyBy('id');
 
         foreach ($respostas as $resposta) {
             $perguntaId = (int) ($resposta['pergunta_id'] ?? 0);
-            if (! in_array($perguntaId, $perguntaIds, true)) {
+            $pergunta = $perguntas->get($perguntaId);
+            if ($pergunta === null) {
                 continue;
+            }
+
+            $valor = $resposta['valor'] ?? null;
+
+            if ($pergunta->tipo === Pergunta::TIPO_FOTO && is_string($valor) && $valor !== '') {
+                $evidencia = $this->evidencias->registrarFotoChecklist(
+                    $execucao,
+                    $pergunta,
+                    $valor,
+                    isset($resposta['latitude']) ? (float) $resposta['latitude'] : null,
+                    isset($resposta['longitude']) ? (float) $resposta['longitude'] : null,
+                    $resposta['capturado_em'] ?? null,
+                );
+                $valor = ['evidencia_id' => $evidencia->id];
             }
 
             RespostaChecklist::updateOrCreate(
                 ['execucao_id' => $execucao->id, 'pergunta_id' => $perguntaId],
                 [
-                    'valor' => $resposta['valor'] ?? null,
+                    'valor' => $valor,
                     'latitude' => $resposta['latitude'] ?? null,
                     'longitude' => $resposta['longitude'] ?? null,
                     'capturado_em' => $resposta['capturado_em'] ?? null,

@@ -7,11 +7,13 @@ namespace Modules\Vistoria\Providers;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\Vistoria\Models\Documento;
+use Modules\Vistoria\Models\Evidencia;
 use Modules\Vistoria\Models\ExecucaoVistoria;
 use Modules\Vistoria\Models\LocalFiscalizavel;
 use Modules\Vistoria\Models\ModeloFormulario;
 use Modules\Vistoria\Models\OrdemServico;
 use Modules\Vistoria\Policies\DocumentoPolicy;
+use Modules\Vistoria\Policies\EvidenciaPolicy;
 use Modules\Vistoria\Policies\ExecucaoVistoriaPolicy;
 use Modules\Vistoria\Policies\FormularioPolicy;
 use Modules\Vistoria\Policies\LocalFiscalizavelPolicy;
@@ -28,9 +30,10 @@ final class VistoriaServiceProvider extends ServiceProvider
         Gate::policy(ExecucaoVistoria::class, ExecucaoVistoriaPolicy::class);
         Gate::policy(ModeloFormulario::class, FormularioPolicy::class);
         Gate::policy(Documento::class, DocumentoPolicy::class);
+        Gate::policy(Evidencia::class, EvidenciaPolicy::class);
 
         // Gate::policy() para as demais entidades é registrado aqui conforme a
-        // respectiva Policy é criada (ver tasks.md 7.3, 9.*).
+        // respectiva Policy é criada (ver tasks.md 9.*).
     }
 
     public function register(): void
