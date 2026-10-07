@@ -249,6 +249,53 @@ export interface OrdemServicoPayload {
   roteiro_deslocamento?: string | null;
 }
 
+export interface PainelPeriodoParams {
+  data_inicio?: string;
+  data_fim?: string;
+}
+
+export interface PainelPeriodo {
+  data_inicio: string;
+  data_fim: string;
+}
+
+export interface PainelMapaFeature {
+  type: 'Feature';
+  id: string;
+  geometry: { type: 'Point'; coordinates: [number, number] };
+  properties: {
+    ordem_servico_id: number;
+    local_nome: string;
+    tipo_acao: TipoAcaoOrdemServico;
+    status: StatusOrdemServico;
+    situacao: 'pendente' | 'realizada';
+    data_prevista: string;
+  };
+}
+
+export interface PainelMapaResponse {
+  type: 'FeatureCollection';
+  features: PainelMapaFeature[];
+}
+
+export interface PainelProdutividadeFiscal {
+  fiscal_id: number;
+  fiscal_nome: string | null;
+  total_concluidas: number;
+}
+
+export interface PainelProdutividadeResponse {
+  periodo: PainelPeriodo;
+  fiscais: PainelProdutividadeFiscal[];
+}
+
+export interface PainelIndicadoresResponse {
+  periodo: PainelPeriodo;
+  autuacoes_por_tipo: Record<string, number>;
+  taxa_regularizacao: number | null;
+  tempo_medio_dias_vistoria_ate_conclusao_processo: number | null;
+}
+
 // ── API ────────────────────────────────────────────────────────────
 export const vistoriaApi = {
   listarLocais: (params?: LocalFiscalizavelIndexParams) =>
@@ -299,4 +346,13 @@ export const vistoriaApi = {
     apiClient.post<Assinatura>(`/vistoria/documentos/${documentoId}/assinaturas/sincronizar`, data, {
       headers: { 'Idempotency-Key': clientUuid },
     }),
+
+  obterPainelMapa: (params?: PainelPeriodoParams) =>
+    apiClient.get<PainelMapaResponse>('/vistoria/painel/mapa', { params }),
+
+  obterPainelProdutividade: (params?: PainelPeriodoParams) =>
+    apiClient.get<PainelProdutividadeResponse>('/vistoria/painel/produtividade', { params }),
+
+  obterPainelIndicadores: (params?: PainelPeriodoParams) =>
+    apiClient.get<PainelIndicadoresResponse>('/vistoria/painel/indicadores', { params }),
 };

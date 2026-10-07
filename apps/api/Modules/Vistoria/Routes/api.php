@@ -10,6 +10,7 @@ use Modules\Vistoria\Http\Controllers\ExecucaoVistoriaController;
 use Modules\Vistoria\Http\Controllers\FormularioController;
 use Modules\Vistoria\Http\Controllers\LocalFiscalizavelController;
 use Modules\Vistoria\Http\Controllers\OrdemServicoController;
+use Modules\Vistoria\Http\Controllers\PainelGerencialController;
 use Modules\Vistoria\Http\Controllers\ProcessoSancionatorioController;
 use Modules\Vistoria\Http\Controllers\ReinspecaoController;
 
@@ -56,5 +57,10 @@ Route::post('/processos-sancionatorios/{id}/julgamento-recurso', [ProcessoSancio
 // ── Reinspeção e reincidência (seção 10) ────────────────────────────────────
 Route::get('/reinspecoes/{id}', [ReinspecaoController::class, 'show'])->name('vistoria.reinspecoes.show');
 Route::post('/reinspecoes/{id}/regularizacao', [ReinspecaoController::class, 'regularizacao'])->name('vistoria.reinspecoes.regularizacao');
+
+// ── Painel gerencial e mapa (seção 11) ──────────────────────────────────────
+Route::get('/painel/mapa', [PainelGerencialController::class, 'mapa'])->name('vistoria.painel.mapa');
+Route::get('/painel/produtividade', [PainelGerencialController::class, 'produtividade'])->name('vistoria.painel.produtividade');
+Route::get('/painel/indicadores', [PainelGerencialController::class, 'indicadores'])->name('vistoria.painel.indicadores');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).
