@@ -6,6 +6,7 @@ namespace Modules\Vistoria\Providers;
 
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Route;
+use Modules\Vistoria\Http\Controllers\DocsController;
 
 final class RouteServiceProvider extends ServiceProvider
 {
@@ -21,5 +22,12 @@ final class RouteServiceProvider extends ServiceProvider
         Route::middleware(['api', 'auth:sanctum', 'resolve.tenant', 'module-access:vistoria'])
             ->prefix('api/vistoria')
             ->group(__DIR__ . '/../Routes/api.php');
+
+        // Documentação OpenAPI (seção 14.4) — pública, fora do prefixo api/vistoria (o
+        // endpoint pedido é literalmente /api/docs, não /api/vistoria/docs).
+        Route::middleware(['api'])->group(function (): void {
+            Route::get('/api/docs', [DocsController::class, 'ui'])->name('vistoria.docs.ui');
+            Route::get('/api/docs/openapi.yaml', [DocsController::class, 'spec'])->name('vistoria.docs.spec');
+        });
     }
 }

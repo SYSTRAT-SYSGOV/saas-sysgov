@@ -1,0 +1,346 @@
+openapi: 3.0.3
+info:
+  title: Vistoria e Inspeção — API
+  description: >
+    Digitalização da fiscalização de campo da Secretaria de Agricultura: planejamento de
+    vistorias, execução offline em tablet, lavratura de auto de infração com assinatura em
+    tela, tramitação do processo sancionatório decorrente, reinspeção, painel gerencial,
+    trilha de auditoria e integração M2M para sistemas externos.
+
+    Este documento é escrito à mão (não gerado automaticamente por anotações PHP) — não há
+    nenhuma infraestrutura de OpenAPI/Swagger em nenhum outro módulo deste monorepo ainda;
+    introduzir uma dependência nova (ex. darkaonline/l5-swagger) só para esta tarefa seria
+    desproporcional. Cobre os endpoints de maior valor de integração, não every single route.
+  version: "1.0.0"
+servers:
+  - url: /api/vistoria
+    description: Rotas autenticadas (sessão/token do usuário + tenant) e a gestão de credenciais M2M.
+security:
+  - sanctumAuth: []
+components:
+  securitySchemes:
+    sanctumAuth:
+      type: apiKey
+      in: header
+      name: Cookie
+      description: >
+        Sessão autenticada via Laravel Sanctum (SPA) mais o header `X-Tenant-ID` resolvendo o
+        tenant atual. Usado por todas as rotas exceto `GET /autuacoes` (M2M).
+    vistoriaApiKey:
+      type: apiKey
+      in: header
+      name: X-Vistoria-API-Key
+      description: >
+        Credencial de integração M2M dedicada (seção 14.3), mapeada direto a um tenant — sem
+        login humano. Aceita também como `Authorization: Bearer <api_key>`.
+  schemas:
+    LocalFiscalizavel:
+      type: object
+      properties:
+        id: { type: integer }
+        nome: { type: string }
+        tipo: { type: string, enum: [propriedade_rural, estabelecimento_comercial, feira, evento, outro] }
+        classificacao_atividade: { type: string, nullable: true }
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        endereco: { type: string, nullable: true }
+    OrdemServico:
+      type: object
+      properties:
+        id: { type: integer }
+        local_id: { type: integer }
+        org_unit_id: { type: integer }
+        fiscal_id: { type: integer, nullable: true }
+        tipo_acao: { type: string, enum: [vistoria_rotina, inspecao_sanitaria, atendimento_denuncia, reinspecao, autuacao] }
+        criticidade: { type: string, enum: [baixa, media, alta, urgente] }
+        status: { type: string, enum: [agendada, em_execucao, concluida, cancelada] }
+        data_prevista: { type: string, format: date }
+    Documento:
+      type: object
+      properties:
+        id: { type: integer }
+        tipo: { type: string, enum: [auto_infracao, notificacao, termo_embargo, termo_apreensao] }
+        numero: { type: string }
+        irregularidade: { type: string, nullable: true }
+        enquadramento_legal: { type: string, nullable: true }
+        prazo_limite: { type: string, format: date, nullable: true }
+        assinatura_status: { type: string, enum: [pendente, assinada, recusada] }
+    ProcessoSancionatorio:
+      type: object
+      properties:
+        id: { type: integer }
+        documento_id: { type: integer }
+        status: { type: string, enum: [aberto, em_defesa, em_julgamento, penalidade_aplicada, arquivado, em_recurso, concluido] }
+        prazo_defesa_limite: { type: string, format: date }
+        penalidade_centavos: { type: integer, nullable: true }
+    AutuacaoPublica:
+      type: object
+      description: Representação enxuta de um auto de infração para consumo M2M — nunca inclui dados_autuado (CPF).
+      properties:
+        id: { type: integer }
+        numero: { type: string }
+        exercicio: { type: integer }
+        irregularidade: { type: string, nullable: true }
+        enquadramento_legal: { type: string, nullable: true }
+        prazo_limite: { type: string, format: date, nullable: true }
+        local_nome: { type: string, nullable: true }
+        emitido_em: { type: string, format: date-time }
+    Erro:
+      type: object
+      properties:
+        message: { type: string }
+paths:
+  /locais:
+    get:
+      summary: Lista locais fiscalizáveis
+      tags: [Locais Fiscalizáveis]
+      parameters:
+        - { name: tipo, in: query, schema: { type: string } }
+        - { name: busca, in: query, schema: { type: string } }
+        - { name: per_page, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Lista paginada, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LocalFiscalizavel" } } } } }
+    post:
+      summary: Cadastra um local fiscalizável
+      tags: [Locais Fiscalizáveis]
+      responses:
+        "201": { description: Criado, content: { application/json: { schema: { $ref: "#/components/schemas/LocalFiscalizavel" } } } }
+        "422": { description: Dados inválidos, content: { application/json: { schema: { $ref: "#/components/schemas/Erro" } } } }
+  /locais/{id}:
+    get:
+      summary: Exibe um local fiscalizável
+      tags: [Locais Fiscalizáveis]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    patch:
+      summary: Atualiza um local fiscalizável
+      tags: [Locais Fiscalizáveis]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Atualizado }
+    delete:
+      summary: Remove um local fiscalizável
+      tags: [Locais Fiscalizáveis]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "204": { description: Removido }
+  /locais/{id}/historico:
+    get:
+      summary: Histórico de vistorias concluídas do local, com resultado (regular/irregular)
+      tags: [Locais Fiscalizáveis]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+  /ordens-servico:
+    get:
+      summary: Lista ordens de serviço (fiscal só vê as próprias; chefia vê o tenant inteiro)
+      tags: [Ordens de Serviço]
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+        - { name: criticidade, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Lista paginada, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/OrdemServico" } } } } }
+    post:
+      summary: Cria uma ordem de serviço (distribuição automática quando sem fiscal designado)
+      tags: [Ordens de Serviço]
+      responses:
+        "201": { description: Criada }
+        "403": { description: Sem permissão vistoria.ordens.manage }
+  /ordens-servico/minha-agenda:
+    get:
+      summary: Agenda do fiscal autenticado, ordenada por criticidade decrescente
+      tags: [Ordens de Serviço]
+      responses:
+        "200": { description: OK }
+  /ordens-servico/{id}:
+    get:
+      summary: Exibe uma ordem de serviço
+      tags: [Ordens de Serviço]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+        "403": { description: Fiscal não é o dono da ordem }
+  /ordens-servico/{id}/reatribuir:
+    patch:
+      summary: Reatribui a ordem a outro fiscal vinculado à mesma unidade organizacional
+      tags: [Ordens de Serviço]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { fiscal_id: { type: integer } }, required: [fiscal_id] } } }
+      responses:
+        "200": { description: Reatribuída }
+        "422": { description: Ordem concluída/cancelada, ou fiscal fora da unidade organizacional }
+  /pacote-do-dia:
+    get:
+      summary: Ordens de serviço do fiscal com histórico, formulário aplicável e reincidência (uso offline no app de campo)
+      tags: [App de Campo Offline]
+      responses:
+        "200": { description: OK }
+  /execucoes/sincronizar:
+    post:
+      summary: Sincroniza uma execução de vistoria coletada offline (idempotente por client_uuid)
+      tags: [App de Campo Offline]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Criada }
+        "200": { description: Reenvio do mesmo client_uuid — retorna o registro já existente }
+        "422": { description: Pergunta obrigatória do checklist sem resposta }
+  /formularios:
+    get:
+      summary: Lista modelos de formulário/checklist
+      tags: [Formulários Dinâmicos]
+      responses: { "200": { description: OK } }
+    post:
+      summary: Cria um modelo de formulário com suas perguntas
+      tags: [Formulários Dinâmicos]
+      responses: { "201": { description: Criado } }
+  /execucoes/{execucaoId}/documentos:
+    post:
+      summary: Emite um documento de fiscalização (auto de infração, notificação, termo de embargo/apreensão)
+      tags: [Documentos]
+      parameters: [{ name: execucaoId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "201": { description: Emitido, content: { application/json: { schema: { $ref: "#/components/schemas/Documento" } } } }
+        "422": { description: Tipo de documento inválido }
+  /documentos/{id}/pdf:
+    get:
+      summary: Baixa o PDF do documento emitido
+      tags: [Documentos]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: Arquivo PDF } }
+  /documentos/{documentoId}/assinaturas/sincronizar:
+    post:
+      summary: Sincroniza uma assinatura (ou recusa) coletada em tela (idempotente por client_uuid)
+      tags: [Assinaturas]
+      parameters:
+        - { name: documentoId, in: path, required: true, schema: { type: integer } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+      responses: { "201": { description: Registrada } }
+  /execucoes/{execucaoId}/evidencias:
+    post:
+      summary: Anexa documento complementar (nota fiscal/licença/laudo) apresentado pelo fiscalizado
+      tags: [Evidências]
+      parameters: [{ name: execucaoId, in: path, required: true, schema: { type: integer } }]
+      responses: { "201": { description: Anexado } }
+  /evidencias/{id}/arquivo:
+    get:
+      summary: Baixa o arquivo da evidência (versão com marca d'água quando for foto)
+      tags: [Evidências]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: Arquivo } }
+  /processos-sancionatorios/{id}:
+    get:
+      summary: Exibe um processo administrativo sancionatório
+      tags: [Processo Sancionatório]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ProcessoSancionatorio" } } } } }
+  /processos-sancionatorios/{id}/defesa:
+    post:
+      summary: Registra a defesa apresentada pelo autuado
+      tags: [Processo Sancionatório]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: Defesa registrada } }
+  /processos-sancionatorios/{id}/julgamento:
+    post:
+      summary: Julga o processo (procedente, com penalidade em centavos; ou improcedente, arquiva) — restrito à chefia
+      tags: [Processo Sancionatório]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Julgado }
+        "403": { description: Sem permissão vistoria.chefia/vistoria.ordens.manage }
+  /processos-sancionatorios/{id}/recurso:
+    post:
+      summary: Registra o recurso apresentado contra a penalidade aplicada
+      tags: [Processo Sancionatório]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: Recurso registrado } }
+  /processos-sancionatorios/{id}/julgamento-recurso:
+    post:
+      summary: Julga o recurso (provido ou improvido) — conclui o processo
+      tags: [Processo Sancionatório]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: Concluído } }
+  /reinspecoes/{id}:
+    get:
+      summary: Exibe o acompanhamento de prazo de regularização de um auto de infração
+      tags: [Reinspeção]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: OK } }
+  /reinspecoes/{id}/regularizacao:
+    post:
+      summary: Constata se a irregularidade foi regularizada dentro do prazo
+      tags: [Reinspeção]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Constatado }
+        "422": { description: Regularização já constatada anteriormente }
+  /painel/mapa:
+    get:
+      summary: Vistorias pendentes/realizadas georreferenciadas no período (GeoJSON FeatureCollection) — restrito à chefia
+      tags: [Painel Gerencial]
+      parameters:
+        - { name: data_inicio, in: query, schema: { type: string, format: date } }
+        - { name: data_fim, in: query, schema: { type: string, format: date } }
+      responses: { "200": { description: OK } }
+  /painel/produtividade:
+    get:
+      summary: Contagem de vistorias concluídas por fiscal no período — restrito à chefia
+      tags: [Painel Gerencial]
+      responses: { "200": { description: OK } }
+  /painel/indicadores:
+    get:
+      summary: Autuações por tipo, taxa de regularização e tempo médio de conclusão do processo (cache de 1h) — restrito à chefia
+      tags: [Painel Gerencial]
+      responses: { "200": { description: OK } }
+  /vistorias/{id}/auditoria:
+    get:
+      summary: Trilha de auditoria completa de uma vistoria (execução, documentos, assinaturas, processo) — restrito a auditores/chefia/administradores
+      tags: [Auditoria]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+        "403": { description: Sem permissão vistoria.auditoria.view/vistoria.chefia }
+  /integracoes:
+    get:
+      summary: Lista as credenciais de integração M2M do tenant — restrito à chefia
+      tags: [Integração M2M]
+      responses: { "200": { description: OK } }
+    post:
+      summary: Gera uma nova credencial de integração M2M (api_key só aparece neste retorno)
+      tags: [Integração M2M]
+      responses: { "201": { description: Criada } }
+  /integracoes/{id}:
+    delete:
+      summary: Revoga uma credencial de integração M2M
+      tags: [Integração M2M]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { "200": { description: Revogada } }
+  /autuacoes:
+    get:
+      summary: Lista pública de autos de infração do tenant da credencial (M2M — sem login humano)
+      description: >
+        Nunca inclui o campo dados_autuado (contém o CPF do autuado, criptografado em
+        repouso — expor o valor decriptado aqui anularia a proteção LGPD da seção 14.1).
+      tags: [Integração M2M]
+      security:
+        - vistoriaApiKey: []
+      parameters:
+        - { name: per_page, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AutuacaoPublica" } }
+                  current_page: { type: integer }
+                  last_page: { type: integer }
+                  per_page: { type: integer }
+                  total: { type: integer }
+        "401":
+          description: Credencial ausente, inválida ou inativa
+          content: { application/json: { schema: { $ref: "#/components/schemas/Erro" } } }
