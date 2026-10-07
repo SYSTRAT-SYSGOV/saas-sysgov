@@ -10,6 +10,7 @@ use Modules\Vistoria\Http\Controllers\ExecucaoVistoriaController;
 use Modules\Vistoria\Http\Controllers\FormularioController;
 use Modules\Vistoria\Http\Controllers\LocalFiscalizavelController;
 use Modules\Vistoria\Http\Controllers\OrdemServicoController;
+use Modules\Vistoria\Http\Controllers\ProcessoSancionatorioController;
 
 // ── Locais fiscalizáveis ──────────────────────────────────────────────────
 Route::get('/locais', [LocalFiscalizavelController::class, 'index'])->name('vistoria.locais.index');
@@ -43,5 +44,12 @@ Route::post('/documentos/{documentoId}/assinaturas/sincronizar', [AssinaturaCont
 // ── Evidências fotográficas e anexos (seção 8) ──────────────────────────────
 Route::post('/execucoes/{execucaoId}/evidencias', [EvidenciaController::class, 'store'])->name('vistoria.evidencias.store');
 Route::get('/evidencias/{id}/arquivo', [EvidenciaController::class, 'arquivo'])->name('vistoria.evidencias.arquivo');
+
+// ── Processo administrativo sancionatório (seção 9) ─────────────────────────
+Route::get('/processos-sancionatorios/{id}', [ProcessoSancionatorioController::class, 'show'])->name('vistoria.processos.show');
+Route::post('/processos-sancionatorios/{id}/defesa', [ProcessoSancionatorioController::class, 'defesa'])->name('vistoria.processos.defesa');
+Route::post('/processos-sancionatorios/{id}/julgamento', [ProcessoSancionatorioController::class, 'julgamento'])->name('vistoria.processos.julgamento');
+Route::post('/processos-sancionatorios/{id}/recurso', [ProcessoSancionatorioController::class, 'recurso'])->name('vistoria.processos.recurso');
+Route::post('/processos-sancionatorios/{id}/julgamento-recurso', [ProcessoSancionatorioController::class, 'julgamentoRecurso'])->name('vistoria.processos.julgamento-recurso');
 
 // Rotas das demais seções são adicionadas incrementalmente (ver tasks.md).

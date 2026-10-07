@@ -8,6 +8,7 @@ use App\Models\Concerns\TenantAware;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Pessoas\Models\Pessoa;
 
@@ -99,5 +100,11 @@ final class Documento extends Model
     public function assinaturas(): HasMany
     {
         return $this->hasMany(Assinatura::class, 'documento_id');
+    }
+
+    /** @return HasOne<ProcessoSancionatorio, $this> */
+    public function processoSancionatorio(): HasOne
+    {
+        return $this->hasOne(ProcessoSancionatorio::class, 'documento_id');
     }
 }

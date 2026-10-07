@@ -19,6 +19,7 @@ final class DocumentoService
 {
     public function __construct(
         private AuditLogger $audit,
+        private ProcessoSancionatorioService $processos,
     ) {}
 
     /**
@@ -95,6 +96,10 @@ final class DocumentoService
         $documento->update(['caminho_pdf' => $this->gerarEArmazenarPdf($documento, $local, $proprietario?->nome, null)]);
 
         $this->audit->record('vistoria', 'documento.emitido', "Documento #{$documento->id} ({$documento->numero})", null, $documento->toArray());
+
+        // Abertura automática do processo sancionatório (seção 9) — só para auto de infração;
+        // demais tipos (notificação, termos) não abrem processo.
+        $this->processos->abrirAutomaticamente($documento);
 
         return $documento;
     }
