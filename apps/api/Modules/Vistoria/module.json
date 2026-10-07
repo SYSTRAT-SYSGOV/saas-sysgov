@@ -21,6 +21,7 @@
     },
     "permissions": {
         "vistoria.view": "Visualizar módulo de Vistoria e Inspeção",
+        "vistoria.fiscal": "Executar vistorias e ordens de serviço da própria agenda",
         "vistoria.locais.manage": "Cadastrar e editar locais fiscalizáveis",
         "vistoria.ordens.manage": "Planejar, distribuir e reatribuir ordens de serviço",
         "vistoria.formularios.manage": "Criar e editar modelos de formulário/checklist",

@@ -13,6 +13,7 @@ use Modules\OrgChart\Models\OrgUnit;
 use Modules\OrgChart\Models\OrgUnitUser;
 use Modules\Vistoria\Events\OrdemServicoAtribuida;
 use Modules\Vistoria\Events\OrdemServicoCriada;
+use Modules\Vistoria\Events\OrdemServicoReatribuida;
 use Modules\Vistoria\Models\LocalFiscalizavel;
 use Modules\Vistoria\Models\OrdemServico;
 
@@ -105,9 +106,10 @@ final class OrdemServicoService
     }
 
     /**
-     * Listagem para a tela de planejamento: chefia (`vistoria.ordens.manage`) vê todas as ordens
-     * do tenant; fiscal sem essa permissão só vê as próprias (mesmo critério de
-     * `OrdemServicoPolicy::view()`, aplicado aqui à listagem).
+     * Listagem para a tela de planejamento: chefia (`vistoria.ordens.manage`/`vistoria.chefia`)
+     * vê todas as ordens do tenant; fiscal sem essas permissões só vê as próprias
+     * (`OrdemServico::scopeVisivelPara()` — mesmo critério de `OrdemServicoPolicy::view()`,
+     * aplicado aqui à listagem).
      *
      * @param array<string, mixed> $filtros
      *
@@ -115,11 +117,7 @@ final class OrdemServicoService
      */
     public function listar(User $user, array $filtros): LengthAwarePaginator
     {
-        $query = OrdemServico::query()->with(['local', 'orgUnit', 'fiscal'])->orderBy('data_prevista');
-
-        if (! $user->is_platform_admin && ! $user->hasPermission('vistoria.ordens.manage')) {
-            $query->where('fiscal_id', $user->id);
-        }
+        $query = OrdemServico::query()->with(['local', 'orgUnit', 'fiscal'])->visivelPara($user)->orderBy('data_prevista');
 
         if ($status = $filtros['status'] ?? null) {
             $query->where('status', $status);
@@ -130,5 +128,44 @@ final class OrdemServicoService
         }
 
         return $query->paginate((int) ($filtros['per_page'] ?? 15));
+    }
+
+    /**
+     * Reatribui a ordem a outro fiscal vinculado à mesma unidade organizacional, notificando
+     * o fiscal anterior e o novo (evento de domínio — ver nota em `OrdemServicoAtribuida`
+     * sobre a ausência de infraestrutura de notificação real neste repositório) e registrando
+     * em auditoria.
+     *
+     * @throws \DomainException quando a ordem já está concluída/cancelada, ou o novo fiscal
+     *                           não está vinculado à unidade organizacional da ordem
+     */
+    public function reatribuir(OrdemServico $ordem, User $novoFiscal): OrdemServico
+    {
+        if (in_array($ordem->status, [OrdemServico::STATUS_CONCLUIDA, OrdemServico::STATUS_CANCELADA], true)) {
+            throw new \DomainException('Não é possível reatribuir uma ordem de serviço já concluída ou cancelada.');
+        }
+
+        $vinculadoAUnidade = OrgUnitUser::query()
+            ->where('org_unit_id', $ordem->org_unit_id)
+            ->where('user_id', $novoFiscal->id)
+            ->exists();
+
+        if (! $vinculadoAUnidade) {
+            throw new \DomainException('O fiscal informado não está vinculado à unidade organizacional desta ordem de serviço.');
+        }
+
+        $fiscalAnteriorId = $ordem->fiscal_id;
+        $antes = $ordem->toArray();
+
+        DB::transaction(function () use ($ordem, $novoFiscal): void {
+            $ordem->update(['fiscal_id' => $novoFiscal->id]);
+        });
+
+        $this->audit->record('vistoria', 'ordem_servico.reatribuida', "OrdemServico #{$ordem->id}", $antes, $ordem->toArray());
+
+        $fiscalAnterior = $fiscalAnteriorId !== null ? User::find($fiscalAnteriorId) : null;
+        OrdemServicoReatribuida::dispatch($ordem, $fiscalAnterior, $novoFiscal);
+
+        return $ordem;
     }
 }

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Modules\Vistoria\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Vistoria\Http\Requests\ReatribuirOrdemServicoRequest;
 use Modules\Vistoria\Http\Requests\StoreOrdemServicoRequest;
 use Modules\Vistoria\Models\OrdemServico;
 use Modules\Vistoria\Services\OrdemServicoService;
@@ -38,6 +40,22 @@ final class OrdemServicoController extends Controller
             $ordem = $this->service->criarOrdemServico($request->validated());
 
             return response()->json($ordem, 201);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function reatribuir(ReatribuirOrdemServicoRequest $request, int $id): JsonResponse
+    {
+        $ordem = OrdemServico::findOrFail($id);
+        $novoFiscal = User::find($request->validated('fiscal_id'));
+
+        if (! $novoFiscal) {
+            return response()->json(['message' => 'Fiscal informado não encontrado.'], 422);
+        }
+
+        try {
+            return response()->json($this->service->reatribuir($ordem, $novoFiscal));
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

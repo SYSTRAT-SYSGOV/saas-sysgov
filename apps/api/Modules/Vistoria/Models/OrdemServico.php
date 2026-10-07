@@ -6,6 +6,7 @@ namespace Modules\Vistoria\Models;
 
 use App\Models\Concerns\TenantAware;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -86,5 +87,25 @@ final class OrdemServico extends Model
     public function fiscal(): BelongsTo
     {
         return $this->belongsTo(User::class, 'fiscal_id');
+    }
+
+    /**
+     * Escopo de consulta (seção 12.2): restringe a listagem às próprias ordens do fiscal
+     * autenticado — a menos que ele tenha `vistoria.ordens.manage` ou `vistoria.chefia`
+     * (ou seja platform admin), que veem o tenant inteiro sem essa restrição. Mesmo
+     * critério de `OrdemServicoPolicy::view()`, só que aplicado à listagem em vez de um
+     * registro isolado.
+     *
+     * @param Builder<OrdemServico> $query
+     *
+     * @return Builder<OrdemServico>
+     */
+    public function scopeVisivelPara(Builder $query, User $user): Builder
+    {
+        if ($user->is_platform_admin || $user->hasPermission('vistoria.ordens.manage') || $user->hasPermission('vistoria.chefia')) {
+            return $query;
+        }
+
+        return $query->where('fiscal_id', $user->id);
     }
 }

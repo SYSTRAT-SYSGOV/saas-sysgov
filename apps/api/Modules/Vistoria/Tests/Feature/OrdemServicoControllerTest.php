@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\OrgChart\Models\OrgUnit;
+use Modules\OrgChart\Models\OrgUnitUser;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Vistoria\Models\LocalFiscalizavel;
 use Modules\Vistoria\Models\OrdemServico;
@@ -165,6 +166,54 @@ final class OrdemServicoControllerTest extends TestCase
         $this->como($outroFiscal, $this->tenant)
             ->getJson("/api/vistoria/ordens-servico/{$ordem->id}")
             ->assertStatus(403);
+    }
+
+    public function test_chefia_reatribui_ordem_para_fiscal_vinculado_a_unidade(): void
+    {
+        [$local, $orgUnit, $fiscal] = $this->montarLocalEUnidade();
+        $novoFiscal = $this->usuarioComPermissao($this->tenant, ['vistoria.view'], 'Novo Fiscal');
+        $this->noTenant($this->tenant, fn () => OrgUnitUser::create(['org_unit_id' => $orgUnit->id, 'user_id' => $novoFiscal->id, 'role' => 'membro']));
+        $ordem = $this->noTenant($this->tenant, fn () => OrdemServico::create([
+            'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $fiscal->id,
+            'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => now()->addDay()->toDateString(),
+        ]));
+
+        $response = $this->como($this->chefia, $this->tenant)->patchJson("/api/vistoria/ordens-servico/{$ordem->id}/reatribuir", [
+            'fiscal_id' => $novoFiscal->id,
+        ]);
+
+        $response->assertStatus(200)->assertJsonPath('fiscal_id', $novoFiscal->id);
+    }
+
+    public function test_fiscal_sem_permissao_e_recusado_ao_reatribuir(): void
+    {
+        [$local, $orgUnit, $fiscal] = $this->montarLocalEUnidade();
+        $ordem = $this->noTenant($this->tenant, fn () => OrdemServico::create([
+            'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $fiscal->id,
+            'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => now()->addDay()->toDateString(),
+        ]));
+
+        $response = $this->como($fiscal, $this->tenant)->patchJson("/api/vistoria/ordens-servico/{$ordem->id}/reatribuir", [
+            'fiscal_id' => $fiscal->id,
+        ]);
+
+        $response->assertStatus(403);
+    }
+
+    public function test_recusa_reatribuicao_para_fiscal_de_outra_unidade_com_422(): void
+    {
+        [$local, $orgUnit, $fiscal] = $this->montarLocalEUnidade();
+        $fiscalDeOutraUnidade = $this->usuarioComPermissao($this->tenant, ['vistoria.view'], 'Fiscal de Outra Unidade');
+        $ordem = $this->noTenant($this->tenant, fn () => OrdemServico::create([
+            'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $fiscal->id,
+            'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => now()->addDay()->toDateString(),
+        ]));
+
+        $response = $this->como($this->chefia, $this->tenant)->patchJson("/api/vistoria/ordens-servico/{$ordem->id}/reatribuir", [
+            'fiscal_id' => $fiscalDeOutraUnidade->id,
+        ]);
+
+        $response->assertStatus(422);
     }
 
     /**

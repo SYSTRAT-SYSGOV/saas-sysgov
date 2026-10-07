@@ -27,6 +27,7 @@ Route::get('/ordens-servico', [OrdemServicoController::class, 'index'])->name('v
 Route::post('/ordens-servico', [OrdemServicoController::class, 'store'])->name('vistoria.ordens-servico.store');
 Route::get('/ordens-servico/minha-agenda', [OrdemServicoController::class, 'minhaAgenda'])->name('vistoria.ordens-servico.minha-agenda');
 Route::get('/ordens-servico/{id}', [OrdemServicoController::class, 'show'])->name('vistoria.ordens-servico.show');
+Route::patch('/ordens-servico/{id}/reatribuir', [OrdemServicoController::class, 'reatribuir'])->name('vistoria.ordens-servico.reatribuir');
 
 // ── App de campo offline (seção 4) ─────────────────────────────────────────
 Route::get('/pacote-do-dia', [ExecucaoVistoriaController::class, 'pacoteDoDia'])->name('vistoria.execucoes.pacote-do-dia');

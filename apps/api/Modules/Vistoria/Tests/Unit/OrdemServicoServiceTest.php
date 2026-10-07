@@ -6,9 +6,11 @@ namespace Modules\Vistoria\Tests\Unit;
 
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Modules\OrgChart\Models\OrgUnit;
 use Modules\OrgChart\Models\OrgUnitUser;
 use Modules\Pessoas\Models\Pessoa;
+use Modules\Vistoria\Events\OrdemServicoReatribuida;
 use Modules\Vistoria\Models\LocalFiscalizavel;
 use Modules\Vistoria\Models\OrdemServico;
 use Modules\Vistoria\Services\OrdemServicoService;
@@ -113,6 +115,112 @@ final class OrdemServicoServiceTest extends TestCase
                 'data_prevista' => '2026-11-01',
             ]);
         });
+    }
+
+    public function test_reatribui_para_fiscal_vinculado_a_unidade_e_dispara_evento(): void
+    {
+        Event::fake([OrdemServicoReatribuida::class]);
+        $tenant = $this->criarTenant();
+
+        [$ordem, $fiscalOriginal, $novoFiscal] = $this->noTenant($tenant, function () use ($tenant) {
+            [$local, $orgUnit, $fiscalOriginal] = $this->montarCenarioBase($tenant);
+            $novoFiscal = $this->usuarioComPermissao($tenant, [], 'Novo Fiscal');
+            OrgUnitUser::create(['org_unit_id' => $orgUnit->id, 'user_id' => $novoFiscal->id, 'role' => 'membro']);
+
+            $ordem = OrdemServico::create([
+                'local_id' => $local->id,
+                'org_unit_id' => $orgUnit->id,
+                'fiscal_id' => $fiscalOriginal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA,
+                'data_prevista' => '2026-11-01',
+            ]);
+
+            $ordem = app(OrdemServicoService::class)->reatribuir($ordem, $novoFiscal);
+
+            return [$ordem, $fiscalOriginal, $novoFiscal];
+        });
+
+        self::assertSame($novoFiscal->id, $ordem->fiscal_id);
+        Event::assertDispatched(OrdemServicoReatribuida::class, function (OrdemServicoReatribuida $evento) use ($fiscalOriginal, $novoFiscal): bool {
+            return $evento->fiscalAnterior?->id === $fiscalOriginal->id && $evento->fiscalNovo->id === $novoFiscal->id;
+        });
+    }
+
+    public function test_reatribuir_lanca_exception_quando_fiscal_nao_vinculado_a_unidade(): void
+    {
+        $tenant = $this->criarTenant();
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('O fiscal informado não está vinculado à unidade organizacional desta ordem de serviço.');
+
+        $this->noTenant($tenant, function () use ($tenant) {
+            [$local, $orgUnit, $fiscalOriginal] = $this->montarCenarioBase($tenant);
+            $fiscalDeOutraUnidade = $this->usuarioComPermissao($tenant, [], 'Fiscal de Outra Unidade');
+
+            $ordem = OrdemServico::create([
+                'local_id' => $local->id,
+                'org_unit_id' => $orgUnit->id,
+                'fiscal_id' => $fiscalOriginal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA,
+                'data_prevista' => '2026-11-01',
+            ]);
+
+            app(OrdemServicoService::class)->reatribuir($ordem, $fiscalDeOutraUnidade);
+        });
+    }
+
+    public function test_reatribuir_lanca_exception_quando_ordem_ja_concluida(): void
+    {
+        $tenant = $this->criarTenant();
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Não é possível reatribuir uma ordem de serviço já concluída ou cancelada.');
+
+        $this->noTenant($tenant, function () use ($tenant) {
+            [$local, $orgUnit, $fiscalOriginal] = $this->montarCenarioBase($tenant);
+            $novoFiscal = $this->usuarioComPermissao($tenant, [], 'Novo Fiscal');
+            OrgUnitUser::create(['org_unit_id' => $orgUnit->id, 'user_id' => $novoFiscal->id, 'role' => 'membro']);
+
+            $ordem = OrdemServico::create([
+                'local_id' => $local->id,
+                'org_unit_id' => $orgUnit->id,
+                'fiscal_id' => $fiscalOriginal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA,
+                'status' => OrdemServico::STATUS_CONCLUIDA,
+                'data_prevista' => '2026-11-01',
+            ]);
+
+            app(OrdemServicoService::class)->reatribuir($ordem, $novoFiscal);
+        });
+    }
+
+    public function test_listar_restringe_fiscal_as_proprias_ordens_mas_nao_a_chefia(): void
+    {
+        $tenant = $this->criarTenant();
+
+        [$fiscal, $chefia, $qtdFiscal, $qtdChefia] = $this->noTenant($tenant, function () use ($tenant) {
+            [$local, $orgUnit, $fiscal] = $this->montarCenarioBase($tenant);
+            $outroFiscal = $this->usuarioComPermissao($tenant, [], 'Outro Fiscal');
+            // Chefia só com `vistoria.chefia` (sem `vistoria.ordens.manage`) — confirma o OR entre as duas permissões.
+            $chefia = $this->usuarioComPermissao($tenant, ['vistoria.chefia'], 'Chefia');
+
+            OrdemServico::create([
+                'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $fiscal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => '2026-11-01',
+            ]);
+            OrdemServico::create([
+                'local_id' => $local->id, 'org_unit_id' => $orgUnit->id, 'fiscal_id' => $outroFiscal->id,
+                'tipo_acao' => OrdemServico::TIPO_ACAO_VISTORIA_ROTINA, 'data_prevista' => '2026-11-02',
+            ]);
+
+            $qtdFiscal = app(OrdemServicoService::class)->listar($fiscal, [])->total();
+            $qtdChefia = app(OrdemServicoService::class)->listar($chefia, [])->total();
+
+            return [$fiscal, $chefia, $qtdFiscal, $qtdChefia];
+        });
+
+        self::assertSame(1, $qtdFiscal);
+        self::assertSame(2, $qtdChefia);
     }
 
     /**
