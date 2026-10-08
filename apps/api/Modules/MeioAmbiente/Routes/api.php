@@ -7,12 +7,13 @@ use Modules\MeioAmbiente\Http\Controllers\AreaProtegidaController;
 use Modules\MeioAmbiente\Http\Controllers\CompensacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\EmpreendimentoController;
 use Modules\MeioAmbiente\Http\Controllers\FiscalizacaoAmbientalController;
+use Modules\MeioAmbiente\Http\Controllers\OcorrenciaQueimadaController;
 use Modules\MeioAmbiente\Http\Controllers\ProcessoLicenciamentoController;
 use Modules\MeioAmbiente\Http\Controllers\ResiduosSolidosController;
 
-// Fases 2-7 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
-// Compensação Ambiental, Resíduos Sólidos e Áreas Protegidas. As demais capacidades
-// (queimadas, recursos hídricos, relatórios/indicadores, integrações e auditoria) são
+// Fases 2-8 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
+// Compensação Ambiental, Resíduos Sólidos, Áreas Protegidas e Queimadas. As demais
+// capacidades (recursos hídricos, relatórios/indicadores, integrações e auditoria) são
 // adicionadas incrementalmente — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
 
 Route::pattern('empreendimento', '[0-9]+');
@@ -24,6 +25,7 @@ Route::pattern('processoSancionatorio', '[0-9]+');
 Route::pattern('compensacaoAmbiental', '[0-9]+');
 Route::pattern('geradorResiduo', '[0-9]+');
 Route::pattern('pontoLogisticaReversa', '[0-9]+');
+Route::pattern('ocorrenciaQueimada', '[0-9]+');
 
 Route::get('/empreendimentos', [EmpreendimentoController::class, 'index']);
 Route::get('/empreendimentos/mapa', [EmpreendimentoController::class, 'mapa']);
@@ -60,3 +62,8 @@ Route::get('/areas-protegidas', [AreaProtegidaController::class, 'index']);
 Route::get('/areas-protegidas/mapa', [AreaProtegidaController::class, 'mapa']);
 Route::post('/areas-protegidas', [AreaProtegidaController::class, 'store']);
 Route::get('/empreendimentos/{empreendimento}/areas-protegidas-sobrepostas', [AreaProtegidaController::class, 'sobreposicao']);
+
+Route::get('/ocorrencias-queimada', [OcorrenciaQueimadaController::class, 'index']);
+Route::get('/ocorrencias-queimada/mapa', [OcorrenciaQueimadaController::class, 'mapa']);
+Route::post('/ocorrencias-queimada', [OcorrenciaQueimadaController::class, 'store']);
+Route::post('/ocorrencias-queimada/{ocorrenciaQueimada}/responsavel', [OcorrenciaQueimadaController::class, 'storeResponsavel']);

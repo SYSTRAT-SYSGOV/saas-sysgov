@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Leaf, FileCheck, Building2, Gavel, Landmark, Recycle, TreePine } from 'lucide-react';
+import { Leaf, FileCheck, Building2, Gavel, Landmark, Recycle, TreePine, Flame } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs } from '@/components/ui/Tabs';
 import type { TabsItem } from '@/components/ui/Tabs';
@@ -9,13 +9,13 @@ import { FiscalizacaoAmbientalView } from './views/FiscalizacaoAmbientalView';
 import { CompensacaoAmbientalView } from './views/CompensacaoAmbientalView';
 import { ResiduosSolidosView } from './views/ResiduosSolidosView';
 import { AreasProtegidasView } from './views/AreasProtegidasView';
+import { QueimadasView } from './views/QueimadasView';
 
-type MeioAmbienteTab = 'empreendimentos' | 'licenciamento' | 'fiscalizacao' | 'compensacao' | 'residuos' | 'areas-protegidas';
+type MeioAmbienteTab = 'empreendimentos' | 'licenciamento' | 'fiscalizacao' | 'compensacao' | 'residuos' | 'areas-protegidas' | 'queimadas';
 
 /**
- * As abas das demais capacidades (Queimadas, Recursos Hídricos,
- * Relatórios/Indicadores, Integrações, Auditoria) são adicionadas
- * incrementalmente a partir da Fase 8. Ver
+ * As abas das demais capacidades (Recursos Hídricos, Relatórios/Indicadores,
+ * Integrações, Auditoria) são adicionadas incrementalmente a partir da Fase 9. Ver
  * openspec/changes/criar-modulo-meio-ambiente/tasks.md.
  */
 export const MeioAmbienteModule: React.FC = () => {
@@ -28,6 +28,7 @@ export const MeioAmbienteModule: React.FC = () => {
     { key: 'compensacao', label: 'Compensação Ambiental', icon: <Landmark className="h-4 w-4" /> },
     { key: 'residuos', label: 'Resíduos Sólidos', icon: <Recycle className="h-4 w-4" /> },
     { key: 'areas-protegidas', label: 'Áreas Protegidas', icon: <TreePine className="h-4 w-4" /> },
+    { key: 'queimadas', label: 'Queimadas', icon: <Flame className="h-4 w-4" /> },
   ];
 
   return (
@@ -48,6 +49,7 @@ export const MeioAmbienteModule: React.FC = () => {
           {aba === 'compensacao' && <CompensacaoAmbientalView />}
           {aba === 'residuos' && <ResiduosSolidosView />}
           {aba === 'areas-protegidas' && <AreasProtegidasView />}
+          {aba === 'queimadas' && <QueimadasView />}
         </div>
       </div>
     </div>

@@ -97,6 +97,38 @@ export interface ProcessoLicenciamento {
   created_at: string;
 }
 
+export type SituacaoOcorrenciaQueimada = 'responsavel_identificado' | 'responsavel_nao_identificado';
+
+export interface OcorrenciaQueimada {
+  id: number;
+  data_ocorrencia: string;
+  latitude: number;
+  longitude: number;
+  area_queimada_ha: number | null;
+  responsavel_pessoa_id: number | null;
+  responsavel_empreendimento_id: number | null;
+  auto_infracao_ambiental_id: number | null;
+  situacao: SituacaoOcorrenciaQueimada;
+}
+
+export interface NovaOcorrenciaQueimadaInput {
+  data_ocorrencia: string;
+  latitude: number;
+  longitude: number;
+  area_queimada_ha?: number | null;
+  responsavel_pessoa_id?: number | null;
+  responsavel_empreendimento_id?: number | null;
+}
+
+export interface QueimadaFeatureCollection {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    geometry: { type: 'Point'; coordinates: [number, number] };
+    properties: { id: number; data_ocorrencia: string; area_queimada_ha: number | null; situacao: SituacaoOcorrenciaQueimada };
+  }>;
+}
+
 export type TipoAreaProtegida = 'app' | 'reserva_legal' | 'unidade_conservacao';
 
 export interface AreaProtegida {
@@ -335,4 +367,16 @@ export const meioAmbienteApi = {
 
   areasProtegidasSobrepostas: (empreendimentoId: number) =>
     apiClient.get<{ data: AreaProtegida[] }>(`${base}/empreendimentos/${empreendimentoId}/areas-protegidas-sobrepostas`).then((r) => r.data.data),
+
+  listarOcorrenciasQueimada: () =>
+    apiClient.get<{ data: OcorrenciaQueimada[] }>(`${base}/ocorrencias-queimada`).then((r) => r.data.data),
+
+  mapaOcorrenciasQueimada: () =>
+    apiClient.get<QueimadaFeatureCollection>(`${base}/ocorrencias-queimada/mapa`).then((r) => r.data),
+
+  registrarOcorrenciaQueimada: (dados: NovaOcorrenciaQueimadaInput) =>
+    apiClient.post<OcorrenciaQueimada>(`${base}/ocorrencias-queimada`, dados).then((r) => r.data),
+
+  vincularResponsavelQueimada: (ocorrenciaId: number, dados: { responsavel_pessoa_id?: number; responsavel_empreendimento_id?: number; execucao_vistoria_id?: number }) =>
+    apiClient.post<OcorrenciaQueimada>(`${base}/ocorrencias-queimada/${ocorrenciaId}/responsavel`, dados).then((r) => r.data),
 };

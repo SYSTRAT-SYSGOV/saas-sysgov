@@ -71,9 +71,20 @@ monorepo (usado pelo módulo Cemitérios) e poderia integrar desenho interativo 
 
 ## 8. Controle de queimadas
 
-- [ ] 8.1 Migration + model `OcorrenciaQueimada` (data, latitude/longitude, `area_queimada_ha`, `responsavel_pessoa_id` opcional, referência de imagem de satélite opcional); verificar testes dos cenários com e sem responsável identificado.
-- [ ] 8.2 Listener/Service que, ao vincular um responsável a uma ocorrência, abre automaticamente um `AutoInfracaoAmbiental` com `tipo_infracao='queimada'` via `FiscalizacaoAmbientalService` (seção 4); verificar teste do cenário "auto de infração aberto automaticamente ao identificar responsável".
-- [ ] 8.3 Permissão `meio_ambiente.queimadas.registrar` + endpoints; tela de registro de ocorrência e mapa de focos no `web-client`; verificar teste de feature e `npm run typecheck`.
+- [x] 8.1 Migration + model `OcorrenciaQueimada` (data, latitude/longitude, `area_queimada_ha`, `responsavel_pessoa_id` OU `responsavel_empreendimento_id` opcionais, `referencia_imagem_satelite` JSON opcional, `situacao`); testes dos cenários com e sem responsável identificado, e sem imagem de satélite.
+- [x] 8.2 `QueimadasService::vincularResponsavel()` abre automaticamente um `AutoInfracaoAmbiental` com `tipo_infracao='queimada'` via `FiscalizacaoAmbientalService` (Fase 4) **somente quando o responsável identificado é um `Empreendimento` e uma `execucao_vistoria_id` é informada junto** — ver nota de implementação abaixo; testes do cenário de abertura automática e do cenário "só pessoa física, sem execução, não abre auto de infração".
+- [x] 8.3 Endpoints sob permissão `meio_ambiente.queimadas.registrar` (já existente desde a Fase 1) + `OcorrenciaQueimadaControllerTest`; tela `QueimadasView.tsx` no `web-client` (registro de ocorrência, mapa de focos coloridos por situação, identificação de responsável); `npm run typecheck` e `npm test` (532 testes) sem regressão.
+
+**Nota de implementação**: `FiscalizacaoAmbientalService::emitirAutoInfracaoAmbiental()` (Fase 4) exige um
+par `(ExecucaoVistoria, Empreendimento)` — `AutoInfracaoAmbiental.empreendimento_id` e `.documento_id` não
+são nulos no schema da Fase 4, e alterar isso retroativamente quebraria uma capability já testada e
+commitada. Por isso a abertura automática de auto de infração para queimada só dispara quando (a) o
+responsável identificado é um `Empreendimento` cadastrado (não basta uma `Pessoa` física solta) e (b) uma
+execução de vistoria concluída é informada junto — interpretação deliberada de "reaproveitando a
+capacidade de fiscalização ambiental já especificada": um fiscal visita o local queimado (execução de
+vistoria), identifica o responsável, e o sistema abre o auto automaticamente. Um responsável só pessoa
+física, ou um responsável-empreendimento sem execução informada, registra a ocorrência normalmente mas
+não abre auto de infração automaticamente (`auto_infracao_ambiental_id` permanece nulo).
 
 ## 9. Recursos hídricos
 
