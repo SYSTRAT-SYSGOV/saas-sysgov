@@ -9,11 +9,13 @@
 
 ## 2. Empreendimentos (cadastro mestre)
 
-- [ ] 2.1 Migration + model `Empreendimento` (`TenantAware`, titular via `titular_pessoa_id` nullable FK `Modules\Pessoas\Models\Pessoa` OU `cnpj`/`razao_social` próprios, atividade, porte, latitude/longitude) com validação de "titular PF ou CNPJ obrigatório" no Service; verificar teste unitário cobrindo os cenários de cadastro PF, cadastro PJ e rejeição sem titular do spec `empreendimentos`.
-- [ ] 2.2 Migration + model `ResponsavelTecnico` (vínculo a `Empreendimento`, `pessoa_id` nullable FK Pessoas, `nome`/`registro_profissional`/`tipo_registro` sempre preenchidos) + regra "licenciamento exige responsável técnico vinculado"; verificar teste cobrindo vínculo com e sem Pessoa e o bloqueio de licenciamento sem responsável.
-- [ ] 2.3 `EmpreendimentoService` (`criarEmpreendimento()`, `vincularResponsavelTecnico()`) + Policy + permissão `meio_ambiente.empreendimentos.manage`; verificar testes de feature dos 5 cenários do spec `empreendimentos`.
-- [ ] 2.4 Endpoint de listagem georreferenciada (GeoJSON) com filtro por atividade/porte; verificar teste de feature do cenário "consulta em mapa filtrando por atividade".
-- [ ] 2.5 Tela de cadastro/listagem de empreendimentos no `web-client` com mapa (`react-leaflet`), usando exclusivamente primitivas `@sysgov/ui`; verificar `npm run typecheck` e teste de componente do formulário.
+- [x] 2.1 Migration + model `Empreendimento` (`TenantAware`, titular via `titular_pessoa_id` nullable FK `Modules\Pessoas\Models\Pessoa` OU `cnpj`/`razao_social` próprios, atividade, porte, latitude/longitude) com validação de "titular PF ou CNPJ obrigatório" no Service; testes unitários cobrindo cadastro PF, cadastro PJ e rejeição sem titular (`EmpreendimentoServiceTest`).
+- [x] 2.2 Migration + model `ResponsavelTecnico` (vínculo a `Empreendimento`, `pessoa_id` nullable FK Pessoas, `nome`/`registro_profissional`/`tipo_registro` sempre preenchidos) + `EmpreendimentoService::garantirResponsavelTecnico()` (guard a ser chamado pelo `ProcessoLicenciamentoService` na Fase 3); testes cobrindo vínculo e o bloqueio sem responsável.
+- [x] 2.3 `EmpreendimentoService` (`criarEmpreendimento()`, `vincularResponsavelTecnico()`) + `EmpreendimentoPolicy` + permissão `meio_ambiente.empreendimentos.manage`; testes de feature dos cenários do spec `empreendimentos` via `EmpreendimentoControllerTest` (cadastro PJ, rejeição 422 sem titular, 403 sem permissão).
+- [x] 2.4 Endpoint `GET /empreendimentos/mapa` (GeoJSON) com filtro por atividade/porte; teste de feature do cenário "consulta em mapa filtrando por atividade".
+- [x] 2.5 Tela de cadastro/listagem de empreendimentos no `web-client` (`EmpreendimentosView.tsx`, abas Lista/Mapa) com mapa (`react-leaflet` + `CircleMarker`, sem `Marker` padrão para evitar o bug conhecido de ícone do Leaflet em bundlers), reaproveitando `PessoaPicker`/`usePessoaPicker` do módulo Pessoas para o titular pessoa física; `npm run typecheck` e `npm test` (web-client completo, 497 testes) passam sem regressão.
+
+**Nota de implementação**: `garantirResponsavelTecnico()` já existe e tem teste unitário próprio nesta fase, mas só será *chamado* de verdade pelo fluxo de abertura de processo na Fase 3 (não existe `ProcessoLicenciamento` ainda) — ver spec `meio-ambiente/empreendimentos`, cenário "Empreendimento sem responsável técnico não pode iniciar licenciamento".
 
 ## 3. Licenciamento ambiental
 

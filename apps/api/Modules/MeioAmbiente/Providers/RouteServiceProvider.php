@@ -11,7 +11,7 @@ final class RouteServiceProvider extends ServiceProvider
 {
     public function map(): void
     {
-        Route::middleware(['api', 'auth:sanctum', 'resolve.tenant'])
+        Route::middleware(['api', 'auth:sanctum', 'resolve.tenant', 'module-access:meio_ambiente'])
             ->prefix('api/meio_ambiente')
             ->group(__DIR__ . '/../Routes/api.php');
     }

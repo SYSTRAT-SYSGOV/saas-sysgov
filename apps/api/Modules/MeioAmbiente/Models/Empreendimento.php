@@ -1,0 +1,76 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\MeioAmbiente\Models;
+
+use App\Models\Concerns\TenantAware;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Pessoas\Models\Pessoa;
+
+/**
+ * Empreendimento ou atividade potencialmente poluidora sujeita a licenciamento,
+ * fiscalização, compensação ambiental e outorga de recursos hídricos. Titular pode
+ * ser pessoa física já cadastrada no Cadastro Único (`titular_pessoa_id`) ou pessoa
+ * jurídica com CNPJ/razão social próprios — ver `Modules\MeioAmbiente\Services\EmpreendimentoService`.
+ *
+ * @property int $id
+ * @property int $tenant_id
+ * @property int|null $titular_pessoa_id
+ * @property string|null $cnpj
+ * @property string|null $razao_social
+ * @property string $atividade
+ * @property string $porte
+ * @property float $latitude
+ * @property float $longitude
+ */
+final class Empreendimento extends Model
+{
+    use TenantAware;
+    use SoftDeletes;
+
+    protected $table = 'meio_ambiente_empreendimentos';
+
+    public const PORTE_PEQUENO = 'pequeno';
+    public const PORTE_MEDIO = 'medio';
+    public const PORTE_GRANDE = 'grande';
+
+    public const PORTES_VALIDOS = [
+        self::PORTE_PEQUENO,
+        self::PORTE_MEDIO,
+        self::PORTE_GRANDE,
+    ];
+
+    protected $fillable = [
+        'tenant_id',
+        'titular_pessoa_id',
+        'cnpj',
+        'razao_social',
+        'atividade',
+        'porte',
+        'latitude',
+        'longitude',
+    ];
+
+    protected $casts = [
+        'tenant_id' => 'integer',
+        'titular_pessoa_id' => 'integer',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
+    ];
+
+    /** @return BelongsTo<Pessoa, $this> */
+    public function titular(): BelongsTo
+    {
+        return $this->belongsTo(Pessoa::class, 'titular_pessoa_id');
+    }
+
+    /** @return HasOne<ResponsavelTecnico, $this> */
+    public function responsavelTecnico(): HasOne
+    {
+        return $this->hasOne(ResponsavelTecnico::class, 'empreendimento_id');
+    }
+}

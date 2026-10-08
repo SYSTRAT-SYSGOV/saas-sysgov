@@ -1,14 +1,14 @@
 import React from 'react';
 import { Leaf } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Card } from '@sysgov/ui';
+import { EmpreendimentosView } from './views/EmpreendimentosView';
 
 /**
- * Skeleton da Fase 1 do módulo de Meio Ambiente — as abas de cada capacidade
- * (Empreendimentos, Licenciamento, Fiscalização Ambiental, Compensação, Resíduos
- * Sólidos, Áreas Protegidas, Queimadas, Recursos Hídricos, Relatórios/Indicadores,
- * Integrações, Auditoria) são adicionadas incrementalmente a partir da Fase 2.
- * Ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
+ * As abas das demais capacidades (Licenciamento, Fiscalização Ambiental,
+ * Compensação, Resíduos Sólidos, Áreas Protegidas, Queimadas, Recursos
+ * Hídricos, Relatórios/Indicadores, Integrações, Auditoria) são adicionadas
+ * incrementalmente a partir da Fase 3. Ver
+ * openspec/changes/criar-modulo-meio-ambiente/tasks.md.
  */
 export const MeioAmbienteModule: React.FC = () => (
   <div className="p-6">
@@ -19,9 +19,7 @@ export const MeioAmbienteModule: React.FC = () => (
     />
 
     <div className="mt-6">
-      <Card className="p-6 text-sm text-muted-foreground">
-        Módulo em implantação. As telas de cada capacidade serão habilitadas progressivamente.
-      </Card>
+      <EmpreendimentosView />
     </div>
   </div>
 );
