@@ -3,15 +3,16 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\MeioAmbiente\Http\Controllers\AreaProtegidaController;
 use Modules\MeioAmbiente\Http\Controllers\CompensacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\EmpreendimentoController;
 use Modules\MeioAmbiente\Http\Controllers\FiscalizacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\ProcessoLicenciamentoController;
 use Modules\MeioAmbiente\Http\Controllers\ResiduosSolidosController;
 
-// Fases 2-6 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
-// Compensação Ambiental e Resíduos Sólidos. As demais capacidades (áreas protegidas,
-// queimadas, recursos hídricos, relatórios/indicadores, integrações e auditoria) são
+// Fases 2-7 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
+// Compensação Ambiental, Resíduos Sólidos e Áreas Protegidas. As demais capacidades
+// (queimadas, recursos hídricos, relatórios/indicadores, integrações e auditoria) são
 // adicionadas incrementalmente — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
 
 Route::pattern('empreendimento', '[0-9]+');
@@ -54,3 +55,8 @@ Route::post('/geradores-residuo/{geradorResiduo}/coletas', [ResiduosSolidosContr
 Route::get('/pontos-logistica-reversa', [ResiduosSolidosController::class, 'indexPontosLogisticaReversa']);
 Route::post('/pontos-logistica-reversa', [ResiduosSolidosController::class, 'storePontoLogisticaReversa']);
 Route::post('/pontos-logistica-reversa/{pontoLogisticaReversa}/entregas', [ResiduosSolidosController::class, 'storeEntregaLogisticaReversa']);
+
+Route::get('/areas-protegidas', [AreaProtegidaController::class, 'index']);
+Route::get('/areas-protegidas/mapa', [AreaProtegidaController::class, 'mapa']);
+Route::post('/areas-protegidas', [AreaProtegidaController::class, 'store']);
+Route::get('/empreendimentos/{empreendimento}/areas-protegidas-sobrepostas', [AreaProtegidaController::class, 'sobreposicao']);

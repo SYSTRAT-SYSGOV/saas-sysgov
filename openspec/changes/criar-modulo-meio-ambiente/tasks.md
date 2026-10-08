@@ -59,10 +59,15 @@
 
 ## 7. Áreas protegidas
 
-- [ ] 7.1 Migration + model `AreaProtegida` (`tipo` `app|reserva_legal|unidade_conservacao`, `subtipo`, `geometria` GeoJSON `Polygon`/`MultiPolygon` em coluna `JSON`, `ato_legal`) + validação de geometria; verificar testes dos cenários de cadastro e de geometria inválida.
-- [ ] 7.2 `AreasProtegidasService::verificarSobreposicao()` (interseção geométrica em PHP, sem dependência de extensão nativa) aplicado a `Empreendimento`; verificar teste do cenário "empreendimento com sobreposição a APP é sinalizado".
-- [ ] 7.3 Endpoint de listagem para mapa (GeoJSON) com filtro por tipo; verificar teste do cenário "consulta filtrando apenas reservas legais".
-- [ ] 7.4 Permissão `meio_ambiente.areas_protegidas.manage`; tela de mapa interativo no `web-client` (`react-leaflet`) com camada de empreendimentos sobreposta; verificar `npm run typecheck` e teste de componente.
+- [x] 7.1 Migration + model `AreaProtegida` (`tipo` `app|reserva_legal|unidade_conservacao`, `subtipo`, `geometria` GeoJSON `Polygon`/`MultiPolygon` em coluna `JSON`, `ato_legal`) + validação de geometria (anel externo com ≥4 vértices); testes dos cenários de cadastro e de geometria inválida.
+- [x] 7.2 `AreasProtegidasService::verificarSobreposicao()` aplicado a `Empreendimento` — como `Empreendimento` só guarda um ponto (lat/long), não um polígono próprio (ver design.md D2), a verificação é ponto-dentro-do-polígono (ray casting em PHP puro, sem extensão nativa), não interseção polígono-polígono; testes do cenário de sobreposição e de não-sobreposição.
+- [x] 7.3 Endpoint `GET /areas-protegidas/mapa` (GeoJSON) com filtro por tipo; teste do cenário "consulta filtrando apenas reservas legais".
+- [x] 7.4 Endpoints sob permissão `meio_ambiente.areas_protegidas.manage` (já existente desde a Fase 1) + `AreaProtegidaControllerTest`; tela `AreasProtegidasView.tsx` no `web-client` (`react-leaflet` `GeoJSON` + camada de empreendimentos via `CircleMarker`, filtro por tipo); `npm run typecheck` e `npm test` (532 testes) sem regressão.
+
+**Escopo cortado explicitamente**: desenho interativo do polígono no mapa não foi implementado — o
+cadastro de área protegida no `web-client` recebe as coordenadas do anel externo coladas como JSON
+(`[[lng,lat], ...]`) em vez de desenhadas na tela. `@geoman-io/leaflet-geoman-free` já é dependência do
+monorepo (usado pelo módulo Cemitérios) e poderia integrar desenho interativo depois, se necessário.
 
 ## 8. Controle de queimadas
 

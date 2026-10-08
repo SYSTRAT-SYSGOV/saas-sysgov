@@ -97,6 +97,32 @@ export interface ProcessoLicenciamento {
   created_at: string;
 }
 
+export type TipoAreaProtegida = 'app' | 'reserva_legal' | 'unidade_conservacao';
+
+export interface AreaProtegida {
+  id: number;
+  tipo: TipoAreaProtegida;
+  subtipo: string | null;
+  geometria: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown };
+  ato_legal: string | null;
+}
+
+export interface NovaAreaProtegidaInput {
+  tipo: TipoAreaProtegida;
+  subtipo?: string;
+  geometria: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown };
+  ato_legal?: string;
+}
+
+export interface AreaProtegidaFeatureCollection {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown };
+    properties: { id: number; tipo: TipoAreaProtegida; subtipo: string | null; ato_legal: string | null };
+  }>;
+}
+
 export type TipoGeradorResiduo = 'domiciliar' | 'comercial' | 'industrial';
 export type TipoColeta = 'regular' | 'seletiva';
 export type DestinacaoResiduo = 'aterro' | 'reciclagem';
@@ -297,4 +323,16 @@ export const meioAmbienteApi = {
 
   registrarEntregaLogisticaReversa: (pontoId: number, quantidadeKg: number) =>
     apiClient.post(`${base}/pontos-logistica-reversa/${pontoId}/entregas`, { quantidade_kg: quantidadeKg }).then((r) => r.data),
+
+  listarAreasProtegidas: () =>
+    apiClient.get<{ data: AreaProtegida[] }>(`${base}/areas-protegidas`).then((r) => r.data.data),
+
+  mapaAreasProtegidas: (params?: { tipo?: TipoAreaProtegida }) =>
+    apiClient.get<AreaProtegidaFeatureCollection>(`${base}/areas-protegidas/mapa`, { params }).then((r) => r.data),
+
+  cadastrarAreaProtegida: (dados: NovaAreaProtegidaInput) =>
+    apiClient.post<AreaProtegida>(`${base}/areas-protegidas`, dados).then((r) => r.data),
+
+  areasProtegidasSobrepostas: (empreendimentoId: number) =>
+    apiClient.get<{ data: AreaProtegida[] }>(`${base}/empreendimentos/${empreendimentoId}/areas-protegidas-sobrepostas`).then((r) => r.data.data),
 };
