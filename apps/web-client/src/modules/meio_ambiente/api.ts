@@ -93,6 +93,44 @@ export interface ProcessoLicenciamento {
   created_at: string;
 }
 
+export type TipoInfracaoAmbiental = 'desmatamento' | 'poluicao_hidrica' | 'poluicao_atmosferica' | 'queimada' | 'caca_ilegal' | 'outra';
+
+export interface AutoInfracaoAmbiental {
+  id: number;
+  documento_id: number;
+  documento_numero?: string;
+  empreendimento_id: number;
+  tipo_infracao: TipoInfracaoAmbiental;
+  area_afetada_ha: number | null;
+  reincidente: boolean;
+  valor_multa_sugerido_centavos: number | null;
+  created_at: string;
+}
+
+export interface NovoAutoInfracaoAmbientalInput {
+  empreendimento_id: number;
+  tipo_infracao: TipoInfracaoAmbiental;
+  area_afetada_ha?: number | null;
+  irregularidade?: string;
+  enquadramento_legal?: string;
+  prazo_dias?: number;
+}
+
+export interface ParcelaMulta {
+  id: number;
+  numero: number;
+  valor_centavos: number;
+  vencimento: string;
+  pago: boolean;
+}
+
+export interface ParcelamentoMulta {
+  id: number;
+  numero_parcelas: number;
+  valor_total_centavos: number;
+  parcelas: ParcelaMulta[];
+}
+
 interface ErroApiResponse {
   message?: string;
   code?: string;
@@ -159,4 +197,13 @@ export const meioAmbienteApi = {
     apiClient.post<ProcessoLicenciamento>(`${base}/processos-licenciamento/${processoId}/deferir`, {
       justificativa_parecer_desfavoravel: justificativaParecerDesfavoravel,
     }).then((r) => r.data),
+
+  emitirAutoInfracaoAmbiental: (execucaoVistoriaId: number, dados: NovoAutoInfracaoAmbientalInput) =>
+    apiClient.post<AutoInfracaoAmbiental>(`${base}/execucoes-vistoria/${execucaoVistoriaId}/autos-infracao-ambiental`, dados).then((r) => r.data),
+
+  obterAutoInfracaoAmbiental: (id: number) =>
+    apiClient.get<AutoInfracaoAmbiental>(`${base}/autos-infracao-ambiental/${id}`).then((r) => r.data),
+
+  parcelarMulta: (processoSancionatorioId: number, numeroParcelas: number) =>
+    apiClient.post<ParcelamentoMulta>(`${base}/processos-sancionatorios/${processoSancionatorioId}/parcelamento`, { numero_parcelas: numeroParcelas }).then((r) => r.data),
 };

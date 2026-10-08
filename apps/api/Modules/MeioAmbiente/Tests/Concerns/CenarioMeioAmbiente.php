@@ -12,6 +12,7 @@ use App\Support\TenantContext;
 use Illuminate\Support\Str;
 use Modules\Admin\Models\Module;
 use Modules\MeioAmbiente\Database\Seeders\MeioAmbienteRbacSeeder;
+use Modules\MeioAmbiente\Database\Seeders\TabelaMultaAmbientalSeeder;
 
 /**
  * Monta cenários do módulo pelo caminho real: perfis-template do
@@ -45,6 +46,11 @@ trait CenarioMeioAmbiente
 
         if ($habilitado) {
             app(ModuleRoleProvisioner::class)->provisionForTenant($tenant, 'meio_ambiente');
+            // Tabela de enquadramento legal de multas é parametrização por tenant
+            // (TenantAware) — fica disponível assim que o órgão habilita o módulo,
+            // mesmo padrão de Modules\Requerimentos\Tests\Concerns\CenarioRequerimentos
+            // com TiposInstrumentoDefaultSeeder.
+            $this->noTenant($tenant, fn () => (new TabelaMultaAmbientalSeeder())->run());
         }
     }
 

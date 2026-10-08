@@ -80,4 +80,10 @@ final class Empreendimento extends Model
     {
         return $this->hasMany(ProcessoLicenciamento::class, 'empreendimento_id');
     }
+
+    /** @return HasMany<AutoInfracaoAmbiental, $this> */
+    public function autosInfracao(): HasMany
+    {
+        return $this->hasMany(AutoInfracaoAmbiental::class, 'empreendimento_id');
+    }
 }
