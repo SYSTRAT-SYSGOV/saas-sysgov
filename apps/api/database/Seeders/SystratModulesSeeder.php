@@ -32,6 +32,11 @@ final class SystratModulesSeeder extends Seeder
             return;
         }
 
+        if ($sysTenant->modules()->exists()) {
+            $this->command->info('SYSTRAT já possui módulos configurados — nenhuma alteração feita.');
+            return;
+        }
+
         $pivot = [];
         foreach (Module::query()->pluck('id') as $moduleId) {
             $pivot[$moduleId] = ['enabled' => true, 'monthly_fee_cents' => 0, 'settings' => json_encode([])];
