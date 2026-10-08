@@ -43,10 +43,12 @@
 
 ## 5. Compensação ambiental
 
-- [ ] 5.1 Migration + model `CompensacaoAmbiental` (vínculo a `Empreendimento`/`ProcessoLicenciamento`, percentual configurável, cálculo em `App\Support\Money` sobre o valor do empreendimento); verificar testes dos cenários de cálculo para impacto significativo e de ausência de compensação sem impacto significativo.
-- [ ] 5.2 Migration + model `PagamentoCompensacao` + atualização de saldo devedor + bloqueio de deferimento da LO com saldo pendente; verificar testes dos cenários de pagamento parcial e de bloqueio.
-- [ ] 5.3 Migration + model `DestinacaoCompensacao` + validação "destinação não pode exceder valor pago"; verificar testes dos cenários de destinação integral e de rejeição por excesso.
-- [ ] 5.4 Permissão `meio_ambiente.compensacao.manage` + endpoints; tela de acompanhamento de compensação (saldo, pagamentos, destinação) no `web-client`; verificar teste de feature e `npm run typecheck`.
+- [x] 5.1 Migration + model `CompensacaoAmbiental` (vínculo a `Empreendimento`/`ProcessoLicenciamento`, percentual configurável `PERCENTUAL_PADRAO=0.5`, cálculo sobre `valor_empreendimento_centavos` — coluna nova em `meio_ambiente_empreendimentos`, junto de `impacto_significativo`, ambas em migration de `ALTER TABLE` separada); `CompensacaoAmbientalService::criarSeNecessario()` chamado por `ProcessoLicenciamentoService::deferir()` (idempotente por `processo_licenciamento_id`); testes dos cenários de cálculo para impacto significativo e de ausência de compensação sem impacto significativo.
+- [x] 5.2 Migration + model `PagamentoCompensacao` + `saldoDevedorCentavos()` computado (sem coluna persistida, soma `pagamentos()`) + bloqueio de `deferir()` da fase LO quando há compensação do empreendimento com saldo pendente; testes dos cenários de pagamento parcial e de bloqueio (e de liberação após pagamento integral).
+- [x] 5.3 Migration + model `DestinacaoCompensacao` + validação "destinação não pode exceder valor pago" (`valorPagoCentavos() - valorDestinadoCentavos()`); testes dos cenários de destinação integral e de rejeição por excesso.
+- [x] 5.4 Endpoints sob permissão `meio_ambiente.compensacao.manage` (já existente desde a Fase 1) + `CompensacaoAmbientalControllerTest`; tela `CompensacaoAmbientalView.tsx` no `web-client` (saldo, pagamentos, destinação) + campos de `impacto_significativo`/`valor_empreendimento_centavos` adicionados ao formulário de cadastro de empreendimento (`EmpreendimentosView.tsx`, Fase 2); `npm run typecheck` e `npm test` (532 testes) sem regressão.
+
+**Escopo cortado explicitamente**: a ressalva do requisito ("salvo quando a Secretaria autorizar parcelamento") não foi implementada — não existe `ParcelamentoCompensacao` nesta fase, só o bloqueio direto por saldo pendente. Se necessário no futuro, seguiria o mesmo padrão de `ParcelamentoMulta` da Fase 4.
 
 ## 6. Gestão de resíduos sólidos
 

@@ -8,6 +8,7 @@ use App\Models\Concerns\TenantAware;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Processo de licenciamento ambiental de um empreendimento, por fase (LP/LI/LO/
@@ -103,6 +104,12 @@ final class ProcessoLicenciamento extends Model
     public function vistoriasTecnicas(): HasMany
     {
         return $this->hasMany(VistoriaTecnicaLicenciamento::class, 'processo_licenciamento_id');
+    }
+
+    /** @return HasOne<CompensacaoAmbiental, $this> */
+    public function compensacaoAmbiental(): HasOne
+    {
+        return $this->hasOne(CompensacaoAmbiental::class, 'processo_licenciamento_id');
     }
 
     public function ultimaVistoriaTecnica(): ?VistoriaTecnicaLicenciamento

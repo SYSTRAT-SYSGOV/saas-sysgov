@@ -3,14 +3,15 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\MeioAmbiente\Http\Controllers\CompensacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\EmpreendimentoController;
 use Modules\MeioAmbiente\Http\Controllers\FiscalizacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\ProcessoLicenciamentoController;
 
-// Fases 2-4 — Empreendimentos, Licenciamento Ambiental e Fiscalização Ambiental. As
-// demais capacidades (compensação, resíduos sólidos, áreas protegidas, queimadas,
-// recursos hídricos, relatórios/indicadores, integrações e auditoria) são adicionadas
-// incrementalmente — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
+// Fases 2-5 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental e
+// Compensação Ambiental. As demais capacidades (resíduos sólidos, áreas protegidas,
+// queimadas, recursos hídricos, relatórios/indicadores, integrações e auditoria) são
+// adicionadas incrementalmente — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
 
 Route::pattern('empreendimento', '[0-9]+');
 Route::pattern('processoLicenciamento', '[0-9]+');
@@ -18,6 +19,7 @@ Route::pattern('condicionante', '[0-9]+');
 Route::pattern('execucaoVistoria', '[0-9]+');
 Route::pattern('autoInfracaoAmbiental', '[0-9]+');
 Route::pattern('processoSancionatorio', '[0-9]+');
+Route::pattern('compensacaoAmbiental', '[0-9]+');
 
 Route::get('/empreendimentos', [EmpreendimentoController::class, 'index']);
 Route::get('/empreendimentos/mapa', [EmpreendimentoController::class, 'mapa']);
@@ -37,3 +39,8 @@ Route::post('/processos-licenciamento/{processoLicenciamento}/deferir', [Process
 Route::post('/execucoes-vistoria/{execucaoVistoria}/autos-infracao-ambiental', [FiscalizacaoAmbientalController::class, 'store']);
 Route::get('/autos-infracao-ambiental/{autoInfracaoAmbiental}', [FiscalizacaoAmbientalController::class, 'show']);
 Route::post('/processos-sancionatorios/{processoSancionatorio}/parcelamento', [FiscalizacaoAmbientalController::class, 'storeParcelamento']);
+
+Route::get('/empreendimentos/{empreendimento}/compensacoes-ambientais', [CompensacaoAmbientalController::class, 'index']);
+Route::get('/compensacoes-ambientais/{compensacaoAmbiental}', [CompensacaoAmbientalController::class, 'show']);
+Route::post('/compensacoes-ambientais/{compensacaoAmbiental}/pagamentos', [CompensacaoAmbientalController::class, 'storePagamento']);
+Route::post('/compensacoes-ambientais/{compensacaoAmbiental}/destinacoes', [CompensacaoAmbientalController::class, 'storeDestinacao']);

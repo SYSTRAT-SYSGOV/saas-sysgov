@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import { CircleMarker, MapContainer, Popup, TileLayer } from 'react-leaflet';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Button, Card, Input, Select, PessoaPicker } from '@sysgov/ui';
+import { Button, Card, Input, Select, PessoaPicker, Switch } from '@sysgov/ui';
 import { Building2, MapPin, Plus, UserCog } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
 import { ScreenState } from '@/components/ui/ScreenState';
@@ -209,6 +209,8 @@ const NovoEmpreendimentoModal: React.FC<{ onClose: () => void; onCriado: () => v
         razao_social: tipoTitular === TIPO_TITULAR_PJ ? dados.razao_social ?? null : null,
         atividade: dados.atividade ?? '',
         porte: dados.porte ?? 'medio',
+        impacto_significativo: dados.impacto_significativo ?? false,
+        valor_empreendimento_centavos: dados.valor_empreendimento_centavos ?? null,
         latitude: Number(dados.latitude ?? 0),
         longitude: Number(dados.longitude ?? 0),
       });
@@ -246,6 +248,19 @@ const NovoEmpreendimentoModal: React.FC<{ onClose: () => void; onCriado: () => v
 
         <Input label="Atividade" value={dados.atividade ?? ''} onChange={(e) => setDados((d) => ({ ...d, atividade: e.target.value }))} placeholder="Ex.: agroindústria, indústria química..." />
         <Select label="Porte" value={dados.porte ?? 'medio'} onChange={(v) => setDados((d) => ({ ...d, porte: v as Porte }))} options={PORTES} />
+
+        <div className="flex items-center gap-2">
+          <Switch checked={dados.impacto_significativo ?? false} onCheckedChange={(checked) => setDados((d) => ({ ...d, impacto_significativo: checked }))} />
+          <span className="text-sm">Empreendimento de impacto ambiental significativo (sujeito a compensação ambiental)</span>
+        </div>
+        {dados.impacto_significativo && (
+          <Input
+            label="Valor do Empreendimento (R$)"
+            type="number"
+            value={dados.valor_empreendimento_centavos ? dados.valor_empreendimento_centavos / 100 : ''}
+            onChange={(e) => setDados((d) => ({ ...d, valor_empreendimento_centavos: Math.round(Number(e.target.value) * 100) }))}
+          />
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Input label="Latitude" type="number" value={dados.latitude ?? ''} onChange={(e) => setDados((d) => ({ ...d, latitude: Number(e.target.value) }))} />

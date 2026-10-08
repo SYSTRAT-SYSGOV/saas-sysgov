@@ -25,6 +25,8 @@ use Modules\Pessoas\Models\Pessoa;
  * @property string|null $razao_social
  * @property string $atividade
  * @property string $porte
+ * @property bool $impacto_significativo
+ * @property int|null $valor_empreendimento_centavos
  * @property float $latitude
  * @property float $longitude
  */
@@ -52,6 +54,8 @@ final class Empreendimento extends Model
         'razao_social',
         'atividade',
         'porte',
+        'impacto_significativo',
+        'valor_empreendimento_centavos',
         'latitude',
         'longitude',
     ];
@@ -59,6 +63,8 @@ final class Empreendimento extends Model
     protected $casts = [
         'tenant_id' => 'integer',
         'titular_pessoa_id' => 'integer',
+        'impacto_significativo' => 'boolean',
+        'valor_empreendimento_centavos' => 'integer',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
     ];
@@ -85,5 +91,11 @@ final class Empreendimento extends Model
     public function autosInfracao(): HasMany
     {
         return $this->hasMany(AutoInfracaoAmbiental::class, 'empreendimento_id');
+    }
+
+    /** @return HasMany<CompensacaoAmbiental, $this> */
+    public function compensacoesAmbientais(): HasMany
+    {
+        return $this->hasMany(CompensacaoAmbiental::class, 'empreendimento_id');
     }
 }

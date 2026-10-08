@@ -25,6 +25,8 @@ final class EmpreendimentoResource extends JsonResource
             'razao_social' => $this->razao_social,
             'atividade' => $this->atividade,
             'porte' => $this->porte,
+            'impacto_significativo' => $this->impacto_significativo,
+            'valor_empreendimento_centavos' => $this->valor_empreendimento_centavos,
             'latitude' => (float) $this->latitude,
             'longitude' => (float) $this->longitude,
             'responsavel_tecnico' => $this->whenLoaded('responsavelTecnico', fn () => $this->responsavelTecnico === null ? null : [

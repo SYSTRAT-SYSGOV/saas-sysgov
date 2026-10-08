@@ -35,6 +35,7 @@ final readonly class ProcessoLicenciamentoService
 
     public function __construct(
         private EmpreendimentoService $empreendimentos,
+        private CompensacaoAmbientalService $compensacoes,
         private TenantContext $tenantContext,
     ) {}
 
@@ -143,6 +144,15 @@ final readonly class ProcessoLicenciamentoService
             );
         }
 
+        if ($processo->fase === ProcessoLicenciamento::FASE_LO
+            && $this->compensacoes->empreendimentoTemSaldoPendente($processo->empreendimento)
+        ) {
+            throw new RegraNegocioException(
+                'compensacao_pendente',
+                'Compensação ambiental com saldo pendente impede emissão da licença.',
+            );
+        }
+
         $dataDeferimento = today();
         $validadeDias = ProcessoLicenciamento::VALIDADE_DIAS_POR_FASE[$processo->fase];
 
@@ -151,6 +161,8 @@ final readonly class ProcessoLicenciamentoService
             'data_deferimento' => $dataDeferimento,
             'validade_em' => $dataDeferimento->copy()->addDays($validadeDias),
         ]);
+
+        $this->compensacoes->criarSeNecessario($processo);
 
         return $processo;
     }

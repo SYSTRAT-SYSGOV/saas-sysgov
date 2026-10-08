@@ -21,6 +21,8 @@ export interface Empreendimento {
   razao_social: string | null;
   atividade: string;
   porte: Porte;
+  impacto_significativo: boolean;
+  valor_empreendimento_centavos: number | null;
   latitude: number;
   longitude: number;
   responsavel_tecnico?: ResponsavelTecnico | null;
@@ -41,6 +43,8 @@ export interface NovoEmpreendimentoInput {
   razao_social?: string | null;
   atividade: string;
   porte: Porte;
+  impacto_significativo?: boolean;
+  valor_empreendimento_centavos?: number | null;
   latitude: number;
   longitude: number;
 }
@@ -91,6 +95,35 @@ export interface ProcessoLicenciamento {
   condicionantes?: Condicionante[];
   documentos?: DocumentoLicenciamento[];
   created_at: string;
+}
+
+export type DestinoCompensacao = 'fundo_municipal' | 'unidade_conservacao';
+
+export interface PagamentoCompensacao {
+  id: number;
+  valor_centavos: number;
+  pago_em: string;
+  comprovante: string | null;
+}
+
+export interface DestinacaoCompensacao {
+  id: number;
+  destino: DestinoCompensacao;
+  valor_centavos: number;
+  registrada_em: string;
+}
+
+export interface CompensacaoAmbiental {
+  id: number;
+  empreendimento_id: number;
+  processo_licenciamento_id: number;
+  percentual: number;
+  valor_devido_centavos: number;
+  valor_pago_centavos: number;
+  valor_destinado_centavos: number;
+  saldo_devedor_centavos: number;
+  pagamentos?: PagamentoCompensacao[];
+  destinacoes?: DestinacaoCompensacao[];
 }
 
 export type TipoInfracaoAmbiental = 'desmatamento' | 'poluicao_hidrica' | 'poluicao_atmosferica' | 'queimada' | 'caca_ilegal' | 'outra';
@@ -206,4 +239,13 @@ export const meioAmbienteApi = {
 
   parcelarMulta: (processoSancionatorioId: number, numeroParcelas: number) =>
     apiClient.post<ParcelamentoMulta>(`${base}/processos-sancionatorios/${processoSancionatorioId}/parcelamento`, { numero_parcelas: numeroParcelas }).then((r) => r.data),
+
+  listarCompensacoesAmbientais: (empreendimentoId: number) =>
+    apiClient.get<{ data: CompensacaoAmbiental[] }>(`${base}/empreendimentos/${empreendimentoId}/compensacoes-ambientais`).then((r) => r.data.data),
+
+  registrarPagamentoCompensacao: (compensacaoId: number, valorCentavos: number) =>
+    apiClient.post<PagamentoCompensacao>(`${base}/compensacoes-ambientais/${compensacaoId}/pagamentos`, { valor_centavos: valorCentavos }).then((r) => r.data),
+
+  registrarDestinacaoCompensacao: (compensacaoId: number, destino: DestinoCompensacao, valorCentavos: number) =>
+    apiClient.post<DestinacaoCompensacao>(`${base}/compensacoes-ambientais/${compensacaoId}/destinacoes`, { destino, valor_centavos: valorCentavos }).then((r) => r.data),
 };
