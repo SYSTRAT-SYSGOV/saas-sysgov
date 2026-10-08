@@ -93,6 +93,12 @@ final class Empreendimento extends Model
         return $this->hasMany(AutoInfracaoAmbiental::class, 'empreendimento_id');
     }
 
+    /** @return HasMany<GeradorResiduo, $this> */
+    public function geradoresResiduo(): HasMany
+    {
+        return $this->hasMany(GeradorResiduo::class, 'empreendimento_id');
+    }
+
     /** @return HasMany<CompensacaoAmbiental, $this> */
     public function compensacoesAmbientais(): HasMany
     {

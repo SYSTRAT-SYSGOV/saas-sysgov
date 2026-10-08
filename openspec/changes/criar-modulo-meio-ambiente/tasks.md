@@ -52,10 +52,10 @@
 
 ## 6. Gestão de resíduos sólidos
 
-- [ ] 6.1 Migration + model `GeradorResiduo` (`domiciliar|comercial|industrial`, vínculo opcional a `Pessoa`/`Empreendimento`); verificar teste do cenário "cadastro de gerador industrial vinculado a empreendimento".
-- [ ] 6.2 Migration + model `ColetaResiduo` (`regular|seletiva`, rota como campo texto livre — ver `design.md` Risks sobre integração futura com Gestão de Frota —, volume, destinação) + validação de volume positivo; verificar testes dos cenários de coleta seletiva e de rejeição de volume negativo.
-- [ ] 6.3 Migration + models `PontoLogisticaReversa` e `EntregaLogisticaReversa`; verificar teste do cenário "registro de entrega de pilhas em ponto de coleta".
-- [ ] 6.4 Permissão `meio_ambiente.residuos.manage` + endpoints; telas de cadastro de geradores, registro de coletas e logística reversa no `web-client`; verificar teste de feature e `npm run typecheck`.
+- [x] 6.1 Migration + model `GeradorResiduo` (`domiciliar|comercial|industrial`, vínculo opcional a `Pessoa`/`Empreendimento`, `nome` opcional para identificação/exibição); teste do cenário "cadastro de gerador industrial vinculado a empreendimento".
+- [x] 6.2 Migration + model `ColetaResiduo` (`regular|seletiva`, rota como campo texto livre — ver `design.md` Risks sobre integração futura com Gestão de Frota —, volume, destinação) + validação de volume positivo (`RegraNegocioException`); testes dos cenários de coleta seletiva e de rejeição de volume negativo.
+- [x] 6.3 Migration + models `PontoLogisticaReversa` (com lat/long opcionais, mesmo padrão das demais entidades "local" do módulo) e `EntregaLogisticaReversa` + `totalAcumuladoKg()` computado; teste do cenário "registro de entrega de pilhas em ponto de coleta" e de soma de múltiplas entregas.
+- [x] 6.4 Endpoints sob permissão `meio_ambiente.residuos.manage` (já existente desde a Fase 1) + `ResiduosSolidosControllerTest`; tela `ResiduosSolidosView.tsx` no `web-client` (abas Geradores/Logística Reversa, cadastro e registro de coleta/entrega); `npm run typecheck` e `npm test` (532 testes) sem regressão.
 
 ## 7. Áreas protegidas
 

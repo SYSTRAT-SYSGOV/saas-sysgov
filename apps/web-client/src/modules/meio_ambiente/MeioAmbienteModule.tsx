@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Leaf, FileCheck, Building2, Gavel, Landmark } from 'lucide-react';
+import { Leaf, FileCheck, Building2, Gavel, Landmark, Recycle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs } from '@/components/ui/Tabs';
 import type { TabsItem } from '@/components/ui/Tabs';
@@ -7,14 +7,14 @@ import { EmpreendimentosView } from './views/EmpreendimentosView';
 import { LicenciamentoView } from './views/LicenciamentoView';
 import { FiscalizacaoAmbientalView } from './views/FiscalizacaoAmbientalView';
 import { CompensacaoAmbientalView } from './views/CompensacaoAmbientalView';
+import { ResiduosSolidosView } from './views/ResiduosSolidosView';
 
-type MeioAmbienteTab = 'empreendimentos' | 'licenciamento' | 'fiscalizacao' | 'compensacao';
+type MeioAmbienteTab = 'empreendimentos' | 'licenciamento' | 'fiscalizacao' | 'compensacao' | 'residuos';
 
 /**
- * As abas das demais capacidades (Resíduos Sólidos, Áreas Protegidas, Queimadas,
- * Recursos Hídricos, Relatórios/Indicadores, Integrações, Auditoria) são adicionadas
- * incrementalmente a partir da Fase 6. Ver
- * openspec/changes/criar-modulo-meio-ambiente/tasks.md.
+ * As abas das demais capacidades (Áreas Protegidas, Queimadas, Recursos Hídricos,
+ * Relatórios/Indicadores, Integrações, Auditoria) são adicionadas incrementalmente
+ * a partir da Fase 7. Ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
  */
 export const MeioAmbienteModule: React.FC = () => {
   const [aba, setAba] = useState<MeioAmbienteTab>('empreendimentos');
@@ -24,6 +24,7 @@ export const MeioAmbienteModule: React.FC = () => {
     { key: 'licenciamento', label: 'Licenciamento', icon: <FileCheck className="h-4 w-4" /> },
     { key: 'fiscalizacao', label: 'Fiscalização Ambiental', icon: <Gavel className="h-4 w-4" /> },
     { key: 'compensacao', label: 'Compensação Ambiental', icon: <Landmark className="h-4 w-4" /> },
+    { key: 'residuos', label: 'Resíduos Sólidos', icon: <Recycle className="h-4 w-4" /> },
   ];
 
   return (
@@ -42,6 +43,7 @@ export const MeioAmbienteModule: React.FC = () => {
           {aba === 'licenciamento' && <LicenciamentoView />}
           {aba === 'fiscalizacao' && <FiscalizacaoAmbientalView />}
           {aba === 'compensacao' && <CompensacaoAmbientalView />}
+          {aba === 'residuos' && <ResiduosSolidosView />}
         </div>
       </div>
     </div>

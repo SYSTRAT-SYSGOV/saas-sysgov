@@ -7,9 +7,10 @@ use Modules\MeioAmbiente\Http\Controllers\CompensacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\EmpreendimentoController;
 use Modules\MeioAmbiente\Http\Controllers\FiscalizacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\ProcessoLicenciamentoController;
+use Modules\MeioAmbiente\Http\Controllers\ResiduosSolidosController;
 
-// Fases 2-5 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental e
-// Compensação Ambiental. As demais capacidades (resíduos sólidos, áreas protegidas,
+// Fases 2-6 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
+// Compensação Ambiental e Resíduos Sólidos. As demais capacidades (áreas protegidas,
 // queimadas, recursos hídricos, relatórios/indicadores, integrações e auditoria) são
 // adicionadas incrementalmente — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
 
@@ -20,6 +21,8 @@ Route::pattern('execucaoVistoria', '[0-9]+');
 Route::pattern('autoInfracaoAmbiental', '[0-9]+');
 Route::pattern('processoSancionatorio', '[0-9]+');
 Route::pattern('compensacaoAmbiental', '[0-9]+');
+Route::pattern('geradorResiduo', '[0-9]+');
+Route::pattern('pontoLogisticaReversa', '[0-9]+');
 
 Route::get('/empreendimentos', [EmpreendimentoController::class, 'index']);
 Route::get('/empreendimentos/mapa', [EmpreendimentoController::class, 'mapa']);
@@ -44,3 +47,10 @@ Route::get('/empreendimentos/{empreendimento}/compensacoes-ambientais', [Compens
 Route::get('/compensacoes-ambientais/{compensacaoAmbiental}', [CompensacaoAmbientalController::class, 'show']);
 Route::post('/compensacoes-ambientais/{compensacaoAmbiental}/pagamentos', [CompensacaoAmbientalController::class, 'storePagamento']);
 Route::post('/compensacoes-ambientais/{compensacaoAmbiental}/destinacoes', [CompensacaoAmbientalController::class, 'storeDestinacao']);
+
+Route::get('/geradores-residuo', [ResiduosSolidosController::class, 'indexGeradores']);
+Route::post('/geradores-residuo', [ResiduosSolidosController::class, 'storeGerador']);
+Route::post('/geradores-residuo/{geradorResiduo}/coletas', [ResiduosSolidosController::class, 'storeColeta']);
+Route::get('/pontos-logistica-reversa', [ResiduosSolidosController::class, 'indexPontosLogisticaReversa']);
+Route::post('/pontos-logistica-reversa', [ResiduosSolidosController::class, 'storePontoLogisticaReversa']);
+Route::post('/pontos-logistica-reversa/{pontoLogisticaReversa}/entregas', [ResiduosSolidosController::class, 'storeEntregaLogisticaReversa']);

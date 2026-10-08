@@ -97,6 +97,37 @@ export interface ProcessoLicenciamento {
   created_at: string;
 }
 
+export type TipoGeradorResiduo = 'domiciliar' | 'comercial' | 'industrial';
+export type TipoColeta = 'regular' | 'seletiva';
+export type DestinacaoResiduo = 'aterro' | 'reciclagem';
+export type CategoriaLogisticaReversa = 'eletronicos' | 'pilhas_baterias';
+
+export interface GeradorResiduo {
+  id: number;
+  nome: string | null;
+  tipo: TipoGeradorResiduo;
+  pessoa_id: number | null;
+  empreendimento_id: number | null;
+  total_coletado_kg: number;
+}
+
+export interface NovoGeradorResiduoInput {
+  nome?: string;
+  tipo: TipoGeradorResiduo;
+  pessoa_id?: number | null;
+  empreendimento_id?: number | null;
+}
+
+export interface PontoLogisticaReversa {
+  id: number;
+  nome: string;
+  categoria: CategoriaLogisticaReversa;
+  endereco: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  total_acumulado_kg: number;
+}
+
 export type DestinoCompensacao = 'fundo_municipal' | 'unidade_conservacao';
 
 export interface PagamentoCompensacao {
@@ -248,4 +279,22 @@ export const meioAmbienteApi = {
 
   registrarDestinacaoCompensacao: (compensacaoId: number, destino: DestinoCompensacao, valorCentavos: number) =>
     apiClient.post<DestinacaoCompensacao>(`${base}/compensacoes-ambientais/${compensacaoId}/destinacoes`, { destino, valor_centavos: valorCentavos }).then((r) => r.data),
+
+  listarGeradoresResiduo: () =>
+    apiClient.get<{ data: GeradorResiduo[] }>(`${base}/geradores-residuo`).then((r) => r.data.data),
+
+  cadastrarGeradorResiduo: (dados: NovoGeradorResiduoInput) =>
+    apiClient.post<GeradorResiduo>(`${base}/geradores-residuo`, dados).then((r) => r.data),
+
+  registrarColetaResiduo: (geradorId: number, dados: { tipo_coleta: TipoColeta; rota?: string; volume_kg: number; destinacao: DestinacaoResiduo }) =>
+    apiClient.post(`${base}/geradores-residuo/${geradorId}/coletas`, dados).then((r) => r.data),
+
+  listarPontosLogisticaReversa: () =>
+    apiClient.get<{ data: PontoLogisticaReversa[] }>(`${base}/pontos-logistica-reversa`).then((r) => r.data.data),
+
+  cadastrarPontoLogisticaReversa: (dados: { nome: string; categoria: CategoriaLogisticaReversa }) =>
+    apiClient.post<PontoLogisticaReversa>(`${base}/pontos-logistica-reversa`, dados).then((r) => r.data),
+
+  registrarEntregaLogisticaReversa: (pontoId: number, quantidadeKg: number) =>
+    apiClient.post(`${base}/pontos-logistica-reversa/${pontoId}/entregas`, { quantidade_kg: quantidadeKg }).then((r) => r.data),
 };
