@@ -84,9 +84,13 @@ describe('AuthProvider', () => {
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    // isLoading vira false assim que a sessão salva é restaurada (pra não dar flash de
+    // loading), ANTES do /auth/me em segundo plano terminar de atualizar módulos/menu —
+    // esperar só por isLoading é uma condição de corrida; espera pelo efeito real do
+    // /auth/me (modules atualizado) em vez disso.
+    await waitFor(() => expect(result.current.modules).toContain('cursos'));
+    expect(result.current.isLoading).toBe(false);
     expect(me).toHaveBeenCalledWith('/auth/me', expect.anything());
-    expect(result.current.modules).toContain('cursos');
     expect(result.current.navigation[0].items[0].route).toBe('/cursos');
     expect(result.current.token).toBe('token-salvo');
     expect(localStorage.getItem('sysgov_auth_token')).toBe('token-salvo');
