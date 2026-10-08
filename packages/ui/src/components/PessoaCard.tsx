@@ -41,7 +41,7 @@ export const PessoaCard: React.FC<PessoaCardProps> = ({
     return (
       <div
         className={cn(
-          'flex items-center justify-between p-3 rounded-lg border border-gov-border bg-white dark:bg-[#101a3a] dark:border-[#1a2a52]',
+          'flex items-center justify-between p-3 rounded-lg border border-gov-border bg-popover',
           className
         )}
       >
@@ -97,7 +97,7 @@ export const PessoaCard: React.FC<PessoaCardProps> = ({
   }
 
   return (
-    <Card className={cn('overflow-hidden border-gov-border dark:border-[#1a2a52]', className)}>
+    <Card className={cn('overflow-hidden border-gov-border', className)}>
       <CardContent className="p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
@@ -166,7 +166,7 @@ export const PessoaCard: React.FC<PessoaCardProps> = ({
         </div>
 
         {pessoa.vinculos && pessoa.vinculos.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-gov-border/60 dark:border-[#1a2a52]/60">
+          <div className="mt-4 pt-3 border-t border-gov-border/60">
             <span className="text-xs font-medium text-gov-text-secondary block mb-1.5">
               Vínculos Funcionais:
             </span>

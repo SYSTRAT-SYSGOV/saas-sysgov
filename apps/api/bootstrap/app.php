@@ -25,6 +25,7 @@ use Modules\OrgChart\Providers\OrgChartServiceProvider;
 use Modules\Pessoas\Providers\PessoasServiceProvider;
 use Modules\Procurement\Providers\ProcurementServiceProvider;
 use Modules\Requerimentos\Providers\RequerimentosServiceProvider;
+use Modules\Vistoria\Providers\VistoriaServiceProvider;
 use Laravel\Tinker\TinkerServiceProvider;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -45,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         PessoasServiceProvider::class,
         ProcurementServiceProvider::class,
         RequerimentosServiceProvider::class,
+        VistoriaServiceProvider::class,
         TinkerServiceProvider::class,
         \App\Providers\AuthServiceProvider::class,
     ])

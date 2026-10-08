@@ -1,19 +1,17 @@
-# Spec: requerimentos
+# Spec Delta: Requerimentos
 
 ## Purpose
 
 Módulo de Requerimentos — digitalização do fluxo de tramitação de proposições legislativas e demandas institucionais entre a Câmara Municipal e a Prefeitura Municipal. Compreende requerimentos, indicações, projetos de lei, projetos de resolução, projetos de decreto legislativo, moções, ofícios e demais instrumentos de comunicação formal entre os Poderes. Opera sobre a base de dados única mantida pelo Módulo de Cadastro Único Centralizado e integra-se nativamente com o Módulo de Processo Administrativo Digital e o Módulo de Gestão de Fluxos de Trabalho (Workflow), assegurando rastreabilidade, celeridade e transparência na tramitação entre os Poderes Executivo e Legislativo.
 
----
-
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Cadastro tipificado de proposições e demandas
 <!-- entities: Proposicao, TipoInstrumento, Autor, Anexo -->
 
-O sistema DEVE permitir o cadastro parametrizável de proposições por tipo de instrumento — requerimento, indicação, projeto de lei, projeto de resolução, projeto de decreto legislativo, moção, ofício e demais espécies definidas pela Administração. Cada tipo DEVE possuir campos específicos (ementa, justificativa, autor(es), partido/bancada quando aplicável, área temática, dispositivos legais correlatos e anexos), numeração sequencial própria por tipo e exercício, e vinculação, quando cabível, a proposição ou processo anterior.
+O sistema SHALL permitir o cadastro parametrizável de proposições por tipo de instrumento — requerimento, indicação, projeto de lei, projeto de resolução, projeto de decreto legislativo, moção, ofício e demais espécies definidas pela Administração. Cada tipo SHALL possuir campos específicos (ementa, justificativa, autor(es), partido/bancada quando aplicável, área temática, dispositivos legais correlatos e anexos), numeração sequencial própria por tipo e exercício, e vinculação, quando cabível, a proposição ou processo anterior.
 
-O model `Proposicao` DEVE usar a trait `TenantAware` e todo valor monetário DEVE usar a classe `Money` (centavos inteiros).
+O model `Proposicao` SHALL usar a trait `TenantAware` e todo valor monetário SHALL usar a classe `Money` (centavos inteiros).
 
 #### Scenario: Cadastro de requerimento com dados obrigatórios
 - **GIVEN** um usuário autenticado com permissão de criar proposições
@@ -39,7 +37,7 @@ O model `Proposicao` DEVE usar a trait `TenantAware` e todo valor monetário DEV
 ### Requirement: Fluxo de tramitação entre Poderes
 <!-- entities: TramitacaoPoderes, Encaminhamento, Recebimento, PrazoRegimental -->
 
-O sistema DEVE permitir a tramitação eletrônica do instrumento entre a Câmara Municipal e a Prefeitura Municipal, com encaminhamento formal do documento de um Poder a outro, registro de recebimento, atribuição de responsável pela resposta ou manifestação, e devolução da resposta ao Poder de origem, tudo com controle de prazos regimentais ou legais aplicáveis a cada tipo de instrumento, com alertas automáticos de proximidade e de vencimento de prazo.
+O sistema SHALL permitir a tramitação eletrônica do instrumento entre a Câmara Municipal e a Prefeitura Municipal, com encaminhamento formal do documento de um Poder a outro, registro de recebimento, atribuição de responsável pela resposta ou manifestação, e devolução da resposta ao Poder de origem, tudo com controle de prazos regimentais ou legais aplicáveis a cada tipo de instrumento, com alertas automáticos de proximidade e de vencimento de prazo.
 
 #### Scenario: Encaminhamento da Câmara para a Prefeitura
 - **GIVEN** uma proposição com status `'protocolado'` originada na Câmara Municipal
@@ -71,7 +69,7 @@ O sistema DEVE permitir a tramitação eletrônica do instrumento entre a Câmar
 ### Requirement: Fluxo de tramitação interna
 <!-- entities: TramitacaoInterna, EtapaLegislativa, Workflow -->
 
-O sistema DEVE permitir a configuração de fluxo de tramitação interna específico para cada tipo de proposição, contemplando as etapas legislativas ou administrativas aplicáveis (protocolo, distribuição a comissões, parecer técnico e/ou jurídico, inclusão em pauta, votação, sanção/veto, publicação), com apoio do Módulo de Gestão de Fluxos de Trabalho (Workflow) para a automação das etapas e dos respectivos responsáveis.
+O sistema SHALL permitir a configuração de fluxo de tramitação interna específico para cada tipo de proposição, contemplando as etapas legislativas ou administrativas aplicáveis (protocolo, distribuição a comissões, parecer técnico e/ou jurídico, inclusão em pauta, votação, sanção/veto, publicação), com apoio do Módulo de Gestão de Fluxos de Trabalho (Workflow) para a automação das etapas e dos respectivos responsáveis.
 
 #### Scenario: Configuração de workflow por tipo de proposição
 - **GIVEN** um usuário administrador com permissão de configurar workflows
@@ -93,7 +91,7 @@ O sistema DEVE permitir a configuração de fluxo de tramitação interna espec�
 ### Requirement: Resposta e manifestação formal
 <!-- entities: RespostaFormal, AnexoResposta -->
 
-O sistema DEVE oferecer ambiente para elaboração da resposta ou manifestação do Poder destinatário, com editor de texto integrado e anexação de documentos complementares, antes do encaminhamento de volta ao Poder de origem.
+O sistema SHALL oferecer ambiente para elaboração da resposta ou manifestação do Poder destinatário, com editor de texto integrado e anexação de documentos complementares, antes do encaminhamento de volta ao Poder de origem.
 
 #### Scenario: Elaboração de resposta com editor de texto
 - **GIVEN** uma tramitação com status `'recebido'` e um usuário responsável autenticado
@@ -115,9 +113,9 @@ O sistema DEVE oferecer ambiente para elaboração da resposta ou manifestação
 ### Requirement: Notificações e alertas automáticos
 <!-- entities: Notificacao, PreferenciaNotificacao -->
 
-O sistema DEVE notificar automaticamente, por e-mail e/ou pelo Portal do Servidor/Portal do Vereador, os responsáveis por cada etapa da tramitação, o autor da proposição e o setor de protocolo, sempre que houver mudança de status, encaminhamento entre Poderes, resposta recebida ou proximidade de vencimento de prazo.
+O sistema SHALL notificar automaticamente, por e-mail e/ou pelo Portal do Servidor/Portal do Vereador, os responsáveis por cada etapa da tramitação, o autor da proposição e o setor de protocolo, sempre que houver mudança de status, encaminhamento entre Poderes, resposta recebida ou proximidade de vencimento de prazo.
 
-As notificações DEVEM ser disparadas via Laravel Events + Listeners + Jobs em fila (Redis), garantindo que a experiência do usuário não seja impactada por latências de envio.
+As notificações SHALL ser disparadas via Laravel Events + Listeners + Jobs em fila (Redis), garantindo que a experiência do usuário não seja impactada por latências de envio.
 
 #### Scenario: Notificação de mudança de status
 - **GIVEN** uma proposição que avança de `'protocolado'` para `'em_tramitacao_interna'`
@@ -139,7 +137,7 @@ As notificações DEVEM ser disparadas via Laravel Events + Listeners + Jobs em 
 ### Requirement: Painel de acompanhamento público
 <!-- entities: PainelPublico -->
 
-O sistema DEVE disponibilizar painel de consulta pública, integrado ao Portal da Transparência e/ou ao Portal Institucional, com informações sobre proposições em tramitação, autor, situação atual, histórico de tramitação e, quando aplicável, o texto integral e a resposta formal, assegurando publicidade e transparência do processo legislativo e administrativo à população.
+O sistema SHALL disponibilizar painel de consulta pública, integrado ao Portal da Transparência e/ou ao Portal Institucional, com informações sobre proposições em tramitação, autor, situação atual, histórico de tramitação e, quando aplicável, o texto integral e a resposta formal, assegurando publicidade e transparência do processo legislativo e administrativo à população.
 
 #### Scenario: Consulta pública de proposições em tramitação
 - **GIVEN** um cidadão acessando o Portal da Transparência
@@ -161,7 +159,7 @@ O sistema DEVE disponibilizar painel de consulta pública, integrado ao Portal d
 ### Requirement: Consulta e acompanhamento pelo autor
 <!-- entities: AcompanhamentoAutor -->
 
-O sistema DEVE oferecer ambiente de consulta individualizado, no qual o autor da proposição (vereador, comissão, secretaria ou setor da Prefeitura) possa acompanhar em tempo real a situação de suas proposições, incluindo prazos, pendências e histórico completo de tramitação, sem necessidade de solicitação formal de informação ao setor responsável.
+O sistema SHALL oferecer ambiente de consulta individualizado, no qual o autor da proposição (vereador, comissão, secretaria ou setor da Prefeitura) possa acompanhar em tempo real a situação de suas proposições, incluindo prazos, pendências e histórico completo de tramitação, sem necessidade de solicitação formal de informação ao setor responsável.
 
 #### Scenario: Dashboard do autor
 - **GIVEN** um vereador autenticado no Portal do Vereador
@@ -183,7 +181,7 @@ O sistema DEVE oferecer ambiente de consulta individualizado, no qual o autor da
 ### Requirement: Relatórios gerenciais e estatísticos
 <!-- entities: Relatorio, Indicador -->
 
-O sistema DEVE permitir a emissão de relatórios gerenciais contendo quantidade de proposições por tipo, autor, período, área temática e situação (em tramitação, respondida, arquivada, aprovada, rejeitada); tempo médio de tramitação e de resposta por tipo de instrumento; e indicadores de cumprimento de prazos regimentais ou legais, subsidiando a gestão do relacionamento institucional entre os Poderes.
+O sistema SHALL permitir a emissão de relatórios gerenciais contendo quantidade de proposições por tipo, autor, período, área temática e situação (em tramitação, respondida, arquivada, aprovada, rejeitada); tempo médio de tramitação e de resposta por tipo de instrumento; e indicadores de cumprimento de prazos regimentais ou legais, subsidiando a gestão do relacionamento institucional entre os Poderes.
 
 #### Scenario: Relatório quantitativo por tipo e período
 - **GIVEN** um usuário com perfil de gestor acessando o módulo de relatórios
@@ -205,7 +203,7 @@ O sistema DEVE permitir a emissão de relatórios gerenciais contendo quantidade
 ### Requirement: Segregação de acesso por Poder e por perfil
 <!-- entities: User, Role, Poder, Permissao -->
 
-O sistema DEVE implementar controle de acesso segregado por perfil de usuário e por Poder (Câmara Municipal e Prefeitura Municipal), de modo que cada Poder edite e tramite apenas as proposições e respostas sob sua responsabilidade, com visibilidade compartilhada e em tempo real do andamento das proposições em tramitação conjunta, sem que isso implique acesso de um Poder aos processos internos exclusivos do outro que não estejam vinculados à proposição em trâmite.
+O sistema SHALL implementar controle de acesso segregado por perfil de usuário e por Poder (Câmara Municipal e Prefeitura Municipal), de modo que cada Poder edite e tramite apenas as proposições e respostas sob sua responsabilidade, com visibilidade compartilhada e em tempo real do andamento das proposições em tramitação conjunta, sem que isso implique acesso de um Poder aos processos internos exclusivos do outro que não estejam vinculados à proposição em trâmite.
 
 #### Scenario: Usuário da Câmara tenta editar proposição da Prefeitura
 - **GIVEN** um usuário vinculado ao Poder `'camara'` e uma proposição originada no Poder `'prefeitura'`
@@ -227,9 +225,9 @@ O sistema DEVE implementar controle de acesso segregado por perfil de usuário e
 ### Requirement: Trilha de auditoria
 <!-- entities: AuditoriaLog -->
 
-O sistema DEVE registrar log de toda inclusão, tramitação, resposta e alteração de status de proposição, com identificação do usuário responsável, Poder de origem, data e hora, disponibilizado para fins de auditoria interna e externa e de eventual controle pelo Tribunal de Contas.
+O sistema SHALL registrar log de toda inclusão, tramitação, resposta e alteração de status de proposição, com identificação do usuário responsável, Poder de origem, data e hora, disponibilizado para fins de auditoria interna e externa e de eventual controle pelo Tribunal de Contas.
 
-Toda mutação DEVE ser registrada via `AuditLogger` na tabela `audit_logs`, em conformidade com o padrão do SYSGOV.
+Toda mutação SHALL ser registrada via `AuditLogger` na tabela `audit_logs`, em conformidade com o padrão do SYSGOV.
 
 #### Scenario: Registro de auditoria na criação de proposição
 - **GIVEN** um usuário autenticado que cria uma proposição
@@ -251,7 +249,7 @@ Toda mutação DEVE ser registrada via `AuditLogger` na tabela `audit_logs`, em 
 ### Requirement: Conformidade legal e APIs de integração
 <!-- entities: IntegracaoDiarioOficial, IntegracaoAssinaturaDigital -->
 
-O sistema DEVE estar em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) quanto ao tratamento de dados pessoais eventualmente constantes das proposições, com criptografia de dados em trânsito e em repouso, e disponibilização de interfaces de programação de aplicações (APIs) abertas e documentadas para eventual integração com o Diário Oficial Eletrônico, para fins de publicação automática de atos aprovados, e com o módulo de Assinatura Digital da plataforma.
+O sistema SHALL estar em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) quanto ao tratamento de dados pessoais eventualmente constantes das proposições, com criptografia de dados em trânsito e em repouso, e disponibilização de interfaces de programação de aplicações (APIs) abertas e documentadas para eventual integração com o Diário Oficial Eletrônico, para fins de publicação automática de atos aprovados, e com o módulo de Assinatura Digital da plataforma.
 
 #### Scenario: API de publicação no Diário Oficial
 - **GIVEN** uma proposição aprovada com status `'aprovado'` e necessidade de publicação

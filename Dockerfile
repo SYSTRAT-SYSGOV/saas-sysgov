@@ -3,7 +3,11 @@ WORKDIR /var/www/html
 RUN apt-get update && apt-get install -y unzip libpng-dev libjpeg62-turbo-dev libfreetype6-dev && rm -rf /var/lib/apt/lists/*
 # gd: exigido pelo dompdf para imagens PNG/JPEG nos certificados do módulo Cursos
 RUN docker-php-ext-configure gd --with-jpeg --with-freetype && docker-php-ext-install pdo_mysql bcmath gd
+# pcov: driver de cobertura de testes (composer test -- --coverage) — só dev/CI, nunca
+# carregado em produção a menos que explicitamente habilitado via php.ini.
+RUN pecl install pcov && docker-php-ext-enable pcov
 COPY docker/php/uploads.ini $PHP_INI_DIR/conf.d/uploads.ini
+COPY docker/php/pcov.ini $PHP_INI_DIR/conf.d/zzz-pcov.ini
 COPY apps/api .
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php --install-dir=/usr/local/bin --filename=composer && rm composer-setup.php
 RUN composer install --optimize-autoloader
