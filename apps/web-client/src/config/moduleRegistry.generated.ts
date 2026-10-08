@@ -20,8 +20,9 @@ const PessoasComponent = lazy(() => import('@/modules/pessoas/PessoasModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
 const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
+const Meio_ambienteComponent = lazy(() => import('@/modules/meio_ambiente/MeioAmbienteModule'));
 const RequerimentosComponent = lazy(() => import('@/modules/requerimentos/RequerimentosModule'));
-const VistoriaComponent = lazy(() => import('@/modules/vistoria/VistoriaModule'));
+const VistoriaComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Vistoria", alias: "vistoria", description: "Digitalização da fiscalização de campo da Secretaria de Agricultura: planejamento de vistorias, execução offline em tablet, lavratura de auto de infração com assinatura em tela e tramitação do processo sancionatório decorrente." }) }));
 
 export interface ModuleDefinition {
   id: string;
@@ -190,6 +191,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['licita'],
     requiredPermission: 'licita.view',
     icon: 'FileText',
+  },
+  meio_ambiente: {
+    id: 'meio_ambiente',
+    name: "MeioAmbiente",
+    component: Meio_ambienteComponent,
+    routePath: 'meio_ambiente',
+    routes: ['meio_ambiente'],
+    requiredPermission: 'meio_ambiente.view',
+    icon: 'Leaf',
   },
   requerimentos: {
     id: 'requerimentos',

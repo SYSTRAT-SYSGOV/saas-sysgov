@@ -1,0 +1,99 @@
+# Tasks
+
+## 1. Scaffold do módulo e fundação multi-tenant
+
+- [x] 1.1 Criar o módulo via `php artisan make:module MeioAmbiente` e verificar que a estrutura padrão (Config, Database, Http, Models, Policies, Providers, Routes, Services, Tests, `module.json`) e o teste de isolamento multi-tenant scaffoldado existem e passam. **Nota de implementação**: o scaffold gera o alias em `Str::lower(Str::studly(...))`, que para "MeioAmbiente" produz `meioambiente` sem separador — corrigido manualmente para `meio_ambiente` em todos os arquivos gerados antes de seguir. O placeholder genérico (`MeioAmbienteItem`/Controller/Policy/migration/teste) foi removido após a verificação, por não corresponder a nenhuma capability do spec; as entidades reais chegam a partir da Fase 2.
+- [x] 1.2 Editar `module.json`: `name=MeioAmbiente`, `alias=meio_ambiente`, `priority=55`, `requires=["Admin","Pessoas","OrgChart","Vistoria"]`, `menu` (grupo "GESTÃO & FISCALIZAÇÃO", label "Meio Ambiente") e a lista completa de permissões `meio_ambiente.*` definida em `design.md` (D9); verificado via `php artisan module:register MeioAmbiente` (catálogo de plataforma, 16 permissões e menu criados). **Nota**: `php artisan bootstrap/app.php` deste monorepo registra o provider de cada módulo manualmente em `withProviders([...])` (não há auto-discovery do nwidart) — `MeioAmbienteServiceProvider::class` foi adicionado lá, sem o que a migration do módulo nunca seria carregada.
+- [x] 1.3 Criar `MeioAmbienteRbacSeeder` registrando as permissões de `module.json` em 4 papéis-template (Administrador, Analista de Licenciamento Ambiental, Fiscal Ambiental, Gestor de Recursos Naturais); verificado rodando o seeder (16 permissões + 4 roles persistidos no tenant interno `systrat`).
+- [x] 1.4 Criar o skeleton do frontend `apps/web-client/src/modules/meio_ambiente` (`MeioAmbienteModule.tsx` + `index.ts`) e regenerar `moduleRegistry.generated.ts` (`npm run generate:registry`); verificado que a entrada `meio_ambiente` aponta para o componente real (não para o `ModulePlaceholder` de fallback) e que `npm run typecheck` passa.
+
+## 2. Empreendimentos (cadastro mestre)
+
+- [ ] 2.1 Migration + model `Empreendimento` (`TenantAware`, titular via `titular_pessoa_id` nullable FK `Modules\Pessoas\Models\Pessoa` OU `cnpj`/`razao_social` próprios, atividade, porte, latitude/longitude) com validação de "titular PF ou CNPJ obrigatório" no Service; verificar teste unitário cobrindo os cenários de cadastro PF, cadastro PJ e rejeição sem titular do spec `empreendimentos`.
+- [ ] 2.2 Migration + model `ResponsavelTecnico` (vínculo a `Empreendimento`, `pessoa_id` nullable FK Pessoas, `nome`/`registro_profissional`/`tipo_registro` sempre preenchidos) + regra "licenciamento exige responsável técnico vinculado"; verificar teste cobrindo vínculo com e sem Pessoa e o bloqueio de licenciamento sem responsável.
+- [ ] 2.3 `EmpreendimentoService` (`criarEmpreendimento()`, `vincularResponsavelTecnico()`) + Policy + permissão `meio_ambiente.empreendimentos.manage`; verificar testes de feature dos 5 cenários do spec `empreendimentos`.
+- [ ] 2.4 Endpoint de listagem georreferenciada (GeoJSON) com filtro por atividade/porte; verificar teste de feature do cenário "consulta em mapa filtrando por atividade".
+- [ ] 2.5 Tela de cadastro/listagem de empreendimentos no `web-client` com mapa (`react-leaflet`), usando exclusivamente primitivas `@sysgov/ui`; verificar `npm run typecheck` e teste de componente do formulário.
+
+## 3. Licenciamento ambiental
+
+- [ ] 3.1 Migration + model `ProcessoLicenciamento` (fase `LP|LI|LO|renovacao|correcao`, numeração sequencial por exercício via `Contador::lockForUpdate()` — mesmo padrão de `Vistoria\Models\Contador` —, status) + Policy/permissão `meio_ambiente.licenciamento.manage`; verificar teste de abertura de processo e de numeração sequencial sem colisão.
+- [ ] 3.2 Regra de renovação (bloqueio após 120 dias de vencimento da LO anterior) no Service; verificar teste do cenário "prazo de renovação expirado".
+- [ ] 3.3 Migration + model `DocumentoLicenciamento` (documentos exigidos por fase/porte, incluindo EIA/RIMA) + bloqueio de `deferir()` enquanto houver documento obrigatório pendente; verificar testes dos cenários de deferimento bloqueado e liberado após anexação.
+- [ ] 3.4 Migration + model `Condicionante` (descrição, prazo, situação `pendente|cumprida|vencida`) + bloqueio de avanço de fase com condicionante vencida; verificar teste do cenário correspondente.
+- [ ] 3.5 Migration + model `VistoriaTecnicaLicenciamento` (parecer favorável/desfavorável) + bloqueio de deferimento automático em parecer desfavorável; verificar teste do cenário correspondente.
+- [ ] 3.6 Cálculo de validade da licença emitida + job diário (`VerificarPrazosLicenciamentoJob`, mesmo padrão de `Vistoria\Jobs\VerificarPrazosReinspecaoJob`) gerando alerta aos 90/30/7 dias e marcando `situacao_licenciamento='irregular'` quando vencida sem renovação; verificar teste do job cobrindo os 3 limiares e a marcação de irregularidade.
+- [ ] 3.7 Endpoints CRUD de processo/condicionante/documento de licenciamento + telas no `web-client` (linha do tempo do processo, upload de documentos, lista de condicionantes); verificar testes de feature dos endpoints e `npm run typecheck`.
+
+## 4. Fiscalização ambiental (integração com Vistoria)
+
+- [ ] 4.1 Migration + model `AutoInfracaoAmbiental` (`documento_id` FK 1:1 `Modules\Vistoria\Models\Documento`, `tipo_infracao`, `area_afetada_ha`, `reincidente`, `valor_multa_sugerido_centavos`); verificar teste unitário do model e sua relação com `Documento`.
+- [ ] 4.2 Migration + model `TabelaMultaAmbiental` + seeder com os valores iniciais do Decreto Federal 6.514/2008 (editável por `meio_ambiente.chefia`); verificar teste cobrindo a leitura da tabela semeada.
+- [ ] 4.3 `FiscalizacaoAmbientalService::emitirAutoInfracaoAmbiental()` chamando `Modules\Vistoria\Services\DocumentoService::emitirDocumento()` e anexando os dados ambientais ao documento emitido; verificar teste do cenário "emissão de auto de infração por desmatamento".
+- [ ] 4.4 `calcularMultaSugerida()` (proporcional ao enquadramento da `TabelaMultaAmbiental` + agravante de reincidência em 24 meses); verificar testes dos cenários de cálculo proporcional, reincidência e edição do valor pelo julgador.
+- [ ] 4.5 `ParcelamentoMulta` (model/migration + Service) com limite de parcelas configurável; verificar testes dos cenários de parcelamento em 6x e rejeição acima do limite.
+- [ ] 4.6 Permissão `meio_ambiente.fiscalizacao.autuar` + endpoint de emissão/consulta; verificar teste de feature e um teste de integração cross-module confirmando que defesa/recurso do auto de infração ambiental seguem a mesma máquina de estados de `Vistoria\ProcessoSancionatorio` sem duplicação.
+- [ ] 4.7 Tela no `web-client` para emissão de auto de infração ambiental (reaproveitando os componentes de assinatura em tela já existentes do módulo Vistoria) e acompanhamento do parcelamento; verificar `npm run typecheck` e teste de componente.
+
+## 5. Compensação ambiental
+
+- [ ] 5.1 Migration + model `CompensacaoAmbiental` (vínculo a `Empreendimento`/`ProcessoLicenciamento`, percentual configurável, cálculo em `App\Support\Money` sobre o valor do empreendimento); verificar testes dos cenários de cálculo para impacto significativo e de ausência de compensação sem impacto significativo.
+- [ ] 5.2 Migration + model `PagamentoCompensacao` + atualização de saldo devedor + bloqueio de deferimento da LO com saldo pendente; verificar testes dos cenários de pagamento parcial e de bloqueio.
+- [ ] 5.3 Migration + model `DestinacaoCompensacao` + validação "destinação não pode exceder valor pago"; verificar testes dos cenários de destinação integral e de rejeição por excesso.
+- [ ] 5.4 Permissão `meio_ambiente.compensacao.manage` + endpoints; tela de acompanhamento de compensação (saldo, pagamentos, destinação) no `web-client`; verificar teste de feature e `npm run typecheck`.
+
+## 6. Gestão de resíduos sólidos
+
+- [ ] 6.1 Migration + model `GeradorResiduo` (`domiciliar|comercial|industrial`, vínculo opcional a `Pessoa`/`Empreendimento`); verificar teste do cenário "cadastro de gerador industrial vinculado a empreendimento".
+- [ ] 6.2 Migration + model `ColetaResiduo` (`regular|seletiva`, rota como campo texto livre — ver `design.md` Risks sobre integração futura com Gestão de Frota —, volume, destinação) + validação de volume positivo; verificar testes dos cenários de coleta seletiva e de rejeição de volume negativo.
+- [ ] 6.3 Migration + models `PontoLogisticaReversa` e `EntregaLogisticaReversa`; verificar teste do cenário "registro de entrega de pilhas em ponto de coleta".
+- [ ] 6.4 Permissão `meio_ambiente.residuos.manage` + endpoints; telas de cadastro de geradores, registro de coletas e logística reversa no `web-client`; verificar teste de feature e `npm run typecheck`.
+
+## 7. Áreas protegidas
+
+- [ ] 7.1 Migration + model `AreaProtegida` (`tipo` `app|reserva_legal|unidade_conservacao`, `subtipo`, `geometria` GeoJSON `Polygon`/`MultiPolygon` em coluna `JSON`, `ato_legal`) + validação de geometria; verificar testes dos cenários de cadastro e de geometria inválida.
+- [ ] 7.2 `AreasProtegidasService::verificarSobreposicao()` (interseção geométrica em PHP, sem dependência de extensão nativa) aplicado a `Empreendimento`; verificar teste do cenário "empreendimento com sobreposição a APP é sinalizado".
+- [ ] 7.3 Endpoint de listagem para mapa (GeoJSON) com filtro por tipo; verificar teste do cenário "consulta filtrando apenas reservas legais".
+- [ ] 7.4 Permissão `meio_ambiente.areas_protegidas.manage`; tela de mapa interativo no `web-client` (`react-leaflet`) com camada de empreendimentos sobreposta; verificar `npm run typecheck` e teste de componente.
+
+## 8. Controle de queimadas
+
+- [ ] 8.1 Migration + model `OcorrenciaQueimada` (data, latitude/longitude, `area_queimada_ha`, `responsavel_pessoa_id` opcional, referência de imagem de satélite opcional); verificar testes dos cenários com e sem responsável identificado.
+- [ ] 8.2 Listener/Service que, ao vincular um responsável a uma ocorrência, abre automaticamente um `AutoInfracaoAmbiental` com `tipo_infracao='queimada'` via `FiscalizacaoAmbientalService` (seção 4); verificar teste do cenário "auto de infração aberto automaticamente ao identificar responsável".
+- [ ] 8.3 Permissão `meio_ambiente.queimadas.registrar` + endpoints; tela de registro de ocorrência e mapa de focos no `web-client`; verificar teste de feature e `npm run typecheck`.
+
+## 9. Recursos hídricos
+
+- [ ] 9.1 Migration + model `OutorgaAgua` (`tipo_captacao` `poco|captacao_superficial`, vazão, finalidade, validade calculada); verificar teste do cenário "cadastro de outorga de poço para uso industrial".
+- [ ] 9.2 Migration + models `LicencaLancamentoEfluente` e `ParametroQualidadeEfluente` (limites regulatórios) + registro de medição com sinalização de não conformidade; verificar testes dos cenários de cadastro de licença e de medição fora do limite.
+- [ ] 9.3 Job diário de verificação de prazos (90/30/7 dias) para outorgas e licenças de lançamento de efluentes, mesmo padrão do job da seção 3.6; verificar teste do cenário "alerta gerado 90 dias antes do vencimento da outorga".
+- [ ] 9.4 Permissão `meio_ambiente.recursos_hidricos.manage` + endpoints; tela de outorgas/licenças/medições no `web-client`; verificar teste de feature e `npm run typecheck`.
+
+## 10. Relatórios e indicadores ambientais
+
+- [ ] 10.1 `RelatorioAmbientalService::gerarRelatorio()` para RARS e inventário de emissões de GEE, consolidando dados das seções 6 (resíduos) e demais módulos por exercício; verificar teste do cenário "geração do Relatório Anual de Resíduos Sólidos".
+- [ ] 10.2 `exportarRelatorio()` no formato exigido pelo órgão destinatário; verificar teste do cenário de exportação do inventário de GEE.
+- [ ] 10.3 `PainelIndicadoresAmbientaisService` (licenças emitidas, multas aplicadas x arrecadadas, área queimada, cobertura de coleta seletiva) com `Cache::remember`, mesma abordagem de `Vistoria\Services\PainelGerencialService`; verificar testes dos cenários de indicador de multas e de coleta seletiva.
+- [ ] 10.4 Permissão `meio_ambiente.chefia` restringindo painel e relatórios (HTTP 403 sem permissão); verificar teste do cenário "usuário sem permissão de chefia não acessa o painel".
+- [ ] 10.5 Aba de painel (mapas + gráficos via `react-leaflet`/`recharts`, componente `StatCard` de `@sysgov/ui`) e tela de relatórios no `web-client`; verificar `npm run typecheck` e teste de componente.
+
+## 11. Integrações e API
+
+- [ ] 11.1 `openapi.yaml` do módulo + rota pública de documentação (Swagger UI via CDN em `GET /api/meio-ambiente/docs`), mesmo padrão de `/api/docs` do Vistoria; verificar teste de feature confirmando resposta 200.
+- [ ] 11.2 Migration + model `MeioAmbienteIntegracao` (credencial M2M por tenant, mesmo padrão de `Vistoria\Models\VistoriaIntegracao`) + endpoints públicos de licenças emitidas, autos de infração ambiental e relatórios de resíduos; verificar testes dos cenários de credencial válida e de credencial ausente/inválida (HTTP 401).
+- [ ] 11.3 Integração com `App\Support\OutboxPublisher` para envio ativo (push) a órgãos que exigirem, com reagendamento em caso de falha; verificar teste do cenário "falha de envio é registrada para reprocessamento".
+- [ ] 11.4 Permissão `meio_ambiente.integracoes.manage` + tela de gestão de credenciais de integração no `web-client`; verificar teste de feature e `npm run typecheck`.
+
+## 12. Trilha de auditoria consolidada
+
+- [ ] 12.1 Confirmar que todo Service criado nas seções 2 a 11 chama `AuditLogger::record()` em cada mutação, escrevendo um `AuditLoggerCoberturaTest` análogo ao do módulo Vistoria; verificar que o teste passa cobrindo todos os Services do módulo.
+- [ ] 12.2 Endpoint `GET` consolidando a auditoria de um processo de licenciamento ou auto de infração ambiental (casando `resource` por prefixo no `AuditLog`, mesmo padrão não polimórfico do restante do monorepo) + permissão `meio_ambiente.auditoria.view`; verificar testes dos cenários de consulta consolidada e de acesso restrito (HTTP 403).
+- [ ] 12.3 Tela de trilha de auditoria no `web-client`; verificar `npm run typecheck`.
+
+## 13. Testes e Qualidade (fechamento do módulo)
+
+- [ ] 13.1 Teste de isolamento multi-tenant (Tenant A x Tenant B) para `Empreendimento`, `ProcessoLicenciamento`, `AutoInfracaoAmbiental`, `CompensacaoAmbiental`, `AreaProtegida` e `OutorgaAgua`; verificar que nenhum dado cruza entre tenants.
+- [ ] 13.2 Cobertura de testes unitários ≥ 80% para todos os Services do módulo; verificar via `composer test -- --coverage`.
+- [ ] 13.3 Cobertura de testes de feature para todos os endpoints da API do módulo (sucesso e erro); verificar os cenários.
+- [ ] 13.4 Executar `composer static` (PHPStan/Larastan nível 6) e `npm run typecheck`; verificar zero erros.
+- [ ] 13.5 Executar `composer test` e `npm test` na raiz do monorepo; verificar que todos os testes existentes de outros módulos (incluindo Vistoria) continuam passando.

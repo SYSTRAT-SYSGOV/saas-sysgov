@@ -21,6 +21,7 @@ use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Cursos\Providers\CursosServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
+use Modules\MeioAmbiente\Providers\MeioAmbienteServiceProvider;
 use Modules\OrgChart\Providers\OrgChartServiceProvider;
 use Modules\Pessoas\Providers\PessoasServiceProvider;
 use Modules\Procurement\Providers\ProcurementServiceProvider;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         CursosServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
+        MeioAmbienteServiceProvider::class,
         OrgChartServiceProvider::class,
         PessoasServiceProvider::class,
         ProcurementServiceProvider::class,
