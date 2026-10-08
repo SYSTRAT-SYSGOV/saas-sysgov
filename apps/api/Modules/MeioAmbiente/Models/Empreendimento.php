@@ -93,6 +93,18 @@ final class Empreendimento extends Model
         return $this->hasMany(AutoInfracaoAmbiental::class, 'empreendimento_id');
     }
 
+    /** @return HasMany<OutorgaAgua, $this> */
+    public function outorgasAgua(): HasMany
+    {
+        return $this->hasMany(OutorgaAgua::class, 'empreendimento_id');
+    }
+
+    /** @return HasMany<LicencaLancamentoEfluente, $this> */
+    public function licencasLancamentoEfluente(): HasMany
+    {
+        return $this->hasMany(LicencaLancamentoEfluente::class, 'empreendimento_id');
+    }
+
     /** @return HasMany<GeradorResiduo, $this> */
     public function geradoresResiduo(): HasMany
     {

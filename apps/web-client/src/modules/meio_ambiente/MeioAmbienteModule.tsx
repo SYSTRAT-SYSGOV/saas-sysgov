@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Leaf, FileCheck, Building2, Gavel, Landmark, Recycle, TreePine, Flame } from 'lucide-react';
+import { Leaf, FileCheck, Building2, Gavel, Landmark, Recycle, TreePine, Flame, Droplets } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs } from '@/components/ui/Tabs';
 import type { TabsItem } from '@/components/ui/Tabs';
@@ -10,12 +10,21 @@ import { CompensacaoAmbientalView } from './views/CompensacaoAmbientalView';
 import { ResiduosSolidosView } from './views/ResiduosSolidosView';
 import { AreasProtegidasView } from './views/AreasProtegidasView';
 import { QueimadasView } from './views/QueimadasView';
+import { RecursosHidricosView } from './views/RecursosHidricosView';
 
-type MeioAmbienteTab = 'empreendimentos' | 'licenciamento' | 'fiscalizacao' | 'compensacao' | 'residuos' | 'areas-protegidas' | 'queimadas';
+type MeioAmbienteTab =
+  | 'empreendimentos'
+  | 'licenciamento'
+  | 'fiscalizacao'
+  | 'compensacao'
+  | 'residuos'
+  | 'areas-protegidas'
+  | 'queimadas'
+  | 'recursos-hidricos';
 
 /**
- * As abas das demais capacidades (Recursos Hídricos, Relatórios/Indicadores,
- * Integrações, Auditoria) são adicionadas incrementalmente a partir da Fase 9. Ver
+ * As abas das demais capacidades (Relatórios/Indicadores, Integrações, Auditoria)
+ * são adicionadas incrementalmente a partir da Fase 10. Ver
  * openspec/changes/criar-modulo-meio-ambiente/tasks.md.
  */
 export const MeioAmbienteModule: React.FC = () => {
@@ -29,6 +38,7 @@ export const MeioAmbienteModule: React.FC = () => {
     { key: 'residuos', label: 'Resíduos Sólidos', icon: <Recycle className="h-4 w-4" /> },
     { key: 'areas-protegidas', label: 'Áreas Protegidas', icon: <TreePine className="h-4 w-4" /> },
     { key: 'queimadas', label: 'Queimadas', icon: <Flame className="h-4 w-4" /> },
+    { key: 'recursos-hidricos', label: 'Recursos Hídricos', icon: <Droplets className="h-4 w-4" /> },
   ];
 
   return (
@@ -50,6 +60,7 @@ export const MeioAmbienteModule: React.FC = () => {
           {aba === 'residuos' && <ResiduosSolidosView />}
           {aba === 'areas-protegidas' && <AreasProtegidasView />}
           {aba === 'queimadas' && <QueimadasView />}
+          {aba === 'recursos-hidricos' && <RecursosHidricosView />}
         </div>
       </div>
     </div>

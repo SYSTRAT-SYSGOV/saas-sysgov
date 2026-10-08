@@ -88,10 +88,10 @@ não abre auto de infração automaticamente (`auto_infracao_ambiental_id` perma
 
 ## 9. Recursos hídricos
 
-- [ ] 9.1 Migration + model `OutorgaAgua` (`tipo_captacao` `poco|captacao_superficial`, vazão, finalidade, validade calculada); verificar teste do cenário "cadastro de outorga de poço para uso industrial".
-- [ ] 9.2 Migration + models `LicencaLancamentoEfluente` e `ParametroQualidadeEfluente` (limites regulatórios) + registro de medição com sinalização de não conformidade; verificar testes dos cenários de cadastro de licença e de medição fora do limite.
-- [ ] 9.3 Job diário de verificação de prazos (90/30/7 dias) para outorgas e licenças de lançamento de efluentes, mesmo padrão do job da seção 3.6; verificar teste do cenário "alerta gerado 90 dias antes do vencimento da outorga".
-- [ ] 9.4 Permissão `meio_ambiente.recursos_hidricos.manage` + endpoints; tela de outorgas/licenças/medições no `web-client`; verificar teste de feature e `npm run typecheck`.
+- [x] 9.1 Migration + model `OutorgaAgua` (`tipo_captacao` `poco|captacao_superficial`, vazão, finalidade, validade calculada via `OutorgaAgua::VALIDADE_DIAS`); teste do cenário "cadastro de outorga de poço para uso industrial".
+- [x] 9.2 Migration + models `LicencaLancamentoEfluente` e `ParametroQualidadeEfluente` (limites regulatórios) + `MedicaoEfluente` com sinalização de conformidade (`ParametroQualidadeEfluente::dentroDoLimite()`) e `LicencaLancamentoEfluente::temNaoConformidade()` computado; testes dos cenários de cadastro de licença e de medição fora/dentro do limite.
+- [x] 9.3 `VerificarPrazosRecursosHidricosCommand` (Artisan Command agendado, mesmo padrão da Fase 3) + `AlertaRecursoHidrico` (uma tabela só, com `tipo_referencia` casando por texto — mesmo padrão não polimórfico do `AuditLog` — em vez de duplicar a tabela de alerta para outorga e para licença separadamente); teste do cenário "alerta gerado 90 dias antes do vencimento da outorga".
+- [x] 9.4 Endpoints sob permissão `meio_ambiente.recursos_hidricos.manage` (já existente desde a Fase 1) + `RecursosHidricosControllerTest`; tela `RecursosHidricosView.tsx` no `web-client` (outorgas, licenças com parâmetros e medições); `npm run typecheck` e `npm test` (532 testes) sem regressão.
 
 ## 10. Relatórios e indicadores ambientais
 

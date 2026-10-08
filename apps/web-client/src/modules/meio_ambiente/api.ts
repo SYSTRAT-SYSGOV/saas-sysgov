@@ -97,6 +97,34 @@ export interface ProcessoLicenciamento {
   created_at: string;
 }
 
+export type TipoCaptacao = 'poco' | 'captacao_superficial';
+export type FinalidadeOutorga = 'abastecimento' | 'irrigacao' | 'industrial' | 'outra';
+
+export interface OutorgaAgua {
+  id: number;
+  empreendimento_id: number;
+  tipo_captacao: TipoCaptacao;
+  vazao_m3_hora: number;
+  finalidade: FinalidadeOutorga;
+  validade_em: string;
+}
+
+export interface ParametroQualidadeEfluente {
+  id: number;
+  parametro: string;
+  limite_min: number | null;
+  limite_max: number | null;
+  unidade: string | null;
+}
+
+export interface LicencaLancamentoEfluente {
+  id: number;
+  empreendimento_id: number;
+  validade_em: string;
+  tem_nao_conformidade: boolean;
+  parametros: ParametroQualidadeEfluente[];
+}
+
 export type SituacaoOcorrenciaQueimada = 'responsavel_identificado' | 'responsavel_nao_identificado';
 
 export interface OcorrenciaQueimada {
@@ -379,4 +407,19 @@ export const meioAmbienteApi = {
 
   vincularResponsavelQueimada: (ocorrenciaId: number, dados: { responsavel_pessoa_id?: number; responsavel_empreendimento_id?: number; execucao_vistoria_id?: number }) =>
     apiClient.post<OcorrenciaQueimada>(`${base}/ocorrencias-queimada/${ocorrenciaId}/responsavel`, dados).then((r) => r.data),
+
+  listarOutorgasAgua: (empreendimentoId: number) =>
+    apiClient.get<{ data: OutorgaAgua[] }>(`${base}/empreendimentos/${empreendimentoId}/outorgas-agua`).then((r) => r.data.data),
+
+  cadastrarOutorgaAgua: (empreendimentoId: number, dados: { tipo_captacao: TipoCaptacao; vazao_m3_hora: number; finalidade: FinalidadeOutorga }) =>
+    apiClient.post<OutorgaAgua>(`${base}/empreendimentos/${empreendimentoId}/outorgas-agua`, dados).then((r) => r.data),
+
+  listarLicencasEfluente: (empreendimentoId: number) =>
+    apiClient.get<{ data: LicencaLancamentoEfluente[] }>(`${base}/empreendimentos/${empreendimentoId}/licencas-efluente`).then((r) => r.data.data),
+
+  cadastrarLicencaEfluente: (empreendimentoId: number, parametros: Array<{ parametro: string; limite_min?: number; limite_max?: number; unidade?: string }>) =>
+    apiClient.post<LicencaLancamentoEfluente>(`${base}/empreendimentos/${empreendimentoId}/licencas-efluente`, { parametros }).then((r) => r.data),
+
+  registrarMedicaoEfluente: (parametroId: number, valor: number) =>
+    apiClient.post(`${base}/parametros-qualidade-efluente/${parametroId}/medicoes`, { valor }).then((r) => r.data),
 };
