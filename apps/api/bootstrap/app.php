@@ -21,6 +21,7 @@ use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Cursos\Providers\CursosServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
+use Modules\MeioAmbiente\Console\VerificarPrazosLicenciamentoCommand;
 use Modules\MeioAmbiente\Providers\MeioAmbienteServiceProvider;
 use Modules\OrgChart\Providers\OrgChartServiceProvider;
 use Modules\Pessoas\Providers\PessoasServiceProvider;
@@ -52,7 +53,7 @@ return Application::configure(basePath: dirname(__DIR__))
         TinkerServiceProvider::class,
         \App\Providers\AuthServiceProvider::class,
     ])
-    ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class, SeedModuleOrgUnit::class])
+    ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class, SeedModuleOrgUnit::class, VerificarPrazosLicenciamentoCommand::class])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\CloseConnectionOnCliServer::class);
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);

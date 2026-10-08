@@ -61,6 +61,38 @@ export interface GeoJsonFeatureCollection {
   }>;
 }
 
+export type FaseLicenciamento = 'LP' | 'LI' | 'LO' | 'renovacao' | 'correcao';
+export type StatusProcessoLicenciamento = 'em_analise' | 'deferido' | 'indeferido';
+export type ResultadoVistoriaTecnica = 'favoravel' | 'desfavoravel';
+export type SituacaoCondicionante = 'pendente' | 'cumprida';
+
+export interface Condicionante {
+  id: number;
+  descricao: string;
+  prazo: string;
+  situacao: SituacaoCondicionante;
+}
+
+export interface DocumentoLicenciamento {
+  id: number;
+  tipo: string;
+  anexado_em: string;
+}
+
+export interface ProcessoLicenciamento {
+  id: number;
+  empreendimento_id: number;
+  fase: FaseLicenciamento;
+  numero: string;
+  exercicio: number;
+  status: StatusProcessoLicenciamento;
+  data_deferimento: string | null;
+  validade_em: string | null;
+  condicionantes?: Condicionante[];
+  documentos?: DocumentoLicenciamento[];
+  created_at: string;
+}
+
 interface ErroApiResponse {
   message?: string;
   code?: string;
@@ -95,4 +127,36 @@ export const meioAmbienteApi = {
 
   vincularResponsavelTecnico: (empreendimentoId: number, dados: NovoResponsavelTecnicoInput) =>
     apiClient.post<ResponsavelTecnico>(`${base}/empreendimentos/${empreendimentoId}/responsavel-tecnico`, dados).then((r) => r.data),
+
+  listarProcessosLicenciamento: (empreendimentoId: number) =>
+    apiClient.get<{ data: ProcessoLicenciamento[] }>(`${base}/empreendimentos/${empreendimentoId}/processos-licenciamento`).then((r) => r.data.data),
+
+  obterProcessoLicenciamento: (id: number) =>
+    apiClient.get<ProcessoLicenciamento>(`${base}/processos-licenciamento/${id}`).then((r) => r.data),
+
+  abrirProcessoLicenciamento: (empreendimentoId: number, fase: FaseLicenciamento) =>
+    apiClient.post<ProcessoLicenciamento>(`${base}/empreendimentos/${empreendimentoId}/processos-licenciamento`, { fase }).then((r) => r.data),
+
+  anexarDocumentoLicenciamento: (processoId: number, tipo: string, arquivo?: File | null) => {
+    const form = new FormData();
+    form.append('tipo', tipo);
+    if (arquivo) form.append('arquivo', arquivo);
+    return apiClient.post<DocumentoLicenciamento>(`${base}/processos-licenciamento/${processoId}/documentos`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data);
+  },
+
+  registrarCondicionante: (processoId: number, dados: { descricao: string; prazo: string }) =>
+    apiClient.post<Condicionante>(`${base}/processos-licenciamento/${processoId}/condicionantes`, dados).then((r) => r.data),
+
+  cumprirCondicionante: (condicionanteId: number) =>
+    apiClient.post<Condicionante>(`${base}/condicionantes/${condicionanteId}/cumprir`).then((r) => r.data),
+
+  registrarVistoriaTecnica: (processoId: number, dados: { resultado: ResultadoVistoriaTecnica; parecer?: string }) =>
+    apiClient.post(`${base}/processos-licenciamento/${processoId}/vistoria-tecnica`, dados).then((r) => r.data),
+
+  deferirProcessoLicenciamento: (processoId: number, justificativaParecerDesfavoravel?: string) =>
+    apiClient.post<ProcessoLicenciamento>(`${base}/processos-licenciamento/${processoId}/deferir`, {
+      justificativa_parecer_desfavoravel: justificativaParecerDesfavoravel,
+    }).then((r) => r.data),
 };

@@ -7,6 +7,7 @@ namespace Modules\MeioAmbiente\Models;
 use App\Models\Concerns\TenantAware;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Pessoas\Models\Pessoa;
@@ -72,5 +73,11 @@ final class Empreendimento extends Model
     public function responsavelTecnico(): HasOne
     {
         return $this->hasOne(ResponsavelTecnico::class, 'empreendimento_id');
+    }
+
+    /** @return HasMany<ProcessoLicenciamento, $this> */
+    public function processosLicenciamento(): HasMany
+    {
+        return $this->hasMany(ProcessoLicenciamento::class, 'empreendimento_id');
     }
 }
