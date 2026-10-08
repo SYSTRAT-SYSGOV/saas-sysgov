@@ -22,7 +22,7 @@ const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
 const Meio_ambienteComponent = lazy(() => import('@/modules/meio_ambiente/MeioAmbienteModule'));
 const RequerimentosComponent = lazy(() => import('@/modules/requerimentos/RequerimentosModule'));
-const VistoriaComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Vistoria", alias: "vistoria", description: "Digitalização da fiscalização de campo da Secretaria de Agricultura: planejamento de vistorias, execução offline em tablet, lavratura de auto de infração com assinatura em tela e tramitação do processo sancionatório decorrente." }) }));
+const VistoriaComponent = lazy(() => import('@/modules/vistoria/VistoriaModule'));
 
 export interface ModuleDefinition {
   id: string;
