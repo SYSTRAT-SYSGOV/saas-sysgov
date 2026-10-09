@@ -13,13 +13,13 @@ return new class extends Migration
         Schema::create('meio_ambiente_vistorias_tecnicas_licenciamento', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('processo_licenciamento_id')->constrained('meio_ambiente_processos_licenciamento')->cascadeOnDelete();
+            $table->foreignId('processo_licenciamento_id')->constrained('meio_ambiente_processos_licenciamento', 'id', 'ma_vistorias_tecnicas_processo_fk')->cascadeOnDelete();
             $table->string('resultado', 15);
             $table->text('parecer')->nullable();
             $table->date('realizada_em');
             $table->timestamps();
 
-            $table->index(['tenant_id', 'processo_licenciamento_id']);
+            $table->index(['tenant_id', 'processo_licenciamento_id'], 'ma_vistorias_tecnicas_processo_idx');
         });
     }
 

@@ -13,13 +13,13 @@ return new class extends Migration
         Schema::create('meio_ambiente_medicoes_efluente', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('parametro_qualidade_efluente_id')->constrained('meio_ambiente_parametros_qualidade_efluente')->cascadeOnDelete();
+            $table->foreignId('parametro_qualidade_efluente_id')->constrained('meio_ambiente_parametros_qualidade_efluente', 'id', 'ma_medicoes_efluente_parametro_qualidade_efluente_fk')->cascadeOnDelete();
             $table->decimal('valor', 10, 3);
             $table->date('medida_em');
             $table->boolean('conforme');
             $table->timestamps();
 
-            $table->index(['tenant_id', 'parametro_qualidade_efluente_id']);
+            $table->index(['tenant_id', 'parametro_qualidade_efluente_id'], 'ma_medicoes_efluente_parametro_qualidade_efluente_idx');
         });
     }
 

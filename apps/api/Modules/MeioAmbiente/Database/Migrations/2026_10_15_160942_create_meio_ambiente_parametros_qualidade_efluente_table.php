@@ -13,14 +13,14 @@ return new class extends Migration
         Schema::create('meio_ambiente_parametros_qualidade_efluente', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('licenca_lancamento_efluente_id')->constrained('meio_ambiente_licencas_lancamento_efluente')->cascadeOnDelete();
+            $table->foreignId('licenca_lancamento_efluente_id')->constrained('meio_ambiente_licencas_lancamento_efluente', 'id', 'ma_param_qualidade_licenca_efluente_fk')->cascadeOnDelete();
             $table->string('parametro', 30);
             $table->decimal('limite_min', 10, 3)->nullable();
             $table->decimal('limite_max', 10, 3)->nullable();
             $table->string('unidade', 20)->nullable();
             $table->timestamps();
 
-            $table->index(['tenant_id', 'licenca_lancamento_efluente_id']);
+            $table->index(['tenant_id', 'licenca_lancamento_efluente_id'], 'ma_param_qualidade_licenca_efluente_idx');
         });
     }
 

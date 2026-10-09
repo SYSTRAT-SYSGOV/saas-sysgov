@@ -13,13 +13,13 @@ return new class extends Migration
         Schema::create('meio_ambiente_pagamentos_compensacao', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('compensacao_ambiental_id')->constrained('meio_ambiente_compensacoes_ambientais')->cascadeOnDelete();
+            $table->foreignId('compensacao_ambiental_id')->constrained('meio_ambiente_compensacoes_ambientais', 'id', 'ma_pagamentos_compensacao_compensacao_ambiental_fk')->cascadeOnDelete();
             $table->unsignedBigInteger('valor_centavos');
             $table->date('pago_em');
             $table->string('comprovante')->nullable();
             $table->timestamps();
 
-            $table->index(['tenant_id', 'compensacao_ambiental_id']);
+            $table->index(['tenant_id', 'compensacao_ambiental_id'], 'ma_pagamentos_compensacao_compensacao_ambiental_idx');
         });
     }
 

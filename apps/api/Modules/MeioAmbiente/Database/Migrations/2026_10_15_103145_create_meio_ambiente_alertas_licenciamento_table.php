@@ -13,12 +13,12 @@ return new class extends Migration
         Schema::create('meio_ambiente_alertas_licenciamento', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('processo_licenciamento_id')->constrained('meio_ambiente_processos_licenciamento')->cascadeOnDelete();
+            $table->foreignId('processo_licenciamento_id')->constrained('meio_ambiente_processos_licenciamento', 'id', 'ma_alertas_licenciamento_processo_licenciamento_fk')->cascadeOnDelete();
             $table->unsignedSmallInteger('dias_para_vencimento');
             $table->timestamp('gerado_em');
             $table->timestamps();
 
-            $table->unique(['tenant_id', 'processo_licenciamento_id', 'dias_para_vencimento']);
+            $table->unique(['tenant_id', 'processo_licenciamento_id', 'dias_para_vencimento'], 'ma_alertas_licenc_processo_dias_unq');
         });
     }
 

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->timestamp('cumprida_em')->nullable();
             $table->timestamps();
 
-            $table->index(['tenant_id', 'processo_licenciamento_id']);
+            $table->index(['tenant_id', 'processo_licenciamento_id'], 'ma_condicionantes_processo_licenciamento_idx');
             $table->index(['tenant_id', 'situacao', 'prazo']);
         });
     }

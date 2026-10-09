@@ -23,9 +23,9 @@ return new class extends Migration
             $table->date('validade_em')->nullable();
             $table->timestamps();
 
-            $table->index(['tenant_id', 'empreendimento_id']);
-            $table->index(['tenant_id', 'status', 'validade_em']);
-            $table->unique(['tenant_id', 'fase', 'exercicio', 'numero_sequencial']);
+            $table->index(['tenant_id', 'empreendimento_id'], 'ma_processos_licenciamento_empreendimento_idx');
+            $table->index(['tenant_id', 'status', 'validade_em'], 'ma_processos_licenciamento_status_validade_em_idx');
+            $table->unique(['tenant_id', 'fase', 'exercicio', 'numero_sequencial'], 'ma_processos_licenciamento_fase_exercicio_numero_sequencial_unq');
         });
     }
 

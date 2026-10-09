@@ -20,7 +20,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['tenant_id', 'tipo']);
-            $table->index(['tenant_id', 'empreendimento_id']);
+            $table->index(['tenant_id', 'empreendimento_id'], 'ma_geradores_residuo_empreendimento_idx');
         });
     }
 

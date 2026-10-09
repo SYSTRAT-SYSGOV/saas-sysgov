@@ -13,12 +13,12 @@ return new class extends Migration
         Schema::create('meio_ambiente_parcelamentos_multa', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('processo_sancionatorio_id')->constrained('vistoria_processos_sancionatorios')->cascadeOnDelete();
+            $table->foreignId('processo_sancionatorio_id')->constrained('vistoria_processos_sancionatorios', 'id', 'ma_parcelamentos_multa_processo_sancionatorio_fk')->cascadeOnDelete();
             $table->unsignedTinyInteger('numero_parcelas');
             $table->unsignedBigInteger('valor_total_centavos');
             $table->timestamps();
 
-            $table->unique(['tenant_id', 'processo_sancionatorio_id']);
+            $table->unique(['tenant_id', 'processo_sancionatorio_id'], 'ma_parcelamentos_multa_processo_sancionatorio_unq');
         });
     }
 

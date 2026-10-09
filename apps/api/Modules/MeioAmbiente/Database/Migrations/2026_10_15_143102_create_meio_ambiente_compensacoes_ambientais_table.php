@@ -14,13 +14,13 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
             $table->foreignId('empreendimento_id')->constrained('meio_ambiente_empreendimentos')->cascadeOnDelete();
-            $table->foreignId('processo_licenciamento_id')->constrained('meio_ambiente_processos_licenciamento')->cascadeOnDelete();
+            $table->foreignId('processo_licenciamento_id')->constrained('meio_ambiente_processos_licenciamento', 'id', 'ma_compensacoes_ambientais_processo_licenciamento_fk')->cascadeOnDelete();
             $table->decimal('percentual', 5, 2);
             $table->unsignedBigInteger('valor_devido_centavos');
             $table->timestamps();
 
-            $table->unique(['tenant_id', 'processo_licenciamento_id']);
-            $table->index(['tenant_id', 'empreendimento_id']);
+            $table->unique(['tenant_id', 'processo_licenciamento_id'], 'ma_compensacoes_ambientais_processo_licenciamento_unq');
+            $table->index(['tenant_id', 'empreendimento_id'], 'ma_compensacoes_ambientais_empreendimento_idx');
         });
     }
 

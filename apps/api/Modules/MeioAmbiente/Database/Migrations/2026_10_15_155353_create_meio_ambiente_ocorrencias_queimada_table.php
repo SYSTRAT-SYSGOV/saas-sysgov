@@ -18,8 +18,8 @@ return new class extends Migration
             $table->decimal('longitude', 10, 7);
             $table->decimal('area_queimada_ha', 10, 2)->nullable();
             $table->foreignId('responsavel_pessoa_id')->nullable()->constrained('pessoas')->nullOnDelete();
-            $table->foreignId('responsavel_empreendimento_id')->nullable()->constrained('meio_ambiente_empreendimentos')->nullOnDelete();
-            $table->foreignId('auto_infracao_ambiental_id')->nullable()->constrained('meio_ambiente_autos_infracao')->nullOnDelete();
+            $table->foreignId('responsavel_empreendimento_id')->nullable()->constrained('meio_ambiente_empreendimentos', 'id', 'ma_ocorrencias_queimada_responsavel_empreendimento_fk')->nullOnDelete();
+            $table->foreignId('auto_infracao_ambiental_id')->nullable()->constrained('meio_ambiente_autos_infracao', 'id', 'ma_ocorrencias_queimada_auto_infracao_ambiental_fk')->nullOnDelete();
             $table->string('situacao', 30);
             $table->json('referencia_imagem_satelite')->nullable();
             $table->timestamps();

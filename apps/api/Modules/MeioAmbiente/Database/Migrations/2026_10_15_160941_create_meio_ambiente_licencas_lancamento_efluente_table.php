@@ -13,12 +13,12 @@ return new class extends Migration
         Schema::create('meio_ambiente_licencas_lancamento_efluente', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('empreendimento_id')->constrained('meio_ambiente_empreendimentos')->cascadeOnDelete();
+            $table->foreignId('empreendimento_id')->constrained('meio_ambiente_empreendimentos', 'id', 'ma_licencas_lancamento_efluente_empreendimento_fk')->cascadeOnDelete();
             $table->date('validade_em');
             $table->timestamps();
 
-            $table->index(['tenant_id', 'empreendimento_id']);
-            $table->index(['tenant_id', 'validade_em']);
+            $table->index(['tenant_id', 'empreendimento_id'], 'ma_licencas_lancamento_efluente_empreendimento_idx');
+            $table->index(['tenant_id', 'validade_em'], 'ma_licencas_lancamento_efluente_validade_em_idx');
         });
     }
 

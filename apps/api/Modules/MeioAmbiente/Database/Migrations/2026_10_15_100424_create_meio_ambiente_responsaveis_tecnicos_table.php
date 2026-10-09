@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('tipo_registro', 10);
             $table->timestamps();
 
-            $table->unique(['tenant_id', 'empreendimento_id']);
+            $table->unique(['tenant_id', 'empreendimento_id'], 'ma_responsaveis_tecnicos_empreendimento_unq');
         });
     }
 
