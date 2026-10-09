@@ -78,4 +78,69 @@ final class ProcessoLicenciamentoControllerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', ProcessoLicenciamento::STATUS_DEFERIDO);
     }
+
+    private function processoAberto(): ProcessoLicenciamento
+    {
+        $analista = $this->usuario($this->tenant, ['analista_licenciamento_ambiental'], 'Analista ' . uniqid());
+        $id = $this->como($analista, $this->tenant)
+            ->postJson("/api/meio_ambiente/empreendimentos/{$this->empreendimento->id}/processos-licenciamento", ['fase' => ProcessoLicenciamento::FASE_LP])
+            ->assertCreated()->json('id');
+
+        return $this->noTenant($this->tenant, fn () => ProcessoLicenciamento::findOrFail($id));
+    }
+
+    public function test_lista_e_detalha_processos_do_empreendimento(): void
+    {
+        $processo = $this->processoAberto();
+        $analista = $this->usuario($this->tenant, ['analista_licenciamento_ambiental'], 'Analista');
+
+        $this->como($analista, $this->tenant)->getJson("/api/meio_ambiente/empreendimentos/{$this->empreendimento->id}/processos-licenciamento")
+            ->assertOk()->assertJsonCount(1, 'data');
+        $this->como($analista, $this->tenant)->getJson("/api/meio_ambiente/processos-licenciamento/{$processo->id}")
+            ->assertOk()->assertJsonPath('numero', $processo->numero);
+
+        $semPerfil = $this->usuario($this->tenant, [], 'Sem perfil');
+        $this->como($semPerfil, $this->tenant)->getJson("/api/meio_ambiente/processos-licenciamento/{$processo->id}")->assertForbidden();
+    }
+
+    public function test_anexa_documento_e_registra_condicionante_com_validacao(): void
+    {
+        $processo = $this->processoAberto();
+        $analista = $this->usuario($this->tenant, ['analista_licenciamento_ambiental'], 'Analista');
+        $base = "/api/meio_ambiente/processos-licenciamento/{$processo->id}";
+
+        $this->como($analista, $this->tenant)->postJson("{$base}/documentos", [])->assertUnprocessable()->assertJsonValidationErrors('tipo');
+        $this->como($analista, $this->tenant)->postJson("{$base}/documentos", ['tipo' => 'outro'])->assertCreated();
+
+        $this->como($analista, $this->tenant)->postJson("{$base}/condicionantes", ['descricao' => 'Sem prazo'])
+            ->assertUnprocessable()->assertJsonValidationErrors('prazo');
+        $this->como($analista, $this->tenant)->postJson("{$base}/condicionantes", ['descricao' => 'Monitorar ruído', 'prazo' => now()->addMonth()->toDateString()])
+            ->assertCreated()->assertJsonPath('situacao', 'pendente');
+    }
+
+    public function test_cumprir_condicionante_vistoriar_e_deferir_exigem_permissao(): void
+    {
+        $processo = $this->processoAberto();
+        $condicionanteId = $this->noTenant($this->tenant, fn () => $processo->condicionantes()->create([
+            'descricao' => 'Plantio', 'prazo' => now()->addMonth()->toDateString(), 'situacao' => 'pendente',
+        ])->id);
+        $fiscal = $this->usuario($this->tenant, ['fiscal_ambiental'], 'Fiscal');
+
+        $this->como($fiscal, $this->tenant)->postJson("/api/meio_ambiente/condicionantes/{$condicionanteId}/cumprir")->assertForbidden();
+        $this->como($fiscal, $this->tenant)->postJson("/api/meio_ambiente/processos-licenciamento/{$processo->id}/vistoria-tecnica", ['resultado' => 'favoravel'])->assertForbidden();
+        $this->como($fiscal, $this->tenant)->postJson("/api/meio_ambiente/processos-licenciamento/{$processo->id}/deferir")->assertForbidden();
+    }
+
+    public function test_deferimento_com_parecer_desfavoravel_sem_justificativa_retorna_422(): void
+    {
+        $processo = $this->processoAberto();
+        $analista = $this->usuario($this->tenant, ['analista_licenciamento_ambiental'], 'Analista');
+        $base = "/api/meio_ambiente/processos-licenciamento/{$processo->id}";
+
+        $this->como($analista, $this->tenant)->postJson("{$base}/vistoria-tecnica", ['resultado' => 'desfavoravel', 'parecer' => 'Impacto não mitigado'])->assertCreated();
+
+        $this->como($analista, $this->tenant)->postJson("{$base}/deferir")->assertUnprocessable();
+        $this->como($analista, $this->tenant)->postJson("{$base}/deferir", ['justificativa_parecer_desfavoravel' => 'Interesse público justificado em parecer jurídico.'])
+            ->assertOk()->assertJsonPath('status', ProcessoLicenciamento::STATUS_DEFERIDO);
+    }
 }

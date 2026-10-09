@@ -7,6 +7,7 @@ namespace Modules\MeioAmbiente\Tests\Feature;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\MeioAmbiente\Models\AreaProtegida;
+use Modules\MeioAmbiente\Models\Empreendimento;
 use Modules\MeioAmbiente\Tests\Concerns\CenarioMeioAmbiente;
 use Tests\TestCase;
 
@@ -61,5 +62,30 @@ final class AreaProtegidaControllerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('type', 'FeatureCollection')
             ->assertJsonCount(1, 'features');
+    }
+
+    public function test_lista_areas_e_verifica_sobreposicao_com_empreendimento(): void
+    {
+        $gestor = $this->usuario($this->tenant, ['gestor_recursos_naturais'], 'Gestor');
+        $this->como($gestor, $this->tenant)->postJson('/api/meio_ambiente/areas-protegidas', [
+            'tipo' => AreaProtegida::TIPO_APP,
+            'geometria' => ['type' => 'Polygon', 'coordinates' => [[[-50, -26], [-49, -26], [-49, -25], [-50, -25], [-50, -26]]]],
+        ])->assertCreated();
+        $empreendimento = $this->noTenant($this->tenant, fn () => Empreendimento::create([
+            'cnpj' => '12345678000199', 'razao_social' => 'Dentro da APP Ltda', 'atividade' => 'industria',
+            'porte' => Empreendimento::PORTE_PEQUENO, 'latitude' => -25.5, 'longitude' => -49.5,
+        ]));
+
+        $this->como($gestor, $this->tenant)->getJson('/api/meio_ambiente/areas-protegidas')->assertOk()->assertJsonCount(1, 'data');
+        $this->como($gestor, $this->tenant)->getJson("/api/meio_ambiente/empreendimentos/{$empreendimento->id}/areas-protegidas-sobrepostas")
+            ->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    public function test_usuario_sem_acesso_nao_lista_areas_nem_mapa(): void
+    {
+        $semPerfil = $this->usuario($this->tenant, [], 'Sem perfil');
+
+        $this->como($semPerfil, $this->tenant)->getJson('/api/meio_ambiente/areas-protegidas')->assertForbidden();
+        $this->como($semPerfil, $this->tenant)->getJson('/api/meio_ambiente/areas-protegidas/mapa')->assertForbidden();
     }
 }

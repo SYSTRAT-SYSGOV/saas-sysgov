@@ -74,4 +74,38 @@ final class RecursosHidricosControllerTest extends TestCase
 
         $resposta->assertCreated()->assertJsonCount(1, 'parametros');
     }
+
+    public function test_lista_outorgas_e_licencas_e_registra_medicao(): void
+    {
+        $gestor = $this->usuario($this->tenant, ['gestor_recursos_naturais'], 'Gestor');
+        $base = "/api/meio_ambiente/empreendimentos/{$this->empreendimento->id}";
+
+        $this->como($gestor, $this->tenant)->postJson("{$base}/outorgas-agua", [
+            'tipo_captacao' => OutorgaAgua::TIPO_CAPTACAO_POCO, 'vazao_m3_hora' => 5, 'finalidade' => OutorgaAgua::FINALIDADE_INDUSTRIAL,
+        ])->assertCreated();
+        $licenca = $this->como($gestor, $this->tenant)->postJson("{$base}/licencas-efluente", ['parametros' => [['parametro' => 'DBO', 'limite_max' => 60, 'unidade' => 'mg/L']]])
+            ->assertCreated();
+        $parametroId = $licenca->json('parametros.0.id');
+
+        $this->como($gestor, $this->tenant)->getJson("{$base}/outorgas-agua")->assertOk()->assertJsonCount(1, 'data');
+        $this->como($gestor, $this->tenant)->getJson("{$base}/licencas-efluente")->assertOk()->assertJsonCount(1, 'data');
+
+        $this->como($gestor, $this->tenant)->postJson("/api/meio_ambiente/parametros-qualidade-efluente/{$parametroId}/medicoes", [])
+            ->assertUnprocessable()->assertJsonValidationErrors('valor');
+        $this->como($gestor, $this->tenant)->postJson("/api/meio_ambiente/parametros-qualidade-efluente/{$parametroId}/medicoes", ['valor' => 80])
+            ->assertCreated()->assertJsonPath('conforme', false);
+    }
+
+    public function test_licenca_de_efluente_sem_parametros_e_listagem_sem_permissao_sao_recusadas(): void
+    {
+        $gestor = $this->usuario($this->tenant, ['gestor_recursos_naturais'], 'Gestor');
+        $base = "/api/meio_ambiente/empreendimentos/{$this->empreendimento->id}";
+
+        $this->como($gestor, $this->tenant)->postJson("{$base}/licencas-efluente", ['parametros' => []])
+            ->assertUnprocessable()->assertJsonValidationErrors('parametros');
+
+        $semPerfil = $this->usuario($this->tenant, [], 'Sem perfil');
+        $this->como($semPerfil, $this->tenant)->getJson("{$base}/outorgas-agua")->assertForbidden();
+        $this->como($semPerfil, $this->tenant)->getJson("{$base}/licencas-efluente")->assertForbidden();
+    }
 }

@@ -26,6 +26,8 @@ final class RecursosHidricosController extends Controller
     public function indexOutorgas(Empreendimento $empreendimento): JsonResponse
     {
         $this->authorize('viewAny', OutorgaAgua::class);
+        // O empreendimento da URL precisa ser do tenant atual (o binding não aplica o escopo).
+        $this->authorize('view', $empreendimento);
 
         return response()->json(['data' => OutorgaAguaResource::collection($empreendimento->outorgasAgua()->latest()->get())]);
     }
@@ -33,6 +35,8 @@ final class RecursosHidricosController extends Controller
     public function storeOutorga(CadastrarOutorgaAguaRequest $request, Empreendimento $empreendimento): JsonResponse
     {
         $this->authorize('create', OutorgaAgua::class);
+        // O empreendimento da URL precisa ser do tenant atual (o binding não aplica o escopo).
+        $this->authorize('view', $empreendimento);
 
         $outorga = $this->recursosHidricos->cadastrarOutorga($empreendimento, $request->validated());
 
@@ -42,6 +46,8 @@ final class RecursosHidricosController extends Controller
     public function indexLicencasEfluente(Empreendimento $empreendimento): JsonResponse
     {
         $this->authorize('viewAny', LicencaLancamentoEfluente::class);
+        // O empreendimento da URL precisa ser do tenant atual (o binding não aplica o escopo).
+        $this->authorize('view', $empreendimento);
 
         return response()->json(['data' => LicencaLancamentoEfluenteResource::collection($empreendimento->licencasLancamentoEfluente()->with('parametros')->latest()->get())]);
     }
@@ -49,6 +55,8 @@ final class RecursosHidricosController extends Controller
     public function storeLicencaEfluente(CadastrarLicencaEfluenteRequest $request, Empreendimento $empreendimento): JsonResponse
     {
         $this->authorize('create', LicencaLancamentoEfluente::class);
+        // O empreendimento da URL precisa ser do tenant atual (o binding não aplica o escopo).
+        $this->authorize('view', $empreendimento);
 
         $licenca = $this->recursosHidricos->cadastrarLicencaEfluente($empreendimento, $request->validated('parametros'));
 

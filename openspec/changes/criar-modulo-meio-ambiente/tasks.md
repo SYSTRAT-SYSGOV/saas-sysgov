@@ -137,8 +137,15 @@ não abre auto de infração automaticamente (`auto_infracao_ambiental_id` perma
 
 ## 13. Testes e Qualidade (fechamento do módulo)
 
-- [ ] 13.1 Teste de isolamento multi-tenant (Tenant A x Tenant B) para `Empreendimento`, `ProcessoLicenciamento`, `AutoInfracaoAmbiental`, `CompensacaoAmbiental`, `AreaProtegida` e `OutorgaAgua`; verificar que nenhum dado cruza entre tenants.
-- [ ] 13.2 Cobertura de testes unitários ≥ 80% para todos os Services do módulo; verificar via `composer test -- --coverage`.
-- [ ] 13.3 Cobertura de testes de feature para todos os endpoints da API do módulo (sucesso e erro); verificar os cenários.
-- [ ] 13.4 Executar `composer static` (PHPStan/Larastan nível 6) e `npm run typecheck`; verificar zero erros.
-- [ ] 13.5 Executar `composer test` e `npm test` na raiz do monorepo; verificar que todos os testes existentes de outros módulos (incluindo Vistoria) continuam passando.
+- [x] 13.1 `TenantIsolationTest` (Tenant A x Tenant B) para `Empreendimento`, `ProcessoLicenciamento`, `AutoInfracaoAmbiental`, `CompensacaoAmbiental`, `AreaProtegida` e `OutorgaAgua`: escopo de consulta, listagens via API, leitura por ID na URL, rotas aninhadas em `{empreendimento}` e IDs de outro tenant no corpo da requisição — nenhum dado cruza entre tenants.
+- [x] 13.2 Cobertura de linhas dos Services (pcov, `phpunit --coverage-text`): 96,3% no agregado (774/804 linhas); todos os Services ≥ 88% (menor: `ResiduosSolidosService`, 30/34). O ambiente Docker usa `pcov`, não `xdebug`: `php -d pcov.enabled=1 vendor/bin/phpunit Modules/MeioAmbiente --coverage-text --coverage-filter Modules/MeioAmbiente`.
+- [x] 13.3 Testes de feature para todos os 56 endpoints do módulo, com cenário de sucesso e de erro (403 sem permissão/outro tenant, 401 na API M2M, 422 de validação/regra de negócio); Controllers com 97–100% das linhas cobertas.
+- [x] 13.4 `composer static` (PHPStan/Larastan nível 6, repositório inteiro) sem erros; `npm run typecheck` sem erros.
+- [x] 13.5 `composer test` e `npm test` na raiz do monorepo: backend com 1.499 testes (8 min no container) — só as 2 falhas pré-existentes de `MfaRequirementTest`, artefato do `CACHE_STORE=array` forçado no ambiente local, que passam no CI; todos os testes do Vistoria e dos demais módulos passam. Frontend: 586 testes (`apps/web` 41 + `apps/web-client` 545), todos passando. Confirmação final pelo CI do PR #49 (grupos SQLite e MySQL 8).
+
+**Nota de implementação**:
+- **Falhas de isolamento encontradas e corrigidas** pelo `TenantIsolationTest` (mesma causa-raiz do achado da Fase 10 — route model binding e regra `exists` não aplicam o escopo de tenant):
+  1. Rotas aninhadas em `/empreendimentos/{empreendimento}/...` autorizavam só pela classe (`viewAny`/`create`), sem checar o empreendimento da URL: listar/abrir processos de licenciamento, listar compensações, listar/cadastrar outorgas e licenças de efluente. Um usuário do tenant B conseguia, por exemplo, abrir processo de licenciamento sobre empreendimento do tenant A. Corrigido com `authorize('view', $empreendimento)` (Policy com `mesmoTenant`) em cada ação.
+  2. IDs no corpo validados com `exists:tabela,id` puro aceitavam registros de outro tenant (`empreendimento_id`, `pessoa_id`, `titular_pessoa_id`, `responsavel_*_id`) — um gerador de resíduo do tenant B foi criado apontando para empreendimento do tenant A (HTTP 201). Corrigido com o trait `Http\Requests\Concerns\ExisteNoTenant` (`Rule::exists(...)->where('tenant_id', ...)`, mesmo padrão já usado no módulo Cursos) nos 6 FormRequests afetados.
+- **Endpoints sem teste de feature até aqui**: 22 dos 56 (quase todos das Fases 2–9, que só tinham testes unitários dos Services). Todos cobertos agora.
+- **`composer test` local excede o `process-timeout` padrão do Composer (300 s)** — a suíte inteira leva mais que isso no container; rodar com `COMPOSER_PROCESS_TIMEOUT=0`. Não é falha de teste. O CI chama `vendor/bin/phpunit` direto, sem esse limite.

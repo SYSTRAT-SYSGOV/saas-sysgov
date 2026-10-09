@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\MeioAmbiente\Models\OcorrenciaQueimada;
 use Modules\MeioAmbiente\Tests\Concerns\CenarioMeioAmbiente;
+use Modules\Pessoas\Models\Pessoa;
 use Tests\TestCase;
 
 final class OcorrenciaQueimadaControllerTest extends TestCase
@@ -62,5 +63,33 @@ final class OcorrenciaQueimadaControllerTest extends TestCase
         $this->como($fiscal, $this->tenant)->getJson('/api/meio_ambiente/ocorrencias-queimada/mapa')
             ->assertOk()
             ->assertJsonCount(1, 'features');
+    }
+
+    public function test_lista_ocorrencias_e_vincula_responsavel(): void
+    {
+        $fiscal = $this->usuario($this->tenant, ['fiscal_ambiental'], 'Fiscal');
+        $id = $this->como($fiscal, $this->tenant)->postJson('/api/meio_ambiente/ocorrencias-queimada', [
+            'data_ocorrencia' => now()->toDateString(), 'latitude' => -25.4, 'longitude' => -49.2, 'area_queimada_ha' => 2,
+        ])->assertCreated()->json('id');
+        $pessoa = $this->noTenant($this->tenant, fn () => Pessoa::factory()->create());
+
+        $this->como($fiscal, $this->tenant)->getJson('/api/meio_ambiente/ocorrencias-queimada')->assertOk()->assertJsonCount(1, 'data');
+        $this->como($fiscal, $this->tenant)->postJson("/api/meio_ambiente/ocorrencias-queimada/{$id}/responsavel", ['responsavel_pessoa_id' => $pessoa->id])
+            ->assertOk()->assertJsonPath('situacao', OcorrenciaQueimada::SITUACAO_RESPONSAVEL_IDENTIFICADO);
+    }
+
+    public function test_vinculo_com_pessoa_inexistente_e_listagem_sem_permissao_sao_recusados(): void
+    {
+        $fiscal = $this->usuario($this->tenant, ['fiscal_ambiental'], 'Fiscal');
+        $id = $this->como($fiscal, $this->tenant)->postJson('/api/meio_ambiente/ocorrencias-queimada', [
+            'data_ocorrencia' => now()->toDateString(), 'latitude' => -25.4, 'longitude' => -49.2,
+        ])->assertCreated()->json('id');
+
+        $this->como($fiscal, $this->tenant)->postJson("/api/meio_ambiente/ocorrencias-queimada/{$id}/responsavel", ['responsavel_pessoa_id' => 999_999])
+            ->assertUnprocessable()->assertJsonValidationErrors('responsavel_pessoa_id');
+
+        $semPerfil = $this->usuario($this->tenant, [], 'Sem perfil');
+        $this->como($semPerfil, $this->tenant)->getJson('/api/meio_ambiente/ocorrencias-queimada')->assertForbidden();
+        $this->como($semPerfil, $this->tenant)->getJson('/api/meio_ambiente/ocorrencias-queimada/mapa')->assertForbidden();
     }
 }

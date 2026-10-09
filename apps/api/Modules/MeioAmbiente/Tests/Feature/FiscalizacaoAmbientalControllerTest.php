@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Modules\MeioAmbiente\Models\AutoInfracaoAmbiental;
 use Modules\MeioAmbiente\Models\Empreendimento;
 use Modules\MeioAmbiente\Models\ParcelaMulta;
+use Modules\MeioAmbiente\Models\ParcelamentoMulta;
 use Modules\MeioAmbiente\Services\FiscalizacaoAmbientalService;
 use Modules\MeioAmbiente\Tests\Concerns\CenarioMeioAmbiente;
 use Modules\OrgChart\Models\OrgUnit;
@@ -167,5 +168,31 @@ final class FiscalizacaoAmbientalControllerTest extends TestCase
         $this->como($fiscal, $this->tenant)
             ->postJson("/api/meio_ambiente/parcelas-multa/{$parcela->id}/pagamento")
             ->assertUnprocessable();
+    }
+
+    public function test_consulta_auto_parcela_multa_e_rejeita_parcelamento_acima_do_limite(): void
+    {
+        $fiscal = $this->usuario($this->tenant, ['fiscal_ambiental'], 'Fiscal');
+        $autoId = $this->como($fiscal, $this->tenant)
+            ->postJson("/api/meio_ambiente/execucoes-vistoria/{$this->execucao->id}/autos-infracao-ambiental", [
+                'empreendimento_id' => $this->empreendimento->id, 'tipo_infracao' => AutoInfracaoAmbiental::TIPO_DESMATAMENTO, 'area_afetada_ha' => 1,
+            ])->assertCreated()->json('id');
+
+        $this->como($fiscal, $this->tenant)->getJson("/api/meio_ambiente/autos-infracao-ambiental/{$autoId}")
+            ->assertOk()->assertJsonPath('tipo_infracao', AutoInfracaoAmbiental::TIPO_DESMATAMENTO);
+
+        $processo = $this->noTenant($this->tenant, function () use ($autoId): ProcessoSancionatorio {
+            $processos = app(ProcessoSancionatorioService::class);
+            $processo = AutoInfracaoAmbiental::findOrFail($autoId)->documento->processoSancionatorio;
+            $processos->apresentarDefesa($processo, 'Defesa.');
+            $julgador = User::create(['name' => 'Chefia', 'email' => 'chefia-' . uniqid() . '@teste.gov.br', 'password' => bcrypt('secret')]);
+
+            return $processos->julgar($processo->refresh(), ProcessoSancionatorio::DECISAO_PROCEDENTE, 'Fundamentação.', $julgador, 120_000);
+        });
+        $url = "/api/meio_ambiente/processos-sancionatorios/{$processo->id}/parcelamento";
+
+        $this->como($fiscal, $this->tenant)->postJson($url, ['numero_parcelas' => ParcelamentoMulta::LIMITE_PARCELAS + 1])->assertUnprocessable();
+        $this->como($fiscal, $this->tenant)->postJson($url, ['numero_parcelas' => 3])
+            ->assertCreated()->assertJsonPath('valor_total_centavos', 120_000)->assertJsonCount(3, 'parcelas');
     }
 }

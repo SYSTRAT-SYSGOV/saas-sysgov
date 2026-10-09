@@ -7,6 +7,7 @@ namespace Modules\MeioAmbiente\Tests\Feature;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\MeioAmbiente\Models\Empreendimento;
+use Modules\MeioAmbiente\Models\ResponsavelTecnico;
 use Modules\MeioAmbiente\Tests\Concerns\CenarioMeioAmbiente;
 use Tests\TestCase;
 
@@ -90,5 +91,46 @@ final class EmpreendimentoControllerTest extends TestCase
         $resposta->assertOk();
         self::assertCount(1, $resposta->json('features'));
         self::assertSame('agroindustria', $resposta->json('features.0.properties.atividade'));
+    }
+
+    private function empreendimentoCadastrado(): Empreendimento
+    {
+        return $this->noTenant($this->tenant, fn () => Empreendimento::create([
+            'cnpj' => '12345678000199', 'razao_social' => 'Indústria Exemplo Ltda', 'atividade' => 'industria',
+            'porte' => Empreendimento::PORTE_MEDIO, 'latitude' => -25.4, 'longitude' => -49.2,
+        ]));
+    }
+
+    public function test_lista_e_detalha_empreendimentos(): void
+    {
+        $empreendimento = $this->empreendimentoCadastrado();
+        $analista = $this->usuario($this->tenant, ['analista_licenciamento_ambiental'], 'Analista');
+
+        $this->como($analista, $this->tenant)->getJson('/api/meio_ambiente/empreendimentos?q=Exemplo')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('total', 1);
+        $this->como($analista, $this->tenant)->getJson("/api/meio_ambiente/empreendimentos/{$empreendimento->id}")
+            ->assertOk()->assertJsonPath('razao_social', 'Indústria Exemplo Ltda');
+    }
+
+    public function test_usuario_sem_acesso_ao_modulo_nao_lista_nem_consulta_mapa(): void
+    {
+        $semPerfil = $this->usuario($this->tenant, [], 'Sem perfil');
+
+        $this->como($semPerfil, $this->tenant)->getJson('/api/meio_ambiente/empreendimentos')->assertForbidden();
+        $this->como($semPerfil, $this->tenant)->getJson('/api/meio_ambiente/empreendimentos/mapa')->assertForbidden();
+    }
+
+    public function test_vincula_responsavel_tecnico_e_valida_campos_obrigatorios(): void
+    {
+        $empreendimento = $this->empreendimentoCadastrado();
+        $analista = $this->usuario($this->tenant, ['analista_licenciamento_ambiental'], 'Analista');
+        $url = "/api/meio_ambiente/empreendimentos/{$empreendimento->id}/responsavel-tecnico";
+
+        $this->como($analista, $this->tenant)->postJson($url, ['nome' => 'Eng. Ana'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['registro_profissional', 'tipo_registro']);
+
+        $this->como($analista, $this->tenant)->postJson($url, [
+            'nome' => 'Eng. Ana', 'registro_profissional' => 'CREA-PR 1', 'tipo_registro' => ResponsavelTecnico::TIPO_CREA,
+        ])->assertCreated()->assertJsonPath('nome', 'Eng. Ana');
     }
 }

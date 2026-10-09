@@ -7,6 +7,7 @@ namespace Modules\MeioAmbiente\Tests\Feature;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\MeioAmbiente\Models\CompensacaoAmbiental;
+use Modules\MeioAmbiente\Models\DestinacaoCompensacao;
 use Modules\MeioAmbiente\Models\Empreendimento;
 use Modules\MeioAmbiente\Models\PagamentoCompensacao;
 use Modules\MeioAmbiente\Models\ProcessoLicenciamento;
@@ -66,5 +67,30 @@ final class CompensacaoAmbientalControllerTest extends TestCase
             ->assertForbidden();
 
         self::assertSame(0, PagamentoCompensacao::count());
+    }
+
+    public function test_lista_e_detalha_compensacoes_do_empreendimento(): void
+    {
+        $gestor = $this->usuario($this->tenant, ['gestor_recursos_naturais'], 'Gestor');
+
+        $this->como($gestor, $this->tenant)->getJson("/api/meio_ambiente/empreendimentos/{$this->compensacao->empreendimento_id}/compensacoes-ambientais")
+            ->assertOk()->assertJsonCount(1, 'data');
+        $this->como($gestor, $this->tenant)->getJson("/api/meio_ambiente/compensacoes-ambientais/{$this->compensacao->id}")
+            ->assertOk()->assertJsonPath('valor_devido_centavos', 500_000);
+
+        $semPerfil = $this->usuario($this->tenant, [], 'Sem perfil');
+        $this->como($semPerfil, $this->tenant)->getJson("/api/meio_ambiente/compensacoes-ambientais/{$this->compensacao->id}")->assertForbidden();
+    }
+
+    public function test_destinacao_nao_pode_exceder_o_valor_pago(): void
+    {
+        $gestor = $this->usuario($this->tenant, ['gestor_recursos_naturais'], 'Gestor');
+        $url = "/api/meio_ambiente/compensacoes-ambientais/{$this->compensacao->id}";
+        $this->como($gestor, $this->tenant)->postJson("{$url}/pagamentos", ['valor_centavos' => 100_000])->assertCreated();
+
+        $this->como($gestor, $this->tenant)->postJson("{$url}/destinacoes", ['destino' => DestinacaoCompensacao::DESTINO_FUNDO_MUNICIPAL, 'valor_centavos' => 100_001])
+            ->assertUnprocessable();
+        $this->como($gestor, $this->tenant)->postJson("{$url}/destinacoes", ['destino' => DestinacaoCompensacao::DESTINO_FUNDO_MUNICIPAL, 'valor_centavos' => 100_000])
+            ->assertCreated();
     }
 }

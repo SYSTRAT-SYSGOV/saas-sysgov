@@ -6,17 +6,23 @@ namespace Modules\MeioAmbiente\Tests\Feature;
 
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\MeioAmbiente\Database\Seeders\TabelaMultaAmbientalSeeder;
+use Modules\MeioAmbiente\Models\AutoInfracaoAmbiental;
 use Modules\MeioAmbiente\Models\Empreendimento;
 use Modules\MeioAmbiente\Models\MeioAmbienteIntegracao;
 use Modules\MeioAmbiente\Models\ProcessoLicenciamento;
 use Modules\MeioAmbiente\Models\RelatorioAmbiental;
+use Modules\MeioAmbiente\Services\FiscalizacaoAmbientalService;
 use Modules\MeioAmbiente\Services\IntegracaoMeioAmbienteService;
 use Modules\MeioAmbiente\Tests\Concerns\CenarioMeioAmbiente;
+use Modules\MeioAmbiente\Tests\Concerns\CriaExecucaoVistoria;
+use Modules\Vistoria\Models\ProcessoSancionatorio;
 use Tests\TestCase;
 
 final class IntegracaoControllerTest extends TestCase
 {
     use CenarioMeioAmbiente;
+    use CriaExecucaoVistoria;
     use RefreshDatabase;
 
     private Tenant $tenant;
@@ -168,5 +174,27 @@ final class IntegracaoControllerTest extends TestCase
         $spec = $this->get('/api/meio_ambiente/docs/openapi.yaml')->assertOk();
         $spec->assertHeader('Content-Type', 'application/yaml');
         self::assertStringContainsString('/publico/licencas:', $spec->getContent());
+    }
+
+    public function test_consulta_de_autos_de_infracao_com_credencial_valida(): void
+    {
+        $chave = $this->credencial($this->tenant);
+        $this->noTenant($this->tenant, function (): void {
+            (new TabelaMultaAmbientalSeeder())->run();
+            $empreendimento = Empreendimento::create([
+                'cnpj' => '12345678000199', 'razao_social' => 'Indústria Exemplo Ltda', 'atividade' => 'industria',
+                'porte' => Empreendimento::PORTE_MEDIO, 'latitude' => -25.4, 'longitude' => -49.2,
+            ]);
+            app(FiscalizacaoAmbientalService::class)->emitirAutoInfracaoAmbiental($this->criarExecucaoVistoriaConcluida(), $empreendimento, [
+                'tipo_infracao' => AutoInfracaoAmbiental::TIPO_DESMATAMENTO, 'area_afetada_ha' => 1,
+            ]);
+        });
+
+        $this->withToken($chave)->getJson('/api/meio_ambiente/publico/autos-infracao')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.tipo_infracao', AutoInfracaoAmbiental::TIPO_DESMATAMENTO)
+            ->assertJsonPath('data.0.processo_sancionatorio.status', ProcessoSancionatorio::STATUS_ABERTO)
+            ->assertJsonPath('data.0.empreendimento.cnpj', '12345678000199');
     }
 }

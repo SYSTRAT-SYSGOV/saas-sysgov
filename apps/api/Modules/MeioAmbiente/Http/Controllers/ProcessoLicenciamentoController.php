@@ -26,6 +26,8 @@ final class ProcessoLicenciamentoController extends Controller
     public function index(Empreendimento $empreendimento): JsonResponse
     {
         $this->authorize('viewAny', ProcessoLicenciamento::class);
+        // O empreendimento da URL precisa ser do tenant atual (o binding não aplica o escopo).
+        $this->authorize('view', $empreendimento);
 
         $processos = $empreendimento->processosLicenciamento()->with(['condicionantes', 'documentos'])->latest()->get();
 
@@ -44,6 +46,8 @@ final class ProcessoLicenciamentoController extends Controller
     public function store(AbrirProcessoLicenciamentoRequest $request, Empreendimento $empreendimento): JsonResponse
     {
         $this->authorize('create', ProcessoLicenciamento::class);
+        // O empreendimento da URL precisa ser do tenant atual (o binding não aplica o escopo).
+        $this->authorize('view', $empreendimento);
 
         $processo = $this->licenciamento->abrirProcesso($empreendimento, $request->validated('fase'));
 

@@ -7,11 +7,14 @@ namespace Modules\MeioAmbiente\Http\Requests;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Modules\MeioAmbiente\Http\Requests\Concerns\ExisteNoTenant;
 use Modules\MeioAmbiente\Models\AutoInfracaoAmbiental;
 use Modules\Vistoria\Models\ExecucaoVistoria;
 
 final class EmitirAutoInfracaoAmbientalRequest extends FormRequest
 {
+    use ExisteNoTenant;
+
     public function authorize(): bool
     {
         // O route model binding resolve antes do escopo de tenant — sem esta checagem,
@@ -27,7 +30,7 @@ final class EmitirAutoInfracaoAmbientalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'empreendimento_id' => ['required', 'integer', 'exists:meio_ambiente_empreendimentos,id'],
+            'empreendimento_id' => ['required', 'integer', $this->existeNoTenant('meio_ambiente_empreendimentos')],
             'tipo_infracao' => ['required', Rule::in(AutoInfracaoAmbiental::TIPOS_VALIDOS)],
             'area_afetada_ha' => ['nullable', 'numeric', 'min:0'],
             'irregularidade' => ['nullable', 'string', 'max:1000'],

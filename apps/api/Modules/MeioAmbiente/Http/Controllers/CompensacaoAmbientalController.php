@@ -22,6 +22,8 @@ final class CompensacaoAmbientalController extends Controller
     public function index(Empreendimento $empreendimento): JsonResponse
     {
         $this->authorize('viewAny', CompensacaoAmbiental::class);
+        // O empreendimento da URL precisa ser do tenant atual (o binding não aplica o escopo).
+        $this->authorize('view', $empreendimento);
 
         $compensacoes = $empreendimento->compensacoesAmbientais()->with(['pagamentos', 'destinacoes'])->get();
 
