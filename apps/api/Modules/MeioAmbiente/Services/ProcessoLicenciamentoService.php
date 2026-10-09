@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\MeioAmbiente\Services;
 
+use App\Support\AuditLogger;
 use App\Support\TenantContext;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -37,6 +38,7 @@ final readonly class ProcessoLicenciamentoService
         private EmpreendimentoService $empreendimentos,
         private CompensacaoAmbientalService $compensacoes,
         private TenantContext $tenantContext,
+        private AuditLogger $audit,
     ) {}
 
     public function abrirProcesso(Empreendimento $empreendimento, string $fase): ProcessoLicenciamento
@@ -53,7 +55,7 @@ final readonly class ProcessoLicenciamentoService
         $exercicio = (int) now()->year;
         $sequencial = Contador::proximoValor($tenantId, "processo_licenciamento:{$fase}", $exercicio);
 
-        return ProcessoLicenciamento::create([
+        $processo = ProcessoLicenciamento::create([
             'empreendimento_id' => $empreendimento->id,
             'fase' => $fase,
             'numero' => sprintf('%s/%d/%04d', $fase, $exercicio, $sequencial),
@@ -61,18 +63,24 @@ final readonly class ProcessoLicenciamentoService
             'exercicio' => $exercicio,
             'status' => ProcessoLicenciamento::STATUS_EM_ANALISE,
         ]);
+        $this->audit->record('meio_ambiente', 'processo_licenciamento.aberto', "ProcessoLicenciamento #{$processo->id} (Empreendimento #{$empreendimento->id})", null, $processo->toArray());
+
+        return $processo;
     }
 
     public function anexarDocumento(ProcessoLicenciamento $processo, string $tipo, ?UploadedFile $arquivo = null): DocumentoLicenciamento
     {
         $caminho = $arquivo?->store('meio-ambiente/licenciamento', 'public');
 
-        return DocumentoLicenciamento::create([
+        $documento = DocumentoLicenciamento::create([
             'processo_licenciamento_id' => $processo->id,
             'tipo' => $tipo,
             'caminho_arquivo' => $caminho,
             'anexado_em' => now(),
         ]);
+        $this->audit->record('meio_ambiente', 'processo_licenciamento.documento_anexado', "DocumentoLicenciamento #{$documento->id} (ProcessoLicenciamento #{$processo->id})", null, $documento->toArray());
+
+        return $documento;
     }
 
     /** @return list<string> rótulos dos documentos obrigatórios ainda pendentes */
@@ -97,17 +105,22 @@ final readonly class ProcessoLicenciamentoService
     /** @param array{descricao: string, prazo: string} $dados */
     public function registrarCondicionante(ProcessoLicenciamento $processo, array $dados): Condicionante
     {
-        return Condicionante::create([
+        $condicionante = Condicionante::create([
             'processo_licenciamento_id' => $processo->id,
             'descricao' => $dados['descricao'],
             'prazo' => $dados['prazo'],
             'situacao' => Condicionante::SITUACAO_PENDENTE,
         ]);
+        $this->audit->record('meio_ambiente', 'condicionante.registrada', $this->recursoCondicionante($condicionante), null, $condicionante->toArray());
+
+        return $condicionante;
     }
 
     public function marcarCondicionanteCumprida(Condicionante $condicionante): Condicionante
     {
+        $antes = $condicionante->toArray();
         $condicionante->update(['situacao' => Condicionante::SITUACAO_CUMPRIDA, 'cumprida_em' => now()]);
+        $this->audit->record('meio_ambiente', 'condicionante.cumprida', $this->recursoCondicionante($condicionante), $antes, $condicionante->toArray());
 
         return $condicionante;
     }
@@ -115,12 +128,15 @@ final readonly class ProcessoLicenciamentoService
     /** @param array{resultado: string, parecer?: string|null} $dados */
     public function registrarVistoriaTecnica(ProcessoLicenciamento $processo, array $dados): VistoriaTecnicaLicenciamento
     {
-        return VistoriaTecnicaLicenciamento::create([
+        $vistoria = VistoriaTecnicaLicenciamento::create([
             'processo_licenciamento_id' => $processo->id,
             'resultado' => $dados['resultado'],
             'parecer' => $dados['parecer'] ?? null,
             'realizada_em' => now(),
         ]);
+        $this->audit->record('meio_ambiente', 'processo_licenciamento.vistoria_tecnica_registrada', "VistoriaTecnicaLicenciamento #{$vistoria->id} (ProcessoLicenciamento #{$processo->id})", null, $vistoria->toArray());
+
+        return $vistoria;
     }
 
     public function deferir(ProcessoLicenciamento $processo, ?string $justificativaParecerDesfavoravel = null): ProcessoLicenciamento
@@ -156,15 +172,23 @@ final readonly class ProcessoLicenciamentoService
         $dataDeferimento = today();
         $validadeDias = ProcessoLicenciamento::VALIDADE_DIAS_POR_FASE[$processo->fase];
 
+        $antes = $processo->toArray();
         $processo->update([
             'status' => ProcessoLicenciamento::STATUS_DEFERIDO,
             'data_deferimento' => $dataDeferimento,
             'validade_em' => $dataDeferimento->copy()->addDays($validadeDias),
         ]);
 
+        $this->audit->record('meio_ambiente', 'processo_licenciamento.deferido', "ProcessoLicenciamento #{$processo->id}", $antes, $processo->toArray());
+
         $this->compensacoes->criarSeNecessario($processo);
 
         return $processo;
+    }
+
+    private function recursoCondicionante(Condicionante $condicionante): string
+    {
+        return "Condicionante #{$condicionante->id} (ProcessoLicenciamento #{$condicionante->processo_licenciamento_id})";
     }
 
     /**

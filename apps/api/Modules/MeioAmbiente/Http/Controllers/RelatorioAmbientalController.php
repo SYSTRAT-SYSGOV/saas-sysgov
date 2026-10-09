@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\MeioAmbiente\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -17,7 +16,6 @@ final class RelatorioAmbientalController extends Controller
 {
     public function __construct(
         private readonly RelatorioAmbientalService $relatorios,
-        private readonly AuditLogger $audit,
     ) {}
 
     public function index(): JsonResponse
@@ -48,7 +46,6 @@ final class RelatorioAmbientalController extends Controller
         ]);
 
         $relatorio = $this->relatorios->gerarRelatorio($dados['tipo'], (int) $dados['exercicio'], $request->user()->id);
-        $this->audit->record('meio_ambiente', 'relatorio.gerado', "RelatorioAmbiental #{$relatorio->id}", null, $relatorio->only(['id', 'tipo', 'exercicio']));
 
         return response()->json($this->paraJson($relatorio), 201);
     }
@@ -69,7 +66,6 @@ final class RelatorioAmbientalController extends Controller
         ])['formato'];
 
         $arquivo = $this->relatorios->exportarRelatorio($relatorioAmbiental, $formato);
-        $this->audit->record('meio_ambiente', 'relatorio.exportado', "RelatorioAmbiental #{$relatorioAmbiental->id}", null, ['formato' => $formato]);
 
         return response($arquivo['conteudo'], 200, [
             'Content-Type' => $arquivo['content_type'],

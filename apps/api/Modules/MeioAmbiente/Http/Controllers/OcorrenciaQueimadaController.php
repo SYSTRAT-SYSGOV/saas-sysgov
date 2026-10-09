@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\MeioAmbiente\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Modules\MeioAmbiente\Http\Requests\RegistrarOcorrenciaQueimadaRequest;
 use Modules\MeioAmbiente\Http\Requests\VincularResponsavelQueimadaRequest;
@@ -17,7 +16,6 @@ final class OcorrenciaQueimadaController extends Controller
 {
     public function __construct(
         private readonly QueimadasService $queimadas,
-        private readonly AuditLogger $audit,
     ) {}
 
     public function index(): JsonResponse
@@ -51,7 +49,6 @@ final class OcorrenciaQueimadaController extends Controller
         $this->authorize('create', OcorrenciaQueimada::class);
 
         $ocorrencia = $this->queimadas->registrarOcorrencia($request->validated());
-        $this->audit->record('meio_ambiente', 'ocorrencia_queimada.registrada', "OcorrenciaQueimada #{$ocorrencia->id}", null, $ocorrencia->toArray());
 
         return response()->json(new OcorrenciaQueimadaResource($ocorrencia), 201);
     }
@@ -60,9 +57,7 @@ final class OcorrenciaQueimadaController extends Controller
     {
         $this->authorize('update', $ocorrenciaQueimada);
 
-        $antes = $ocorrenciaQueimada->toArray();
         $ocorrencia = $this->queimadas->vincularResponsavel($ocorrenciaQueimada, $request->validated());
-        $this->audit->record('meio_ambiente', 'ocorrencia_queimada.responsavel_vinculado', "OcorrenciaQueimada #{$ocorrencia->id}", $antes, $ocorrencia->toArray());
 
         return response()->json(new OcorrenciaQueimadaResource($ocorrencia));
     }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\MeioAmbiente\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Modules\MeioAmbiente\Http\Requests\RegistrarDestinacaoCompensacaoRequest;
 use Modules\MeioAmbiente\Http\Requests\RegistrarPagamentoCompensacaoRequest;
@@ -18,7 +17,6 @@ final class CompensacaoAmbientalController extends Controller
 {
     public function __construct(
         private readonly CompensacaoAmbientalService $compensacoes,
-        private readonly AuditLogger $audit,
     ) {}
 
     public function index(Empreendimento $empreendimento): JsonResponse
@@ -44,7 +42,6 @@ final class CompensacaoAmbientalController extends Controller
         $this->authorize('update', $compensacaoAmbiental);
 
         $pagamento = $this->compensacoes->registrarPagamento($compensacaoAmbiental, $request->validated());
-        $this->audit->record('meio_ambiente', 'compensacao.pagamento_registrado', "CompensacaoAmbiental #{$compensacaoAmbiental->id}", null, $pagamento->toArray());
 
         return response()->json($pagamento, 201);
     }
@@ -54,7 +51,6 @@ final class CompensacaoAmbientalController extends Controller
         $this->authorize('update', $compensacaoAmbiental);
 
         $destinacao = $this->compensacoes->registrarDestinacao($compensacaoAmbiental, $request->validated());
-        $this->audit->record('meio_ambiente', 'compensacao.destinacao_registrada', "CompensacaoAmbiental #{$compensacaoAmbiental->id}", null, $destinacao->toArray());
 
         return response()->json($destinacao, 201);
     }

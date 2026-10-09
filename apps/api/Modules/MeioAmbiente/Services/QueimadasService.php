@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\MeioAmbiente\Services;
 
+use App\Support\AuditLogger;
 use Modules\MeioAmbiente\Models\AutoInfracaoAmbiental;
 use Modules\MeioAmbiente\Models\Empreendimento;
 use Modules\MeioAmbiente\Models\OcorrenciaQueimada;
@@ -22,7 +23,10 @@ use Modules\Vistoria\Models\ExecucaoVistoria;
  */
 final readonly class QueimadasService
 {
-    public function __construct(private FiscalizacaoAmbientalService $fiscalizacao) {}
+    public function __construct(
+        private FiscalizacaoAmbientalService $fiscalizacao,
+        private AuditLogger $audit,
+    ) {}
 
     /**
      * @param array{
@@ -39,11 +43,14 @@ final readonly class QueimadasService
     {
         $responsavelIdentificado = ! empty($dados['responsavel_pessoa_id']) || ! empty($dados['responsavel_empreendimento_id']);
 
-        return OcorrenciaQueimada::create($dados + [
+        $ocorrencia = OcorrenciaQueimada::create($dados + [
             'situacao' => $responsavelIdentificado
                 ? OcorrenciaQueimada::SITUACAO_RESPONSAVEL_IDENTIFICADO
                 : OcorrenciaQueimada::SITUACAO_RESPONSAVEL_NAO_IDENTIFICADO,
         ]);
+        $this->audit->record('meio_ambiente', 'ocorrencia_queimada.registrada', "OcorrenciaQueimada #{$ocorrencia->id}", null, $ocorrencia->toArray());
+
+        return $ocorrencia;
     }
 
     /**
@@ -55,6 +62,7 @@ final readonly class QueimadasService
      */
     public function vincularResponsavel(OcorrenciaQueimada $ocorrencia, array $dados): OcorrenciaQueimada
     {
+        $antes = $ocorrencia->toArray();
         $ocorrencia->update([
             'responsavel_pessoa_id' => $dados['responsavel_pessoa_id'] ?? $ocorrencia->responsavel_pessoa_id,
             'responsavel_empreendimento_id' => $dados['responsavel_empreendimento_id'] ?? $ocorrencia->responsavel_empreendimento_id,
@@ -68,7 +76,12 @@ final readonly class QueimadasService
             $this->abrirAutoInfracao($ocorrencia, (int) $dados['execucao_vistoria_id']);
         }
 
-        return $ocorrencia->refresh();
+        // Registrado depois da eventual abertura do auto, para o `after` já trazer o vínculo
+        // `auto_infracao_ambiental_id` (o auto em si tem registro próprio, no FiscalizacaoAmbientalService).
+        $ocorrencia->refresh();
+        $this->audit->record('meio_ambiente', 'ocorrencia_queimada.responsavel_vinculado', "OcorrenciaQueimada #{$ocorrencia->id}", $antes, $ocorrencia->toArray());
+
+        return $ocorrencia;
     }
 
     private function abrirAutoInfracao(OcorrenciaQueimada $ocorrencia, int $execucaoVistoriaId): AutoInfracaoAmbiental

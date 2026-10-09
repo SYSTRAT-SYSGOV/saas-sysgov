@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\MeioAmbiente\Services;
 
+use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Modules\MeioAmbiente\Models\AutoInfracaoAmbiental;
 use Modules\MeioAmbiente\Models\Empreendimento;
@@ -28,6 +29,7 @@ final readonly class FiscalizacaoAmbientalService
     public function __construct(
         private DocumentoService $documentos,
         private IntegracaoMeioAmbienteService $integracoes,
+        private AuditLogger $audit,
     ) {}
 
     /**
@@ -60,6 +62,7 @@ final readonly class FiscalizacaoAmbientalService
 
         $auto->valor_multa_sugerido_centavos = $this->calcularMultaSugerida($auto);
         $auto->save();
+        $this->audit->record('meio_ambiente', 'auto_infracao.emitido', "AutoInfracaoAmbiental #{$auto->id} (Documento #{$documento->id})", null, $auto->toArray());
 
         $this->integracoes->agendarEnvioAutoInfracao($auto);
 
@@ -125,6 +128,8 @@ final readonly class FiscalizacaoAmbientalService
                 $acumuladoAnterior = $acumulado;
             }
 
+            $this->audit->record('meio_ambiente', 'multa.parcelada', "ParcelamentoMulta #{$parcelamento->id} (ProcessoSancionatorio #{$processo->id})", null, $parcelamento->load('parcelas')->toArray());
+
             return $parcelamento;
         });
     }
@@ -139,7 +144,9 @@ final readonly class FiscalizacaoAmbientalService
             throw new RegraNegocioException('parcela_ja_paga', 'Parcela já está paga.');
         }
 
+        $antes = $parcela->toArray();
         $parcela->update(['pago' => true, 'pago_em' => now()]);
+        $this->audit->record('meio_ambiente', 'parcela_multa.paga', "ParcelaMulta #{$parcela->id} (ParcelamentoMulta #{$parcela->parcelamento_id})", $antes, $parcela->toArray());
 
         return $parcela;
     }

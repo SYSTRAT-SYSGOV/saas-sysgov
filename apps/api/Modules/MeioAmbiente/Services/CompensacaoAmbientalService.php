@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\MeioAmbiente\Services;
 
+use App\Support\AuditLogger;
 use Modules\MeioAmbiente\Models\CompensacaoAmbiental;
 use Modules\MeioAmbiente\Models\DestinacaoCompensacao;
 use Modules\MeioAmbiente\Models\Empreendimento;
@@ -17,6 +18,8 @@ use Modules\MeioAmbiente\Support\RegraNegocioException;
  */
 final readonly class CompensacaoAmbientalService
 {
+    public function __construct(private AuditLogger $audit) {}
+
     public function calcularCompensacaoDevida(Empreendimento $empreendimento): int
     {
         $valorEmpreendimento = $empreendimento->valor_empreendimento_centavos ?? 0;
@@ -43,23 +46,29 @@ final readonly class CompensacaoAmbientalService
             return $existente;
         }
 
-        return CompensacaoAmbiental::create([
+        $compensacao = CompensacaoAmbiental::create([
             'empreendimento_id' => $empreendimento->id,
             'processo_licenciamento_id' => $processo->id,
             'percentual' => CompensacaoAmbiental::PERCENTUAL_PADRAO,
             'valor_devido_centavos' => $this->calcularCompensacaoDevida($empreendimento),
         ]);
+        $this->audit->record('meio_ambiente', 'compensacao.calculada', "CompensacaoAmbiental #{$compensacao->id} (ProcessoLicenciamento #{$processo->id})", null, $compensacao->toArray());
+
+        return $compensacao;
     }
 
     /** @param array{valor_centavos: int, pago_em?: string, comprovante?: string|null} $dados */
     public function registrarPagamento(CompensacaoAmbiental $compensacao, array $dados): PagamentoCompensacao
     {
-        return PagamentoCompensacao::create([
+        $pagamento = PagamentoCompensacao::create([
             'compensacao_ambiental_id' => $compensacao->id,
             'valor_centavos' => $dados['valor_centavos'],
             'pago_em' => $dados['pago_em'] ?? now(),
             'comprovante' => $dados['comprovante'] ?? null,
         ]);
+        $this->audit->record('meio_ambiente', 'compensacao.pagamento_registrado', "PagamentoCompensacao #{$pagamento->id} (CompensacaoAmbiental #{$compensacao->id})", null, $pagamento->toArray());
+
+        return $pagamento;
     }
 
     /** @param array{destino: string, valor_centavos: int} $dados */
@@ -74,12 +83,15 @@ final readonly class CompensacaoAmbientalService
             );
         }
 
-        return DestinacaoCompensacao::create([
+        $destinacao = DestinacaoCompensacao::create([
             'compensacao_ambiental_id' => $compensacao->id,
             'destino' => $dados['destino'],
             'valor_centavos' => $dados['valor_centavos'],
             'registrada_em' => now(),
         ]);
+        $this->audit->record('meio_ambiente', 'compensacao.destinacao_registrada', "DestinacaoCompensacao #{$destinacao->id} (CompensacaoAmbiental #{$compensacao->id})", null, $destinacao->toArray());
+
+        return $destinacao;
     }
 
     /**

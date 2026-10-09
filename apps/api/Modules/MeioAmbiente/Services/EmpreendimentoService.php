@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\MeioAmbiente\Services;
 
+use App\Support\AuditLogger;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Modules\MeioAmbiente\Models\Empreendimento;
 use Modules\MeioAmbiente\Models\ResponsavelTecnico;
@@ -12,6 +13,8 @@ use Modules\MeioAmbiente\Support\RegraNegocioException;
 /** Cadastro de empreendimentos e seus responsáveis técnicos (cadastro mestre do módulo de Meio Ambiente). */
 final readonly class EmpreendimentoService
 {
+    public function __construct(private AuditLogger $audit) {}
+
     /** @param array<string, mixed> $dados */
     public function criarEmpreendimento(array $dados): Empreendimento
     {
@@ -25,16 +28,24 @@ final readonly class EmpreendimentoService
             );
         }
 
-        return Empreendimento::create($dados);
+        $empreendimento = Empreendimento::create($dados);
+        $this->audit->record('meio_ambiente', 'empreendimento.criado', "Empreendimento #{$empreendimento->id}", null, $empreendimento->toArray());
+
+        return $empreendimento;
     }
 
     /** @param array<string, mixed> $dados */
     public function vincularResponsavelTecnico(Empreendimento $empreendimento, array $dados): ResponsavelTecnico
     {
-        return ResponsavelTecnico::updateOrCreate(
+        $antes = $empreendimento->responsavelTecnico()->first()?->toArray();
+
+        $responsavel = ResponsavelTecnico::updateOrCreate(
             ['empreendimento_id' => $empreendimento->id],
             $dados + ['empreendimento_id' => $empreendimento->id],
         );
+        $this->audit->record('meio_ambiente', 'empreendimento.responsavel_tecnico_vinculado', "Empreendimento #{$empreendimento->id}", $antes, $responsavel->toArray());
+
+        return $responsavel;
     }
 
     /**

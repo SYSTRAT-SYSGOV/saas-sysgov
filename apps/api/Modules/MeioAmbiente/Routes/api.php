@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\MeioAmbiente\Http\Controllers\AreaProtegidaController;
+use Modules\MeioAmbiente\Http\Controllers\AuditoriaController;
 use Modules\MeioAmbiente\Http\Controllers\CompensacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\EmpreendimentoController;
 use Modules\MeioAmbiente\Http\Controllers\FiscalizacaoAmbientalController;
@@ -15,11 +16,11 @@ use Modules\MeioAmbiente\Http\Controllers\RecursosHidricosController;
 use Modules\MeioAmbiente\Http\Controllers\RelatorioAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\ResiduosSolidosController;
 
-// Fases 2-11 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
+// Fases 2-12 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
 // Compensação Ambiental, Resíduos Sólidos, Áreas Protegidas, Queimadas, Recursos
-// Hídricos, Relatórios/Indicadores e gestão de credenciais de integração (a API M2M e
-// a documentação OpenAPI ficam em Routes/publico.php, sem login humano). A auditoria
-// consolidada entra na Fase 12 — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
+// Hídricos, Relatórios/Indicadores, gestão de credenciais de integração (a API M2M e
+// a documentação OpenAPI ficam em Routes/publico.php, sem login humano) e trilha de
+// auditoria consolidada — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
 
 Route::pattern('empreendimento', '[0-9]+');
 Route::pattern('processoLicenciamento', '[0-9]+');
@@ -95,3 +96,6 @@ Route::get('/relatorios/{relatorioAmbiental}/exportar', [RelatorioAmbientalContr
 Route::get('/integracoes', [IntegracaoController::class, 'index']);
 Route::post('/integracoes', [IntegracaoController::class, 'store']);
 Route::delete('/integracoes/{meioAmbienteIntegracao}', [IntegracaoController::class, 'destroy']);
+
+Route::get('/auditoria/processos-licenciamento/{processoLicenciamento}', [AuditoriaController::class, 'processoLicenciamento']);
+Route::get('/auditoria/autos-infracao/{autoInfracaoAmbiental}', [AuditoriaController::class, 'autoInfracao']);

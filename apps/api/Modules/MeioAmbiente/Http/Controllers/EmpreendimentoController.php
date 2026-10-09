@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\MeioAmbiente\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\MeioAmbiente\Http\Requests\StoreEmpreendimentoRequest;
@@ -18,7 +17,6 @@ final class EmpreendimentoController extends Controller
 {
     public function __construct(
         private readonly EmpreendimentoService $empreendimentos,
-        private readonly AuditLogger $audit,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -60,7 +58,6 @@ final class EmpreendimentoController extends Controller
         $this->authorize('create', Empreendimento::class);
 
         $empreendimento = $this->empreendimentos->criarEmpreendimento($request->validated());
-        $this->audit->record('meio_ambiente', 'empreendimento.created', "Empreendimento #{$empreendimento->id}", null, $empreendimento->toArray());
 
         return response()->json(new EmpreendimentoResource($empreendimento), 201);
     }
@@ -69,9 +66,7 @@ final class EmpreendimentoController extends Controller
     {
         $this->authorize('update', $empreendimento);
 
-        $antes = $empreendimento->responsavelTecnico?->toArray();
         $responsavel = $this->empreendimentos->vincularResponsavelTecnico($empreendimento, $request->validated());
-        $this->audit->record('meio_ambiente', 'empreendimento.responsavel_tecnico_vinculado', "Empreendimento #{$empreendimento->id}", $antes, $responsavel->toArray());
 
         return response()->json($responsavel, 201);
     }

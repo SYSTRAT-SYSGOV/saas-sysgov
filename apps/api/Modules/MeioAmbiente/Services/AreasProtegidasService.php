@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\MeioAmbiente\Services;
 
+use App\Support\AuditLogger;
 use Modules\MeioAmbiente\Models\AreaProtegida;
 use Modules\MeioAmbiente\Models\Empreendimento;
 use Modules\MeioAmbiente\Support\RegraNegocioException;
@@ -20,12 +21,17 @@ use Modules\MeioAmbiente\Support\RegraNegocioException;
  */
 final readonly class AreasProtegidasService
 {
+    public function __construct(private AuditLogger $audit) {}
+
     /** @param array{tipo: string, subtipo?: string|null, geometria: array<string, mixed>, ato_legal?: string|null} $dados */
     public function cadastrarAreaProtegida(array $dados): AreaProtegida
     {
         $this->garantirGeometriaValida($dados['geometria']);
 
-        return AreaProtegida::create($dados);
+        $area = AreaProtegida::create($dados);
+        $this->audit->record('meio_ambiente', 'area_protegida.cadastrada', "AreaProtegida #{$area->id}", null, $area->toArray());
+
+        return $area;
     }
 
     /** @return list<AreaProtegida> áreas protegidas cujo polígono contém o ponto do empreendimento */

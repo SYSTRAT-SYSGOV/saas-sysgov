@@ -381,6 +381,27 @@ export interface NovaIntegracaoInput {
   envio_token?: string;
 }
 
+// Fase 12 — Trilha de auditoria consolidada
+
+export type TipoReferenciaAuditoria = 'processo_licenciamento' | 'auto_infracao';
+
+export interface RegistroAuditoria {
+  id: number;
+  modulo: 'meio_ambiente' | 'vistoria';
+  acao: string;
+  recurso: string;
+  usuario: { id: number; nome: string | null } | null;
+  antes: Record<string, unknown> | null;
+  depois: Record<string, unknown> | null;
+  ip: string | null;
+  registrado_em: string;
+}
+
+export interface TrilhaAuditoria {
+  referencia: { tipo: TipoReferenciaAuditoria; id: number; numero: string };
+  auditoria: RegistroAuditoria[];
+}
+
 export const meioAmbienteApi = {
   listarEmpreendimentos: (params?: { q?: string; per_page?: number }) =>
     apiClient.get<PaginatedResponse<Empreendimento>>(`${base}/empreendimentos`, { params }).then((r) => r.data),
@@ -533,4 +554,9 @@ export const meioAmbienteApi = {
 
   revogarIntegracao: (id: number) =>
     apiClient.delete<IntegracaoOrgaoControle>(`${base}/integracoes/${id}`).then((r) => r.data),
+
+  obterTrilhaAuditoria: (tipo: TipoReferenciaAuditoria, id: number) => {
+    const caminho = tipo === 'processo_licenciamento' ? 'processos-licenciamento' : 'autos-infracao';
+    return apiClient.get<TrilhaAuditoria>(`${base}/auditoria/${caminho}/${id}`).then((r) => r.data);
+  },
 };

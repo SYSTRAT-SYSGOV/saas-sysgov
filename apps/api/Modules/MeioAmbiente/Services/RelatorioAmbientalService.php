@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\MeioAmbiente\Services;
 
+use App\Support\AuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Modules\MeioAmbiente\Models\ColetaResiduo;
 use Modules\MeioAmbiente\Models\EntregaLogisticaReversa;
@@ -43,6 +44,8 @@ final class RelatorioAmbientalService
     private const FONTE_RESIDUOS_ATERRO = 'residuos_aterro';
     private const FONTE_QUEIMADAS = 'queimadas';
 
+    public function __construct(private AuditLogger $audit) {}
+
     public function gerarRelatorio(string $tipo, int $exercicio, ?int $geradoPor = null): RelatorioAmbiental
     {
         $dados = match ($tipo) {
@@ -51,12 +54,15 @@ final class RelatorioAmbientalService
             default => throw new RegraNegocioException('tipo_relatorio_invalido', 'Tipo de relatório ambiental não suportado.'),
         };
 
-        return RelatorioAmbiental::create([
+        $relatorio = RelatorioAmbiental::create([
             'tipo' => $tipo,
             'exercicio' => $exercicio,
             'dados' => $dados,
             'gerado_por' => $geradoPor,
         ]);
+        $this->audit->record('meio_ambiente', 'relatorio.gerado', "RelatorioAmbiental #{$relatorio->id}", null, $relatorio->only(['id', 'tipo', 'exercicio']));
+
+        return $relatorio;
     }
 
     /**
@@ -66,7 +72,7 @@ final class RelatorioAmbientalService
     {
         $nomeBase = sprintf('%s_%d_%d', $relatorio->tipo, $relatorio->exercicio, $relatorio->id);
 
-        return match ($formato) {
+        $arquivo = match ($formato) {
             RelatorioAmbiental::FORMATO_JSON => [
                 'conteudo' => (string) json_encode($this->envelope($relatorio), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'content_type' => 'application/json',
@@ -84,6 +90,10 @@ final class RelatorioAmbientalService
             ],
             default => throw new RegraNegocioException('formato_exportacao_invalido', 'Formato de exportação não suportado.'),
         };
+        // Exportação não altera dados, mas é o envio do relatório a um órgão externo — fica na trilha.
+        $this->audit->record('meio_ambiente', 'relatorio.exportado', "RelatorioAmbiental #{$relatorio->id}", null, ['formato' => $formato]);
+
+        return $arquivo;
     }
 
     /**

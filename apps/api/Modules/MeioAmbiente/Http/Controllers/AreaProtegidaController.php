@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\MeioAmbiente\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\MeioAmbiente\Http\Requests\CadastrarAreaProtegidaRequest;
@@ -18,7 +17,6 @@ final class AreaProtegidaController extends Controller
 {
     public function __construct(
         private readonly AreasProtegidasService $areasProtegidas,
-        private readonly AuditLogger $audit,
     ) {}
 
     public function index(): JsonResponse
@@ -43,7 +41,6 @@ final class AreaProtegidaController extends Controller
         $this->authorize('create', AreaProtegida::class);
 
         $area = $this->areasProtegidas->cadastrarAreaProtegida($request->validated());
-        $this->audit->record('meio_ambiente', 'area_protegida.cadastrada', "AreaProtegida #{$area->id}", null, $area->toArray());
 
         return response()->json(new AreaProtegidaResource($area), 201);
     }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\MeioAmbiente\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Modules\MeioAmbiente\Http\Requests\EmitirAutoInfracaoAmbientalRequest;
 use Modules\MeioAmbiente\Http\Requests\ParcelarMultaRequest;
@@ -22,7 +21,6 @@ final class FiscalizacaoAmbientalController extends Controller
 {
     public function __construct(
         private readonly FiscalizacaoAmbientalService $fiscalizacao,
-        private readonly AuditLogger $audit,
     ) {}
 
     /** Emite auto de infração ambiental a partir de uma execução de vistoria concluída. */
@@ -31,7 +29,6 @@ final class FiscalizacaoAmbientalController extends Controller
         $empreendimento = Empreendimento::findOrFail($request->validated('empreendimento_id'));
 
         $auto = $this->fiscalizacao->emitirAutoInfracaoAmbiental($execucaoVistoria, $empreendimento, $request->validated());
-        $this->audit->record('meio_ambiente', 'auto_infracao.emitido', "AutoInfracaoAmbiental #{$auto->id}", null, $auto->toArray());
 
         return response()->json(new AutoInfracaoAmbientalResource($auto->load('documento')), 201);
     }
@@ -49,16 +46,13 @@ final class FiscalizacaoAmbientalController extends Controller
     public function storeParcelamento(ParcelarMultaRequest $request, ProcessoSancionatorio $processoSancionatorio): JsonResponse
     {
         $parcelamento = $this->fiscalizacao->parcelar($processoSancionatorio, $request->validated('numero_parcelas'));
-        $this->audit->record('meio_ambiente', 'multa.parcelada', "ProcessoSancionatorio #{$processoSancionatorio->id}", null, $parcelamento->load('parcelas')->toArray());
 
         return response()->json($parcelamento->load('parcelas'), 201);
     }
 
     public function storePagamentoParcela(RegistrarPagamentoParcelaRequest $request, ParcelaMulta $parcelaMulta): JsonResponse
     {
-        $antes = $parcelaMulta->toArray();
         $parcela = $this->fiscalizacao->registrarPagamentoParcela($parcelaMulta);
-        $this->audit->record('meio_ambiente', 'parcela_multa.paga', "ParcelaMulta #{$parcela->id}", $antes, $parcela->toArray());
 
         return response()->json($parcela);
     }

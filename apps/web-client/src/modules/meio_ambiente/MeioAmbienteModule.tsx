@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Leaf, FileCheck, Building2, Gavel, Landmark, Recycle, TreePine, Flame, Droplets, LayoutDashboard, FileBarChart, PlugZap } from 'lucide-react';
+import { Leaf, FileCheck, Building2, Gavel, Landmark, Recycle, TreePine, Flame, Droplets, LayoutDashboard, FileBarChart, PlugZap, History } from 'lucide-react';
 import { useCan } from '@/core/rbac/useCan';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs } from '@/components/ui/Tabs';
@@ -15,6 +15,7 @@ import { RecursosHidricosView } from './views/RecursosHidricosView';
 import { PainelIndicadoresView } from './views/PainelIndicadoresView';
 import { RelatoriosAmbientaisView } from './views/RelatoriosAmbientaisView';
 import { IntegracoesView } from './views/IntegracoesView';
+import { AuditoriaView } from './views/AuditoriaView';
 
 type MeioAmbienteTab =
   | 'empreendimentos'
@@ -27,18 +28,16 @@ type MeioAmbienteTab =
   | 'recursos-hidricos'
   | 'painel'
   | 'relatorios'
-  | 'integracoes';
+  | 'integracoes'
+  | 'auditoria';
 
-/**
- * A aba de Auditoria consolidada entra na Fase 12. Ver
- * openspec/changes/criar-modulo-meio-ambiente/tasks.md.
- */
 export const MeioAmbienteModule: React.FC = () => {
   const [aba, setAba] = useState<MeioAmbienteTab>('empreendimentos');
   const { can } = useCan();
   // Só esconde as abas — o backend responde 403 sem `meio_ambiente.chefia` de qualquer forma.
   const ehChefia = can('meio_ambiente.chefia');
   const gereIntegracoes = can('meio_ambiente.integracoes.manage');
+  const consultaAuditoria = can('meio_ambiente.auditoria.view');
 
   const tabs: TabsItem<MeioAmbienteTab>[] = [
     { key: 'empreendimentos', label: 'Empreendimentos', icon: <Building2 className="h-4 w-4" /> },
@@ -57,6 +56,9 @@ export const MeioAmbienteModule: React.FC = () => {
       : []),
     ...(gereIntegracoes
       ? ([{ key: 'integracoes', label: 'Integrações', icon: <PlugZap className="h-4 w-4" /> }] satisfies TabsItem<MeioAmbienteTab>[])
+      : []),
+    ...(consultaAuditoria
+      ? ([{ key: 'auditoria', label: 'Auditoria', icon: <History className="h-4 w-4" /> }] satisfies TabsItem<MeioAmbienteTab>[])
       : []),
   ];
 
@@ -83,6 +85,7 @@ export const MeioAmbienteModule: React.FC = () => {
           {aba === 'painel' && ehChefia && <PainelIndicadoresView />}
           {aba === 'relatorios' && ehChefia && <RelatoriosAmbientaisView />}
           {aba === 'integracoes' && gereIntegracoes && <IntegracoesView />}
+          {aba === 'auditoria' && consultaAuditoria && <AuditoriaView />}
         </div>
       </div>
     </div>

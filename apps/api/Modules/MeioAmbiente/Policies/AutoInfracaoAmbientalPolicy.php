@@ -25,6 +25,12 @@ final readonly class AutoInfracaoAmbientalPolicy
         return $this->temPermissao($user, 'meio_ambiente.fiscalizacao.autuar');
     }
 
+    /** Trilha de auditoria consolidada (Fase 12) — permissão própria, para o papel de auditor/controle interno. */
+    public function auditoria(User $user, AutoInfracaoAmbiental $auto): bool
+    {
+        return $this->temPermissao($user, 'meio_ambiente.auditoria.view') && $this->mesmoTenant($user, $auto);
+    }
+
     private function temPermissao(User $user, string $permissao): bool
     {
         return (bool) $user->getAttribute('is_platform_admin')

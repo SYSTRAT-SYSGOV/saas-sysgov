@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\MeioAmbiente\Services;
 
+use App\Support\AuditLogger;
 use Modules\MeioAmbiente\Models\AlertaRecursoHidrico;
 use Modules\MeioAmbiente\Models\Empreendimento;
 use Modules\MeioAmbiente\Models\LicencaLancamentoEfluente;
@@ -20,13 +21,18 @@ final readonly class RecursosHidricosService
     /** @var list<int> */
     private const LIMIARES_ALERTA_DIAS = [90, 30, 7];
 
+    public function __construct(private AuditLogger $audit) {}
+
     /** @param array{tipo_captacao: string, vazao_m3_hora: float, finalidade: string} $dados */
     public function cadastrarOutorga(Empreendimento $empreendimento, array $dados): OutorgaAgua
     {
-        return OutorgaAgua::create($dados + [
+        $outorga = OutorgaAgua::create($dados + [
             'empreendimento_id' => $empreendimento->id,
             'validade_em' => today()->addDays(OutorgaAgua::VALIDADE_DIAS),
         ]);
+        $this->audit->record('meio_ambiente', 'outorga_agua.cadastrada', "OutorgaAgua #{$outorga->id} (Empreendimento #{$empreendimento->id})", null, $outorga->toArray());
+
+        return $outorga;
     }
 
     /**
@@ -42,6 +48,7 @@ final readonly class RecursosHidricosService
         foreach ($parametros as $parametro) {
             $licenca->parametros()->create($parametro);
         }
+        $this->audit->record('meio_ambiente', 'licenca_efluente.cadastrada', "LicencaLancamentoEfluente #{$licenca->id} (Empreendimento #{$empreendimento->id})", null, $licenca->load('parametros')->toArray());
 
         return $licenca;
     }
@@ -49,12 +56,15 @@ final readonly class RecursosHidricosService
     /** @param array{valor: float, medida_em?: string} $dados */
     public function registrarMedicao(ParametroQualidadeEfluente $parametro, array $dados): MedicaoEfluente
     {
-        return MedicaoEfluente::create([
+        $medicao = MedicaoEfluente::create([
             'parametro_qualidade_efluente_id' => $parametro->id,
             'valor' => $dados['valor'],
             'medida_em' => $dados['medida_em'] ?? now(),
             'conforme' => $parametro->dentroDoLimite((float) $dados['valor']),
         ]);
+        $this->audit->record('meio_ambiente', 'medicao_efluente.registrada', "MedicaoEfluente #{$medicao->id} (ParametroQualidadeEfluente #{$parametro->id})", null, $medicao->toArray());
+
+        return $medicao;
     }
 
     /**

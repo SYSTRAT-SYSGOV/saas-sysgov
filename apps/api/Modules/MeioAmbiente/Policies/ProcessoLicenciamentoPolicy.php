@@ -35,6 +35,12 @@ final readonly class ProcessoLicenciamentoPolicy
         return $this->temPermissao($user, 'meio_ambiente.licenciamento.vistoriar') && $this->mesmoTenant($user, $processo);
     }
 
+    /** Trilha de auditoria consolidada (Fase 12) — permissão própria, para o papel de auditor/controle interno. */
+    public function auditoria(User $user, ProcessoLicenciamento $processo): bool
+    {
+        return $this->temPermissao($user, 'meio_ambiente.auditoria.view') && $this->mesmoTenant($user, $processo);
+    }
+
     private function temPermissao(User $user, string $permissao): bool
     {
         return (bool) $user->getAttribute('is_platform_admin')

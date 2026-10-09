@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\MeioAmbiente\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Modules\MeioAmbiente\Http\Requests\AbrirProcessoLicenciamentoRequest;
 use Modules\MeioAmbiente\Http\Requests\AnexarDocumentoLicenciamentoRequest;
@@ -22,7 +21,6 @@ final class ProcessoLicenciamentoController extends Controller
 {
     public function __construct(
         private readonly ProcessoLicenciamentoService $licenciamento,
-        private readonly AuditLogger $audit,
     ) {}
 
     public function index(Empreendimento $empreendimento): JsonResponse
@@ -48,7 +46,6 @@ final class ProcessoLicenciamentoController extends Controller
         $this->authorize('create', ProcessoLicenciamento::class);
 
         $processo = $this->licenciamento->abrirProcesso($empreendimento, $request->validated('fase'));
-        $this->audit->record('meio_ambiente', 'processo_licenciamento.aberto', "ProcessoLicenciamento #{$processo->id}", null, $processo->toArray());
 
         return response()->json(new ProcessoLicenciamentoResource($processo), 201);
     }
@@ -58,7 +55,6 @@ final class ProcessoLicenciamentoController extends Controller
         $this->authorize('update', $processoLicenciamento);
 
         $documento = $this->licenciamento->anexarDocumento($processoLicenciamento, $request->validated('tipo'), $request->file('arquivo'));
-        $this->audit->record('meio_ambiente', 'processo_licenciamento.documento_anexado', "ProcessoLicenciamento #{$processoLicenciamento->id}", null, $documento->toArray());
 
         return response()->json($documento, 201);
     }
@@ -68,7 +64,6 @@ final class ProcessoLicenciamentoController extends Controller
         $this->authorize('update', $processoLicenciamento);
 
         $condicionante = $this->licenciamento->registrarCondicionante($processoLicenciamento, $request->validated());
-        $this->audit->record('meio_ambiente', 'processo_licenciamento.condicionante_registrada', "ProcessoLicenciamento #{$processoLicenciamento->id}", null, $condicionante->toArray());
 
         return response()->json($condicionante, 201);
     }
@@ -77,9 +72,7 @@ final class ProcessoLicenciamentoController extends Controller
     {
         $this->authorize('update', $condicionante->processoLicenciamento);
 
-        $antes = $condicionante->toArray();
         $condicionante = $this->licenciamento->marcarCondicionanteCumprida($condicionante);
-        $this->audit->record('meio_ambiente', 'condicionante.cumprida', "Condicionante #{$condicionante->id}", $antes, $condicionante->toArray());
 
         return response()->json($condicionante);
     }
@@ -89,7 +82,6 @@ final class ProcessoLicenciamentoController extends Controller
         $this->authorize('vistoriar', $processoLicenciamento);
 
         $vistoria = $this->licenciamento->registrarVistoriaTecnica($processoLicenciamento, $request->validated());
-        $this->audit->record('meio_ambiente', 'processo_licenciamento.vistoria_tecnica_registrada', "ProcessoLicenciamento #{$processoLicenciamento->id}", null, $vistoria->toArray());
 
         return response()->json($vistoria, 201);
     }
@@ -98,9 +90,7 @@ final class ProcessoLicenciamentoController extends Controller
     {
         $this->authorize('update', $processoLicenciamento);
 
-        $antes = $processoLicenciamento->toArray();
         $processo = $this->licenciamento->deferir($processoLicenciamento, $request->validated('justificativa_parecer_desfavoravel'));
-        $this->audit->record('meio_ambiente', 'processo_licenciamento.deferido', "ProcessoLicenciamento #{$processo->id}", $antes, $processo->toArray());
 
         return response()->json(new ProcessoLicenciamentoResource($processo));
     }

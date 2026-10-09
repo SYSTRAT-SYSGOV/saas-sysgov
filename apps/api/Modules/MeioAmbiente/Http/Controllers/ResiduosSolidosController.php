@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\MeioAmbiente\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Modules\MeioAmbiente\Http\Requests\CadastrarGeradorResiduoRequest;
 use Modules\MeioAmbiente\Http\Requests\CadastrarPontoLogisticaReversaRequest;
@@ -21,7 +20,6 @@ final class ResiduosSolidosController extends Controller
 {
     public function __construct(
         private readonly ResiduosSolidosService $residuos,
-        private readonly AuditLogger $audit,
     ) {}
 
     public function indexGeradores(): JsonResponse
@@ -38,7 +36,6 @@ final class ResiduosSolidosController extends Controller
         $this->authorize('create', GeradorResiduo::class);
 
         $gerador = $this->residuos->cadastrarGerador($request->validated());
-        $this->audit->record('meio_ambiente', 'gerador_residuo.cadastrado', "GeradorResiduo #{$gerador->id}", null, $gerador->toArray());
 
         return response()->json(new GeradorResiduoResource($gerador), 201);
     }
@@ -48,7 +45,6 @@ final class ResiduosSolidosController extends Controller
         $this->authorize('update', $geradorResiduo);
 
         $coleta = $this->residuos->registrarColeta($geradorResiduo, $request->validated());
-        $this->audit->record('meio_ambiente', 'coleta_residuo.registrada', "GeradorResiduo #{$geradorResiduo->id}", null, $coleta->toArray());
 
         return response()->json($coleta, 201);
     }
@@ -67,7 +63,6 @@ final class ResiduosSolidosController extends Controller
         $this->authorize('create', PontoLogisticaReversa::class);
 
         $ponto = $this->residuos->cadastrarPontoLogisticaReversa($request->validated());
-        $this->audit->record('meio_ambiente', 'ponto_logistica_reversa.cadastrado', "PontoLogisticaReversa #{$ponto->id}", null, $ponto->toArray());
 
         return response()->json(new PontoLogisticaReversaResource($ponto), 201);
     }
@@ -77,7 +72,6 @@ final class ResiduosSolidosController extends Controller
         $this->authorize('update', $pontoLogisticaReversa);
 
         $entrega = $this->residuos->registrarEntrega($pontoLogisticaReversa, $request->validated());
-        $this->audit->record('meio_ambiente', 'entrega_logistica_reversa.registrada', "PontoLogisticaReversa #{$pontoLogisticaReversa->id}", null, $entrega->toArray());
 
         return response()->json($entrega, 201);
     }
