@@ -171,7 +171,7 @@ function discoverModulesFromFilesystem() {
         if (config.alias && config.name) {
           discovered.push({
             id: entry.name,
-            name: config.name,
+            name: config.menu?.label || config.name,
             alias: config.alias,
             description: config.description || '',
             enabled: config.enabled !== false,
@@ -218,7 +218,7 @@ function generateRegistryCode(apiModules, fsModules) {
 
       merged[alias] = {
         id: alias,
-        name: mod.name,
+        name: mod.menu_label || mod.name,
         componentPath: componentImport, // null se ainda não houver arquivo físico
         routePath: route,
         requiredPermission: `${alias}.view`,

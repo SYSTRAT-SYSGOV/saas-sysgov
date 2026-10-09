@@ -176,7 +176,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
   },
   cursos: {
     id: 'cursos',
-    name: "Cursos",
+    name: "Cursos e Formações",
     component: CursosComponent,
     routePath: 'cursos',
     routes: ['cursos'],
@@ -194,7 +194,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
   },
   meio_ambiente: {
     id: 'meio_ambiente',
-    name: "MeioAmbiente",
+    name: "Meio Ambiente",
     component: Meio_ambienteComponent,
     routePath: 'meio_ambiente',
     routes: ['meio_ambiente'],
@@ -212,7 +212,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
   },
   vistoria: {
     id: 'vistoria',
-    name: "Vistoria",
+    name: "Vistoria e Inspeção",
     component: VistoriaComponent,
     routePath: 'vistoria',
     routes: ['vistoria'],
