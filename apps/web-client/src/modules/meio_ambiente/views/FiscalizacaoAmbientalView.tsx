@@ -78,6 +78,21 @@ export const FiscalizacaoAmbientalView: React.FC = () => {
     }
   };
 
+  const [baixandoParcelaId, setBaixandoParcelaId] = useState<number | null>(null);
+
+  const registrarPagamento = async (parcelaId: number) => {
+    setBaixandoParcelaId(parcelaId);
+    setErroParcelamento(null);
+    try {
+      const paga = await meioAmbienteApi.registrarPagamentoParcela(parcelaId);
+      setParcelamento((atual) => atual && { ...atual, parcelas: atual.parcelas.map((p) => (p.id === paga.id ? paga : p)) });
+    } catch (e) {
+      setErroParcelamento(erroApi(e).mensagem);
+    } finally {
+      setBaixandoParcelaId(null);
+    }
+  };
+
   const parcelar = async () => {
     if (processoSancionatorioId.trim() === '') return;
     setSalvandoParcelamento(true);
@@ -153,13 +168,22 @@ export const FiscalizacaoAmbientalView: React.FC = () => {
 
           {parcelamento && (
             <table className="mt-4 w-full text-sm">
-              <thead><tr className="text-left text-muted-foreground"><th>Parcela</th><th>Valor</th><th>Vencimento</th></tr></thead>
+              <thead><tr className="text-left text-muted-foreground"><th>Parcela</th><th>Valor</th><th>Vencimento</th><th>Situação</th></tr></thead>
               <tbody>
                 {parcelamento.parcelas.map((p) => (
                   <tr key={p.id} className="border-t">
                     <td className="py-1">{p.numero}/{parcelamento.numero_parcelas}</td>
                     <td className="font-mono">{formatarCentavos(p.valor_centavos)}</td>
                     <td className="font-mono">{p.vencimento}</td>
+                    <td>
+                      {p.pago ? (
+                        <Badge variant="success">Paga</Badge>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => registrarPagamento(p.id)} disabled={baixandoParcelaId === p.id}>
+                          {baixandoParcelaId === p.id ? 'Registrando...' : 'Registrar pagamento'}
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

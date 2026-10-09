@@ -300,6 +300,64 @@ export function erroApi(erro: unknown): ErroApi {
 }
 
 // ── API ────────────────────────────────────────────────────────────
+// Fase 10 — Relatórios e Indicadores Ambientais
+
+export interface PeriodoFiltro {
+  data_inicio?: string;
+  data_fim?: string;
+}
+
+export interface IndicadoresAmbientais {
+  periodo: { data_inicio: string; data_fim: string };
+  licencas_emitidas: { total: number; por_fase: Record<string, number> };
+  multas: { valor_aplicado_centavos: number; valor_arrecadado_centavos: number };
+  queimadas: { area_queimada_km2: number; ocorrencias: number; evolucao_mensal: Array<{ mes: string; area_km2: number }> };
+  coleta_seletiva: { coleta_seletiva_toneladas: number; evolucao_mensal: Array<{ mes: string; toneladas: number }> };
+}
+
+export interface PainelMapaAmbientalFeature {
+  type: 'Feature';
+  id: string;
+  geometry: { type: 'Point'; coordinates: [number, number] };
+  properties:
+    | { camada: 'queimada'; data_ocorrencia: string; area_queimada_ha: number | null; situacao: SituacaoOcorrenciaQueimada }
+    | { camada: 'licenca'; numero: string; fase: FaseLicenciamento; empreendimento: string | null };
+}
+
+export interface PainelMapaAmbiental {
+  type: 'FeatureCollection';
+  features: PainelMapaAmbientalFeature[];
+}
+
+export type TipoRelatorioAmbiental = 'rars' | 'gee';
+export type FormatoExportacaoRelatorio = 'csv' | 'json' | 'pdf';
+
+export interface RelatorioAmbientalResumo {
+  id: number;
+  tipo: TipoRelatorioAmbiental;
+  exercicio: number;
+  gerado_por: string | null;
+  gerado_em: string;
+}
+
+export interface RelatorioAmbiental {
+  id: number;
+  tipo: TipoRelatorioAmbiental;
+  exercicio: number;
+  dados: Record<string, unknown>;
+  gerado_em: string;
+}
+
+/** Salva o arquivo binário devolvido pela API (mesmo padrão do módulo Cemitérios). */
+function baixarArquivo(dados: Blob, nome: string): void {
+  const url = URL.createObjectURL(dados);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export const meioAmbienteApi = {
   listarEmpreendimentos: (params?: { q?: string; per_page?: number }) =>
     apiClient.get<PaginatedResponse<Empreendimento>>(`${base}/empreendimentos`, { params }).then((r) => r.data),
@@ -353,6 +411,9 @@ export const meioAmbienteApi = {
 
   obterAutoInfracaoAmbiental: (id: number) =>
     apiClient.get<AutoInfracaoAmbiental>(`${base}/autos-infracao-ambiental/${id}`).then((r) => r.data),
+
+  registrarPagamentoParcela: (parcelaId: number) =>
+    apiClient.post<ParcelaMulta>(`${base}/parcelas-multa/${parcelaId}/pagamento`).then((r) => r.data),
 
   parcelarMulta: (processoSancionatorioId: number, numeroParcelas: number) =>
     apiClient.post<ParcelamentoMulta>(`${base}/processos-sancionatorios/${processoSancionatorioId}/parcelamento`, { numero_parcelas: numeroParcelas }).then((r) => r.data),
@@ -422,4 +483,21 @@ export const meioAmbienteApi = {
 
   registrarMedicaoEfluente: (parametroId: number, valor: number) =>
     apiClient.post(`${base}/parametros-qualidade-efluente/${parametroId}/medicoes`, { valor }).then((r) => r.data),
+
+  obterIndicadoresAmbientais: (filtros: PeriodoFiltro) =>
+    apiClient.get<IndicadoresAmbientais>(`${base}/painel/indicadores`, { params: filtros }).then((r) => r.data),
+
+  obterMapaPainelAmbiental: (filtros: PeriodoFiltro) =>
+    apiClient.get<PainelMapaAmbiental>(`${base}/painel/mapa`, { params: filtros }).then((r) => r.data),
+
+  listarRelatoriosAmbientais: () =>
+    apiClient.get<{ data: RelatorioAmbientalResumo[] }>(`${base}/relatorios`).then((r) => r.data.data),
+
+  gerarRelatorioAmbiental: (tipo: TipoRelatorioAmbiental, exercicio: number) =>
+    apiClient.post<RelatorioAmbiental>(`${base}/relatorios`, { tipo, exercicio }).then((r) => r.data),
+
+  exportarRelatorioAmbiental: async (relatorio: RelatorioAmbientalResumo, formato: FormatoExportacaoRelatorio) => {
+    const resposta = await apiClient.get<Blob>(`${base}/relatorios/${relatorio.id}/exportar`, { params: { formato }, responseType: 'blob' });
+    baixarArquivo(resposta.data, `${relatorio.tipo}_${relatorio.exercicio}_${relatorio.id}.${formato}`);
+  },
 };

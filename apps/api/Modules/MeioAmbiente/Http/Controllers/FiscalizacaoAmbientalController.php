@@ -9,9 +9,11 @@ use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Modules\MeioAmbiente\Http\Requests\EmitirAutoInfracaoAmbientalRequest;
 use Modules\MeioAmbiente\Http\Requests\ParcelarMultaRequest;
+use Modules\MeioAmbiente\Http\Requests\RegistrarPagamentoParcelaRequest;
 use Modules\MeioAmbiente\Http\Resources\AutoInfracaoAmbientalResource;
 use Modules\MeioAmbiente\Models\AutoInfracaoAmbiental;
 use Modules\MeioAmbiente\Models\Empreendimento;
+use Modules\MeioAmbiente\Models\ParcelaMulta;
 use Modules\MeioAmbiente\Services\FiscalizacaoAmbientalService;
 use Modules\Vistoria\Models\ExecucaoVistoria;
 use Modules\Vistoria\Models\ProcessoSancionatorio;
@@ -50,5 +52,14 @@ final class FiscalizacaoAmbientalController extends Controller
         $this->audit->record('meio_ambiente', 'multa.parcelada', "ProcessoSancionatorio #{$processoSancionatorio->id}", null, $parcelamento->load('parcelas')->toArray());
 
         return response()->json($parcelamento->load('parcelas'), 201);
+    }
+
+    public function storePagamentoParcela(RegistrarPagamentoParcelaRequest $request, ParcelaMulta $parcelaMulta): JsonResponse
+    {
+        $antes = $parcelaMulta->toArray();
+        $parcela = $this->fiscalizacao->registrarPagamentoParcela($parcelaMulta);
+        $this->audit->record('meio_ambiente', 'parcela_multa.paga', "ParcelaMulta #{$parcela->id}", $antes, $parcela->toArray());
+
+        return response()->json($parcela);
     }
 }

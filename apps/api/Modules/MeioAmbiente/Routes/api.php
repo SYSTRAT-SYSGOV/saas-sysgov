@@ -8,13 +8,15 @@ use Modules\MeioAmbiente\Http\Controllers\CompensacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\EmpreendimentoController;
 use Modules\MeioAmbiente\Http\Controllers\FiscalizacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\OcorrenciaQueimadaController;
+use Modules\MeioAmbiente\Http\Controllers\PainelIndicadoresAmbientaisController;
 use Modules\MeioAmbiente\Http\Controllers\ProcessoLicenciamentoController;
 use Modules\MeioAmbiente\Http\Controllers\RecursosHidricosController;
+use Modules\MeioAmbiente\Http\Controllers\RelatorioAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\ResiduosSolidosController;
 
-// Fases 2-9 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
-// Compensação Ambiental, Resíduos Sólidos, Áreas Protegidas, Queimadas e Recursos
-// Hídricos. As demais capacidades (relatórios/indicadores, integrações e auditoria)
+// Fases 2-10 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
+// Compensação Ambiental, Resíduos Sólidos, Áreas Protegidas, Queimadas, Recursos
+// Hídricos e Relatórios/Indicadores. As demais capacidades (integrações e auditoria)
 // são adicionadas incrementalmente — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
 
 Route::pattern('empreendimento', '[0-9]+');
@@ -28,6 +30,8 @@ Route::pattern('geradorResiduo', '[0-9]+');
 Route::pattern('pontoLogisticaReversa', '[0-9]+');
 Route::pattern('ocorrenciaQueimada', '[0-9]+');
 Route::pattern('parametroQualidadeEfluente', '[0-9]+');
+Route::pattern('parcelaMulta', '[0-9]+');
+Route::pattern('relatorioAmbiental', '[0-9]+');
 
 Route::get('/empreendimentos', [EmpreendimentoController::class, 'index']);
 Route::get('/empreendimentos/mapa', [EmpreendimentoController::class, 'mapa']);
@@ -47,6 +51,7 @@ Route::post('/processos-licenciamento/{processoLicenciamento}/deferir', [Process
 Route::post('/execucoes-vistoria/{execucaoVistoria}/autos-infracao-ambiental', [FiscalizacaoAmbientalController::class, 'store']);
 Route::get('/autos-infracao-ambiental/{autoInfracaoAmbiental}', [FiscalizacaoAmbientalController::class, 'show']);
 Route::post('/processos-sancionatorios/{processoSancionatorio}/parcelamento', [FiscalizacaoAmbientalController::class, 'storeParcelamento']);
+Route::post('/parcelas-multa/{parcelaMulta}/pagamento', [FiscalizacaoAmbientalController::class, 'storePagamentoParcela']);
 
 Route::get('/empreendimentos/{empreendimento}/compensacoes-ambientais', [CompensacaoAmbientalController::class, 'index']);
 Route::get('/compensacoes-ambientais/{compensacaoAmbiental}', [CompensacaoAmbientalController::class, 'show']);
@@ -75,3 +80,11 @@ Route::post('/empreendimentos/{empreendimento}/outorgas-agua', [RecursosHidricos
 Route::get('/empreendimentos/{empreendimento}/licencas-efluente', [RecursosHidricosController::class, 'indexLicencasEfluente']);
 Route::post('/empreendimentos/{empreendimento}/licencas-efluente', [RecursosHidricosController::class, 'storeLicencaEfluente']);
 Route::post('/parametros-qualidade-efluente/{parametroQualidadeEfluente}/medicoes', [RecursosHidricosController::class, 'storeMedicao']);
+
+Route::get('/painel/indicadores', [PainelIndicadoresAmbientaisController::class, 'indicadores']);
+Route::get('/painel/mapa', [PainelIndicadoresAmbientaisController::class, 'mapa']);
+
+Route::get('/relatorios', [RelatorioAmbientalController::class, 'index']);
+Route::post('/relatorios', [RelatorioAmbientalController::class, 'store']);
+Route::get('/relatorios/{relatorioAmbiental}', [RelatorioAmbientalController::class, 'show']);
+Route::get('/relatorios/{relatorioAmbiental}/exportar', [RelatorioAmbientalController::class, 'exportar']);

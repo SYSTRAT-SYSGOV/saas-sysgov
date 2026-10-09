@@ -125,6 +125,21 @@ final readonly class FiscalizacaoAmbientalService
     }
 
     /**
+     * Baixa de uma parcela da multa. Pagamento à vista é um parcelamento de 1 parcela —
+     * é essa baixa que alimenta o indicador de multas arrecadadas do painel (Fase 10).
+     */
+    public function registrarPagamentoParcela(ParcelaMulta $parcela): ParcelaMulta
+    {
+        if ($parcela->pago) {
+            throw new RegraNegocioException('parcela_ja_paga', 'Parcela já está paga.');
+        }
+
+        $parcela->update(['pago' => true, 'pago_em' => now()]);
+
+        return $parcela;
+    }
+
+    /**
      * Reincidência: mesmo titular (pessoa física ou CNPJ) com outro auto de infração
      * ambiental do mesmo tipo já penalizado nos últimos 24 meses — ver
      * `AutoInfracaoAmbiental::JANELA_REINCIDENCIA_MESES`.

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Leaf, FileCheck, Building2, Gavel, Landmark, Recycle, TreePine, Flame, Droplets } from 'lucide-react';
+import { Leaf, FileCheck, Building2, Gavel, Landmark, Recycle, TreePine, Flame, Droplets, LayoutDashboard, FileBarChart } from 'lucide-react';
+import { useCan } from '@/core/rbac/useCan';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs } from '@/components/ui/Tabs';
 import type { TabsItem } from '@/components/ui/Tabs';
@@ -11,6 +12,8 @@ import { ResiduosSolidosView } from './views/ResiduosSolidosView';
 import { AreasProtegidasView } from './views/AreasProtegidasView';
 import { QueimadasView } from './views/QueimadasView';
 import { RecursosHidricosView } from './views/RecursosHidricosView';
+import { PainelIndicadoresView } from './views/PainelIndicadoresView';
+import { RelatoriosAmbientaisView } from './views/RelatoriosAmbientaisView';
 
 type MeioAmbienteTab =
   | 'empreendimentos'
@@ -20,15 +23,20 @@ type MeioAmbienteTab =
   | 'residuos'
   | 'areas-protegidas'
   | 'queimadas'
-  | 'recursos-hidricos';
+  | 'recursos-hidricos'
+  | 'painel'
+  | 'relatorios';
 
 /**
- * As abas das demais capacidades (Relatórios/Indicadores, Integrações, Auditoria)
- * são adicionadas incrementalmente a partir da Fase 10. Ver
+ * As abas das demais capacidades (Integrações, Auditoria) são adicionadas
+ * incrementalmente a partir da Fase 11. Ver
  * openspec/changes/criar-modulo-meio-ambiente/tasks.md.
  */
 export const MeioAmbienteModule: React.FC = () => {
   const [aba, setAba] = useState<MeioAmbienteTab>('empreendimentos');
+  const { can } = useCan();
+  // Só esconde as abas — o backend responde 403 sem `meio_ambiente.chefia` de qualquer forma.
+  const ehChefia = can('meio_ambiente.chefia');
 
   const tabs: TabsItem<MeioAmbienteTab>[] = [
     { key: 'empreendimentos', label: 'Empreendimentos', icon: <Building2 className="h-4 w-4" /> },
@@ -39,6 +47,12 @@ export const MeioAmbienteModule: React.FC = () => {
     { key: 'areas-protegidas', label: 'Áreas Protegidas', icon: <TreePine className="h-4 w-4" /> },
     { key: 'queimadas', label: 'Queimadas', icon: <Flame className="h-4 w-4" /> },
     { key: 'recursos-hidricos', label: 'Recursos Hídricos', icon: <Droplets className="h-4 w-4" /> },
+    ...(ehChefia
+      ? ([
+          { key: 'painel', label: 'Painel de Indicadores', icon: <LayoutDashboard className="h-4 w-4" /> },
+          { key: 'relatorios', label: 'Relatórios Obrigatórios', icon: <FileBarChart className="h-4 w-4" /> },
+        ] satisfies TabsItem<MeioAmbienteTab>[])
+      : []),
   ];
 
   return (
@@ -46,7 +60,7 @@ export const MeioAmbienteModule: React.FC = () => {
       <PageHeader
         icon={<Leaf className="h-6 w-6" />}
         title="Meio Ambiente"
-        subtitle="Licenciamento, fiscalização, compensação ambiental, resíduos sólidos, áreas protegidas, queimadas e recursos hídricos"
+        subtitle="Licenciamento, fiscalização, compensação ambiental, resíduos sólidos, áreas protegidas, queimadas, recursos hídricos e indicadores"
       />
 
       <div className="mt-6">
@@ -61,6 +75,8 @@ export const MeioAmbienteModule: React.FC = () => {
           {aba === 'areas-protegidas' && <AreasProtegidasView />}
           {aba === 'queimadas' && <QueimadasView />}
           {aba === 'recursos-hidricos' && <RecursosHidricosView />}
+          {aba === 'painel' && ehChefia && <PainelIndicadoresView />}
+          {aba === 'relatorios' && ehChefia && <RelatoriosAmbientaisView />}
         </div>
       </div>
     </div>
