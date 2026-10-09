@@ -25,7 +25,10 @@ use Modules\Vistoria\Services\DocumentoService;
  */
 final readonly class FiscalizacaoAmbientalService
 {
-    public function __construct(private DocumentoService $documentos) {}
+    public function __construct(
+        private DocumentoService $documentos,
+        private IntegracaoMeioAmbienteService $integracoes,
+    ) {}
 
     /**
      * @param array{
@@ -57,6 +60,8 @@ final readonly class FiscalizacaoAmbientalService
 
         $auto->valor_multa_sugerido_centavos = $this->calcularMultaSugerida($auto);
         $auto->save();
+
+        $this->integracoes->agendarEnvioAutoInfracao($auto);
 
         return $auto;
     }

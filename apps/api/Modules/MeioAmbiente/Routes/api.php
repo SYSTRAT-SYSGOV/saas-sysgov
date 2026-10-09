@@ -7,6 +7,7 @@ use Modules\MeioAmbiente\Http\Controllers\AreaProtegidaController;
 use Modules\MeioAmbiente\Http\Controllers\CompensacaoAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\EmpreendimentoController;
 use Modules\MeioAmbiente\Http\Controllers\FiscalizacaoAmbientalController;
+use Modules\MeioAmbiente\Http\Controllers\IntegracaoController;
 use Modules\MeioAmbiente\Http\Controllers\OcorrenciaQueimadaController;
 use Modules\MeioAmbiente\Http\Controllers\PainelIndicadoresAmbientaisController;
 use Modules\MeioAmbiente\Http\Controllers\ProcessoLicenciamentoController;
@@ -14,10 +15,11 @@ use Modules\MeioAmbiente\Http\Controllers\RecursosHidricosController;
 use Modules\MeioAmbiente\Http\Controllers\RelatorioAmbientalController;
 use Modules\MeioAmbiente\Http\Controllers\ResiduosSolidosController;
 
-// Fases 2-10 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
+// Fases 2-11 — Empreendimentos, Licenciamento Ambiental, Fiscalização Ambiental,
 // Compensação Ambiental, Resíduos Sólidos, Áreas Protegidas, Queimadas, Recursos
-// Hídricos e Relatórios/Indicadores. As demais capacidades (integrações e auditoria)
-// são adicionadas incrementalmente — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
+// Hídricos, Relatórios/Indicadores e gestão de credenciais de integração (a API M2M e
+// a documentação OpenAPI ficam em Routes/publico.php, sem login humano). A auditoria
+// consolidada entra na Fase 12 — ver openspec/changes/criar-modulo-meio-ambiente/tasks.md.
 
 Route::pattern('empreendimento', '[0-9]+');
 Route::pattern('processoLicenciamento', '[0-9]+');
@@ -32,6 +34,7 @@ Route::pattern('ocorrenciaQueimada', '[0-9]+');
 Route::pattern('parametroQualidadeEfluente', '[0-9]+');
 Route::pattern('parcelaMulta', '[0-9]+');
 Route::pattern('relatorioAmbiental', '[0-9]+');
+Route::pattern('meioAmbienteIntegracao', '[0-9]+');
 
 Route::get('/empreendimentos', [EmpreendimentoController::class, 'index']);
 Route::get('/empreendimentos/mapa', [EmpreendimentoController::class, 'mapa']);
@@ -88,3 +91,7 @@ Route::get('/relatorios', [RelatorioAmbientalController::class, 'index']);
 Route::post('/relatorios', [RelatorioAmbientalController::class, 'store']);
 Route::get('/relatorios/{relatorioAmbiental}', [RelatorioAmbientalController::class, 'show']);
 Route::get('/relatorios/{relatorioAmbiental}/exportar', [RelatorioAmbientalController::class, 'exportar']);
+
+Route::get('/integracoes', [IntegracaoController::class, 'index']);
+Route::post('/integracoes', [IntegracaoController::class, 'store']);
+Route::delete('/integracoes/{meioAmbienteIntegracao}', [IntegracaoController::class, 'destroy']);

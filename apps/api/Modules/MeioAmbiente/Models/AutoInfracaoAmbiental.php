@@ -24,6 +24,7 @@ use Modules\Vistoria\Models\Documento;
  * @property float|null $area_afetada_ha
  * @property bool $reincidente
  * @property int|null $valor_multa_sugerido_centavos
+ * @property \Illuminate\Support\Carbon|null $created_at
  */
 final class AutoInfracaoAmbiental extends Model
 {

@@ -358,6 +358,29 @@ function baixarArquivo(dados: Blob, nome: string): void {
   URL.revokeObjectURL(url);
 }
 
+// Fase 11 — Integrações com órgãos de controle
+
+export type OrgaoControle = 'ibama' | 'inea' | 'cetesb' | 'outro';
+
+export interface IntegracaoOrgaoControle {
+  id: number;
+  nome: string;
+  orgao: OrgaoControle;
+  api_key_prefixo: string;
+  is_active: boolean;
+  ultimo_uso_em: string | null;
+  envio_ativo: boolean;
+  envio_url: string | null;
+  created_at: string;
+}
+
+export interface NovaIntegracaoInput {
+  nome: string;
+  orgao: OrgaoControle;
+  envio_url?: string;
+  envio_token?: string;
+}
+
 export const meioAmbienteApi = {
   listarEmpreendimentos: (params?: { q?: string; per_page?: number }) =>
     apiClient.get<PaginatedResponse<Empreendimento>>(`${base}/empreendimentos`, { params }).then((r) => r.data),
@@ -500,4 +523,14 @@ export const meioAmbienteApi = {
     const resposta = await apiClient.get<Blob>(`${base}/relatorios/${relatorio.id}/exportar`, { params: { formato }, responseType: 'blob' });
     baixarArquivo(resposta.data, `${relatorio.tipo}_${relatorio.exercicio}_${relatorio.id}.${formato}`);
   },
+
+  listarIntegracoes: () =>
+    apiClient.get<{ data: IntegracaoOrgaoControle[] }>(`${base}/integracoes`).then((r) => r.data.data),
+
+  /** A `api_key` em texto puro só vem nesta resposta — o backend guarda apenas o hash. */
+  criarIntegracao: (dados: NovaIntegracaoInput) =>
+    apiClient.post<IntegracaoOrgaoControle & { api_key: string }>(`${base}/integracoes`, dados).then((r) => r.data),
+
+  revogarIntegracao: (id: number) =>
+    apiClient.delete<IntegracaoOrgaoControle>(`${base}/integracoes/${id}`).then((r) => r.data),
 };
