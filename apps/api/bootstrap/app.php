@@ -21,6 +21,9 @@ use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Cursos\Providers\CursosServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
+use Modules\MeioAmbiente\Console\VerificarPrazosLicenciamentoCommand;
+use Modules\MeioAmbiente\Console\VerificarPrazosRecursosHidricosCommand;
+use Modules\MeioAmbiente\Providers\MeioAmbienteServiceProvider;
 use Modules\OrgChart\Providers\OrgChartServiceProvider;
 use Modules\Pessoas\Providers\PessoasServiceProvider;
 use Modules\Procurement\Providers\ProcurementServiceProvider;
@@ -42,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
         CursosServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
+        MeioAmbienteServiceProvider::class,
         OrgChartServiceProvider::class,
         PessoasServiceProvider::class,
         ProcurementServiceProvider::class,
@@ -50,7 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
         TinkerServiceProvider::class,
         \App\Providers\AuthServiceProvider::class,
     ])
-    ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class, SeedModuleOrgUnit::class])
+    ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class, SeedModuleOrgUnit::class, VerificarPrazosLicenciamentoCommand::class, VerificarPrazosRecursosHidricosCommand::class])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\CloseConnectionOnCliServer::class);
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);

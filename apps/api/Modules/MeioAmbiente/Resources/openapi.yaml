@@ -1,0 +1,307 @@
+openapi: 3.0.3
+info:
+  title: Meio Ambiente — API
+  description: >
+    Gestão ambiental municipal: empreendimentos, licenciamento por fases, fiscalização
+    ambiental (sobre o processo sancionatório do módulo Vistoria), compensação ambiental,
+    resíduos sólidos, áreas protegidas, queimadas, recursos hídricos, relatórios
+    obrigatórios e indicadores.
+
+
+    **Integração com órgãos de controle (IBAMA, INEA, CETESB ou equivalente)** — dois modos:
+
+    - *Consulta (pull)*: os endpoints em `/publico/*` aceitam uma credencial de integração
+      emitida pela Secretaria (`Authorization: Bearer <chave>` ou header
+      `X-MeioAmbiente-API-Key`). A credencial define o órgão municipal (tenant) — os dados de
+      outros municípios nunca são retornados.
+
+    - *Envio ativo (push)*: quando a credencial é cadastrada com `envio_url`, cada auto de
+      infração ambiental emitido é enviado por `POST` a essa URL (corpo
+      `EnvioAutoInfracao`, `Authorization: Bearer <envio_token>`). O envio é assíncrono e
+      reagendado automaticamente em caso de falha (até 5 tentativas, com intervalo
+      crescente). Use `id_evento` para descartar entregas duplicadas.
+
+
+    Dados de pessoa física nunca são expostos pela integração: o empreendimento só é
+    identificado (CNPJ/razão social) quando é pessoa jurídica.
+
+
+    Documento escrito à mão (mesma abordagem do módulo Vistoria); cobre a API de integração
+    e os endpoints autenticados de maior valor, não todas as rotas.
+  version: "1.0.0"
+servers:
+  - url: /api/meio_ambiente
+security:
+  - sanctumAuth: []
+components:
+  securitySchemes:
+    sanctumAuth:
+      type: apiKey
+      in: header
+      name: Cookie
+      description: >
+        Sessão autenticada via Laravel Sanctum (SPA) mais o header `X-Tenant-ID`. Usado por
+        todas as rotas exceto `/publico/*` e `/docs`.
+    integracaoApiKey:
+      type: http
+      scheme: bearer
+      description: >
+        Credencial de integração M2M (prefixo `mamb_`), mapeada a um único tenant. Aceita
+        também no header `X-MeioAmbiente-API-Key`.
+  parameters:
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Exercicio:
+      name: exercicio
+      in: query
+      schema: { type: integer, example: 2025 }
+    Periodo:
+      name: data_inicio
+      in: query
+      schema: { type: string, format: date }
+  responses:
+    NaoAutenticado:
+      description: Credencial ausente, inválida ou revogada.
+    SemPermissao:
+      description: Usuário sem a permissão exigida.
+  schemas:
+    Paginacao:
+      type: object
+      properties:
+        current_page: { type: integer }
+        last_page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+    Empreendimento:
+      type: object
+      properties:
+        id: { type: integer }
+        pessoa_juridica: { type: boolean }
+        cnpj: { type: string, nullable: true, description: "Só para pessoa jurídica." }
+        razao_social: { type: string, nullable: true, description: "Só para pessoa jurídica." }
+        atividade: { type: string }
+        porte: { type: string, enum: [pequeno, medio, grande] }
+        latitude: { type: number }
+        longitude: { type: number }
+    Licenca:
+      type: object
+      properties:
+        id: { type: integer }
+        numero: { type: string, example: "LP-0001/2026" }
+        fase: { type: string, enum: [LP, LI, LO, renovacao, correcao] }
+        exercicio: { type: integer }
+        data_deferimento: { type: string, format: date }
+        validade_em: { type: string, format: date, nullable: true }
+        empreendimento: { $ref: '#/components/schemas/Empreendimento' }
+    AutoInfracao:
+      type: object
+      properties:
+        id: { type: integer }
+        numero: { type: string }
+        tipo_infracao: { type: string, enum: [desmatamento, poluicao_hidrica, poluicao_atmosferica, queimada, caca_ilegal, outra] }
+        area_afetada_ha: { type: number, nullable: true }
+        reincidente: { type: boolean }
+        emitido_em: { type: string, format: date-time }
+        processo_sancionatorio:
+          type: object
+          nullable: true
+          properties:
+            status: { type: string }
+            penalidade_centavos: { type: integer, nullable: true, description: "Valor em centavos de real." }
+        empreendimento: { $ref: '#/components/schemas/Empreendimento' }
+    RelatorioResiduos:
+      type: object
+      properties:
+        id: { type: integer }
+        exercicio: { type: integer }
+        gerado_em: { type: string, format: date-time }
+        dados:
+          type: object
+          description: Retrato do RARS no momento da geração (volumes em toneladas).
+          properties:
+            total_coletado_toneladas: { type: number }
+            por_tipo_coleta_e_destinacao:
+              type: array
+              items:
+                type: object
+                properties:
+                  tipo_coleta: { type: string, enum: [regular, seletiva] }
+                  destinacao: { type: string, enum: [aterro, reciclagem] }
+                  quantidade_coletas: { type: integer }
+                  volume_toneladas: { type: number }
+            por_tipo_gerador_toneladas:
+              type: object
+              additionalProperties: { type: number }
+            logistica_reversa_toneladas_por_categoria:
+              type: object
+              additionalProperties: { type: number }
+    EnvioAutoInfracao:
+      type: object
+      description: Corpo do envio ativo (push) para a `envio_url` do órgão.
+      properties:
+        evento: { type: string, example: auto_infracao_ambiental.emitido }
+        id_evento: { type: string, format: uuid, description: "Idêntico em todas as retentativas do mesmo envio." }
+        orgao_emissor: { type: string }
+        dados: { $ref: '#/components/schemas/AutoInfracao' }
+    Integracao:
+      type: object
+      properties:
+        id: { type: integer }
+        nome: { type: string }
+        orgao: { type: string, enum: [ibama, inea, cetesb, outro] }
+        api_key_prefixo: { type: string, example: mamb_AbC1234 }
+        is_active: { type: boolean }
+        ultimo_uso_em: { type: string, format: date-time, nullable: true }
+        envio_ativo: { type: boolean }
+        envio_url: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+paths:
+  /publico/licencas:
+    get:
+      tags: [Integração M2M]
+      summary: Licenças ambientais emitidas (deferidas) do município da credencial
+      security: [{ integracaoApiKey: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Exercicio'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Página de licenças.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginacao'
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/Licenca' } }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+  /publico/autos-infracao:
+    get:
+      tags: [Integração M2M]
+      summary: Autos de infração ambiental do município da credencial
+      security: [{ integracaoApiKey: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Página de autos de infração.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginacao'
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/AutoInfracao' } }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+  /publico/relatorios-residuos:
+    get:
+      tags: [Integração M2M]
+      summary: Relatórios Anuais de Resíduos Sólidos (RARS) já gerados pelo município
+      security: [{ integracaoApiKey: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Exercicio'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Página de relatórios.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginacao'
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/RelatorioResiduos' } }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+  /integracoes:
+    get:
+      tags: [Gestão de integrações]
+      summary: Lista as credenciais de integração do órgão (`meio_ambiente.integracoes.manage`)
+      responses:
+        '200':
+          description: Credenciais (a chave nunca é retornada aqui, só o prefixo).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Integracao' } }
+        '403': { $ref: '#/components/responses/SemPermissao' }
+    post:
+      tags: [Gestão de integrações]
+      summary: Cria uma credencial — a chave em texto puro é retornada só nesta resposta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, orgao]
+              properties:
+                nome: { type: string, maxLength: 100 }
+                orgao: { type: string, enum: [ibama, inea, cetesb, outro] }
+                envio_url: { type: string, format: uri, description: "HTTPS obrigatório. Ativa o envio ativo (push)." }
+                envio_token: { type: string, description: "Obrigatório junto com envio_url." }
+      responses:
+        '201':
+          description: Credencial criada.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Integracao'
+                  - type: object
+                    properties:
+                      api_key: { type: string, example: mamb_... }
+        '403': { $ref: '#/components/responses/SemPermissao' }
+        '422': { description: Dados inválidos. }
+  /integracoes/{id}:
+    delete:
+      tags: [Gestão de integrações]
+      summary: Revoga a credencial (bloqueia consulta e envio; mantém o histórico)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Credencial revogada. }
+        '403': { $ref: '#/components/responses/SemPermissao' }
+  /painel/indicadores:
+    get:
+      tags: [Indicadores]
+      summary: Indicadores ambientais do período (`meio_ambiente.chefia`)
+      parameters:
+        - $ref: '#/components/parameters/Periodo'
+        - { name: data_fim, in: query, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Licenças emitidas, multas aplicadas x arrecadadas (centavos), área queimada (km²) e coleta seletiva (t). }
+        '403': { $ref: '#/components/responses/SemPermissao' }
+  /relatorios:
+    post:
+      tags: [Relatórios obrigatórios]
+      summary: Gera RARS ou inventário de GEE de um exercício (`meio_ambiente.chefia`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tipo, exercicio]
+              properties:
+                tipo: { type: string, enum: [rars, gee] }
+                exercicio: { type: integer }
+      responses:
+        '201': { description: Relatório gerado (retrato congelado do exercício). }
+        '403': { $ref: '#/components/responses/SemPermissao' }
+  /relatorios/{id}/exportar:
+    get:
+      tags: [Relatórios obrigatórios]
+      summary: Exporta o relatório (`meio_ambiente.chefia`)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: formato, in: query, required: true, schema: { type: string, enum: [csv, json, pdf] } }
+      responses:
+        '200': { description: Arquivo para download. }
+        '403': { $ref: '#/components/responses/SemPermissao' }

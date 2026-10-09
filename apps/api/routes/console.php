@@ -4,6 +4,8 @@ use App\Console\Commands\ExpireAccess;
 use App\Console\Commands\NotifyExpiringAccess;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use Modules\MeioAmbiente\Console\VerificarPrazosLicenciamentoCommand;
+use Modules\MeioAmbiente\Console\VerificarPrazosRecursosHidricosCommand;
 
 Artisan::command('sysgov:about', function (): void {
     $this->info('SYSGOV API - modular Laravel platform');
@@ -11,3 +13,5 @@ Artisan::command('sysgov:about', function (): void {
 
 Schedule::command(ExpireAccess::class)->dailyAt('03:00');
 Schedule::command(NotifyExpiringAccess::class)->dailyAt('07:00');
+Schedule::command(VerificarPrazosLicenciamentoCommand::class)->dailyAt('06:00');
+Schedule::command(VerificarPrazosRecursosHidricosCommand::class)->dailyAt('06:30');
