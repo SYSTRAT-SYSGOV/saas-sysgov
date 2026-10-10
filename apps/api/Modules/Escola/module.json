@@ -1,0 +1,27 @@
+{
+    "name": "Escola",
+    "alias": "escola",
+    "description": "Cadastro escolar do órgão — unidade, turnos, turmas, alunos e contatos, matérias, professores por turma, trimestres e categorias de ocorrência. Base compartilhada pelos módulos Pedagógico, Formatura e Passeio.",
+    "priority": 19,
+    "providers": [
+        "Modules\\Escola\\Providers\\EscolaServiceProvider",
+        "Modules\\Escola\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Pessoas"
+    ],
+    "permissions": {
+        "escola.view": "Acessar o cadastro escolar (turmas, alunos, matérias e trimestres)",
+        "escola.alunos.manage": "Cadastrar, editar, remanejar, importar e excluir alunos (Escola)",
+        "escola.estrutura.manage": "Gerenciar unidade, turnos, turmas, matérias, professores, trimestres e categorias (Escola)",
+        "escola.escolas.manage": "Cadastrar e gerenciar as escolas do órgão (Escola)"
+    },
+    "menu": {
+        "label": "Cadastro Escolar",
+        "icon": "School",
+        "order": 29,
+        "permission": "escola.view",
+        "group": "GESTÃO SETORIAL"
+    }
+}

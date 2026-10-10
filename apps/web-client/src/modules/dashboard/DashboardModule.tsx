@@ -29,6 +29,9 @@ import { cn } from '@/lib/utils';import {
   Shield,
   ChevronRight,
   MapPin,
+  Bus,
+  GraduationCap,
+  FolderOpen,
 } from 'lucide-react';
 
 const FAVORITES_KEY = 'sysgov:welcome:favorites';
@@ -53,6 +56,9 @@ function getModuleIcon(id: string): React.ReactNode {
     pedagogico: <BookOpen className="h-5 w-5" />,
     rh: <Users className="h-5 w-5" />,
     cemiterios: <Shield className="h-5 w-5" />,
+    passeio: <Bus className="h-5 w-5" />,
+    formatura: <GraduationCap className="h-5 w-5" />,
+    portfolio: <FolderOpen className="h-5 w-5" />,
     users: <ShieldCheck className="h-5 w-5" />,
     menuManager: <Settings2 className="h-5 w-5" />,
     moduleGranularity: <Shield className="h-5 w-5" />,
