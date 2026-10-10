@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Pessoas\Database\Factories\PessoaFactory;
+use Modules\Pessoas\Events\PessoaAtualizada;
 use Modules\Pessoas\Support\Documento;
 
 /**
@@ -78,6 +79,14 @@ final class Pessoa extends Model
             $pessoa->cpf_hash = Documento::hash($pessoa->cpf);
             if ($pessoa->falecido && $pessoa->status === 'ativo') {
                 $pessoa->status = 'falecido';
+            }
+        });
+
+        // Consumidores (Escola, Cursos…) mantêm cópias de exibição: avisa quando dado civil muda.
+        static::updated(function (self $pessoa): void {
+            $alterados = array_values(array_filter(PessoaAtualizada::CAMPOS, fn (string $c): bool => $pessoa->wasChanged($c)));
+            if ($alterados !== []) {
+                PessoaAtualizada::dispatch($pessoa->id, (int) $pessoa->tenant_id, $alterados);
             }
         });
     }

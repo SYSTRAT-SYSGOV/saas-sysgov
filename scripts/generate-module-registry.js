@@ -177,7 +177,8 @@ function discoverModulesFromFilesystem() {
             enabled: config.enabled !== false,
             icon: config.menu?.icon || 'Layers',
             route: config.alias,
-            permission: `${config.alias}.view`,
+            // Permissão do item de menu do module.json (ex.: inservivel.acesso); padrão {alias}.view.
+            permission: config.menu?.permission || `${config.alias}.view`,
           });
         }
       } catch {}
@@ -221,7 +222,7 @@ function generateRegistryCode(apiModules, fsModules) {
         name: mod.menu_label || mod.name,
         componentPath: componentImport, // null se ainda não houver arquivo físico
         routePath: route,
-        requiredPermission: `${alias}.view`,
+        requiredPermission: mod.permission || `${alias}.view`,
         icon: mod.icon || 'Layers',
         description: mod.description || '',
       };
