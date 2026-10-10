@@ -18,6 +18,8 @@ const PortalConcessionarioPage = React.lazy(() => import('@/modules/cemiterios/p
 const PortalCallbackPage = React.lazy(() => import('@/modules/cemiterios/portal/PortalCallbackPage'));
 const ValidarCertificadoPage = React.lazy(() => import('@/modules/cursos/pages/ValidarCertificadoPage'));
 const CheckInPage = React.lazy(() => import('@/modules/cursos/pages/CheckInPage'));
+const CadastroApoioPage = React.lazy(() => import('@/modules/campanha/pages/CadastroApoioPage'));
+const CadastroEntidadePage = React.lazy(() => import('@/modules/inservivel/pages/CadastroEntidadePage'));
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -118,6 +120,24 @@ export const AppRouter: React.FC = () => {
 
       {/* Cursos: validação pública de certificado (sem login) e destino do QR de
           check-in (fora do AppShell; a própria página manda ao login se preciso) */}
+      {/* Campanha: formulário público de apoio aberto pelo link/QR de captação (sem login, fora do AppShell) */}
+      <Route
+        path="/cadastro-apoio/:codigo"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <CadastroApoioPage />
+          </React.Suspense>
+        }
+      />
+      {/* Inservível: cadastro público da entidade sem fins lucrativos (sem login, fora do AppShell) */}
+      <Route
+        path="/inservivel/entidades/:tenantSlug/cadastro"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <CadastroEntidadePage />
+          </React.Suspense>
+        }
+      />
       <Route
         path="/validar-certificado/:codigo?"
         element={

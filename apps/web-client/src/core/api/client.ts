@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { obterEscolaAtiva, precisaEscola } from '@/core/escola/escolaAtiva';
+import { obterCampanhaAtiva, precisaCampanha } from '@/core/campanha/campanhaAtiva';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -29,6 +30,12 @@ apiClient.interceptors.request.use(
     const escolaAtiva = obterEscolaAtiva();
     if (escolaAtiva !== null && precisaEscola(config.url)) {
       config.headers['X-Escola-ID'] = String(escolaAtiva);
+    }
+
+    // Campanha de trabalho só nas rotas de dados do módulo Campanha Política.
+    const campanhaAtiva = obterCampanhaAtiva();
+    if (campanhaAtiva !== null && precisaCampanha(config.url)) {
+      config.headers['X-Campanha-ID'] = String(campanhaAtiva);
     }
 
     return config;

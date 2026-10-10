@@ -1,0 +1,35 @@
+{
+    "name": "Campanha",
+    "alias": "campanha",
+    "description": "Campanha política — campanhas por candidato, municípios com dados do IBGE e do TSE, mapa interativo, coordenadores, cabos eleitorais, prefeitos e vereadores",
+    "priority": 40,
+    "providers": [
+        "Modules\\Campanha\\Providers\\CampanhaServiceProvider",
+        "Modules\\Campanha\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Pessoas"
+    ],
+    "permissions": {
+        "campanha.view": "Acessar o módulo Campanha Política",
+        "campanha.gestao.manage": "Gerenciar campanhas, candidatos, membros e configuração (acessa todas as campanhas)",
+        "campanha.municipios.manage": "Alterar os dados dos municípios na campanha",
+        "campanha.equipes.manage": "Gerenciar coordenadores, cabos eleitorais, prefeitos e vereadores",
+        "campanha.eleitores.view": "Ver os dados pessoais dos eleitores captados",
+        "campanha.eleitores.manage": "Gerenciar links de captação, exportar e excluir eleitores",
+        "campanha.demandas.manage": "Gerenciar as demandas dos municípios",
+        "campanha.materiais.manage": "Gerenciar materiais, estoque e remessas",
+        "campanha.financeiro.view": "Ver o livro-caixa e os comprovantes financeiros",
+        "campanha.financeiro.manage": "Lançar, alterar e excluir no livro-caixa",
+        "campanha.agenda.manage": "Gerenciar eventos, reuniões e visitas",
+        "campanha.pesquisas.manage": "Gerenciar as pesquisas eleitorais"
+    },
+    "menu": {
+        "label": "Campanha Política",
+        "icon": "Vote",
+        "order": 60,
+        "permission": "campanha.view",
+        "group": "GESTÃO SETORIAL"
+    }
+}

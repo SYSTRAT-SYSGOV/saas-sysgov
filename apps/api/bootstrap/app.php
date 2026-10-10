@@ -24,6 +24,8 @@ use Modules\Pedagogico\Providers\PedagogicoServiceProvider;
 use Modules\Formatura\Providers\FormaturaServiceProvider;
 use Modules\Passeio\Providers\PasseioServiceProvider;
 use Modules\Portfolio\Providers\PortfolioServiceProvider;
+use Modules\Campanha\Providers\CampanhaServiceProvider;
+use Modules\Inservivel\Providers\InservivelServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
 use Modules\MeioAmbiente\Console\VerificarPrazosLicenciamentoCommand;
@@ -53,6 +55,8 @@ return Application::configure(basePath: dirname(__DIR__))
         FormaturaServiceProvider::class,
         PasseioServiceProvider::class,
         PortfolioServiceProvider::class,
+        CampanhaServiceProvider::class,
+        InservivelServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
         MeioAmbienteServiceProvider::class,
