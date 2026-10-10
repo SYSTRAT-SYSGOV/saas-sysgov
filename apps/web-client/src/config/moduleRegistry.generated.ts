@@ -17,10 +17,12 @@ const ModuleGranularityComponent = lazy(() => import('@/modules/access/ModuleGra
 const PermissionMatrixComponent = lazy(() => import('@/modules/access/PermissionMatrix'));
 const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const PessoasComponent = lazy(() => import('@/modules/pessoas/PessoasModule'));
+const CampanhaComponent = lazy(() => import('@/modules/campanha/CampanhaModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
 const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
 const EscolaComponent = lazy(() => import('@/modules/escola/EscolaModule'));
 const FormaturaComponent = lazy(() => import('@/modules/formatura/FormaturaModule'));
+const InservivelComponent = lazy(() => import('@/modules/inservivel/InservivelModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
 const Meio_ambienteComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Meio Ambiente", alias: "meio_ambiente", description: "Licenciamento ambiental, cadastro de empreendimentos, fiscalização e autos de infração ambiental, compensação ambiental, resíduos sólidos, áreas protegidas (APP/reserva legal/UC), queimadas, recursos hídricos, relatórios obrigatórios e integração com órgãos de controle ambiental." }) }));
 const PasseioComponent = lazy(() => import('@/modules/passeio/PasseioModule'));
@@ -169,6 +171,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     requiredPermission: 'cadastros.pessoas.view',
     icon: 'Users',
   },
+  campanha: {
+    id: 'campanha',
+    name: "Campanha Política",
+    component: CampanhaComponent,
+    routePath: 'campanha',
+    routes: ['campanha'],
+    requiredPermission: 'campanha.view',
+    icon: 'Vote',
+  },
   client: {
     id: 'client',
     name: "Client",
@@ -204,6 +215,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['formatura'],
     requiredPermission: 'formatura.view',
     icon: 'GraduationCap',
+  },
+  inservivel: {
+    id: 'inservivel',
+    name: "Inservível & Doações",
+    component: InservivelComponent,
+    routePath: 'inservivel',
+    routes: ['inservivel'],
+    requiredPermission: 'inservivel.acesso',
+    icon: 'Recycle',
   },
   licita: {
     id: 'licita',
