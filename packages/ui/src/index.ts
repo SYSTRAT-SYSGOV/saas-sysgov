@@ -36,6 +36,8 @@ export type { BadgeProps } from './components/badge';
 export { Input, InputPrimitive } from './components/input';
 export type { InputProps } from './components/input';
 
+export { Checkbox } from './components/checkbox';
+export type { CheckboxProps } from './components/checkbox';
 export { Switch } from './components/switch';
 export type { SwitchProps } from './components/switch';
 
@@ -56,6 +58,8 @@ export type { DrawerProps } from './components/Drawer';
 
 export { Select } from './components/Select';
 export type { SelectProps, SelectOption } from './components/Select';
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './components/tabs';
+export type { TabsProps } from './components/tabs';
 
 export { RichTextEditor } from './components/RichTextEditor';
 export type { RichTextEditorProps } from './components/RichTextEditor';
