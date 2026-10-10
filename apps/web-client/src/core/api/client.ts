@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { obterEscolaAtiva, precisaEscola } from '@/core/escola/escolaAtiva';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -22,6 +23,12 @@ apiClient.interceptors.request.use(
 
     if (activeTenantId) {
       config.headers['X-Tenant-ID'] = activeTenantId;
+    }
+
+    // Escola de trabalho só nas rotas de Escola, Pedagógico, Formatura e Passeio.
+    const escolaAtiva = obterEscolaAtiva();
+    if (escolaAtiva !== null && precisaEscola(config.url)) {
+      config.headers['X-Escola-ID'] = String(escolaAtiva);
     }
 
     return config;

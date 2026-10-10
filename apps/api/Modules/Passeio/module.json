@@ -1,0 +1,26 @@
+{
+    "name": "Passeio",
+    "alias": "passeio",
+    "description": "Passeios pedagógicos — agenda, inscrições e autorizações dos responsáveis, frota de veículos e mapa de assentos",
+    "priority": 22,
+    "providers": [
+        "Modules\\Passeio\\Providers\\PasseioServiceProvider",
+        "Modules\\Passeio\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Escola"
+    ],
+    "permissions": {
+        "passeio.view": "Acessar o módulo de Passeios",
+        "passeio.passeios.manage": "Gerenciar passeios, inscrições e autorizações",
+        "passeio.frota.manage": "Gerenciar veículos e o mapa de assentos dos passeios"
+    },
+    "menu": {
+        "label": "Passeio & Transporte Escolar",
+        "icon": "Bus",
+        "order": 31,
+        "permission": "passeio.view",
+        "group": "GESTÃO SETORIAL"
+    }
+}

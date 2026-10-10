@@ -19,6 +19,11 @@ use Modules\Capd\Providers\CapdServiceProvider;
 use Modules\Cemiterios\Providers\CemiteriosServiceProvider;
 use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Cursos\Providers\CursosServiceProvider;
+use Modules\Escola\Providers\EscolaServiceProvider;
+use Modules\Pedagogico\Providers\PedagogicoServiceProvider;
+use Modules\Formatura\Providers\FormaturaServiceProvider;
+use Modules\Passeio\Providers\PasseioServiceProvider;
+use Modules\Portfolio\Providers\PortfolioServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
 use Modules\MeioAmbiente\Console\VerificarPrazosLicenciamentoCommand;
@@ -43,6 +48,11 @@ return Application::configure(basePath: dirname(__DIR__))
         CemiteriosServiceProvider::class,
         ContractsServiceProvider::class,
         CursosServiceProvider::class,
+        EscolaServiceProvider::class,
+        PedagogicoServiceProvider::class,
+        FormaturaServiceProvider::class,
+        PasseioServiceProvider::class,
+        PortfolioServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
         MeioAmbienteServiceProvider::class,

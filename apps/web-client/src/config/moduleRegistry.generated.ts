@@ -19,8 +19,12 @@ const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const PessoasComponent = lazy(() => import('@/modules/pessoas/PessoasModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
 const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
+const EscolaComponent = lazy(() => import('@/modules/escola/EscolaModule'));
+const FormaturaComponent = lazy(() => import('@/modules/formatura/FormaturaModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
-const Meio_ambienteComponent = lazy(() => import('@/modules/meio_ambiente/MeioAmbienteModule'));
+const Meio_ambienteComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Meio Ambiente", alias: "meio_ambiente", description: "Licenciamento ambiental, cadastro de empreendimentos, fiscalização e autos de infração ambiental, compensação ambiental, resíduos sólidos, áreas protegidas (APP/reserva legal/UC), queimadas, recursos hídricos, relatórios obrigatórios e integração com órgãos de controle ambiental." }) }));
+const PasseioComponent = lazy(() => import('@/modules/passeio/PasseioModule'));
+const PortfolioComponent = lazy(() => import('@/modules/portfolio/PortfolioModule'));
 const RequerimentosComponent = lazy(() => import('@/modules/requerimentos/RequerimentosModule'));
 const VistoriaComponent = lazy(() => import('@/modules/vistoria/VistoriaModule'));
 
@@ -183,6 +187,24 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     requiredPermission: 'cursos.view',
     icon: 'GraduationCap',
   },
+  escola: {
+    id: 'escola',
+    name: "Cadastro Escolar",
+    component: EscolaComponent,
+    routePath: 'escola',
+    routes: ['escola'],
+    requiredPermission: 'escola.view',
+    icon: 'School',
+  },
+  formatura: {
+    id: 'formatura',
+    name: "Formatura & Eventos",
+    component: FormaturaComponent,
+    routePath: 'formatura',
+    routes: ['formatura'],
+    requiredPermission: 'formatura.view',
+    icon: 'GraduationCap',
+  },
   licita: {
     id: 'licita',
     name: "Licita",
@@ -200,6 +222,24 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['meio_ambiente'],
     requiredPermission: 'meio_ambiente.view',
     icon: 'Leaf',
+  },
+  passeio: {
+    id: 'passeio',
+    name: "Passeio & Transporte Escolar",
+    component: PasseioComponent,
+    routePath: 'passeio',
+    routes: ['passeio'],
+    requiredPermission: 'passeio.view',
+    icon: 'Bus',
+  },
+  portfolio: {
+    id: 'portfolio',
+    name: "Portfólio Digital",
+    component: PortfolioComponent,
+    routePath: 'portfolio',
+    routes: ['portfolio'],
+    requiredPermission: 'portfolio.view',
+    icon: 'FolderOpen',
   },
   requerimentos: {
     id: 'requerimentos',
