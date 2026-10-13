@@ -27,7 +27,7 @@ final class ModuleCatalogController
         $this->authorize('viewAny', Module::class);
         return response()->json(
             Module::query()
-                ->whereNotIn('alias', ['admin', 'client', 'rh', 'cemiterio', 'users', 'dashboard'])
+                ->whereNotIn('alias', ['admin', 'client', 'rh', 'cemiterio', 'users', 'dashboard', 'procurement'])
                 ->orderBy('name')
                 ->paginate(50)
         );
@@ -38,7 +38,7 @@ public function catalog(): JsonResponse
         \Log::info('Catalog endpoint hit via public route', ['url' => request()->fullUrl()]);
         $modules = PlatformModule::query()
             ->where('enabled', true)
-            ->whereNotIn('alias', ['admin', 'client', 'rh', 'cemiterio', 'users', 'dashboard'])
+            ->whereNotIn('alias', ['admin', 'client', 'rh', 'cemiterio', 'users', 'dashboard', 'procurement'])
             ->orderBy('name')
             ->with(['permissions', 'menuGroup'])
             ->get()

@@ -75,7 +75,7 @@ const DEFAULT_FORM: TenantForm = {
   modules: ['org', 'contracts'],
 };
 
-const EXCLUDED_MODULE_ALIASES = ['dashboard', 'admin', 'client', 'users', 'rh', 'cemiterio'];
+const EXCLUDED_MODULE_ALIASES = ['dashboard', 'admin', 'client', 'users', 'rh', 'cemiterio', 'procurement'];
 
 const formatCents = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

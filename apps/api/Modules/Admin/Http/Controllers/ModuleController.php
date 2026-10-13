@@ -19,7 +19,7 @@ final class ModuleController
 {
     use AuthorizesRequests;
 
-    public function index(): JsonResponse { return response()->json(Module::query()->whereNotIn('alias', ['admin', 'client', 'rh', 'cemiterio', 'users', 'dashboard'])->with('tenants:id,name,slug')->orderBy('name')->paginate(50)); }
+    public function index(): JsonResponse { return response()->json(Module::query()->whereNotIn('alias', ['admin', 'client', 'rh', 'cemiterio', 'users', 'dashboard', 'procurement'])->with('tenants:id,name,slug')->orderBy('name')->paginate(50)); }
 
     public function toggle(ToggleModuleRequest $request, Tenant $tenant, Module $module, AuditLogger $audit, ModuleRoleProvisioner $roleProvisioner): JsonResponse
     {

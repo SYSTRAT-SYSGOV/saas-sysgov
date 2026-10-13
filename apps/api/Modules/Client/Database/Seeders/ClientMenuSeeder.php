@@ -20,10 +20,9 @@ final class ClientMenuSeeder extends Seeder
                 'order' => 1,
                 'items' => [
                     ['label' => 'Painel Geral', 'route' => '/', 'icon' => 'LayoutDashboard', 'permission' => 'dashboard.view', 'module_alias' => 'dashboard'],
-                    ['label' => 'Licitações', 'route' => '/licitacoes', 'icon' => 'FileText', 'permission' => 'procurement.view', 'module_alias' => 'procurement'],
                     ['label' => 'Contratos', 'route' => '/contratos', 'icon' => 'FileSignature', 'permission' => 'contracts.view', 'module_alias' => 'contracts'],
                     ['label' => 'Execução Financeira', 'route' => '/financeiro', 'icon' => 'Coins', 'permission' => 'finance.view', 'module_alias' => 'finance'],
-                    ['label' => 'Licita — Instrução Processual', 'route' => '/licita', 'icon' => 'Scale', 'permission' => 'licita.view', 'module_alias' => 'licita'],
+                    ['label' => 'Licita — Fase Preparatória (DFD, ETP, TR e Edital)', 'route' => '/licita', 'icon' => 'Scale', 'permission' => 'licita.view', 'module_alias' => 'licita'],
                 ],
             ],
             [

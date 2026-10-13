@@ -18,12 +18,11 @@ final class ModuleCatalogSeeder extends Seeder
         $catalog = [
             ['name' => 'Painel Geral', 'alias' => 'dashboard', 'monthly_fee_cents' => 0, 'description' => 'Visão geral, KPIs e indicadores do município.'],
             ['name' => 'Organograma', 'alias' => 'org', 'monthly_fee_cents' => 14900, 'description' => 'Estrutura hierárquica municipal (gabinete, secretarias, departamentos).'],
-            ['name' => 'Licitações & Compras', 'alias' => 'procurement', 'monthly_fee_cents' => 29900, 'description' => 'Pregões, processo licitatório e salas de lances.'],
             ['name' => 'Contratos & Aditivos', 'alias' => 'contracts', 'monthly_fee_cents' => 24900, 'description' => 'Gestão de contratos, aditivos, medições e pagamentos.'],
             ['name' => 'Execução Financeira', 'alias' => 'finance', 'monthly_fee_cents' => 29900, 'description' => 'Receitas, despesas, empenhos e conciliação.'],
             ['name' => 'Módulo Pedagógico', 'alias' => 'pedagogico', 'monthly_fee_cents' => 19900, 'description' => 'Gestão escolar e pedagógica.'],
             ['name' => 'Gestão de Cemitérios', 'alias' => 'cemiterios', 'monthly_fee_cents' => 14900, 'description' => 'Administração de cemitérios e sepultamentos.'],
-            ['name' => 'Licita — Instrução Processual', 'alias' => 'licita', 'monthly_fee_cents' => 29900, 'description' => 'Instrução processual de licitações (Lei 14.133/2021) — DFD, ETP, Mapa de Riscos, Pesquisa de Preços, TR e Edital.'],
+            ['name' => 'Licita — Fase Preparatória (DFD, ETP, TR e Edital)', 'alias' => 'licita', 'monthly_fee_cents' => 29900, 'description' => 'Instrução processual de licitações (Lei 14.133/2021) — DFD, ETP, Mapa de Riscos, Pesquisa de Preços, TR e Edital.'],
         ];
 
         foreach ($catalog as $data) {
