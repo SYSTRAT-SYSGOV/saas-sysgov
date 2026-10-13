@@ -25,6 +25,13 @@ use Modules\Cemiterios\Support\Documento;
  * @property string|null $email
  * @property string|null $telefone
  * @property string|null $endereco
+ * @property string|null $cep
+ * @property string|null $logradouro
+ * @property string|null $numero
+ * @property string|null $complemento
+ * @property string|null $bairro
+ * @property string|null $cidade
+ * @property string|null $uf
  * @property string $base_legal
  * @property bool $titular_falecido
  * @property \Illuminate\Support\Carbon|null $data_falecimento_titular
@@ -105,11 +112,8 @@ final class Concessionario extends Model
         if ($this->pessoa_id && $this->pessoa) {
             return (string) $this->pessoa->documento;
         }
-        try {
-            return (string) $this->documento;
-        } catch (\Throwable) {
-            return '—';
-        }
+
+        return (string) $this->documento;
     }
 
     /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Modules\Pessoas\Models\Pessoa, $this> */

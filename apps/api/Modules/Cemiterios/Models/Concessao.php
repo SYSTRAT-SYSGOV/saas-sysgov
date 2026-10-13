@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
  * @property bool $pendencia_regularizacao
  * @property bool $sujeita_taxa_anual
  * @property string|null $motivo_pendencia
+ * @property string|null $motivo_extincao
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
@@ -129,9 +130,9 @@ final class Concessao extends Model
     }
 
     /** Alias legado de `data_inicio`. */
-    public function getInicioAttribute(): ?string
+    public function getInicioAttribute(): string
     {
-        return $this->data_inicio?->toDateString();
+        return $this->data_inicio->toDateString();
     }
 
     /** Alias legado de `data_fim`. */

@@ -149,7 +149,7 @@ final class Pessoa extends Model
     public function setCpfAttribute(?string $value): void
     {
         $this->setAttribute('documento', $value);
-        if (!isset($this->attributes['tipo']) || $this->attributes['tipo'] === null) {
+        if (!isset($this->attributes['tipo'])) {
             $this->attributes['tipo'] = 'fisica';
         }
     }
