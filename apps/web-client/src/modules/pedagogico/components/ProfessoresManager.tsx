@@ -41,7 +41,10 @@ export const ProfessoresManager: React.FC<ProfessoresManagerProps> = ({
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [especialidade, setEspecialidade] = useState(materias[0]?.nome || 'Matemática');
-  const [turno, setTurno] = useState('Manhã');
+  // Só filtra a lista de turmas: o professor pode ter turmas de manhã, tarde e noite, e trocar o filtro
+  // nunca desmarca as já escolhidas. O turno exibido do professor é calculado pela API a partir das turmas.
+  const [turno, setTurno] = useState('Todos');
+  const daTurnoFiltrado = (t: TurmaPedagogica) => turno === 'Todos' || t.turno_nome === turno;
   const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]);
 
   const filtered = professores.filter(p =>
@@ -56,7 +59,7 @@ export const ProfessoresManager: React.FC<ProfessoresManagerProps> = ({
     setEmail('');
     setTelefone('');
     setEspecialidade(materias[0]?.nome || 'Matemática');
-    setTurno('Manhã');
+    setTurno('Todos');
     setSelectedTurmas([]);
     setIsModalOpen(true);
   };
@@ -67,7 +70,7 @@ export const ProfessoresManager: React.FC<ProfessoresManagerProps> = ({
     setEmail(prof.email);
     setTelefone(prof.telefone || '');
     setEspecialidade(prof.especialidade);
-    setTurno(prof.turno);
+    setTurno('Todos');
     setSelectedTurmas(prof.turmas_atribuidas || []);
     setIsModalOpen(true);
   };
@@ -143,7 +146,6 @@ export const ProfessoresManager: React.FC<ProfessoresManagerProps> = ({
       email,
       telefone,
       especialidade,
-      turno,
       turmas_atribuidas: selectedTurmas,
       materias: [especialidade]
     });
@@ -364,29 +366,16 @@ export const ProfessoresManager: React.FC<ProfessoresManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-medium text-xs text-slate-700 dark:text-slate-300 mb-1">Turno de Atuação</label>
+                  <label className="block font-medium text-xs text-slate-700 dark:text-slate-300 mb-1">Mostrar turmas do turno</label>
                   <select
                     value={turno}
-                    onChange={e => {
-                      const newTurno = e.target.value;
-                      setTurno(newTurno);
-                      const validTurmasForShift = turmas
-                        .filter(t => {
-                          if (newTurno === 'Manhã') return t.turno_nome === 'Manhã';
-                          if (newTurno === 'Tarde') return t.turno_nome === 'Tarde';
-                          if (newTurno === 'Noite') return t.turno_nome === 'Noite';
-                          if (newTurno === 'Ambos') return t.turno_nome === 'Manhã' || t.turno_nome === 'Tarde';
-                          return true;
-                        })
-                        .map(t => t.nome);
-                      setSelectedTurmas(prev => prev.filter(tName => validTurmasForShift.includes(tName)));
-                    }}
+                    onChange={e => setTurno(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none cursor-pointer"
                   >
+                    <option value="Todos">Todos os turnos</option>
                     <option value="Manhã">Manhã</option>
                     <option value="Tarde">Tarde</option>
                     <option value="Noite">Noite</option>
-                    <option value="Ambos">Ambos (Manhã / Tarde)</option>
                   </select>
                 </div>
               </div>
@@ -396,17 +385,11 @@ export const ProfessoresManager: React.FC<ProfessoresManagerProps> = ({
                   <label className="block font-medium text-xs text-slate-700 dark:text-slate-300">
                     Atribuir Turmas (
                     {
-                      turmas.filter(t => {
-                        if (turno === 'Manhã') return t.turno_nome === 'Manhã';
-                        if (turno === 'Tarde') return t.turno_nome === 'Tarde';
-                        if (turno === 'Noite') return t.turno_nome === 'Noite';
-                        if (turno === 'Ambos') return t.turno_nome === 'Manhã' || t.turno_nome === 'Tarde';
-                        return true;
-                      }).length
+                      turmas.filter(daTurnoFiltrado).length
                     }{' '}
                     disponíveis)
                   </label>
-                  {turno === 'Ambos' && (
+                  {turno === 'Todos' && (
                     <div className="flex items-center gap-2 text-[10px] font-bold">
                       <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
                         <span className="w-2 h-2 rounded-full bg-amber-500" /> Manhã
@@ -414,19 +397,26 @@ export const ProfessoresManager: React.FC<ProfessoresManagerProps> = ({
                       <span className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-300">
                         <span className="w-2 h-2 rounded-full bg-sky-500" /> Tarde
                       </span>
+                      <span className="inline-flex items-center gap-1 text-indigo-700 dark:text-indigo-300">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500" /> Noite
+                      </span>
                     </div>
                   )}
                 </div>
 
+                {selectedTurmas.length > 0 && (
+                  <p className="mb-1.5 text-[11px] text-slate-600 dark:text-slate-300" aria-live="polite">
+                    {selectedTurmas.length} turma(s) selecionada(s):{' '}
+                    {(['Manhã', 'Tarde', 'Noite'] as const)
+                      .map(tn => ({ tn, n: turmas.filter(t => t.turno_nome === tn && selectedTurmas.includes(t.nome)).length }))
+                      .filter(x => x.n > 0)
+                      .map(x => `${x.tn} ${x.n}`)
+                      .join(' · ')}
+                  </p>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 max-h-52 overflow-y-auto">
                   {(() => {
-                    const filteredTurmas = turmas.filter(t => {
-                      if (turno === 'Manhã') return t.turno_nome === 'Manhã';
-                      if (turno === 'Tarde') return t.turno_nome === 'Tarde';
-                      if (turno === 'Noite') return t.turno_nome === 'Noite';
-                      if (turno === 'Ambos') return t.turno_nome === 'Manhã' || t.turno_nome === 'Tarde';
-                      return true;
-                    });
+                    const filteredTurmas = turmas.filter(daTurnoFiltrado);
 
                     if (filteredTurmas.length === 0) {
                       return (
