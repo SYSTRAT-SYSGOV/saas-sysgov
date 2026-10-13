@@ -1,0 +1,26 @@
+{
+    "name": "Portfolio",
+    "alias": "portfolio",
+    "description": "Portfólio digital dos alunos do cadastro escolar — trabalhos avaliados com evidências em imagem, linha do tempo, desempenho por matéria e trimestre e relatório PDF",
+    "priority": 23,
+    "providers": [
+        "Modules\\Portfolio\\Providers\\PortfolioServiceProvider",
+        "Modules\\Portfolio\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Escola"
+    ],
+    "permissions": {
+        "portfolio.view": "Acessar o Portfólio Digital",
+        "portfolio.professor": "Registrar trabalhos nas turmas e matérias em que é o professor vinculado (Portfólio)",
+        "portfolio.manage": "Registrar, alterar e excluir trabalhos de qualquer turma e gerar relatórios (Portfólio)"
+    },
+    "menu": {
+        "label": "Portfólio Digital",
+        "icon": "FolderOpen",
+        "order": 32,
+        "permission": "portfolio.view",
+        "group": "GESTÃO SETORIAL"
+    }
+}

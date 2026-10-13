@@ -5,7 +5,7 @@ export const Footer: React.FC = () => {
   const { tenant } = useTenant();
 
   return (
-    <footer className="bg-[#05142E] text-slate-400 border-t border-white/10 mt-12 font-sans">
+    <footer className="bg-[#05142E] text-slate-400 border-t border-white/10 mt-12 font-sans print:hidden">
       {/* Barra Inferior Única Gov.br (br-footer bottom) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">

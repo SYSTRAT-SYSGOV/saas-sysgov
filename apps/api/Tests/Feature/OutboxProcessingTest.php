@@ -7,6 +7,8 @@ namespace Tests\Feature;
 use App\Events\OutboxMessage;
 use App\Models\OutboxEvent;
 use App\Support\OutboxPublisher;
+use Illuminate\Console\Scheduling\Event as ScheduledEvent;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
@@ -48,5 +50,18 @@ final class OutboxProcessingTest extends TestCase
 
         self::assertSame(0, OutboxEvent::query()->where('status', 'processing')->count());
         self::assertSame('done', OutboxEvent::query()->sole()->status);
+    }
+
+    public function test_outbox_process_is_scheduled_every_minute_without_overlapping(): void
+    {
+        $events = collect(app(Schedule::class)->events())
+            ->filter(fn (ScheduledEvent $event): bool => str_contains((string) $event->command, 'outbox:process'));
+
+        self::assertCount(1, $events);
+        $event = $events->sole();
+        self::assertSame('* * * * *', $event->expression);
+        self::assertTrue($event->withoutOverlapping);
+        self::assertSame(10, $event->expiresAt);
+        self::assertTrue($event->onOneServer);
     }
 }

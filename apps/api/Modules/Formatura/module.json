@@ -1,0 +1,27 @@
+{
+    "name": "Formatura",
+    "alias": "formatura",
+    "description": "Formatura e eventos escolares — adesão dos formandos, convidados, pagamentos parcelados e relatório de arrecadação",
+    "priority": 21,
+    "providers": [
+        "Modules\\Formatura\\Providers\\FormaturaServiceProvider",
+        "Modules\\Formatura\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Escola"
+    ],
+    "permissions": {
+        "formatura.view": "Acessar o módulo de Formatura",
+        "formatura.config.manage": "Configurar valores, parcelas e formas de pagamento da formatura",
+        "formatura.formandos.manage": "Gerenciar a participação e os convidados dos formandos",
+        "formatura.pagamentos.manage": "Registrar e estornar pagamentos da formatura"
+    },
+    "menu": {
+        "label": "Formatura & Eventos",
+        "icon": "GraduationCap",
+        "order": 32,
+        "permission": "formatura.view",
+        "group": "GESTÃO SETORIAL"
+    }
+}

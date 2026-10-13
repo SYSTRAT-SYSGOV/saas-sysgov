@@ -1,0 +1,34 @@
+{
+    "name": "Inservivel",
+    "alias": "inservivel",
+    "description": "Inservível & Doações — bens inservíveis, lotes, sorteio equitativo para entidades sem fins lucrativos, portal da entidade, termos e transferência interna entre secretarias",
+    "priority": 40,
+    "providers": [
+        "Modules\\Inservivel\\Providers\\InservivelServiceProvider",
+        "Modules\\Inservivel\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "OrgChart",
+        "Pessoas"
+    ],
+    "permissions": {
+        "inservivel.acesso": "Ver o item de menu Inservível & Doações",
+        "inservivel.view": "Consultar bens, lotes, entidades e transferências",
+        "inservivel.bens.manage": "Cadastrar e editar bens inservíveis e suas fotos",
+        "inservivel.lotes.manage": "Criar lotes e gerenciar os lotes que criou",
+        "inservivel.lotes.gestao": "Gerenciar todos os lotes: status, sorteio e exclusão",
+        "inservivel.entidades.manage": "Analisar e gerenciar as entidades sem fins lucrativos",
+        "inservivel.transferencias.manage": "Anunciar, solicitar e cancelar transferências internas",
+        "inservivel.transferencias.aprovar": "Aprovar ou recusar as solicitações de transferência interna",
+        "inservivel.configuracao.manage": "Gerenciar parâmetros, configurações e importação",
+        "inservivel.portal": "Acessar o portal da entidade"
+    },
+    "menu": {
+        "label": "Inservível & Doações",
+        "icon": "Recycle",
+        "order": 70,
+        "permission": "inservivel.acesso",
+        "group": "GESTÃO SETORIAL"
+    }
+}

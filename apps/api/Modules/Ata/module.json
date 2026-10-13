@@ -1,0 +1,30 @@
+{
+    "name": "Ata",
+    "alias": "ata",
+    "description": "Atas de reunião das secretarias — redação por escrita, voz e Assistente IA, assinaturas, ata sigilosa, PDF oficial com validação pública e auditoria",
+    "priority": 40,
+    "providers": [
+        "Modules\\Ata\\Providers\\AtaServiceProvider",
+        "Modules\\Ata\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "OrgChart",
+        "Pessoas"
+    ],
+    "permissions": {
+        "ata.view": "Consultar as atas das secretarias em que está lotado",
+        "ata.create": "Criar atas e redigir o texto",
+        "ata.sign": "Colher assinaturas dos participantes",
+        "ata.finalize": "Finalizar a ata e gerar o PDF oficial",
+        "ata.manage": "Gerenciar todas as atas (inclusive sigilosas), tipos de ata e configuração das secretarias",
+        "ata.audit": "Consultar a auditoria do módulo"
+    },
+    "menu": {
+        "label": "Atas",
+        "icon": "FileSignature",
+        "order": 75,
+        "permission": "ata.view",
+        "group": "GESTÃO SETORIAL"
+    }
+}

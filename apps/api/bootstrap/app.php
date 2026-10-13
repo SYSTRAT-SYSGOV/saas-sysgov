@@ -19,12 +19,24 @@ use Modules\Capd\Providers\CapdServiceProvider;
 use Modules\Cemiterios\Providers\CemiteriosServiceProvider;
 use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Cursos\Providers\CursosServiceProvider;
+use Modules\Escola\Providers\EscolaServiceProvider;
+use Modules\Pedagogico\Providers\PedagogicoServiceProvider;
+use Modules\Formatura\Providers\FormaturaServiceProvider;
+use Modules\Passeio\Providers\PasseioServiceProvider;
+use Modules\Portfolio\Providers\PortfolioServiceProvider;
+use Modules\Campanha\Providers\CampanhaServiceProvider;
+use Modules\Ata\Providers\AtaServiceProvider;
+use Modules\Inservivel\Providers\InservivelServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
+use Modules\MeioAmbiente\Console\VerificarPrazosLicenciamentoCommand;
+use Modules\MeioAmbiente\Console\VerificarPrazosRecursosHidricosCommand;
+use Modules\MeioAmbiente\Providers\MeioAmbienteServiceProvider;
 use Modules\OrgChart\Providers\OrgChartServiceProvider;
 use Modules\Pessoas\Providers\PessoasServiceProvider;
 use Modules\Procurement\Providers\ProcurementServiceProvider;
 use Modules\Requerimentos\Providers\RequerimentosServiceProvider;
+use Modules\Vistoria\Providers\VistoriaServiceProvider;
 use Laravel\Tinker\TinkerServiceProvider;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -39,16 +51,26 @@ return Application::configure(basePath: dirname(__DIR__))
         CemiteriosServiceProvider::class,
         ContractsServiceProvider::class,
         CursosServiceProvider::class,
+        EscolaServiceProvider::class,
+        PedagogicoServiceProvider::class,
+        FormaturaServiceProvider::class,
+        PasseioServiceProvider::class,
+        PortfolioServiceProvider::class,
+        CampanhaServiceProvider::class,
+        InservivelServiceProvider::class,
+        AtaServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
+        MeioAmbienteServiceProvider::class,
         OrgChartServiceProvider::class,
         PessoasServiceProvider::class,
         ProcurementServiceProvider::class,
         RequerimentosServiceProvider::class,
+        VistoriaServiceProvider::class,
         TinkerServiceProvider::class,
         \App\Providers\AuthServiceProvider::class,
     ])
-    ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class, SeedModuleOrgUnit::class])
+    ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class, SeedModuleOrgUnit::class, VerificarPrazosLicenciamentoCommand::class, VerificarPrazosRecursosHidricosCommand::class])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\CloseConnectionOnCliServer::class);
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);

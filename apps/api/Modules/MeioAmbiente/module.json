@@ -1,0 +1,38 @@
+{
+    "name": "MeioAmbiente",
+    "alias": "meio_ambiente",
+    "description": "Licenciamento ambiental, cadastro de empreendimentos, fiscalização e autos de infração ambiental, compensação ambiental, resíduos sólidos, áreas protegidas (APP/reserva legal/UC), queimadas, recursos hídricos, relatórios obrigatórios e integração com órgãos de controle ambiental.",
+    "priority": 55,
+    "providers": [
+        "Modules\\MeioAmbiente\\Providers\\MeioAmbienteServiceProvider",
+        "Modules\\MeioAmbiente\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Pessoas",
+        "OrgChart",
+        "Vistoria"
+    ],
+    "menu": {
+        "group": "GESTÃO & FISCALIZAÇÃO",
+        "label": "Meio Ambiente",
+        "icon": "Leaf",
+        "order": 55,
+        "permission": "meio_ambiente.view"
+    },
+    "permissions": {
+        "meio_ambiente.view": "Visualizar módulo de Meio Ambiente",
+        "meio_ambiente.chefia": "Acesso administrativo integral da chefia da Secretaria de Meio Ambiente",
+        "meio_ambiente.empreendimentos.manage": "Cadastrar e editar empreendimentos sujeitos a licenciamento/fiscalização ambiental",
+        "meio_ambiente.licenciamento.manage": "Abrir, acompanhar e deferir processos de licenciamento ambiental",
+        "meio_ambiente.licenciamento.vistoriar": "Registrar vistoria técnica e parecer de processos de licenciamento",
+        "meio_ambiente.fiscalizacao.autuar": "Emitir autos de infração ambiental e acompanhar parcelamento de multas",
+        "meio_ambiente.compensacao.manage": "Gerir compensação ambiental (cálculo, pagamentos e destinação)",
+        "meio_ambiente.residuos.manage": "Gerir geradores de resíduos, coletas e logística reversa",
+        "meio_ambiente.areas_protegidas.manage": "Cadastrar e editar APPs, reservas legais e unidades de conservação",
+        "meio_ambiente.queimadas.registrar": "Registrar ocorrências de queimada",
+        "meio_ambiente.recursos_hidricos.manage": "Gerir outorgas de uso da água e licenças de lançamento de efluentes",
+        "meio_ambiente.integracoes.manage": "Gerir credenciais de integração com órgãos de controle ambiental",
+        "meio_ambiente.auditoria.view": "Consultar a trilha de auditoria consolidada do módulo"
+    }
+}

@@ -1,0 +1,29 @@
+{
+    "name": "Pedagogico",
+    "alias": "pedagogico",
+    "description": "Vida pedagógica dos alunos do cadastro escolar — notas trimestrais, ocorrências, pré-conselho, cronograma, atas do conselho de classe e frequência diária",
+    "priority": 20,
+    "providers": [
+        "Modules\\Pedagogico\\Providers\\PedagogicoServiceProvider",
+        "Modules\\Pedagogico\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Escola"
+    ],
+    "permissions": {
+        "pedagogico.view": "Acessar o módulo Pedagógico",
+        "pedagogico.notas.manage": "Lançar e importar notas de qualquer turma (Pedagógico)",
+        "pedagogico.ocorrencias.manage": "Registrar, editar e excluir ocorrências (Pedagógico)",
+        "pedagogico.conselho.manage": "Gerenciar pré-conselho, cronograma e atas do conselho de classe (Pedagógico)",
+        "pedagogico.frequencia.manage": "Registrar a frequência diária de qualquer turma (Pedagógico)",
+        "pedagogico.professor": "Lançar notas, fichas de pré-conselho e frequência nas turmas e matérias em que é o professor vinculado (Pedagógico)"
+    },
+    "menu": {
+        "label": "Módulo Pedagógico",
+        "icon": "GraduationCap",
+        "order": 30,
+        "permission": "pedagogico.view",
+        "group": "GESTÃO SETORIAL"
+    }
+}

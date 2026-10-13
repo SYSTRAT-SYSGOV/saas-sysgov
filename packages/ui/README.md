@@ -38,6 +38,7 @@ Componentes base — implementação **real** do shadcn/ui (Radix primitives +
 | Skeleton | `Skeleton` | |
 | Dialog/Modal | `Dialog` (= `Modal`) | API monolítica `open/onClose/title/icon/footer/size` sobre Radix Dialog |
 | Select | `Select` | API flat `value/onChange/options[]` sobre Radix Select |
+| Tabs | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | Radix Tabs; API composta (`value`/`onValueChange`) |
 
 Componentes de domínio SYSGOV (sem equivalente shadcn):
 `AlertCard`, `KpiCard`, `StatusChip`, `SystratBrand`, `OrgTypeBadge`,

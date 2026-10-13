@@ -17,10 +17,19 @@ const ModuleGranularityComponent = lazy(() => import('@/modules/access/ModuleGra
 const PermissionMatrixComponent = lazy(() => import('@/modules/access/PermissionMatrix'));
 const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const PessoasComponent = lazy(() => import('@/modules/pessoas/PessoasModule'));
+const AtaComponent = lazy(() => import('@/modules/ata/AtaModule'));
+const CampanhaComponent = lazy(() => import('@/modules/campanha/CampanhaModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
 const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
+const EscolaComponent = lazy(() => import('@/modules/escola/EscolaModule'));
+const FormaturaComponent = lazy(() => import('@/modules/formatura/FormaturaModule'));
+const InservivelComponent = lazy(() => import('@/modules/inservivel/InservivelModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
+const Meio_ambienteComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Meio Ambiente", alias: "meio_ambiente", description: "Licenciamento ambiental, cadastro de empreendimentos, fiscalização e autos de infração ambiental, compensação ambiental, resíduos sólidos, áreas protegidas (APP/reserva legal/UC), queimadas, recursos hídricos, relatórios obrigatórios e integração com órgãos de controle ambiental." }) }));
+const PasseioComponent = lazy(() => import('@/modules/passeio/PasseioModule'));
+const PortfolioComponent = lazy(() => import('@/modules/portfolio/PortfolioModule'));
 const RequerimentosComponent = lazy(() => import('@/modules/requerimentos/RequerimentosModule'));
+const VistoriaComponent = lazy(() => import('@/modules/vistoria/VistoriaModule'));
 
 export interface ModuleDefinition {
   id: string;
@@ -163,6 +172,24 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     requiredPermission: 'cadastros.pessoas.view',
     icon: 'Users',
   },
+  ata: {
+    id: 'ata',
+    name: "Atas",
+    component: AtaComponent,
+    routePath: 'ata',
+    routes: ['ata'],
+    requiredPermission: 'ata.view',
+    icon: 'FileSignature',
+  },
+  campanha: {
+    id: 'campanha',
+    name: "Campanha Política",
+    component: CampanhaComponent,
+    routePath: 'campanha',
+    routes: ['campanha'],
+    requiredPermission: 'campanha.view',
+    icon: 'Vote',
+  },
   client: {
     id: 'client',
     name: "Client",
@@ -174,12 +201,39 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
   },
   cursos: {
     id: 'cursos',
-    name: "Cursos",
+    name: "Cursos e Formações",
     component: CursosComponent,
     routePath: 'cursos',
     routes: ['cursos'],
     requiredPermission: 'cursos.view',
     icon: 'GraduationCap',
+  },
+  escola: {
+    id: 'escola',
+    name: "Cadastro Escolar",
+    component: EscolaComponent,
+    routePath: 'escola',
+    routes: ['escola'],
+    requiredPermission: 'escola.view',
+    icon: 'School',
+  },
+  formatura: {
+    id: 'formatura',
+    name: "Formatura & Eventos",
+    component: FormaturaComponent,
+    routePath: 'formatura',
+    routes: ['formatura'],
+    requiredPermission: 'formatura.view',
+    icon: 'GraduationCap',
+  },
+  inservivel: {
+    id: 'inservivel',
+    name: "Inservível & Doações",
+    component: InservivelComponent,
+    routePath: 'inservivel',
+    routes: ['inservivel'],
+    requiredPermission: 'inservivel.acesso',
+    icon: 'Recycle',
   },
   licita: {
     id: 'licita',
@@ -190,6 +244,33 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     requiredPermission: 'licita.view',
     icon: 'FileText',
   },
+  meio_ambiente: {
+    id: 'meio_ambiente',
+    name: "Meio Ambiente",
+    component: Meio_ambienteComponent,
+    routePath: 'meio_ambiente',
+    routes: ['meio_ambiente'],
+    requiredPermission: 'meio_ambiente.view',
+    icon: 'Leaf',
+  },
+  passeio: {
+    id: 'passeio',
+    name: "Passeio & Transporte Escolar",
+    component: PasseioComponent,
+    routePath: 'passeio',
+    routes: ['passeio'],
+    requiredPermission: 'passeio.view',
+    icon: 'Bus',
+  },
+  portfolio: {
+    id: 'portfolio',
+    name: "Portfólio Digital",
+    component: PortfolioComponent,
+    routePath: 'portfolio',
+    routes: ['portfolio'],
+    requiredPermission: 'portfolio.view',
+    icon: 'FolderOpen',
+  },
   requerimentos: {
     id: 'requerimentos',
     name: "Requerimentos",
@@ -198,6 +279,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['requerimentos'],
     requiredPermission: 'requerimentos.view',
     icon: 'FileText',
+  },
+  vistoria: {
+    id: 'vistoria',
+    name: "Vistoria e Inspeção",
+    component: VistoriaComponent,
+    routePath: 'vistoria',
+    routes: ['vistoria'],
+    requiredPermission: 'vistoria.view',
+    icon: 'ClipboardCheck',
   }
 };
 

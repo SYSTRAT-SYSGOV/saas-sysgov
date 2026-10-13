@@ -33,6 +33,7 @@ final class SystratModulesSeeder extends Seeder
         }
 
         if ($sysTenant->modules()->exists()) {
+            $this->command->info('SYSTRAT já possui módulos configurados — nenhuma alteração feita.');
             return;
         }
 

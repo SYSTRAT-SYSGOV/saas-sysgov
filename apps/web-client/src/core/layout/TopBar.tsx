@@ -30,7 +30,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
     : 'Operador';
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-white border-b border-border shadow-sm">
+    <header className="sticky top-0 z-30 w-full bg-white border-b border-border shadow-sm print:hidden">
       {/* Header Main — hamburger na borda esquerda, título alinhado à página, perfil na borda direita */}
       <div className="w-full bg-white border-b border-border/40">
         <div className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3.5">

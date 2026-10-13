@@ -73,8 +73,9 @@ export const AppShell: React.FC = () => {
       />
 
       {/* 3. Corpo Principal da Aplicação (.main-content no Template Base) */}
-      <main className={`flex-1 transition-all duration-300 ${isMenuOpen ? 'lg:ml-[22rem]' : 'lg:ml-0'}`}>
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      {/* Na impressão (relatórios, termos, atas) sai só o conteúdo do módulo, sem cabeçalho, menu e rodapé. */}
+      <main className={`flex-1 transition-all duration-300 print:ml-0 ${isMenuOpen ? 'lg:ml-[22rem]' : 'lg:ml-0'}`}>
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 print:p-0">
           <Suspense
             fallback={
               <div className="min-h-[400px] flex flex-col items-center justify-center gap-3">
