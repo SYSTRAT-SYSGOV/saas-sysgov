@@ -23,6 +23,7 @@ import {
   Vote,
   Network,
   Scale,
+  HeartHandshake,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -50,6 +51,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Vote,
   Network,
   Scale,
+  HeartHandshake,
 };
 
 /**

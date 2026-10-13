@@ -26,6 +26,7 @@ use Modules\Passeio\Providers\PasseioServiceProvider;
 use Modules\Portfolio\Providers\PortfolioServiceProvider;
 use Modules\Campanha\Providers\CampanhaServiceProvider;
 use Modules\Ata\Providers\AtaServiceProvider;
+use Modules\Multiprofissional\Providers\MultiprofissionalServiceProvider;
 use Modules\Inservivel\Providers\InservivelServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
@@ -59,6 +60,7 @@ return Application::configure(basePath: dirname(__DIR__))
         CampanhaServiceProvider::class,
         InservivelServiceProvider::class,
         AtaServiceProvider::class,
+        MultiprofissionalServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
         MeioAmbienteServiceProvider::class,
