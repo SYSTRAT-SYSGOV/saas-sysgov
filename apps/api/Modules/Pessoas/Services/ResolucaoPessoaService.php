@@ -38,10 +38,10 @@ final class ResolucaoPessoaService
 
         return DB::transaction(function () use ($cpf, $dados, $origem): Pessoa {
             /** @var Pessoa|null $pessoa */
-            $pessoa = Pessoa::withTrashed()->where('cpf_hash', Documento::hash($cpf))->first();
+            $pessoa = Pessoa::withTrashed()->where('documento_hash', Documento::hash($cpf))->first();
 
             if ($pessoa === null) {
-                $pessoa = Pessoa::create(['cpf' => $cpf, ...$dados]);
+                $pessoa = Pessoa::create(['documento' => $cpf, 'tipo' => 'fisica', ...$dados]);
                 $this->audit->record('pessoas', 'pessoa.criada_por_modulo', "Pessoa #{$pessoa->id}", null, ['origem' => $origem, 'nome' => $pessoa->nome]);
 
                 return $pessoa;

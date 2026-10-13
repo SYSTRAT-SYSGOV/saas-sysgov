@@ -28,7 +28,7 @@ final class PessoaBuscaController extends Controller
 
         $cpf = Documento::somenteDigitos($busca);
         $pessoas = Pessoa::query()
-            ->when(strlen($cpf) === 11, fn ($q) => $q->where('cpf_hash', Documento::hash($cpf)), fn ($q) => $q->where('nome', 'like', "%{$busca}%"))
+            ->when(strlen($cpf) === 11, fn ($q) => $q->where('documento_hash', Documento::hash($cpf)), fn ($q) => $q->where('nome', 'like', "%{$busca}%"))
             ->orderBy('nome')
             ->limit(20)
             ->get();

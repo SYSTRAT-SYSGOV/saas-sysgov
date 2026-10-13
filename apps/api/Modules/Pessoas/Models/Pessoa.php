@@ -145,6 +145,21 @@ final class Pessoa extends Model
         return $this->getDocumentoMascaradoAttribute();
     }
 
+    /** Alias de compatibilidade para escrita: mapeia 'cpf' para 'documento'. */
+    public function setCpfAttribute(?string $value): void
+    {
+        $this->setAttribute('documento', $value);
+        if (!isset($this->attributes['tipo']) || $this->attributes['tipo'] === null) {
+            $this->attributes['tipo'] = 'fisica';
+        }
+    }
+
+    /** Alias de compatibilidade para leitura: devolve 'documento'. */
+    public function getCpfAttribute(): ?string
+    {
+        return $this->getAttribute('documento');
+    }
+
     /** @return HasMany<PessoaVinculo, $this> */
     public function vinculos(): HasMany
     {

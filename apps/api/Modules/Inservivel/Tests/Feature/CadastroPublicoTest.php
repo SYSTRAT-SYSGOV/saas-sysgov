@@ -62,7 +62,7 @@ final class CadastroPublicoTest extends TestCase
         self::assertSame(6, $this->noTenant($tenant, fn () => \Modules\Inservivel\Models\EntidadeDocumento::query()->count()));
         $this->assertDatabaseHas('inservivel_entidade_documentos', ['tipo' => 'certidoes_negativas', 'validade' => '2027-06-30']);
         $this->assertDatabaseHas('outbox_events', ['event_type' => 'inservivel.EntidadeCadastrada']);
-        $pessoa = $this->noTenant($tenant, fn () => Pessoa::query()->where('cpf_hash', DocumentoPessoa::hash('52998224725'))->first());
+        $pessoa = $this->noTenant($tenant, fn () => Pessoa::query()->where('documento_hash', DocumentoPessoa::hash('52998224725'))->first());
         self::assertNotNull($pessoa);
 
         $conta = User::query()->where('email', 'contato@esperanca.org')->firstOrFail();
