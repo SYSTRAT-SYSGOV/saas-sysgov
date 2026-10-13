@@ -82,20 +82,8 @@ const DEFAULT_MENUS: MenuGroup[] = [
     is_active: true,
     items: [
       { id: 10, label: 'Configurações & White-Label', route: '/admin/settings', icon: 'Settings', module_alias: 'settings', order: 1, is_active: true },
-      { id: 11, label: 'Meu Perfil & Segurança', route: '/admin/profile', icon: 'UserCheck', module_alias: 'profile', order: 2, is_active: true },
-    ],
-  },
-  {
-    id: 5,
-    name: 'MÓDULOS DE NEGÓCIO',
-    slug: 'modulos-negocio',
-    icon: 'FileText',
-    order: 5,
-    is_active: true,
-    items: [
-      { id: 12, label: 'Gestão de Contratos', route: '/admin/contratos', icon: 'FileText', module_alias: 'contracts', order: 1, is_active: true },
-      { id: 13, label: 'Suporte & Helpdesk', route: '/admin/helpdesk', icon: 'Ticket', module_alias: 'support', order: 2, is_active: true },
-      { id: 14, label: 'Contabilidade Pública', route: '/admin/contabilidade', icon: 'BookOpen', module_alias: 'contabilidade', order: 3, is_active: true },
+      { id: 11, label: 'Configurações de IA', route: '/admin/ia', icon: 'Sparkles', module_alias: 'ai', order: 2, is_active: true },
+      { id: 12, label: 'Meu Perfil & Segurança', route: '/admin/profile', icon: 'UserCheck', module_alias: 'profile', order: 3, is_active: true },
     ],
   },
 ];

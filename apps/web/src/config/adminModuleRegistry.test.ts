@@ -16,9 +16,7 @@ describe('Admin Module Registry', () => {
       'admin_settings',
       'admin_ai',
       'admin_profile',
-      'contratos',
-      'helpdesk',
-      'contabilidade',
+      'module_catalog',
     ];
 
     expectedModules.forEach(id => {

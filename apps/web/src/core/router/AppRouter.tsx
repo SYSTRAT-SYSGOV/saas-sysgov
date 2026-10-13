@@ -11,7 +11,6 @@ import { ADMIN_MODULE_REGISTRY, getAdminModuleByPath, getAdminModuleById } from 
 import { lazyWithNamedExport } from '@/lib/lazy';
 
 const AdminLoginPage = lazyWithNamedExport(() => import('@/pages/AdminLoginPage'), 'AdminLoginPage');
-const DashboardPage = lazyWithNamedExport(() => import('@/pages/DashboardPage'), 'DashboardPage');
 
 function LoadingFallback() {
   return (
@@ -257,9 +256,6 @@ export function AppRouter() {
                 <Route path="/admin/settings" element={<ModuleRoute path="/admin/settings" />} />
                 <Route path="/admin/ia" element={<ModuleRoute path="/admin/ia" />} />
                 <Route path="/admin/profile" element={<ModuleRoute path="/admin/profile" />} />
-                <Route path="/admin/contratos" element={<ModuleRoute path="/admin/contratos" />} />
-                <Route path="/admin/helpdesk" element={<ModuleRoute path="/admin/helpdesk" />} />
-                <Route path="/admin/contabilidade" element={<ModuleRoute path="/admin/contabilidade" />} />
                 <Route path="/admin/module-catalog" element={<ModuleRoute path="/admin/module-catalog" />} />
                 <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
               </Route>

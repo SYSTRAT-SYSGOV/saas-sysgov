@@ -19,9 +19,9 @@ describe('MenuManager', () => {
     render(<MenuManager />);
 
     const searchInput = screen.getByPlaceholderText('Buscar grupo ou item de menu...');
-    fireEvent.change(searchInput, { target: { value: 'Contratos' } });
+    fireEvent.change(searchInput, { target: { value: 'Faturamento' } });
 
-    expect(screen.getByText('Gestão de Contratos')).toBeInTheDocument();
+    expect(screen.getByText('Faturamento & Invoices')).toBeInTheDocument();
     expect(screen.queryByText('Visão Geral & KPIs')).not.toBeInTheDocument();
   });
 

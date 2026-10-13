@@ -35,7 +35,7 @@ final class SeedMenusCommand extends Command
                     ['label' => 'Usuários & Permissões', 'route' => 'admin_users', 'icon' => 'Users', 'shortcut' => 'U', 'module_alias' => 'users', 'order' => 1],
                     ['label' => 'Organizações & Tenants', 'route' => 'admin_tenants', 'icon' => 'Building2', 'shortcut' => 'T', 'module_alias' => 'tenants', 'order' => 2],
                     ['label' => 'Registros & Tabelas', 'route' => 'admin_records', 'icon' => 'Table', 'shortcut' => 'R', 'module_alias' => 'records', 'order' => 3],
-                    ['label' => 'Gerenciador de Menus', 'route' => 'admin_menus', 'icon' => 'Layers', 'shortcut' => 'M', 'module_alias' => 'menus', 'order' => 4],
+                    ['label' => 'Módulos da Plataforma', 'route' => 'module_catalog', 'icon' => 'Database', 'shortcut' => 'C', 'module_alias' => 'catalog', 'order' => 5],
                 ],
             ],
             [
@@ -60,18 +60,15 @@ final class SeedMenusCommand extends Command
                     ['label' => 'Meu Perfil & Segurança', 'route' => 'admin_profile', 'icon' => 'UserCheck', 'module_alias' => 'profile', 'order' => 3],
                 ],
             ],
-            [
-                'name' => 'CONTRATOS & CONTABILIDADE',
-                'slug' => 'contratos-contabilidade',
-                'icon' => 'FileText',
-                'order' => 5,
-                'items' => [
-                    ['label' => 'Gestão de Contratos', 'route' => 'contratos', 'icon' => 'FileText', 'module_alias' => 'contracts', 'order' => 1],
-                    ['label' => 'Suporte & Helpdesk', 'route' => 'helpdesk', 'icon' => 'Ticket', 'module_alias' => 'support', 'order' => 2],
-                    ['label' => 'Contabilidade Pública', 'route' => 'contabilidade', 'icon' => 'BookOpen', 'module_alias' => 'contabilidade', 'order' => 3],
-                ],
-            ],
         ];
+
+        // Remove grupo legado e itens mockados que não existem
+        $legacyGroup = MenuGroup::where('slug', 'contratos-contabilidade')->first();
+        if ($legacyGroup) {
+            MenuItem::where('menu_group_id', $legacyGroup->getKey())->delete();
+            $legacyGroup->delete();
+        }
+        MenuItem::whereIn('route', ['contratos', 'helpdesk', 'contabilidade'])->delete();
 
         foreach ($groups as $groupData) {
             $items = $groupData['items'];

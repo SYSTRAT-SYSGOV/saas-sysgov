@@ -40,20 +40,17 @@ function groupModulesByCategory(modules: AdminModuleDefinition[]): AdminNavGroup
     management: [],
     finance_integrations: [],
     system_settings: [],
-    contratos_contabilidade: [],
   };
 
   for (const module of modules) {
     if (['admin_dashboard', 'admin_analytics'].includes(module.id)) {
       categoryMap.core_analytics.push(module);
-    } else if (['admin_users', 'admin_tenants', 'admin_records', 'admin_menus'].includes(module.id)) {
+    } else if (['admin_users', 'admin_tenants', 'admin_records', 'admin_menus', 'module_catalog'].includes(module.id)) {
       categoryMap.management.push(module);
     } else if (['admin_billing', 'admin_apis', 'admin_logs'].includes(module.id)) {
       categoryMap.finance_integrations.push(module);
     } else if (['admin_settings', 'admin_ai', 'admin_profile'].includes(module.id)) {
       categoryMap.system_settings.push(module);
-    } else if (['contratos', 'helpdesk', 'contabilidade'].includes(module.id)) {
-      categoryMap.contratos_contabilidade.push(module);
     }
   }
 
@@ -62,7 +59,6 @@ function groupModulesByCategory(modules: AdminModuleDefinition[]): AdminNavGroup
     management: 'GESTÃO & CADASTROS',
     finance_integrations: 'FINANCEIRO & INFRAESTRUTURA',
     system_settings: 'SISTEMA & PREFERÊNCIAS',
-    contratos_contabilidade: 'CONTRATOS & CONTABILIDADE',
   };
 
   return Object.entries(categoryMap)

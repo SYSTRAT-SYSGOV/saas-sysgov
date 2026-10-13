@@ -17,9 +17,6 @@ import { SeloConformidade } from '../components/SeloConformidade';
 import { AlertasPrazosCriticos } from '../components/AlertasPrazosCriticos';
 import { SimuladorCenariosLoa } from '../components/SimuladorCenariosLoa';
 import { PainelGestaoPage } from '../components/PainelGestao/PainelGestaoPage';
-import { ModuleContratos } from '../components/ModuleContratos';
-import { ModuleHelpdesk } from '../components/ModuleHelpdesk';
-import { ModuleContabilidade } from '../components/ModuleContabilidade';
 import { MenuUsersAdminPage } from '../modules/admin/MenuUsersAdminPage';
 import { UserAccessModule } from '../modules/admin/UserAccessModule';
 
@@ -407,12 +404,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             authRole={authRole as any}
           />
         )}
-
-        {activeTab === 'contratos' && <ModuleContratos />}
-
-        {activeTab === 'helpdesk' && <ModuleHelpdesk />}
-
-        {activeTab === 'contabilidade' && <ModuleContabilidade />}
       </div>
     </>
   );

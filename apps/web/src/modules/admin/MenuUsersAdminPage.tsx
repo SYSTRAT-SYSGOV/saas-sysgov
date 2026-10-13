@@ -32,6 +32,7 @@ const MOCK_MENUS: MenuGroup[] = [
       { id: 4, label: 'Organizações & Tenants', route: 'admin_tenants', icon: 'Building2', shortcut: 'T', module_alias: 'tenants', order: 2, is_active: true },
       { id: 5, label: 'Registros & Tabelas', route: 'admin_records', icon: 'Layers', shortcut: 'R', module_alias: 'records', order: 3, is_active: true },
       { id: 6, label: 'Gerenciador de Menus', route: 'admin_menus', icon: 'FolderTree', shortcut: 'M', module_alias: 'menus', order: 4, is_active: true },
+      { id: 13, label: 'Módulos da Plataforma', route: 'module_catalog', icon: 'Database', shortcut: 'C', module_alias: 'catalog', order: 5, is_active: true },
     ],
   },
   {
@@ -48,16 +49,8 @@ const MOCK_MENUS: MenuGroup[] = [
     order: 4, is_active: true,
     items: [
       { id: 10, label: 'Configurações & White-Label', route: 'admin_settings', icon: 'Settings', module_alias: 'settings', order: 1, is_active: true },
-      { id: 11, label: 'Meu Perfil & Segurança', route: 'admin_profile', icon: 'UserCheck', module_alias: 'profile', order: 2, is_active: true },
-    ],
-  },
-  {
-    id: 5, name: 'CONTRATOS & CONTABILIDADE', slug: 'contratos-contabilidade', icon: 'FileText',
-    order: 5, is_active: true,
-    items: [
-      { id: 12, label: 'Gestão de Contratos', route: 'contratos', icon: 'FileText', module_alias: 'contracts', order: 1, is_active: true },
-      { id: 13, label: 'Suporte & Helpdesk', route: 'helpdesk', icon: 'Ticket', module_alias: 'support', order: 2, is_active: true },
-      { id: 14, label: 'Contabilidade Pública', route: 'contabilidade', icon: 'BookOpen', module_alias: 'contabilidade', order: 3, is_active: true },
+      { id: 11, label: 'Configurações de IA', route: 'admin_ia', icon: 'Sparkles', module_alias: 'ai', order: 2, is_active: true },
+      { id: 12, label: 'Meu Perfil & Segurança', route: 'admin_profile', icon: 'UserCheck', module_alias: 'profile', order: 3, is_active: true },
     ],
   },
 ];
