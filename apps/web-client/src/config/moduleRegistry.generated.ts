@@ -17,6 +17,7 @@ const ModuleGranularityComponent = lazy(() => import('@/modules/access/ModuleGra
 const PermissionMatrixComponent = lazy(() => import('@/modules/access/PermissionMatrix'));
 const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const PessoasComponent = lazy(() => import('@/modules/pessoas/PessoasModule'));
+const AtaComponent = lazy(() => import('@/modules/ata/AtaModule'));
 const CampanhaComponent = lazy(() => import('@/modules/campanha/CampanhaModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
 const CursosComponent = lazy(() => import('@/modules/cursos/CursosModule'));
@@ -170,6 +171,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ["pessoas","pessoas/*"],
     requiredPermission: 'cadastros.pessoas.view',
     icon: 'Users',
+  },
+  ata: {
+    id: 'ata',
+    name: "Atas",
+    component: AtaComponent,
+    routePath: 'ata',
+    routes: ['ata'],
+    requiredPermission: 'ata.view',
+    icon: 'FileSignature',
   },
   campanha: {
     id: 'campanha',
