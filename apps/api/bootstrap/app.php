@@ -25,6 +25,7 @@ use Modules\Formatura\Providers\FormaturaServiceProvider;
 use Modules\Passeio\Providers\PasseioServiceProvider;
 use Modules\Portfolio\Providers\PortfolioServiceProvider;
 use Modules\Campanha\Providers\CampanhaServiceProvider;
+use Modules\Ata\Providers\AtaServiceProvider;
 use Modules\Inservivel\Providers\InservivelServiceProvider;
 use Modules\Finance\Providers\FinanceServiceProvider;
 use Modules\Licita\Providers\LicitaServiceProvider;
@@ -57,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
         PortfolioServiceProvider::class,
         CampanhaServiceProvider::class,
         InservivelServiceProvider::class,
+        AtaServiceProvider::class,
         FinanceServiceProvider::class,
         LicitaServiceProvider::class,
         MeioAmbienteServiceProvider::class,

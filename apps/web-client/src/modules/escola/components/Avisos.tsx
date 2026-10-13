@@ -16,10 +16,15 @@ export function useAvisos(): { avisos: Aviso[]; avisar: Toast } {
   return { avisos, avisar };
 }
 
-const ESTILO: Record<string, string> = {
-  success: 'bg-emerald-950/90 border-emerald-500/50',
-  warning: 'bg-amber-950/90 border-amber-500/50',
-  error: 'bg-rose-950/90 border-rose-500/50',
+/**
+ * Cartão claro com faixa lateral na cor do tipo (paleta GOV.BR do painel). Título e texto têm cor explícita:
+ * o estilo global de h4 (azul-escuro) deixava o título ilegível sobre o fundo escuro antigo.
+ */
+const ESTILO: Record<string, { faixa: string; icone: string }> = {
+  success: { faixa: 'border-l-status-success', icone: 'text-status-success' },
+  warning: { faixa: 'border-l-status-warning', icone: 'text-status-warning' },
+  error: { faixa: 'border-l-status-danger', icone: 'text-status-danger' },
+  info: { faixa: 'border-l-status-info', icone: 'text-status-info' },
 };
 
 export const Avisos: React.FC<{ avisos: Aviso[] }> = ({ avisos }) => (
@@ -27,16 +32,17 @@ export const Avisos: React.FC<{ avisos: Aviso[] }> = ({ avisos }) => (
     {avisos.map((t) => (
       <div
         key={t.id}
-        className={`pointer-events-auto p-4 rounded-2xl shadow-2xl border flex items-start gap-3 backdrop-blur-md text-white ${ESTILO[t.type] ?? 'bg-slate-900/90 border-slate-700/50'}`}
+        role={t.type === 'error' ? 'alert' : 'status'}
+        className={`pointer-events-auto flex items-start gap-3 rounded-xl border border-gov-border border-l-4 bg-white p-4 shadow-xl dark:bg-slate-900 ${(ESTILO[t.type] ?? ESTILO.info).faixa}`}
       >
-        <div className="mt-0.5 shrink-0">
-          {t.type === 'success' && <ShieldCheck className="w-5 h-5 text-emerald-400" />}
-          {(t.type === 'warning' || t.type === 'error') && <AlertTriangle className={`w-5 h-5 ${t.type === 'error' ? 'text-rose-400' : 'text-amber-400'}`} />}
-          {t.type === 'info' && <BookOpen className="w-5 h-5 text-sky-400" />}
+        <div className={`mt-0.5 shrink-0 ${(ESTILO[t.type] ?? ESTILO.info).icone}`}>
+          {t.type === 'success' && <ShieldCheck className="w-5 h-5" />}
+          {(t.type === 'warning' || t.type === 'error') && <AlertTriangle className="w-5 h-5" />}
+          {t.type !== 'success' && t.type !== 'warning' && t.type !== 'error' && <BookOpen className="w-5 h-5" />}
         </div>
         <div className="flex-1 space-y-0.5">
-          <h4 className="text-xs font-bold leading-tight">{t.title}</h4>
-          <p className="text-[11px] text-slate-200 leading-normal">{t.message}</p>
+          <h4 className="text-sm font-bold leading-tight text-gov-text-primary dark:text-white">{t.title}</h4>
+          <p className="text-xs leading-normal text-gov-text-secondary dark:text-slate-300">{t.message}</p>
         </div>
       </div>
     ))}

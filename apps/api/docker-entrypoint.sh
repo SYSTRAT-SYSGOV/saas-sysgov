@@ -66,6 +66,7 @@ php artisan db:seed --class='Modules\Passeio\Database\Seeders\PasseioRbacSeeder'
 php artisan db:seed --class='Modules\Portfolio\Database\Seeders\PortfolioRbacSeeder' --force
 php artisan db:seed --class='Modules\Campanha\Database\Seeders\CampanhaRbacSeeder' --force
 php artisan db:seed --class='Modules\Inservivel\Database\Seeders\InservivelRbacSeeder' --force
+php artisan db:seed --class='Modules\Ata\Database\Seeders\AtaRbacSeeder' --force
 
 # Perfis-template do módulo Requerimentos (Administrador, Autor, Tramitador) e
 # tipos padrão de proposições (Requerimento, Indicação, etc.). Idempotente.

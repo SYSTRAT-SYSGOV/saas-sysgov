@@ -20,6 +20,7 @@ const ValidarCertificadoPage = React.lazy(() => import('@/modules/cursos/pages/V
 const CheckInPage = React.lazy(() => import('@/modules/cursos/pages/CheckInPage'));
 const CadastroApoioPage = React.lazy(() => import('@/modules/campanha/pages/CadastroApoioPage'));
 const CadastroEntidadePage = React.lazy(() => import('@/modules/inservivel/pages/CadastroEntidadePage'));
+const ValidarAtaPage = React.lazy(() => import('@/modules/ata/pages/ValidarAtaPage'));
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -135,6 +136,15 @@ export const AppRouter: React.FC = () => {
         element={
           <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
             <CadastroEntidadePage />
+          </React.Suspense>
+        }
+      />
+      {/* Ata: validação pública do PDF pelo QR Code (sem login, fora do AppShell) */}
+      <Route
+        path="/validar-ata/:tenantSlug/:codigo?"
+        element={
+          <React.Suspense fallback={<div className="p-8 text-center font-mono text-xs">Carregando...</div>}>
+            <ValidarAtaPage />
           </React.Suspense>
         }
       />
