@@ -51,6 +51,9 @@ php artisan db:seed --force
 for module_json in Modules/*/module.json; do
   [ -f "$module_json" ] || continue
   module_name=$(basename "$(dirname "$module_json")")
+  if [ "$module_name" = "Admin" ] || [ "$module_name" = "Client" ]; then
+    continue
+  fi
   echo "Registrando módulo: ${module_name}..."
   php artisan module:register "$module_name" || echo "  aviso: falha ao registrar ${module_name} (seguindo o boot)"
 done

@@ -28,6 +28,11 @@ final class RegisterModuleCommand extends Command
         $force = $this->option('force');
         $dryRun = $this->option('dry-run');
 
+        if (in_array(strtolower($moduleName), ['admin', 'client'], true)) {
+            $this->info("Módulo '{$moduleName}' é infraestrutura interna da plataforma e não integra o catálogo comercial de tenants.");
+            return self::SUCCESS;
+        }
+
         $modulePath = base_path("Modules/{$moduleName}");
 
         if (!File::exists($modulePath)) {
