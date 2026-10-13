@@ -17,6 +17,7 @@ const ModuleGranularityComponent = lazy(() => import('@/modules/access/ModuleGra
 const PermissionMatrixComponent = lazy(() => import('@/modules/access/PermissionMatrix'));
 const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const PessoasComponent = lazy(() => import('@/modules/pessoas/PessoasModule'));
+const ProtocoloComponent = lazy(() => import('@/modules/protocolo/ProtocoloModule'));
 const AtaComponent = lazy(() => import('@/modules/ata/AtaModule'));
 const CampanhaComponent = lazy(() => import('@/modules/campanha/CampanhaModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
@@ -171,6 +172,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ["pessoas","pessoas/*"],
     requiredPermission: 'cadastros.pessoas.view',
     icon: 'Users',
+  },
+  protocolo: {
+    id: 'protocolo',
+    name: "Protocolo & Processos",
+    component: ProtocoloComponent,
+    routePath: 'protocolo',
+    routes: ["protocolo","protocolo/*"],
+    requiredPermission: 'protocolo.processos.view',
+    icon: 'FolderOpen',
   },
   ata: {
     id: 'ata',

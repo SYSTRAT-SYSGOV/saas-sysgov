@@ -1,0 +1,41 @@
+{
+    "name": "Protocolo",
+    "alias": "protocolo",
+    "description": "Núcleo genérico de processos administrativos municipais — tramitação externa/interna, rastreabilidade, vinculação polimórfica e controle de prazos.",
+    "priority": 25,
+    "providers": [
+        "Modules\\Protocolo\\Providers\\ProtocoloServiceProvider",
+        "Modules\\Protocolo\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "OrgChart",
+        "Pessoas"
+    ],
+    "menu": {
+        "group": "GESTÃO ADMINISTRATIVA",
+        "label": "Protocolo",
+        "icon": "FolderOpen",
+        "order": 35,
+        "permission": "protocolo.processos.view",
+        "children": [
+            { "label": "Processos", "route": "protocolo.processos", "permission": "protocolo.processos.view", "icon": "FolderKanban" },
+            { "label": "Novo Processo", "route": "protocolo.processos.novo", "permission": "protocolo.processos.create", "icon": "FilePlus2" },
+            { "label": "Rastreamento", "route": "protocolo.rastreamento", "permission": "protocolo.processos.rastrear", "icon": "LocateFixed" },
+            { "label": "Dashboard", "route": "protocolo.dashboard", "permission": "protocolo.processos.relatorios", "icon": "BarChart3" },
+            { "label": "Tipos de Tramitação", "route": "protocolo.tipos-tramitacao", "permission": "protocolo.tipos_tramitacao.manage", "icon": "SlidersHorizontal" }
+        ]
+    },
+    "permissions": {
+        "protocolo.processos.view": "Visualizar processos administrativos",
+        "protocolo.processos.create": "Criar processo administrativo",
+        "protocolo.processos.update": "Editar dados e anexar documentos ao processo",
+        "protocolo.processos.tramitar": "Tramitar e encaminhar processos entre órgãos",
+        "protocolo.processos.vincular": "Vincular entidades e processos",
+        "protocolo.processos.promover_requerimento": "Promover requerimento a processo administrativo",
+        "protocolo.processos.rastrear": "Consultar localização e situação em tempo real",
+        "protocolo.processos.relatorios": "Acessar dashboard e relatórios do protocolo",
+        "protocolo.processos.delete": "Excluir (soft delete) processos administrativos",
+        "protocolo.tipos_tramitacao.manage": "Gerenciar tipos de tramitação"
+    }
+}

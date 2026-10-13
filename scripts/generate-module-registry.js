@@ -135,6 +135,15 @@ const CORE_MODULE_MAP = {
     requiredPermission: 'cadastros.pessoas.view',
     icon: 'Users',
   },
+  protocolo: {
+    id: 'protocolo',
+    name: 'Protocolo & Processos',
+    componentPath: '@/modules/protocolo/ProtocoloModule',
+    routePath: 'protocolo',
+    routes: ['protocolo', 'protocolo/*'],
+    requiredPermission: 'protocolo.processos.view',
+    icon: 'FolderOpen',
+  },
 };
 
 function capitalizeFirst(str) {

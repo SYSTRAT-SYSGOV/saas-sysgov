@@ -60,6 +60,12 @@ final class RequerimentosServiceProvider extends ServiceProvider
                     ->onOneServer();
             });
         }
+
+        // ── Registro de Integração com o Protocolo (Opcional/Desacoplado) ──
+        if (interface_exists(\Modules\Protocolo\Contracts\EntidadeVinculavel::class) && $this->app->bound(\Modules\Protocolo\Services\VinculoRegistry::class)) {
+            $this->app->make(\Modules\Protocolo\Services\VinculoRegistry::class)
+                ->registrar(new \Modules\Requerimentos\Services\RequerimentoVinculavel());
+        }
     }
 
     public function register(): void

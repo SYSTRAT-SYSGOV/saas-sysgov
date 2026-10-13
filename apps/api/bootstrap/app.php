@@ -35,6 +35,7 @@ use Modules\MeioAmbiente\Providers\MeioAmbienteServiceProvider;
 use Modules\OrgChart\Providers\OrgChartServiceProvider;
 use Modules\Pessoas\Providers\PessoasServiceProvider;
 use Modules\Procurement\Providers\ProcurementServiceProvider;
+use Modules\Protocolo\Providers\ProtocoloServiceProvider;
 use Modules\Requerimentos\Providers\RequerimentosServiceProvider;
 use Modules\Vistoria\Providers\VistoriaServiceProvider;
 use Laravel\Tinker\TinkerServiceProvider;
@@ -65,6 +66,7 @@ return Application::configure(basePath: dirname(__DIR__))
         OrgChartServiceProvider::class,
         PessoasServiceProvider::class,
         ProcurementServiceProvider::class,
+        ProtocoloServiceProvider::class,
         RequerimentosServiceProvider::class,
         VistoriaServiceProvider::class,
         TinkerServiceProvider::class,

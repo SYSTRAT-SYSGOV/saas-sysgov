@@ -91,3 +91,10 @@ export * from './components/PessoaCard';
 export * from './components/PessoaFormModal';
 export * from './components/PessoaPicker';
 
+// ============================================================
+// Componentes de navegação e fluxo (Processos / Protocolo)
+// ============================================================
+export * from './components/Stepper';
+export * from './components/Timeline';
+
+
