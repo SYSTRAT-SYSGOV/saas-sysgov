@@ -44,7 +44,7 @@ final class EscolaService
     }
 
     /**
-     * @param array{nome: string, inep?: string|null, org_unit_id: int} $dados
+     * @param array{nome: string, inep?: string|null, org_unit_id?: int|null} $dados
      */
     public function criar(array $dados): Escola
     {
