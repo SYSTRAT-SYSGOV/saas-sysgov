@@ -97,7 +97,8 @@ final class FullFlowTest extends TestCase
         $this->moduleOrg = Module::where('alias', 'org')->firstOrFail();
         $this->moduleContracts = Module::where('alias', 'contracts')->firstOrFail();
         $this->moduleFinance = Module::where('alias', 'finance')->firstOrFail();
-        $this->moduleRh = Module::where('alias', 'rh')->firstOrFail();
+        // 'rh' saiu do catálogo comercial (74cea8a): o cenário só precisa de um módulo desabilitado no tenant.
+        $this->moduleRh = Module::firstOrCreate(['alias' => 'rh'], ['name' => 'Recursos Humanos', 'enabled' => true, 'monthly_fee_cents' => 0]);
     }
 
     private function createOrgChart(): void
