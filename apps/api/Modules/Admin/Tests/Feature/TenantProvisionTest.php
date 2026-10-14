@@ -42,7 +42,7 @@ final class TenantProvisionTest extends TestCase
                 'custom_domain_fee_cents' => 5000,
                 'city' => 'Curitiba',
                 'uf' => 'PR',
-                'modules' => ['org', 'contracts', 'users'],
+                'modules' => ['org', 'contracts'],
             ])
             ->assertCreated()
             ->assertJsonPath('data.slug', 'pref-test')
@@ -50,12 +50,12 @@ final class TenantProvisionTest extends TestCase
 
         $tenant = Tenant::where('slug', 'pref-test')->firstOrFail();
 
-        // Módulos liberados: org + contracts + users + dashboard (base automática)
+        // Módulos liberados: org + contracts + dashboard (base automática); 'users' saiu do catálogo (74cea8a)
         $aliases = $tenant->modules()->pluck('modules.alias')->sort()->values()->all();
-        $this->assertEquals(['contracts', 'dashboard', 'org', 'users'], $aliases);
+        $this->assertEquals(['contracts', 'dashboard', 'org'], $aliases);
 
-        // MRR = org(149) + contracts(249) + users(99) + domínio custom(50) = 54700
-        $this->assertEquals(54700, $tenant->monthlyMrrCents());
+        // MRR = org(149) + contracts(249) + domínio custom(50) = 44800
+        $this->assertEquals(44800, $tenant->monthlyMrrCents());
 
         // Estrutura do organograma municipal inicial semeada automaticamente
         $this->assertDatabaseHas('org_units', [
