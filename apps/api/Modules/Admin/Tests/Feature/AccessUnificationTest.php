@@ -112,18 +112,18 @@ final class AccessUnificationTest extends TestCase
 
     public function test_expired_user_module_access_does_not_grant(): void
     {
-        [$tenant, $module] = $this->tenantWithModule('unif-e', 'procurement');
+        [$tenant, $module] = $this->tenantWithModule('unif-e', 'licita');
         $user = $this->plainUser('expired@teste.gov');
         $grantor = User::where('is_platform_admin', true)->firstOrFail();
 
         UserModuleAccess::create([
-            'user_id' => $user->id, 'tenant_id' => $tenant->id, 'module_alias' => 'procurement',
+            'user_id' => $user->id, 'tenant_id' => $tenant->id, 'module_alias' => 'licita',
             'role' => 'viewer', 'status' => UserModuleAccess::STATUS_ACTIVE,
             'valid_to' => now()->subDay(), 'granted_by' => $grantor->id,
         ]);
 
         $service = app(AccessService::class);
 
-        $this->assertFalse($service->canAccessModule($user, 'procurement', $tenant->id));
+        $this->assertFalse($service->canAccessModule($user, 'licita', $tenant->id));
     }
 }
