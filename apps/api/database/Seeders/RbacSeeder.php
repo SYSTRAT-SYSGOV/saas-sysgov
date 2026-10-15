@@ -348,7 +348,7 @@ final class RbacSeeder extends Seeder
             ['email' => env('SYSGOV_ADMIN_EMAIL', 'admin@sysgov.local')],
             [
                 'name' => 'Administrador SYSGOV',
-                'password' => Hash::make(env('SYSGOV_ADMIN_PASSWORD', 'ChangeMe!123456')),
+                'password' => Hash::make(env('SYSGOV_ADMIN_PASSWORD') ?: \Illuminate\Support\Str::random(40)),
                 'is_platform_admin' => true,
                 'is_systrat' => true,
                 'is_active' => true,
@@ -368,7 +368,7 @@ final class RbacSeeder extends Seeder
                 ['email' => 'admin@sgfiscal.com.br'],
                 [
                     'name' => 'Administrador Master SYSTRAT',
-                    'password' => Hash::make('admin123'),
+                    'password' => Hash::make(env('SYSGOV_MASTER_PASSWORD') ?: \Illuminate\Support\Str::random(40)),
                     'is_platform_admin' => true,
                     'is_systrat' => true,
                     'is_active' => true,

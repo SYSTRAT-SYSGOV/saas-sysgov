@@ -128,6 +128,30 @@ final class AuthController
             return response()->json(['success' => false, 'token' => '', 'user' => null, 'message' => 'Acesso restrito à equipe SYSTRAT.'], 403);
         }
 
+        // MFA no login do painel admin: com MFA ativo o código TOTP é obrigatório (antes só a
+        // senha bastava). Sem MFA configurado o token sai, mas EnsureMfa só libera o setup.
+        $mfaSetupRequired = false;
+        if ($user->requiresMfa() && !app()->environment('local')) {
+            if ($user->mfa_enabled && $user->mfa_confirmed_at && $user->mfa_secret) {
+                $mfaCode = (string) $request->input('mfa_code', '');
+                if ($mfaCode === '') {
+                    return response()->json([
+                        'success' => false, 'token' => '', 'user' => null,
+                        'message' => 'Código MFA necessário para concluir o login.',
+                        'error_code' => 'MFA_CODE_REQUIRED', 'mfa_challenge' => true,
+                    ], 422);
+                }
+                if (!$this->mfaService->verify($user, $mfaCode)) {
+                    return response()->json([
+                        'success' => false, 'token' => '', 'user' => null,
+                        'message' => 'Código MFA inválido.', 'error_code' => 'MFA_CODE_INVALID',
+                    ], 422);
+                }
+            } else {
+                $mfaSetupRequired = true;
+            }
+        }
+
         $token = $user->createToken('sysgov-admin', ['api'])->plainTextToken;
 
         return response()->json([
@@ -139,6 +163,7 @@ final class AuthController
                 'email' => $user->email,
                 'role' => 'EMPRESA_MASTER',
             ],
+            'mfa_setup_required' => $mfaSetupRequired,
             'message' => 'Login realizado com sucesso.',
         ]);
     }
