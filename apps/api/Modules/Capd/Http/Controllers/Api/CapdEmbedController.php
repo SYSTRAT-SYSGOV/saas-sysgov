@@ -56,7 +56,7 @@ final class CapdEmbedController extends Controller
                 ->when($slug, fn ($q) => $q->where('tenants.slug', $slug))
                 ->when($headerId, fn ($q) => $q->where('tenants.id', (int) $headerId))
                 ->first();
-            $tenantId = $tenant?->id !== null ? (int) $tenant->id : null;
+            $tenantId = $tenant !== null ? (int) $tenant->getKey() : null;
         }
 
         if (!$tenantId) {

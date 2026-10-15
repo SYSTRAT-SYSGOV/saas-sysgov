@@ -92,7 +92,7 @@ describe('AdminLoginPage', () => {
       </MemoryRouter>
     );
 
-    const emailInput = screen.getByPlaceholderText('admin@sgfiscal.com.br');
+    const emailInput = screen.getByPlaceholderText('seu.email@empresa.com.br');
     const passInput = screen.getByPlaceholderText('••••••••');
     const submitBtn = screen.getByRole('button', { name: /Entrar no Backoffice Master/i });
 
@@ -101,7 +101,7 @@ describe('AdminLoginPage', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(apiModule.loginAdminMaster).toHaveBeenCalledWith('admin@sgfiscal.com.br', 'admin123');
+      expect(apiModule.loginAdminMaster).toHaveBeenCalledWith('admin@sgfiscal.com.br', 'admin123', undefined);
       expect(mockLoginAdminSession).toHaveBeenCalledWith(
         expect.objectContaining({ email: 'admin@sgfiscal.com.br' }),
         'jwt-token-123'
@@ -122,7 +122,7 @@ describe('AdminLoginPage', () => {
       </MemoryRouter>
     );
 
-    const emailInput = screen.getByPlaceholderText('admin@sgfiscal.com.br');
+    const emailInput = screen.getByPlaceholderText('seu.email@empresa.com.br');
     const passInput = screen.getByPlaceholderText('••••••••');
     const submitBtn = screen.getByRole('button', { name: /Entrar no Backoffice Master/i });
 

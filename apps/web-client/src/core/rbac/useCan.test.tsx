@@ -1,12 +1,33 @@
 import React from 'react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { AuthProvider } from '@/core/auth/AuthProvider';
+import { apiClient } from '@/core/api/client';
 import { useCan } from './useCan';
 
 describe('useCan Hook', () => {
+  // Sessão autenticada de teste (a antiga sessão de demonstração automática foi removida
+  // por segurança — ver AuthProvider): restaurada do storage e confirmada via /auth/me.
+  const tenant = { id: 131, name: 'MUNICIPIO DE ARAUCARIA', slug: 'araucaria-pr', type: 'prefeitura', settings: {} };
+  const sessao = {
+    token: 'token-teste',
+    user: { id: 133, name: 'Admin Prefeitura', email: 'admin@araucaria.pr.gov.br', roles: ['admin_tenant'], is_platform_admin: false },
+    tenant,
+    tenants: [tenant],
+    modules: ['dashboard', 'procurement', 'contracts', 'finance'],
+    permissions: ['procurement.view', 'finance.view'],
+    navigation: [],
+  };
+
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('sysgov_auth_token', sessao.token);
+    localStorage.setItem('sysgov_auth_state', JSON.stringify(sessao));
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { ...sessao, token: '' } });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
