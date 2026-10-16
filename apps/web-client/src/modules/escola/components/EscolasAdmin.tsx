@@ -15,6 +15,8 @@ interface Unidade {
 
 interface EscolasAdminProps {
   onToast: Toast;
+  /** Chamado depois de salvar ou ativar/inativar uma escola (ex.: para recarregar o módulo). */
+  onAlterado?: () => void;
 }
 
 /**
@@ -22,7 +24,7 @@ interface EscolasAdminProps {
  * quem tem acesso a essa unidade (ou a uma acima dela, como a Secretaria de Educação) em
  * Usuários & Acessos enxerga a escola nos módulos de educação.
  */
-export const EscolasAdmin: React.FC<EscolasAdminProps> = ({ onToast }) => {
+export const EscolasAdmin: React.FC<EscolasAdminProps> = ({ onToast, onAlterado }) => {
   const [escolas, setEscolas] = useState<Escola[] | null>(null);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [edicao, setEdicao] = useState<Escola | null | undefined>(undefined);
@@ -49,6 +51,7 @@ export const EscolasAdmin: React.FC<EscolasAdminProps> = ({ onToast }) => {
     try {
       await escolaApi.atualizarEscola(escola.id, { ativa: !escola.ativa });
       await carregar();
+      onAlterado?.();
     } catch (e) {
       onToast({ type: 'error', title: 'Não foi possível alterar', message: erroApi(e).mensagem });
     }
@@ -109,6 +112,7 @@ export const EscolasAdmin: React.FC<EscolasAdminProps> = ({ onToast }) => {
             setEdicao(undefined);
             await carregar();
             onToast({ type: 'success', title: 'Escola salva', message: 'Os dados da escola foram atualizados.' });
+            onAlterado?.();
           }}
           onToast={onToast}
         />
@@ -179,9 +183,16 @@ const EscolaForm: React.FC<EscolaFormProps> = ({ escola, unidades, onClose, onSa
           placeholder="Escolha a unidade da escola"
           options={unidades.map((u) => ({ value: u.id, label: `${' '.repeat(Math.max(0, u.level - 1) * 2)}${u.name} (${u.code})` }))}
         />
-        <p className="text-xs text-muted-foreground">
-          Crie a unidade da escola no Organograma (por exemplo, abaixo da Secretaria de Educação) antes de cadastrá-la aqui.
-        </p>
+        {unidades.length === 0 ? (
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            Ainda não há unidades no Organograma. Cadastre antes, no módulo Organograma, a unidade da escola (por exemplo,
+            abaixo da Secretaria de Educação) e volte aqui.
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Crie a unidade da escola no Organograma (por exemplo, abaixo da Secretaria de Educação) antes de cadastrá-la aqui.
+          </p>
+        )}
         <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
           <ImagePlus className="h-4 w-4 text-primary" />
           <span>{logo ? logo.name : 'Logo da escola (PNG, JPEG ou WEBP, até 2 MB)'}</span>

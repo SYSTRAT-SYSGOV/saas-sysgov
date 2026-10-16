@@ -8,6 +8,11 @@ import { escolaApi, type Escola, type ModuloEducacao } from '../api';
 interface ComEscolaProps {
   modulo: ModuloEducacao;
   children: React.ReactNode;
+  /**
+   * Conteúdo exibido quando o usuário não tem nenhuma escola. Recebe `recarregar` para refazer a
+   * consulta depois de cadastrar a primeira escola. Sem isto, mostra a mensagem padrão.
+   */
+  semEscolas?: (recarregar: () => void) => React.ReactNode;
 }
 
 /**
@@ -15,10 +20,16 @@ interface ComEscolaProps {
  * no módulo, escolhe sozinho quando há uma só, pede a escolha quando há várias e remonta o
  * conteúdo ao trocar de escola (cada escola é um conjunto de dados à parte).
  */
-export const ComEscola: React.FC<ComEscolaProps> = ({ modulo, children }) => {
+export const ComEscola: React.FC<ComEscolaProps> = ({ modulo, children, semEscolas }) => {
   const [escolas, setEscolas] = useState<Escola[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ativa, setAtiva] = useState<number | null>(obterEscolaAtiva());
+  const [tentativa, setTentativa] = useState(0);
+
+  const recarregar = useCallback(() => {
+    setEscolas(null);
+    setTentativa((t) => t + 1);
+  }, []);
 
   const escolher = useCallback((id: number) => {
     definirEscolaAtiva(id);
@@ -45,11 +56,12 @@ export const ComEscola: React.FC<ComEscolaProps> = ({ modulo, children }) => {
     return () => {
       cancelado = true;
     };
-  }, [modulo, escolher]);
+  }, [modulo, escolher, tentativa]);
 
   if (erro) return <ScreenState type="error" title={erro} />;
   if (escolas === null) return <ScreenState type="loading" title="Carregando escolas..." />;
   if (escolas.length === 0) {
+    if (semEscolas) return <>{semEscolas(recarregar)}</>;
     return <ScreenState type="empty" title="Nenhuma escola disponível" description="Peça ao administrador acesso a uma escola neste módulo." />;
   }
 
