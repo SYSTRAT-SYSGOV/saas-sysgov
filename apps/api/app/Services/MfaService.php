@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
+use chillerlan\QRCode\Output\QRMarkupSVG;
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
 use Illuminate\Support\Facades\Cache;
 use PragmaRX\Google2FAQRCode\Google2FA;
 
@@ -47,11 +50,16 @@ final class MfaService
             'qr_code_url' => null,
         ];
 
-        // QR inline é opcional — depende de bacon/bacon-qr-code ou chillerlan/php-qrcode
+        // QR gerado localmente (data URI SVG) com chillerlan/php-qrcode: o segredo não sai do servidor.
         try {
-            $data['qr_code_url'] = $this->google2fa->getQRCodeInline($company, $user->email, $secret);
+            $data['qr_code_url'] = (new QRCode(new QROptions([
+                'outputInterface' => QRMarkupSVG::class,
+                'outputBase64' => true,
+                'addQuietzone' => true,
+                'quietzoneSize' => 2,
+            ])))->render($otpauthUrl);
         } catch (\Throwable) {
-            // sem serviço de QR instalado — o frontend usa otpauth_url
+            // sem QR — o frontend mostra a chave manual (secret)
         }
 
         return $data;

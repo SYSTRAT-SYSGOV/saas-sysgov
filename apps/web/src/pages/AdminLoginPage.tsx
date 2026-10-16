@@ -39,6 +39,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   const [mfaStep, setMfaStep] = useState<'none' | 'code' | 'setup'>('none');
   const [mfaCode, setMfaCode] = useState('');
   const [setupSecret, setSetupSecret] = useState<string | null>(null);
+  const [setupQr, setSetupQr] = useState<string | null>(null);
   const [pending, setPending] = useState<{ user: any; token: string } | null>(null);
 
   const finishLogin = (user: any, token: string) => {
@@ -60,14 +61,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message || 'Falha ao iniciar a configuração do MFA.');
     setSetupSecret(data.secret || data.otpauth_url || null);
+    setSetupQr(typeof data.qr_code_url === 'string' && data.qr_code_url.startsWith('data:image/') ? data.qr_code_url : null);
   };
 
   const confirmMfaSetup = async () => {
     if (!pending) return;
-    if (mfaStep === 'setup') {
-      await confirmMfaSetup();
-      return;
-    }
 
     setIsLoading(true);
     setErrorMessage(null);
@@ -101,6 +99,13 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
     }
     if (!password) {
       setErrorMessage('Informe sua senha mestra de acesso.');
+      return;
+    }
+
+    // Passo de configuração do MFA: confirma o código com o token já emitido, sem refazer o
+    // login (refazer o login gerava um novo segredo a cada envio e o código nunca batia).
+    if (mfaStep === 'setup' && pending) {
+      await confirmMfaSetup();
       return;
     }
 
@@ -279,8 +284,18 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                 {mfaStep === 'setup' && (
                   <div className="text-xs text-slate-300 bg-slate-950 border border-amber-500/40 rounded-xl p-3 space-y-1">
                     <p className="font-semibold text-amber-300">Configure a verificação em duas etapas (obrigatória)</p>
-                    <p>No app autenticador (Google Authenticator, Authy…), adicione uma conta com a chave abaixo e digite o código de 6 dígitos.</p>
-                    <p className="font-mono break-all select-all text-slate-100">{setupSecret ?? 'Gerando chave…'}</p>
+                    <p>No app autenticador (Google Authenticator, Authy…), escaneie o QR code abaixo e digite o código de 6 dígitos.</p>
+                    {setupQr && (
+                      <img
+                        src={setupQr}
+                        alt="QR code para configurar o autenticador"
+                        className="mx-auto my-2 w-44 h-44 rounded-lg bg-white p-1"
+                      />
+                    )}
+                    <details>
+                      <summary className="cursor-pointer text-slate-400">Não consegue escanear? Use a chave manual</summary>
+                      <p className="font-mono break-all select-all text-slate-100 mt-1">{setupSecret ?? 'Gerando chave…'}</p>
+                    </details>
                   </div>
                 )}
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Código de verificação (6 dígitos)</label>
