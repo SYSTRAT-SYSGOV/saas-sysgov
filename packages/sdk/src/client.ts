@@ -62,6 +62,19 @@ import { LicitaModuleClient } from './modules/licita';
 import { CapdModuleClient } from './modules/capd';
 import { CursosModuleClient } from './modules/cursos';
 
+/**
+ * URL base padrão da API. Em desenvolvimento (localhost) aponta para o backend local; em qualquer
+ * outro host usa o mesmo domínio da página (`/api`, servido pelo proxy reverso). Sem isso, em produção
+ * o navegador tentava chamar `localhost:8000` e as telas falhavam com "Failed to fetch".
+ */
+export function resolveDefaultBaseUrl(location?: { hostname: string; origin: string }): string {
+  const loc = location ?? (typeof window !== 'undefined' ? window.location : undefined);
+  if (loc && loc.hostname !== 'localhost' && loc.hostname !== '127.0.0.1') {
+    return `${loc.origin}/api`;
+  }
+  return 'http://localhost:8000/api';
+}
+
 export class SysgovApi implements ApiRequester {
   private token: string | null = typeof window !== 'undefined' ? localStorage.getItem('sysgov_token') : null;
   private tenantSlug: string | null = typeof window !== 'undefined' ? localStorage.getItem('sysgov_tenant') : null;
@@ -73,7 +86,7 @@ export class SysgovApi implements ApiRequester {
   public readonly capd: CapdModuleClient;
   public readonly cursos: CursosModuleClient;
 
-  constructor(private readonly baseUrl = 'http://localhost:8000/api') {
+  constructor(private readonly baseUrl: string = resolveDefaultBaseUrl()) {
     this.org = new OrgModuleClient(this);
     this.contractsApi = new ContractsModuleClient(this);
     this.catalogApi = new CatalogModuleClient(this);
