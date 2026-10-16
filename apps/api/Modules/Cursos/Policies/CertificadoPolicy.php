@@ -28,6 +28,12 @@ final class CertificadoPolicy
             || ($this->pode($user, 'cursos.participar') && $certificado->participante->user_id === (int) $user->id);
     }
 
+    /** Emissão avulsa (sem turma) num curso do órgão: só o Administrador. */
+    public function emitirAvulso(User $user, \Modules\Cursos\Models\Curso $curso): bool
+    {
+        return $this->doTenant($curso) && $this->administra($user);
+    }
+
     public function revogar(User $user, Certificado $certificado): bool
     {
         return $this->doTenant($certificado) && $this->administra($user);

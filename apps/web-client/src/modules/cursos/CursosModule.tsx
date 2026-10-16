@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Award, BookOpen, FileBadge, GraduationCap, Layers, Library, Presentation, UserCheck } from 'lucide-react';
+import { Award, BookOpen, Building2, FileBadge, FileImage, FileText, GraduationCap, Layers, Library, Palette, Presentation, UserCheck, Stamp } from 'lucide-react';
 import { PageHeader, Tabs, type TabsItem } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import { useTenant } from '@/core/tenant/useTenant';
@@ -13,10 +13,15 @@ import { TurmaDetalhePage } from './pages/TurmaDetalhePage';
 import { FormacoesPage } from './pages/FormacoesPage';
 import { CertificadosPage } from './pages/CertificadosPage';
 import { ModelosCertificadoPage } from './pages/ModelosCertificadoPage';
+import { AssinaturasPage } from './pages/AssinaturasPage';
+import { FundosPage } from './pages/FundosPage';
+import { TextosPage } from './pages/TextosPage';
+import { EmpresasPage } from './pages/EmpresasPage';
+import { ConstrutorCursoPage } from './pages/ConstrutorCursoPage';
 import { InscricaoDetalhePage } from './pages/InscricaoDetalhePage';
 import { TentativaPage } from './pages/TentativaPage';
 
-export type AbaCursos = 'catalogo' | 'meus' | 'turmas' | 'cursos' | 'formacoes' | 'certificados' | 'modelos';
+export type AbaCursos = 'catalogo' | 'meus' | 'turmas' | 'cursos' | 'formacoes' | 'certificados' | 'modelos' | 'fundos' | 'textos' | 'empresas' | 'assinaturas' | 'construtor';
 
 /**
  * Módulo Cursos e Formações. As abas aparecem conforme a permissão (a
@@ -45,6 +50,11 @@ export const CursosModule: React.FC = () => {
       itens.push({ key: 'formacoes', label: 'Formações', icon: <Layers className="h-4 w-4" /> });
       itens.push({ key: 'certificados', label: 'Certificados', icon: <Award className="h-4 w-4" /> });
       itens.push({ key: 'modelos', label: 'Modelos de certificado', icon: <FileBadge className="h-4 w-4" /> });
+      itens.push({ key: 'fundos', label: 'Fundos', icon: <FileImage className="h-4 w-4" /> });
+      itens.push({ key: 'textos', label: 'Textos', icon: <FileText className="h-4 w-4" /> });
+      itens.push({ key: 'empresas', label: 'Empresas', icon: <Building2 className="h-4 w-4" /> });
+      itens.push({ key: 'assinaturas', label: 'Assinaturas', icon: <Stamp className="h-4 w-4" /> });
+      itens.push({ key: 'construtor', label: 'Construtor visual', icon: <Palette className="h-4 w-4" /> });
     }
     return itens;
   }, [administra, instrutor, participa]);
@@ -101,6 +111,11 @@ export const CursosModule: React.FC = () => {
           {aba === 'formacoes' && <FormacoesPage />}
           {aba === 'certificados' && <CertificadosPage />}
           {aba === 'modelos' && <ModelosCertificadoPage />}
+          {aba === 'fundos' && <FundosPage />}
+          {aba === 'textos' && <TextosPage />}
+          {aba === 'empresas' && <EmpresasPage />}
+          {aba === 'assinaturas' && <AssinaturasPage />}
+          {aba === 'construtor' && <ConstrutorCursoPage />}
         </>
       )}
     </div>

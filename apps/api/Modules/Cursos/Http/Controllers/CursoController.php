@@ -120,6 +120,10 @@ final class CursoController extends Controller
             'tipo' => ['sometimes', Rule::enum(TipoCurso::class)],
             'titulo' => [$obrigatorio, 'string', 'max:255'],
             'descricao' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            // Um tópico por linha; impresso no verso do certificado (quando o modelo tem verso).
+            'conteudo_programatico' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            // Impresso em {RESPONSAVEL} no texto do certificado.
+            'responsavel' => ['sometimes', 'nullable', 'string', 'max:150'],
             'carga_horaria_minutos' => [$obrigatorio, 'integer', 'min:1', 'max:100000'],
             'frequencia_minima' => ['sometimes', 'integer', 'between:0,100'],
             'nota_minima' => ['sometimes', 'nullable', 'numeric', 'between:0,10'],

@@ -14,6 +14,7 @@ use Modules\Cursos\Enums\StatusInscricao;
 use Modules\Cursos\Enums\StatusTurma;
 use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\Participante;
+use Modules\Cursos\Services\ParticipantePessoaService;
 use Modules\Cursos\Models\Turma;
 
 /**
@@ -42,12 +43,20 @@ final class InscricaoService
         $participante = Participante::query()->where('user_id', $user->id)->first()
             ?? Participante::query()->whereNull('user_id')->where('email', $user->email)->first();
 
-        if ($participante === null) {
-            return Participante::create(['user_id' => $user->id, 'nome' => $user->name, 'email' => $user->email]);
+        // Usuário que nasceu de uma pessoa: o participante é dessa pessoa (um só por pessoa).
+        $pessoa = app(ParticipantePessoaService::class)->pessoaDoUsuario($user);
+        if ($participante === null && $pessoa !== null) {
+            $participante = Participante::query()->where('pessoa_id', $pessoa->id)->first();
         }
 
-        if ($participante->user_id === null) {
+        if ($participante === null) {
+            $participante = Participante::create(['user_id' => $user->id, 'nome' => $user->name, 'email' => $user->email]);
+        } elseif ($participante->user_id === null) {
             $participante->update(['user_id' => $user->id]);
+        }
+
+        if ($pessoa !== null && $participante->pessoa_id !== $pessoa->id) {
+            app(ParticipantePessoaService::class)->ligar($participante, $pessoa);
         }
 
         return $participante;

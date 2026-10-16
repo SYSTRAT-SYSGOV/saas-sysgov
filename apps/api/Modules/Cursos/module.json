@@ -9,7 +9,8 @@
     ],
     "requires": [
         "Admin",
-        "OrgChart"
+        "OrgChart",
+        "Pessoas"
     ],
     "permissions": {
         "cursos.view": "Acessar o módulo de Cursos e o catálogo publicado",
