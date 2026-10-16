@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use LogicException;
+use Modules\Cursos\Models\Assinatura;
 use Modules\Cursos\Models\Aula;
 use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\AvaliacaoQuestao;
@@ -45,7 +46,7 @@ final class TenantIsolationTest extends TestCase
         ModeloCertificado::class, Curso::class, Formacao::class, Turma::class, Aula::class,
         AulaAgendamento::class, Participante::class, Inscricao::class, Presenca::class, Certificado::class,
         Material::class, Questao::class, QuestaoAlternativa::class, Avaliacao::class, AvaliacaoQuestao::class,
-        Tentativa::class, Resposta::class,
+        Tentativa::class, Resposta::class, Assinatura::class,
     ];
 
     public function test_todos_os_models_do_modulo_sao_isolados_entre_tenants(): void
@@ -65,6 +66,28 @@ final class TenantIsolationTest extends TestCase
         }
 
         $this->noTenant($tenantA, fn () => $this->assertSame('Curso A', Curso::firstOrFail()->titulo));
+    }
+
+    public function test_certificado_avulso_e_isolado_entre_tenants(): void
+    {
+        $tenantA = $this->criarTenant('prefeitura-a', comModulo: false);
+        $tenantB = $this->criarTenant('prefeitura-b', comModulo: false);
+
+        $avulsoA = $this->noTenant($tenantA, function (): Certificado {
+            $curso = Curso::create(['titulo' => 'Evento A', 'carga_horaria_minutos' => 120]);
+            $participante = Participante::create(['nome' => 'Empresa A Ltda', 'documento' => '12345678000199']);
+
+            return Certificado::create([
+                'codigo' => 'AVULSOA00001', 'tipo' => 'avulso', 'participante_id' => $participante->id, 'curso_id' => $curso->id,
+                'concluido_em' => '2026-09-30', 'dados' => ['participante' => 'Empresa A Ltda'], 'emitido_em' => now(),
+            ]);
+        });
+
+        $this->noTenant($tenantB, function () use ($avulsoA): void {
+            $this->assertSame(0, Certificado::query()->where('tipo', 'avulso')->count());
+            $this->assertNull(Certificado::find($avulsoA->id));
+            $this->assertSame(0, Participante::query()->whereNull('email')->count());
+        });
     }
 
     public function test_nao_cria_registro_sem_tenant(): void
@@ -92,6 +115,7 @@ final class TenantIsolationTest extends TestCase
     {
         $user = \App\Models\User::create(['name' => "Servidor {$sufixo}", 'email' => "servidor-{$sufixo}@teste.gov.br", 'password' => bcrypt('x')]);
 
+        $assinatura = Assinatura::create(['nome' => "Assinante {$sufixo}", 'cargo' => 'Diretora']);
         $modelo = ModeloCertificado::create(['nome' => "Modelo {$sufixo}", 'titulo' => 'Certificado', 'corpo' => 'Certificamos que {{participante}} concluiu {{curso}}.', 'padrao' => true]);
         $curso = Curso::create(['titulo' => "Curso {$sufixo}", 'carga_horaria_minutos' => 240, 'modelo_certificado_id' => $modelo->id]);
         $formacao = Formacao::create(['titulo' => "Formação {$sufixo}"]);
@@ -125,6 +149,7 @@ final class TenantIsolationTest extends TestCase
             Certificado::class => $certificado->id, Material::class => $material->id,
             Questao::class => $questao->id, QuestaoAlternativa::class => $alternativa->id, Avaliacao::class => $avaliacao->id,
             AvaliacaoQuestao::class => $avaliacaoQuestao->id, Tentativa::class => $tentativa->id, Resposta::class => $resposta->id,
+            Assinatura::class => $assinatura->id,
         ];
     }
 }

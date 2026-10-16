@@ -20,6 +20,8 @@ use Modules\Cursos\Enums\TipoCertificado;
  * @property int $participante_id
  * @property int|null $inscricao_id
  * @property int|null $formacao_id
+ * @property int|null $curso_id
+ * @property \Illuminate\Support\Carbon|null $concluido_em
  * @property int|null $modelo_id
  * @property array<string, mixed> $dados
  * @property \Illuminate\Support\Carbon $emitido_em
@@ -39,7 +41,7 @@ final class Certificado extends Model
     protected $table = 'cursos_certificados';
 
     protected $fillable = [
-        'tenant_id', 'codigo', 'tipo', 'participante_id', 'inscricao_id', 'formacao_id', 'modelo_id',
+        'tenant_id', 'codigo', 'tipo', 'participante_id', 'inscricao_id', 'formacao_id', 'curso_id', 'concluido_em', 'modelo_id',
         'dados', 'emitido_em', 'revogado_em', 'revogado_por', 'motivo_revogacao',
     ];
 
@@ -48,6 +50,8 @@ final class Certificado extends Model
         'participante_id' => 'integer',
         'inscricao_id' => 'integer',
         'formacao_id' => 'integer',
+        'curso_id' => 'integer',
+        'concluido_em' => 'date',
         'modelo_id' => 'integer',
         'dados' => 'array',
         'emitido_em' => 'datetime',
@@ -81,6 +85,12 @@ final class Certificado extends Model
     public function inscricao(): BelongsTo
     {
         return $this->belongsTo(Inscricao::class, 'inscricao_id');
+    }
+
+    /** @return BelongsTo<Curso, $this> Só nos certificados avulsos. */
+    public function curso(): BelongsTo
+    {
+        return $this->belongsTo(Curso::class, 'curso_id');
     }
 
     /** @return BelongsTo<Formacao, $this> */

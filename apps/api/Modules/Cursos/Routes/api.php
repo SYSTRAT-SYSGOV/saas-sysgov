@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Route;
 use Modules\Cursos\Http\Controllers\AulaController;
 use Modules\Cursos\Http\Controllers\AvaliacaoController;
 use Modules\Cursos\Http\Controllers\CatalogoController;
+use Modules\Cursos\Http\Controllers\AssinaturaController;
+use Modules\Cursos\Http\Controllers\BibliotecaCertificadoController;
+use Modules\Cursos\Http\Controllers\ConstrutorCursoController;
 use Modules\Cursos\Http\Controllers\CertificadoController;
 use Modules\Cursos\Http\Controllers\CorrecaoController;
 use Modules\Cursos\Http\Controllers\ConteudoInscricaoController;
@@ -22,6 +25,7 @@ use Modules\Cursos\Http\Controllers\InscricaoController;
 use Modules\Cursos\Http\Controllers\MaterialController;
 use Modules\Cursos\Http\Controllers\ModeloCertificadoController;
 use Modules\Cursos\Http\Controllers\PresencaController;
+use Modules\Cursos\Http\Controllers\EmpresaController;
 use Modules\Cursos\Http\Controllers\QuestaoController;
 use Modules\Cursos\Http\Controllers\RelatorioController;
 use Modules\Cursos\Http\Controllers\TentativaController;
@@ -137,6 +141,8 @@ Route::post('/check-in', [PresencaController::class, 'checkIn']);
 Route::post('/turmas/{turma}/encerrar', [CertificadoController::class, 'encerrarTurma']);
 Route::post('/turmas/{turma}/certificados/emitir-pendentes', [CertificadoController::class, 'emitirPendentes']);
 Route::get('/certificados', [CertificadoController::class, 'index']);
+Route::post('/cursos/{curso}/certificados-avulsos', [\Modules\Cursos\Http\Controllers\CertificadoAvulsoController::class, 'store']);
+Route::post('/cursos/{curso}/certificados-avulsos/importar', [\Modules\Cursos\Http\Controllers\CertificadoAvulsoController::class, 'importar']);
 Route::get('/certificados/{certificado}/pdf', [CertificadoController::class, 'pdf']);
 Route::post('/certificados/{certificado}/revogar', [CertificadoController::class, 'revogar']);
 
@@ -145,4 +151,34 @@ Route::post('/modelos-certificado', [ModeloCertificadoController::class, 'store'
 Route::put('/modelos-certificado/{modelo}', [ModeloCertificadoController::class, 'update']);
 Route::delete('/modelos-certificado/{modelo}', [ModeloCertificadoController::class, 'destroy']);
 Route::post('/modelos-certificado/{modelo}/logotipo', [ModeloCertificadoController::class, 'logotipo']);
+Route::post('/modelos-certificado/{modelo}/fundo', [ModeloCertificadoController::class, 'fundo']);
+Route::post('/modelos-certificado/{modelo}/verso-fundo', [ModeloCertificadoController::class, 'versoFundo']);
+Route::post('/modelos-certificado/{modelo}/pre-visualizar', [ModeloCertificadoController::class, 'preVisualizar']);
 Route::post('/modelos-certificado/{modelo}/assinaturas/{indice}/imagem', [ModeloCertificadoController::class, 'imagemAssinatura'])->whereNumber('indice');
+
+// Bibliotecas de fundos e textos e construtor por curso (D8)
+Route::get('/fundos', [BibliotecaCertificadoController::class, 'fundos']);
+Route::post('/fundos', [BibliotecaCertificadoController::class, 'criarFundo']);
+Route::post('/fundos/{fundo}', [BibliotecaCertificadoController::class, 'atualizarFundo']);
+Route::delete('/fundos/{fundo}', [BibliotecaCertificadoController::class, 'excluirFundo']);
+Route::get('/textos', [BibliotecaCertificadoController::class, 'textos']);
+Route::post('/textos', [BibliotecaCertificadoController::class, 'criarTexto']);
+Route::put('/textos/{texto}', [BibliotecaCertificadoController::class, 'atualizarTexto']);
+Route::delete('/textos/{texto}', [BibliotecaCertificadoController::class, 'excluirTexto']);
+Route::get('/cursos/{curso}/leiaute', [ConstrutorCursoController::class, 'show']);
+Route::put('/cursos/{curso}/leiaute', [ConstrutorCursoController::class, 'update']);
+Route::post('/cursos/{curso}/leiaute/pre-visualizar', [ConstrutorCursoController::class, 'preVisualizar']);
+
+// Biblioteca de assinaturas do órgão (modelos visuais)
+Route::get('/assinaturas', [AssinaturaController::class, 'index']);
+Route::post('/assinaturas', [AssinaturaController::class, 'store']);
+Route::put('/assinaturas/{assinatura}', [AssinaturaController::class, 'update']);
+Route::delete('/assinaturas/{assinatura}', [AssinaturaController::class, 'destroy']);
+Route::post('/assinaturas/{assinatura}/imagem', [AssinaturaController::class, 'imagem']);
+Route::post('/assinaturas/{assinatura}/selo', [AssinaturaController::class, 'selo']);
+
+// Biblioteca de empresas do órgão ({EMPRESA}/{CNPJ} no certificado — D10)
+Route::get('/empresas', [EmpresaController::class, 'index']);
+Route::post('/empresas', [EmpresaController::class, 'store']);
+Route::put('/empresas/{empresa}', [EmpresaController::class, 'update']);
+Route::delete('/empresas/{empresa}', [EmpresaController::class, 'destroy']);

@@ -18,6 +18,10 @@ export interface Curso {
   tipo: TipoCurso;
   titulo: string;
   descricao: string | null;
+  /** Um tópico por linha; impresso no verso do certificado. */
+  conteudo_programatico?: string | null;
+  /** Responsável pelo curso ({RESPONSAVEL} no certificado). */
+  responsavel?: string | null;
   carga_horaria_minutos: number;
   capa_path: string | null;
   capa_url: string | null;
@@ -40,6 +44,8 @@ export interface CursoInput {
   tipo?: TipoCurso;
   titulo: string;
   descricao?: string | null;
+  conteudo_programatico?: string | null;
+  responsavel?: string | null;
   carga_horaria_minutos: number;
   frequencia_minima?: number;
   /** 0 a 10; nulo/ausente = sem nota mínima. Eventos não aceitam. */
@@ -283,12 +289,71 @@ export interface Assinatura {
   imagem_path: string | null;
 }
 
+export type TipoModeloCertificado = 'padrao' | 'visual';
+export type OrientacaoCertificado = 'paisagem' | 'retrato';
+export type AlinhamentoTexto = 'esquerda' | 'centro' | 'direita' | 'justificado';
+
+/** Elemento posicionado no leiaute visual. Coordenadas em pontos (A4 = 842 × 595 pt). */
+interface ElementoBase {
+  id: string;
+  x: number;
+  y: number;
+  largura: number;
+}
+export interface ElementoTexto extends ElementoBase {
+  tipo: 'texto';
+  /** Campo dinâmico (participante, curso…) OU texto livre com {{campos}} — um dos dois. */
+  campo: string | null;
+  texto: string | null;
+  fonte: 'sans' | 'serif';
+  tamanho: number;
+  cor: string;
+  negrito: boolean;
+  caixa_alta: boolean;
+  alinhamento: AlinhamentoTexto;
+}
+export interface ElementoQrCode extends ElementoBase { tipo: 'qrcode' }
+export interface ElementoLogotipo extends ElementoBase { tipo: 'logotipo' }
+export interface ElementoAssinatura extends ElementoBase {
+  tipo: 'assinatura';
+  assinatura_id: number;
+  mostrar_textos: boolean;
+  tamanho: number;
+  cor: string;
+}
+export interface ElementoSelo extends ElementoBase { tipo: 'selo'; assinatura_id: number }
+export type ElementoLeiaute = ElementoTexto | ElementoQrCode | ElementoLogotipo | ElementoAssinatura | ElementoSelo;
+
+/** Catálogo do construtor devolvido junto com a lista de modelos. */
+export interface CatalogoLeiaute {
+  paginas: Record<OrientacaoCertificado, [number, number]>;
+  campos: string[];
+  campos_texto_livre: string[];
+  fontes: ('sans' | 'serif')[];
+  alinhamentos: AlinhamentoTexto[];
+  max_elementos: number;
+  tamanho_min: number;
+  tamanho_max: number;
+  padrao: Record<OrientacaoCertificado, ElementoLeiaute[]>;
+}
+
 export interface ModeloCertificado {
   id: number;
+  /** Preenchido quando o modelo é o leiaute montado no construtor do curso. */
+  curso_id?: number | null;
+  fundo_id?: number | null;
+  texto_id?: number | null;
   nome: string;
+  tipo: TipoModeloCertificado;
+  orientacao: OrientacaoCertificado;
   titulo: string;
   corpo: string;
   logotipo_path: string | null;
+  logotipo_url: string | null;
+  fundo_url: string | null;
+  elementos: ElementoLeiaute[] | null;
+  verso_ativo: boolean;
+  verso_fundo_url: string | null;
   assinaturas: Assinatura[] | null;
   padrao: boolean;
 }
@@ -298,7 +363,115 @@ export interface ModeloCertificadoInput {
   titulo: string;
   corpo: string;
   padrao?: boolean;
+  tipo?: TipoModeloCertificado;
+  orientacao?: OrientacaoCertificado;
+  elementos?: ElementoLeiaute[] | null;
+  verso_ativo?: boolean;
   assinaturas?: { nome: string; cargo: string }[];
+}
+
+/** Assinatura da biblioteca do órgão (usada nos modelos visuais). */
+export interface AssinaturaOrgao {
+  id: number;
+  nome: string;
+  cargo: string | null;
+  registro_profissional: string | null;
+  imagem_url: string | null;
+  selo_url: string | null;
+  ativa: boolean;
+}
+
+export interface AssinaturaOrgaoInput {
+  nome: string;
+  cargo?: string | null;
+  registro_profissional?: string | null;
+  ativa?: boolean;
+}
+
+/** Fundo da biblioteca do órgão (construtor por curso). */
+export interface FundoCertificado {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  imagem_url: string;
+  orientacao: OrientacaoCertificado;
+  ativo: boolean;
+  created_at: string | null;
+}
+
+export interface FundoCertificadoInput {
+  nome?: string;
+  descricao?: string | null;
+  ativo?: boolean;
+}
+
+/** Modelo de texto da biblioteca do órgão (construtor por curso). */
+export interface TextoCertificado {
+  id: number;
+  nome: string;
+  tipo_certificado: string | null;
+  texto_principal: string;
+  texto_complementar: string | null;
+  observacoes: string | null;
+  ativo: boolean;
+}
+
+export interface TextoCertificadoInput {
+  nome: string;
+  tipo_certificado?: string | null;
+  texto_principal: string;
+  texto_complementar?: string | null;
+  observacoes?: string | null;
+  ativo?: boolean;
+}
+
+/** O que o construtor do curso envia para salvar ou pré-visualizar. */
+export interface LeiauteCursoInput {
+  fundo_id: number;
+  texto_id: number;
+  elementos: ElementoLeiaute[];
+  verso_ativo?: boolean;
+}
+
+export interface PessoaCertificadoAvulso {
+  nome: string;
+  email?: string | null;
+  /** CPF (liga ao Cadastro de Pessoas) ou CNPJ (empresa). */
+  documento?: string | null;
+  concluido_em?: string | null;
+  /** Empresa da biblioteca: passa a ser a do participante ({EMPRESA}/{CNPJ}). */
+  empresa_id?: number | null;
+}
+
+/** Empresa da biblioteca do órgão ({EMPRESA} e {CNPJ} no certificado). */
+export interface EmpresaCursos {
+  id: number;
+  razao_social: string;
+  nome_fantasia: string | null;
+  /** Somente dígitos. */
+  cnpj: string | null;
+  email: string | null;
+  telefone: string | null;
+  responsavel: string | null;
+  observacoes: string | null;
+  ativa: boolean;
+}
+
+export interface EmpresaCursosInput {
+  razao_social: string;
+  nome_fantasia?: string | null;
+  cnpj?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  responsavel?: string | null;
+  observacoes?: string | null;
+  ativa?: boolean;
+}
+
+export interface ResultadoEmissaoAvulsa {
+  emitidos: { linha: number; certificado_id: number; codigo: string; nome: string }[];
+  existentes: { linha: number; certificado_id: number; codigo: string; nome: string }[];
+  recusadas: { linha: number; motivo: string }[];
 }
 
 export interface CertificadoPublico {

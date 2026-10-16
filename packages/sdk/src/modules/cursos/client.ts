@@ -29,6 +29,11 @@ import type {
   MinhaInscricao,
   ModeloCertificado,
   ModeloCertificadoInput,
+  AssinaturaOrgao,
+  AssinaturaOrgaoInput,
+  CatalogoLeiaute,
+  PessoaCertificadoAvulso,
+  ResultadoEmissaoAvulsa,
   QrCheckIn,
   Questao,
   QuestaoInput,
@@ -47,9 +52,26 @@ import type {
   TurmaInput,
   UnidadeRelatorio,
   ValidacaoCertificado,
+  FundoCertificado,
+  FundoCertificadoInput,
+  LeiauteCursoInput,
+  TextoCertificado,
+  TextoCertificadoInput,
+  EmpresaCursos,
+  EmpresaCursosInput,
 } from './types';
 
 const json = (body: unknown) => ({ body: JSON.stringify(body) });
+
+/** Multipart do fundo: campos de texto + imagem opcional (booleano vai como 1/0). */
+function formularioFundo(input: FundoCertificadoInput, imagem: Blob | undefined, nomeArquivo: string): FormData {
+  const form = new FormData();
+  if (input.nome !== undefined) form.append('nome', input.nome);
+  if (input.descricao !== undefined) form.append('descricao', input.descricao ?? '');
+  if (input.ativo !== undefined) form.append('ativo', input.ativo ? '1' : '0');
+  if (imagem) form.append('imagem', imagem, nomeArquivo);
+  return form;
+}
 
 /** Cliente do módulo Cursos e Formações (rotas em /api/cursos e /api/public/cursos). */
 export class CursosModuleClient implements BaseModuleClient {
@@ -271,7 +293,7 @@ export class CursosModuleClient implements BaseModuleClient {
     return this.api.request(`/cursos/certificados/${id}/revogar`, { method: 'POST', ...json({ motivo }) });
   }
 
-  listarModelos(): Promise<{ modelos: ModeloCertificado[]; campos_dinamicos: string[] }> {
+  listarModelos(): Promise<{ modelos: ModeloCertificado[]; campos_dinamicos: string[]; leiaute: CatalogoLeiaute }> {
     return this.api.request('/cursos/modelos-certificado');
   }
 
@@ -297,6 +319,135 @@ export class CursosModuleClient implements BaseModuleClient {
     const form = new FormData();
     form.append('imagem', arquivo);
     return this.api.request(`/cursos/modelos-certificado/${id}/assinaturas/${indice}/imagem`, { method: 'POST', body: form as unknown as string });
+  }
+
+  /** Fundo da frente (modelo visual): PNG/JPEG até 5 MB; o servidor guarda em JPEG ≤ 2480 px. */
+  enviarFundo(id: number, arquivo: Blob, nome = 'fundo.png'): Promise<ModeloCertificado> {
+    const form = new FormData();
+    form.append('imagem', arquivo, nome);
+    return this.api.request(`/cursos/modelos-certificado/${id}/fundo`, { method: 'POST', body: form as unknown as string });
+  }
+
+  enviarVersoFundo(id: number, arquivo: Blob, nome = 'verso.png'): Promise<ModeloCertificado> {
+    const form = new FormData();
+    form.append('imagem', arquivo, nome);
+    return this.api.request(`/cursos/modelos-certificado/${id}/verso-fundo`, { method: 'POST', body: form as unknown as string });
+  }
+
+  /** PDF de exemplo do modelo, com as alterações ainda não salvas do construtor; não grava nada. */
+  preVisualizarModelo(id: number, alteracoes: Partial<ModeloCertificadoInput> = {}): Promise<Blob> {
+    if (!this.api.requestBlob) throw new Error('Este cliente não suporta download de arquivos.');
+    return this.api.requestBlob(`/cursos/modelos-certificado/${id}/pre-visualizar`, { method: 'POST', ...json(alteracoes) });
+  }
+
+  // ---------------------------------------------------------------- fundos, textos e construtor por curso
+
+  listarFundos(): Promise<{ fundos: FundoCertificado[] }> {
+    return this.api.request('/cursos/fundos');
+  }
+
+  criarFundo(input: FundoCertificadoInput & { nome: string }, imagem: Blob, nomeArquivo = 'fundo.png'): Promise<FundoCertificado> {
+    return this.api.request('/cursos/fundos', { method: 'POST', body: formularioFundo(input, imagem, nomeArquivo) as unknown as string });
+  }
+
+  /** Atualiza nome, descrição e status; com `imagem`, troca também o arquivo. */
+  atualizarFundo(id: number, input: FundoCertificadoInput, imagem?: Blob, nomeArquivo = 'fundo.png'): Promise<FundoCertificado> {
+    return this.api.request(`/cursos/fundos/${id}`, { method: 'POST', body: formularioFundo(input, imagem, nomeArquivo) as unknown as string });
+  }
+
+  excluirFundo(id: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/cursos/fundos/${id}`, { method: 'DELETE' });
+  }
+
+  listarTextos(): Promise<{ textos: TextoCertificado[]; campos: string[] }> {
+    return this.api.request('/cursos/textos');
+  }
+
+  criarTexto(input: TextoCertificadoInput): Promise<TextoCertificado> {
+    return this.api.request('/cursos/textos', { method: 'POST', ...json(input) });
+  }
+
+  atualizarTexto(id: number, input: Partial<TextoCertificadoInput>): Promise<TextoCertificado> {
+    return this.api.request(`/cursos/textos/${id}`, { method: 'PUT', ...json(input) });
+  }
+
+  excluirTexto(id: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/cursos/textos/${id}`, { method: 'DELETE' });
+  }
+
+  // ---------------------------------------------------------------- empresas ({EMPRESA}/{CNPJ})
+
+  listarEmpresas(): Promise<{ empresas: EmpresaCursos[] }> {
+    return this.api.request('/cursos/empresas');
+  }
+
+  criarEmpresa(input: EmpresaCursosInput): Promise<EmpresaCursos> {
+    return this.api.request('/cursos/empresas', { method: 'POST', ...json(input) });
+  }
+
+  atualizarEmpresa(id: number, input: Partial<EmpresaCursosInput>): Promise<EmpresaCursos> {
+    return this.api.request(`/cursos/empresas/${id}`, { method: 'PUT', ...json(input) });
+  }
+
+  excluirEmpresa(id: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/cursos/empresas/${id}`, { method: 'DELETE' });
+  }
+
+  obterLeiauteDoCurso(cursoId: number): Promise<{ leiaute: ModeloCertificado | null }> {
+    return this.api.request(`/cursos/cursos/${cursoId}/leiaute`);
+  }
+
+  salvarLeiauteDoCurso(cursoId: number, input: LeiauteCursoInput): Promise<{ leiaute: ModeloCertificado }> {
+    return this.api.request(`/cursos/cursos/${cursoId}/leiaute`, { method: 'PUT', ...json(input) });
+  }
+
+  preVisualizarLeiauteDoCurso(cursoId: number, input: LeiauteCursoInput): Promise<Blob> {
+    if (!this.api.requestBlob) throw new Error('Este cliente não suporta download de arquivos.');
+    return this.api.requestBlob(`/cursos/cursos/${cursoId}/leiaute/pre-visualizar`, { method: 'POST', ...json(input) });
+  }
+
+  // ---------------------------------------------------------------- biblioteca de assinaturas
+
+  listarAssinaturas(): Promise<{ assinaturas: AssinaturaOrgao[] }> {
+    return this.api.request('/cursos/assinaturas');
+  }
+
+  criarAssinatura(input: AssinaturaOrgaoInput): Promise<AssinaturaOrgao> {
+    return this.api.request('/cursos/assinaturas', { method: 'POST', ...json(input) });
+  }
+
+  atualizarAssinatura(id: number, input: Partial<AssinaturaOrgaoInput>): Promise<AssinaturaOrgao> {
+    return this.api.request(`/cursos/assinaturas/${id}`, { method: 'PUT', ...json(input) });
+  }
+
+  excluirAssinatura(id: number): Promise<{ deleted: boolean }> {
+    return this.api.request(`/cursos/assinaturas/${id}`, { method: 'DELETE' });
+  }
+
+  enviarImagemDaAssinatura(id: number, arquivo: File): Promise<AssinaturaOrgao> {
+    const form = new FormData();
+    form.append('imagem', arquivo);
+    return this.api.request(`/cursos/assinaturas/${id}/imagem`, { method: 'POST', body: form as unknown as string });
+  }
+
+  enviarSeloDaAssinatura(id: number, arquivo: File): Promise<AssinaturaOrgao> {
+    const form = new FormData();
+    form.append('imagem', arquivo);
+    return this.api.request(`/cursos/assinaturas/${id}/selo`, { method: 'POST', body: form as unknown as string });
+  }
+
+  // ---------------------------------------------------------------- emissão avulsa
+
+  emitirCertificadosAvulsos(cursoId: number, input: { pessoas: PessoaCertificadoAvulso[]; modelo_id?: number | null; concluido_em?: string | null }): Promise<ResultadoEmissaoAvulsa> {
+    return this.api.request(`/cursos/cursos/${cursoId}/certificados-avulsos`, { method: 'POST', ...json(input) });
+  }
+
+  importarCertificadosAvulsos(cursoId: number, arquivo: File, extra: { modelo_id?: number | null; concluido_em?: string | null } = {}): Promise<ResultadoEmissaoAvulsa> {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    if (extra.modelo_id) form.append('modelo_id', String(extra.modelo_id));
+    if (extra.concluido_em) form.append('concluido_em', extra.concluido_em);
+    return this.api.request(`/cursos/cursos/${cursoId}/certificados-avulsos/importar`, { method: 'POST', body: form as unknown as string });
   }
 
   // ---------------------------------------------------------------- materiais (Fase 2)

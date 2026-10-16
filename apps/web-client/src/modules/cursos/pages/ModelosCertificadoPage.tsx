@@ -1,16 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FileBadge, ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
-import { Button, Card, Input, Modal, Switch } from '@sysgov/ui';
+import { FileBadge, ImagePlus, LayoutTemplate, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Button, Card, Input, Modal, Select, Switch } from '@sysgov/ui';
 import { ConfirmDialog, EmptyState, ScreenState, StatusChip } from '@/components/ui';
-import { sysgovApi, type ModeloCertificado } from '@sysgov/sdk';
+import { sysgovApi, type CatalogoLeiaute, type ModeloCertificado, type TipoModeloCertificado } from '@sysgov/sdk';
+import { ConstrutorCertificado } from '../construtor/ConstrutorCertificado';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { CampoTexto } from '../components/CampoTexto';
 import { ErroFormulario } from '../components/ErroFormulario';
+import { DESCRICAO_VARIAVEL, marcador as marcadorVariavel } from '../construtor/leiaute';
 
 const CORPO_SUGERIDO =
-  'Certificamos que {{participante}} concluiu {{curso}}, com carga horária de {{carga_horaria}}, realizado no período de {{periodo}}.\n\n{{orgao}}, {{data_emissao}}.';
+  'Certificamos que {NOME}, portador(a) do CPF {CPF}, concluiu {CURSO}, com carga horária de {CARGA_HORARIA} horas, em {DATA_CONCLUSAO}.\n\n{DATA}.';
 
-/** Modelos de certificado do órgão: texto com campos dinâmicos, logotipo e até 3 assinaturas. */
+/**
+ * Modelos de certificado do órgão. Tipo padrão: texto com campos dinâmicos, logotipo e até 3
+ * assinaturas no leiaute fixo. Tipo visual: arte de fundo e elementos posicionados no construtor.
+ */
 export const ModelosCertificadoPage: React.FC = () => {
   const [modelos, setModelos] = useState<ModeloCertificado[]>([]);
   const [campos, setCampos] = useState<string[]>([]);
@@ -18,6 +23,8 @@ export const ModelosCertificadoPage: React.FC = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [edicao, setEdicao] = useState<ModeloCertificado | null | undefined>(undefined);
   const [excluir, setExcluir] = useState<ModeloCertificado | null>(null);
+  const [catalogo, setCatalogo] = useState<CatalogoLeiaute | null>(null);
+  const [construindo, setConstruindo] = useState<ModeloCertificado | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -26,6 +33,7 @@ export const ModelosCertificadoPage: React.FC = () => {
       const r = await sysgovApi.cursos.listarModelos();
       setModelos(r.modelos);
       setCampos(r.campos_dinamicos);
+      setCatalogo(r.leiaute);
     } catch (e) {
       setErro(getApiErrorMessage(e, 'Não foi possível carregar os modelos.'));
     } finally {
@@ -38,6 +46,17 @@ export const ModelosCertificadoPage: React.FC = () => {
   }, [carregar]);
 
   if (carregando && modelos.length === 0) return <ScreenState type="loading" title="Carregando modelos..." />;
+
+  if (construindo && catalogo) {
+    return (
+      <ConstrutorCertificado
+        modelo={construindo}
+        catalogo={catalogo}
+        onVoltar={() => { setConstruindo(null); void carregar(); }}
+        onSalvo={(salvo) => setConstruindo(salvo)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -63,10 +82,19 @@ export const ModelosCertificadoPage: React.FC = () => {
                   <p className="text-xs text-muted-foreground">Título impresso: {m.titulo}</p>
                 </div>
                 <div className="flex items-center gap-1">
+                  <StatusChip label={m.tipo === 'visual' ? 'Visual' : 'Leiaute fixo'} variant={m.tipo === 'visual' ? 'success' : 'neutral'} />
                   {m.padrao && <StatusChip label="Padrão" variant="primary" />}
-                  <Button size="icon-sm" variant="ghost" aria-label={`Editar ${m.nome}`} onClick={() => setEdicao(m)}>
-                    <Pencil />
-                  </Button>
+                  {m.curso_id && <StatusChip label="Do construtor do curso" variant="primary" />}
+                  {m.tipo === 'visual' && !m.curso_id && (
+                    <Button size="icon-sm" variant="ghost" aria-label={`Abrir construtor de ${m.nome}`} onClick={() => setConstruindo(m)}>
+                      <LayoutTemplate />
+                    </Button>
+                  )}
+                  {!m.curso_id && (
+                    <Button size="icon-sm" variant="ghost" aria-label={`Editar ${m.nome}`} onClick={() => setEdicao(m)}>
+                      <Pencil />
+                    </Button>
+                  )}
                   <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${m.nome}`} onClick={() => setExcluir(m)}>
                     <Trash2 />
                   </Button>
@@ -74,13 +102,27 @@ export const ModelosCertificadoPage: React.FC = () => {
               </div>
               <p className="line-clamp-4 whitespace-pre-line text-sm text-muted-foreground">{m.corpo}</p>
               <p className="text-xs text-muted-foreground">
-                {m.logotipo_path ? 'Com logotipo' : 'Sem logotipo'} · {(m.assinaturas ?? []).length} assinatura(s)
+                {m.tipo === 'visual'
+                  ? `${m.fundo_url ? 'Com fundo' : 'Sem fundo'} · ${(m.elementos ?? []).length} elemento(s) · ${m.orientacao}`
+                  : `${m.logotipo_path ? 'Com logotipo' : 'Sem logotipo'} · ${(m.assinaturas ?? []).length} assinatura(s)`}
+                {m.verso_ativo ? ' · com verso' : ''}
+                {m.curso_id ? ' · edite na aba Construtor visual' : ''}
               </p>
             </Card>
           ))}
         </div>
       )}
-      <ModeloFormModal modelo={edicao} campos={campos} onClose={() => setEdicao(undefined)} onSalvo={() => { setEdicao(undefined); void carregar(); }} />
+      <ModeloFormModal
+        modelo={edicao}
+        campos={campos}
+        onClose={() => setEdicao(undefined)}
+        onSalvo={(salvo, novoVisual) => {
+          setEdicao(undefined);
+          // Modelo visual recém-criado: segue direto para o construtor.
+          if (novoVisual && salvo) setConstruindo(salvo);
+          else void carregar();
+        }}
+      />
       <ConfirmDialog
         open={excluir !== null}
         onClose={() => setExcluir(null)}
@@ -99,7 +141,7 @@ export const ModelosCertificadoPage: React.FC = () => {
 };
 
 /** Formulário de modelo; exportado para teste. */
-export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | undefined; campos: string[]; onClose: () => void; onSalvo: () => void }> = ({
+export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | undefined; campos: string[]; onClose: () => void; onSalvo: (salvo?: ModeloCertificado, novoVisual?: boolean) => void }> = ({
   modelo,
   campos,
   onClose,
@@ -110,6 +152,8 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
   const [titulo, setTitulo] = useState('Certificado');
   const [corpo, setCorpo] = useState(CORPO_SUGERIDO);
   const [padrao, setPadrao] = useState(false);
+  const [tipo, setTipo] = useState<TipoModeloCertificado>('padrao');
+  const [versoAtivo, setVersoAtivo] = useState(false);
   const [assinaturas, setAssinaturas] = useState<{ nome: string; cargo: string }[]>([]);
   const [logotipo, setLogotipo] = useState<File | null>(null);
   const [imagens, setImagens] = useState<Record<number, File>>({});
@@ -124,6 +168,8 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
     setTitulo(modelo?.titulo ?? 'Certificado');
     setCorpo(modelo?.corpo ?? CORPO_SUGERIDO);
     setPadrao(modelo?.padrao ?? false);
+    setTipo(modelo?.tipo ?? 'padrao');
+    setVersoAtivo(modelo?.verso_ativo ?? false);
     setAssinaturas((modelo?.assinaturas ?? []).map((a) => ({ nome: a.nome, cargo: a.cargo })));
     setLogotipo(null);
     setImagens({});
@@ -131,7 +177,7 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
 
   const inserirCampo = (campo: string) => {
     const el = inputCorpo.current;
-    const marcador = `{{${campo}}}`;
+    const marcador = marcadorVariavel(campo);
     if (!el) {
       setCorpo((c) => c + marcador);
       return;
@@ -145,13 +191,15 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
     setSalvando(true);
     setErro(null);
     try {
-      const dados = { nome, titulo, corpo, padrao, assinaturas };
+      const dados = { nome, titulo, corpo, padrao, tipo, verso_ativo: versoAtivo, ...(tipo === 'padrao' ? { assinaturas } : {}) };
       const salvo = modelo ? await sysgovApi.cursos.atualizarModelo(modelo.id, dados) : await sysgovApi.cursos.criarModelo(dados);
       if (logotipo) await sysgovApi.cursos.enviarLogotipo(salvo.id, logotipo);
-      for (const [indice, arquivo] of Object.entries(imagens)) {
-        await sysgovApi.cursos.enviarImagemAssinatura(salvo.id, Number(indice), arquivo);
+      if (tipo === 'padrao') {
+        for (const [indice, arquivo] of Object.entries(imagens)) {
+          await sysgovApi.cursos.enviarImagemAssinatura(salvo.id, Number(indice), arquivo);
+        }
       }
-      onSalvo();
+      onSalvo(salvo, !modelo && tipo === 'visual');
     } catch (err) {
       setErro(getApiErrorMessage(err, 'Não foi possível salvar o modelo.'));
     } finally {
@@ -167,12 +215,21 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
           <Input label="Nome do modelo" value={nome} onChange={(e) => setNome(e.target.value)} required maxLength={150} />
           <Input label="Título impresso" value={titulo} onChange={(e) => setTitulo(e.target.value)} required maxLength={150} />
         </div>
+        <Select
+          label="Tipo de modelo"
+          value={tipo}
+          onChange={(v) => setTipo(v as TipoModeloCertificado)}
+          options={[
+            { value: 'padrao', label: 'Leiaute fixo do sistema (moldura, título, texto e assinaturas em linha)' },
+            { value: 'visual', label: 'Visual — arte própria com elementos posicionados no construtor' },
+          ]}
+        />
         <CampoTexto ref={inputCorpo} label="Texto do certificado" value={corpo} onChange={(e) => setCorpo(e.target.value)} rows={6} required maxLength={5000} />
         <div className="flex flex-wrap items-center gap-1">
-          <span className="text-xs text-muted-foreground">Inserir campo:</span>
+          <span className="text-xs text-muted-foreground">Inserir variável:</span>
           {campos.map((c) => (
-            <Button key={c} type="button" size="xs" variant="outline" onClick={() => inserirCampo(c)} className="font-mono">
-              {`{{${c}}}`}
+            <Button key={c} type="button" size="xs" variant="outline" onClick={() => inserirCampo(c)} className="font-mono" title={DESCRICAO_VARIAVEL[c] ?? c}>
+              {marcadorVariavel(c)}
             </Button>
           ))}
         </div>
@@ -182,11 +239,22 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
             Modelo padrão do órgão (usado quando o curso não define um)
           </label>
         </div>
+        <div className="flex items-center gap-3">
+          <Switch id="modelo-verso" checked={versoAtivo} onCheckedChange={setVersoAtivo} label="Imprimir verso" />
+          <label htmlFor="modelo-verso" className="text-sm">
+            Imprimir verso com o conteúdo programático do curso (ou os cursos da formação)
+          </label>
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <ImagePlus className="h-4 w-4" /> Logotipo (PNG ou JPG, até 2 MB)
           <input type="file" accept="image/png,image/jpeg" onChange={(e) => setLogotipo(e.target.files?.[0] ?? null)} className="text-xs" />
         </label>
-        <div className="space-y-2">
+        {tipo === 'visual' && (
+          <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+            No modelo visual, as assinaturas vêm da aba <b>Assinaturas</b> e são posicionadas no construtor, que abre ao salvar.
+          </p>
+        )}
+        <div className={tipo === 'visual' ? 'hidden' : 'space-y-2'}>
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Assinaturas</span>
             {assinaturas.length < 3 && (

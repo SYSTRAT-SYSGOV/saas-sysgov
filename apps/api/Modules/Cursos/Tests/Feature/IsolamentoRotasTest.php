@@ -6,6 +6,7 @@ namespace Modules\Cursos\Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Modules\Cursos\Models\Assinatura;
 use Modules\Cursos\Models\Avaliacao;
 use Modules\Cursos\Models\Formacao;
 use Modules\Cursos\Models\Material;
@@ -52,7 +53,32 @@ final class IsolamentoRotasTest extends TestCase
             'avaliacao_id' => $avaliacaoB->id, 'inscricao_id' => $inscricaoB->id, 'numero' => 1, 'status' => 'aguardando_correcao', 'iniciada_em' => now(), 'questoes' => [],
         ]));
 
+        $assinaturaB = $this->noTenant($tenantB, fn () => Assinatura::create(['nome' => 'Assinante B']));
+        $modeloB = $this->noTenant($tenantB, fn () => \Modules\Cursos\Models\ModeloCertificado::create(['nome' => 'Modelo B', 'titulo' => 'C', 'corpo' => 'x']));
+
+        $fundoB = $this->noTenant($tenantB, fn () => \Modules\Cursos\Models\Fundo::create(['nome' => 'Fundo B', 'imagem_path' => 'x.jpg']));
+        $textoB = $this->noTenant($tenantB, fn () => \Modules\Cursos\Models\TextoCertificado::create(['nome' => 'Texto B', 'texto_principal' => 'x']));
+        $empresaB = $this->noTenant($tenantB, fn () => \Modules\Cursos\Models\Empresa::create(['razao_social' => 'Empresa B']));
+
         $rotas = [
+            ['post', "/api/cursos/fundos/{$fundoB->id}"],
+            ['delete', "/api/cursos/fundos/{$fundoB->id}"],
+            ['put', "/api/cursos/textos/{$textoB->id}"],
+            ['delete', "/api/cursos/textos/{$textoB->id}"],
+            ['put', "/api/cursos/empresas/{$empresaB->id}"],
+            ['delete', "/api/cursos/empresas/{$empresaB->id}"],
+            ['get', "/api/cursos/cursos/{$cursoB->id}/leiaute"],
+            ['put', "/api/cursos/cursos/{$cursoB->id}/leiaute"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/leiaute/pre-visualizar"],
+            ['post', "/api/cursos/modelos-certificado/{$modeloB->id}/fundo"],
+            ['post', "/api/cursos/modelos-certificado/{$modeloB->id}/verso-fundo"],
+            ['post', "/api/cursos/modelos-certificado/{$modeloB->id}/pre-visualizar"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/certificados-avulsos"],
+            ['post', "/api/cursos/cursos/{$cursoB->id}/certificados-avulsos/importar"],
+            ['put', "/api/cursos/assinaturas/{$assinaturaB->id}"],
+            ['delete', "/api/cursos/assinaturas/{$assinaturaB->id}"],
+            ['post', "/api/cursos/assinaturas/{$assinaturaB->id}/imagem"],
+            ['post', "/api/cursos/assinaturas/{$assinaturaB->id}/selo"],
             ['get', "/api/cursos/cursos/{$cursoB->id}"],
             ['put', "/api/cursos/cursos/{$cursoB->id}"],
             ['delete', "/api/cursos/cursos/{$cursoB->id}"],
