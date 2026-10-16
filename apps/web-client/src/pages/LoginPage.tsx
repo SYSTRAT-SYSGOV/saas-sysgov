@@ -47,6 +47,12 @@ export const LoginPage: React.FC = () => {
   const [selectedTenantSlug, setSelectedTenantSlug] = useState('araucaria-pr');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // MFA: 'code' = pede o código TOTP; 'setup' = usuário sem MFA em papel obrigatório (mostra QR).
+  const [mfaStep, setMfaStep] = useState<'none' | 'code' | 'setup'>('none');
+  const [mfaCode, setMfaCode] = useState('');
+  const [setupToken, setSetupToken] = useState<string | null>(null);
+  const [setupQr, setSetupQr] = useState<string | null>(null);
+  const [setupSecret, setSetupSecret] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,23 +74,57 @@ export const LoginPage: React.FC = () => {
     };
   }, []);
 
+  const startMfaSetup = async (token: string) => {
+    const res = await apiClient.post<{ secret?: string; qr_code_url?: string | null }>('/auth/mfa-setup/start', {
+      setup_token: token,
+    });
+    setSetupToken(token);
+    setSetupSecret(res.data.secret ?? null);
+    const qr = res.data.qr_code_url;
+    setSetupQr(typeof qr === 'string' && qr.startsWith('data:image/') ? qr : null);
+    setMfaCode('');
+    setMfaStep('setup');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg(null);
 
     try {
+      if (mfaStep === 'setup' && setupToken) {
+        // Confirma o código com o token de configuração e refaz o login com o mesmo código.
+        await apiClient.post('/auth/mfa-setup/confirm', { setup_token: setupToken, code: mfaCode.trim() });
+      }
       await login({
         email,
         password,
         tenantSlug: selectedTenantSlug,
+        ...(mfaStep !== 'none' ? { mfa_code: mfaCode.trim() } : {}),
       });
       navigate(destinoPosLogin(searchParams.get('voltar')));
     } catch (err: any) {
-      const backendMessage = err?.response?.data?.errors
-        ? Object.values(err.response.data.errors).flat().join(' ')
-        : err?.response?.data?.message;
-      setErrorMsg(backendMessage || err?.message || 'Falha ao autenticar no portal do cliente.');
+      const data = err?.response?.data;
+      if (data?.error_code === 'MFA_REQUIRED' && typeof data.mfa_setup_token === 'string') {
+        try {
+          await startMfaSetup(data.mfa_setup_token);
+        } catch (setupErr: any) {
+          setErrorMsg(setupErr?.response?.data?.message || 'Falha ao iniciar a configuração do MFA.');
+        }
+      } else if (data?.error_code === 'MFA_CODE_REQUIRED') {
+        setMfaStep('code');
+        setMfaCode('');
+      } else if (data?.error_code === 'MFA_SETUP_EXPIRED') {
+        setMfaStep('none');
+        setSetupToken(null);
+        setMfaCode('');
+        setErrorMsg(data.message);
+      } else {
+        const backendMessage = data?.errors
+          ? Object.values(data.errors).flat().join(' ')
+          : data?.message;
+        setErrorMsg(backendMessage || err?.message || 'Falha ao autenticar no portal do cliente.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -186,6 +226,40 @@ export const LoginPage: React.FC = () => {
               placeholder="••••••••"
               leftIcon={<Lock className="w-4 h-4" />}
             />
+
+            {mfaStep !== 'none' && (
+              <div className="space-y-2">
+                {mfaStep === 'setup' && (
+                  <div className="text-xs bg-gov-surface border border-gov-border rounded-md p-3 space-y-2">
+                    <p className="font-semibold">Configure a verificação em duas etapas (obrigatória)</p>
+                    <p>Escaneie o QR code com um app autenticador (Google Authenticator, Authy…) e digite o código de 6 dígitos.</p>
+                    {setupQr && (
+                      <img
+                        src={setupQr}
+                        alt="QR code para configurar o autenticador"
+                        className="mx-auto w-44 h-44 rounded-md bg-white p-1"
+                      />
+                    )}
+                    <details>
+                      <summary className="cursor-pointer text-gov-text-secondary">Não consegue escanear? Use a chave manual</summary>
+                      <p className="font-mono break-all select-all mt-1">{setupSecret ?? ''}</p>
+                    </details>
+                  </div>
+                )}
+                <Input
+                  label="Código de verificação (6 dígitos)"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  required
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  leftIcon={<ShieldCheck className="w-4 h-4" />}
+                />
+              </div>
+            )}
 
             {/* Submit Button */}
             <Button

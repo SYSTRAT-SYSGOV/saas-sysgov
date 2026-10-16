@@ -12,7 +12,7 @@ interface AuthContextType {
   navigation: MenuGroup[];
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { email: string; password?: string; tenantSlug?: string }) => Promise<LoginResponse>;
+  login: (credentials: { email: string; password?: string; tenantSlug?: string; mfa_code?: string }) => Promise<LoginResponse>;
   loginWithSSO: () => void;
   logout: () => void;
   switchTenant: (tenantId: number) => Promise<void>;
@@ -226,7 +226,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const login = async (credentials: { email: string; password?: string; tenantSlug?: string }): Promise<LoginResponse> => {
+  const login = async (credentials: { email: string; password?: string; tenantSlug?: string; mfa_code?: string }): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
       const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
