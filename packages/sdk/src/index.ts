@@ -189,7 +189,7 @@ export interface OrgExportData {
   users: OrgUnitUserLink[];
 }
 
-export { SysgovApi, sysgovApi } from './client';
+export { SysgovApi, sysgovApi, resolveDefaultBaseUrl } from './client';
 export type {
   ApiUser,
   ApiTenant,
