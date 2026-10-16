@@ -97,7 +97,12 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   // Universal Navigation Groups mapped to standard structure
   const universalGroups: NavGroup[] = useMemo(() => {
     if (dynamicGroups.length > 0) {
-      return dynamicGroups.map((grp) => ({
+      // O module:register cria um item "Visualizar <Módulo>" por módulo de negócio; essas
+      // telas ficam no painel do cliente, então o admin só lista rotas do próprio registro.
+      return dynamicGroups
+        .map((grp) => ({ ...grp, items: grp.items.filter((item) => !!getAdminModuleById(item.route)) }))
+        .filter((grp) => grp.items.length > 0)
+        .map((grp) => ({
         id: String(grp.id),
         title: grp.name,
         items: grp.items.map((item) => ({
