@@ -1338,6 +1338,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         onClose={closeAdminsModal}
         title={onboardingTenant ? `Administradores — ${onboardingTenant.name}` : 'Administradores'}
         icon={<KeyRound className="w-4 h-4 text-amber-500" />}
+        size="2xl"
         footer={
           <>
             <Button variant="outline" onClick={closeAdminsModal}>Fechar</Button>
