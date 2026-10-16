@@ -52,6 +52,11 @@ export interface DataTableProps<TData, TValue> {
     onChange: (value: string) => void;
     placeholder: string;
   };
+  /** Ordenação remota (no servidor): estado controlado pelo chamador. */
+  sorting?: {
+    state: SortingState;
+    onChange: (state: SortingState) => void;
+  };
 }
 
 export function DataTable<TData, TValue>({
@@ -69,8 +74,18 @@ export function DataTable<TData, TValue>({
   className,
   paginationState,
   search,
+  sorting: remoteSorting,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [localSorting, setLocalSorting] = React.useState<SortingState>([]);
+  const sorting = remoteSorting ? remoteSorting.state : localSorting;
+  const setSorting = (updater: SortingState | ((old: SortingState) => SortingState)) => {
+    const next = typeof updater === 'function' ? updater(sorting) : updater;
+    if (remoteSorting) {
+      remoteSorting.onChange(next);
+    } else {
+      setLocalSorting(next);
+    }
+  };
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = React.useState('');
@@ -88,6 +103,9 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     autoResetPageIndex: false,
+    // Com paginação/ordenação remotas os dados já chegam fatiados e ordenados do servidor.
+    manualPagination: Boolean(paginationState),
+    manualSorting: Boolean(remoteSorting),
     initialState: pagination ? { pagination: { pageSize } } : { pagination: { pageSize: Number.MAX_SAFE_INTEGER } },
   });
 
