@@ -248,7 +248,8 @@ export function AppRouter() {
                 <Route path="/admin/roles" element={<Navigate to="/admin/users?tab=roles" replace />} />
                 <Route path="/admin/permissions" element={<Navigate to="/admin/users?tab=permissions" replace />} />
                 <Route path="/admin/tenants" element={<ModuleRoute path="/admin/tenants" />} />
-                <Route path="/admin/records" element={<ModuleRoute path="/admin/records" />} />
+                {/* Tela removida (dados fictícios): mantém o link antigo funcionando */}
+                <Route path="/admin/records" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/menus" element={<ModuleRoute path="/admin/menus" />} />
                 <Route path="/admin/billing" element={<ModuleRoute path="/admin/billing" />} />
                 <Route path="/admin/apis" element={<ModuleRoute path="/admin/apis" />} />

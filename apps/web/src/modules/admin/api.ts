@@ -3,6 +3,21 @@ import { withApiBase } from '../../config/env';
 
 const BASE = withApiBase('/api/admin');
 
+const SESSION_KEYS = ['sgf_auth_token', 'sgf_auth_user', 'sgf_auth_role', 'auth_token'];
+
+/** Sessão inválida/expirada (401): limpa o login guardado e volta para a tela de login. */
+function endSession(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    SESSION_KEYS.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // storage indisponível: segue para o login mesmo assim
+  }
+  if (!window.location.pathname.startsWith('/admin/login')) {
+    window.location.assign('/admin/login');
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers ?? {});
   headers.set('Content-Type', 'application/json');
@@ -10,25 +25,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (typeof window !== 'undefined') {
     const stored = window.localStorage.getItem('sgf_auth_token') ?? window.localStorage.getItem('auth_token');
     // Ignora tokens antigos do mock ('jwt_master_*', 'jwt_tenant_*') — o backend os rejeita
-    const token = stored && !stored.startsWith('jwt_master_') && !stored.startsWith('jwt_tenant_') ? stored : 'universal-admin-session-token';
+    const token = stored && !stored.startsWith('jwt_master_') && !stored.startsWith('jwt_tenant_') ? stored : null;
     if (token) headers.set('Authorization', `Bearer ${token}`);
   }
-  let res = await fetch(`${BASE}${path}`, { ...init, headers });
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
 
-  // Token antigo/inválido ou resolvido para usuário não-plataforma (401/403):
-  // limpa e tenta de novo com o token demo reconhecido pelo backend.
-  if ((res.status === 401 || res.status === 403) && typeof window !== 'undefined') {
-    const stored = window.localStorage.getItem('sgf_auth_token') ?? window.localStorage.getItem('auth_token');
-    if (stored && stored !== 'universal-admin-session-token' && !stored.startsWith('jwt_master_')) {
-      console.warn(`[AdminAPI] ${res.status} em ${path} com token armazenado; tentando sessão demo.`);
-      window.localStorage.removeItem('sgf_auth_token');
-      window.localStorage.removeItem('sgf_auth_user');
-      window.localStorage.removeItem('sgf_auth_role');
-      window.localStorage.removeItem('auth_token');
-      const retryHeaders = new Headers(headers);
-      retryHeaders.set('Authorization', 'Bearer universal-admin-session-token');
-      res = await fetch(`${BASE}${path}`, { ...init, headers: retryHeaders });
-    }
+  if (res.status === 401) {
+    endSession();
   }
 
   if (!res.ok) {

@@ -1,267 +1,123 @@
-import React, { useState } from 'react';
-import {
-  Plug,
-  Activity,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  RefreshCw,
-  Zap,
-  Globe,
-  Database,
-  Plus,
-  ArrowUpRight,
-  Clock,
-  ShieldCheck,
-} from 'lucide-react';
-import { INITIAL_API_CONNECTORS } from '../../services/adminMockData';
-import { ApiConnector } from '../../types/admin';
-import { StatusChip, Modal, Input, Select, Button } from '@sysgov/ui';
+import React, { useCallback, useEffect, useState } from 'react';
+import { RefreshCw, Database, Inbox, ListChecks, AlertTriangle, Receipt } from 'lucide-react';
+import { Card, StatusChip } from '@sysgov/ui';
+import { ScreenState, ScreenStateType } from '../ui/ScreenState';
+import api from '../../api/client';
 
 interface AdminApiIntegrationsProps {
-  onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
+  onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
 }
 
-export const AdminApiIntegrations: React.FC<AdminApiIntegrationsProps> = ({ onAddToast }) => {
-  const [connectors, setConnectors] = useState<ApiConnector[]>(INITIAL_API_CONNECTORS);
-  const [syncingId, setSyncingId] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // New Webhook/API form
-  const [formData, setFormData] = useState<{
-    name: string;
-    endpoint: string;
-    type: ApiConnector['type'];
-  }>({
-    name: '',
-    endpoint: '',
-    type: 'REST',
-  });
-
-  const handleTestPing = (conn: ApiConnector) => {
-    setSyncingId(conn.id);
-    setTimeout(() => {
-      setSyncingId(null);
-      setConnectors((prev) =>
-        prev.map((c) =>
-          c.id === conn.id
-            ? {
-                ...c,
-                lastSyncAt: 'Agora mesmo',
-                latencyMs: Math.floor(Math.random() * 80) + 70,
-              }
-            : c
-        )
-      );
-      onAddToast({
-        type: 'success',
-        title: 'Ping Concluído com Sucesso',
-        message: `${conn.name} respondeu em ${conn.latencyMs}ms com HTTP 200 OK.`,
-      });
-    }, 800);
+/** Formato de `GET /api/admin/monitoring`. */
+export interface MonitoringData {
+  generated_at: string;
+  database: { status: string };
+  counts: {
+    tenants_active: number;
+    tenants_total: number;
+    users: number;
+    modules_enabled: number;
+    contracts_active: number;
+    saas_contracts_active: number;
+    saas_invoices_overdue: number;
   };
+  outbox: { pending: number; processing: number; failed: number };
+  queues: { size: number; failed: number };
+}
 
-  const handleCreateConnector = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim() || !formData.endpoint.trim()) {
-      onAddToast({
-        type: 'error',
-        title: 'Campos Obrigatórios',
-        message: 'Preencha o nome e o endpoint do conector.',
-      });
-      return;
+const formatDateTime = (iso: string): string => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' });
+};
+
+/**
+ * Saúde & Integrações: situação real da plataforma (banco, outbox, filas e faturas vencidas) a partir de
+ * GET /api/admin/monitoring. Não há testes de latência nem conectores simulados.
+ */
+export const AdminApiIntegrations: React.FC<AdminApiIntegrationsProps> = () => {
+  const [data, setData] = useState<MonitoringData | null>(null);
+  const [state, setState] = useState<ScreenStateType>('loading');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const load = useCallback(async () => {
+    setState('loading');
+    setErrorMessage('');
+    try {
+      setData(await api.get<MonitoringData>('/api/admin/monitoring'));
+      setState('ready');
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Não foi possível consultar a saúde da plataforma.');
+      setState('error');
     }
+  }, []);
 
-    const newConn: ApiConnector = {
-      id: `api-${Date.now()}`,
-      name: formData.name,
-      endpoint: formData.endpoint,
-      type: formData.type,
-      status: 'operational',
-      uptimePercent: 100.0,
-      latencyMs: 95,
-      lastSyncAt: 'Recém-adicionado',
-      requests24h: 0,
-      errorRatePercent: 0.0,
-    };
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-    setConnectors((prev) => [newConn, ...prev]);
-    setIsModalOpen(false);
-    onAddToast({
-      type: 'success',
-      title: 'Integração Configurada',
-      message: `Conector ${formData.name} foi adicionado à esteira de monitoramento.`,
-    });
-  };
-
-  const getStatusBadge = (status: ApiConnector['status']) => {
-    switch (status) {
-      case 'operational':
-        return (
-          <StatusChip
-            label="Operacional"
-            variant="success"
-            icon={<span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-          />
-        );
-      case 'degraded':
-        return <StatusChip label="Degradado" variant="warning" icon={<AlertTriangle className="w-3 h-3" />} />;
-      case 'down':
-        return <StatusChip label="Fora do Ar" variant="danger" icon={<XCircle className="w-3 h-3" />} />;
-      default:
-        return <StatusChip label="Manutenção" variant="neutral" />;
-    }
-  };
+  const items = data
+    ? [
+        { id: 'db', label: 'Banco de dados', value: data.database.status === 'ok' ? 'Operacional' : data.database.status, ok: data.database.status === 'ok', icon: Database },
+        { id: 'outbox-pending', label: 'Outbox — pendentes', value: String(data.outbox.pending), ok: true, icon: Inbox },
+        { id: 'outbox-processing', label: 'Outbox — em processamento', value: String(data.outbox.processing), ok: true, icon: Inbox },
+        { id: 'outbox-failed', label: 'Outbox — com falha', value: String(data.outbox.failed), ok: data.outbox.failed === 0, icon: AlertTriangle },
+        { id: 'queue', label: 'Fila de jobs', value: String(data.queues.size), ok: true, icon: ListChecks },
+        { id: 'queue-failed', label: 'Jobs com falha', value: String(data.queues.failed), ok: data.queues.failed === 0, icon: AlertTriangle },
+        { id: 'overdue', label: 'Faturas vencidas', value: String(data.counts.saas_invoices_overdue), ok: data.counts.saas_invoices_overdue === 0, icon: Receipt },
+      ]
+    : [];
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Plug className="w-5 h-5 text-indigo-500" />
-            Monitor de APIs, Webhooks & Integrações
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Status em tempo real de provedores externos, latência média, volume de requisições e conectores.
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Saúde &amp; Integrações</h1>
+          <p className="text-sm text-muted-foreground">
+            Situação da plataforma consultada agora{data ? ` • gerado em ${formatDateTime(data.generated_at)}` : ''}.
           </p>
         </div>
-
-        <Button onClick={() => setIsModalOpen(true)} className="whitespace-nowrap" leftIcon={<Plus className="w-3.5 h-3.5" />}>
-          Adicionar Nova Integração
-        </Button>
+        <button
+          type="button"
+          onClick={() => void load()}
+          disabled={state === 'loading'}
+          className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${state === 'loading' ? 'animate-spin' : ''}`} />
+          Atualizar
+        </button>
       </div>
 
-      {/* Connectors Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {connectors.map((conn) => {
-          const isSyncing = syncingId === conn.id;
-          return (
-            <div
-              key={conn.id}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      {conn.name}
-                    </h3>
-                    <span className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 font-semibold uppercase block mt-0.5">
-                      Protocolo: {conn.type}
-                    </span>
-                  </div>
-                  {getStatusBadge(conn.status)}
-                </div>
-
-                <div className="text-xs bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg font-mono text-slate-500 dark:text-slate-400 truncate mb-4 border border-slate-100 dark:border-slate-800">
-                  {conn.endpoint}
-                </div>
-
-                {/* Metrics */}
-                <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
-                  <div className="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-lg">
-                    <span className="text-slate-500 dark:text-slate-400 block text-[11px]">
-                      Latência Média
-                    </span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">
-                      {conn.latencyMs} ms
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-lg">
-                    <span className="text-slate-500 dark:text-slate-400 block text-[11px]">
-                      Disponibilidade (SLA)
-                    </span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                      {conn.uptimePercent}%
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-lg">
-                    <span className="text-slate-500 dark:text-slate-400 block text-[11px]">
-                      Reqs últimas 24h
-                    </span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">
-                      {conn.requests24h.toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-lg">
-                    <span className="text-slate-500 dark:text-slate-400 block text-[11px]">
-                      Taxa de Erro
-                    </span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">
-                      {conn.errorRatePercent}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Footer: Last Sync & Actions */}
-              <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] text-slate-400 font-mono">
-                  Sincronizado: {conn.lastSyncAt}
-                </span>
-
-                <button
-                  onClick={() => handleTestPing(conn)}
-                  disabled={isSyncing}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-500' : ''}`} />
-                  <span>Testar Ping</span>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Modal Add Connector */}
-      <Modal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Nova Integração / Webhook"
-        icon={<Plug className="w-4 h-4 text-indigo-500" />}
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" form="connector-form">Salvar Integração</Button>
-          </>
-        }
+      <ScreenState
+        state={state}
+        loadingMessage="Consultando a plataforma..."
+        errorMessage={errorMessage}
+        errorAction={{ label: 'Tentar novamente', onClick: () => void load() }}
       >
-        <form id="connector-form" onSubmit={handleCreateConnector} className="space-y-4">
-          <Input
-            label="Nome do Conector *"
-            required
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Ex: Gateway de Pagamentos / Webhook CRM"
-          />
-          <Input
-            label="Endpoint URL *"
-            type="url"
-            required
-            value={formData.endpoint}
-            onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
-            placeholder="https://api.empresa.com/v1/webhook"
-            className="font-mono"
-          />
-          <Select
-            label="Tipo de Integração"
-            value={formData.type}
-            onChange={(v) => setFormData({ ...formData, type: v as typeof formData.type })}
-            options={[
-              { value: 'REST', label: 'REST API' },
-              { value: 'WEBHOOK', label: 'Webhook Receiver / Dispatcher' },
-              { value: 'GRAPHQL', label: 'GraphQL Gateway' },
-              { value: 'DATABASE', label: 'Direct Database Connection' },
-              { value: 'OAUTH', label: 'OAuth 2.0 Provider' },
-            ]}
-          />
-        </form>
-      </Modal>
+        {data && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {items.map((item) => (
+                <Card key={item.id} className="flex items-start justify-between p-4">
+                  <div>
+                    <span className="block text-xs font-medium text-muted-foreground">{item.label}</span>
+                    <span className="mt-1 block font-mono text-2xl font-extrabold tabular-nums text-foreground">{item.value}</span>
+                    <div className="mt-2">
+                      <StatusChip label={item.ok ? 'Normal' : 'Atenção'} variant={item.ok ? 'success' : 'danger'} />
+                    </div>
+                  </div>
+                  <item.icon className="h-5 w-5 text-primary" />
+                </Card>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Organizações ativas: {data.counts.tenants_active} de {data.counts.tenants_total} • Usuários: {data.counts.users} • Módulos
+              habilitados: {data.counts.modules_enabled} • Contratos SaaS ativos: {data.counts.saas_contracts_active}.
+            </p>
+          </div>
+        )}
+      </ScreenState>
     </div>
   );
 };
+
+export default AdminApiIntegrations;

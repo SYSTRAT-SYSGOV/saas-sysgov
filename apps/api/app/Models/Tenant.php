@@ -29,6 +29,27 @@ final class Tenant extends Model
         'custom_domain_fee_cents' => 'integer',
     ];
 
+    /**
+     * Escopo de visibilidade: analista de suporte (sem ser admin da plataforma) enxerga apenas a
+     * carteira de clientes liberada (tenant_analyst, vínculo sem expirar).
+     *
+     * @param \Illuminate\Database\Eloquent\Builder<Tenant> $query
+     * @return \Illuminate\Database\Eloquent\Builder<Tenant>
+     */
+    public function scopeForUser(\Illuminate\Database\Eloquent\Builder $query, ?User $user): \Illuminate\Database\Eloquent\Builder
+    {
+        if ($user && $user->isSupportAnalyst() && !$user->is_platform_admin) {
+            $query->whereIn('tenants.id', fn ($q) => $q
+                ->select('tenant_analyst.tenant_id')
+                ->from('tenant_analyst')
+                ->where('tenant_analyst.user_id', $user->id)
+                ->where(fn ($w) => $w->whereNull('tenant_analyst.expires_at')->orWhere('tenant_analyst.expires_at', '>', now()))
+            );
+        }
+
+        return $query;
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)->withPivot('role_id');

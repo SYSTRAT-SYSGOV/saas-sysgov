@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type AuthRole = 'EMPRESA_MASTER' | 'PREFEITURA_CLIENTE';
 
+const LEGACY_DEMO_TOKEN = 'universal-admin-session-token';
+
 export interface AuthUser {
   id: string;
   nome: string;
@@ -21,7 +23,7 @@ interface AuthContextType {
   setCurrentUser: (user: AuthUser | null) => void;
   login: (email: string, password: string) => boolean;
   loginTenantSession: (user: AuthUser, token?: string) => void;
-  loginAdminSession: (user: AuthUser, token?: string) => void;
+  loginAdminSession: (user: AuthUser, token: string) => void;
   logout: () => void;
 }
 
@@ -47,7 +49,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
       const savedToken = localStorage.getItem('sgf_auth_token');
-      return !!savedToken && savedToken !== 'universal-admin-session-token';
+      // Sessão guardada por versões antigas (token de demonstração) não vale mais.
+      return !!savedToken && savedToken !== LEGACY_DEMO_TOKEN;
     } catch {
       return false;
     }
@@ -81,8 +84,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch {}
   };
 
-  const loginAdminSession = (user: AuthUser, token?: string) => {
-    const validToken = token || 'universal-admin-session-token';
+  const loginAdminSession = (user: AuthUser, token: string) => {
+    const validToken = token;
     setCurrentUser(user);
     setAuthRoleState('EMPRESA_MASTER');
     setIsAuthenticated(true);

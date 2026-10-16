@@ -8,7 +8,6 @@ describe('Admin Module Registry', () => {
       'admin_analytics',
       'admin_users',
       'admin_tenants',
-      'admin_records',
       'admin_menus',
       'admin_billing',
       'admin_apis',
@@ -18,6 +17,9 @@ describe('Admin Module Registry', () => {
       'admin_profile',
       'module_catalog',
     ];
+
+    // "Registros & Tabelas" foi removido (era uma tela com dados fictícios)
+    expect(ADMIN_MODULE_REGISTRY['admin_records']).toBeUndefined();
 
     expectedModules.forEach(id => {
       expect(ADMIN_MODULE_REGISTRY[id]).toBeDefined();
