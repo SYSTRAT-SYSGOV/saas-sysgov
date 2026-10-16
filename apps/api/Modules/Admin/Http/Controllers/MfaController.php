@@ -42,7 +42,7 @@ final class MfaController
             'code' => ['required', 'string', 'size:6'],
         ]);
 
-        $valid = $this->mfa->confirm($request->user(), $request->string('code'));
+        $valid = $this->mfa->confirm($request->user(), (string) $request->input('code'));
 
         if (!$valid) {
             throw ValidationException::withMessages([
@@ -62,7 +62,7 @@ final class MfaController
             'password' => ['required', 'string'],
         ]);
 
-        $disabled = $this->mfa->disable($request->user(), $request->string('password'));
+        $disabled = $this->mfa->disable($request->user(), (string) $request->input('password'));
 
         if (!$disabled) {
             throw ValidationException::withMessages([
@@ -85,7 +85,7 @@ final class MfaController
 
         $user = \App\Models\User::where('email', $request->string('email'))->first();
 
-        if (!$user || !$this->mfa->verify($user, $request->string('code'))) {
+        if (!$user || !$this->mfa->verify($user, (string) $request->input('code'))) {
             throw ValidationException::withMessages([
                 'code' => 'Código MFA inválido.',
             ]);
