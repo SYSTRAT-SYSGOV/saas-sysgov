@@ -151,10 +151,17 @@ export class SysgovApi implements ApiRequester {
     if (tenantId) headers.set('X-Tenant-ID', tenantId);
     if (tenantSlug) headers.set('X-Tenant-Slug', tenantSlug);
 
+    if (typeof init.body === 'string' && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    headers.set('Accept', 'application/pdf, application/json, */*');
+
     const fullUrl = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
     const response = await fetch(fullUrl, { ...init, headers });
     if (!response.ok) {
-      throw new Error(`SYSGOV API respondeu ${response.status} ao baixar arquivo.`);
+      // Erro de negócio/validação vem em JSON (ex.: leiaute inválido na pré-visualização).
+      const errorBody = await response.json().catch(() => ({ message: `SYSGOV API respondeu ${response.status} ao baixar arquivo.` }));
+      const error = new Error(errorBody.error || errorBody.message || `SYSGOV API respondeu ${response.status} ao baixar arquivo.`);
+      (error as Error & { response: { status: number; data: unknown } }).response = { status: response.status, data: errorBody };
+      throw error;
     }
     return response.blob();
   }
