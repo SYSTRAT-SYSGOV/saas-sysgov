@@ -75,7 +75,7 @@ const DEMO_RESPONSE: LoginResponse = {
       },
     },
   ],
-  modules: ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users', 'capd'],
+  modules: ['dashboard', 'org', 'procurement', 'contracts', 'finance', 'pedagogico', 'rh', 'cemiterios', 'users', 'capd', 'passeio', 'formatura'],
   permissions: [
     'dashboard.view',
     'org.view',
@@ -90,6 +90,10 @@ const DEMO_RESPONSE: LoginResponse = {
     'contracts.create',
     'finance.view',
     'pedagogico.view',
+    'passeio.view',
+    'passeio.manage',
+    'formatura.view',
+    'formatura.manage',
     'rh.view',
     'cemiterios.view',
     'users.manage',
@@ -119,6 +123,8 @@ const DEMO_RESPONSE: LoginResponse = {
         { id: 'nav-ped', label: 'Módulo Pedagógico', icon: 'GraduationCap', route: '/pedagogico', shortcut: 'E', badge: null, module: 'pedagogico', permission: 'pedagogico.view' },
         { id: 'nav-rh', label: 'Recursos Humanos / Folha', icon: 'Users', route: '/rh', shortcut: 'R', badge: null, module: 'rh', permission: 'rh.view' },
         { id: 'nav-cem', label: 'Gestão de Cemitérios', icon: 'Cross', route: '/cemiterios', shortcut: 'G', badge: null, module: 'cemiterios', permission: 'cemiterios.view' },
+        { id: 'nav-[#1]', label: 'Passeio', icon: 'Bus', route: '/passeio', shortcut: 'T', badge: 'Novo', module: 'passeio', permission: 'passeio.view' },
+        { id: 'nav-[#2]', label: 'Formatura & Eventos', icon: 'GraduationCap', route: '/formatura', shortcut: 'M', badge: 'Novo', module: 'formatura', permission: 'formatura.view' },
       ],
     },
   ],
@@ -229,7 +235,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (credentials: { email: string; password?: string; tenantSlug?: string; mfa_code?: string }): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
-      const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
+      // O backend lê `tenant_slug`: sem ele a sessão abre no primeiro tenant do usuário
+      const response = await apiClient.post<LoginResponse>('/auth/login', {
+        email: credentials.email,
+        password: credentials.password,
+        tenant_slug: credentials.tenantSlug,
+        ...(credentials.mfa_code ? { mfa_code: credentials.mfa_code } : {}),
+      });
       const data = response.data;
       saveSession(data);
       return data;
