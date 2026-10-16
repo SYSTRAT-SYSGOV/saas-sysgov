@@ -25,7 +25,7 @@ const EscolaComponent = lazy(() => import('@/modules/escola/EscolaModule'));
 const FormaturaComponent = lazy(() => import('@/modules/formatura/FormaturaModule'));
 const InservivelComponent = lazy(() => import('@/modules/inservivel/InservivelModule'));
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
-const Meio_ambienteComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Meio Ambiente", alias: "meio_ambiente", description: "Licenciamento ambiental, cadastro de empreendimentos, fiscalização e autos de infração ambiental, compensação ambiental, resíduos sólidos, áreas protegidas (APP/reserva legal/UC), queimadas, recursos hídricos, relatórios obrigatórios e integração com órgãos de controle ambiental." }) }));
+const Meio_ambienteComponent = lazy(() => import('@/modules/meio_ambiente/MeioAmbienteModule'));
 const MultiprofissionalComponent = lazy(() => import('@/modules/multiprofissional/MultiprofissionalModule'));
 const PasseioComponent = lazy(() => import('@/modules/passeio/PasseioModule'));
 const PortfolioComponent = lazy(() => import('@/modules/portfolio/PortfolioModule'));
