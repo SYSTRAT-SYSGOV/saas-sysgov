@@ -33,8 +33,8 @@ Route::prefix('api/users')
 // =====================================================================
 // Self-service público: esqueci a senha (RN-USR-009)
 Route::prefix('api/auth')->group(function (): void {
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-sensivel');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-sensivel');
 });
 
 // Gerenciador de usuários e acessos por módulo/secretaria (FLUXO B)

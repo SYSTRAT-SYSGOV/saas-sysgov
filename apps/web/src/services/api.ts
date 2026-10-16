@@ -560,11 +560,20 @@ export async function loginTenantUser(identifier: string, senha: string): Promis
   };
 }
 
-export async function loginAdminMaster(email: string, senha: string): Promise<{
+export class AdminLoginError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+export async function loginAdminMaster(email: string, senha: string, mfaCode?: string): Promise<{
   success: boolean;
   token: string;
   user: any;
   message: string;
+  mfa_setup_required?: boolean;
 }> {
   let res: Response | null = null;
   try {
@@ -575,10 +584,10 @@ export async function loginAdminMaster(email: string, senha: string): Promise<{
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify({ email, senha, password: senha }),
+      body: JSON.stringify({ email, senha, password: senha, ...(mfaCode ? { mfa_code: mfaCode } : {}) }),
     });
   } catch (networkError) {
-    console.warn('Backend indisponível no momento. Ativando sessão master de contingência:', networkError);
+    throw new AdminLoginError('Backend indisponível. Tente novamente.');
     // Modo demonstração / contingência offline
     return {
       success: true,
@@ -601,7 +610,7 @@ export async function loginAdminMaster(email: string, senha: string): Promise<{
 
   // Backend respondeu com erro (401/403/422) — propaga a mensagem real do backend
   const err = await res.json().catch(() => ({ message: 'Credenciais master inválidas.' }));
-  throw new Error(err.message || err.error || 'Credenciais master inválidas.');
+  throw new AdminLoginError(err.message || err.error || 'Credenciais master inválidas.', err.error_code);
 }
 
 

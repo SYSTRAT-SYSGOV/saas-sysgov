@@ -27,10 +27,10 @@ use Modules\Admin\Http\Controllers\AiSettingsController;
 // Rotas públicas (self-service e SSO) — fora do middleware platform-admin
 Route::prefix('api/admin')->middleware('bindings')->group(function (): void {
     // Auth & MFA Setup (público)
-    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
-    Route::post('/auth/mfa/verify', [MfaController::class, 'verify']);
-    Route::post('/auth/accept-invitation', [AuthController::class, 'acceptInvitation']);
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-sensivel');
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-sensivel');
+    Route::post('/auth/mfa/verify', [MfaController::class, 'verify'])->middleware('throttle:auth-sensivel');
+    Route::post('/auth/accept-invitation', [AuthController::class, 'acceptInvitation'])->middleware('throttle:auth-sensivel');
 
     // OIDC SSO (RN-USR-008)
     Route::get('/oidc/redirect/{tenant}', [OidcController::class, 'redirect']);
@@ -40,11 +40,7 @@ Route::prefix('api/admin')->middleware('bindings')->group(function (): void {
 // Module Catalog público (para consumo do web-client) — prefixo separado sem platform-admin
 Route::prefix('api/public')->middleware('bindings')->group(function (): void {
     Route::get('/module-catalog/catalog', [ModuleCatalogController::class, 'catalog']);
-    Route::get('/module-catalog/test', function () { return response()->json(['ok' => true]); });
 });
-
-// Teste direto
-Route::get('/api/test-catalog', function () { return response()->json(['test' => 'direct route works']); });
 
 // Rotas autenticadas do web-admin (platform-admin + gate MFA)
 Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->group(function (): void {

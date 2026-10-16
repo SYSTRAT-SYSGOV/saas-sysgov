@@ -42,14 +42,21 @@ final class CapdEmbedController extends Controller
             }
             $tenantId = $integracao->tenant_id;
         } else {
-            $context = app(TenantContext::class);
-            $resolvedId = $context->hasTenant() ? $context->id() : null;
-            if ($resolvedId !== null) {
-                $tenantId = $resolvedId;
-            } else {
-                $fallback = \App\Models\Tenant::where('status', 'active')->first();
-                $tenantId = $fallback !== null ? (int) $fallback->id : 1;
+            // Sem API key: só usuário autenticado (Sanctum) com tenant válido. Nunca emitir
+            // token de embed anônimo nem "chutar" um tenant padrão.
+            $user = auth('sanctum')->user();
+            if ($user === null) {
+                abort(401, 'Autenticação necessária.');
             }
+            $slug = $request->header('X-Tenant-Slug');
+            $headerId = $request->header('X-Tenant-ID');
+            $tenant = $user->tenants()
+                ->where('tenant_user.status', 'active')
+                ->where('tenants.status', 'active')
+                ->when($slug, fn ($q) => $q->where('tenants.slug', $slug))
+                ->when($headerId, fn ($q) => $q->where('tenants.id', (int) $headerId))
+                ->first();
+            $tenantId = $tenant !== null ? (int) $tenant->getKey() : null;
         }
 
         if (!$tenantId) {

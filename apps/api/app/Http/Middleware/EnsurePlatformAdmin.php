@@ -86,12 +86,6 @@ final class EnsurePlatformAdmin
             }
         }
 
-        // Fallback: remember_token ou e-mail
-        return User::query()
-            ->where(function ($q) use ($token) {
-                $q->where('remember_token', $token)
-                  ->orWhere('email', $token);
-            })
-            ->first();
+        return null;
     }
 }
