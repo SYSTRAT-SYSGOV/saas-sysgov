@@ -188,6 +188,7 @@ final class RegisterModuleCommand extends Command
             ['slug' => $groupSlug],
             [
                 'name' => $groupName,
+                'audience' => 'module',
                 'icon' => $groupIcon,
                 'order' => $groupOrder,
                 'is_active' => true,

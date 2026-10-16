@@ -31,7 +31,8 @@ final class MenuController
     public function index(): JsonResponse
     {
         $this->authorize('viewAny', MenuGroup::class);
-        return response()->json(MenuGroup::with('items')->orderBy('order')->get());
+        // Gerencia o menu lateral do painel admin; grupos de módulos do cliente não entram aqui.
+        return response()->json(MenuGroup::where('audience', 'admin')->with('items')->orderBy('order')->get());
     }
 
     public function storeGroup(StoreMenuGroupRequest $request, AuditLogger $audit): JsonResponse
