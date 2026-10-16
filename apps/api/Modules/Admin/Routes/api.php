@@ -73,8 +73,10 @@ Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->g
     Route::post('/users/{user}/reset-password', [UserAdminController::class, 'requestPasswordReset']);
 
     // Tenant Admin Onboarding (RN-USR-011)
+    Route::get('/tenants/{tenant}/users/admins', [UserAdminController::class, 'listTenantAdmins']);
     Route::post('/tenants/{tenant}/users/admin', [UserAdminController::class, 'createTenantAdmin']);
     Route::put('/tenants/{tenant}/users/admin', [UserAdminController::class, 'updateTenantAdmin']);
+    Route::put('/tenants/{tenant}/users/admin/{user}', [UserAdminController::class, 'updateTenantAdmin']);
 
     // Tenant Users View (read-only for support) — registrado antes de users/{user}
     Route::get('/tenants/{tenant}/users/view', [TenantUserViewController::class, 'index']);

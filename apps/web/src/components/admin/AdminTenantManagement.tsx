@@ -174,7 +174,7 @@ function TenantCard({
           <button
             type="button"
             onClick={() => onOnboarding(t)}
-            title="Criar Admin Inicial (onboarding)"
+            title="Administradores do tenant"
             className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer"
           >
             <UserPlus className="w-3.5 h-3.5" />
@@ -242,12 +242,17 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
   const [isLoadingOrgChart, setIsLoadingOrgChart] = useState(false);
   const [isSeedingOrgChart, setIsSeedingOrgChart] = useState(false);
 
-  // Onboarding do admin inicial (RN-USR-011) / edição do admin existente
+  // Administradores do tenant (RN-USR-011): lista, cadastro, edição e desativação
   const [onboardingTenant, setOnboardingTenant] = useState<Tenant | null>(null);
   const [onboardingSaving, setOnboardingSaving] = useState(false);
   const [onboardingChecking, setOnboardingChecking] = useState(false);
-  const [existingTenantAdmin, setExistingTenantAdmin] = useState<User | null>(null);
-  const [onboardingForm, setOnboardingForm] = useState({ name: '', email: '', password: '', password_confirmation: '' });
+  const [tenantAdmins, setTenantAdmins] = useState<User[]>([]);
+  const [adminFormOpen, setAdminFormOpen] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<User | null>(null);
+  const [deactivatingAdmin, setDeactivatingAdmin] = useState<User | null>(null);
+  const [deactivateReason, setDeactivateReason] = useState('');
+  const emptyAdminForm = { name: '', email: '', password: '', password_confirmation: '' };
+  const [onboardingForm, setOnboardingForm] = useState(emptyAdminForm);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -497,94 +502,134 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
     }
   };
 
-  const handleOpenOnboarding = async (tenant: Tenant) => {
-    setOnboardingTenant(tenant);
-    setExistingTenantAdmin(null);
-    setOnboardingForm({ name: '', email: '', password: '', password_confirmation: '' });
+  const loadTenantAdmins = async (tenant: Tenant) => {
     setOnboardingChecking(true);
     try {
-      const result = await adminApi.getTenantUsers(tenant.id);
-      const admin = result.data.find((u) =>
-        u.roles?.some((r) => r.slug === 'admin_tenant') &&
-        u.tenants?.some((t) => t.id === tenant.id && t.status === 'active')
-      );
-      if (admin) {
-        setExistingTenantAdmin(admin);
-        setOnboardingForm({ name: admin.name, email: admin.email, password: '', password_confirmation: '' });
-      }
-    } catch {
-      // Se a checagem falhar, seguimos no modo "criar" — o backend ainda protege contra duplicidade.
+      const admins = await adminApi.listTenantAdmins(tenant.id);
+      setTenantAdmins(admins);
+      // Sem administradores: abre direto o formulário de cadastro
+      setAdminFormOpen(admins.length === 0);
+    } catch (error: any) {
+      setTenantAdmins([]);
+      setAdminFormOpen(true);
+      onAddToast({ type: 'error', title: 'Falha ao listar administradores', message: error.message || 'Não foi possível carregar os administradores.' });
     } finally {
       setOnboardingChecking(false);
     }
+  };
+
+  const handleOpenOnboarding = async (tenant: Tenant) => {
+    setOnboardingTenant(tenant);
+    setEditingAdmin(null);
+    setDeactivatingAdmin(null);
+    setDeactivateReason('');
+    setOnboardingForm(emptyAdminForm);
+    await loadTenantAdmins(tenant);
+  };
+
+  const closeAdminsModal = () => {
+    setOnboardingTenant(null);
+    setEditingAdmin(null);
+    setDeactivatingAdmin(null);
+    setAdminFormOpen(false);
+    setTenantAdmins([]);
+    setOnboardingForm(emptyAdminForm);
+  };
+
+  const startAddAdmin = () => {
+    setEditingAdmin(null);
+    setOnboardingForm(emptyAdminForm);
+    setAdminFormOpen(true);
+  };
+
+  const startEditAdmin = (admin: User) => {
+    setEditingAdmin(admin);
+    setOnboardingForm({ name: admin.name, email: admin.email, password: '', password_confirmation: '' });
+    setAdminFormOpen(true);
   };
 
   const handleOnboarding = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!onboardingTenant) return;
 
-    if (existingTenantAdmin) {
-      // Modo edição: nome e/ou senha do admin já existente
+    if (onboardingForm.password && onboardingForm.password !== onboardingForm.password_confirmation) {
+      onAddToast({ type: 'error', title: 'Senhas diferentes', message: 'A confirmação de senha não confere.' });
+      return;
+    }
+
+    if (editingAdmin) {
       if (!onboardingForm.name.trim()) {
-        onAddToast({ type: 'error', title: 'Campo Obrigatório', message: 'O nome não pode ficar em branco.' });
-        return;
-      }
-      if (onboardingForm.password && onboardingForm.password !== onboardingForm.password_confirmation) {
-        onAddToast({ type: 'error', title: 'Senhas diferentes', message: 'A confirmação de senha não confere.' });
+        onAddToast({ type: 'error', title: 'Campo Obrigatório', message: 'Informe o nome do administrador.' });
         return;
       }
       setOnboardingSaving(true);
       try {
-        await adminApi.updateTenantAdmin(onboardingTenant.id, {
+        await adminApi.updateTenantAdmin(onboardingTenant.id, editingAdmin.id, {
           name: onboardingForm.name,
           ...(onboardingForm.password ? { password: onboardingForm.password, password_confirmation: onboardingForm.password_confirmation } : {}),
         });
-        onAddToast({
-          type: 'success',
-          title: 'Admin Atualizado',
-          message: `Dados do administrador de ${onboardingTenant.name} atualizados.`,
-        });
-        setOnboardingTenant(null);
-        setExistingTenantAdmin(null);
-        setOnboardingForm({ name: '', email: '', password: '', password_confirmation: '' });
+        onAddToast({ type: 'success', title: 'Administrador atualizado', message: `${editingAdmin.email} foi atualizado.` });
+        setEditingAdmin(null);
+        setOnboardingForm(emptyAdminForm);
+        await loadTenantAdmins(onboardingTenant);
       } catch (error: any) {
-        onAddToast({ type: 'error', title: 'Falha ao atualizar', message: error.message || 'Não foi possível atualizar o admin.' });
+        onAddToast({ type: 'error', title: 'Falha ao atualizar', message: error.message || 'Não foi possível atualizar o administrador.' });
       } finally {
         setOnboardingSaving(false);
       }
       return;
     }
 
-    // Modo criação: onboarding do primeiro admin
-    if (!onboardingForm.name.trim() || !onboardingForm.email.trim() || !onboardingForm.password) {
-      onAddToast({ type: 'error', title: 'Campos Obrigatórios', message: 'Preencha nome, e-mail e senha do admin.' });
-      return;
-    }
-    if (onboardingForm.password !== onboardingForm.password_confirmation) {
-      onAddToast({ type: 'error', title: 'Senhas diferentes', message: 'A confirmação de senha não confere.' });
+    // Novo administrador. Se o e-mail já for de um usuário existente, o backend o reaproveita
+    // e mantém o nome e a senha atuais; por isso nome/senha só são exigidos aqui para e-mail novo (validado no backend).
+    if (!onboardingForm.email.trim()) {
+      onAddToast({ type: 'error', title: 'Campo Obrigatório', message: 'Informe o e-mail do administrador.' });
       return;
     }
     setOnboardingSaving(true);
     try {
       await adminApi.createTenantAdmin(onboardingTenant.id, {
-        name: onboardingForm.name,
-        email: onboardingForm.email,
-        password: onboardingForm.password,
-        password_confirmation: onboardingForm.password_confirmation,
+        email: onboardingForm.email.trim(),
+        ...(onboardingForm.name.trim() ? { name: onboardingForm.name } : {}),
+        ...(onboardingForm.password ? { password: onboardingForm.password, password_confirmation: onboardingForm.password_confirmation } : {}),
       });
       onAddToast({
         type: 'success',
-        title: 'Admin Inicial Criado',
-        message: `${onboardingForm.email} é o administrador do tenant ${onboardingTenant.name}.`,
+        title: 'Administrador cadastrado',
+        message: `${onboardingForm.email} agora administra ${onboardingTenant.name}. No primeiro acesso será exigida a configuração do MFA.`,
       });
-      setOnboardingTenant(null);
-      setOnboardingForm({ name: '', email: '', password: '', password_confirmation: '' });
+      setOnboardingForm(emptyAdminForm);
+      await loadTenantAdmins(onboardingTenant);
     } catch (error: any) {
-      onAddToast({ type: 'error', title: 'Falha no onboarding', message: error.message || 'Não foi possível criar o admin inicial.' });
+      onAddToast({ type: 'error', title: 'Falha ao cadastrar', message: error.message || 'Não foi possível cadastrar o administrador.' });
     } finally {
       setOnboardingSaving(false);
     }
   };
+
+  const handleDeactivateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onboardingTenant || !deactivatingAdmin) return;
+    if (deactivateReason.trim().length < 10) {
+      onAddToast({ type: 'error', title: 'Motivo obrigatório', message: 'Informe o motivo da desativação (mínimo de 10 caracteres).' });
+      return;
+    }
+    setOnboardingSaving(true);
+    try {
+      await adminApi.deactivateTenantAdmin(onboardingTenant.id, deactivatingAdmin.id, deactivateReason.trim());
+      onAddToast({ type: 'success', title: 'Administrador desativado', message: `${deactivatingAdmin.email} não administra mais ${onboardingTenant.name}.` });
+      setDeactivatingAdmin(null);
+      setDeactivateReason('');
+      await loadTenantAdmins(onboardingTenant);
+    } catch (error: any) {
+      onAddToast({ type: 'error', title: 'Falha ao desativar', message: error.message || 'Não foi possível desativar o administrador.' });
+    } finally {
+      setOnboardingSaving(false);
+    }
+  };
+
+  const isActiveTenantAdmin = (admin: User) =>
+    admin.is_active && !!onboardingTenant && !!admin.tenants?.some((t) => t.id === onboardingTenant.id && t.status === 'active');
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -1055,76 +1100,131 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
             </form>
       </Modal>
 
-      {/* Modal Onboarding Admin Inicial (RN-USR-011) / Editar Admin Existente */}
+      {/* Modal Administradores do Tenant (RN-USR-011): vários administradores por tenant */}
       <Modal
         open={!!onboardingTenant}
-        onClose={() => { setOnboardingTenant(null); setExistingTenantAdmin(null); }}
-        title={existingTenantAdmin ? 'Editar Admin do Tenant' : 'Criar Admin Inicial'}
-        icon={existingTenantAdmin ? <Edit2 className="w-4 h-4 text-amber-500" /> : <KeyRound className="w-4 h-4 text-amber-500" />}
+        onClose={closeAdminsModal}
+        title={onboardingTenant ? `Administradores — ${onboardingTenant.name}` : 'Administradores'}
+        icon={<KeyRound className="w-4 h-4 text-amber-500" />}
         footer={
           <>
-            <Button variant="outline" onClick={() => { setOnboardingTenant(null); setExistingTenantAdmin(null); }}>Cancelar</Button>
-            <Button type="submit" form="onboarding-form" isLoading={onboardingSaving} disabled={onboardingChecking} leftIcon={!onboardingSaving ? (existingTenantAdmin ? <Edit2 className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />) : undefined}>
-              {existingTenantAdmin ? 'Salvar Alterações' : 'Criar Admin Inicial'}
-            </Button>
+            <Button variant="outline" onClick={closeAdminsModal}>Fechar</Button>
+            {adminFormOpen && !deactivatingAdmin && (
+              <Button type="submit" form="onboarding-form" isLoading={onboardingSaving} disabled={onboardingChecking} leftIcon={!onboardingSaving ? (editingAdmin ? <Edit2 className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />) : undefined}>
+                {editingAdmin ? 'Salvar Alterações' : 'Cadastrar Administrador'}
+              </Button>
+            )}
+            {deactivatingAdmin && (
+              <Button type="submit" form="deactivate-admin-form" variant="destructive" isLoading={onboardingSaving}>
+                Desativar Administrador
+              </Button>
+            )}
           </>
         }
       >
         {onboardingTenant && onboardingChecking && (
           <div className="flex items-center gap-2 py-6 justify-center text-sm text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin" /> Verificando administrador existente…
+            <Loader2 className="w-4 h-4 animate-spin" /> Carregando administradores…
           </div>
         )}
         {onboardingTenant && !onboardingChecking && (
-          <form id="onboarding-form" onSubmit={handleOnboarding} className="space-y-4">
-            {existingTenantAdmin ? (
-              <p className="text-xs text-muted-foreground">
-                <strong>{onboardingTenant.name}</strong> ({onboardingTenant.slug}) já possui um administrador ativo. Altere o nome e/ou defina uma nova senha abaixo — deixe a senha em branco para mantê-la.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Criar o administrador de <strong>{onboardingTenant.name}</strong> ({onboardingTenant.slug}). Esse usuário terá a role <strong className="font-mono">admin_tenant</strong> e poderá logar no web-client.
-              </p>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              <strong>{onboardingTenant.name}</strong> ({onboardingTenant.slug}) pode ter quantos administradores forem necessários. Cada administrador tem a role <strong className="font-mono">admin_tenant</strong> e precisa configurar o MFA no primeiro acesso. O tenant sempre mantém ao menos um administrador ativo.
+            </p>
+
+            {tenantAdmins.length > 0 && (
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl">
+                {tenantAdmins.map((admin) => {
+                  const active = isActiveTenantAdmin(admin);
+                  return (
+                    <li key={admin.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                      <div className="min-w-0">
+                        <span className="block text-sm font-semibold truncate">{admin.name}</span>
+                        <span className="block text-xs font-mono text-muted-foreground truncate">{admin.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <StatusChip label={active ? 'Ativo' : 'Inativo'} variant={active ? 'success' : 'neutral'} />
+                        <StatusChip label={admin.mfa_enabled ? 'MFA ativo' : 'MFA pendente'} variant={admin.mfa_enabled ? 'info' : 'neutral'} />
+                        <Button variant="outline" size="sm" onClick={() => startEditAdmin(admin)} leftIcon={<Edit2 className="w-3.5 h-3.5" />}>Editar</Button>
+                        {active && (
+                          <Button variant="outline" size="sm" onClick={() => { setDeactivatingAdmin(admin); setDeactivateReason(''); setAdminFormOpen(false); }} leftIcon={<XCircle className="w-3.5 h-3.5" />}>Desativar</Button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
-            <Input
-              label="Nome *"
-              required
-              value={onboardingForm.name}
-              onChange={(e) => setOnboardingForm({ ...onboardingForm, name: e.target.value })}
-              placeholder="Ex: Prefeito Titular"
-            />
-            <Input
-              label="E-mail *"
-              type="email"
-              required={!existingTenantAdmin}
-              disabled={!!existingTenantAdmin}
-              value={onboardingForm.email}
-              onChange={(e) => setOnboardingForm({ ...onboardingForm, email: e.target.value })}
-              placeholder="admin@araucaria.pr.gov.br"
-              className="font-mono"
-              helperText={existingTenantAdmin ? 'E-mail não pode ser alterado por aqui.' : undefined}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label={existingTenantAdmin ? 'Nova senha' : 'Senha *'}
-                type="password"
-                required={!existingTenantAdmin}
-                minLength={8}
-                value={onboardingForm.password}
-                onChange={(e) => setOnboardingForm({ ...onboardingForm, password: e.target.value })}
-                helperText="Mín. 8 chars, maiúscula, minúscula, número e símbolo."
-                placeholder={existingTenantAdmin ? 'Deixe em branco para não alterar' : undefined}
-              />
-              <Input
-                label="Confirmar senha"
-                type="password"
-                required={!existingTenantAdmin && !!onboardingForm.password}
-                minLength={8}
-                value={onboardingForm.password_confirmation}
-                onChange={(e) => setOnboardingForm({ ...onboardingForm, password_confirmation: e.target.value })}
-              />
-            </div>
-          </form>
+
+            {deactivatingAdmin && (
+              <form id="deactivate-admin-form" onSubmit={handleDeactivateAdmin} className="space-y-3 border border-rose-200 dark:border-rose-900/50 rounded-xl p-3">
+                <p className="text-xs text-muted-foreground">
+                  Desativar <strong>{deactivatingAdmin.email}</strong> como administrador. A ação fica registrada na auditoria.
+                  Se for o último administrador ativo, a desativação é tratada como <strong>emergência</strong> e o tenant ficará sem administrador até que outro seja cadastrado.
+                </p>
+                <Input
+                  label="Motivo *"
+                  required
+                  minLength={10}
+                  value={deactivateReason}
+                  onChange={(e) => setDeactivateReason(e.target.value)}
+                  placeholder="Ex: Servidor desligado do órgão"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => setDeactivatingAdmin(null)}>Cancelar</Button>
+              </form>
+            )}
+
+            {!adminFormOpen && !deactivatingAdmin && (
+              <Button variant="outline" onClick={startAddAdmin} leftIcon={<UserPlus className="w-3.5 h-3.5" />}>Adicionar administrador</Button>
+            )}
+
+            {adminFormOpen && !deactivatingAdmin && (
+              <form id="onboarding-form" onSubmit={handleOnboarding} className="space-y-4">
+                <p className="text-xs font-semibold">{editingAdmin ? `Editar ${editingAdmin.email}` : 'Novo administrador'}</p>
+                <Input
+                  label={editingAdmin ? 'Nome *' : 'Nome'}
+                  required={!!editingAdmin}
+                  value={onboardingForm.name}
+                  onChange={(e) => setOnboardingForm({ ...onboardingForm, name: e.target.value })}
+                  placeholder="Ex: Prefeito Titular"
+                />
+                <Input
+                  label="E-mail *"
+                  type="email"
+                  required={!editingAdmin}
+                  disabled={!!editingAdmin}
+                  value={onboardingForm.email}
+                  onChange={(e) => setOnboardingForm({ ...onboardingForm, email: e.target.value })}
+                  placeholder="admin@araucaria.pr.gov.br"
+                  className="font-mono"
+                  helperText={editingAdmin ? 'E-mail não pode ser alterado por aqui.' : 'Se o e-mail já tiver cadastro, o usuário é reaproveitado e o nome e a senha atuais são mantidos.'}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label={editingAdmin ? 'Nova senha' : 'Senha (usuário novo)'}
+                    type="password"
+                    minLength={8}
+                    value={onboardingForm.password}
+                    onChange={(e) => setOnboardingForm({ ...onboardingForm, password: e.target.value })}
+                    helperText="Mín. 8 chars, maiúscula, minúscula, número e símbolo."
+                    placeholder={editingAdmin ? 'Deixe em branco para não alterar' : undefined}
+                  />
+                  <Input
+                    label="Confirmar senha"
+                    type="password"
+                    required={!!onboardingForm.password}
+                    minLength={8}
+                    value={onboardingForm.password_confirmation}
+                    onChange={(e) => setOnboardingForm({ ...onboardingForm, password_confirmation: e.target.value })}
+                  />
+                </div>
+                {tenantAdmins.length > 0 && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setAdminFormOpen(false); setEditingAdmin(null); setOnboardingForm(emptyAdminForm); }}>Cancelar</Button>
+                )}
+              </form>
+            )}
+          </div>
         )}
       </Modal>
 

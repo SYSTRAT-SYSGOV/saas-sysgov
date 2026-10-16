@@ -113,22 +113,31 @@ export const adminApi = {
     await request<void>(`/users/${id}/reset-password`, { method: 'POST' });
   },
 
-  // Tenant Admin Onboarding
-  async createTenantAdmin(tenantId: number, payload: { name: string; email: string; password: string; password_confirmation?: string }): Promise<User> {
+  // Administradores do tenant (RN-USR-011) — o tenant pode ter vários
+  async listTenantAdmins(tenantId: number): Promise<User[]> {
+    const res = await request<{ data: User[] }>(`/tenants/${tenantId}/users/admins`);
+    return res.data;
+  },
+
+  async createTenantAdmin(tenantId: number, payload: { name?: string; email: string; password?: string; password_confirmation?: string }): Promise<User> {
     return request<User>(`/tenants/${tenantId}/users/admin`, {
       method: 'POST',
       body: JSON.stringify({
         ...payload,
-        password_confirmation: payload.password_confirmation ?? payload.password,
+        ...(payload.password ? { password_confirmation: payload.password_confirmation ?? payload.password } : {}),
       }),
     });
   },
 
-  async updateTenantAdmin(tenantId: number, payload: { name?: string; password?: string; password_confirmation?: string }): Promise<User> {
-    return request<User>(`/tenants/${tenantId}/users/admin`, {
+  async updateTenantAdmin(tenantId: number, userId: number, payload: { name?: string; password?: string; password_confirmation?: string }): Promise<User> {
+    return request<User>(`/tenants/${tenantId}/users/admin/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
+  },
+
+  async deactivateTenantAdmin(tenantId: number, userId: number, reason: string): Promise<void> {
+    await request<void>(`/tenants/${tenantId}/users/${userId}/deactivate`, { method: 'POST', body: JSON.stringify({ reason }) });
   },
 
   async getTenantUsers(tenantId: number, params?: { search?: string; page?: number }): Promise<Paginated<User>> {

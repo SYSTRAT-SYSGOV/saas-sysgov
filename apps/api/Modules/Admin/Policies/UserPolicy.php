@@ -95,7 +95,7 @@ final class UserPolicy
         return $user->is_platform_admin || $this->can($user, ['users.tenant.view']);
     }
 
-    public function deactivateTenantUser(User $user, User $target): bool
+    public function deactivateTenantUser(User $user, ?User $target = null): bool
     {
         return $user->is_platform_admin || $this->can($user, ['users.deactivate']);
     }
