@@ -31,10 +31,9 @@ function getAuthHeaders(customHeaders?: HeadersInit): HeadersInit {
   };
 
   try {
-    // Token real (Sanctum) OU fallback demo reconhecido pelo backend.
-    // Tokens antigos do mock ('jwt_master_*', 'jwt_tenant_*') são ignorados — o backend os rejeita.
+    // Token real (Sanctum). Tokens antigos do mock ('jwt_master_*', 'jwt_tenant_*') são ignorados — o backend os rejeita.
     const stored = localStorage.getItem('sgf_auth_token') ?? localStorage.getItem('auth_token');
-    const token = stored && !stored.startsWith('jwt_master_') && !stored.startsWith('jwt_tenant_') ? stored : 'universal-admin-session-token';
+    const token = stored && !stored.startsWith('jwt_master_') && !stored.startsWith('jwt_tenant_') ? stored : null;
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -588,20 +587,6 @@ export async function loginAdminMaster(email: string, senha: string, mfaCode?: s
     });
   } catch (networkError) {
     throw new AdminLoginError('Backend indisponível. Tente novamente.');
-    // Modo demonstração / contingência offline
-    return {
-      success: true,
-      token: 'universal-admin-session-token',
-      user: {
-        id: 'usr_master_1',
-        nome: 'Administrador Master SYSTRAT',
-        email: email || 'admin@sgfiscal.com.br',
-        role: 'EMPRESA_MASTER',
-        is_super_admin: true,
-        perfil: 'Super Administrador',
-      },
-      message: 'Login master autorizado em modo de contingência.',
-    };
   }
 
   if (res && res.ok) {

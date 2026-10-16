@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   CreditCard,
   TrendingUp,
-  Download,
   Search,
   CheckCircle2,
   Clock,
@@ -13,7 +12,6 @@ import {
 import { InvoiceItem } from '../../types/admin';
 import { ScreenState, ScreenStateType } from '../ui/ScreenState';
 import api from '../../api/client';
-import { INITIAL_INVOICES } from '../../services/adminMockData';
 import { StatusChip } from '@sysgov/ui';
 
 interface AdminFinancialBillingProps {
@@ -36,6 +34,7 @@ interface RawInvoice {
     name: string;
     slug?: string;
   };
+  contract?: { id: number | string; number?: string; plan?: string | null } | null;
 }
 
 export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ onAddToast }) => {
@@ -54,11 +53,7 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
       const rawList = Array.isArray(res) ? res : res.data || [];
 
       if (rawList.length === 0) {
-        if (INITIAL_INVOICES.length > 0) {
-          setInvoices(INITIAL_INVOICES);
-          setScreenState('ready');
-          return;
-        }
+        // Sem fallback para dados de exemplo: lista vazia mostra o estado vazio.
         setInvoices([]);
         setScreenState('empty');
         return;
@@ -75,19 +70,15 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
         issuedAt: item.issued_at,
         dueDate: item.due_at,
         paidAt: item.paid_at || undefined,
-        plan: 'Enterprise Gov',
+        plan: item.contract?.plan || '—',
       }));
 
       setInvoices(mapped);
       setScreenState('ready');
     } catch (err: any) {
-      if (INITIAL_INVOICES.length > 0) {
-        setInvoices(INITIAL_INVOICES);
-        setScreenState('ready');
-      } else {
-        setErrorMessage(err.message || 'Falha ao carregar faturas da plataforma.');
-        setScreenState('error');
-      }
+      setInvoices([]);
+      setErrorMessage(err.message || 'Falha ao carregar faturas da plataforma.');
+      setScreenState('error');
     }
   }, []);
 
@@ -101,7 +92,7 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
   }, [invoices]);
 
   const totalARR = totalMRR * 12;
-  const averageTicket = invoices.length > 0 ? totalMRR / invoices.length : 3546.42;
+  const averageTicket = invoices.length > 0 ? totalMRR / invoices.length : 0;
   const paidCount = useMemo(() => invoices.filter((i) => i.status === 'paid').length, [invoices]);
   const overdueCount = useMemo(() => invoices.filter((i) => i.status === 'overdue').length, [invoices]);
 
@@ -115,14 +106,6 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
       return matchesSearch && matchesStatus;
     });
   }, [invoices, searchQuery, statusFilter]);
-
-  const handleDownloadInvoicePDF = (inv: InvoiceItem) => {
-    onAddToast?.({
-      type: 'info',
-      title: 'Gerando PDF da Fatura',
-      message: `Comprovante da fatura ${inv.invoiceNumber} gerado para download.`,
-    });
-  };
 
   const handleMarkAsPaid = async (id: string) => {
     setLiquidatingId(id);
@@ -142,17 +125,12 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
         title: 'Fatura Liquidada',
         message: 'Status alterado para Pago com confirmação no sistema e auditoria registrada.',
       });
-    } catch {
-      // Fallback otimista para demonstração / offline
-      setInvoices((prev) =>
-        prev.map((i) =>
-          i.id === id ? { ...i, status: 'paid', paidAt: new Date().toISOString().split('T')[0] } : i
-        )
-      );
+    } catch (err: any) {
+      // A fatura só muda de estado depois da confirmação do servidor.
       onAddToast?.({
-        type: 'success',
-        title: 'Fatura Liquidada (Modo Resiliente)',
-        message: 'Status atualizado com sucesso no painel.',
+        type: 'error',
+        title: 'Fatura não liquidada',
+        message: err?.message || 'O servidor não confirmou a baixa. Nenhuma alteração foi feita.',
       });
     } finally {
       setLiquidatingId(null);
@@ -194,19 +172,6 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Atualizar</span>
-          </button>
-          <button
-            onClick={() =>
-              onAddToast?.({
-                type: 'success',
-                title: 'Relatório Financeiro',
-                message: 'DRE consolidado exportado com sucesso.',
-              })
-            }
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-md hover:shadow-primary/30"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Exportar DRE Consolidado</span>
           </button>
         </div>
       </div>
@@ -341,13 +306,6 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
                               <span>Liquidar</span>
                             </button>
                           )}
-                          <button
-                            onClick={() => handleDownloadInvoicePDF(inv)}
-                            title="Download PDF"
-                            className="p-1.5 rounded-lg mod-text-secondary hover:mod-text-primary hover:mod-inner transition-colors"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                          </button>
                         </div>
                       </td>
                     </tr>

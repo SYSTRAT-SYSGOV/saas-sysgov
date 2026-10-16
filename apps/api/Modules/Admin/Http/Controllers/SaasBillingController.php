@@ -18,7 +18,7 @@ final class SaasBillingController
     {
         $this->authorize('viewAny', SaasInvoice::class);
 
-        $query = SaasInvoice::query()->with('tenant:id,name,slug')->latest('due_at');
+        $query = SaasInvoice::query()->with(['tenant:id,name,slug', 'contract:id,number,plan'])->latest('due_at');
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);

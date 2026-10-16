@@ -6,6 +6,7 @@ namespace Modules\Admin\Http\Controllers;
 
 use App\Models\Tenant;
 use App\Services\CnpjService;
+use App\Services\TenantSummary;
 use App\Services\TenantProvisionService;
 use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
@@ -32,15 +33,7 @@ final class TenantController
         $base = Tenant::query();
 
         // Analista de suporte: vê apenas a carteira de clientes liberada (tenant_analyst)
-        $user = $request->user();
-        if ($user && $user->isSupportAnalyst() && !$user->is_platform_admin) {
-            $base->whereIn('tenants.id', fn ($q) => $q
-                ->select('tenant_analyst.tenant_id')
-                ->from('tenant_analyst')
-                ->where('tenant_analyst.user_id', $user->id)
-                ->where(fn ($w) => $w->whereNull('tenant_analyst.expires_at')->orWhere('tenant_analyst.expires_at', '>', now()))
-            );
-        }
+        $base->forUser($request->user());
 
         if ($type = $request->string('type')->toString()) {
             $base->where('type', $type);
@@ -59,7 +52,7 @@ final class TenantController
             });
         }
 
-        $summary = $this->summary($base);
+        $summary = (new TenantSummary())->for($base);
 
         $sort = $request->string('sort')->toString();
         $sort = in_array($sort, self::SORTABLE, true) ? $sort : 'created_at';
@@ -87,32 +80,6 @@ final class TenantController
                 'summary' => $summary,
             ],
         ]));
-    }
-
-    /**
-     * Totais do conjunto filtrado inteiro (não só da página): tenants, ativos, MRR e usuários.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder<Tenant> $base
-     * @return array{total: int, active: int, mrr_cents: int, user_count: int}
-     */
-    private function summary(\Illuminate\Database\Eloquent\Builder $base): array
-    {
-        $ids = (clone $base)->select('tenants.id');
-
-        $modulesCents = (int) \Illuminate\Support\Facades\DB::table('tenant_module as tm')
-            ->join('modules as m', 'm.id', '=', 'tm.module_id')
-            ->whereIn('tm.tenant_id', $ids)
-            ->where('tm.enabled', true)
-            ->sum(\Illuminate\Support\Facades\DB::raw('CASE WHEN tm.monthly_fee_cents > 0 THEN tm.monthly_fee_cents ELSE m.monthly_fee_cents END'));
-
-        return [
-            'total' => (clone $base)->count(),
-            'active' => (clone $base)->where('status', 'active')->count(),
-            'mrr_cents' => (int) (clone $base)->sum('monthly_fee_cents')
-                + (int) (clone $base)->where('custom_domain_enabled', true)->sum('custom_domain_fee_cents')
-                + $modulesCents,
-            'user_count' => \Illuminate\Support\Facades\DB::table('tenant_user')->whereIn('tenant_id', $ids)->count(),
-        ];
     }
 
     public function show(Tenant $tenant): JsonResponse

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -32,61 +32,6 @@ import {
 import { MenuGroup, MenuItem } from './types';
 import { adminApi } from './api';
 
-const DEFAULT_MENUS: MenuGroup[] = [
-  {
-    id: 1,
-    name: 'PAINEL PRINCIPAL',
-    slug: 'painel-principal',
-    icon: 'LayoutDashboard',
-    order: 1,
-    is_active: true,
-    items: [
-      { id: 1, label: 'Visão Geral & KPIs', route: '/admin/dashboard', icon: 'LayoutDashboard', shortcut: '1', module_alias: 'dashboard', order: 1, is_active: true },
-      { id: 2, label: 'Desempenho & Métricas', route: '/admin/analytics', icon: 'BarChart3', shortcut: '2', module_alias: 'analytics', order: 2, is_active: true },
-    ],
-  },
-  {
-    id: 2,
-    name: 'GESTÃO & CADASTROS',
-    slug: 'gestao-cadastros',
-    icon: 'Building2',
-    order: 2,
-    is_active: true,
-    items: [
-      { id: 3, label: 'Usuários & Permissões', route: '/admin/users', icon: 'Users', shortcut: 'U', module_alias: 'users', order: 1, is_active: true },
-      { id: 4, label: 'Organizações & Tenants', route: '/admin/tenants', icon: 'Building2', shortcut: 'T', module_alias: 'tenants', order: 2, is_active: true },
-      { id: 5, label: 'Registros & Tabelas', route: '/admin/records', icon: 'Layers', shortcut: 'R', module_alias: 'records', order: 3, is_active: true },
-      { id: 6, label: 'Gerenciador de Menus', route: '/admin/menus', icon: 'FolderTree', shortcut: 'M', module_alias: 'menus', order: 4, is_active: true },
-      { id: 15, label: 'Módulos da Plataforma', route: '/admin/module-catalog', icon: 'Database', shortcut: 'C', module_alias: 'catalog', order: 5, is_active: true },
-    ],
-  },
-  {
-    id: 3,
-    name: 'FINANCEIRO & INFRAESTRUTURA',
-    slug: 'financeiro-infra',
-    icon: 'CreditCard',
-    order: 3,
-    is_active: true,
-    items: [
-      { id: 7, label: 'Faturamento & Invoices', route: '/admin/billing', icon: 'CreditCard', shortcut: 'F', module_alias: 'billing', order: 1, is_active: true },
-      { id: 8, label: 'APIs & Integrações', route: '/admin/apis', icon: 'Plug', shortcut: 'I', module_alias: 'apis', order: 2, is_active: true },
-      { id: 9, label: 'Logs & Auditoria', route: '/admin/logs', icon: 'ShieldAlert', shortcut: 'L', module_alias: 'compliance', order: 3, is_active: true },
-    ],
-  },
-  {
-    id: 4,
-    name: 'SISTEMA & PREFERÊNCIAS',
-    slug: 'sistema-preferencias',
-    icon: 'Settings',
-    order: 4,
-    is_active: true,
-    items: [
-      { id: 10, label: 'Configurações & White-Label', route: '/admin/settings', icon: 'Settings', module_alias: 'settings', order: 1, is_active: true },
-      { id: 11, label: 'Configurações de IA', route: '/admin/ia', icon: 'Sparkles', module_alias: 'ai', order: 2, is_active: true },
-      { id: 12, label: 'Meu Perfil & Segurança', route: '/admin/profile', icon: 'UserCheck', module_alias: 'profile', order: 3, is_active: true },
-    ],
-  },
-];
 
 interface Props {
   groups?: MenuGroup[];
@@ -161,7 +106,9 @@ export const MenuManager: React.FC<Props> = ({
   onDeleteGroup: externalOnDeleteGroup,
   onDeleteItem: externalOnDeleteItem,
 }) => {
-  const [internalGroups, setInternalGroups] = useState<MenuGroup[]>(DEFAULT_MENUS);
+  const [internalGroups, setInternalGroups] = useState<MenuGroup[]>([]);
+  const [loadingMenus, setLoadingMenus] = useState(externalGroups === undefined);
+  const [menusError, setMenusError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -169,20 +116,26 @@ export const MenuManager: React.FC<Props> = ({
   const [creatingForGroupId, setCreatingForGroupId] = useState<number | null>(null);
   const [creatingGroup, setCreatingGroup] = useState(false);
 
-  // Carrega da API quando usado standalone
+  // Carrega da API quando usado standalone (sem menu de exemplo: falha mostra erro com nova tentativa)
+  const loadMenus = useCallback(() => {
+    setLoadingMenus(true);
+    setMenusError(null);
+    adminApi.getMenus()
+      .then((res) => {
+        setInternalGroups(Array.isArray(res) ? res : []);
+      })
+      .catch((err: unknown) => {
+        setInternalGroups([]);
+        setMenusError(err instanceof Error ? err.message : 'Não foi possível carregar os menus.');
+      })
+      .finally(() => setLoadingMenus(false));
+  }, []);
+
   useEffect(() => {
     if (!externalGroups) {
-      adminApi.getMenus()
-        .then((res) => {
-          if (Array.isArray(res) && res.length > 0) {
-            setInternalGroups(res);
-          }
-        })
-        .catch(() => {
-          /* mantém DEFAULT_MENUS */
-        });
+      loadMenus();
     }
-  }, [externalGroups]);
+  }, [externalGroups, loadMenus]);
 
   const activeGroups = externalGroups !== undefined ? externalGroups : internalGroups;
   const safeGroups = (activeGroups || []).map((g) => ({
@@ -326,6 +279,15 @@ export const MenuManager: React.FC<Props> = ({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
+        {externalGroups === undefined && loadingMenus && (
+          <p className="text-sm mod-text-secondary" role="status">Carregando menus...</p>
+        )}
+        {externalGroups === undefined && menusError && (
+          <div className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-300" role="alert">
+            {menusError}{' '}
+            <button type="button" onClick={loadMenus} className="font-semibold underline">Tentar novamente</button>
+          </div>
+        )}
         <div className="mod-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold mod-text-primary flex items-center gap-2">

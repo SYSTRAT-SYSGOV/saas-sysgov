@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Admin\Http\Controllers\AdminDashboardController;
+use Modules\Admin\Http\Controllers\AdminProfileController;
 use Modules\Admin\Http\Controllers\AuditController;
 use Modules\Admin\Http\Controllers\TenantController;
 use Modules\Admin\Http\Controllers\AnalystController;
@@ -111,6 +113,15 @@ Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->g
     Route::post('/me/mfa/setup', [MfaController::class, 'setup']);
     Route::post('/me/mfa/confirm', [MfaController::class, 'confirm']);
     Route::post('/me/mfa/disable', [MfaController::class, 'disable']);
+
+    // Perfil, senha e sessões do próprio administrador
+    Route::put('/me/profile', [AdminProfileController::class, 'updateProfile']);
+    Route::post('/me/password', [AdminProfileController::class, 'updatePassword'])->middleware('throttle:auth-sensivel');
+    Route::get('/me/sessions', [AdminProfileController::class, 'sessions']);
+    Route::delete('/me/sessions/{id}', [AdminProfileController::class, 'revokeSession'])->whereNumber('id');
+
+    // Dashboard administrativo (indicadores e séries reais)
+    Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
     // Audit & Monitoring
     Route::get('/audit-logs', [AuditController::class, 'index']);
