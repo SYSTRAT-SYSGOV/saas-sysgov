@@ -119,8 +119,8 @@ final class AuthController
 
         return response()->json([
             'secret' => $data['secret'],
-            'otpauth_url' => $data['otpauth_url'] ?? null,
-            'qr_code_url' => $data['qr_code_url'] ?? null,
+            'otpauth_url' => $data['otpauth_url'],
+            'qr_code_url' => $data['qr_code_url'],
         ]);
     }
 
