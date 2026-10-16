@@ -19,16 +19,22 @@ final class TenantController
 {
     use AuthorizesRequests;
 
+    /** Campos aceitos em `sort` (lista branca — nunca interpolar entrada do usuário na query). */
+    private const SORTABLE = ['name', 'slug', 'status', 'type', 'plan', 'created_at', 'monthly_fee_cents'];
+
+    private const MAX_PER_PAGE = 100;
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Tenant::class);
 
-        $query = Tenant::query()->with('modules:id,alias,name,monthly_fee_cents')->latest();
+        // Escopo + filtros (compartilhados entre a página e os totais do conjunto filtrado)
+        $base = Tenant::query();
 
         // Analista de suporte: vê apenas a carteira de clientes liberada (tenant_analyst)
         $user = $request->user();
         if ($user && $user->isSupportAnalyst() && !$user->is_platform_admin) {
-            $query->whereIn('tenants.id', fn ($q) => $q
+            $base->whereIn('tenants.id', fn ($q) => $q
                 ->select('tenant_analyst.tenant_id')
                 ->from('tenant_analyst')
                 ->where('tenant_analyst.user_id', $user->id)
@@ -37,15 +43,15 @@ final class TenantController
         }
 
         if ($type = $request->string('type')->toString()) {
-            $query->where('type', $type);
+            $base->where('type', $type);
         }
 
         if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+            $base->where('status', $status);
         }
 
         if ($search = $request->string('q')->toString()) {
-            $query->where(function ($q) use ($search) {
+            $base->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('slug', 'like', "%{$search}%")
                   ->orWhere('cnpj', 'like', "%{$search}%")
@@ -53,7 +59,60 @@ final class TenantController
             });
         }
 
-        return response()->json($query->paginate(25));
+        $summary = $this->summary($base);
+
+        $sort = $request->string('sort')->toString();
+        $sort = in_array($sort, self::SORTABLE, true) ? $sort : 'created_at';
+        $direction = strtolower($request->string('direction')->toString()) === 'asc' ? 'asc' : 'desc';
+        $perPage = $request->integer('per_page', 25);
+        $perPage = $perPage < 1 ? 25 : min($perPage, self::MAX_PER_PAGE);
+
+        $paginator = (clone $base)
+            ->with('modules:id,alias,name,monthly_fee_cents')
+            ->withCount('users')
+            ->orderBy($sort, $direction)
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->through(fn (Tenant $tenant): array => array_merge($tenant->toArray(), [
+                'mrr_cents' => $tenant->monthlyMrrCents(),
+                'user_count' => (int) $tenant->getAttribute('users_count'),
+            ]));
+
+        return response()->json(array_merge($paginator->toArray(), [
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'summary' => $summary,
+            ],
+        ]));
+    }
+
+    /**
+     * Totais do conjunto filtrado inteiro (não só da página): tenants, ativos, MRR e usuários.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder<Tenant> $base
+     * @return array{total: int, active: int, mrr_cents: int, user_count: int}
+     */
+    private function summary(\Illuminate\Database\Eloquent\Builder $base): array
+    {
+        $ids = (clone $base)->select('tenants.id');
+
+        $modulesCents = (int) \Illuminate\Support\Facades\DB::table('tenant_module as tm')
+            ->join('modules as m', 'm.id', '=', 'tm.module_id')
+            ->whereIn('tm.tenant_id', $ids)
+            ->where('tm.enabled', true)
+            ->sum(\Illuminate\Support\Facades\DB::raw('CASE WHEN tm.monthly_fee_cents > 0 THEN tm.monthly_fee_cents ELSE m.monthly_fee_cents END'));
+
+        return [
+            'total' => (clone $base)->count(),
+            'active' => (clone $base)->where('status', 'active')->count(),
+            'mrr_cents' => (int) (clone $base)->sum('monthly_fee_cents')
+                + (int) (clone $base)->where('custom_domain_enabled', true)->sum('custom_domain_fee_cents')
+                + $modulesCents,
+            'user_count' => \Illuminate\Support\Facades\DB::table('tenant_user')->whereIn('tenant_id', $ids)->count(),
+        ];
     }
 
     public function show(Tenant $tenant): JsonResponse

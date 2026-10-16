@@ -45,14 +45,19 @@ final class Tenant extends Model
      */
     public function modulesMonthlyTotalCents(): int
     {
-        return (int) $this->modules()
-            ->wherePivot('enabled', true)
-            ->get()
-            ->sum(function ($module): int {
+        // Usa a relação já carregada (listagem) para evitar N+1; senão consulta o banco.
+        $modules = $this->relationLoaded('modules')
+            ? $this->modules->filter(function ($module): bool {
                 /** @var \Modules\Admin\Models\Module $module */
-                $fee = (int) ($module->pivot->monthly_fee_cents ?? 0);
-                return $fee > 0 ? $fee : (int) $module->monthly_fee_cents;
-            });
+                return (bool) ($module->pivot->enabled ?? false);
+            })
+            : $this->modules()->wherePivot('enabled', true)->get();
+
+        return (int) $modules->sum(function ($module): int {
+            /** @var \Modules\Admin\Models\Module $module */
+            $fee = (int) ($module->pivot->monthly_fee_cents ?? 0);
+            return $fee > 0 ? $fee : (int) $module->monthly_fee_cents;
+        });
     }
 
     /**

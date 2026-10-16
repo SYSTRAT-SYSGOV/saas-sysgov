@@ -223,11 +223,15 @@ export const adminApi = {
   },
 
   // Tenants
-  async getTenants(params?: { q?: string; status?: string; type?: string }): Promise<Paginated<Tenant>> {
+  async getTenants(params?: { q?: string; status?: string; type?: string; page?: number; per_page?: number; sort?: string; direction?: 'asc' | 'desc' }): Promise<Paginated<Tenant>> {
     const qs = new URLSearchParams();
     if (params?.q) qs.set('q', params.q);
     if (params?.status) qs.set('status', params.status);
     if (params?.type) qs.set('type', params.type);
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.per_page) qs.set('per_page', String(params.per_page));
+    if (params?.sort) qs.set('sort', params.sort);
+    if (params?.direction) qs.set('direction', params.direction);
     const q = qs.toString();
     return request<Paginated<Tenant>>(`/tenants${q ? `?${q}` : ''}`);
   },

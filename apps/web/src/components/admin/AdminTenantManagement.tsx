@@ -28,12 +28,18 @@ import {
   Square,
   Zap,
   Calendar,
+  LayoutGrid,
+  List,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { adminApi } from '../../modules/admin/api';
-import { Tenant, SaasModule, CnpjLookupResult, BatchProvisionResult, User } from '../../modules/admin/types';
+import { Tenant, SaasModule, CnpjLookupResult, BatchProvisionResult, User, Paginated } from '../../modules/admin/types';
 import { StatusChip, Card, Modal, Button, Input, Select } from '@sysgov/ui';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field } from '../../components/ui/Field';
+import { DataTable } from '../ui/DataTable';
 
 interface Props {
   onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -77,8 +83,82 @@ const DEFAULT_FORM: TenantForm = {
 
 const EXCLUDED_MODULE_ALIASES = ['dashboard', 'admin', 'client', 'users', 'rh', 'cemiterio', 'procurement'];
 
+const VIEW_MODE_KEY = 'sysgov_admin_tenants_view';
+type ViewMode = 'cards' | 'table';
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+const readStoredViewMode = (): ViewMode => {
+  try {
+    return window.localStorage.getItem(VIEW_MODE_KEY) === 'table' ? 'table' : 'cards';
+  } catch {
+    return 'cards';
+  }
+};
+
+const storeViewMode = (mode: ViewMode) => {
+  try {
+    window.localStorage.setItem(VIEW_MODE_KEY, mode);
+  } catch {
+    // storage indisponível (modo privado/bloqueado): a preferência só vale na sessão
+  }
+};
+
+const formatCnpj = (cnpj?: string | null) =>
+  cnpj ? cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5') : '—';
+
 const formatCents = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function TenantActions({
+  t,
+  onEdit,
+  onDelete,
+  onDiagnostic,
+  onOnboarding,
+}: {
+  t: Tenant;
+  onEdit: (t: Tenant) => void;
+  onDelete: (id: number) => void;
+  onDiagnostic: (t: Tenant) => void;
+  onOnboarding: (t: Tenant) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => onOnboarding(t)}
+        title="Administradores do tenant"
+        className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer"
+      >
+        <UserPlus className="w-3.5 h-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onDiagnostic(t)}
+        title="Diagnóstico de Organograma"
+        className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 transition-colors cursor-pointer"
+      >
+        <Network className="w-3.5 h-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onEdit(t)}
+        title="Editar Organização"
+        className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 transition-colors cursor-pointer"
+      >
+        <Edit2 className="w-3.5 h-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onDelete(t.id)}
+        title="Excluir Organização"
+        className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 transition-colors cursor-pointer"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 function TenantCard({
   t,
@@ -170,40 +250,7 @@ function TenantCard({
           <span className="block font-mono text-xs font-bold text-slate-900 dark:text-white">R$ {formatCents(t.mrr_cents ?? 0)}/mês</span>
           <span className="text-[10px] text-slate-400 uppercase tracking-wider">{t.plan}</span>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onOnboarding(t)}
-            title="Administradores do tenant"
-            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDiagnostic(t)}
-            title="Diagnóstico de Organograma"
-            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 transition-colors cursor-pointer"
-          >
-            <Network className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onEdit(t)}
-            title="Editar Organização"
-            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 transition-colors cursor-pointer"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(t.id)}
-            title="Excluir Organização"
-            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <TenantActions t={t} onEdit={onEdit} onDelete={onDelete} onDiagnostic={onDiagnostic} onOnboarding={onOnboarding} />
       </div>
     </div>
   );
@@ -215,6 +262,11 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [meta, setMeta] = useState<Paginated<Tenant>['meta']>();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenantId, setEditingTenantId] = useState<number | null>(null);
@@ -258,10 +310,24 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
     setLoading(true);
     try {
       const [tRes, mRes] = await Promise.all([
-        adminApi.getTenants({ q: searchQuery || undefined, status: selectedStatus !== 'ALL' ? selectedStatus : undefined }),
+        adminApi.getTenants({
+          q: searchQuery || undefined,
+          status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
+          page,
+          per_page: perPage,
+          sort: sorting[0]?.id,
+          direction: sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined,
+        }),
         adminApi.getModules(),
       ]);
+      const lastPage = tRes.meta?.last_page ?? 1;
+      if ((tRes.data?.length ?? 0) === 0 && page > lastPage && lastPage >= 1) {
+        // Página fora do intervalo (ex.: depois de excluir o último item da última página)
+        setPage(lastPage);
+        return;
+      }
       setTenants(tRes.data ?? []);
+      setMeta(tRes.meta);
       setModules(mRes ?? []);
     } catch (error: any) {
       console.error('Erro ao carregar tenants:', error);
@@ -269,15 +335,19 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedStatus, onAddToast]);
+  }, [searchQuery, selectedStatus, page, perPage, sorting, onAddToast]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const totalMRR = useMemo(() => tenants.reduce((acc, t) => acc + (t.mrr_cents ?? 0), 0), [tenants]);
-  const totalUsers = useMemo(() => tenants.reduce((acc, t) => acc + (t.user_count ?? 0), 0), [tenants]);
-  const activeCount = useMemo(() => tenants.filter((t) => t.status === 'active').length, [tenants]);
+  // Os indicadores usam os totais do conjunto filtrado inteiro (meta.summary), não só da página atual.
+  const summary = meta?.summary;
+  const totalMRR = summary?.mrr_cents ?? tenants.reduce((acc, t) => acc + (t.mrr_cents ?? 0), 0);
+  const totalUsers = summary?.user_count ?? tenants.reduce((acc, t) => acc + (t.user_count ?? 0), 0);
+  const activeCount = summary?.active ?? tenants.filter((t) => t.status === 'active').length;
+  const totalTenants = summary?.total ?? meta?.total ?? tenants.length;
+  const lastPage = meta?.last_page ?? 1;
 
   const selectedModules = useMemo(() => modules.filter((m) => formData.modules.includes(m.alias)), [modules, formData.modules]);
   const modulesTotalCents = useMemo(
@@ -410,12 +480,38 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
     setSelectedTenantIds(prev => checked ? [...prev, tenantId] : prev.filter(id => id !== tenantId));
   };
 
+  // "Selecionar todos" atua sobre a página atual e preserva a seleção feita em outras páginas.
   const handleSelectAllTenants = (checked: boolean) => {
-    if (checked) {
-      setSelectedTenantIds(tenants.map(t => t.id));
-    } else {
-      setSelectedTenantIds([]);
-    }
+    const pageIds = tenants.map((t) => t.id);
+    setSelectedTenantIds((prev) => (checked ? Array.from(new Set([...prev, ...pageIds])) : prev.filter((id) => !pageIds.includes(id))));
+  };
+
+  // Mudar busca/filtro volta para a página 1 e limpa a seleção (evita ação em lote sobre itens ocultos).
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setPage(1);
+    setSelectedTenantIds([]);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setSelectedStatus(value);
+    setPage(1);
+    setSelectedTenantIds([]);
+  };
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    storeViewMode(mode);
+  };
+
+  const handlePerPageChange = (size: number) => {
+    setPerPage(size);
+    setPage(1);
+  };
+
+  const handleSortingChange = (next: SortingState) => {
+    setSorting(next);
+    setPage(1);
   };
 
   const openBatchModal = () => {
@@ -644,6 +740,83 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
     }
   };
 
+  // Colunas da visualização em tabela. Os ids das colunas ordenáveis são os campos aceitos em `sort` pela API.
+  const allPageSelected = tenants.length > 0 && tenants.every((t) => selectedTenantIds.includes(t.id));
+  const tableColumns = useMemo<ColumnDef<Tenant>[]>(() => [
+    {
+      id: 'select',
+      enableSorting: false,
+      header: () => (
+        <input
+          type="checkbox"
+          checked={allPageSelected}
+          onChange={(e) => handleSelectAllTenants(e.target.checked)}
+          className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+          aria-label="Selecionar todos desta página"
+        />
+      ),
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={selectedTenantIds.includes(row.original.id)}
+          onChange={(e) => handleTenantSelectionChange(row.original.id, e.target.checked)}
+          className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+          aria-label={`Selecionar ${row.original.name}`}
+        />
+      ),
+    },
+    {
+      accessorKey: 'name',
+      header: 'Organização',
+      cell: ({ row }) => (
+        <div className="text-left">
+          <span className="block text-sm font-semibold text-slate-900 dark:text-white">{row.original.name}</span>
+          <span className="block text-[11px] font-mono text-slate-400">{row.original.slug}</span>
+        </div>
+      ),
+    },
+    { id: 'cnpj', enableSorting: false, header: 'CNPJ', cell: ({ row }) => <span className="font-mono text-xs">{formatCnpj(row.original.cnpj)}</span> },
+    { accessorKey: 'type', header: 'Tipo', cell: ({ row }) => <span className="text-xs">{row.original.type}</span> },
+    { accessorKey: 'status', header: 'Status', cell: ({ row }) => getStatusBadge(row.original.status) },
+    { accessorKey: 'plan', header: 'Plano', cell: ({ row }) => <span className="text-xs uppercase tracking-wider">{row.original.plan}</span> },
+    {
+      id: 'mrr_cents',
+      enableSorting: false,
+      header: 'MRR',
+      cell: ({ row }) => <span className="font-mono text-xs">R$ {formatCents(row.original.mrr_cents ?? 0)}</span>,
+    },
+    {
+      id: 'user_count',
+      enableSorting: false,
+      header: 'Usuários',
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">{row.original.user_count ?? 0}<span className="text-slate-400"> / {row.original.max_users}</span></span>
+      ),
+    },
+    {
+      accessorKey: 'created_at',
+      header: 'Criado em',
+      cell: ({ row }) => <span className="text-xs">{new Date(row.original.created_at).toLocaleDateString('pt-BR')}</span>,
+    },
+    {
+      id: 'actions',
+      enableSorting: false,
+      header: 'Ações',
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <TenantActions
+            t={row.original}
+            onEdit={handleOpenEditModal}
+            onDelete={(id) => setDeleteConfirmId(id)}
+            onDiagnostic={handleOpenDiagnosticModal}
+            onOnboarding={handleOpenOnboarding}
+          />
+        </div>
+      ),
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [tenants, selectedTenantIds, allPageSelected]);
+
   if (loading && tenants.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -677,7 +850,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
           <div>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Tenants em Operação</span>
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums">{activeCount} <span className="text-xs font-normal text-slate-400">/ {tenants.length} total</span></span>
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums">{activeCount} <span className="text-xs font-normal text-slate-400">/ {totalTenants} total</span></span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center"><Building2 className="w-5 h-5" /></div>
         </div>
@@ -704,13 +877,13 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
             type="text"
             placeholder="Buscar por nome, slug, CNPJ ou domínio..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
         </div>
         <select
           value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
+          onChange={(e) => handleStatusChange(e.target.value)}
           className="px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 w-full md:w-auto"
         >
           <option value="ALL">Todos os Status</option>
@@ -718,6 +891,26 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           <option value="trial">Trial</option>
           <option value="suspended">Suspensos</option>
         </select>
+        <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0" role="group" aria-label="Modo de visualização">
+          <button
+            type="button"
+            onClick={() => handleViewModeChange('cards')}
+            aria-pressed={viewMode === 'cards'}
+            title="Visualizar em cards"
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${viewMode === 'cards' ? 'bg-amber-500 text-slate-950' : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" /> Cards
+          </button>
+          <button
+            type="button"
+            onClick={() => handleViewModeChange('table')}
+            aria-pressed={viewMode === 'table'}
+            title="Visualizar em tabela"
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${viewMode === 'table' ? 'bg-amber-500 text-slate-950' : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+          >
+            <List className="w-3.5 h-3.5" /> Tabela
+          </button>
+        </div>
       </Card>
 
       {/* Batch Actions Bar */}
@@ -751,27 +944,66 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
 </div>
       )}
 
-      {tenants.length === 0 ? (
+      {viewMode === 'table' ? (
+        <DataTable<Tenant, unknown>
+          columns={tableColumns}
+          data={tenants}
+          loading={loading}
+          emptyMessage='Nenhum tenant encontrado. Clique em "Provisionar Novo Tenant".'
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
+          paginationState={{
+            currentPage: meta?.current_page ?? page,
+            totalPages: lastPage,
+            onPageChange: setPage,
+            total: meta?.total ?? tenants.length,
+            perPage,
+            onPerPageChange: handlePerPageChange,
+          }}
+          sorting={{ state: sorting, onChange: handleSortingChange }}
+        />
+      ) : tenants.length === 0 ? (
         <div className="col-span-full py-16 text-center text-slate-500 dark:text-slate-400">
           Nenhum tenant encontrado. Clique em "Provisionar Novo Tenant".
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {tenants.map((t) => (
-            <TenantCard
-              key={t.id}
-              t={t}
-              selectedTenantIds={selectedTenantIds}
-              handleTenantSelectionChange={handleTenantSelectionChange}
-              getStatusBadge={getStatusBadge}
-              formatCents={formatCents}
-              onEdit={handleOpenEditModal}
-              onDelete={(id) => setDeleteConfirmId(id)}
-              onDiagnostic={handleOpenDiagnosticModal}
-              onOnboarding={handleOpenOnboarding}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {tenants.map((t) => (
+              <TenantCard
+                key={t.id}
+                t={t}
+                selectedTenantIds={selectedTenantIds}
+                handleTenantSelectionChange={handleTenantSelectionChange}
+                getStatusBadge={getStatusBadge}
+                formatCents={formatCents}
+                onEdit={handleOpenEditModal}
+                onDelete={(id) => setDeleteConfirmId(id)}
+                onDiagnostic={handleOpenDiagnosticModal}
+                onOnboarding={handleOpenOnboarding}
+              />
+            ))}
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400" data-testid="cards-pagination">
+            <span>
+              {totalTenants} tenant(s) • Página {meta?.current_page ?? page} de {lastPage}
+            </span>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5">
+                Por página
+                <select
+                  value={perPage}
+                  onChange={(e) => handlePerPageChange(Number(e.target.value))}
+                  aria-label="Tenants por página"
+                  className="px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+              <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => setPage(page - 1)} leftIcon={<ChevronLeft className="w-3.5 h-3.5" />}>Anterior</Button>
+              <Button variant="outline" size="sm" disabled={page >= lastPage || loading} onClick={() => setPage(page + 1)} rightIcon={<ChevronRight className="w-3.5 h-3.5" />}>Próxima</Button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Modal Provisionar / Editar */}
