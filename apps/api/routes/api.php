@@ -8,6 +8,8 @@ Route::get('/health', fn () => ['status' => 'ok', 'service' => 'sysgov-api']);
 Route::get('/auth/tenants', [AuthController::class, 'tenants']);
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:auth-sensivel');
 Route::post('/auth/login-admin', [AuthController::class, 'loginAdmin'])->middleware('throttle:auth-sensivel');
+Route::post('/auth/mfa-setup/start', [AuthController::class, 'mfaSetupStart'])->middleware('throttle:auth-sensivel');
+Route::post('/auth/mfa-setup/confirm', [AuthController::class, 'mfaSetupConfirm'])->middleware('throttle:auth-sensivel');
 
 Route::middleware('auth:sanctum')->group(function (): void {
 	// 'tenant' resolve o TenantContext via X-Tenant-Slug ou X-Tenant-ID
