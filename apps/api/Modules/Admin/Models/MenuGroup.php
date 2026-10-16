@@ -29,6 +29,7 @@ final class MenuGroup extends Model
         'tenant_id',
         'name',
         'slug',
+        'audience',
         'icon',
         'order',
         'is_active',
@@ -60,9 +61,10 @@ final class MenuGroup extends Model
         return $this->attributes['slug'] ?? '';
     }
 
-    public static function forTenant(?int $tenantId): \Illuminate\Database\Eloquent\Collection
+    public static function forTenant(?int $tenantId, string $audience = 'admin'): \Illuminate\Database\Eloquent\Collection
     {
         return self::query()
+            ->where('audience', $audience)
             ->where(function ($q) use ($tenantId) {
                 $q->whereNull('tenant_id');
                 if ($tenantId !== null) {

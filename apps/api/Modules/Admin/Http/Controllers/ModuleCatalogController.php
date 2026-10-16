@@ -183,6 +183,7 @@ public function catalog(): JsonResponse
             ['slug' => $groupSlug],
             [
                 'name' => $groupName,
+                'audience' => 'module',
                 'icon' => $groupIcon,
                 'order' => $groupOrder,
                 'is_active' => true,
