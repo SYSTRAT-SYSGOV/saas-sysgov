@@ -59,26 +59,15 @@ final class UserService
     }
 
     /**
-     * Create or reactivate the initial admin for a tenant (onboarding)
-     * Idempotent: returns existing admin if already active
+     * Cadastra um administrador do tenant (onboarding). O tenant pode ter N administradores ativos.
+     * Se o e-mail já pertence a um usuário existente, ele é reaproveitado (novo vínculo + role
+     * admin_tenant) SEM alterar nome nem senha. A duplicidade no mesmo tenant é barrada no controller (409).
      *
-     * @param array{name: string, email: string, password: string} $data
+     * @param array{name: string, email: string, password?: string|null} $data
      */
     public function createTenantAdmin(Tenant $tenant, array $data): User
     {
         $validated = collect($data)->only(['name', 'email', 'password'])->toArray();
-
-        // Check if admin already exists for this tenant
-        $existingAdmin = User::whereHas('tenants', function ($q) use ($tenant) {
-            $q->where('tenants.id', $tenant->id)
-              ->where('tenant_user.status', 'active');
-        })->whereHas('roles', function ($q) {
-            $q->where('slug', 'admin_tenant');
-        })->first();
-
-        if ($existingAdmin) {
-            return $existingAdmin;
-        }
 
         $adminRole = Role::where('slug', 'admin_tenant')
             ->where('scope', 'tenant')
@@ -107,23 +96,24 @@ final class UserService
         }
 
         return DB::transaction(function () use ($validated, $tenant, $adminRole): User {
-            $user = User::updateOrCreate(
-                ['email' => $validated['email']],
-                [
+            $user = User::query()->where('email', $validated['email'])->first()
+                ?? User::create([
                     'name' => $validated['name'],
-                    'password' => Hash::make($validated['password']),
+                    'email' => $validated['email'],
+                    'password' => Hash::make((string) $validated['password']),
                     'is_systrat' => false,
                     'is_active' => true,
-                ]
-            );
+                ]);
 
-            $user->tenants()->syncWithoutDetaching([
-                $tenant->id => [
+            if ($user->tenants()->where('tenants.id', $tenant->id)->exists()) {
+                $user->tenants()->updateExistingPivot($tenant->id, ['role_id' => $adminRole->id, 'status' => 'active']);
+            } else {
+                $user->tenants()->attach($tenant->id, [
                     'role_id' => $adminRole->id,
                     'status' => 'active',
-                    'is_primary' => true,
-                ]
-            ]);
+                    'is_primary' => !$user->tenants()->wherePivot('is_primary', true)->exists(),
+                ]);
+            }
 
             $user->roles()->syncWithoutDetaching([$adminRole->id]);
             if (Schema::hasColumn('role_user', 'tenant_id')) {
@@ -220,17 +210,25 @@ final class UserService
      * Deactivate a user (or their link to a specific tenant)
      * Validates RN-USR-006: cannot deactivate last super_admin
      */
-    public function deactivate(User $user, string $reason, ?int $tenantId = null): void
+    /**
+     * @param bool $emergency desativação de emergência pela SYSTRAT: pode desativar o último administrador
+     *                        do tenant, desde que informe o motivo (gera auditoria e alerta no Outbox)
+     */
+    public function deactivate(User $user, string $reason, ?int $tenantId = null, bool $emergency = false): void
     {
         if ($tenantId) {
-            $this->deactivateTenantLink($user, $tenantId, $reason);
+            $this->deactivateTenantLink($user, $tenantId, $reason, $emergency);
         } else {
-            $this->deactivateGlobal($user, $reason);
+            $this->deactivateGlobal($user, $reason, $emergency);
         }
     }
 
-    private function deactivateGlobal(User $user, string $reason): void
+    private function deactivateGlobal(User $user, string $reason, bool $emergency = false): void
     {
+        if (!$emergency) {
+            (new TenantAdminGuard())->assertNotLastAdminOfAnyTenant($user);
+        }
+
         // RN-USR-006: Cannot deactivate last super_admin
         if ($user->is_platform_admin) {
             $activeSuperAdmins = User::where('is_platform_admin', true)
@@ -256,7 +254,7 @@ final class UserService
         ]);
     }
 
-    private function deactivateTenantLink(User $user, int $tenantId, string $reason): void
+    private function deactivateTenantLink(User $user, int $tenantId, string $reason, bool $emergency = false): void
     {
         $pivot = \Illuminate\Support\Facades\DB::table('tenant_user')
             ->where('user_id', $user->id)
@@ -267,21 +265,16 @@ final class UserService
             throw ValidationException::withMessages(['tenant' => 'Usuário não está vinculado a este tenant.']);
         }
 
-        // RN-USR-006: Cannot deactivate the only admin_tenant for a tenant
-        $adminRole = Role::where('slug', 'admin_tenant')->where('tenant_id', $tenantId)->first();
-        if ($adminRole && (int) $pivot->role_id === $adminRole->id) {
-            $activeAdmins = User::whereHas('tenants', function ($q) use ($tenantId) {
-                $q->where('tenants.id', $tenantId)
-                  ->where('tenant_user.status', 'active');
-            })->whereHas('roles', function ($q) use ($adminRole) {
-                $q->where('roles.id', $adminRole->id);
-            })->where('id', '!=', $user->id)->count();
+        // RN-USR-006: o tenant mantém ao menos um administrador ativo (exceto emergência SYSTRAT com motivo)
+        $guard = new TenantAdminGuard();
+        $isAdmin = $guard->isActiveAdmin($user, $tenantId);
+        $isLastAdmin = $isAdmin && $guard->isLastActiveAdmin($user, $tenantId);
 
-            if ($activeAdmins === 0) {
-                throw ValidationException::withMessages([
-                    'user' => 'Não é possível desativar o único admin_tenant ativo. Nomeie outro antes.',
-                ]);
-            }
+        if ($isLastAdmin && !$emergency) {
+            throw ValidationException::withMessages(['user' => TenantAdminGuard::MESSAGE]);
+        }
+        if ($isLastAdmin && trim($reason) === '') {
+            throw ValidationException::withMessages(['reason' => 'Informe o motivo da desativação de emergência do último administrador.']);
         }
 
         $before = (array) $pivot;
@@ -289,6 +282,18 @@ final class UserService
         $user->tenants()->updateExistingPivot($tenantId, ['status' => 'inactive']);
 
         $this->audit->record('admin', 'tenant_user.deactivated', "TenantUser #{$user->id}@#{$tenantId}", $before, ['status' => 'inactive', 'reason' => $reason]);
+
+        if ($isAdmin) {
+            $this->audit->record('admin', 'tenant_admin.deactivated', "TenantAdmin #{$user->id}@#{$tenantId}", $before, [
+                'status' => 'inactive',
+                'reason' => $reason,
+                'emergency' => $emergency,
+                'last_admin' => $isLastAdmin,
+            ]);
+            if ($isLastAdmin) {
+                $this->outbox->publish('TenantWithoutAdmin', ['tenant_id' => $tenantId, 'user_id' => $user->id, 'reason' => $reason]);
+            }
+        }
     }
 
     /**

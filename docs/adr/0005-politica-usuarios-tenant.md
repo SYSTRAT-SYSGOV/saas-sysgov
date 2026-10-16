@@ -14,13 +14,16 @@ compartilham o mesmo backend (`/admin` e `/api`).
 
 **O web-admin NÃO faz o CRUD diário dos usuários do tenant.** Ele pode apenas:
 
-1. **Criar o admin inicial do tenant** no onboarding:
-   `POST /api/admin/tenants/{tenant}/users/admin` (idempotente → `409` se já existe).
+1. **Cadastrar os administradores do tenant** no onboarding — o tenant pode ter **vários**:
+   `POST /api/admin/tenants/{tenant}/users/admin` (idempotente por e-mail → `409` se aquele
+   e-mail já é admin ativo do tenant), `GET .../users/admins` e `PUT .../users/admin/{user}`.
+   O tenant sempre mantém ao menos um admin ativo (`TenantAdminGuard`, 422); a única exceção
+   é a desativação de emergência da SYSTRAT (item 3), que exige motivo e gera alerta.
 2. **Visualizar os usuários do tenant** em modo somente leitura:
    `GET /api/admin/tenants/{tenant}/users`.
 3. **Desativar usuário de tenant em emergência/segurança**:
    `POST /api/admin/tenants/{tenant}/users/{user}/deactivate`
-   (motivo obrigatório, auditado, apenas `super_admin`).
+   (motivo obrigatório, auditado, apenas `super_admin`; é a única forma de deixar um tenant sem admin ativo).
 
 O **CRUD completo** (criar pregoeiro, fiscal, membro, reativar, atribuir roles)
 é responsabilidade do **`admin_tenant` no web-client** (`/api/users`).

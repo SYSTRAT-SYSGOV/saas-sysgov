@@ -53,7 +53,7 @@ final class TenantUserViewController
 
         // Need to use UserService to deactivate
         $userService = app(\App\Services\UserService::class);
-        $userService->deactivate($user, (string) $request->string('reason'), $tenant->id);
+        $userService->deactivate($user, (string) $request->input('reason'), $tenant->id, emergency: true);
 
         return response()->json(['message' => 'Vínculo do usuário com o tenant desativado.']);
     }
