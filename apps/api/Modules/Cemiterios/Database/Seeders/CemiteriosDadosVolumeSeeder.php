@@ -109,7 +109,7 @@ class CemiteriosDadosVolumeSeeder extends Seeder
             return;
         }
 
-        $usuario = $tenant->users()->orderBy('users.id')->first();
+        $usuario = $tenant->users()->orderBy('users.id')->limit(1)->get()->get(0);
         if (!$usuario instanceof User) {
             $this->informar('O tenant não tem usuários.', aviso: true);
             return;
@@ -431,6 +431,7 @@ class CemiteriosDadosVolumeSeeder extends Seeder
         ], $dados)->refresh();
     }
 
+    /** @param Collection<int, Jazigo> $gavetas */
     protected function movimentarRestos(Inumacao $inumacao, string $cenario, int $i, Collection $gavetas): void
     {
         $operacoes = app(OperacaoService::class);
@@ -720,7 +721,7 @@ class CemiteriosDadosVolumeSeeder extends Seeder
                 $jazigo,
                 $estado,
                 $risco,
-                ($obs[$estado] ?? '') . ' (dados de demonstração)',
+                $obs[$estado] . ' (dados de demonstração)',
                 CarbonImmutable::today()->subDays(7 + $i * 9)->toDateString(),
             ));
         }

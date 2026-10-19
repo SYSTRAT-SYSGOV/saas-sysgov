@@ -49,8 +49,6 @@ final class RequerimentosDadosDemonstracaoSeeder extends Seeder
         'publicacao' => 'Publicação',
     ];
 
-    private const AREAS = ['Saúde', 'Educação', 'Obras e infraestrutura', 'Meio ambiente', 'Transporte e trânsito', 'Assistência social', 'Segurança pública', 'Cultura e esporte', 'Finanças e tributos', 'Administração'];
-
     private const PARTIDOS = ['Bancada do Governo', 'Bancada Independente', 'Bancada da Oposição', 'Bloco Progressista', 'Bloco Municipalista'];
 
     private User $autor;

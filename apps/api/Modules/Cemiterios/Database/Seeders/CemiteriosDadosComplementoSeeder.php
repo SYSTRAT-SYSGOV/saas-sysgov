@@ -59,7 +59,7 @@ final class CemiteriosDadosComplementoSeeder extends CemiteriosDadosVolumeSeeder
             return;
         }
 
-        $usuario = $tenant->users()->orderBy('users.id')->first();
+        $usuario = $tenant->users()->orderBy('users.id')->limit(1)->get()->get(0);
         if (!$usuario instanceof User) {
             $this->informar('O tenant não tem usuários.', aviso: true);
             return;

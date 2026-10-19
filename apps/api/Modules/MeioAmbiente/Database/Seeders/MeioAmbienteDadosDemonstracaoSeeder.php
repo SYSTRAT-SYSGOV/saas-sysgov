@@ -94,7 +94,7 @@ final class MeioAmbienteDadosDemonstracaoSeeder extends Seeder
             return;
         }
 
-        $usuario = $tenant->users()->orderBy('users.id')->first();
+        $usuario = $tenant->users()->orderBy('users.id')->limit(1)->get()->get(0);
         if (!$usuario instanceof User) {
             $this->informar('O tenant não tem usuários.', aviso: true);
             return;
@@ -208,11 +208,12 @@ final class MeioAmbienteDadosDemonstracaoSeeder extends Seeder
         ];
 
         foreach ($linhas as $i => [$tipo, $subtipo, $indiceEmpreendimento, $meio, $ato]) {
-            $lat = $indiceEmpreendimento !== null
-                ? (float) $this->empreendimentos[$indiceEmpreendimento]->latitude
+            $empreendimento = $indiceEmpreendimento !== null ? $this->empreendimentos[$indiceEmpreendimento] : null;
+            $lat = $empreendimento !== null
+                ? (float) $empreendimento->latitude
                 : self::CENTRO_LAT + (($i * 29) % 15 - 7) * 0.013;
-            $lng = $indiceEmpreendimento !== null
-                ? (float) $this->empreendimentos[$indiceEmpreendimento]->longitude
+            $lng = $empreendimento !== null
+                ? (float) $empreendimento->longitude
                 : self::CENTRO_LNG + (($i * 41) % 15 - 7) * 0.013;
 
             $this->como(fn () => $service->cadastrarAreaProtegida([
@@ -469,7 +470,7 @@ final class MeioAmbienteDadosDemonstracaoSeeder extends Seeder
 
             $auto->valor_multa_sugerido_centavos = $fiscalizacao->calcularMultaSugerida($auto);
             $auto->save();
-            DB::table('meio_ambiente_autos_infracao')->where('id', $auto->id)->update(['created_at' => $documento->created_at, 'updated_at' => $documento->created_at]);
+            DB::table('meio_ambiente_autos_infracao')->where('id', $auto->id)->update(['created_at' => $documento->getAttribute('created_at'), 'updated_at' => $documento->getAttribute('created_at')]);
             $autos[] = $auto;
         }
 
