@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\OrgChart\Models\OrgUnit;
 use Modules\OrgChart\Models\OrgUnitUser;
+use Modules\OrgChart\Services\OrgTreeService;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Vistoria\Models\Documento;
 use Modules\Vistoria\Models\LocalFiscalizavel;
@@ -124,21 +125,26 @@ final class VistoriaDadosDemonstracaoSeeder extends Seeder
 
     private function prepararSecretaria(): void
     {
+        // Pelo serviço do organograma (nível, caminho e auditoria): só há uma raiz por tenant (RN-ORG-002),
+        // então a Secretaria entra abaixo do Gabinete, que é criado se ainda não existir.
+        $arvore = app(OrgTreeService::class);
+        $raiz = OrgUnit::roots()->first()
+            ?? $arvore->createUnit([
+                'name' => 'Gabinete do Prefeito — ' . app(TenantContext::class)->get()->name,
+                'code' => 'GAB',
+                'acronym' => 'GAB',
+                'type' => 'raiz',
+                'metadata' => ['description' => 'Órgão executivo superior da administração municipal.'],
+            ]);
+
         $this->secretaria = OrgUnit::query()->where('code', 'SEC-AGR')->first()
-            ?? OrgUnit::create([
+            ?? $arvore->createUnit([
                 'name' => 'Secretaria Municipal de Agricultura',
                 'code' => 'SEC-AGR',
                 'acronym' => 'SEMAGRI',
                 'type' => 'secretaria',
-                'level' => 1,
-                'path' => '0',
-                'order' => 1,
-                'is_active' => true,
+                'parent_id' => $raiz->id,
             ]);
-
-        if ($this->secretaria->path === '0') {
-            $this->secretaria->update(['path' => (string) $this->secretaria->id]);
-        }
 
         foreach ([$this->fiscalA, $this->fiscalB] as $user) {
             OrgUnitUser::query()->firstOrCreate(
