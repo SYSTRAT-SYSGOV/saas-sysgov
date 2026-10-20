@@ -76,6 +76,20 @@ final class ConciliacaoModulosExistentesTest extends PessoasTestCase
         $this->assertSame('2020-03-10', $falecido->fresh()->falecimento->toDateString());
     }
 
+    public function test_falecido_menor_nao_exige_responsavel(): void
+    {
+        // Morreu aos 4 anos em 2025: a idade de hoje não pode fazer dele "menor sem responsável".
+        $crianca = Falecido::create(['nome' => 'Quitéria Antiga', 'nascimento' => '2021-06-21', 'falecimento' => '2025-07-02', 'certidao_numero' => 'C-2']);
+
+        $relatorio = $this->conciliar('cemiterios-falecidos');
+
+        $this->assertSame(1, $relatorio['criadas_pendentes']);
+        $this->assertSame([], $relatorio['sem_responsavel']);
+        $pessoa = Pessoa::findOrFail($crianca->fresh()->pessoa_id);
+        $this->assertNull($pessoa->responsavel_id);
+        $this->assertSame('2021-06-21', $pessoa->data_nascimento->toDateString());
+    }
+
     public function test_concessionario_com_cnpj_gera_a_pessoa_juridica_e_cpf_invalido_fica_de_fora(): void
     {
         $empresa = Concessionario::create(['nome' => 'Funerária Alfa Ltda', 'tipo_doc' => 'cnpj', 'documento' => '11222333000181']);

@@ -14,6 +14,8 @@ final readonly class RegistroConciliacao
      *        pendente mesmo sem data de nascimento
      * @param array{razao_social: string, nome_fantasia?: string|null}|null $dadosJuridica quando informado, CNPJ sem
      *        pessoa jurídica cadastrada gera a pessoa (o módulo guarda a empresa com razão social e CNPJ)
+     * @param bool $dispensaResponsavel true para registro histórico de quem já morreu (óbito): a regra "menor exige
+     *        responsável" vale para cadastro de quem vive, e a idade é calculada pela data de hoje
      */
     public function __construct(
         public int $id,
@@ -23,5 +25,6 @@ final readonly class RegistroConciliacao
         public ?int $responsavelPessoaId = null,
         public bool $exigirNascimento = true,
         public ?array $dadosJuridica = null,
+        public bool $dispensaResponsavel = false,
     ) {}
 }

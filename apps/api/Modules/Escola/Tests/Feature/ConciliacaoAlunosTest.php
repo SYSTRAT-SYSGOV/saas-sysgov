@@ -91,6 +91,23 @@ final class ConciliacaoAlunosTest extends TestCase
         $this->assertSame(5, $this->noTenant($this->tenant, fn () => Pessoa::count()));
     }
 
+    public function test_crianca_com_o_nome_da_mae_nao_vira_a_mae_de_outro_aluno(): void
+    {
+        $crianca = $this->aluno(['nome' => 'Marta Souza', 'nascimento' => '2015-02-02', 'mae' => 'Helena Souza']);
+        $this->conciliar(false);
+
+        // Depois da primeira conciliação, entra um aluno cuja mãe se chama como a criança já cadastrada.
+        $filho = $this->aluno(['nome' => 'Davi Souza', 'nascimento' => '2016-03-10', 'mae' => 'Marta Souza']);
+        $this->conciliar(false);
+
+        $this->noTenant($this->tenant, function () use ($crianca, $filho): void {
+            $mae = Pessoa::findOrFail($filho->fresh()->pessoa_id)->responsavel_id;
+            $this->assertNotNull($mae);
+            $this->assertNotSame($crianca->fresh()->pessoa_id, $mae, 'a criança não pode ser a mãe do outro aluno');
+            $this->assertNull(Pessoa::findOrFail($mae)->data_nascimento, 'a mãe criada é adulta, sem nascimento');
+        });
+    }
+
     public function test_reexecutar_nao_duplica_e_divergencia_nao_sobrescreve_a_pessoa(): void
     {
         $pessoa = $this->noTenant($this->tenant, fn () => Pessoa::create(['tipo' => 'fisica', 'documento' => '52998224725', 'nome' => 'Ana Lima', 'data_nascimento' => '2010-01-05']));

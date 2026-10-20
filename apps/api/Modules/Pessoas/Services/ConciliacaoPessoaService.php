@@ -126,6 +126,7 @@ final class ConciliacaoPessoaService
                 $registro->responsavelPessoaId,
                 false,
                 $registro->exigirNascimento,
+                $registro->dispensaResponsavel,
             );
         } catch (RegraNegocioException $e) {
             if ($e->codigo === 'pessoa_semelhante_existente') {
