@@ -19,9 +19,11 @@ interface PessoasListViewProps {
   podeImportar: boolean;
   podePromover: boolean;
   podeGerenciarIntegracoes: boolean;
+  podeRevisarDivergencias?: boolean;
   onAbrirDetalhe: (pessoa: Pessoa) => void;
   onPromover: (pessoa: Pessoa) => void;
   onIrParaIntegracoes?: () => void;
+  onIrParaConciliacao?: () => void;
 }
 
 export const PessoasListView: React.FC<PessoasListViewProps> = ({
@@ -29,9 +31,11 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
   podeImportar,
   podePromover,
   podeGerenciarIntegracoes,
+  podeRevisarDivergencias = false,
   onAbrirDetalhe,
   onPromover,
   onIrParaIntegracoes,
+  onIrParaConciliacao,
 }) => {
   const {
     resultado,
@@ -96,7 +100,12 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
         header: 'CPF/CNPJ',
         size: 170,
         meta: { exportValue: (p: Pessoa) => p.cpf_mascarado },
-        cell: ({ row }) => <span className="font-mono tabular-nums whitespace-nowrap">{row.original.cpf_mascarado}</span>,
+        cell: ({ row }) => (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span className="font-mono tabular-nums">{row.original.cpf_mascarado}</span>
+            {row.original.documento_pendente && <StatusChip label="Pendente" variant="warning" />}
+          </span>
+        ),
       },
       {
         id: 'vinculos',
@@ -173,6 +182,11 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
         {podeGerenciarIntegracoes && onIrParaIntegracoes && (
           <Button size="sm" variant="outline" onClick={onIrParaIntegracoes}>
             Integrações
+          </Button>
+        )}
+        {podeRevisarDivergencias && onIrParaConciliacao && (
+          <Button size="sm" variant="outline" onClick={onIrParaConciliacao}>
+            Conciliação
           </Button>
         )}
       </div>

@@ -102,6 +102,8 @@ export interface Pessoa {
   nacionalidade?: string | null;
   naturalidade?: string | null;
   nis?: string | null;
+  /** Pessoa física sem CPF informado: aguarda regularização do documento. */
+  documento_pendente?: boolean;
   status: 'ativo' | 'inativo';
   vinculos?: PessoaVinculo[];
   documentos?: PessoaDocumento[];
@@ -134,6 +136,8 @@ export interface CreatePessoaInput {
   nacionalidade?: string;
   naturalidade?: string;
   nis?: string;
+  /** Confirma que não é a pessoa semelhante já cadastrada (cadastro sem CPF). */
+  confirmar_novo?: boolean;
 }
 
 export type UpdatePessoaInput = Partial<CreatePessoaInput> & { status?: 'ativo' | 'inativo' };
@@ -144,6 +148,7 @@ export interface PessoaCompacta {
   nome: string;
   nome_social?: string | null;
   cpf_mascarado: string;
+  documento_pendente?: boolean;
   status: 'ativo' | 'inativo';
 }
 
@@ -156,6 +161,7 @@ export interface ListPessoasParams {
   sexo?: string;
   data_nascimento_de?: string;
   data_nascimento_ate?: string;
+  documento_pendente?: boolean;
   per_page?: number;
   page?: number;
   compact?: boolean;
@@ -273,4 +279,53 @@ export interface ListSyncLogsParams {
   status?: StatusSyncLog;
   per_page?: number;
   page?: number;
+}
+
+/** Pessoa já cadastrada com o mesmo nome e nascimento, sugerida antes de criar um cadastro sem CPF. */
+export interface PessoaSemelhante {
+  id: number;
+  nome: string;
+  cpf_mascarado: string;
+  documento_pendente: boolean;
+}
+
+export type DecisaoDivergencia = 'modulo' | 'mdm';
+
+/** Conflito entre o dado civil de um módulo e o do cadastro central, aguardando decisão. */
+export interface PessoaDivergencia {
+  id: number;
+  pessoa_id: number;
+  pessoa_nome?: string | null;
+  modulo: string;
+  tabela: string;
+  registro_id: number;
+  campo: string;
+  valor_modulo: string | null;
+  valor_mdm: string | null;
+  estado: 'aberta' | 'resolvida';
+  decisao: DecisaoDivergencia | null;
+  resolvida_em: string | null;
+}
+
+export interface ListDivergenciasParams {
+  modulo?: string;
+  estado?: 'aberta' | 'resolvida';
+  per_page?: number;
+  page?: number;
+}
+
+/** Adoção do cadastro central por módulo: só totais, sem dado civil individual. */
+export interface AdocaoModulo {
+  modulo: string;
+  tabela: string;
+  total: number;
+  vinculados: number;
+  sem_vinculo: number;
+  documento_pendente: number;
+  divergencias_abertas: number;
+}
+
+export interface AdocaoPessoas {
+  modulos: AdocaoModulo[];
+  totais: Omit<AdocaoModulo, 'modulo' | 'tabela'>;
 }

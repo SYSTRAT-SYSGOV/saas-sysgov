@@ -21,6 +21,7 @@ export const ModalFichaPessoa: React.FC<ModalFichaPessoaProps> = ({
   const podeGerenciar = can('cadastros.pessoas.manage');
   const podePromover = can('cadastros.pessoas.promote');
   const podeExcluir = can('cadastros.pessoas.delete');
+  const podeMesclar = can('cadastros.pessoas.merge');
 
   const [pessoa, setPessoa] = useState<Pessoa | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -88,6 +89,7 @@ export const ModalFichaPessoa: React.FC<ModalFichaPessoaProps> = ({
       podeGerenciar={podeGerenciar}
       podePromover={podePromover}
       podeExcluir={podeExcluir}
+      podeMesclar={podeMesclar}
       onFechar={onFechar}
       onAtualizado={async () => {
         await carregar(pessoa.id);

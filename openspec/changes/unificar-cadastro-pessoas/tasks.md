@@ -28,9 +28,9 @@
 
 ## 5. Interface compartilhada (Fase 0)
 
-- [ ] 5.1 Atualizar `PessoaFormModal` e `PessoaPicker` (`@sysgov/ui`) e o SDK (`@sysgov/sdk`) para cadastro sem CPF (nome, nascimento, responsável para menor), sugestão de pessoa existente e indicador visual de documento pendente. Verificar: testes de componente (Vitest) e `tsc --noEmit` limpos.
-- [ ] 5.2 Na ficha da pessoa, adicionar a ação de regularizar documento, a mesclagem e o aviso de documento pendente. Verificar: teste de componente do fluxo de regularização e conferência visual conforme o DESIGN_SYSTEM.
-- [ ] 5.3 Criar a tela de revisão de divergências e o painel de adoção no admin. Verificar: testes de componente e navegação manual no admin.
+- [x] 5.1 Atualizar `PessoaFormModal` e `PessoaPicker` (`@sysgov/ui`) e o SDK (`@sysgov/sdk`) para cadastro sem CPF (nome, nascimento, responsável para menor), sugestão de pessoa existente e indicador visual de documento pendente. Verificar: testes de componente (Vitest) e `tsc --noEmit` limpos.
+- [x] 5.2 Na ficha da pessoa, adicionar a ação de regularizar documento, a mesclagem e o aviso de documento pendente. Verificar: teste de componente do fluxo de regularização (CPF novo, CPF de outra pessoa com mesclagem, sem permissão de mesclar, CPF inválido).
+- [x] 5.3 Criar a tela de revisão de divergências e o painel de adoção no módulo Pessoas do web-client (aba "Conciliação", visível para quem tem `cadastros.pessoas.divergencias.manage`), pois os dados são do tenant e a permissão é do módulo. Verificar: testes de componente (adoção só com totais, divergência com os dois valores, resolução com confirmação, estados vazios).
 
 ## 6. Planejamento das fases por módulo
 
@@ -40,4 +40,4 @@
 ## 7. Validação final da Fase 0
 
 - [ ] 7.1 Rodar a suíte completa do backend (testes de Pessoas e de todos os módulos), PHPStan e a suíte do web-client e do `@sysgov/ui`. Verificar: CI do PR verde.
-- [ ] 7.2 Validar manualmente em homologação: cadastro rápido de menor sem CPF a partir do módulo Escola, regularização posterior e mesclagem de duplicidade. Verificar: roteiro executado e registrado no PR.
+- [ ] 7.2 Validar manualmente em homologação: cadastro rápido de menor sem CPF a partir do módulo Escola, regularização posterior, mesclagem de duplicidade, aba Conciliação e conferência visual da ficha, do selo "Documento pendente" e do modal conforme o DESIGN_SYSTEM. Verificar: roteiro executado e registrado no PR.
