@@ -39,5 +39,5 @@
 
 ## 7. Validação final da Fase 0
 
-- [ ] 7.1 Rodar a suíte completa do backend (testes de Pessoas e de todos os módulos), PHPStan e a suíte do web-client e do `@sysgov/ui`. Verificar: CI do PR verde.
+- [x] 7.1 Rodar a suíte completa do backend (testes de Pessoas e de todos os módulos), PHPStan e a suíte do web-client e do `@sysgov/ui`. Verificar: CI do PR verde.
 - [ ] 7.2 Validar manualmente em homologação: cadastro rápido de menor sem CPF a partir do módulo Escola, regularização posterior, mesclagem de duplicidade, aba Conciliação e conferência visual da ficha, do selo "Documento pendente" e do modal conforme o DESIGN_SYSTEM. Verificar: roteiro executado e registrado no PR.
