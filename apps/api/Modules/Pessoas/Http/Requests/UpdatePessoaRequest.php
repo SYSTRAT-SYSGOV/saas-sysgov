@@ -6,13 +6,17 @@ namespace Modules\Pessoas\Http\Requests;
 
 use App\Support\TenantContext;
 use Closure;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Modules\Pessoas\Http\Requests\Concerns\ValidaPessoaSemDocumento;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Support\Documento;
 
 final class UpdatePessoaRequest extends FormRequest
 {
+    use ValidaPessoaSemDocumento;
+
     public function authorize(): bool
     {
         return $this->user()?->hasPermission('cadastros.pessoas.update') === true;
@@ -44,10 +48,7 @@ final class UpdatePessoaRequest extends FormRequest
             'inscricao_municipal' => ['nullable', 'string', 'max:30'],
             'porte' => ['nullable', Rule::in(['ME', 'EPP', 'DEMAIS'])],
             'natureza_juridica' => ['nullable', 'string', 'max:100'],
-            'responsavel_id' => [
-                'nullable',
-                Rule::exists('pessoas', 'id')->where('tipo', 'fisica'),
-            ],
+            'responsavel_id' => ['nullable', $this->regraResponsavel()],
             'nome_social' => ['nullable', 'string', 'max:255'],
             'data_nascimento' => ['nullable', 'date'],
             'sexo' => ['nullable', 'string', 'max:20'],
@@ -79,6 +80,22 @@ final class UpdatePessoaRequest extends FormRequest
             'cartorio_obito' => ['nullable', 'string', 'max:150'],
             'observacao_obito' => ['nullable', 'string', 'max:1000'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $pessoa = $this->route('pessoa');
+            if ($validator->errors()->isNotEmpty() || ! $pessoa instanceof Pessoa) {
+                return;
+            }
+
+            $tipo = (string) $this->input('tipo', $pessoa->tipo);
+            $semDocumento = $tipo === 'fisica' && $pessoa->documento_pendente && ! $this->filled('cpf');
+            $nascimento = $this->has('data_nascimento') ? $this->input('data_nascimento') : $pessoa->data_nascimento?->format('Y-m-d');
+            $responsavel = $this->has('responsavel_id') ? $this->input('responsavel_id') : $pessoa->responsavel_id;
+            $this->validarPessoaSemDocumento($validator, $semDocumento, $nascimento, $responsavel, $pessoa->id);
+        });
     }
 
     private function regraDocumentoUnico(string $tipo, int $pessoaId): Closure
@@ -115,7 +132,7 @@ final class UpdatePessoaRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'responsavel_id.exists' => 'O responsável legal informado deve ser uma pessoa física cadastrada.',
+            'responsavel_id.exists' => 'O responsável informado deve ser uma pessoa física cadastrada neste órgão.',
         ];
     }
 }

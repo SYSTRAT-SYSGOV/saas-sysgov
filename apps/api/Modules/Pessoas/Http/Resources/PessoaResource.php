@@ -15,6 +15,13 @@ use Modules\Pessoas\Models\Pessoa;
  */
 final class PessoaResource extends JsonResource
 {
+    /** Dado de acesso restrito: pessoa física sem documento (pendente) ou menor de idade. */
+    private function restrita(): bool
+    {
+        return $this->documento_pendente
+            || ($this->tipo === 'fisica' && $this->data_nascimento !== null && $this->data_nascimento->age < 18);
+    }
+
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
@@ -27,6 +34,7 @@ final class PessoaResource extends JsonResource
                 'nome' => $this->nome,
                 'nome_social' => $this->nome_social,
                 'cpf_mascarado' => $this->cpf_mascarado,
+                'documento_pendente' => (bool) $this->documento_pendente,
                 'status' => $this->status,
                 'falecido' => (bool) $this->falecido,
                 'data_falecimento' => $this->data_falecimento?->format('Y-m-d'),
@@ -38,6 +46,12 @@ final class PessoaResource extends JsonResource
             (bool) $user->getAttribute('is_platform_admin')
             || $user->can('viewSensitive', $this->resource)
         );
+
+        // Listagem de pessoa sem documento ou menor de idade: sem data de nascimento, filiação e NIS para quem
+        // não tem a permissão de dados sensíveis. A ficha individual continua completa (é onde se edita).
+        $ocultarCivil = (bool) $request->attributes->get('pessoas.listagem', false)
+            && ! $podeVerSensivel
+            && $this->restrita();
 
         return [
             'id' => $this->id,
@@ -54,17 +68,18 @@ final class PessoaResource extends JsonResource
             'responsavel_id' => $this->responsavel_id,
             'documento_mascarado' => $this->documento_mascarado,
             'cpf_mascarado' => $this->cpf_mascarado,
+            'documento_pendente' => (bool) $this->documento_pendente,
             'pode_desmascarar' => $podeVerSensivel,
             'documento_desmascarado' => $this->when($podeVerSensivel && $request->boolean('reveal_sensitive'), fn () => (string) $this->documento),
             'cpf_desmascarado' => $this->when($podeVerSensivel && $request->boolean('reveal_sensitive'), fn () => (string) $this->documento),
-            'data_nascimento' => $this->data_nascimento?->format('Y-m-d'),
+            'data_nascimento' => $ocultarCivil ? null : $this->data_nascimento?->format('Y-m-d'),
             'sexo' => $this->sexo,
-            'nome_mae' => $this->nome_mae,
-            'nome_pai' => $this->nome_pai,
+            'nome_mae' => $ocultarCivil ? null : $this->nome_mae,
+            'nome_pai' => $ocultarCivil ? null : $this->nome_pai,
             'estado_civil' => $this->estado_civil,
             'nacionalidade' => $this->nacionalidade,
             'naturalidade' => $this->naturalidade,
-            'nis' => $this->nis,
+            'nis' => $ocultarCivil ? null : $this->nis,
             'status' => $this->status,
             'falecido' => (bool) $this->falecido,
             'data_falecimento' => $this->data_falecimento?->format('Y-m-d'),

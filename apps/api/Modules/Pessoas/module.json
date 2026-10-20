@@ -22,6 +22,8 @@
         "cadastros.pessoas.update": "Editar pessoas e seus vínculos",
         "cadastros.pessoas.delete": "Excluir pessoas",
         "cadastros.pessoas.promote": "Promover pessoa a usuário do SYSGOV",
+        "cadastros.pessoas.merge": "Mesclar cadastros duplicados de pessoas",
+        "cadastros.pessoas.divergencias.manage": "Revisar divergências e acompanhar a adoção do cadastro de pessoas pelos módulos",
         "cadastros.pessoas.import": "Importar pessoas de sistemas da prefeitura",
         "cadastros.pessoas.integracoes.manage": "Gerenciar integrações com sistemas de gestão da prefeitura",
         "cadastros.pessoas.view_sensitive": "Visualizar dados sensíveis completos de pessoas"

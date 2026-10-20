@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace Modules\Pessoas\Services;
 
 use App\Support\AuditLogger;
+use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Support\Documento;
+use Modules\Pessoas\Support\RegraNegocioException;
 
 /**
  * Resolução de pessoa por CPF para os módulos consumidores (Escola, Cursos, Admin — design D4).
@@ -52,20 +56,103 @@ final class ResolucaoPessoaService
                 $this->audit->record('pessoas', 'pessoa.restaurada_por_modulo', "Pessoa #{$pessoa->id}", null, ['origem' => $origem]);
             }
 
-            // Só completa o que estiver vazio: o cadastro mestre não é sobrescrito por um consumidor.
-            foreach ($dados as $campo => $valor) {
-                if ($pessoa->getAttribute($campo) === null || $pessoa->getAttribute($campo) === '') {
-                    $pessoa->setAttribute($campo, $valor);
-                }
+            return $this->completarCamposVazios($pessoa, $dados, $origem);
+        });
+    }
+
+    /**
+     * Pessoas físicas do tenant com o mesmo nome e a mesma data de nascimento — candidatas a duplicidade
+     * quando o módulo cadastra alguém sem CPF. O nome é comparado sem acento, caixa e espaços repetidos.
+     *
+     * @return Collection<int, Pessoa>
+     */
+    public function sugerirSemelhantes(string $nome, string $dataNascimento): Collection
+    {
+        $alvo = $this->normalizarNome($nome);
+
+        return Pessoa::query()
+            ->where('tipo', 'fisica')
+            ->whereDate('data_nascimento', $dataNascimento)
+            ->get()
+            ->filter(fn (Pessoa $p): bool => $this->normalizarNome($p->nome) === $alvo)
+            ->values();
+    }
+
+    /**
+     * Cria pessoa física sem CPF (documento pendente) para um módulo consumidor. Antes de criar, recusa se
+     * houver pessoa semelhante (mesmo nome e nascimento), devolvendo as sugestões; o módulo então usa uma
+     * delas ou repete a chamada com `$confirmarNovo` para criar de fato. Menor de idade exige responsável.
+     *
+     * @param array{nome?: string|null, data_nascimento?: string|null, nome_social?: string|null, nome_mae?: string|null, nome_pai?: string|null} $dadosCivis
+     * @param string $origem módulo consumidor (aparece na auditoria)
+     */
+    public function resolverSemDocumento(array $dadosCivis, string $origem, ?int $responsavelId = null, bool $confirmarNovo = false): Pessoa
+    {
+        $nome = trim((string) ($dadosCivis['nome'] ?? ''));
+        $nascimento = (string) ($dadosCivis['data_nascimento'] ?? '');
+        if ($nome === '' || $nascimento === '') {
+            throw new RegraNegocioException('dados_insuficientes', 'Nome e data de nascimento são obrigatórios para cadastrar pessoa sem CPF.');
+        }
+
+        $menor = CarbonImmutable::parse($nascimento)->age < 18;
+        if ($menor && $responsavelId === null) {
+            throw new RegraNegocioException('responsavel_obrigatorio', 'O responsável é obrigatório para menor de idade sem CPF.');
+        }
+        if ($responsavelId !== null && ! Pessoa::query()->where('tipo', 'fisica')->whereKey($responsavelId)->exists()) {
+            throw new RegraNegocioException('responsavel_invalido', 'O responsável deve ser uma pessoa física cadastrada neste órgão.');
+        }
+
+        if (! $confirmarNovo) {
+            $semelhantes = $this->sugerirSemelhantes($nome, $nascimento);
+            if ($semelhantes->isNotEmpty()) {
+                throw new RegraNegocioException('pessoa_semelhante_existente', 'Já existe pessoa com o mesmo nome e data de nascimento.', [
+                    'sugestoes' => $semelhantes->map(fn (Pessoa $p): array => [
+                        'id' => $p->id,
+                        'nome' => $p->nome,
+                        'cpf_mascarado' => $p->cpf_mascarado,
+                        'documento_pendente' => $p->documento_pendente,
+                    ])->all(),
+                ]);
             }
-            if ($pessoa->isDirty()) {
-                $alterados = array_keys($pessoa->getDirty());
-                $pessoa->save();
-                $this->audit->record('pessoas', 'pessoa.completada_por_modulo', "Pessoa #{$pessoa->id}", null, ['origem' => $origem, 'campos' => $alterados]);
-            }
+        }
+
+        $dados = array_filter(
+            array_intersect_key($dadosCivis, array_flip(self::CAMPOS_CIVIS)),
+            fn ($v): bool => $v !== null && $v !== '',
+        );
+
+        return DB::transaction(function () use ($dados, $responsavelId, $origem): Pessoa {
+            $pessoa = Pessoa::create(['tipo' => 'fisica', 'responsavel_id' => $responsavelId, ...$dados]);
+            $this->audit->record('pessoas', 'pessoa.criada_por_modulo', "Pessoa #{$pessoa->id}", null, ['origem' => $origem, 'nome' => $pessoa->nome, 'documento_pendente' => true]);
 
             return $pessoa;
         });
+    }
+
+    /**
+     * Só completa o que estiver vazio: o cadastro mestre não é sobrescrito por um consumidor.
+     *
+     * @param array<string, mixed> $dados
+     */
+    public function completarCamposVazios(Pessoa $pessoa, array $dados, string $origem): Pessoa
+    {
+        foreach ($dados as $campo => $valor) {
+            if ($pessoa->getAttribute($campo) === null || $pessoa->getAttribute($campo) === '') {
+                $pessoa->setAttribute($campo, $valor);
+            }
+        }
+        if ($pessoa->isDirty()) {
+            $alterados = array_keys($pessoa->getDirty());
+            $pessoa->save();
+            $this->audit->record('pessoas', 'pessoa.completada_por_modulo', "Pessoa #{$pessoa->id}", null, ['origem' => $origem, 'campos' => $alterados]);
+        }
+
+        return $pessoa;
+    }
+
+    private function normalizarNome(string $nome): string
+    {
+        return (string) preg_replace('/\s+/', ' ', mb_strtolower(trim(Str::ascii($nome))));
     }
 
     /** CPF válido? (atalho para os consumidores validarem antes de gravar) */

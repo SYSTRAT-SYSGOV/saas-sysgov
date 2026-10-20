@@ -6,13 +6,17 @@ namespace Modules\Pessoas\Http\Requests;
 
 use App\Support\TenantContext;
 use Closure;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Modules\Pessoas\Http\Requests\Concerns\ValidaPessoaSemDocumento;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Support\Documento;
 
 final class StorePessoaRequest extends FormRequest
 {
+    use ValidaPessoaSemDocumento;
+
     public function authorize(): bool
     {
         return $this->user()?->hasPermission('cadastros.pessoas.create') === true;
@@ -26,8 +30,9 @@ final class StorePessoaRequest extends FormRequest
         return [
             'tipo' => ['sometimes', Rule::in(['fisica', 'juridica'])],
             'nome' => [Rule::requiredIf($tipo === 'fisica'), 'string', 'max:255'],
+            // CPF é opcional para pessoa física: sem ele a pessoa fica com documento pendente.
             'cpf' => [
-                Rule::requiredIf($tipo === 'fisica'),
+                'nullable',
                 'string',
                 $this->regraDocumentoUnico('fisica'),
             ],
@@ -42,10 +47,7 @@ final class StorePessoaRequest extends FormRequest
             'inscricao_municipal' => ['nullable', 'string', 'max:30'],
             'porte' => ['nullable', Rule::in(['ME', 'EPP', 'DEMAIS'])],
             'natureza_juridica' => ['nullable', 'string', 'max:100'],
-            'responsavel_id' => [
-                'nullable',
-                Rule::exists('pessoas', 'id')->where('tipo', 'fisica'),
-            ],
+            'responsavel_id' => ['nullable', $this->regraResponsavel()],
             'nome_social' => ['nullable', 'string', 'max:255'],
             'data_nascimento' => ['nullable', 'date'],
             'sexo' => ['nullable', 'string', 'max:20'],
@@ -73,6 +75,18 @@ final class StorePessoaRequest extends FormRequest
             'cartorio_obito' => ['nullable', 'string', 'max:150'],
             'observacao_obito' => ['nullable', 'string', 'max:1000'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $semDocumento = (string) $this->input('tipo', 'fisica') === 'fisica' && ! $this->filled('cpf');
+            $this->validarPessoaSemDocumento($validator, $semDocumento, $this->input('data_nascimento'), $this->input('responsavel_id'));
+        });
     }
 
     private function regraDocumentoUnico(string $tipo): Closure
@@ -109,10 +123,9 @@ final class StorePessoaRequest extends FormRequest
     {
         return [
             'nome.required' => 'O nome da pessoa é obrigatório.',
-            'cpf.required' => 'O CPF é obrigatório.',
             'razao_social.required' => 'A razão social é obrigatória para pessoa jurídica.',
             'cnpj.required' => 'O CNPJ é obrigatório para pessoa jurídica.',
-            'responsavel_id.exists' => 'O responsável legal informado deve ser uma pessoa física cadastrada.',
+            'responsavel_id.exists' => 'O responsável informado deve ser uma pessoa física cadastrada neste órgão.',
         ];
     }
 }

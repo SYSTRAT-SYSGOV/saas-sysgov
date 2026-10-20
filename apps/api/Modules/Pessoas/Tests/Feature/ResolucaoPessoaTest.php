@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Event;
 use Modules\Pessoas\Events\PessoaAtualizada;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Services\ResolucaoPessoaService;
+use Modules\Pessoas\Support\RegraNegocioException;
 use Modules\Pessoas\Tests\PessoasTestCase;
 
 /** Resolução por CPF para módulos consumidores e evento PessoaAtualizada (change educacao-multiescola, B.1). */
@@ -95,5 +96,82 @@ final class ResolucaoPessoaTest extends PessoasTestCase
 
         Event::assertDispatchedTimes(PessoaAtualizada::class, 1);
         Event::assertDispatched(PessoaAtualizada::class, fn (PessoaAtualizada $e): bool => $e->pessoaId === $pessoa->id && $e->camposAlterados === ['nome']);
+    }
+    // ----------------------------------------------------- pessoa sem documento (unificar-cadastro-pessoas)
+
+    public function test_cria_pessoa_pendente_sem_cpf_e_audita_a_origem(): void
+    {
+        $pessoa = $this->servico->resolverSemDocumento(['nome' => 'Adulto Sem CPF', 'data_nascimento' => '1980-05-05'], 'passeio');
+
+        $this->assertTrue($pessoa->fresh()->documento_pendente);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'pessoa.criada_por_modulo']);
+        $this->assertSame(0, DB::table('pessoas_usuarios')->count());
+    }
+
+    public function test_menor_sem_responsavel_e_recusado(): void
+    {
+        $this->expectException(RegraNegocioException::class);
+        $this->servico->resolverSemDocumento(['nome' => 'Criança', 'data_nascimento' => now()->subYears(7)->toDateString()], 'escola');
+    }
+
+    public function test_menor_com_responsavel_e_criado_ligado_ao_responsavel(): void
+    {
+        $mae = Pessoa::factory()->create();
+
+        $crianca = $this->servico->resolverSemDocumento(
+            ['nome' => 'Criança', 'data_nascimento' => now()->subYears(7)->toDateString()],
+            'escola',
+            $mae->id,
+        );
+
+        $this->assertSame($mae->id, $crianca->fresh()->responsavel_id);
+    }
+
+    public function test_responsavel_juridico_e_recusado(): void
+    {
+        $empresa = Pessoa::factory()->juridica()->create();
+
+        $this->expectException(RegraNegocioException::class);
+        $this->servico->resolverSemDocumento(
+            ['nome' => 'Criança', 'data_nascimento' => now()->subYears(7)->toDateString()],
+            'escola',
+            $empresa->id,
+        );
+    }
+
+    public function test_pessoa_semelhante_e_sugerida_antes_de_criar(): void
+    {
+        $existente = Pessoa::create(['nome' => 'João da Silva', 'data_nascimento' => '2015-03-10', 'responsavel_id' => Pessoa::factory()->create()->id]);
+
+        try {
+            $this->servico->resolverSemDocumento(['nome' => '  JOAO  da silva ', 'data_nascimento' => '2015-03-10'], 'escola', $existente->responsavel_id);
+            $this->fail('Deveria recusar por pessoa semelhante.');
+        } catch (RegraNegocioException $e) {
+            $this->assertSame('pessoa_semelhante_existente', $e->codigo);
+            $this->assertSame($existente->id, $e->contexto['sugestoes'][0]['id']);
+        }
+
+        $this->assertSame(2, Pessoa::count(), 'nada foi criado além do responsável');
+    }
+
+    public function test_criacao_confirmada_ignora_a_sugestao(): void
+    {
+        $responsavel = Pessoa::factory()->create();
+        Pessoa::create(['nome' => 'João da Silva', 'data_nascimento' => '2015-03-10', 'responsavel_id' => $responsavel->id]);
+
+        $nova = $this->servico->resolverSemDocumento(['nome' => 'João da Silva', 'data_nascimento' => '2015-03-10'], 'escola', $responsavel->id, confirmarNovo: true);
+
+        $this->assertTrue($nova->documento_pendente);
+        $this->assertSame(3, Pessoa::count());
+    }
+
+    public function test_completar_campos_vazios_nao_sobrescreve(): void
+    {
+        $pessoa = Pessoa::factory()->create(['nome_mae' => 'Original', 'nome_pai' => null]);
+
+        $this->servico->completarCamposVazios($pessoa, ['nome_mae' => 'Outra', 'nome_pai' => 'Pai Novo'], 'escola');
+
+        $this->assertSame('Original', $pessoa->fresh()->nome_mae);
+        $this->assertSame('Pai Novo', $pessoa->fresh()->nome_pai);
     }
 }

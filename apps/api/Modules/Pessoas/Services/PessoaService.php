@@ -11,6 +11,7 @@ use Modules\Pessoas\Models\PessoaContato;
 use Modules\Pessoas\Models\PessoaDocumento;
 use Modules\Pessoas\Models\PessoaEndereco;
 use Modules\Pessoas\Support\Documento;
+use Modules\Pessoas\Support\RegraNegocioException;
 
 /** Cadastro, atualização e busca de pessoas físicas e jurídicas e suas sub-entidades (MDM). */
 final readonly class PessoaService
@@ -25,6 +26,46 @@ final readonly class PessoaService
     public function atualizar(Pessoa $pessoa, array $dados): Pessoa
     {
         $pessoa->update($this->normalizarDocumento($dados));
+
+        return $pessoa;
+    }
+
+    /**
+     * Informa o CPF de uma pessoa com documento pendente, mantendo identificador, vínculos e referências
+     * dos módulos. Recusa quando o CPF já pertence a outra pessoa do tenant e devolve essa pessoa, com a
+     * indicação de que a mesclagem dos cadastros está disponível.
+     */
+    public function regularizarDocumento(Pessoa $pessoa, string $cpf): Pessoa
+    {
+        if ($pessoa->tipo !== 'fisica' || ! $pessoa->documento_pendente) {
+            throw new RegraNegocioException('documento_nao_pendente', 'Esta pessoa não está com o documento pendente.');
+        }
+        if (! Documento::valido($cpf)) {
+            throw new RegraNegocioException('documento_invalido', 'O CPF informado é inválido.');
+        }
+
+        $existente = Pessoa::withTrashed()
+            ->where('tipo', 'fisica')
+            ->where('documento_hash', Documento::hash($cpf))
+            ->where('id', '!=', $pessoa->id)
+            ->first();
+
+        if ($existente !== null) {
+            throw new RegraNegocioException(
+                'documento_ja_cadastrado',
+                'Já existe uma pessoa cadastrada com este CPF neste órgão.',
+                [
+                    'pessoa_existente' => [
+                        'id' => $existente->id,
+                        'nome' => $existente->nome,
+                        'cpf_mascarado' => $existente->cpf_mascarado,
+                    ],
+                    'mesclagem_disponivel' => ! $existente->trashed(),
+                ],
+            );
+        }
+
+        $pessoa->update(['documento' => $cpf]);
 
         return $pessoa;
     }
@@ -50,7 +91,7 @@ final readonly class PessoaService
     }
 
     /**
-     * @param array{q?: string, tipo?: string, tipo_vinculo?: string, status?: string, per_page?: int, falecido?: bool|string|int, data_nascimento_de?: string, data_nascimento_ate?: string, sexo?: string} $filtros
+     * @param array{q?: string, tipo?: string, tipo_vinculo?: string, status?: string, per_page?: int, falecido?: bool|string|int, data_nascimento_de?: string, data_nascimento_ate?: string, sexo?: string, documento_pendente?: bool|string|int} $filtros
      * @return LengthAwarePaginator<int, Pessoa>
      */
     public function listar(array $filtros = []): LengthAwarePaginator
@@ -108,6 +149,7 @@ final readonly class PessoaService
             ->when($filtros['data_nascimento_de'] ?? null, fn ($query, string $data) => $query->whereDate('data_nascimento', '>=', $data))
             ->when($filtros['data_nascimento_ate'] ?? null, fn ($query, string $data) => $query->whereDate('data_nascimento', '<=', $data))
             ->when($filtros['sexo'] ?? null, fn ($query, string $sexo) => $query->where('sexo', $sexo))
+            ->when(isset($filtros['documento_pendente']), fn ($query) => $query->where('documento_pendente', filter_var($filtros['documento_pendente'], FILTER_VALIDATE_BOOLEAN)))
             ->orderBy('nome')
             ->paginate((int) ($filtros['per_page'] ?? 25));
     }

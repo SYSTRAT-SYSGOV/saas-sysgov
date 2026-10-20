@@ -15,6 +15,8 @@ use Modules\Pessoas\Http\Requests\EncerrarVinculoRequest;
 use Modules\Pessoas\Http\Requests\StoreContatoRequest;
 use Modules\Pessoas\Http\Requests\StoreDocumentoRequest;
 use Modules\Pessoas\Http\Requests\StoreEnderecoRequest;
+use Modules\Pessoas\Http\Requests\MesclarPessoaRequest;
+use Modules\Pessoas\Http\Requests\RegularizarDocumentoRequest;
 use Modules\Pessoas\Http\Requests\StorePessoaRequest;
 use Modules\Pessoas\Http\Requests\StoreSocioRequest;
 use Modules\Pessoas\Http\Requests\StoreVinculoRequest;
@@ -35,6 +37,7 @@ use Modules\Pessoas\Models\PessoaDocumento;
 use Modules\Pessoas\Models\PessoaEndereco;
 use Modules\Pessoas\Models\PessoaSocio;
 use Modules\Pessoas\Models\PessoaVinculo;
+use Modules\Pessoas\Services\MesclagemPessoaService;
 use Modules\Pessoas\Services\PessoaExportService;
 use Modules\Pessoas\Services\PessoaService;
 use Modules\Pessoas\Services\SocioService;
@@ -50,6 +53,7 @@ final class PessoaController extends Controller
         private readonly SocioService $socios,
         private readonly PessoaExportService $export,
         private readonly AuditLogger $audit,
+        private readonly MesclagemPessoaService $mesclagem,
     ) {}
 
     /** Exportação self-service do cadastro (JSON com manifest ou CSV). GET /api/pessoas/export?format=json|csv */
@@ -71,8 +75,9 @@ final class PessoaController extends Controller
     {
         $this->authorize('viewAny', Pessoa::class);
 
+        $request->attributes->set('pessoas.listagem', true);
         $paginator = $this->pessoas->listar($request->only([
-            'q', 'tipo', 'tipo_vinculo', 'status', 'falecido', 'data_nascimento_de', 'data_nascimento_ate', 'sexo', 'per_page',
+            'q', 'tipo', 'tipo_vinculo', 'status', 'falecido', 'data_nascimento_de', 'data_nascimento_ate', 'sexo', 'documento_pendente', 'per_page',
         ]));
 
         return response()->json([
@@ -127,6 +132,30 @@ final class PessoaController extends Controller
         $this->audit->record('pessoas', 'pessoa.updated', "Pessoa #{$pessoa->id}", $antes, $pessoa->toArray());
 
         return response()->json(new PessoaResource($pessoa));
+    }
+
+    /** Informa o CPF de uma pessoa com documento pendente. POST /api/pessoas/{pessoa}/regularizar-documento */
+    public function regularizarDocumento(RegularizarDocumentoRequest $request, Pessoa $pessoa): JsonResponse
+    {
+        $this->authorize('update', $pessoa);
+
+        $antes = $pessoa->toArray();
+        $this->pessoas->regularizarDocumento($pessoa, (string) $request->validated('cpf'));
+        // O CPF não vai para a auditoria em claro: o `toArray()` já omite documento e hash (hidden).
+        $this->audit->record('pessoas', 'pessoa.documento_regularizado', "Pessoa #{$pessoa->id}", $antes, $pessoa->toArray());
+
+        return response()->json(new PessoaResource($pessoa));
+    }
+
+    /** Absorve esta pessoa (documento pendente) pela pessoa informada. POST /api/pessoas/{pessoa}/mesclar */
+    public function mesclar(MesclarPessoaRequest $request, Pessoa $pessoa): JsonResponse
+    {
+        $this->authorize('merge', $pessoa);
+
+        $destino = Pessoa::query()->findOrFail((int) $request->validated('destino_id'));
+        $this->mesclagem->mesclar($pessoa, $destino);
+
+        return response()->json(new PessoaResource($destino->refresh()));
     }
 
     public function destroy(Request $request, Pessoa $pessoa): JsonResponse
