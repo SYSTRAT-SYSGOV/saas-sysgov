@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Pessoas\Database\Factories\PessoaFactory;
 use Modules\Pessoas\Events\PessoaAtualizada;
 use Modules\Pessoas\Support\Documento;
+use Modules\Pessoas\Support\RegraNegocioException;
 
 /**
  * Cadastro único de pessoa física ou jurídica por tenant (MDM).
@@ -21,8 +22,9 @@ use Modules\Pessoas\Support\Documento;
  * @property int $id
  * @property int $tenant_id
  * @property string $tipo
- * @property string $documento
- * @property string $documento_hash
+ * @property string|null $documento
+ * @property string|null $documento_hash
+ * @property bool $documento_pendente
  * @property string $nome
  * @property string|null $nome_social
  * @property string|null $razao_social
@@ -70,7 +72,7 @@ final class Pessoa extends Model
      *  recém-criada sem `tipo` explícito já reflita o tipo correto em memória, sem exigir
      *  um refresh() após o insert (ex.: PromocaoUsuarioService::promover() checando o tipo
      *  logo após Pessoa::create() sem informar `tipo`). */
-    protected $attributes = ['tipo' => 'fisica'];
+    protected $attributes = ['tipo' => 'fisica', 'documento_pendente' => false];
 
     protected $guarded = ['id', 'tenant_id', 'documento_hash'];
 
@@ -84,6 +86,7 @@ final class Pessoa extends Model
         'nome_pai' => 'encrypted',
         'nis' => 'encrypted',
         'data_nascimento' => 'date',
+        'documento_pendente' => 'boolean',
         'falecido' => 'boolean',
         'data_falecimento' => 'date',
     ];
@@ -91,8 +94,20 @@ final class Pessoa extends Model
     protected static function booted(): void
     {
         static::saving(function (self $pessoa): void {
-            $pessoa->documento = Documento::somenteDigitos((string) $pessoa->documento);
-            $pessoa->documento_hash = Documento::hash($pessoa->documento);
+            $digitos = Documento::somenteDigitos((string) $pessoa->documento);
+            if ($digitos === '') {
+                // Só pessoa física pode ficar sem documento (documento pendente); jurídica exige CNPJ.
+                if ($pessoa->tipo === 'juridica') {
+                    throw new RegraNegocioException('documento_obrigatorio', 'O CNPJ é obrigatório para pessoa jurídica.');
+                }
+                $pessoa->documento = null;
+                $pessoa->documento_hash = null;
+                $pessoa->documento_pendente = true;
+            } else {
+                $pessoa->documento = $digitos;
+                $pessoa->documento_hash = Documento::hash($digitos);
+                $pessoa->documento_pendente = false;
+            }
             if ($pessoa->falecido && $pessoa->status === 'ativo') {
                 $pessoa->status = 'falecido';
             }
@@ -130,8 +145,21 @@ final class Pessoa extends Model
         return $query->where('falecido', false);
     }
 
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder<self> $query
+     * @return \Illuminate\Database\Eloquent\Builder<self>
+     */
+    public function scopeComDocumentoPendente(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('documento_pendente', true);
+    }
+
     public function getDocumentoMascaradoAttribute(): string
     {
+        if ($this->documento === null || $this->documento === '') {
+            return '—';
+        }
+
         try {
             return Documento::mascarar((string) $this->documento);
         } catch (\Throwable) {

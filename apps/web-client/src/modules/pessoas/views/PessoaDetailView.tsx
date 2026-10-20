@@ -22,6 +22,7 @@ import { useSocios } from '../hooks/useSocios';
 import { usePessoaPicker } from '../hooks/usePessoaPicker';
 import { ErroBox, FormModal, Mono, useAcao, formatarData } from './comum';
 import { SubEntidadesManager } from './SubEntidadesManager';
+import { RegularizarDocumentoModal } from './RegularizarDocumentoModal';
 
 const opcoesPapelSocio: { value: PapelSocio; label: string }[] = [
   { value: 'socio', label: 'Sócio(a)' },
@@ -52,6 +53,8 @@ interface PessoaDetailViewProps {
   podeGerenciar: boolean;
   podePromover: boolean;
   podeExcluir: boolean;
+  /** Pode mesclar cadastros duplicados (`cadastros.pessoas.merge`). */
+  podeMesclar?: boolean;
   onFechar: () => void;
   onAtualizado: () => Promise<void>;
   onExcluido: () => Promise<void>;
@@ -64,6 +67,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
   podeGerenciar,
   podePromover,
   podeExcluir,
+  podeMesclar = false,
   onFechar,
   onAtualizado,
   onExcluido,
@@ -75,6 +79,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
   const [modalVinculo, setModalVinculo] = useState(false);
   const [vinculoEncerrando, setVinculoEncerrando] = useState<PessoaVinculo | null>(null);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [regularizando, setRegularizando] = useState(false);
 
   const [cpfRevelado, setCpfRevelado] = useState<string | null>(pessoa.cpf_desmascarado ?? null);
   const [revelandoCpf, setRevelandoCpf] = useState(false);
@@ -197,7 +202,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
         open
         onClose={onFechar}
         title={pessoa.nome}
-        description={`${isJuridica ? 'CNPJ' : 'CPF'} ${cpfRevelado ?? pessoa.cpf_mascarado} • Situação cadastral: ${pessoa.status.toUpperCase()}${!isJuridica && (pessoa.falecido || pessoa.status === 'falecido') ? ' • FALECIDO(A)' : ''}`}
+        description={`${pessoa.documento_pendente ? 'Documento pendente' : `${isJuridica ? 'CNPJ' : 'CPF'} ${cpfRevelado ?? pessoa.cpf_mascarado}`} • Situação cadastral: ${pessoa.status.toUpperCase()}${!isJuridica && (pessoa.falecido || pessoa.status === 'falecido') ? ' • FALECIDO(A)' : ''}`}
         size="2xl"
         footer={
           <div className="flex w-full items-center justify-between gap-2">
@@ -280,6 +285,25 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
                 )}
               </div>
 
+              {pessoa.documento_pendente && (
+                <div role="status" className="rounded-lg border border-warning/40 bg-warning/15 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-[#8D5B00]" />
+                    <div>
+                      <div className="text-sm font-semibold text-foreground">Documento pendente</div>
+                      <p className="text-xs text-muted-foreground">
+                        Esta pessoa foi cadastrada sem CPF. Informe o documento quando for conhecido; o cadastro e os vínculos nos módulos não mudam.
+                      </p>
+                    </div>
+                  </div>
+                  {podeGerenciar && (
+                    <Button size="sm" variant="outline" onClick={() => setRegularizando(true)}>
+                      Regularizar documento
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {/* CARD DESTAQUE CPF & PRIVACIDADE LGPD */}
               <div className="rounded-lg border border-border/80 bg-card p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -291,7 +315,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
                       <Mono className="text-base font-bold text-foreground">
                         {cpfRevelado ? cpfRevelado : pessoa.cpf_mascarado}
                       </Mono>
-                      {pessoa.pode_desmascarar && (
+                      {pessoa.pode_desmascarar && !pessoa.documento_pendente && (
                         <Button
                           type="button"
                           size="xs"
@@ -305,6 +329,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
                           <span>{revelandoCpf ? 'Carregando...' : cpfRevelado ? 'Ocultar' : 'Revelar (Admin)'}</span>
                         </Button>
                       )}
+                      {!pessoa.documento_pendente && (
                       <Button
                         type="button"
                         size="xs"
@@ -316,6 +341,7 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
                         {copiado ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                         <span>{copiado ? 'Copiado!' : 'Copiar'}</span>
                       </Button>
+                      )}
                     </div>
                   </div>
                   {pessoa.pode_desmascarar ? (
@@ -879,6 +905,22 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
           </div>
         </form>
       </Modal>
+      {regularizando && (
+        <RegularizarDocumentoModal
+          pessoa={pessoa}
+          podeMesclar={podeMesclar}
+          onFechar={() => setRegularizando(false)}
+          onRegularizado={async () => {
+            setRegularizando(false);
+            await onAtualizado();
+          }}
+          onMesclado={async () => {
+            setRegularizando(false);
+            onFechar();
+            await onAtualizado();
+          }}
+        />
+      )}
     </>
   );
 };

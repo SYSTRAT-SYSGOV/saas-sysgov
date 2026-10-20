@@ -1,18 +1,22 @@
 import type { ApiRequester, BaseModuleClient } from '../base';
 import type {
+  AdocaoPessoas,
   CreateContatoInput,
   CreateDocumentoInput,
   CreateEnderecoInput,
   CreateIntegracaoInput,
   CreatePessoaInput,
   CreateVinculoInput,
+  DecisaoDivergencia,
   ImportarPessoaInput,
+  ListDivergenciasParams,
   ListPessoasParams,
   ListSyncLogsParams,
   Paginado,
   Pessoa,
   PessoaCompacta,
   PessoaContato,
+  PessoaDivergencia,
   PessoaDocumento,
   PessoaEndereco,
   PessoaIntegracao,
@@ -122,6 +126,30 @@ export class PessoasClient implements BaseModuleClient {
       method: 'POST',
       body: JSON.stringify(fim ? { fim } : {}),
     });
+  }
+
+  /** Informa o CPF de uma pessoa com documento pendente (mantém identificador, vínculos e referências). */
+  async regularizarDocumento(id: number, cpf: string): Promise<Pessoa> {
+    return this.api.request(`/${this.moduleName}/${id}/regularizar-documento`, { method: 'POST', body: JSON.stringify({ cpf }) });
+  }
+
+  /** Absorve a pessoa `id` (documento pendente) pela pessoa `destinoId`, reapontando as referências dos módulos. */
+  async mesclar(id: number, destinoId: number): Promise<Pessoa> {
+    return this.api.request(`/${this.moduleName}/${id}/mesclar`, { method: 'POST', body: JSON.stringify({ destino_id: destinoId }) });
+  }
+
+  async listarDivergencias(params: ListDivergenciasParams = {}): Promise<Paginado<PessoaDivergencia>> {
+    const query = new URLSearchParams(params as unknown as Record<string, string>).toString();
+
+    return this.api.request(`/${this.moduleName}/divergencias${query ? `?${query}` : ''}`);
+  }
+
+  async resolverDivergencia(id: number, decisao: DecisaoDivergencia): Promise<PessoaDivergencia> {
+    return this.api.request(`/${this.moduleName}/divergencias/${id}/resolver`, { method: 'POST', body: JSON.stringify({ decisao }) });
+  }
+
+  async adocao(): Promise<AdocaoPessoas> {
+    return this.api.request(`/${this.moduleName}/adocao`);
   }
 
   async buscarPorDocumento(documento: string): Promise<Pessoa | null> {

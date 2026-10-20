@@ -7,6 +7,7 @@ import { cn } from '../lib/utils';
 
 export interface NovoCadastroRapidoPessoaInput {
   nome: string;
+  /** CPF só com dígitos; vazio quando `sem_cpf` (pessoa com documento pendente). */
   cpf: string;
   nome_social?: string;
   data_nascimento?: string;
@@ -17,6 +18,20 @@ export interface NovoCadastroRapidoPessoaInput {
   falecido?: boolean;
   data_falecimento?: string;
   certidao_obito_numero?: string;
+  /** Cadastro sem CPF: a pessoa fica com documento pendente até ser regularizada. */
+  sem_cpf?: boolean;
+  /** Responsável (pessoa do cadastro central); obrigatório para menor de idade sem CPF. */
+  responsavel_id?: number | null;
+  /** Confirma que não é uma das pessoas semelhantes sugeridas. */
+  confirmar_novo?: boolean;
+}
+
+/** Pessoa já cadastrada com o mesmo nome e nascimento, sugerida antes de criar um cadastro sem CPF. */
+export interface PessoaSemelhanteOption {
+  id: number;
+  nome: string;
+  cpf_mascarado: string;
+  documento_pendente?: boolean;
 }
 
 export interface PessoaFormModalProps {
@@ -25,6 +40,27 @@ export interface PessoaFormModalProps {
   onSubmit: (data: NovoCadastroRapidoPessoaInput) => Promise<boolean | void> | boolean | void;
   title?: string;
   loading?: boolean;
+  /** Mostra a opção "sem CPF". Desligada por padrão: só os módulos que aceitam documento pendente a ativam. */
+  permitirSemCpf?: boolean;
+  /** Seletor de responsável, desenhado pelo módulo (o componente não conhece HTTP). */
+  renderResponsavel?: (contexto: { obrigatorio: boolean; disabled: boolean }) => React.ReactNode;
+  /** Responsável escolhido no seletor acima. */
+  responsavelId?: number | null;
+  /** Pessoas semelhantes devolvidas pelo servidor após uma tentativa de cadastro sem CPF. */
+  semelhantes?: PessoaSemelhanteOption[];
+  /** O usuário escolheu uma pessoa semelhante em vez de criar outra. */
+  onUsarSemelhante?: (pessoa: PessoaSemelhanteOption) => void;
+}
+
+const MAIORIDADE = 18;
+
+/** Idade em anos completos a partir de uma data ISO (AAAA-MM-DD); `null` se a data for inválida. */
+function calcularIdade(dataIso: string, hoje: Date = new Date()): number | null {
+  const [a, m, d] = dataIso.split('-').map(Number);
+  if (!a || !m || !d) return null;
+  let idade = hoje.getFullYear() - a;
+  if (hoje.getMonth() + 1 < m || (hoje.getMonth() + 1 === m && hoje.getDate() < d)) idade -= 1;
+  return idade;
 }
 
 function aplicarMascaraCpf(valor: string): string {
@@ -55,6 +91,11 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
   onSubmit,
   title = 'Cadastro Rápido de Pessoa Física',
   loading = false,
+  permitirSemCpf = false,
+  renderResponsavel,
+  responsavelId = null,
+  semelhantes = [],
+  onUsarSemelhante,
 }) => {
   const [nome, setNome] = React.useState('');
   const [cpf, setCpf] = React.useState('');
@@ -67,6 +108,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
   const [falecido, setFalecido] = React.useState(false);
   const [dataFalecimento, setDataFalecimento] = React.useState('');
   const [certidaoObito, setCertidaoObito] = React.useState('');
+  const [semCpf, setSemCpf] = React.useState(false);
   const [erro, setErro] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -83,6 +125,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
       setFalecido(false);
       setDataFalecimento('');
       setCertidaoObito('');
+      setSemCpf(false);
       setErro(null);
     }
   }, [open]);
@@ -90,14 +133,20 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
   const cpfLimpo = cpf.replace(/\D/g, '');
   const isCpfCompleto = cpfLimpo.length === 11;
   const isCpfValido = isCpfCompleto && validarCpf(cpfLimpo);
+  const idade = semCpf && dataNascimento ? calcularIdade(dataNascimento) : null;
+  const responsavelObrigatorio = semCpf && idade !== null && idade < MAIORIDADE;
 
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCpf(aplicarMascaraCpf(e.target.value));
     if (erro) setErro(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    void enviar(false);
+  };
+
+  const enviar = async (confirmarNovo: boolean) => {
     setErro(null);
 
     const nomeTrimmed = nome.trim();
@@ -106,14 +155,25 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
       return;
     }
 
-    if (cpfLimpo.length !== 11) {
-      setErro('Informe um CPF completo com 11 dígitos.');
-      return;
-    }
+    if (semCpf) {
+      if (!dataNascimento) {
+        setErro('A data de nascimento é obrigatória para pessoa sem CPF.');
+        return;
+      }
+      if (responsavelObrigatorio && !responsavelId) {
+        setErro('O responsável é obrigatório para menor de idade sem CPF.');
+        return;
+      }
+    } else {
+      if (cpfLimpo.length !== 11) {
+        setErro('Informe um CPF completo com 11 dígitos.');
+        return;
+      }
 
-    if (!validarCpf(cpfLimpo)) {
-      setErro('O CPF informado possui dígitos verificadores matematicamente inválidos.');
-      return;
+      if (!validarCpf(cpfLimpo)) {
+        setErro('O CPF informado possui dígitos verificadores matematicamente inválidos.');
+        return;
+      }
     }
 
     if (falecido) {
@@ -131,7 +191,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
     try {
       const res = await onSubmit({
         nome: nomeTrimmed,
-        cpf: cpfLimpo,
+        cpf: semCpf ? '' : cpfLimpo,
         nome_social: nomeSocial.trim() || undefined,
         data_nascimento: dataNascimento || undefined,
         sexo,
@@ -141,6 +201,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
         falecido,
         data_falecimento: falecido ? dataFalecimento : undefined,
         certidao_obito_numero: falecido && certidaoObito.trim() ? certidaoObito.trim() : undefined,
+        ...(semCpf ? { sem_cpf: true, responsavel_id: responsavelId ?? null, confirmar_novo: confirmarNovo || undefined } : {}),
       });
 
       if (res !== false) {
@@ -169,7 +230,7 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
           <Button type="button" variant="outline" onClick={onClose} disabled={isBusy}>
             Cancelar
           </Button>
-          <Button type="button" variant="primary" onClick={handleSubmit} disabled={isBusy}>
+          <Button type="button" variant="primary" onClick={() => void enviar(false)} disabled={isBusy}>
             {isBusy ? 'Salvando...' : 'Salvar Pessoa'}
           </Button>
         </div>
@@ -201,19 +262,34 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gov-text-secondary uppercase tracking-wider mb-1.5">
-              CPF <span className="text-destructive">*</span>
+              CPF {!semCpf && <span className="text-destructive">*</span>}
             </label>
             <Input
               type="text"
-              required
-              value={cpf}
+              required={!semCpf}
+              value={semCpf ? '' : cpf}
               onChange={handleCpfChange}
               placeholder="000.000.000-00"
               maxLength={14}
               className="font-mono tabular-nums"
-              disabled={isBusy}
+              disabled={isBusy || semCpf}
             />
-            {isCpfCompleto && (
+            {permitirSemCpf && (
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-gov-text-secondary mt-1.5">
+                <input
+                  type="checkbox"
+                  checked={semCpf}
+                  onChange={(e) => {
+                    setSemCpf(e.target.checked);
+                    setErro(null);
+                  }}
+                  className="rounded border-gov-border text-gov-primary focus:ring-gov-primary/30"
+                  disabled={isBusy}
+                />
+                <span>Pessoa sem CPF (documento pendente)</span>
+              </label>
+            )}
+            {!semCpf && isCpfCompleto && (
               <span
                 className={cn(
                   'text-xs flex items-center gap-1 font-medium mt-1',
@@ -254,10 +330,11 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gov-text-secondary uppercase tracking-wider mb-1.5">
-              Data de Nascimento
+              Data de Nascimento {semCpf && <span className="text-destructive">*</span>}
             </label>
             <Input
               type="date"
+              required={semCpf}
               value={dataNascimento}
               onChange={(e) => setDataNascimento(e.target.value)}
               className="font-mono tabular-nums"
@@ -283,6 +360,49 @@ export const PessoaFormModal: React.FC<PessoaFormModalProps> = ({
               <option value="outro">Outro / Não informado</option>
             </select>
           </div>
+
+          {semCpf && renderResponsavel && (
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-gov-text-secondary uppercase tracking-wider mb-1.5">
+                Responsável {responsavelObrigatorio ? <span className="text-destructive">*</span> : '(Opcional)'}
+              </label>
+              {renderResponsavel({ obrigatorio: responsavelObrigatorio, disabled: isBusy })}
+              {responsavelObrigatorio && (
+                <p className="text-xs text-gov-text-secondary mt-1">
+                  Menor de idade sem CPF: informe a pessoa responsável, já cadastrada no cadastro central.
+                </p>
+              )}
+            </div>
+          )}
+
+          {semCpf && semelhantes.length > 0 && (
+            <div
+              role="alert"
+              className="md:col-span-2 p-3 rounded-lg border border-warning/40 bg-warning/15 text-sm space-y-2"
+            >
+              <p className="font-medium text-gov-text-primary">
+                Já existe pessoa com o mesmo nome e data de nascimento. É a mesma pessoa?
+              </p>
+              <ul className="space-y-1.5">
+                {semelhantes.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate">
+                      {p.nome} <span className="font-mono tabular-nums text-xs text-gov-text-secondary">{p.cpf_mascarado}</span>
+                      {p.documento_pendente && <span className="text-xs text-gov-text-secondary"> · documento pendente</span>}
+                    </span>
+                    {onUsarSemelhante && (
+                      <Button type="button" size="sm" variant="outline" onClick={() => onUsarSemelhante(p)} disabled={isBusy}>
+                        Usar esta pessoa
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <Button type="button" size="sm" variant="ghost" onClick={() => void enviar(true)} disabled={isBusy}>
+                Não é a mesma pessoa, cadastrar mesmo assim
+              </Button>
+            </div>
+          )}
 
           <div className="md:col-span-2 pt-2 border-t border-gov-border/60">
             <span className="block text-xs font-semibold text-gov-text-secondary uppercase tracking-wider mb-2">

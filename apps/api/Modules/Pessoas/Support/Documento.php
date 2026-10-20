@@ -82,6 +82,36 @@ final class Documento
         return (int) $d[13] === $digito2;
     }
 
+    /** Tipo de pessoa pelo tamanho do documento (11 dígitos = CPF, 14 = CNPJ); `null` para qualquer outro. */
+    public static function tipoPorDigitos(string $valor): ?string
+    {
+        return match (strlen(self::somenteDigitos($valor))) {
+            11 => 'fisica',
+            14 => 'juridica',
+            default => null,
+        };
+    }
+
+    /** CPF (11 dígitos) ou CNPJ (14 dígitos) válido, escolhido pelo tamanho do documento. */
+    public static function validoPorTamanho(string $valor): bool
+    {
+        $tipo = self::tipoPorDigitos($valor);
+
+        return $tipo !== null && self::valido($valor, $tipo);
+    }
+
+    /** Formatação completa, sem ocultar dígitos: `529.982.247-25` ou `11.222.333/0001-81`. */
+    public static function formatar(string $valor): string
+    {
+        $d = self::somenteDigitos($valor);
+
+        return match (strlen($d)) {
+            11 => substr($d, 0, 3) . '.' . substr($d, 3, 3) . '.' . substr($d, 6, 3) . '-' . substr($d, 9, 2),
+            14 => substr($d, 0, 2) . '.' . substr($d, 2, 3) . '.' . substr($d, 5, 3) . '/' . substr($d, 8, 4) . '-' . substr($d, 12, 2),
+            default => $d,
+        };
+    }
+
     /** Ex.: `***.456.789-**` para CPF (11 dígitos) ou `00.000.000/0000-00` para CNPJ (14 dígitos). */
     public static function mascarar(string $valor): string
     {

@@ -19,11 +19,16 @@ final class PessoasServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
         Event::listen(OutboxMessage::class, ImportarPessoaListener::class);
         Gate::policy(Pessoa::class, PessoaPolicy::class);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([\Modules\Pessoas\Console\ConciliarPessoasCommand::class]);
+        }
     }
 
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../Config/config.php', 'pessoas');
+        $this->app->singleton(\Modules\Pessoas\Services\ConciliacaoRegistry::class);
         $this->app->register(RouteServiceProvider::class);
         $this->app->register(AuthServiceProvider::class);
     }
