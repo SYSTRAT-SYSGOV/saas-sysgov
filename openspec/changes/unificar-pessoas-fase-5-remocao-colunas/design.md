@@ -1,38 +1,60 @@
 # Design
 
-## Por que a Fase 5 não é só "apagar colunas"
-As Fases 1 a 4 mantiveram as colunas civis como **cópia de exibição** (nome, nascimento, filiação, CPF, razão
-social...), atualizada pela pessoa. Muito código ainda lê essa cópia: busca e ordenação por nome (Escola, Capd),
-boletins, atas e espelhos de avaliação, certificados, `where('email', ...)` no login do servidor. Remover a coluna
-sem antes trocar essas leituras por `join`/relação com `pessoas` quebra telas e relatórios. Cada onda tem, então,
-duas partes: **trocar as leituras** (reversível, vai para produção primeiro) e **remover a coluna** (destrutiva).
+## O que a análise de 20/10 mudou
+O plano original dizia "remover as colunas civis duplicadas de todos os módulos". A leitura do código e dos dados
+mostrou que a palavra "duplicada" esconde três situações diferentes, e só uma delas pede remoção:
 
-## Porta de entrada: a trava
-Nenhuma migration destrutiva roda sem `TravaRemocaoColunasService::exigir(<modulo>)` (todos os tenants: nenhum
-registro sem pessoa, nenhuma divergência aberta). A trava precisa do alias registrado, então cada onda usa os
-aliases das Fases 1 a 4. Ela só passa depois de **deploy + `pessoas:conciliar <alias>` real em produção + revisão
-das divergências e dos `sem_responsavel` / `documento_invalido` / `pessoa_juridica_inexistente`**.
+1. **Cópia pura**: o dado só existe para exibir o que a pessoa já tem. Pode sair, depois de trocar as leituras.
+2. **Chave de busca e ordenação**: o `nome` do aluno ou do servidor alimenta `where like` e `orderBy` em dezenas de
+   telas paginadas. Trocar por `join` com `pessoas` em cada uma é custo e risco altos para ganho baixo.
+3. **Registro histórico, jurídico ou do domínio**: certificado com o nome da época, licitação homologada, óbito com
+   certidão, contato do responsável que a escola usa. Remover enfraquece prova ou apaga dado que não está no MDM.
 
-## Ondas (cada uma independente, com backup e janela próprios)
-1. **Cursos (participantes e empresas)** e **Procurement**: menos leituras da cópia; empresa já tem CNPJ na pessoa.
-2. **Inservível, Passeio**.
-3. **Cemitérios** e **Campanha (coordenadores e cabos)**: regras de óbito e sucessão leem a pessoa.
-4. **Capd**: depende de trocar a busca/ordenação por nome e o login por e-mail; e-mail e telefone precisam antes de
-   propagação a partir dos contatos da pessoa.
-5. **Escola**: maior volume e mais leituras da cópia (boletins, atas, listas); por último.
+## Regras
+- **R1.** O `nome` fica como **coluna derivada** de exibição e busca. A fonte é a pessoa: o evento `PessoaAtualizada`
+  a mantém, e nenhuma escrita direta no módulo muda o nome sem passar pelo serviço do MDM.
+- **R2.** Dado de documento (CPF/CNPJ), nascimento e filiação **saem** do módulo quando a pessoa é obrigatória no
+  módulo. Quem lê passa a ler a relação `pessoa`.
+- **R3.** Registro histórico ou jurídico **fica** como foto do momento. O vínculo com a pessoa é acrescentado, nunca
+  substitui.
+- **R4.** Nada destrutivo roda sem: trava (`TravaRemocaoColunasService`) liberada, backup verificado e confirmação
+  do responsável pelo módulo. Cada coluna passa por **duas etapas separadas por um ciclo de uso em produção**:
+  (A) trocar a leitura e manter a coluna; (B) remover.
 
-Prefeitos e vereadores da Campanha e Multiprofissional só entram depois das decisões pendentes (ver Fase 3).
+## Classificação coluna por coluna
+Legenda: **L** = trocar a leitura pela pessoa e, depois, remover · **D** = manter como derivada (R1) ·
+**M** = manter (R3 ou dado do domínio) · **A** = adiar, depende de outra mudança.
 
-## Em cada onda
-1. Trocar as leituras da cópia por relação com a pessoa; testes de tela/relatório cobrindo a troca.
-2. Deploy; validar em produção por um ciclo de uso.
-3. Backup verificado; migration do módulo chamando a trava; `pessoa_id` passa a `NOT NULL`.
-4. Remover fallbacks de código e `Support/Documento` restantes; atualizar o relatório de adoção.
+| Tabela (linhas em prod. em 20/10) | Coluna | Decisão | Motivo |
+|---|---|---|---|
+| `escola_alunos` (400) | `nome`, `mae`, `pai` | D | busca e ordenação; `nome_mae`/`nome_pai` são **cifrados** no cadastro central e não admitem `like`, e a tela busca "por nome, pai ou mãe" |
+| | `cpf`, `cpf_hash` | L | busca e unicidade por escola passam a usar o `documento_hash` da pessoa |
+| | `nascimento` | L | a ficha e o Multiprofissional leem da pessoa |
+| `escola_aluno_contatos` (500) | todas | M | são os telefones do **responsável** para a escola, não do aluno; o MDM guarda os da pessoa |
+| `capd_servidores` (0) | `nome_completo` | D | busca e ordenação |
+| | `cpf`, `nome_social`, `data_nascimento` | L | |
+| | `email`, `telefone` | A | o vínculo com o usuário e o login usam o e-mail; falta propagar dos contatos da pessoa |
+| | `pis_pasep` | M | o MDM ainda não guarda PIS/PASEP |
+| `cemetery_operators` (8) | `cpf_cnpj`, `documento_hash` | L | o mascarado já vem da pessoa |
+| | `nome`, `telefone`, `email` | D / M | exibição; contato operacional |
+| `concession_holders` (49) | `documento`, `documento_hash` | A | o portal autentica o titular pelo documento; precisa de outra chave primeiro |
+| `sucessao_herdeiros` (10) | `documento` | L | |
+| `deceased_records` (50) | todas | M | registro legal do óbito (certidão, nascimento declarado) |
+| `campanha_coordenadores`, `campanha_cabos` (0) | `telefone`, `whatsapp`, `email` | M | contato operacional da campanha |
+| `cursos_participantes`, `cursos_empresas` (0) | todas | M | participante pode não ter pessoa por desenho; certificado guarda o nome da época |
+| `inservivel_entidades` (0) | cadastro submetido (`razao_social`, `cnpj`, endereço, banco...) | M | é o que a entidade declarou e a análise avaliou |
+| `passeio_veiculos` (0) | `motorista`, `telefone` | M | texto livre do passeio |
+| `licitacao_participantes` (0) | `razao_social`, `cnpj` | M | registro jurídico da licitação |
 
-## Rollback
-Antes da migration destrutiva: voltar o código (a cópia ainda existe). Depois: só restaurando o backup. Por isso a
-migration não tem `down()` útil e declara isso.
+Resultado: **3 colunas de Escola** (`cpf`, `cpf_hash`, `nascimento`), **3 de Capd, 2 de Operadores e 1 de Herdeiros** são candidatas a remoção. O resto
+não sai, ou sai depois de outra mudança (A).
+
+## `pessoa_id NOT NULL`
+Só onde a pessoa é obrigatória por regra de negócio e a trava confirma 100% de vínculo: `escola_alunos`,
+`capd_servidores`, `cemetery_operators`, `sucessao_herdeiros`. Em Cursos, Inservível, Passeio e Procurement o vínculo
+continua opcional (CNPJ inválido ou participante sem documento).
 
 ## Riscos
-- Integrações externas lendo as colunas pela API ou direto do banco: inventariar antes de cada onda.
-- Dado só existente na cópia (nunca conciliado): a trava barra; o backup cobre o resto.
+- Integrações externas que leiam as colunas L pela API ou direto do banco: inventariar antes da etapa B.
+- A busca por CPF do Escola (`AlunoController`) e do portal de Cemitérios usa o hash da coluna; migra para a pessoa.
+- Rollback: etapa A reverte voltando o código; etapa B só por restauração de backup.

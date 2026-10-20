@@ -59,7 +59,7 @@ final class AlunoService
             $this->pessoas->sincronizar($aluno, [], $responsavelId, $confirmarNovo);
             $this->auditar('aluno', 'criado', $aluno->id, null, $this->retrato($aluno));
 
-            return $aluno->load('contatos', 'turma.turno');
+            return $aluno->load('contatos', 'turma.turno', 'pessoa');
         });
     }
 
@@ -107,7 +107,7 @@ final class AlunoService
             }
             $this->auditar('aluno', $remanejando ? 'remanejado' : 'atualizado', $aluno->id, $antes, $this->retrato($aluno->refresh()));
 
-            return $aluno->load('contatos', 'turma.turno', 'turmaOrigem');
+            return $aluno->load('contatos', 'turma.turno', 'turmaOrigem', 'pessoa');
         });
     }
 
@@ -236,7 +236,7 @@ final class AlunoService
                     'nascimento' => $nascimento,
                 ], fn ($v): bool => $v !== null);
 
-                $existente = ($cpf !== null ? Aluno::query()->where('cpf_hash', Documento::hash($cpf))->first() : null) ?? Aluno::query()
+                $existente = ($cpf !== null ? $this->alunoPorCpf($cpf) : null) ?? Aluno::query()
                     ->where(function ($q) use ($cgm, $nome, $turma): void {
                         if ($cgm !== null) {
                             $q->where('cgm', $cgm);
@@ -355,14 +355,33 @@ final class AlunoService
         }
     }
 
+    /**
+     * Alunos (da escola do contexto) com esse CPF: pelo documento da pessoa do cadastro central ou, enquanto a cópia
+     * local existir, pelo hash do aluno ainda sem pessoa.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<Aluno>
+     */
+    private function consultaPorCpf(string $digitos): \Illuminate\Database\Eloquent\Builder
+    {
+        $hash = Documento::hash($digitos);
+
+        return Aluno::query()->where(fn ($q) => $q
+            ->whereHas('pessoa', fn ($p) => $p->where('documento_hash', $hash))
+            ->orWhere('cpf_hash', $hash));
+    }
+
+    private function alunoPorCpf(string $digitos): ?Aluno
+    {
+        return $this->consultaPorCpf($digitos)->first();
+    }
+
     private function garantirCpfLivre(?string $cpf, ?int $ignorarId = null): void
     {
         $digitos = Documento::somenteDigitos((string) $cpf);
         if ($digitos === '') {
             return;
         }
-        $emUso = Aluno::query()
-            ->where('cpf_hash', Documento::hash($digitos))
+        $emUso = $this->consultaPorCpf($digitos)
             ->when($ignorarId, fn ($q) => $q->where('id', '!=', $ignorarId))
             ->lockForUpdate()
             ->exists();
