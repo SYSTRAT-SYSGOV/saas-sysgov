@@ -101,7 +101,7 @@ final class AlunoController extends Controller
     public function importar(ImportarAlunosRequest $request): JsonResponse
     {
         return $this->executar(fn (): JsonResponse => response()->json(
-            $this->alunos->importar(LeitorCsv::de($request->file('arquivo')))
+            $this->alunos->importar(LeitorCsv::de($request->file('arquivo')), $request->boolean('confirmar_duplicidades'))
         ));
     }
 

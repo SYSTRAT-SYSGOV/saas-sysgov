@@ -22,6 +22,7 @@ final class AlunoTest extends TestCase
 
         $this->como($this->usuario($tenant, ['escola_secretaria']), $tenant)->postJson('/api/escola/alunos', [
             'nome' => 'ana clarice teste',
+            'nascimento' => '1990-05-20', // maior de idade: sem CPF, não exige responsável
             'turma_id' => $turma->id,
             'cgm' => '1019756498',
             'contatos' => [['telefone' => '(41)98834-7486', 'descricao' => 'Mãe']],
