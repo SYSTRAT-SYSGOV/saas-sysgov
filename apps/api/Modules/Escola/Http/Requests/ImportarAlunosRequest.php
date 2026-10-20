@@ -21,6 +21,7 @@ final class ImportarAlunosRequest extends FormRequest
     {
         return [
             'arquivo' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
+            'confirmar_duplicidades' => ['sometimes', 'boolean'],
         ];
     }
 }

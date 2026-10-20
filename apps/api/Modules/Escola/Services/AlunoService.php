@@ -19,6 +19,7 @@ use Modules\Escola\Models\AlunoContato;
 use Modules\Escola\Models\Turma;
 use Modules\Escola\Services\Concerns\RegistraMutacao;
 use Modules\Pessoas\Support\Documento;
+use Modules\Pessoas\Support\RegraNegocioException;
 use Modules\Escola\Support\LeitorCsv;
 use Modules\Escola\Support\NomeNormalizado;
 
@@ -46,6 +47,7 @@ final class AlunoService
             $this->garantirCgmLivre($dados['cgm'] ?? null);
             $this->garantirCpfLivre($dados['cpf'] ?? null);
             $contatos = $dados['contatos'] ?? [];
+            [$responsavelId, $confirmarNovo] = $this->extrairOpcoesDePessoa($dados);
             unset($dados['contatos']);
 
             $aluno = Aluno::create([
@@ -54,7 +56,7 @@ final class AlunoService
                 'numero' => $dados['numero'] ?? (isset($dados['turma_id']) ? $this->proximoNumero((int) $dados['turma_id']) : null),
             ]);
             $this->salvarContatos($aluno, $contatos);
-            $this->pessoas->sincronizar($aluno);
+            $this->pessoas->sincronizar($aluno, [], $responsavelId, $confirmarNovo);
             $this->auditar('aluno', 'criado', $aluno->id, null, $this->retrato($aluno));
 
             return $aluno->load('contatos', 'turma.turno');
@@ -78,6 +80,7 @@ final class AlunoService
             }
             $antes = $this->retrato($aluno);
             $contatos = $dados['contatos'] ?? null;
+            [$responsavelId, $confirmarNovo] = $this->extrairOpcoesDePessoa($dados);
             unset($dados['contatos']);
 
             $remanejando = ($dados['situacao'] ?? null) === SituacaoAluno::Remanejado->value
@@ -100,7 +103,7 @@ final class AlunoService
                 // Saiu da escola: o vínculo `aluno` desta escola é encerrado; a pessoa continua.
                 $this->pessoas->encerrarVinculo($aluno);
             } else {
-                $this->pessoas->sincronizar($aluno, array_values(array_intersect(self::CAMPOS_CIVIS, array_keys($dados))));
+                $this->pessoas->sincronizar($aluno, array_values(array_intersect(self::CAMPOS_CIVIS, array_keys($dados))), $responsavelId, $confirmarNovo, $responsavelId !== null);
             }
             $this->auditar('aluno', $remanejando ? 'remanejado' : 'atualizado', $aluno->id, $antes, $this->retrato($aluno->refresh()));
 
@@ -175,9 +178,13 @@ final class AlunoService
      * Aluno com o mesmo CPF, ou o mesmo CGM, ou o mesmo nome na mesma turma, é atualizado em vez de
      * duplicado. Com CPF válido, o aluno é ligado à pessoa do município.
      *
-     * @return array{criados: int, atualizados: int, rejeitadas: list<array{linha: int, motivo: string}>}
+     * Aluno sem CPF vira pessoa com documento pendente. Linha cujo nome e nascimento coincidem com pessoa
+     * existente não é gravada e vem em `possiveis_duplicidades`; reenviar com `$confirmarDuplicidades` cria
+     * mesmo assim. Menor sem responsável (o CSV não traz) é gravado sem pessoa e vem em `sem_pessoa`.
+     *
+     * @return array{criados: int, atualizados: int, rejeitadas: list<array{linha: int, motivo: string}>, possiveis_duplicidades: list<array{linha: int, nome: string, sugestoes: list<array{id: int, nome: string}>}>, sem_pessoa: list<array{linha: int, nome: string, motivo: string}>}
      */
-    public function importar(LeitorCsv $csv): array
+    public function importar(LeitorCsv $csv, bool $confirmarDuplicidades = false): array
     {
         foreach (['NOME', 'TURMA'] as $obrigatoria) {
             if (!$csv->temColuna($obrigatoria)) {
@@ -186,9 +193,9 @@ final class AlunoService
         }
 
         $turmas = Turma::query()->get()->groupBy(fn (Turma $t): string => NomeNormalizado::de($t->nome));
-        $resultado = ['criados' => 0, 'atualizados' => 0, 'rejeitadas' => []];
+        $resultado = ['criados' => 0, 'atualizados' => 0, 'rejeitadas' => [], 'possiveis_duplicidades' => [], 'sem_pessoa' => []];
 
-        DB::transaction(function () use ($csv, $turmas, &$resultado): void {
+        DB::transaction(function () use ($csv, $turmas, $confirmarDuplicidades, &$resultado): void {
             foreach ($csv->linhas() as $numeroLinha => $linha) {
                 $nome = $linha['NOME'] ?? '';
                 if ($nome === '') {
@@ -238,29 +245,55 @@ final class AlunoService
                     })
                     ->first();
 
-                if ($existente !== null) {
-                    $antes = $this->retrato($existente);
-                    $existente->update($dados);
-                    $aluno = $existente;
-                    $resultado['atualizados']++;
-                } else {
-                    $aluno = Aluno::create([
-                        ...$dados,
-                        'situacao' => SituacaoAluno::Ativo->value,
-                        'numero' => $numero ?? $this->proximoNumero($turma->id),
-                    ]);
-                    $antes = null;
-                    $resultado['criados']++;
+                $gravar = function (bool $vincular) use ($existente, $dados, $numero, $turma, $linha, $confirmarDuplicidades): array {
+                    if ($existente !== null) {
+                        $antes = $this->retrato($existente);
+                        $existente->update($dados);
+                        $aluno = $existente;
+                    } else {
+                        $aluno = Aluno::create([
+                            ...$dados,
+                            'situacao' => SituacaoAluno::Ativo->value,
+                            'numero' => $numero ?? $this->proximoNumero($turma->id),
+                        ]);
+                        $antes = null;
+                    }
+
+                    if ($vincular) {
+                        $this->pessoas->sincronizar($aluno, $existente !== null ? array_values(array_intersect(self::CAMPOS_CIVIS, array_keys($dados))) : [], null, $confirmarDuplicidades);
+                    }
+
+                    $contato = $linha['CONTATO'] ?? '';
+                    if ($contato !== '' && !$aluno->contatos()->where('telefone', $contato)->exists()) {
+                        AlunoContato::create(['aluno_id' => $aluno->id, 'telefone' => $contato, 'descricao' => 'Importado', 'ordem' => $aluno->contatos()->count()]);
+                    }
+
+                    $this->auditar('aluno', $antes === null ? 'importado' : 'atualizado', $aluno->id, $antes, $this->retrato($aluno));
+
+                    return [$existente === null];
+                };
+
+                // Cada linha roda em um ponto de salvamento: se o MDM recusar a pessoa, só ela é desfeita.
+                try {
+                    [$criado] = DB::transaction(fn (): array => $gravar(true));
+                } catch (RegraNegocioException $e) {
+                    if ($e->codigo === 'pessoa_semelhante_existente') {
+                        // Possível duplicidade: nada é gravado até o usuário confirmar (reenvio com a confirmação).
+                        $resultado['possiveis_duplicidades'][] = [
+                            'linha' => $numeroLinha,
+                            'nome' => $nome,
+                            'sugestoes' => array_map(fn (array $s): array => ['id' => $s['id'], 'nome' => $s['nome']], (array) ($e->contexto['sugestoes'] ?? [])),
+                        ];
+                        continue;
+                    }
+                    if (!in_array($e->codigo, ['responsavel_obrigatorio', 'dados_insuficientes'], true)) {
+                        throw $e;
+                    }
+                    // O CSV não traz responsável: o aluno é gravado sem pessoa e fica para a conciliação.
+                    [$criado] = DB::transaction(fn (): array => $gravar(false));
+                    $resultado['sem_pessoa'][] = ['linha' => $numeroLinha, 'nome' => $nome, 'motivo' => $e->codigo];
                 }
-
-                $this->pessoas->sincronizar($aluno, $existente !== null ? array_values(array_intersect(self::CAMPOS_CIVIS, array_keys($dados))) : []);
-
-                $contato = $linha['CONTATO'] ?? '';
-                if ($contato !== '' && !$aluno->contatos()->where('telefone', $contato)->exists()) {
-                    AlunoContato::create(['aluno_id' => $aluno->id, 'telefone' => $contato, 'descricao' => 'Importado', 'ordem' => $aluno->contatos()->count()]);
-                }
-
-                $this->auditar('aluno', $antes === null ? 'importado' : 'atualizado', $aluno->id, $antes, $this->retrato($aluno));
+                $criado ? $resultado['criados']++ : $resultado['atualizados']++;
             }
         });
 
@@ -289,6 +322,21 @@ final class AlunoService
             }
             $this->auditar('aluno', 'telefone_atualizado', $aluno->id, $antes, $this->retrato($aluno));
         });
+    }
+
+    /**
+     * Retira de `$dados` o que serve só à resolução da pessoa (não são colunas do aluno).
+     *
+     * @param array<string, mixed> $dados
+     * @return array{0: int|null, 1: bool} responsável e confirmação de novo cadastro
+     */
+    private function extrairOpcoesDePessoa(array &$dados): array
+    {
+        $responsavelId = isset($dados['responsavel_id']) ? (int) $dados['responsavel_id'] : null;
+        $confirmarNovo = (bool) ($dados['confirmar_novo'] ?? false);
+        unset($dados['responsavel_id'], $dados['confirmar_novo']);
+
+        return [$responsavelId, $confirmarNovo];
     }
 
     /**

@@ -118,12 +118,100 @@ final class AlunoPessoaTest extends TestCase
         $this->assertSame('ANA LIMA CORREA', $this->noTenant($this->tenant, fn () => Pessoa::query()->sole()->nome));
     }
 
-    public function test_aluno_sem_cpf_nao_cria_pessoa(): void
+    /**
+     * @param array<string, mixed> $extra
+     * @return array<string, mixed>
+     */
+    private function semCpf(array $extra = []): array
     {
-        $this->cadastrar($this->escolaA, $this->turmaA, ['nome' => 'Sem Documento']);
+        return ['nome' => 'Davi Souza', 'nascimento' => '2016-03-10', ...$extra];
+    }
 
-        $this->noTenant($this->tenant, fn () => $this->assertSame(0, Pessoa::count()));
-        $this->assertCount(0, $this->vinculos());
+    private function responsavel(string $nome = 'Marta Souza'): Pessoa
+    {
+        return $this->noTenant($this->tenant, fn () => Pessoa::create(['tipo' => 'fisica', 'documento' => self::CPF_2, 'nome' => $nome]));
+    }
+
+    public function test_aluno_sem_cpf_cria_pessoa_pendente_com_responsavel_e_vinculo(): void
+    {
+        $responsavel = $this->responsavel();
+
+        $id = $this->cadastrar($this->escolaA, $this->turmaA, $this->semCpf(['responsavel_id' => $responsavel->id]));
+
+        $pessoa = $this->noTenant($this->tenant, fn () => Pessoa::query()->where('nome', 'DAVI SOUZA')->orWhere('nome', 'Davi Souza')->sole());
+        $this->assertTrue($pessoa->documento_pendente);
+        $this->assertSame($responsavel->id, $pessoa->responsavel_id);
+        $this->assertSame($pessoa->id, $this->noTenant($this->tenant, fn () => Aluno::query()->findOrFail($id)->pessoa_id));
+        $this->assertCount(1, $this->vinculos());
+    }
+
+    public function test_aluno_menor_sem_cpf_e_sem_responsavel_e_recusado(): void
+    {
+        $this->naEscolaHttp($this->escolaA)->postJson('/api/escola/alunos', ['turma_id' => $this->turmaA->id, ...$this->semCpf()])
+            ->assertStatus(422)->assertJsonPath('code', 'responsavel_obrigatorio');
+
+        $this->assertSame(0, $this->noTenant($this->tenant, fn () => Aluno::query()->count()));
+        $this->assertSame(0, $this->noTenant($this->tenant, fn () => Pessoa::count()));
+    }
+
+    public function test_aluno_sem_cpf_exige_nascimento(): void
+    {
+        $this->naEscolaHttp($this->escolaA)->postJson('/api/escola/alunos', ['turma_id' => $this->turmaA->id, 'nome' => 'Sem Data'])
+            ->assertStatus(422)->assertJsonPath('code', 'dados_insuficientes');
+    }
+
+    public function test_pessoa_semelhante_e_sugerida_e_so_cria_com_confirmacao(): void
+    {
+        $responsavel = $this->responsavel();
+        $this->noTenant($this->tenant, fn () => Pessoa::create(['tipo' => 'fisica', 'nome' => 'Davi Souza', 'data_nascimento' => '2016-03-10', 'responsavel_id' => $responsavel->id]));
+        $dados = ['turma_id' => $this->turmaA->id, ...$this->semCpf(['responsavel_id' => $responsavel->id])];
+
+        $this->naEscolaHttp($this->escolaA)->postJson('/api/escola/alunos', $dados)
+            ->assertStatus(422)->assertJsonPath('code', 'pessoa_semelhante_existente')->assertJsonCount(1, 'sugestoes');
+
+        $this->naEscolaHttp($this->escolaA)->postJson('/api/escola/alunos', [...$dados, 'confirmar_novo' => true])->assertCreated();
+        $this->assertSame(3, $this->noTenant($this->tenant, fn () => Pessoa::count()));
+    }
+
+    public function test_informar_o_cpf_depois_regulariza_a_mesma_pessoa(): void
+    {
+        $responsavel = $this->responsavel();
+        $id = $this->cadastrar($this->escolaA, $this->turmaA, $this->semCpf(['responsavel_id' => $responsavel->id]));
+        $pessoaId = $this->noTenant($this->tenant, fn () => Aluno::query()->findOrFail($id)->pessoa_id);
+
+        $this->naEscolaHttp($this->escolaA)->putJson("/api/escola/alunos/{$id}", ['cpf' => self::CPF])->assertOk();
+
+        $pessoa = $this->noTenant($this->tenant, fn () => Pessoa::query()->findOrFail($pessoaId));
+        $this->assertFalse($pessoa->documento_pendente);
+        $this->assertSame(self::CPF, $pessoa->documento);
+        $this->assertSame($pessoaId, $this->noTenant($this->tenant, fn () => Aluno::query()->findOrFail($id)->pessoa_id));
+    }
+
+    public function test_editar_nascimento_de_aluno_sem_cpf_grava_na_pessoa(): void
+    {
+        $responsavel = $this->responsavel();
+        $id = $this->cadastrar($this->escolaA, $this->turmaA, $this->semCpf(['responsavel_id' => $responsavel->id]));
+
+        $this->naEscolaHttp($this->escolaA)->putJson("/api/escola/alunos/{$id}", ['nascimento' => '2016-04-11'])->assertOk();
+
+        $pessoa = $this->noTenant($this->tenant, fn () => Pessoa::query()->where('responsavel_id', $responsavel->id)->sole());
+        $this->assertSame('2016-04-11', $pessoa->data_nascimento->toDateString());
+    }
+
+    public function test_csv_sem_cpf_lista_possivel_duplicidade_e_aluno_sem_pessoa(): void
+    {
+        $responsavel = $this->responsavel();
+        $this->noTenant($this->tenant, fn () => Pessoa::create(['tipo' => 'fisica', 'nome' => 'Davi Souza', 'data_nascimento' => '2016-03-10', 'responsavel_id' => $responsavel->id]));
+        $csv = "NOME;TURMA;NASCIMENTO\nDavi Souza;6º A;10/03/2016\nEva Sem Data;6º A;\n";
+        $enviar = fn (array $extra = []) => $this->naEscolaHttp($this->escolaA)->post('/api/escola/alunos/importar', ['arquivo' => UploadedFile::fake()->createWithContent('alunos.csv', $csv), ...$extra]);
+
+        $enviar()->assertOk()
+            ->assertJsonPath('criados', 1)
+            ->assertJsonPath('possiveis_duplicidades.0.linha', 2)
+            ->assertJsonPath('sem_pessoa.0.nome', 'Eva Sem Data');
+
+        $this->assertSame(1, $this->noTenant($this->tenant, fn () => Aluno::query()->count()));
+        $this->assertNull($this->noTenant($this->tenant, fn () => Aluno::query()->sole()->pessoa_id));
     }
 
     public function test_transferencia_encerra_o_vinculo_e_mantem_a_pessoa(): void

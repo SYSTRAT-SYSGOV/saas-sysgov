@@ -9,13 +9,19 @@ use Illuminate\Support\Carbon;
 use Modules\Escola\Models\Aluno;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Models\PessoaVinculo;
+use Modules\Pessoas\Services\PessoaService;
 use Modules\Pessoas\Services\ResolucaoPessoaService;
+use Modules\Pessoas\Support\Documento;
+use Modules\Pessoas\Support\RegraNegocioException;
 
 /**
  * Liga o aluno ao Cadastro de Pessoas (change educacao-multiescola-e-cadastro-pessoas, D5).
  *
  * - Aluno com CPF → pessoa do município com esse CPF (criada se não existir) e vínculo `aluno`
  *   aberto com escola, aluno, CGM e turma.
+ * - Aluno sem CPF → pessoa com documento pendente (unificar-pessoas-fase-1-escola); menor exige
+ *   responsável e nome + nascimento iguais a uma pessoa existente são sugeridos antes de criar. Ao
+ *   informar o CPF depois, a pessoa é regularizada e mantém o identificador.
  * - Pessoa é a fonte dos dados civis: ao ligar, o aluno recebe os dados da pessoa; editar nome,
  *   nascimento, mãe ou pai de um aluno já ligado grava na pessoa. O aluno guarda uma cópia de
  *   exibição (busca, ordenação, boletins, atas), atualizada pelo evento PessoaAtualizada.
@@ -24,10 +30,14 @@ use Modules\Pessoas\Services\ResolucaoPessoaService;
 final class AlunoPessoaService
 {
     /** Campo do aluno → campo da pessoa. */
+    /** Recusas do MDM que não impedem editar aluno legado sem pessoa. */
+    private const ADIAVEIS = ['dados_insuficientes', 'responsavel_obrigatorio', 'pessoa_semelhante_existente'];
+
     private const MAPA = ['nome' => 'nome', 'nascimento' => 'data_nascimento', 'mae' => 'nome_mae', 'pai' => 'nome_pai'];
 
     public function __construct(
         private readonly ResolucaoPessoaService $resolucao,
+        private readonly PessoaService $pessoas,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -35,21 +45,26 @@ final class AlunoPessoaService
      * Chamar depois de gravar o aluno (dentro da mesma transação).
      *
      * @param list<string> $camposCivisEditados campos civis enviados nesta gravação
+     * @param int|null $responsavelId responsável (pessoa física) do aluno menor sem CPF
+     * @param bool $confirmarNovo cria a pessoa mesmo havendo outra com o mesmo nome e nascimento
+     * @param bool $exigirPessoa false (edição de aluno legado, sem pessoa): se faltar dado, responsável ou
+     *        houver pessoa semelhante, o aluno segue sem pessoa até a conciliação, em vez de bloquear a edição
+     *
+     * @throws \Modules\Pessoas\Support\RegraNegocioException sem CPF: dados insuficientes, responsável
+     *         obrigatório ou pessoa semelhante existente
      */
-    public function sincronizar(Aluno $aluno, array $camposCivisEditados = []): void
+    public function sincronizar(Aluno $aluno, array $camposCivisEditados = [], ?int $responsavelId = null, bool $confirmarNovo = false, bool $exigirPessoa = true): void
     {
         $pessoaAnterior = $aluno->pessoa_id;
-
-        if ($aluno->cpf === null) {
-            if ($pessoaAnterior !== null) {
-                $this->encerrarVinculo($aluno);
-                $aluno->forceFill(['pessoa_id' => null])->save();
+        try {
+            $pessoa = $this->resolverPessoa($aluno, $responsavelId, $confirmarNovo);
+        } catch (RegraNegocioException $e) {
+            if ($exigirPessoa || ! in_array($e->codigo, self::ADIAVEIS, true)) {
+                throw $e;
             }
 
             return;
         }
-
-        $pessoa = $this->resolucao->resolverPorCpf($aluno->cpf, $this->dadosCivisDoAluno($aluno), 'escola');
 
         if ($pessoaAnterior === $pessoa->id) {
             // Já ligado: o que foi editado no aluno vale para a pessoa (fonte dos dados civis).
@@ -100,6 +115,29 @@ final class AlunoPessoaService
             ->whereNull('deleted_at')
             ->get()
             ->each(fn (Aluno $aluno) => $this->copiarDadosCivis($aluno, $pessoa));
+    }
+
+    private function resolverPessoa(Aluno $aluno, ?int $responsavelId, bool $confirmarNovo): Pessoa
+    {
+        $atual = $aluno->pessoa_id !== null ? Pessoa::query()->find($aluno->pessoa_id) : null;
+
+        if ($aluno->cpf !== null) {
+            if ($atual?->documento_pendente === true && ! Pessoa::withTrashed()->where('tipo', 'fisica')->where('documento_hash', Documento::hash($aluno->cpf))->exists()) {
+                return $this->pessoas->regularizarDocumento($atual, $aluno->cpf);
+            }
+
+            return $this->resolucao->resolverPorCpf($aluno->cpf, $this->dadosCivisDoAluno($aluno), 'escola');
+        }
+
+        if ($atual !== null) {
+            return $atual;
+        }
+        if (! $confirmarNovo && $aluno->nome !== '' && $aluno->nascimento !== null) {
+            // Primeiro as semelhantes: o responsável só importa se for mesmo uma pessoa nova.
+            $this->resolucao->exigirSemSemelhantes($aluno->nome, $aluno->nascimento->toDateString());
+        }
+
+        return $this->resolucao->resolverSemDocumento($this->dadosCivisDoAluno($aluno), 'escola', $responsavelId, $confirmarNovo);
     }
 
     private function copiarDadosCivis(Aluno $aluno, Pessoa $pessoa): void
