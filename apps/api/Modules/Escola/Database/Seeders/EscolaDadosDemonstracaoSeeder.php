@@ -97,8 +97,9 @@ final class EscolaDadosDemonstracaoSeeder extends Seeder
 
         app(TenantContext::class)->set($tenant);
 
-        if (Escola::query()->exists()) {
-            $this->informar("Tenant [{$tenant->id}] {$tenant->name} já tem escolas — nada a fazer.");
+        // Escolas cadastradas à mão não impedem a massa; só a própria massa (mesmos INEPs) bloqueia a repetição.
+        if (Escola::query()->whereIn('inep', array_column(self::ESCOLAS, 2))->exists()) {
+            $this->informar("Tenant [{$tenant->id}] {$tenant->name} já tem as escolas de demonstração — nada a fazer.");
             return;
         }
 
