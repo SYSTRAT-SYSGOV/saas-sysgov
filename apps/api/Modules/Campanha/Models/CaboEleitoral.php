@@ -18,6 +18,7 @@ use Modules\Pessoas\Models\Pessoa;
  * @property int $tenant_id
  * @property int $campanha_id
  * @property int|null $pessoa_id
+ * @property string $nome
  */
 final class CaboEleitoral extends Model
 {

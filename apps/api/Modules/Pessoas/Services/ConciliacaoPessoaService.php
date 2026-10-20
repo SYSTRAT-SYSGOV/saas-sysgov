@@ -102,8 +102,11 @@ final class ConciliacaoPessoaService
             $this->conciliarDados($modulo, $registro, $pessoa, $relatorio);
         } elseif ($tipo === 'fisica') {
             $pessoa = $this->resolucao->resolverPorCpf($digitos, array_filter($registro->dadosCivis, fn ($v): bool => $v !== null && $v !== ''), $modulo->modulo());
+        } elseif ($registro->dadosJuridica !== null) {
+            // O módulo guarda razão social e CNPJ válido: cria a pessoa jurídica que falta.
+            $pessoa = $this->resolucao->resolverPorCnpj($digitos, $registro->dadosJuridica['razao_social'], $registro->dadosJuridica['nome_fantasia'] ?? null, $modulo->modulo());
         } else {
-            // Pessoa jurídica inexistente não é criada por conciliação: exige cadastro com razão social.
+            // Sem razão social no registro, a pessoa jurídica não é criada por conciliação.
             $relatorio['erros'][] = ['registro_id' => $registro->id, 'motivo' => 'pessoa_juridica_inexistente'];
 
             return;
@@ -121,6 +124,8 @@ final class ConciliacaoPessoaService
                 array_filter($registro->dadosCivis, fn ($v): bool => $v !== null && $v !== ''),
                 $modulo->modulo(),
                 $registro->responsavelPessoaId,
+                false,
+                $registro->exigirNascimento,
             );
         } catch (RegraNegocioException $e) {
             if ($e->codigo === 'pessoa_semelhante_existente') {

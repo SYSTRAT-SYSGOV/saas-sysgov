@@ -45,6 +45,19 @@ final class CursosServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
         $this->loadViewsFrom(__DIR__ . '/../Resources/views', 'cursos');
 
+        $this->app->make(\Modules\Pessoas\Services\ConciliacaoRegistry::class)->registrar(new \Modules\Pessoas\Support\ConciliacaoPorModelo(
+            'cursos-empresas',
+            \Modules\Cursos\Models\Empresa::class,
+            fn (\Modules\Cursos\Models\Empresa $r): \Modules\Pessoas\Support\RegistroConciliacao => new \Modules\Pessoas\Support\RegistroConciliacao($r->id, $r->pessoa_id, $r->cnpj, ['nome' => $r->razao_social], null, true, ['razao_social' => $r->razao_social, 'nome_fantasia' => $r->nome_fantasia]),
+        ));
+
+        // Conciliação das cópias de dado civil com o cadastro central (`pessoas:conciliar cursos`).
+        $this->app->make(\Modules\Pessoas\Services\ConciliacaoRegistry::class)->registrar(new \Modules\Pessoas\Support\ConciliacaoPorModelo(
+            'cursos',
+            \Modules\Cursos\Models\Participante::class,
+            fn (\Modules\Cursos\Models\Participante $r): \Modules\Pessoas\Support\RegistroConciliacao => new \Modules\Pessoas\Support\RegistroConciliacao($r->id, $r->pessoa_id, $r->documento, ['nome' => $r->nome], null, false),
+        ));
+
         \Illuminate\Support\Facades\Event::listen(\Modules\Pessoas\Events\PessoaAtualizada::class, \Modules\Cursos\Listeners\AtualizarParticipantesDaPessoa::class);
         Gate::policy(Curso::class, CursoPolicy::class);
         Gate::policy(Formacao::class, FormacaoPolicy::class);

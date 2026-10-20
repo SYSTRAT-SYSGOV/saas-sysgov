@@ -13,6 +13,8 @@ use Modules\Capd\Models\Servidor;
 
 final class ServidorService
 {
+    public function __construct(private readonly ServidorPessoaService $pessoas) {}
+
     /**
      * @param array<string, mixed> $filters
      */
@@ -59,7 +61,12 @@ final class ServidorService
         $data['cpf'] = $formattedCpf;
         $data['situacao_funcional'] = $data['situacao_funcional'] ?? 'ativo';
 
-        return DB::transaction(fn () => Servidor::create($data));
+        return DB::transaction(function () use ($data): Servidor {
+            $servidor = Servidor::create($data);
+            $this->pessoas->sincronizar($servidor);
+
+            return $servidor;
+        });
     }
 
     /**
@@ -74,7 +81,10 @@ final class ServidorService
             }
         }
 
-        $servidor->update($data);
+        DB::transaction(function () use ($servidor, $data): void {
+            $servidor->update($data);
+            $this->pessoas->sincronizar($servidor, array_values(array_intersect(['nome_completo', 'nome_social', 'data_nascimento'], array_keys($data))));
+        });
 
         return $servidor->fresh(['chefiaImediata', 'user']);
     }
@@ -146,8 +156,15 @@ final class ServidorService
                 $servidor->update($payload);
                 $atualizados++;
             } else {
-                Servidor::create($payload);
+                $servidor = Servidor::create($payload);
                 $inseridos++;
+            }
+
+            try {
+                DB::transaction(fn () => $this->pessoas->sincronizar($servidor));
+            } catch (\Throwable $e) {
+                // O servidor já foi gravado: falha ao ligar a pessoa não interrompe a importação.
+                $erros[] = 'Linha ' . ($lineIndex + 2) . ": servidor gravado sem pessoa vinculada ({$e->getMessage()}).";
             }
         }
 

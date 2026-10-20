@@ -10,6 +10,12 @@ use Illuminate\Mail\MailServiceProvider;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\Pessoas\Support\RegistroConciliacao;
+use Modules\Pessoas\Support\ConciliacaoPorModelo;
+use Modules\Pessoas\Services\ConciliacaoRegistry;
+use Modules\Cemiterios\Models\Falecido;
+use Modules\Cemiterios\Models\SucessaoHerdeiro;
+use Modules\Cemiterios\Models\OperadorCemiterio;
 use Modules\Cemiterios\Console;
 use Modules\Cemiterios\Listeners\EnviarEmail;
 use Modules\Cemiterios\Listeners\SucessaoEventListener;
@@ -47,6 +53,33 @@ final class CemiteriosServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+
+        // Conciliação das cópias de dado civil com o cadastro central (`pessoas:conciliar <alias>`).
+        $registry = $this->app->make(ConciliacaoRegistry::class);
+        $registry->registrar(new ConciliacaoPorModelo(
+            'cemiterios-operadores',
+            OperadorCemiterio::class,
+            fn (OperadorCemiterio $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, $r->cpf_cnpj, ['nome' => $r->nome], null, false),
+            [],
+        ));
+        $registry->registrar(new ConciliacaoPorModelo(
+            'cemiterios-concessionarios',
+            Concessionario::class,
+            fn (Concessionario $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, $r->documento, ['nome' => $r->nome], null, false),
+            [],
+        ));
+        $registry->registrar(new ConciliacaoPorModelo(
+            'cemiterios-herdeiros',
+            SucessaoHerdeiro::class,
+            fn (SucessaoHerdeiro $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, $r->documento, ['nome' => $r->nome], null, false),
+            [],
+        ));
+        $registry->registrar(new ConciliacaoPorModelo(
+            'cemiterios-falecidos',
+            Falecido::class,
+            fn (Falecido $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, null, ['nome' => $r->nome, 'data_nascimento' => $r->nascimento?->toDateString()], null, false),
+            [],
+        ));
 
         // E-mails pela Outbox. A plataforma não registra o MailServiceProvider; o módulo o garante.
         if (!$this->app->bound('mail.manager')) {

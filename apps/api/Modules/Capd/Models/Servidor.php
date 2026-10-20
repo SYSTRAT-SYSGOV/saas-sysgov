@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\OrgChart\Models\OrgUnit;
+use Modules\Pessoas\Models\Pessoa;
 
 /**
  * Servidor no módulo CAPD.
@@ -18,8 +19,14 @@ use Modules\OrgChart\Models\OrgUnit;
  * @property int $id
  * @property int $tenant_id
  * @property int|null $user_id
+ * @property int|null $pessoa_id pessoa do Cadastro de Pessoas (fonte dos dados civis)
  * @property string $matricula
+ * @property string|null $cpf
  * @property string $nome_completo
+ * @property string|null $nome_social
+ * @property \Illuminate\Support\Carbon|null $data_nascimento
+ * @property string|null $regime_juridico
+ * @property \Illuminate\Support\Carbon|null $data_exercicio
  * @property string|null $cargo_efetivo
  * @property string|null $orgao_lotacao
  * @property string|null $lotacao_fisica
@@ -37,6 +44,7 @@ final class Servidor extends Model
     protected $fillable = [
         'tenant_id',
         'user_id',
+        'pessoa_id',
         'matricula',
         'cpf',
         'pis_pasep',
@@ -72,6 +80,7 @@ final class Servidor extends Model
     protected $casts = [
         'tenant_id'             => 'integer',
         'user_id'               => 'integer',
+        'pessoa_id'             => 'integer',
         'plano_carreira_id'     => 'integer',
         'org_unit_id'           => 'integer',
         'chefia_imediata_id'    => 'integer',
@@ -129,6 +138,12 @@ final class Servidor extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<Pessoa, $this> */
+    public function pessoa(): BelongsTo
+    {
+        return $this->belongsTo(Pessoa::class, 'pessoa_id');
     }
 
     /** @return BelongsTo<PlanoCarreira, $this> */
