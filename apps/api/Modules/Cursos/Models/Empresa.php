@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property int $id
  * @property int $tenant_id
+ * @property int|null $pessoa_id pessoa jurídica do Cadastro de Pessoas
  * @property string $razao_social
  * @property string|null $nome_fantasia
  * @property string|null $cnpj somente dígitos
@@ -30,7 +31,7 @@ final class Empresa extends Model
 
     protected $table = 'cursos_empresas';
 
-    protected $fillable = ['tenant_id', 'razao_social', 'nome_fantasia', 'cnpj', 'email', 'telefone', 'responsavel', 'observacoes', 'ativa'];
+    protected $fillable = ['tenant_id', 'pessoa_id', 'razao_social', 'nome_fantasia', 'cnpj', 'email', 'telefone', 'responsavel', 'observacoes', 'ativa'];
 
     protected $attributes = ['ativa' => true];
 

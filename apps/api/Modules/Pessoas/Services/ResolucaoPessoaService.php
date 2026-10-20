@@ -61,6 +61,54 @@ final class ResolucaoPessoaService
     }
 
     /**
+     * Pessoa jurídica do tenant com o CNPJ, criada se não existir (razão social obrigatória). Como na pessoa
+     * física, de existente só completa o que está vazio. Para consumidores que guardam a empresa por CNPJ
+     * (Inservível, Procurement, Cursos).
+     */
+    public function resolverPorCnpj(string $cnpj, string $razaoSocial, ?string $nomeFantasia, string $origem): Pessoa
+    {
+        if (! Documento::valido($cnpj, 'juridica')) {
+            throw new DomainException('CNPJ inválido.');
+        }
+        $razaoSocial = trim($razaoSocial);
+        if ($razaoSocial === '') {
+            throw new DomainException('A razão social é obrigatória para pessoa jurídica.');
+        }
+
+        return DB::transaction(function () use ($cnpj, $razaoSocial, $nomeFantasia, $origem): Pessoa {
+            /** @var Pessoa|null $pessoa */
+            $pessoa = Pessoa::withTrashed()->where('tipo', 'juridica')->where('documento_hash', Documento::hash($cnpj))->first();
+
+            if ($pessoa === null) {
+                $pessoa = Pessoa::create(['documento' => $cnpj, 'tipo' => 'juridica', 'razao_social' => $razaoSocial, 'nome_fantasia' => $nomeFantasia]);
+                $this->audit->record('pessoas', 'pessoa.criada_por_modulo', "Pessoa #{$pessoa->id}", null, ['origem' => $origem, 'nome' => $pessoa->nome]);
+
+                return $pessoa;
+            }
+            if ($pessoa->trashed()) {
+                $pessoa->restore();
+                $this->audit->record('pessoas', 'pessoa.restaurada_por_modulo', "Pessoa #{$pessoa->id}", null, ['origem' => $origem]);
+            }
+
+            return $this->completarCamposVazios($pessoa, array_filter(['nome_fantasia' => $nomeFantasia], fn ($v): bool => $v !== null && $v !== ''), $origem);
+        });
+    }
+
+    /**
+     * Versão tolerante do consumidor: devolve a pessoa jurídica do CNPJ ou `null` quando o CNPJ falta ou é
+     * inválido (o módulo grava o registro mesmo assim e a conciliação trata depois).
+     */
+    public function tentarPorCnpj(?string $cnpj, ?string $razaoSocial, ?string $nomeFantasia, string $origem): ?Pessoa
+    {
+        $digitos = Documento::somenteDigitos((string) $cnpj);
+        if ($digitos === '' || ! Documento::valido($digitos, 'juridica') || trim((string) $razaoSocial) === '') {
+            return null;
+        }
+
+        return $this->resolverPorCnpj($digitos, (string) $razaoSocial, $nomeFantasia, $origem);
+    }
+
+    /**
      * Pessoas físicas do tenant com o mesmo nome e a mesma data de nascimento — candidatas a duplicidade
      * quando o módulo cadastra alguém sem CPF. O nome é comparado sem acento, caixa e espaços repetidos.
      *

@@ -9,6 +9,7 @@ use DomainException;
 use Illuminate\Support\Facades\DB;
 use Modules\Cursos\Models\Empresa;
 use Modules\Cursos\Models\Participante;
+use Modules\Pessoas\Services\ResolucaoPessoaService;
 use Modules\Pessoas\Support\Documento;
 
 /**
@@ -17,7 +18,10 @@ use Modules\Pessoas\Support\Documento;
  */
 final class EmpresaService
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly ResolucaoPessoaService $pessoas,
+    ) {}
 
     /**
      * @param array<string, mixed> $dados
@@ -28,6 +32,7 @@ final class EmpresaService
 
         return DB::transaction(function () use ($dados): Empresa {
             $empresa = Empresa::create($dados);
+            $this->ligarPessoa($empresa);
             $this->audit->record('cursos', 'empresa.criada', "Empresa #{$empresa->id}", null, $empresa->toArray());
 
             return $empresa;
@@ -44,10 +49,20 @@ final class EmpresaService
         return DB::transaction(function () use ($empresa, $dados): Empresa {
             $antes = $empresa->toArray();
             $empresa->update($dados);
+            $this->ligarPessoa($empresa);
             $this->audit->record('cursos', 'empresa.atualizada', "Empresa #{$empresa->id}", $antes, $empresa->toArray());
 
             return $empresa;
         });
+    }
+
+    /** CNPJ válido liga a empresa à pessoa jurídica do cadastro central (criada se não existir); inválido ou vazio, não. */
+    private function ligarPessoa(Empresa $empresa): void
+    {
+        $juridica = $this->pessoas->tentarPorCnpj($empresa->cnpj, $empresa->razao_social, $empresa->nome_fantasia, 'cursos');
+        if ($juridica !== null && $empresa->pessoa_id !== $juridica->id) {
+            $empresa->forceFill(['pessoa_id' => $juridica->id])->save();
+        }
     }
 
     public function excluir(Empresa $empresa): void

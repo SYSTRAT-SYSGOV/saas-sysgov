@@ -11,6 +11,11 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\Pessoas\Support\RegistroConciliacao;
+use Modules\Pessoas\Support\ConciliacaoPorModelo;
+use Modules\Pessoas\Services\ConciliacaoRegistry;
+use Modules\Campanha\Models\CaboEleitoral;
+use Modules\Campanha\Models\Coordenador;
 use Modules\Campanha\Console\AnonimizarEleitoresCommand;
 use Modules\Campanha\Console\ImportarReferenciaCommand;
 use Modules\Campanha\Http\Middleware\ResolveCampanha;
@@ -28,6 +33,21 @@ final class CampanhaServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+
+        // Conciliação das cópias de dado civil com o cadastro central (`pessoas:conciliar <alias>`).
+        $registry = $this->app->make(ConciliacaoRegistry::class);
+        $registry->registrar(new ConciliacaoPorModelo(
+            'campanha-coordenadores',
+            Coordenador::class,
+            fn (Coordenador $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, null, ['nome' => $r->nome], null, false),
+            ['campanha'],
+        ));
+        $registry->registrar(new ConciliacaoPorModelo(
+            'campanha-cabos',
+            CaboEleitoral::class,
+            fn (CaboEleitoral $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, null, ['nome' => $r->nome], null, false),
+            ['campanha'],
+        ));
         $this->app->make(Router::class)->aliasMiddleware('campanha', ResolveCampanha::class);
 
         Gate::policy(Campanha::class, CampanhaPolicy::class);

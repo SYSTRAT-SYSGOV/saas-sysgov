@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $id
  * @property int $tenant_id
  * @property int $escola_id
+ * @property int|null $pessoa_id pessoa do motorista no Cadastro de Pessoas
  * @property int $passeio_id
  * @property string $identificacao
  * @property string|null $placa
@@ -33,10 +34,10 @@ final class Veiculo extends Model
     protected $table = 'passeio_veiculos';
 
     /** @var list<string> */
-    protected $fillable = ['tenant_id', 'passeio_id', 'identificacao', 'placa', 'motorista', 'telefone', 'capacidade', 'cor'];
+    protected $fillable = ['tenant_id', 'passeio_id', 'pessoa_id', 'identificacao', 'placa', 'motorista', 'telefone', 'capacidade', 'cor'];
 
     /** @var array<string, string> */
-    protected $casts = ['tenant_id' => 'integer', 'passeio_id' => 'integer', 'capacidade' => 'integer'];
+    protected $casts = ['tenant_id' => 'integer', 'passeio_id' => 'integer', 'pessoa_id' => 'integer', 'capacidade' => 'integer'];
 
     /** @return BelongsTo<Passeio, $this> */
     public function passeio(): BelongsTo

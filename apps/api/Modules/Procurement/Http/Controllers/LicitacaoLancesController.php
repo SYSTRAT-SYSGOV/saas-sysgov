@@ -82,8 +82,13 @@ final class LicitacaoLancesController extends Controller
             'porte_me_epp' => ['nullable', 'boolean'],
         ]);
 
+        // CNPJ válido liga o fornecedor à pessoa jurídica do cadastro central (criada se não existir).
+        $juridica = app(\Modules\Pessoas\Services\ResolucaoPessoaService::class)
+            ->tentarPorCnpj($validated['cnpj'], $validated['razao_social'], null, 'procurement');
+
         $participante = LicitacaoParticipante::create([
             'tenant_id' => $licitacao->tenant_id,
+            'pessoa_id' => $juridica?->id,
             'licitacao_id' => $licitacao->id,
             'razao_social' => $validated['razao_social'],
             'cnpj' => $validated['cnpj'],
