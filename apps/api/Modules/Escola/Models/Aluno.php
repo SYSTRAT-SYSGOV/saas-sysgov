@@ -80,9 +80,27 @@ final class Aluno extends Model
         });
     }
 
+    /**
+     * CPF mascarado. Fonte: a pessoa do cadastro central quando ela já está carregada (pessoa pendente não tem CPF);
+     * senão, a cópia local. Não carrega a relação sozinho, para não gerar uma consulta por aluno em listas.
+     */
     public function getCpfMascaradoAttribute(): ?string
     {
+        if ($this->relationLoaded('pessoa') && $this->pessoa !== null) {
+            return $this->pessoa->documento_pendente ? null : $this->pessoa->cpf_mascarado;
+        }
+
         return $this->cpf ? Documento::mascarar($this->cpf) : null;
+    }
+
+    /** Data de nascimento: a da pessoa quando ela já está carregada e tem a data; senão, a cópia local. */
+    public function nascimentoDaPessoa(): ?\Illuminate\Support\Carbon
+    {
+        if ($this->relationLoaded('pessoa') && $this->pessoa?->data_nascimento !== null) {
+            return $this->pessoa->data_nascimento;
+        }
+
+        return $this->nascimento;
     }
 
     /** @return BelongsTo<Pessoa, $this> */

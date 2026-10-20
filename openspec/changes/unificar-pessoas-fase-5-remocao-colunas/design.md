@@ -27,9 +27,9 @@ Legenda: **L** = trocar a leitura pela pessoa e, depois, remover · **D** = mant
 
 | Tabela (linhas em prod. em 20/10) | Coluna | Decisão | Motivo |
 |---|---|---|---|
-| `escola_alunos` (400) | `nome` | D | busca e ordenação em todas as telas |
-| | `cpf`, `cpf_hash` | L | unicidade por escola passa a ser por `pessoa_id` |
-| | `nascimento`, `mae`, `pai` | L | boletins, atas e fichas leem da pessoa |
+| `escola_alunos` (400) | `nome`, `mae`, `pai` | D | busca e ordenação; `nome_mae`/`nome_pai` são **cifrados** no cadastro central e não admitem `like`, e a tela busca "por nome, pai ou mãe" |
+| | `cpf`, `cpf_hash` | L | busca e unicidade por escola passam a usar o `documento_hash` da pessoa |
+| | `nascimento` | L | a ficha e o Multiprofissional leem da pessoa |
 | `escola_aluno_contatos` (500) | todas | M | são os telefones do **responsável** para a escola, não do aluno; o MDM guarda os da pessoa |
 | `capd_servidores` (0) | `nome_completo` | D | busca e ordenação |
 | | `cpf`, `nome_social`, `data_nascimento` | L | |
@@ -46,7 +46,7 @@ Legenda: **L** = trocar a leitura pela pessoa e, depois, remover · **D** = mant
 | `passeio_veiculos` (0) | `motorista`, `telefone` | M | texto livre do passeio |
 | `licitacao_participantes` (0) | `razao_social`, `cnpj` | M | registro jurídico da licitação |
 
-Resultado: **5 colunas de Escola, 3 de Capd, 2 de Operadores e 1 de Herdeiros** são candidatas a remoção. O resto
+Resultado: **3 colunas de Escola** (`cpf`, `cpf_hash`, `nascimento`), **3 de Capd, 2 de Operadores e 1 de Herdeiros** são candidatas a remoção. O resto
 não sai, ou sai depois de outra mudança (A).
 
 ## `pessoa_id NOT NULL`

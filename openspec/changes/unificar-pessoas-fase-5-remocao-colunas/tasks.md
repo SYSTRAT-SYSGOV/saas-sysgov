@@ -10,10 +10,11 @@ Nada da etapa B roda sem trava liberada, backup verificado e confirmação.
 - [ ] 0.4 Inventariar integrações externas que leiam as colunas L (API, exportações, relatórios, banco).
 
 ## 1. Escola
-- [ ] 1.1 (A) Leituras de `nascimento`, `mae`, `pai` e CPF do aluno via `pessoa` em `AlunoResource`, boletins, atas, listas e importação. Verificar: suítes de Escola, Pedagógico, Formatura, Passeio e Portfolio, e conferência visual das fichas.
-- [ ] 1.2 (A) Busca por CPF e unicidade por escola passam para `pessoa_id`. Verificar: testes de cadastro com CPF repetido na mesma escola e em escolas diferentes.
-- [ ] 1.3 (B) Migration que remove `cpf`, `cpf_hash`, `nascimento`, `mae`, `pai`, torna `pessoa_id` NOT NULL e chama a trava. Sem `down()` útil, declarado.
-- [ ] 1.4 Remover `AlunoPessoaService::copiarDadosCivis` do que não for `nome`.
+- [x] 1.1 (A) Nascimento e CPF mascarado do aluno lidos da pessoa em `AlunoResource` (lista, ficha, turma do Pedagógico) e no Multiprofissional. Verificar: `AlunoLeituraPelaPessoaTest` (cópia local divergente, pessoa vence) e as suítes de Escola, Pedagógico, Multiprofissional, Formatura, Passeio e Portfolio.
+- [x] 1.2 (A) Busca por CPF e unicidade por escola usam o `documento_hash` da pessoa (com a cópia local como reserva enquanto ela existir). Verificar: testes de CPF repetido e de busca por CPF com a cópia zerada.
+- [ ] 1.3 Conferência visual das fichas, listas e importação no navegador e um ciclo de uso em produção após o deploy.
+- [ ] 1.4 (B) Migration que remove `cpf`, `cpf_hash`, `nascimento`, torna `pessoa_id` NOT NULL e chama a trava; a unicidade `escola_alunos_escola_cpf_unique` cai junto. Sem `down()` útil, declarado.
+- [ ] 1.5 (B) Tirar de `AlunoPessoaService` e `AlunoService` a escrita e a leitura dessas três colunas; `nome`, `mae` e `pai` seguem copiados da pessoa pelo evento. A conciliação do Escola (`ConciliacaoAlunos`) cumpre seu papel e é aposentada junto.
 
 ## 2. Capd
 - [ ] 2.1 (A) Leituras de `cpf`, `nome_social`, `data_nascimento` via pessoa (listagem, espelho de avaliação, exportações). Verificar: avaliações seladas inalteradas.

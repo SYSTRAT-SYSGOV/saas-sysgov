@@ -22,7 +22,7 @@ final class AlunoResource extends JsonResource
             'cpf_mascarado' => $this->cpf_mascarado,
             'pessoa_id' => $this->pessoa_id,
             'cgm' => $this->cgm,
-            'nascimento' => $this->nascimento?->toDateString(),
+            'nascimento' => $this->nascimentoDaPessoa()?->toDateString(),
             'mae' => $this->mae,
             'pai' => $this->pai,
             'situacao' => $this->situacao,

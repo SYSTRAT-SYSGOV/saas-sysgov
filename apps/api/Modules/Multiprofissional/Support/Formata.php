@@ -61,7 +61,7 @@ final class Formata
             'id' => $a->id,
             'nome' => $a->nome,
             'cgm' => $a->cgm,
-            'nascimento' => $a->nascimento?->format('Y-m-d'),
+            'nascimento' => $a->nascimentoDaPessoa()?->format('Y-m-d'),
             'situacao' => $a->situacao,
             'escola' => $this->nomeEscola((int) $a->getAttribute('escola_id')),
             'turma' => $a->turma?->nome,

@@ -60,7 +60,7 @@ final class TurmaController extends Controller
     {
         abort_unless(Gate::forUser($request->user())->allows('pedagogico.ver-turma', [$turma->id]), 403);
 
-        $alunos = Aluno::query()->where('turma_id', $turma->id)->with('turma.turno')
+        $alunos = Aluno::query()->where('turma_id', $turma->id)->with(['turma.turno', 'pessoa'])
             ->orderByRaw('numero IS NULL')->orderBy('numero')->orderBy('nome')->get();
 
         return response()->json(AlunoResource::collection($alunos));
