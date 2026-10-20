@@ -23,6 +23,7 @@ final class RhIntegrationService
     public function __construct(
         private readonly OutboxPublisher $outbox,
         private readonly AuditLogger $audit,
+        private readonly ServidorPessoaService $pessoas,
     ) {}
     /**
      * Sincronização Inbound de Servidores a partir de payload JSON do ERP de RH.
@@ -106,8 +107,16 @@ final class RhIntegrationService
                     $servidor->update($payload);
                     $atualizados++;
                 } else {
-                    Servidor::create($payload);
+                    $servidor = Servidor::create($payload);
                     $inseridos++;
+                }
+
+                // A integração nunca sobrescreve a pessoa. Falha ao ligá-la não derruba o lote: o servidor
+                // fica gravado sem pessoa e a conciliação o vincula depois.
+                try {
+                    DB::transaction(fn () => $this->pessoas->sincronizar($servidor));
+                } catch (\Throwable $e) {
+                    $erros[] = "Registro {$processados}: servidor gravado sem pessoa vinculada ({$e->getMessage()}).";
                 }
             }
 

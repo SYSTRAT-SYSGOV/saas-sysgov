@@ -108,16 +108,18 @@ final class ResolucaoPessoaService
      *
      * @param array{nome?: string|null, data_nascimento?: string|null, nome_social?: string|null, nome_mae?: string|null, nome_pai?: string|null} $dadosCivis
      * @param string $origem módulo consumidor (aparece na auditoria)
+     * @param bool $exigirNascimento false para módulos que só cadastram adultos (ex.: servidor vindo do RH): sem
+     *        nascimento não há como sugerir semelhantes nem testar a menoridade, e a pessoa é criada mesmo assim
      */
-    public function resolverSemDocumento(array $dadosCivis, string $origem, ?int $responsavelId = null, bool $confirmarNovo = false): Pessoa
+    public function resolverSemDocumento(array $dadosCivis, string $origem, ?int $responsavelId = null, bool $confirmarNovo = false, bool $exigirNascimento = true): Pessoa
     {
         $nome = trim((string) ($dadosCivis['nome'] ?? ''));
         $nascimento = (string) ($dadosCivis['data_nascimento'] ?? '');
-        if ($nome === '' || $nascimento === '') {
+        if ($nome === '' || ($exigirNascimento && $nascimento === '')) {
             throw new RegraNegocioException('dados_insuficientes', 'Nome e data de nascimento são obrigatórios para cadastrar pessoa sem CPF.');
         }
 
-        $menor = CarbonImmutable::parse($nascimento)->age < 18;
+        $menor = $nascimento !== '' && CarbonImmutable::parse($nascimento)->age < 18;
         if ($menor && $responsavelId === null) {
             throw new RegraNegocioException('responsavel_obrigatorio', 'O responsável é obrigatório para menor de idade sem CPF.');
         }
@@ -125,7 +127,7 @@ final class ResolucaoPessoaService
             throw new RegraNegocioException('responsavel_invalido', 'O responsável deve ser uma pessoa física cadastrada neste órgão.');
         }
 
-        if (! $confirmarNovo) {
+        if (! $confirmarNovo && $nascimento !== '') {
             $this->exigirSemSemelhantes($nome, $nascimento);
         }
 

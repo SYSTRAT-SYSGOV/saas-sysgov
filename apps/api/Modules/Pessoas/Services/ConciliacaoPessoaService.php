@@ -121,6 +121,8 @@ final class ConciliacaoPessoaService
                 array_filter($registro->dadosCivis, fn ($v): bool => $v !== null && $v !== ''),
                 $modulo->modulo(),
                 $registro->responsavelPessoaId,
+                false,
+                $registro->exigirNascimento,
             );
         } catch (RegraNegocioException $e) {
             if ($e->codigo === 'pessoa_semelhante_existente') {
