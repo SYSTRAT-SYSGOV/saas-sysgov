@@ -40,6 +40,7 @@ use Modules\Pessoas\Models\PessoaVinculo;
 use Modules\Pessoas\Services\MesclagemPessoaService;
 use Modules\Pessoas\Services\PessoaExportService;
 use Modules\Pessoas\Services\PessoaService;
+use Modules\Pessoas\Services\ResolucaoPessoaService;
 use Modules\Pessoas\Services\SocioService;
 use Modules\Pessoas\Services\VinculoService;
 
@@ -54,6 +55,7 @@ final class PessoaController extends Controller
         private readonly PessoaExportService $export,
         private readonly AuditLogger $audit,
         private readonly MesclagemPessoaService $mesclagem,
+        private readonly ResolucaoPessoaService $resolucao,
     ) {}
 
     /** Exportação self-service do cadastro (JSON com manifest ou CSV). GET /api/pessoas/export?format=json|csv */
@@ -117,7 +119,16 @@ final class PessoaController extends Controller
     {
         $this->authorize('create', Pessoa::class);
 
-        $pessoa = $this->pessoas->criar($request->validated());
+        $dados = $request->validated();
+        $confirmarNovo = (bool) ($dados['confirmar_novo'] ?? false);
+        unset($dados['confirmar_novo']);
+
+        // Sem CPF: antes de criar, avisa se já existe alguém com o mesmo nome e nascimento (cadastro rápido dos módulos).
+        if (($dados['tipo'] ?? 'fisica') === 'fisica' && empty($dados['cpf']) && ! $confirmarNovo) {
+            $this->resolucao->exigirSemSemelhantes((string) ($dados['nome'] ?? ''), (string) ($dados['data_nascimento'] ?? ''));
+        }
+
+        $pessoa = $this->pessoas->criar($dados);
         $this->audit->record('pessoas', 'pessoa.created', "Pessoa #{$pessoa->id}", null, $pessoa->toArray());
 
         return response()->json(new PessoaResource($pessoa), 201);

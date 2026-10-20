@@ -114,4 +114,31 @@ final class PessoaSemDocumentoRequestTest extends PessoasTestCase
             ->putJson("/api/pessoas/{$crianca->id}", ['nome' => 'Criança Renomeada'])
             ->assertOk();
     }
+
+    public function test_cadastro_sem_cpf_com_pessoa_semelhante_devolve_sugestoes_e_nao_cria(): void
+    {
+        $this->noTenant($this->tenantA);
+        $existente = Pessoa::create(['nome' => 'Joana Souza', 'data_nascimento' => '1985-02-01']);
+
+        $this->como($this->admin($this->tenantA), $this->tenantA)
+            ->postJson('/api/pessoas', ['nome' => 'joana  souza', 'data_nascimento' => '1985-02-01'])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'pessoa_semelhante_existente')
+            ->assertJsonPath('sugestoes.0.id', $existente->id)
+            ->assertJsonPath('sugestoes.0.documento_pendente', true);
+
+        self::assertSame(1, Pessoa::count());
+    }
+
+    public function test_cadastro_sem_cpf_confirmado_cria_mesmo_com_semelhante(): void
+    {
+        $this->noTenant($this->tenantA);
+        Pessoa::create(['nome' => 'Joana Souza', 'data_nascimento' => '1985-02-01']);
+
+        $this->como($this->admin($this->tenantA), $this->tenantA)
+            ->postJson('/api/pessoas', ['nome' => 'Joana Souza', 'data_nascimento' => '1985-02-01', 'confirmar_novo' => true])
+            ->assertCreated();
+
+        self::assertSame(2, Pessoa::count());
+    }
 }

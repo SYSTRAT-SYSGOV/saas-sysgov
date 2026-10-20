@@ -29,6 +29,8 @@ final class StorePessoaRequest extends FormRequest
 
         return [
             'tipo' => ['sometimes', Rule::in(['fisica', 'juridica'])],
+            // Pessoa sem CPF: confirma que não é a pessoa semelhante já cadastrada (mesmo nome e nascimento).
+            'confirmar_novo' => ['sometimes', 'boolean'],
             'nome' => [Rule::requiredIf($tipo === 'fisica'), 'string', 'max:255'],
             // CPF é opcional para pessoa física: sem ele a pessoa fica com documento pendente.
             'cpf' => [

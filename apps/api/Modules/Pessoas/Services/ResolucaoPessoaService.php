@@ -79,6 +79,29 @@ final class ResolucaoPessoaService
     }
 
     /**
+     * Recusa o cadastro quando já existe pessoa com o mesmo nome e a mesma data de nascimento, devolvendo as
+     * candidatas para o usuário escolher uma delas ou confirmar que se trata de outra pessoa.
+     *
+     * @throws RegraNegocioException `pessoa_semelhante_existente`, com `sugestoes` no contexto
+     */
+    public function exigirSemSemelhantes(string $nome, string $dataNascimento): void
+    {
+        $semelhantes = $this->sugerirSemelhantes($nome, $dataNascimento);
+        if ($semelhantes->isEmpty()) {
+            return;
+        }
+
+        throw new RegraNegocioException('pessoa_semelhante_existente', 'Já existe pessoa com o mesmo nome e data de nascimento.', [
+            'sugestoes' => $semelhantes->map(fn (Pessoa $p): array => [
+                'id' => $p->id,
+                'nome' => $p->nome,
+                'cpf_mascarado' => $p->cpf_mascarado,
+                'documento_pendente' => $p->documento_pendente,
+            ])->all(),
+        ]);
+    }
+
+    /**
      * Cria pessoa física sem CPF (documento pendente) para um módulo consumidor. Antes de criar, recusa se
      * houver pessoa semelhante (mesmo nome e nascimento), devolvendo as sugestões; o módulo então usa uma
      * delas ou repete a chamada com `$confirmarNovo` para criar de fato. Menor de idade exige responsável.
@@ -103,17 +126,7 @@ final class ResolucaoPessoaService
         }
 
         if (! $confirmarNovo) {
-            $semelhantes = $this->sugerirSemelhantes($nome, $nascimento);
-            if ($semelhantes->isNotEmpty()) {
-                throw new RegraNegocioException('pessoa_semelhante_existente', 'Já existe pessoa com o mesmo nome e data de nascimento.', [
-                    'sugestoes' => $semelhantes->map(fn (Pessoa $p): array => [
-                        'id' => $p->id,
-                        'nome' => $p->nome,
-                        'cpf_mascarado' => $p->cpf_mascarado,
-                        'documento_pendente' => $p->documento_pendente,
-                    ])->all(),
-                ]);
-            }
+            $this->exigirSemSemelhantes($nome, $nascimento);
         }
 
         $dados = array_filter(
