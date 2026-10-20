@@ -72,7 +72,10 @@ final class AdocaoETravaRemocaoTest extends PessoasTestCase
         $this->assertSame([
             'modulo' => 'teste', 'tabela' => 'adocao_registros', 'total' => 3, 'vinculados' => 2,
             'sem_vinculo' => 1, 'documento_pendente' => 1, 'divergencias_abertas' => 1,
-        ], collect($resposta->json('modulos'))->firstWhere('modulo', 'teste'));
+        ], array_values(array_filter(
+            (array) $resposta->json('modulos'),
+            fn (array $m): bool => $m['modulo'] === 'teste',
+        ))[0]);
         $resposta->assertJsonPath('totais.total', 3);
         $this->assertStringNotContainsString('Pendente', $resposta->getContent(), 'sem dado civil individual');
     }
