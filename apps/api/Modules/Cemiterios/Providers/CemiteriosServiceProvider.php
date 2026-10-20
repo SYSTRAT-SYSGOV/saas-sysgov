@@ -65,7 +65,7 @@ final class CemiteriosServiceProvider extends ServiceProvider
         $registry->registrar(new ConciliacaoPorModelo(
             'cemiterios-concessionarios',
             Concessionario::class,
-            fn (Concessionario $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, $r->documento, ['nome' => $r->nome], null, false),
+            fn (Concessionario $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, $r->documento, ['nome' => $r->nome], null, false, ['razao_social' => (string) $r->nome]),
             [],
         ));
         $registry->registrar(new ConciliacaoPorModelo(

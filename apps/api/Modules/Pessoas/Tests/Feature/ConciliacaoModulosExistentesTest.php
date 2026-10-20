@@ -7,6 +7,7 @@ namespace Modules\Pessoas\Tests\Feature;
 use Modules\Campanha\Models\Campanha;
 use Modules\Campanha\Models\Coordenador;
 use Modules\Campanha\Support\CampanhaContext;
+use Modules\Cemiterios\Models\Concessionario;
 use Modules\Cemiterios\Models\Falecido;
 use Modules\Cemiterios\Models\OperadorCemiterio;
 use Modules\Cursos\Models\Participante;
@@ -73,6 +74,23 @@ final class ConciliacaoModulosExistentesTest extends PessoasTestCase
         $this->assertSame($falecido->fresh()->pessoa_id, Pessoa::query()->where('documento_pendente', true)->sole()->id);
         $this->assertSame('ativo', $operador->fresh()->situacao);
         $this->assertSame('2020-03-10', $falecido->fresh()->falecimento->toDateString());
+    }
+
+    public function test_concessionario_com_cnpj_gera_a_pessoa_juridica_e_cpf_invalido_fica_de_fora(): void
+    {
+        $empresa = Concessionario::create(['nome' => 'Funerária Alfa Ltda', 'tipo_doc' => 'cnpj', 'documento' => '11222333000181']);
+        $pessoaFisica = Concessionario::create(['nome' => 'Maria Titular', 'tipo_doc' => 'cpf', 'documento' => self::CPF]);
+        $invalido = Concessionario::create(['nome' => 'CPF Falso', 'tipo_doc' => 'cpf', 'documento' => '12345678900']);
+
+        $relatorio = $this->conciliar('cemiterios-concessionarios');
+
+        $this->assertSame(2, $relatorio['vinculados_por_documento']);
+        $juridica = Pessoa::findOrFail($empresa->fresh()->pessoa_id);
+        $this->assertSame('juridica', $juridica->tipo);
+        $this->assertSame('Funerária Alfa Ltda', $juridica->nome);
+        $this->assertSame('fisica', Pessoa::findOrFail($pessoaFisica->fresh()->pessoa_id)->tipo);
+        $this->assertNull($invalido->fresh()->pessoa_id);
+        $this->assertSame([['registro_id' => $invalido->id, 'motivo' => 'documento_invalido']], $relatorio['erros']);
     }
 
     public function test_campanha_coordenador_sem_pessoa_e_vinculado_e_divergencia_nao_sobrescreve(): void
