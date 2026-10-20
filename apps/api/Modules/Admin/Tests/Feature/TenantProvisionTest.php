@@ -50,9 +50,9 @@ final class TenantProvisionTest extends TestCase
 
         $tenant = Tenant::where('slug', 'pref-test')->firstOrFail();
 
-        // Módulos liberados: org + contracts + dashboard (base automática); 'users' saiu do catálogo (74cea8a)
+        // Módulos liberados: org + contracts + os de base (dashboard e users, automáticos e sem mensalidade).
         $aliases = $tenant->modules()->pluck('modules.alias')->sort()->values()->all();
-        $this->assertEquals(['contracts', 'dashboard', 'org'], $aliases);
+        $this->assertEquals(['contracts', 'dashboard', 'org', 'users'], $aliases);
 
         // MRR = org(149) + contracts(249) + domínio custom(50) = 44800
         $this->assertEquals(44800, $tenant->monthlyMrrCents());
