@@ -76,7 +76,7 @@ final class ClientRoleController
             'tenant_id' => $tenantId,
             'is_system' => false,
         ]);
-        $role->permissions()->sync($permissionIds);
+        $role->sincronizarPermissoesExato($permissionIds);
 
         $this->audit->record('access', 'role.created', "Role #{$role->id}", null, $role->fresh('permissions')->toArray());
 
@@ -109,7 +109,7 @@ final class ClientRoleController
 
         $role->fill($data)->save();
         if (is_array($permissionIds)) {
-            $role->permissions()->sync($permissionIds);
+            $role->sincronizarPermissoesExato($permissionIds);
         }
 
         $this->audit->record('access', 'role.updated', "Role #{$role->id}", $before, $role->fresh('permissions')->toArray());

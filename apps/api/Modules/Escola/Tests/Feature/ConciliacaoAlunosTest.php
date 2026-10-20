@@ -61,6 +61,36 @@ final class ConciliacaoAlunosTest extends TestCase
         $this->assertSame(1, $this->noTenant($this->tenant, fn () => Aluno::query()->whereNotNull('pessoa_id')->count()));
     }
 
+    public function test_a_mae_vira_responsavel_uma_vez_para_os_irmaos_e_sem_filiacao_fica_sem_responsavel(): void
+    {
+        $a = $this->aluno(['nome' => 'Davi Souza', 'nascimento' => '2016-03-10', 'mae' => 'Marta Souza']);
+        $b = $this->aluno(['nome' => 'Laura Souza', 'nascimento' => '2018-07-01', 'mae' => 'MARTA  SOUZA']);
+        $c = $this->aluno(['nome' => 'Caio Pai', 'nascimento' => '2015-01-01', 'pai' => 'Paulo Dias']);
+        $semFiliacao = $this->aluno(['nome' => 'Sem Filiacao', 'nascimento' => '2014-01-01']);
+
+        $dry = $this->conciliar(true);
+        $this->assertSame(0, $this->noTenant($this->tenant, fn () => Pessoa::count()), 'dry-run não grava nem a mãe');
+        $real = $this->conciliar(false);
+
+        $this->assertSame($dry['criadas_pendentes'], $real['criadas_pendentes']);
+        $this->assertSame(3, $real['criadas_pendentes']);
+        $this->assertSame([$semFiliacao->id], $real['sem_responsavel']);
+        $this->noTenant($this->tenant, function () use ($a, $b, $c): void {
+            $maeA = Pessoa::findOrFail($a->fresh()->pessoa_id)->responsavel_id;
+            $this->assertNotNull($maeA);
+            $this->assertSame($maeA, Pessoa::findOrFail($b->fresh()->pessoa_id)->responsavel_id, 'irmãos compartilham a mesma mãe');
+            $this->assertNotSame($maeA, Pessoa::findOrFail($c->fresh()->pessoa_id)->responsavel_id);
+            $this->assertSame('Marta Souza', Pessoa::findOrFail($maeA)->nome);
+            // 3 alunos vinculados + 2 responsáveis (Marta, Paulo) = 5 pessoas.
+            $this->assertSame(5, Pessoa::count());
+        });
+
+        // Reexecutar não cria outra mãe nem outra criança.
+        $segunda = $this->conciliar(false);
+        $this->assertSame(0, $segunda['criadas_pendentes']);
+        $this->assertSame(5, $this->noTenant($this->tenant, fn () => Pessoa::count()));
+    }
+
     public function test_reexecutar_nao_duplica_e_divergencia_nao_sobrescreve_a_pessoa(): void
     {
         $pessoa = $this->noTenant($this->tenant, fn () => Pessoa::create(['tipo' => 'fisica', 'documento' => '52998224725', 'nome' => 'Ana Lima', 'data_nascimento' => '2010-01-05']));
