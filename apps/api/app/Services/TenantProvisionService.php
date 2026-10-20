@@ -33,11 +33,13 @@ final readonly class TenantProvisionService
             $moduleAliases = array_values(array_unique(array_filter($moduleAliases)));
             $modules = Module::query()->whereIn('alias', $moduleAliases)->get();
 
-            // Libera o módulo "dashboard" por padrão (base do painel)
-            if (!in_array('dashboard', $moduleAliases, true)) {
-                $dashboard = Module::query()->where('alias', 'dashboard')->first();
-                if ($dashboard) {
-                    $modules->push($dashboard);
+            // Libera os módulos de base por padrão (painel e "Usuários & Acessos")
+            foreach (Module::BASE as $alias) {
+                if (!in_array($alias, $moduleAliases, true)) {
+                    $base = Module::query()->where('alias', $alias)->first();
+                    if ($base) {
+                        $modules->push($base);
+                    }
                 }
             }
 

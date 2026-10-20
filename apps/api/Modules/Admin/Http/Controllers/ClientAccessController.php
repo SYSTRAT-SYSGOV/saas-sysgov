@@ -39,8 +39,10 @@ final class ClientAccessController
 
         $summary = $this->access->moduleSummary($user, $tenantId);
 
+        // "users" é módulo de base (menu "Usuários & Acessos"): não se concede acesso a ele como a um módulo de negócio.
         $modules = $tenant->modules()
             ->wherePivot('enabled', true)
+            ->where('modules.alias', '!=', 'users')
             ->orderBy('modules.name')
             ->get(['modules.id', 'modules.alias', 'modules.name'])
             ->map(function ($m): array {
@@ -94,8 +96,10 @@ final class ClientAccessController
         $tenantId = app(TenantContext::class)->id();
         $tenant = \App\Models\Tenant::findOrFail($tenantId);
 
+        // "users" é módulo de base (menu "Usuários & Acessos"): não se concede acesso a ele como a um módulo de negócio.
         $modules = $tenant->modules()
             ->wherePivot('enabled', true)
+            ->where('modules.alias', '!=', 'users')
             ->orderBy('modules.name')
             ->get(['modules.id', 'modules.alias', 'modules.name'])
             ->map(function ($m): array {

@@ -145,8 +145,11 @@ final class TenantController
             // na lista de checkboxes, então sem isso o sync() abaixo o removia do
             // tenant sempre que os módulos eram editados, deixando o Painel do
             // Cliente inteiro inacessível (a rota "/" exige o módulo "dashboard").
-            if (!in_array('dashboard', $moduleAliases, true)) {
-                $moduleAliases[] = 'dashboard';
+            // O mesmo vale para os demais módulos de base ("users"): fora da lista, o sync() os removeria.
+            foreach (\Modules\Admin\Models\Module::BASE as $alias) {
+                if (!in_array($alias, $moduleAliases, true)) {
+                    $moduleAliases[] = $alias;
+                }
             }
 
             $modules = \Modules\Admin\Models\Module::query()->whereIn('alias', $moduleAliases)->get();

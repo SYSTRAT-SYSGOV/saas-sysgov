@@ -29,7 +29,7 @@ final class ModuleController
         // O módulo "dashboard" é a base do Painel do Cliente (a rota "/" exige
         // ele) — nunca pode ficar desabilitado pra um tenant, senão o usuário
         // cai em "Acesso Negado" assim que loga.
-        $enabled = $module->alias === 'dashboard' ? true : (bool) $payload['enabled'];
+        $enabled = in_array($module->alias, Module::BASE, true) ? true : (bool) $payload['enabled'];
 
         $before = $module->tenants()->whereKey($tenant->getKey())->first()?->pivot?->toArray();
         DB::transaction(fn () => $module->tenants()->syncWithoutDetaching([$tenant->getKey() => ['enabled' => $enabled, 'settings' => json_encode($payload['settings'] ?? [])]]));
@@ -56,7 +56,7 @@ final class ModuleController
         $tenantIds = $data['tenant_ids'];
         $moduleAlias = $data['module_alias'];
         // Ver nota em toggle(): "dashboard" nunca pode ser desabilitado.
-        $enabled = $moduleAlias === 'dashboard' ? true : $data['enabled'];
+        $enabled = in_array($moduleAlias, Module::BASE, true) ? true : $data['enabled'];
         $monthlyFeeCents = $data['monthly_fee_cents'] ?? 0;
         $trialEndsAt = $data['trial_ends_at'] ?? null;
         $settings = $data['settings'] ?? [];
