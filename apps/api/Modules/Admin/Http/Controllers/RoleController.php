@@ -32,7 +32,7 @@ final class RoleController
         unset($data['permission_ids']);
         $role = DB::transaction(function () use ($data, $permissionIds): Role {
             $role = Role::create($data + ['guard_name' => 'web']);
-            $role->permissions()->sync($permissionIds);
+            $role->sincronizarPermissoesExato($permissionIds);
             return $role->load('permissions');
         });
         $audit->record('admin', 'created', 'role:'.$role->getKey(), null, $role->toArray());
@@ -54,7 +54,7 @@ final class RoleController
         unset($data['permission_ids']);
         $role->fill($data)->save();
         if (is_array($permissionIds)) {
-            $role->permissions()->sync($permissionIds);
+            $role->sincronizarPermissoesExato($permissionIds);
         }
         $audit->record('admin', 'updated', 'role:'.$role->getKey(), $before, $role->fresh()->load('permissions')->toArray());
         return response()->json(new RoleResource($role->fresh()->load('permissions')));
