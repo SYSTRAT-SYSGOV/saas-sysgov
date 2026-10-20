@@ -77,7 +77,7 @@ final class CemiteriosServiceProvider extends ServiceProvider
         $registry->registrar(new ConciliacaoPorModelo(
             'cemiterios-falecidos',
             Falecido::class,
-            fn (Falecido $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, null, ['nome' => $r->nome, 'data_nascimento' => $r->nascimento?->toDateString()], null, false),
+            fn (Falecido $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, null, ['nome' => $r->nome, 'data_nascimento' => $r->nascimento?->toDateString()], null, false, null, true),
             [],
         ));
 

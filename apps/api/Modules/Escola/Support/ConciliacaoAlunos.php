@@ -17,7 +17,7 @@ use Modules\Pessoas\Support\RegistroConciliacao;
  *
  * O aluno não guarda o responsável. Para o menor sem CPF e sem pessoa vinculada, a mãe (ou, na falta dela, o pai)
  * que consta na ficha vira o responsável: é uma pessoa adulta com documento pendente, criada uma única vez por
- * nome (irmãos compartilham a mesma) ou reaproveitada se já existir pendente com o mesmo nome. Sem nome de mãe nem
+ * nome (irmãos compartilham a mesma) ou reaproveitada se já for responsável de outra pessoa com o mesmo nome. Sem nome de mãe nem
  * de pai, o aluno sai no relatório como `sem_responsavel`. Quando a conciliação roda em `dry-run`, essas pessoas
  * são criadas dentro da transação que o serviço desfaz.
  */
@@ -71,7 +71,9 @@ final class ConciliacaoAlunos implements ConciliacaoModuloInterface
 
         if ($this->responsaveis === null) {
             $this->responsaveis = [];
-            foreach (Pessoa::query()->where('tipo', 'fisica')->where('documento_pendente', true)->orderBy('id')->get() as $pessoa) {
+            // Só reaproveita quem já é responsável de alguém: uma criança com o mesmo nome da mãe não pode virar a mãe.
+            $responsaveisConhecidos = Pessoa::query()->whereNotNull('responsavel_id')->select('responsavel_id');
+            foreach (Pessoa::query()->where('tipo', 'fisica')->where('documento_pendente', true)->whereIn('id', $responsaveisConhecidos)->orderBy('id')->get() as $pessoa) {
                 $this->responsaveis[$this->normalizar($pessoa->nome)] ??= $pessoa->id;
             }
         }
