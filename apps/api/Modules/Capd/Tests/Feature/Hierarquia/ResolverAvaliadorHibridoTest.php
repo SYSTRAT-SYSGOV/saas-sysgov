@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature\Hierarquia;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -52,7 +53,7 @@ final class ResolverAvaliadorHibridoTest extends TestCase
         ]);
 
         $servidorUser = User::factory()->create();
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SERV-002', 'cpf' => '222.222.222-22',
             'nome_completo' => 'Ciclana', 'cargo_efetivo' => 'Técnica', 'orgao_lotacao' => 'Departamento',
             'user_id' => $servidorUser->id, 'org_unit_id' => $departamento->id,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -46,7 +47,7 @@ final class PmdServiceTest extends TestCase
             'password' => bcrypt('secret'),
         ]);
 
-        $this->servidor = Servidor::create([
+        $this->servidor = ServidorDeTeste::criar([
             'tenant_id'             => $this->tenant->id,
             'user_id'               => $user->id,
             'matricula'             => 'PMD-001',

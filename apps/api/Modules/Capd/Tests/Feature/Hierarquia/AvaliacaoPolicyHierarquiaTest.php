@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature\Hierarquia;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -38,7 +39,7 @@ final class AvaliacaoPolicyHierarquiaTest extends TestCase
         OrgUnitUser::create(['tenant_id' => $tenant->id, 'org_unit_id' => $unidade->id, 'user_id' => $userB->id, 'role' => 'responsavel', 'valid_from' => Carbon::parse('2020-01-01')]);
 
         $servidorUser = User::factory()->create();
-        Servidor::create([
+        ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SERV-010', 'cpf' => '101.010.101-01',
             'nome_completo' => 'Avaliado', 'cargo_efetivo' => 'Analista', 'orgao_lotacao' => 'Unidade',
             'user_id' => $servidorUser->id, 'org_unit_id' => $unidade->id,

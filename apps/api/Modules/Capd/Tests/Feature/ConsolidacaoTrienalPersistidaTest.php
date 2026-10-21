@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -45,7 +46,7 @@ final class ConsolidacaoTrienalPersistidaTest extends TestCase
         ]);
         $user->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
 
-        $this->servidor = Servidor::create([
+        $this->servidor = ServidorDeTeste::criar([
             'tenant_id'             => $this->tenant->id,
             'user_id'               => $user->id,
             'matricula'             => 'MAT-900',

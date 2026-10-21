@@ -182,7 +182,6 @@ final class PainelGerencialService
             $query->where(function ($q) use ($busca): void {
                 $q->where('nome_completo', 'like', "%{$busca}%")
                     ->orWhere('matricula', 'like', "%{$busca}%")
-                    ->orWhere('cpf', 'like', "%{$busca}%")
                     ->orWhere(fn ($c) => $c->comCpf((string) $busca));
             });
         }

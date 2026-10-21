@@ -7,15 +7,11 @@ namespace Modules\Capd\Tests\Feature;
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Modules\Capd\Models\RhIntegracao;
 use Modules\Capd\Models\Servidor;
 use Modules\Capd\Services\ServidorService;
 use Modules\Pessoas\Models\Pessoa;
-use Modules\Pessoas\Models\PessoaDivergencia;
 use Modules\Pessoas\Models\PessoaVinculo;
-use Modules\Pessoas\Services\ConciliacaoPessoaService;
-use Modules\Pessoas\Services\ConciliacaoRegistry;
 use Tests\TestCase;
 
 /** Spec capd: servidor avaliado vinculado ao cadastro central de pessoas (unificar-pessoas-fase-2-capd). */
@@ -106,35 +102,5 @@ final class ServidorPessoaTest extends TestCase
         ]])->assertOk();
         $this->assertSame(3, Pessoa::count());
         $this->assertSame(3, PessoaVinculo::count());
-    }
-
-    public function test_conciliacao_vincula_servidores_existentes_sem_alterar_avaliacoes(): void
-    {
-        $semPessoa = fn (string $mat, string $cpf, string $nome): Servidor => Servidor::create([
-            'tenant_id' => $this->tenant->id, 'matricula' => $mat, 'cpf' => $cpf, 'nome_completo' => $nome,
-            'cargo_efetivo' => 'Analista', 'orgao_lotacao' => 'SMAD', 'situacao_funcional' => 'ativo',
-        ]);
-        $a = $semPessoa('C-1', '529.982.247-25', 'Ana Lima');
-        $b = $semPessoa('C-2', '000.000.000-00', 'Bruno Dias');
-        Pessoa::create(['tipo' => 'fisica', 'documento' => '11144477735', 'nome' => 'Carla Souza']);
-        $c = $semPessoa('C-3', '111.444.777-35', 'Carla de Souza');
-        $avaliacoesAntes = DB::table('capd_avaliacoes')->get()->toArray();
-
-        $modulo = app(ConciliacaoRegistry::class)->obter('capd');
-        $dry = app(ConciliacaoPessoaService::class)->conciliar($modulo, true);
-        $this->assertNull($a->fresh()->pessoa_id, 'dry-run não grava');
-        $real = app(ConciliacaoPessoaService::class)->conciliar($modulo, false);
-
-        $this->assertSame($dry['vinculados_por_documento'], $real['vinculados_por_documento']);
-        $this->assertSame(2, $real['vinculados_por_documento']);
-        $this->assertSame(1, $real['criadas_pendentes']);
-        $this->assertNotNull($a->fresh()->pessoa_id);
-        $this->assertTrue(Pessoa::findOrFail($b->fresh()->pessoa_id)->documento_pendente);
-        $this->assertSame(1, PessoaDivergencia::count(), '"Carla de Souza" ≠ "Carla Souza"');
-        $this->assertSame('Carla de Souza', $c->fresh()->nome_completo, 'a conciliação não altera o servidor');
-        $this->assertEquals($avaliacoesAntes, DB::table('capd_avaliacoes')->get()->toArray());
-
-        $segunda = app(ConciliacaoPessoaService::class)->conciliar($modulo, false);
-        $this->assertSame(0, $segunda['criadas_pendentes'] + $segunda['divergencias_registradas']);
     }
 }

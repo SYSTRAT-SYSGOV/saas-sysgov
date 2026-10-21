@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature\Hierarquia;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -41,7 +42,7 @@ final class SplitTransferenciaTest extends TestCase
         OrgUnitUser::create(['tenant_id' => $tenant->id, 'org_unit_id' => $unidadeB->id, 'user_id' => $responsavelB->id, 'role' => 'responsavel', 'valid_from' => Carbon::parse('2020-01-01')]);
 
         $servidorUser = User::factory()->create();
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SERV-007', 'cpf' => '777.777.777-77',
             'nome_completo' => 'Transferido', 'cargo_efetivo' => 'Analista', 'orgao_lotacao' => 'Unidade B',
             'user_id' => $servidorUser->id,

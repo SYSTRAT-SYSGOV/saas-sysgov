@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,7 +25,7 @@ final class ServidorRegistryTest extends TestCase
         $service = app(ServidorService::class);
         $servidor = $service->create([
             'matricula'       => 'MAT-9901',
-            'cpf'             => '12345678901',
+            'cpf'             => '52998224725',
             'nome_completo'   => 'João da Silva',
             'cargo_efetivo'   => 'Professor de Ensino Fundamental',
             'orgao_lotacao'   => 'Secretaria Municipal de Educação',
@@ -32,7 +33,7 @@ final class ServidorRegistryTest extends TestCase
             'data_admissao'   => '2020-02-01',
         ]);
 
-        self::assertSame('123.456.789-01', $servidor->cpf);
+        self::assertSame('529.982.247-25', $servidor->cpfFormatado());
         self::assertSame('MAT-9901', $servidor->matricula);
         self::assertSame($tenant->id, $servidor->tenant_id);
         self::assertTrue($servidor->isAptoParaAvaliacao());
@@ -46,8 +47,8 @@ final class ServidorRegistryTest extends TestCase
         app(TenantContext::class)->set($tenant);
 
         $csv = "Matricula;Nome Completo;CPF;Cargo Efetivo;Secretaria\n"
-             . "1001;Maria Souza;98765432100;Enfermeira;Saude\n"
-             . "1002;Carlos Pereira;11122233344;Motorista;Transporte\n";
+             . "1001;Maria Souza;52998224725;Enfermeira;Saude\n"
+             . "1002;Carlos Pereira;11144477735;Motorista;Transporte\n";
 
         $service = app(ServidorService::class);
         $res = $service->importFromCsv($csv);
@@ -59,7 +60,7 @@ final class ServidorRegistryTest extends TestCase
         self::assertSame(2, Servidor::query()->count());
         $maria = Servidor::where('matricula', '1001')->firstOrFail();
         self::assertSame('Maria Souza', $maria->nome_completo);
-        self::assertSame('987.654.321-00', $maria->cpf);
+        self::assertSame('529.982.247-25', $maria->cpfFormatado());
 
         app(TenantContext::class)->clear();
     }
@@ -69,7 +70,7 @@ final class ServidorRegistryTest extends TestCase
         $tenant = Tenant::create(['name' => 'Prefeitura de Araucária', 'slug' => 'araucaria', 'type' => 'prefeitura', 'status' => 'active']);
         app(TenantContext::class)->set($tenant);
 
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id'          => $tenant->id,
             'matricula'          => '5544',
             'cpf'                => '000.111.222-33',
