@@ -47,8 +47,7 @@ final class AlunoController extends Controller
                     ->orWhere('mae', 'like', $termo)
                     ->orWhere('pai', 'like', $termo)
                     ->orWhereHas('turma', fn ($t) => $t->where('nome', 'like', $termo))
-                    ->when(strlen($cpf) === 11, fn ($c) => $c->orWhereHas('pessoa', fn ($p) => $p->where('documento_hash', \Modules\Pessoas\Support\Documento::hash($cpf)))
-                        ->orWhere('cpf_hash', \Modules\Pessoas\Support\Documento::hash($cpf))));
+                    ->when(strlen($cpf) === 11, fn ($c) => $c->orWhereHas('pessoa', fn ($p) => $p->where('documento_hash', \Modules\Pessoas\Support\Documento::hash($cpf)))));
             })
             ->orderByRaw('numero IS NULL')
             ->orderBy('numero')

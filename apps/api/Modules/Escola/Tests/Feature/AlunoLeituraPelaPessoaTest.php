@@ -7,7 +7,6 @@ namespace Modules\Escola\Tests\Feature;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Modules\Escola\Models\Aluno;
 use Modules\Escola\Models\Escola;
 use Modules\Escola\Models\Turma;
@@ -15,7 +14,7 @@ use Modules\Escola\Models\Turno;
 use Modules\Escola\Tests\Concerns\CenarioEscola;
 use Modules\Escola\Tests\TestCase;
 
-/** Fase 5, etapa A: nascimento e CPF do aluno passam a ser lidos da pessoa; a cópia local não manda mais. */
+/** Fase 5: nascimento e CPF do aluno vivem só na pessoa; a API, a busca e a unicidade por escola leem dela. */
 final class AlunoLeituraPelaPessoaTest extends TestCase
 {
     use CenarioEscola;
@@ -53,11 +52,9 @@ final class AlunoLeituraPelaPessoaTest extends TestCase
         ])->assertCreated()->json('id');
     }
 
-    public function test_api_mostra_nascimento_e_cpf_da_pessoa_mesmo_com_a_copia_local_diferente(): void
+    public function test_api_mostra_nascimento_e_cpf_da_pessoa(): void
     {
         $id = $this->alunoComCpf();
-        // A cópia do aluno diverge e perde o CPF; a pessoa continua com os dados certos.
-        DB::table('escola_alunos')->where('id', $id)->update(['nascimento' => '1999-01-01', 'cpf' => null, 'cpf_hash' => null]);
 
         $this->http()->getJson("/api/escola/alunos/{$id}")->assertOk()
             ->assertJsonPath('nascimento', '2012-04-05')
@@ -70,7 +67,6 @@ final class AlunoLeituraPelaPessoaTest extends TestCase
     public function test_busca_por_cpf_acha_o_aluno_pela_pessoa(): void
     {
         $id = $this->alunoComCpf();
-        DB::table('escola_alunos')->where('id', $id)->update(['cpf' => null, 'cpf_hash' => null]);
 
         $this->http()->getJson('/api/escola/alunos?busca=529.982.247-25')->assertOk()
             ->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $id);
@@ -78,8 +74,7 @@ final class AlunoLeituraPelaPessoaTest extends TestCase
 
     public function test_cpf_repetido_na_mesma_escola_e_recusado_pela_pessoa(): void
     {
-        $id = $this->alunoComCpf();
-        DB::table('escola_alunos')->where('id', $id)->update(['cpf' => null, 'cpf_hash' => null]);
+        $this->alunoComCpf();
 
         $this->http()->postJson('/api/escola/alunos', ['nome' => 'Outra Ana', 'cpf' => self::CPF, 'turma_id' => $this->turma->id])
             ->assertStatus(422)->assertJsonValidationErrors('cpf');

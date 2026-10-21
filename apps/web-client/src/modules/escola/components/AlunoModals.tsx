@@ -464,7 +464,7 @@ export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClos
         const r = await escolaApi.importarAlunos(file, confirmarDuplicidades);
         const erros = r.rejeitadas.map(x => `Linha ${x.linha}: ${x.motivo}`);
         const resumo = [`${r.criados} alunos novos importados.`, `${r.atualizados} cadastros existentes atualizados.`];
-        if (r.sem_pessoa.length > 0) resumo.push(`${r.sem_pessoa.length} alunos ficaram sem pessoa vinculada (faltam nascimento ou responsável); a conciliação os vincula depois.`);
+        if (r.sem_pessoa.length > 0) resumo.push(`${r.sem_pessoa.length} alunos não foram importados (faltam nascimento ou responsável para criar a pessoa); corrija o CSV e envie de novo.`);
         setDuplicidades(r.possiveis_duplicidades);
         setResultado({ resumo, erros });
         onToast({ type: erros.length ? 'warning' : 'success', title: 'Importação concluída', message: `${r.criados} novos, ${r.atualizados} atualizados.` });

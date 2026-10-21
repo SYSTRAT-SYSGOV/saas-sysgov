@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Formatura\Tests\Concerns;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -81,7 +82,7 @@ trait CenarioFormatura
     {
         $t = $this->turma($tenant, $turma);
 
-        return $this->noTenant($tenant, fn (): Aluno => Aluno::create(['nome' => $nome, 'turma_id' => $t->id, 'situacao' => 'ativo']));
+        return $this->noTenant($tenant, fn (): Aluno => AlunoDeTeste::criar(['nome' => $nome, 'turma_id' => $t->id, 'situacao' => 'ativo']));
     }
 
     /** @param array<string, mixed> $extra */

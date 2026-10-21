@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Pedagogico\Tests\Feature;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,7 +70,7 @@ final class MultiEscolaPedagogicoTest extends TestCase
             $turno = Turno::create(['nome' => 'Manhã', 'ordem' => 1]);
             $turma = Turma::create(['nome' => '6º B', 'turno_id' => $turno->id, 'ano_letivo' => 2026]);
 
-            return Aluno::create(['nome' => 'ALUNO B', 'turma_id' => $turma->id, 'situacao' => 'ativo']);
+            return AlunoDeTeste::criar(['nome' => 'ALUNO B', 'turma_id' => $turma->id, 'situacao' => 'ativo']);
         });
 
         $this->como($this->usuario($this->tenant), $this->tenant)->withHeader('X-Escola-ID', (string) $this->escolaA->id)
@@ -86,7 +87,7 @@ final class MultiEscolaPedagogicoTest extends TestCase
         $alunoB = $this->naEscola($this->tenant, $this->escolaB, function (): Aluno {
             $turma = Turma::create(['nome' => '6º B', 'turno_id' => Turno::create(['nome' => 'Manhã', 'ordem' => 1])->id, 'ano_letivo' => 2026]);
 
-            return Aluno::create(['nome' => 'ALUNO B', 'turma_id' => $turma->id, 'situacao' => 'ativo']);
+            return AlunoDeTeste::criar(['nome' => 'ALUNO B', 'turma_id' => $turma->id, 'situacao' => 'ativo']);
         });
 
         // O "exists" é a única barreira aqui: tem de filtrar pela escola de trabalho.
@@ -116,7 +117,7 @@ final class MultiEscolaPedagogicoTest extends TestCase
     {
         $turno = Turno::create(['nome' => "Manhã {$s}", 'ordem' => 1]);
         $turma = Turma::create(['nome' => "6º {$s}", 'turno_id' => $turno->id, 'ano_letivo' => 2026]);
-        $aluno = Aluno::create(['nome' => "Aluno {$s}", 'turma_id' => $turma->id, 'situacao' => 'ativo']);
+        $aluno = AlunoDeTeste::criar(['nome' => "Aluno {$s}", 'turma_id' => $turma->id, 'situacao' => 'ativo']);
         $materia = Materia::create(['nome' => "Matemática {$s}"]);
         $categoria = CategoriaOcorrencia::create(['nome' => "Falta {$s}", 'cor' => '#ffffff']);
         $ficha = PreConselho::create(['turma_id' => $turma->id, 'materia_id' => $materia->id, 'ano_letivo' => 2026, 'periodo' => 1, 'data_registro' => '2026-04-10', 'desempenho_geral' => 'bom']);

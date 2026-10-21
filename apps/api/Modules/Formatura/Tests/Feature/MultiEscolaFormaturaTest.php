@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Formatura\Tests\Feature;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Escola\Models\Aluno;
@@ -47,7 +48,7 @@ final class MultiEscolaFormaturaTest extends TestCase
         return $this->naEscola($this->tenant, $escola, function () use ($nome): array {
             $turma = Turma::create(['nome' => '3º A', 'turno_id' => Turno::create(['nome' => 'Manhã', 'ordem' => 1])->id, 'ano_letivo' => 2026]);
 
-            return [$turma, Aluno::create(['nome' => $nome, 'turma_id' => $turma->id, 'situacao' => 'ativo'])];
+            return [$turma, AlunoDeTeste::criar(['nome' => $nome, 'turma_id' => $turma->id, 'situacao' => 'ativo'])];
         });
     }
 

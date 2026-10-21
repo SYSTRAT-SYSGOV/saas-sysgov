@@ -198,20 +198,20 @@ final class AlunoPessoaTest extends TestCase
         $this->assertSame('2016-04-11', $pessoa->data_nascimento->toDateString());
     }
 
-    public function test_csv_sem_cpf_lista_possivel_duplicidade_e_aluno_sem_pessoa(): void
+    public function test_csv_sem_cpf_lista_possivel_duplicidade_e_nao_grava_aluno_sem_pessoa(): void
     {
         $responsavel = $this->responsavel();
         $this->noTenant($this->tenant, fn () => Pessoa::create(['tipo' => 'fisica', 'nome' => 'Davi Souza', 'data_nascimento' => '2016-03-10', 'responsavel_id' => $responsavel->id]));
         $csv = "NOME;TURMA;NASCIMENTO\nDavi Souza;6º A;10/03/2016\nEva Sem Data;6º A;\n";
         $enviar = fn (array $extra = []) => $this->naEscolaHttp($this->escolaA)->post('/api/escola/alunos/importar', ['arquivo' => UploadedFile::fake()->createWithContent('alunos.csv', $csv), ...$extra]);
 
+        // Sem pessoa não há aluno (`pessoa_id` é obrigatório): a linha sem nascimento não é gravada.
         $enviar()->assertOk()
-            ->assertJsonPath('criados', 1)
+            ->assertJsonPath('criados', 0)
             ->assertJsonPath('possiveis_duplicidades.0.linha', 2)
             ->assertJsonPath('sem_pessoa.0.nome', 'Eva Sem Data');
 
-        $this->assertSame(1, $this->noTenant($this->tenant, fn () => Aluno::query()->count()));
-        $this->assertNull($this->noTenant($this->tenant, fn () => Aluno::query()->sole()->pessoa_id));
+        $this->assertSame(0, $this->noTenant($this->tenant, fn () => Aluno::query()->count()));
     }
 
     public function test_transferencia_encerra_o_vinculo_e_mantem_a_pessoa(): void
@@ -248,11 +248,13 @@ final class AlunoPessoaTest extends TestCase
         $csv = "NOME;TURMA;CPF\nAna Lima;6º A;529.982.247-25\nBruno Dias;6º A;111.111.111-11\nCarla Sem Cpf;6º A;\n";
         $enviar = fn () => $this->naEscolaHttp($this->escolaA)->post('/api/escola/alunos/importar', ['arquivo' => UploadedFile::fake()->createWithContent('alunos.csv', $csv)]);
 
-        $enviar()->assertOk()->assertJsonPath('criados', 2)->assertJsonPath('rejeitadas.0.motivo', 'CPF inválido (Bruno Dias).');
+        // Carla não tem CPF nem nascimento: sem pessoa não há aluno, então ela não é gravada.
+        $enviar()->assertOk()->assertJsonPath('criados', 1)->assertJsonPath('rejeitadas.0.motivo', 'CPF inválido (Bruno Dias).')
+            ->assertJsonPath('sem_pessoa.0.nome', 'Carla Sem Cpf');
         $this->noTenant($this->tenant, fn () => $this->assertSame(1, Pessoa::count()));
 
         // Reimportar não duplica: o CPF identifica o aluno.
-        $enviar()->assertOk()->assertJsonPath('criados', 0)->assertJsonPath('atualizados', 2);
+        $enviar()->assertOk()->assertJsonPath('criados', 0)->assertJsonPath('atualizados', 1);
         $this->assertCount(1, $this->vinculos());
     }
 }

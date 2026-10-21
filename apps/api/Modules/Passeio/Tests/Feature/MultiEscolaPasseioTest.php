@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Passeio\Tests\Feature;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Escola\Models\Aluno;
@@ -70,7 +71,7 @@ final class MultiEscolaPasseioTest extends TestCase
         $alunoB = $this->naEscola($this->tenant, $this->escolaB, function (): Aluno {
             $turma = Turma::create(['nome' => '3º B', 'turno_id' => Turno::create(['nome' => 'Manhã', 'ordem' => 1])->id, 'ano_letivo' => 2026]);
 
-            return Aluno::create(['nome' => 'ALUNO B', 'turma_id' => $turma->id, 'situacao' => 'ativo']);
+            return AlunoDeTeste::criar(['nome' => 'ALUNO B', 'turma_id' => $turma->id, 'situacao' => 'ativo']);
         });
 
         $this->naEscolaHttp($this->escolaA)->postJson("/api/passeio/passeios/{$passeioA}/inscricoes", ['aluno_id' => $alunoB->id])

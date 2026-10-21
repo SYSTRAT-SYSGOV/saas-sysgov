@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Escola\Services\AlunoPessoaService;
 
 /**
- * Recopia nome, nascimento, mãe e pai das pessoas para os alunos ligados (D5). O evento
+ * Recopia nome, mãe e pai das pessoas para os alunos ligados (D5). O evento
  * PessoaAtualizada mantém as cópias em dia; este comando corrige divergências antigas.
  */
 final class RessincronizarPessoasCommand extends Command
