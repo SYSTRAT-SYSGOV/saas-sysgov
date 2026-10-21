@@ -103,7 +103,8 @@ final class SucessaoDemonstracaoSeeder extends Seeder
         ]);
 
         return Concessao::create([
-            'numero' => "DEMO-SUC-{$sufixo}",
+            // concessions.numero comporta 30 caracteres; "DEMO-SUC-inventario_extrajudicial-1" (35) estourava.
+            'numero' => 'DEMO-SUC-' . substr(md5($sufixo), 0, 8),
             'plot_id' => $jazigo->id,
             'holder_id' => $titular->id,
             'tipo' => 'perpetua',
