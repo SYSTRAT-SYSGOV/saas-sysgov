@@ -12,6 +12,7 @@ use Modules\Cemiterios\Services\SucessaoService;
 use Modules\Cemiterios\Support\EstadoSucessao;
 use Modules\Cemiterios\Support\RegraNegocioException;
 use Modules\Cemiterios\Tests\CemiteriosTestCase;
+use Modules\Pessoas\Models\Pessoa;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 final class SucessaoServiceTest extends CemiteriosTestCase
@@ -155,6 +156,44 @@ final class SucessaoServiceTest extends CemiteriosTestCase
         self::assertNotSame($antigoTitularId, $concessaoAtualizada->holder_id);
         self::assertFalse($concessaoAtualizada->pendencia_regularizacao);
         self::assertSame('Herdeiro Sucessor', $concessaoAtualizada->concessionario->nome);
+    }
+
+    public function test_concluir_usa_o_documento_da_pessoa_quando_a_copia_do_herdeiro_esta_mascarada(): void
+    {
+        $cpf = $this->cpfValido();
+        $pessoa = Pessoa::create(['tipo' => 'fisica', 'documento' => $cpf, 'nome' => 'Herdeiro Da Pessoa']);
+        $sucessao = $this->novoProcessoEm(EstadoSucessao::Validada);
+
+        // O seletor de pessoas deixa na cópia o CPF mascarado: sozinho ele não identifica ninguém.
+        $this->service->adicionarHerdeiro($sucessao, [
+            'nome' => 'Herdeiro Da Pessoa',
+            'parentesco' => 'filho',
+            'documento' => '***.982.247-**',
+            'pessoa_id' => $pessoa->id,
+            'titular_indicado' => true,
+        ]);
+
+        $novoTitular = $this->service->concluir($sucessao)->concessao()->first()->concessionario;
+
+        self::assertSame($cpf, $novoTitular->documento, 'o novo titular nasce com o documento real da pessoa, não com um documento fictício');
+        self::assertSame(\Modules\Cemiterios\Support\Documento::hash($cpf), $novoTitular->documento_hash);
+    }
+
+    public function test_json_do_herdeiro_traz_o_documento_mascarado_da_pessoa_e_nunca_a_relacao(): void
+    {
+        $cpf = $this->cpfValido();
+        $pessoa = Pessoa::create(['tipo' => 'fisica', 'documento' => $cpf, 'nome' => 'Com Pessoa']);
+        $sucessao = $this->novoProcessoEm(EstadoSucessao::Validada);
+        $ligado = $this->service->adicionarHerdeiro($sucessao, ['nome' => 'Com Pessoa', 'parentesco' => 'filho', 'documento' => 'copia-local', 'pessoa_id' => $pessoa->id]);
+        $solto = $this->service->adicionarHerdeiro($sucessao, ['nome' => 'Sem Pessoa', 'parentesco' => 'neto', 'documento' => '12345678909']);
+
+        $json = $ligado->fresh()->toArray();
+        self::assertSame($pessoa->cpf_mascarado, $json['documento']);
+        self::assertArrayNotHasKey('pessoa', $json);
+        self::assertSame($cpf, $ligado->fresh()->documentoDaPessoa());
+
+        self::assertSame('12345678909', $solto->fresh()->toArray()['documento'], 'sem pessoa vale a cópia local');
+        self::assertSame('12345678909', $solto->fresh()->documentoDaPessoa());
     }
 
     private function novaConcessao(): Concessao

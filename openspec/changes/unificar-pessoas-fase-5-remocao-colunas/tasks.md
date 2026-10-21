@@ -22,7 +22,7 @@ Nada da etapa B roda sem trava liberada, backup verificado e confirmação.
 - [ ] 2.3 (A, depois de 2.2) Propagar `email` e `telefone` dos contatos da pessoa ao servidor e trocar o login por vínculo `user_id`/`pessoa_id`; só então avaliar a remoção.
 
 ## 3. Cemitérios
-- [ ] 3.1 (A) Operadores e herdeiros: documento lido da pessoa. Verificar: `OperadoresTest` e sucessão.
+- [x] 3.1 (A) Operadores e herdeiros: documento lido da pessoa. Verificar: `OperadoresTest` e sucessão. Feito: `SucessaoHerdeiro::documentoDaPessoa()` (documento real da pessoa, com a cópia local como reserva) alimenta a criação do novo titular em `SucessaoService::concluir`; `toArray()` devolve o documento **mascarado** da pessoa e a relação fica em `$hidden` (`$with = ['pessoa']`); a busca de operadores por CPF/CNPJ também acha pela pessoa (hash do módulo Pessoas, chave diferente da do módulo). Corrigido de passagem: `adicionarHerdeiro`/`upsertHerdeiros` descartavam o `pessoa_id` que o pedido já validava, e a cópia local do herdeiro escolhido no seletor fica com o CPF mascarado, o que fazia a conclusão criar o novo titular com documento fictício. Testes: `SucessaoServiceTest`, `OperadoresTest`. **Atenção na etapa B:** o formulário de herdeiros devolve `documento` no `PUT`/`POST`; sem a coluna, o backend precisa ignorá-lo quando há `pessoa_id`. `ProcessoSucessaoController`/`HerdeiroSucessao` (tabela `cemetery_succession_heirs`, sem `pessoa_id`) ficam fora do plano.
 - [ ] 3.2 (B) Migration de remoção de `cpf_cnpj`, `documento_hash` (operadores) e `documento` (herdeiros), com a trava. Os 29 documentos inválidos (19 concessionários e 10 herdeiros) precisam de decisão antes.
 - [ ] 3.3 Concessionários: definir a nova chave do portal (Gov.br) antes de mexer em `documento`.
 

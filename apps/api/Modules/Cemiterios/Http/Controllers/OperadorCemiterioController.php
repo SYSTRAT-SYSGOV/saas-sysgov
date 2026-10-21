@@ -56,11 +56,16 @@ final class OperadorCemiterioController extends Controller
             ->when($statusSaude === 'nao_informado', fn ($query) => $query->whereNull('aso_validade'))
             ->when($q !== '', function ($query) use ($q): void {
                 $documentoHash = Documento::hash($q);
-                $query->where(function ($sub) use ($q, $documentoHash): void {
+                $digitos = Documento::somenteDigitos($q);
+                $query->where(function ($sub) use ($q, $documentoHash, $digitos): void {
                     $sub->where('nome', 'like', "%{$q}%")
                         ->orWhere('matricula_funcional', 'like', "%{$q}%")
                         ->orWhere('alvara_numero', 'like', "%{$q}%")
                         ->orWhere('documento_hash', $documentoHash);
+                    // O documento mora na pessoa do cadastro central (hash do módulo Pessoas, chave diferente da do módulo).
+                    if (in_array(strlen($digitos), [11, 14], true)) {
+                        $sub->orWhereHas('pessoa', fn ($p) => $p->where('documento_hash', \Modules\Pessoas\Support\Documento::hash($digitos)));
+                    }
                 });
             })
             ->orderBy('nome');

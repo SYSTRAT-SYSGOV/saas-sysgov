@@ -10,6 +10,7 @@ use Modules\Cemiterios\Models\Falecido;
 use Modules\Cemiterios\Models\Inumacao;
 use Modules\Cemiterios\Models\OperadorCemiterio;
 use Modules\Cemiterios\Tests\CemiteriosTestCase;
+use Modules\Pessoas\Models\Pessoa;
 
 final class OperadoresTest extends CemiteriosTestCase
 {
@@ -21,6 +22,18 @@ final class OperadoresTest extends CemiteriosTestCase
         Storage::fake('local');
         $this->tenant = $this->criarTenant();
         $this->noTenant($this->tenant);
+    }
+
+    public function test_busca_do_operador_por_cpf_acha_pela_pessoa_mesmo_sem_a_copia_local(): void
+    {
+        $pessoa = Pessoa::create(['tipo' => 'fisica', 'documento' => '52998224725', 'nome' => 'Operador Da Pessoa']);
+        $ligado = OperadorCemiterio::create(['pessoa_id' => $pessoa->id, 'nome' => 'Operador Da Pessoa', 'tipo' => 'coveiro', 'situacao' => 'ativo']);
+        OperadorCemiterio::create(['nome' => 'Outro Operador', 'tipo' => 'coveiro', 'situacao' => 'ativo']);
+
+        $resposta = $this->como($this->admin($this->tenant), $this->tenant)->getJson('/api/cemiterios/operadores?q=529.982.247-25');
+
+        $resposta->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $ligado->id);
+        $this->como($this->admin($this->tenant), $this->tenant)->getJson('/api/cemiterios/operadores?q=111.444.777-35')->assertOk()->assertJsonCount(0, 'data');
     }
 
     public function test_cadastro_e_listagem_de_coveiros_e_pedreiros(): void

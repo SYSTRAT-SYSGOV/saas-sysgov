@@ -171,6 +171,7 @@ final class SucessaoService
         return SucessaoHerdeiro::create([
             'tenant_id' => $sucessao->tenant_id,
             'sucessao_id' => $sucessao->getKey(),
+            'pessoa_id' => $dados['pessoa_id'] ?? null,
             'nome' => $dados['nome'],
             'parentesco' => $dados['parentesco'] instanceof Parentesco ? $dados['parentesco'] : (Parentesco::tryFrom($dados['parentesco']) ?? Parentesco::Filho),
             'documento' => $dados['documento'] ?? null,
@@ -184,7 +185,7 @@ final class SucessaoService
     /**
      * Adiciona ou atualiza herdeiros do processo.
      *
-     * @param array<int, array{nome: string, parentesco: Parentesco|string, documento?: string|null, ordem: int, direito_representacao?: bool, titular_indicado?: bool, herdeiro_representado_id?: int|null}> $herdeiros
+     * @param array<int, array{nome: string, parentesco: Parentesco|string, documento?: string|null, pessoa_id?: int|null, ordem: int, direito_representacao?: bool, titular_indicado?: bool, herdeiro_representado_id?: int|null}> $herdeiros
      */
     public function upsertHerdeiros(Sucessao $sucessao, array $herdeiros): Collection
     {
@@ -209,6 +210,7 @@ final class SucessaoService
                 return SucessaoHerdeiro::create([
                     'tenant_id' => $sucessao->tenant_id,
                     'sucessao_id' => $sucessao->getKey(),
+                    'pessoa_id' => $h['pessoa_id'] ?? null,
                     'nome' => $h['nome'],
                     'parentesco' => $h['parentesco'] instanceof Parentesco ? $h['parentesco'] : Parentesco::tryFrom($h['parentesco']),
                     'documento' => $h['documento'] ?? null,
@@ -297,7 +299,7 @@ final class SucessaoService
             $antigoTitularId = $concessao->holder_id;
 
             // Cria ou busca o novo concessionário
-            $docLimpo = \Modules\Cemiterios\Support\Documento::somenteDigitos($titularIndicado->documento ?? '');
+            $docLimpo = \Modules\Cemiterios\Support\Documento::somenteDigitos($titularIndicado->documentoDaPessoa() ?? '');
             $novoTitular = null;
 
             if (strlen($docLimpo) === 11 || strlen($docLimpo) === 14) {
