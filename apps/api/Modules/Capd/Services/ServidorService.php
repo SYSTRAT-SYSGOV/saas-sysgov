@@ -29,7 +29,6 @@ final class ServidorService
                 $q->where(function ($sub) use ($search, $filters): void {
                     $sub->where('nome_completo', 'like', $search)
                         ->orWhere('matricula', 'like', $search)
-                        ->orWhere('cpf', 'like', $search)
                         ->orWhere(fn ($c) => $c->comCpf((string) $filters['search']))
                         ->orWhere('cargo_efetivo', 'like', $search)
                         ->orWhere('orgao_lotacao', 'like', $search);
@@ -53,18 +52,21 @@ final class ServidorService
 
         // Normalização de CPF
         $cpf = preg_replace('/\D/', '', (string) ($data['cpf'] ?? ''));
-        if (strlen($cpf) !== 11) {
+        // O CPF só existe na pessoa: um inválido não teria onde ficar (a pessoa nasceria pendente) e seria perdido.
+        if (strlen($cpf) !== 11 || ServidorPessoaService::cpfValido($cpf) === null) {
             throw ValidationException::withMessages(['cpf' => 'O CPF informado é inválido.']);
         }
-        $formattedCpf = substr($cpf, 0, 3) . '.' . substr($cpf, 3, 3) . '.' . substr($cpf, 6, 3) . '-' . substr($cpf, 9, 2);
 
         $data['tenant_id'] = $tenantId;
-        $data['cpf'] = $formattedCpf;
         $data['situacao_funcional'] = $data['situacao_funcional'] ?? 'ativo';
+        $civis = $this->extrairCivis($data);
 
-        return DB::transaction(function () use ($data): Servidor {
-            $servidor = Servidor::create($data);
-            $this->pessoas->sincronizar($servidor);
+        return DB::transaction(function () use ($data, $civis): Servidor {
+            // A pessoa vem antes do servidor: `pessoa_id` é obrigatório e CPF, nome social e nascimento só existem nela.
+            $pessoa = $this->pessoas->resolverParaNovo([...$civis, 'nome' => (string) ($data['nome_completo'] ?? '')]);
+            $servidor = new Servidor($data);
+            $servidor->forceFill(['pessoa_id' => $pessoa->id])->save();
+            $this->pessoas->concluirCadastro($servidor, $pessoa);
 
             return $servidor;
         });
@@ -75,19 +77,38 @@ final class ServidorService
      */
     public function update(Servidor $servidor, array $data): Servidor
     {
-        if (!empty($data['cpf'])) {
-            $cpf = preg_replace('/\D/', '', (string) $data['cpf']);
-            if (strlen($cpf) === 11) {
-                $data['cpf'] = substr($cpf, 0, 3) . '.' . substr($cpf, 3, 3) . '.' . substr($cpf, 6, 3) . '-' . substr($cpf, 9, 2);
-            }
+        $camposCivis = array_values(array_intersect(['nome_completo', 'nome_social', 'data_nascimento'], array_keys($data)));
+        $civis = $this->extrairCivis($data);
+        if (trim((string) ($civis['cpf'] ?? '')) !== '' && ServidorPessoaService::cpfValido($civis['cpf']) === null) {
+            throw ValidationException::withMessages(['cpf' => 'O CPF informado é inválido.']);
         }
 
-        DB::transaction(function () use ($servidor, $data): void {
+        DB::transaction(function () use ($servidor, $data, $civis, $camposCivis): void {
             $servidor->update($data);
-            $this->pessoas->sincronizar($servidor, array_values(array_intersect(['nome_completo', 'nome_social', 'data_nascimento'], array_keys($data))));
+            $this->pessoas->sincronizar($servidor, $civis, $camposCivis);
         });
 
         return $servidor->fresh(['chefiaImediata', 'user']);
+    }
+
+    /**
+     * Retira de `$data` o que vive só na pessoa (CPF, nome social, nascimento). Devolve só o que veio, para a edição
+     * distinguir "não enviado" de "enviado vazio".
+     *
+     * @param array<string, mixed> $data
+     * @return array{cpf?: string|null, nome_social?: string|null, data_nascimento?: string|null}
+     */
+    private function extrairCivis(array &$data): array
+    {
+        $civis = [];
+        foreach (['cpf', 'nome_social', 'data_nascimento'] as $campo) {
+            if (array_key_exists($campo, $data)) {
+                $civis[$campo] = $data[$campo];
+                unset($data[$campo]);
+            }
+        }
+
+        return $civis;
     }
 
     /**
@@ -137,9 +158,8 @@ final class ServidorService
                 continue;
             }
 
-            $cpfFormatted = strlen($cpfRaw) === 11
-                ? substr($cpfRaw, 0, 3) . '.' . substr($cpfRaw, 3, 3) . '.' . substr($cpfRaw, 6, 3) . '-' . substr($cpfRaw, 9, 2)
-                : '000.000.000-00';
+            // CPF ausente ou malformado não impede a linha: a pessoa nasce com documento pendente.
+            $civis = ['cpf' => strlen($cpfRaw) === 11 ? $cpfRaw : null];
 
             $servidor = Servidor::where('tenant_id', $tenantId)->where('matricula', $matricula)->first();
 
@@ -147,25 +167,30 @@ final class ServidorService
                 'tenant_id' => $tenantId,
                 'matricula' => $matricula,
                 'nome_completo' => $nome,
-                'cpf' => $cpfFormatted,
                 'cargo_efetivo' => $cargo,
                 'orgao_lotacao' => $lotacao,
                 'origem_sistema' => 'importacao_csv',
             ];
 
-            if ($servidor) {
-                $servidor->update($payload);
-                $atualizados++;
-            } else {
-                $servidor = Servidor::create($payload);
-                $inseridos++;
-            }
-
             try {
-                DB::transaction(fn () => $this->pessoas->sincronizar($servidor));
+                // Sem pessoa não há servidor (`pessoa_id` é obrigatório): se o MDM recusar, só esta linha é desfeita.
+                DB::transaction(function () use (&$servidor, $payload, $civis, &$inseridos, &$atualizados): void {
+                    if ($servidor) {
+                        $servidor->update($payload);
+                        $this->pessoas->sincronizar($servidor, $civis);
+                        $atualizados++;
+
+                        return;
+                    }
+
+                    $pessoa = $this->pessoas->resolverParaNovo([...$civis, 'nome' => $payload['nome_completo']]);
+                    $servidor = new Servidor($payload);
+                    $servidor->forceFill(['pessoa_id' => $pessoa->id])->save();
+                    $this->pessoas->concluirCadastro($servidor, $pessoa);
+                    $inseridos++;
+                });
             } catch (\Throwable $e) {
-                // O servidor já foi gravado: falha ao ligar a pessoa não interrompe a importação.
-                $erros[] = 'Linha ' . ($lineIndex + 2) . ": servidor gravado sem pessoa vinculada ({$e->getMessage()}).";
+                $erros[] = 'Linha ' . ($lineIndex + 2) . ": servidor não gravado ({$e->getMessage()}).";
             }
         }
 

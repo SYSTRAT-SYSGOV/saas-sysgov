@@ -45,14 +45,14 @@ final class RhApiIntegrationTest extends TestCase
                 [
                     'matricula'     => 'BETH-101',
                     'nome_completo' => 'Fernando Souza',
-                    'cpf'           => '11122233344',
+                    'cpf'           => '52998224725',
                     'cargo_efetivo' => 'Auditor Fiscal',
                     'orgao_lotacao' => 'Secretaria de Finanças',
                 ],
                 [
                     'matricula'     => 'BETH-102',
                     'nome_completo' => 'Juliana Lima',
-                    'cpf'           => '55566677788',
+                    'cpf'           => '11144477735',
                     'cargo_efetivo' => 'Médica Pediatra',
                     'orgao_lotacao' => 'Secretaria de Saúde',
                 ],
@@ -73,7 +73,7 @@ final class RhApiIntegrationTest extends TestCase
         self::assertSame(2, Servidor::query()->count());
         $auditor = Servidor::where('matricula', 'BETH-101')->firstOrFail();
         self::assertSame('Fernando Souza', $auditor->nome_completo);
-        self::assertSame('111.222.333-44', $auditor->cpf);
+        self::assertSame('529.982.247-25', $auditor->cpfFormatado(), 'o CPF vive na pessoa do cadastro central');
         self::assertSame('betha', $auditor->origem_sistema);
 
         app(TenantContext::class)->clear();

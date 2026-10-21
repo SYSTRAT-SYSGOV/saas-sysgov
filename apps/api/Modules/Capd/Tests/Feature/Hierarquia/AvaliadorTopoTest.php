@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature\Hierarquia;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -28,7 +29,7 @@ final class AvaliadorTopoTest extends TestCase
 
         $servidorUser = User::factory()->create();
 
-        return Servidor::create([
+        return ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SERV-009', 'cpf' => '999.999.999-99',
             'nome_completo' => 'Gestor Máximo', 'cargo_efetivo' => 'Secretário', 'orgao_lotacao' => 'Raiz',
             'user_id' => $servidorUser->id, 'org_unit_id' => $raiz->id,

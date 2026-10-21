@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -42,7 +43,7 @@ final class SimularProgressaoQuinquenioTest extends TestCase
         $servidorUser = User::create(['name' => 'Servidor Veterano', 'email' => 'veterano@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
 
         // Admissão há ~12,7 anos: 2 quinquênios completados (10 e 15 anos ainda não atingidos).
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id'             => $tenant->id,
             'user_id'               => $servidorUser->id,
             'matricula'             => 'SIM-001',
@@ -97,7 +98,7 @@ final class SimularProgressaoQuinquenioTest extends TestCase
 
         $servidorUser = User::create(['name' => 'Servidor Convergente', 'email' => 'convergente@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
 
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id'             => $tenant->id,
             'user_id'               => $servidorUser->id,
             'matricula'             => 'SIM-002',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature\Hierarquia;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -32,7 +33,7 @@ final class PendenciaSemSuperiorTest extends TestCase
         NivelHierarquia::create(['tenant_id' => $tenant->id, 'nivel' => 0, 'nome' => 'Raiz', 'regra_substituicao' => 'superior_hierarquico', 'is_topo' => false]);
 
         $servidorUser = User::factory()->create();
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SERV-008', 'cpf' => '888.888.888-88',
             'nome_completo' => 'Sem Superior', 'cargo_efetivo' => 'Analista', 'orgao_lotacao' => 'Raiz',
             'user_id' => $servidorUser->id, 'org_unit_id' => $raiz->id,

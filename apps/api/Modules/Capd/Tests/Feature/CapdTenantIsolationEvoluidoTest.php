@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -109,7 +110,7 @@ final class CapdTenantIsolationEvoluidoTest extends TestCase
             $user = User::create(['name' => 'Servidor', 'email' => $email, 'password' => bcrypt('secret')]);
             $user->tenants()->attach($tenant->id, ['status' => 'active', 'is_primary' => true]);
 
-            $servidor = Servidor::create([
+            $servidor = ServidorDeTeste::criar([
                 'tenant_id'             => $tenant->id,
                 'user_id'               => $user->id,
                 'matricula'             => 'MAT-ISO',
@@ -171,7 +172,7 @@ final class CapdTenantIsolationEvoluidoTest extends TestCase
         ]);
 
         $userA = User::create(['name' => 'Servidor Alpha', 'email' => 'servidor.alpha.fatores@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
-        $servidorA = Servidor::create([
+        $servidorA = ServidorDeTeste::criar([
             'tenant_id' => $tenantA->id, 'user_id' => $userA->id, 'matricula' => 'MAT-F1', 'cpf' => '10020030044',
             'nome_completo' => 'Servidor Alpha', 'data_nascimento' => '1980-05-15', 'data_admissao' => '2015-02-01',
             'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps', 'cargo_efetivo' => 'Atendente',
@@ -203,7 +204,7 @@ final class CapdTenantIsolationEvoluidoTest extends TestCase
         app(TenantContext::class)->set($tenantA);
 
         $userA = User::create(['name' => 'Servidor Alpha Quinquenio', 'email' => 'servidor.alpha.quinquenio@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
-        $servidorA = Servidor::create([
+        $servidorA = ServidorDeTeste::criar([
             'tenant_id' => $tenantA->id, 'user_id' => $userA->id, 'matricula' => 'MAT-Q1', 'cpf' => '77788899900',
             'nome_completo' => 'Servidor Alpha Quinquenio', 'data_nascimento' => '1980-05-15',
             'data_admissao' => now()->subYears(11)->toDateString(),

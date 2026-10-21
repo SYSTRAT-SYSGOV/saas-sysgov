@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -119,7 +120,7 @@ final class CicloDozeMesesCadenciaTest extends TestCase
         ]);
 
         $user1 = User::create(['name' => 'Estagiário Lucas', 'email' => 'lucas@teste.gov.br', 'password' => bcrypt('password')]);
-        $estagiario = Servidor::create([
+        $estagiario = ServidorDeTeste::criar([
             'user_id'         => $user1->id,
             'matricula'       => 'EST-001',
             'nome_completo'   => 'Lucas Estagiário',
@@ -134,7 +135,7 @@ final class CicloDozeMesesCadenciaTest extends TestCase
         self::assertStringContainsString('Estagiários não são submetidos', $checkEstagiario['bloqueios'][0]);
 
         $user2 = User::create(['name' => 'Marcos Faltoso', 'email' => 'marcos@teste.gov.br', 'password' => bcrypt('password')]);
-        $servidorFaltoso = Servidor::create([
+        $servidorFaltoso = ServidorDeTeste::criar([
             'user_id'         => $user2->id,
             'matricula'       => 'SRV-002',
             'nome_completo'   => 'Marcos Faltoso',
@@ -150,7 +151,7 @@ final class CicloDozeMesesCadenciaTest extends TestCase
         self::assertStringContainsString('8 falta(s) injustificada(s)', $checkFaltas['bloqueios'][0]);
 
         $user3 = User::create(['name' => 'Joana Licenca', 'email' => 'joana@teste.gov.br', 'password' => bcrypt('password')]);
-        $servidorLicenca = Servidor::create([
+        $servidorLicenca = ServidorDeTeste::criar([
             'user_id'         => $user3->id,
             'matricula'       => 'SRV-003',
             'nome_completo'   => 'Joana Licença Longa',

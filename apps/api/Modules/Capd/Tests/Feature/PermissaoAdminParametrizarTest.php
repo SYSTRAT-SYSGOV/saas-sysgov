@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -75,7 +76,7 @@ final class PermissaoAdminParametrizarTest extends TestCase
     public function test_gerar_quinquenios_exige_permissao_admin_parametrizar(): void
     {
         $servidorUser = User::create(['name' => 'Servidor Permissao', 'email' => 'servidor.permissao@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id' => $this->tenant->id, 'user_id' => $servidorUser->id, 'matricula' => 'MAT-P1', 'cpf' => '99988877766',
             'nome_completo' => 'Servidor Permissao', 'data_nascimento' => '1985-01-01', 'data_admissao' => now()->subYears(6)->toDateString(),
             'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps', 'cargo_efetivo' => 'Analista',
