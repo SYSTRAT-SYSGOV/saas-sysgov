@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Multiprofissional\Tests\Concerns;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -126,7 +127,7 @@ trait CenarioMultiprofissional
         $escolas = app(EscolaContext::class);
         $escolas->set($escola);
         try {
-            return Aluno::create(['nome' => $nome, 'cgm' => $cgm, 'situacao' => 'ativo']);
+            return AlunoDeTeste::criar(['nome' => $nome, 'cgm' => $cgm, 'situacao' => 'ativo']);
         } finally {
             $escolas->clear();
         }

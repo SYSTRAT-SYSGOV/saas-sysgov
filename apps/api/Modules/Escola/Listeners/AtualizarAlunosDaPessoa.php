@@ -9,7 +9,7 @@ use Modules\Escola\Services\EquipeService;
 use Modules\Pessoas\Events\PessoaAtualizada;
 
 /**
- * Pessoa corrigida no Cadastro de Pessoas → nome/nascimento/mãe/pai atualizados nos alunos
+ * Pessoa corrigida no Cadastro de Pessoas → nome/mãe/pai atualizados nos alunos
  * ligados e nome atualizado nos membros da equipe gestora ligados.
  */
 final class AtualizarAlunosDaPessoa

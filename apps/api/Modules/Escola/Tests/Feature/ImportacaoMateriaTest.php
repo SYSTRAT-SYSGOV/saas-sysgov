@@ -27,10 +27,11 @@ final class ImportacaoMateriaTest extends TestCase
     {
         $tenant = $this->criarTenant();
         $this->turma($tenant, '6º A');
-        $conteudo = "\u{FEFF}nome,cgm,turma,numero,nascimento,contato\n"
-            . "Ana Paula,111,6º A,3,05/03/2014,41999990000\n"
-            . "Bruno Lima,222,5º Z,,,\n"
-            . "Carla Dias,333,6º a,,2014-07-10,\n";
+        // CPF identifica a pessoa; sem ele um menor precisaria de responsável, que o CSV não traz.
+        $conteudo = "\u{FEFF}nome,cgm,turma,numero,nascimento,contato,cpf\n"
+            . "Ana Paula,111,6º A,3,05/03/2014,41999990000,529.982.247-25\n"
+            . "Bruno Lima,222,5º Z,,,,\n"
+            . "Carla Dias,333,6º a,,2014-07-10,,111.444.777-35\n";
 
         $this->como($this->usuario($tenant), $tenant)
             ->postJson('/api/escola/alunos/importar', ['arquivo' => $this->csv($conteudo)])
@@ -40,10 +41,10 @@ final class ImportacaoMateriaTest extends TestCase
             ->assertJsonPath('rejeitadas.0.linha', 3);
 
         $this->noTenant($tenant, function (): void {
-            $ana = Aluno::where('cgm', '111')->with('contatos')->firstOrFail();
+            $ana = Aluno::where('cgm', '111')->with(['contatos', 'pessoa'])->firstOrFail();
             $this->assertSame('ANA PAULA', $ana->nome);
             $this->assertSame(3, $ana->numero);
-            $this->assertSame('2014-03-05', $ana->nascimento?->toDateString());
+            $this->assertSame('2014-03-05', $ana->nascimentoDaPessoa()?->toDateString());
             $this->assertSame('41999990000', $ana->contatos->first()?->telefone);
         });
     }
@@ -52,7 +53,7 @@ final class ImportacaoMateriaTest extends TestCase
     {
         $tenant = $this->criarTenant();
         $this->turma($tenant, '6º A');
-        $conteudo = "NOME;TURMA\nAna Paula;6º A\nBruno Lima;6º A\n";
+        $conteudo = "NOME;TURMA;CPF\nAna Paula;6º A;529.982.247-25\nBruno Lima;6º A;111.444.777-35\n";
         $direcao = $this->usuario($tenant);
 
         $this->como($direcao, $tenant)->postJson('/api/escola/alunos/importar', ['arquivo' => $this->csv($conteudo)])->assertJsonPath('criados', 2);

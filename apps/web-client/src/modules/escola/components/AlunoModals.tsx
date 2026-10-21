@@ -449,7 +449,7 @@ export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClos
   const [processando, setProcessando] = useState(false);
 
   const cabecalho = tipo === 'alunos'
-    ? 'NOME; CPF; CGM; TURMA; NUMERO; MAE; PAI; NASCIMENTO; CONTATO'
+    ? 'NOME; CPF; CGM; TURMA; NUMERO; MAE; PAI; NASCIMENTO; CONTATO; RESPONSAVEL_CPF'
     : 'TURMA; NUMERO; MATERIA; TRIMESTRE; NOTA';
 
   const [erro, setErro] = useState('');
@@ -464,7 +464,15 @@ export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClos
         const r = await escolaApi.importarAlunos(file, confirmarDuplicidades);
         const erros = r.rejeitadas.map(x => `Linha ${x.linha}: ${x.motivo}`);
         const resumo = [`${r.criados} alunos novos importados.`, `${r.atualizados} cadastros existentes atualizados.`];
-        if (r.sem_pessoa.length > 0) resumo.push(`${r.sem_pessoa.length} alunos ficaram sem pessoa vinculada (faltam nascimento ou responsável); a conciliação os vincula depois.`);
+        if (r.sem_pessoa.length > 0) {
+          resumo.push(`${r.sem_pessoa.length} alunos não foram importados: sem CPF é preciso informar o nascimento e, para menor, o CPF do responsável (coluna RESPONSAVEL_CPF) já cadastrado em Pessoas.`);
+          const motivos: Record<string, string> = {
+            dados_insuficientes: 'faltam nome ou nascimento',
+            responsavel_obrigatorio: 'menor sem CPF precisa de RESPONSAVEL_CPF',
+            responsavel_nao_cadastrado: 'o responsável não está cadastrado em Pessoas',
+          };
+          r.sem_pessoa.forEach(x => erros.push(`Linha ${x.linha} (${x.nome}): não importado, ${motivos[x.motivo] ?? x.motivo}.`));
+        }
         setDuplicidades(r.possiveis_duplicidades);
         setResultado({ resumo, erros });
         onToast({ type: erros.length ? 'warning' : 'success', title: 'Importação concluída', message: `${r.criados} novos, ${r.atualizados} atualizados.` });

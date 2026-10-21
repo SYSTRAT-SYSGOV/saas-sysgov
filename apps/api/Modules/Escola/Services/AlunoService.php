@@ -21,6 +21,7 @@ use Modules\Escola\Services\Concerns\RegistraMutacao;
 use Modules\Pessoas\Support\Documento;
 use Modules\Pessoas\Support\RegraNegocioException;
 use Modules\Escola\Support\LeitorCsv;
+use Modules\Pessoas\Models\Pessoa;
 use Modules\Escola\Support\NomeNormalizado;
 
 final class AlunoService
@@ -49,14 +50,22 @@ final class AlunoService
             $contatos = $dados['contatos'] ?? [];
             [$responsavelId, $confirmarNovo] = $this->extrairOpcoesDePessoa($dados);
             unset($dados['contatos']);
+            $civis = $this->extrairCivis($dados);
 
-            $aluno = Aluno::create([
+            $aluno = new Aluno([
                 ...$dados,
                 'situacao' => $dados['situacao'] ?? SituacaoAluno::Ativo->value,
                 'numero' => $dados['numero'] ?? (isset($dados['turma_id']) ? $this->proximoNumero((int) $dados['turma_id']) : null),
             ]);
+            // A pessoa vem antes de gravar o aluno: `pessoa_id` é obrigatório e CPF e nascimento só existem nela.
+            $pessoa = $this->pessoas->resolverParaNovo(
+                [...$civis, 'nome' => $aluno->nome, 'mae' => $dados['mae'] ?? null, 'pai' => $dados['pai'] ?? null],
+                $responsavelId,
+                $confirmarNovo,
+            );
+            $aluno->forceFill(['pessoa_id' => $pessoa->id])->save();
             $this->salvarContatos($aluno, $contatos);
-            $this->pessoas->sincronizar($aluno, [], $responsavelId, $confirmarNovo);
+            $this->pessoas->concluirCadastro($aluno, $pessoa);
             $this->auditar('aluno', 'criado', $aluno->id, null, $this->retrato($aluno));
 
             return $aluno->load('contatos', 'turma.turno', 'pessoa');
@@ -82,6 +91,8 @@ final class AlunoService
             $contatos = $dados['contatos'] ?? null;
             [$responsavelId, $confirmarNovo] = $this->extrairOpcoesDePessoa($dados);
             unset($dados['contatos']);
+            $camposCivis = array_values(array_intersect(self::CAMPOS_CIVIS, array_keys($dados)));
+            $civis = $this->extrairCivis($dados);
 
             $remanejando = ($dados['situacao'] ?? null) === SituacaoAluno::Remanejado->value
                 && $aluno->situacao !== SituacaoAluno::Remanejado->value;
@@ -103,7 +114,7 @@ final class AlunoService
                 // Saiu da escola: o vínculo `aluno` desta escola é encerrado; a pessoa continua.
                 $this->pessoas->encerrarVinculo($aluno);
             } else {
-                $this->pessoas->sincronizar($aluno, array_values(array_intersect(self::CAMPOS_CIVIS, array_keys($dados))), $responsavelId, $confirmarNovo, $responsavelId !== null);
+                $this->pessoas->sincronizar($aluno, $civis, $camposCivis, $responsavelId, $confirmarNovo);
             }
             $this->auditar('aluno', $remanejando ? 'remanejado' : 'atualizado', $aluno->id, $antes, $this->retrato($aluno->refresh()));
 
@@ -174,13 +185,15 @@ final class AlunoService
     }
 
     /**
-     * Importação por CSV (NOME e TURMA obrigatórios; CPF, CGM, NUMERO, MAE, PAI, NASCIMENTO, CONTATO opcionais).
+     * Importação por CSV (NOME e TURMA obrigatórios; CPF, CGM, NUMERO, MAE, PAI, NASCIMENTO, CONTATO e
+     * RESPONSAVEL_CPF opcionais).
      * Aluno com o mesmo CPF, ou o mesmo CGM, ou o mesmo nome na mesma turma, é atualizado em vez de
      * duplicado. Com CPF válido, o aluno é ligado à pessoa do município.
      *
      * Aluno sem CPF vira pessoa com documento pendente. Linha cujo nome e nascimento coincidem com pessoa
      * existente não é gravada e vem em `possiveis_duplicidades`; reenviar com `$confirmarDuplicidades` cria
-     * mesmo assim. Menor sem responsável (o CSV não traz) é gravado sem pessoa e vem em `sem_pessoa`.
+     * mesmo assim. Menor sem CPF precisa de RESPONSAVEL_CPF, que deve ser de uma pessoa física já cadastrada; sem ele,
+     * ou com responsável não cadastrado, a linha não é gravada e vem em `sem_pessoa` (sem pessoa não há aluno).
      *
      * @return array{criados: int, atualizados: int, rejeitadas: list<array{linha: int, motivo: string}>, possiveis_duplicidades: list<array{linha: int, nome: string, sugestoes: list<array{id: int, nome: string}>}>, sem_pessoa: list<array{linha: int, nome: string, motivo: string}>}
      */
@@ -223,17 +236,32 @@ final class AlunoService
                 }
                 $cpf = $cpf === '' ? null : $cpf;
 
+                $responsavelId = null;
+                $responsavelCpf = Documento::somenteDigitos($linha['RESPONSAVEL_CPF'] ?? '');
+                if ($responsavelCpf !== '') {
+                    if (!Documento::valido($responsavelCpf)) {
+                        $resultado['rejeitadas'][] = ['linha' => $numeroLinha, 'motivo' => "CPF do responsável inválido ({$nome})."];
+                        continue;
+                    }
+                    $responsavelId = Pessoa::query()->where('tipo', 'fisica')->where('documento_hash', Documento::hash($responsavelCpf))->value('id');
+                    if ($responsavelId === null) {
+                        // O CSV não traz o nome do responsável: ele precisa estar cadastrado em Pessoas antes.
+                        $resultado['sem_pessoa'][] = ['linha' => $numeroLinha, 'nome' => $nome, 'motivo' => 'responsavel_nao_cadastrado'];
+                        continue;
+                    }
+                    $responsavelId = (int) $responsavelId;
+                }
+
                 $cgm = ($linha['CGM'] ?? '') !== '' ? $linha['CGM'] : null;
                 $numero = ctype_digit($linha['NUMERO'] ?? '') ? (int) $linha['NUMERO'] : null;
+                $civis = array_filter(['cpf' => $cpf, 'nascimento' => $nascimento], fn ($v): bool => $v !== null);
                 $dados = array_filter([
                     'nome' => $nome,
-                    'cpf' => $cpf,
                     'cgm' => $cgm,
                     'turma_id' => $turma->id,
                     'numero' => $numero,
                     'mae' => ($linha['MAE'] ?? '') ?: null,
                     'pai' => ($linha['PAI'] ?? '') ?: null,
-                    'nascimento' => $nascimento,
                 ], fn ($v): bool => $v !== null);
 
                 $existente = ($cpf !== null ? $this->alunoPorCpf($cpf) : null) ?? Aluno::query()
@@ -245,22 +273,26 @@ final class AlunoService
                     })
                     ->first();
 
-                $gravar = function (bool $vincular) use ($existente, $dados, $numero, $turma, $linha, $confirmarDuplicidades): array {
+                $gravar = function () use ($existente, $dados, $civis, $numero, $turma, $linha, $confirmarDuplicidades, $responsavelId): array {
                     if ($existente !== null) {
                         $antes = $this->retrato($existente);
                         $existente->update($dados);
                         $aluno = $existente;
+                        $this->pessoas->sincronizar($aluno, $civis, array_values(array_intersect(self::CAMPOS_CIVIS, array_keys([...$dados, ...$civis]))), $responsavelId, $confirmarDuplicidades);
                     } else {
-                        $aluno = Aluno::create([
+                        $aluno = new Aluno([
                             ...$dados,
                             'situacao' => SituacaoAluno::Ativo->value,
                             'numero' => $numero ?? $this->proximoNumero($turma->id),
                         ]);
+                        $pessoa = $this->pessoas->resolverParaNovo(
+                            [...$civis, 'nome' => $aluno->nome, 'mae' => $dados['mae'] ?? null, 'pai' => $dados['pai'] ?? null],
+                            $responsavelId,
+                            $confirmarDuplicidades,
+                        );
+                        $aluno->forceFill(['pessoa_id' => $pessoa->id])->save();
+                        $this->pessoas->concluirCadastro($aluno, $pessoa);
                         $antes = null;
-                    }
-
-                    if ($vincular) {
-                        $this->pessoas->sincronizar($aluno, $existente !== null ? array_values(array_intersect(self::CAMPOS_CIVIS, array_keys($dados))) : [], null, $confirmarDuplicidades);
                     }
 
                     $contato = $linha['CONTATO'] ?? '';
@@ -275,7 +307,7 @@ final class AlunoService
 
                 // Cada linha roda em um ponto de salvamento: se o MDM recusar a pessoa, só ela é desfeita.
                 try {
-                    [$criado] = DB::transaction(fn (): array => $gravar(true));
+                    [$criado] = DB::transaction(fn (): array => $gravar());
                 } catch (RegraNegocioException $e) {
                     if ($e->codigo === 'pessoa_semelhante_existente') {
                         // Possível duplicidade: nada é gravado até o usuário confirmar (reenvio com a confirmação).
@@ -289,9 +321,9 @@ final class AlunoService
                     if (!in_array($e->codigo, ['responsavel_obrigatorio', 'dados_insuficientes'], true)) {
                         throw $e;
                     }
-                    // O CSV não traz responsável: o aluno é gravado sem pessoa e fica para a conciliação.
-                    [$criado] = DB::transaction(fn (): array => $gravar(false));
+                    // O CSV não traz responsável: sem pessoa não há aluno (`pessoa_id` é obrigatório), então a linha não é gravada.
                     $resultado['sem_pessoa'][] = ['linha' => $numeroLinha, 'nome' => $nome, 'motivo' => $e->codigo];
+                    continue;
                 }
                 $criado ? $resultado['criados']++ : $resultado['atualizados']++;
             }
@@ -340,6 +372,26 @@ final class AlunoService
     }
 
     /**
+     * Retira de `$dados` o CPF e o nascimento, que vivem só na pessoa. Devolve só o que veio, para a edição
+     * distinguir "não enviado" de "enviado vazio".
+     *
+     * @param array<string, mixed> $dados
+     * @return array{cpf?: string|null, nascimento?: string|null}
+     */
+    private function extrairCivis(array &$dados): array
+    {
+        $civis = [];
+        foreach (['cpf', 'nascimento'] as $campo) {
+            if (array_key_exists($campo, $dados)) {
+                $civis[$campo] = $dados[$campo];
+                unset($dados[$campo]);
+            }
+        }
+
+        return $civis;
+    }
+
+    /**
      * @param list<array{telefone: string, descricao?: string|null}> $contatos
      */
     private function salvarContatos(Aluno $aluno, array $contatos): void
@@ -356,8 +408,7 @@ final class AlunoService
     }
 
     /**
-     * Alunos (da escola do contexto) com esse CPF: pelo documento da pessoa do cadastro central ou, enquanto a cópia
-     * local existir, pelo hash do aluno ainda sem pessoa.
+     * Alunos (da escola do contexto) com esse CPF, pelo documento da pessoa do cadastro central.
      *
      * @return \Illuminate\Database\Eloquent\Builder<Aluno>
      */
@@ -365,9 +416,7 @@ final class AlunoService
     {
         $hash = Documento::hash($digitos);
 
-        return Aluno::query()->where(fn ($q) => $q
-            ->whereHas('pessoa', fn ($p) => $p->where('documento_hash', $hash))
-            ->orWhere('cpf_hash', $hash));
+        return Aluno::query()->whereHas('pessoa', fn ($p) => $p->where('documento_hash', $hash));
     }
 
     private function alunoPorCpf(string $digitos): ?Aluno

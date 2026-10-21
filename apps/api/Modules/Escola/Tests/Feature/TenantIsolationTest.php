@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Escola\Tests\Feature;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -88,7 +89,7 @@ final class TenantIsolationTest extends TestCase
         $unidade = Unidade::create(['nome' => "Escola {$sufixo}"]);
         $turno = Turno::create(['nome' => "Manhã {$sufixo}", 'ordem' => 1]);
         $turma = Turma::create(['nome' => "6º {$sufixo}", 'turno_id' => $turno->id, 'ano_letivo' => 2026]);
-        $aluno = Aluno::create(['nome' => "Aluno {$sufixo}", 'turma_id' => $turma->id, 'situacao' => 'ativo']);
+        $aluno = AlunoDeTeste::criar(['nome' => "Aluno {$sufixo}", 'turma_id' => $turma->id, 'situacao' => 'ativo']);
         $contato = AlunoContato::create(['aluno_id' => $aluno->id, 'telefone' => '41999990000']);
         $materia = Materia::create(['nome' => "Matemática {$sufixo}"]);
         $vinculo = TurmaMateria::create(['turma_id' => $turma->id, 'materia_id' => $materia->id]);

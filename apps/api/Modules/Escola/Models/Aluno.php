@@ -7,7 +7,6 @@ namespace Modules\Escola\Models;
 use App\Models\Concerns\TenantAware;
 use Modules\Escola\Models\Concerns\EscolaAware;
 use Modules\Pessoas\Models\Pessoa;
-use Modules\Pessoas\Support\Documento;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,12 +20,9 @@ use Modules\Escola\Enums\SituacaoAluno;
  * @property int|null $turma_id
  * @property int|null $turma_origem_id
  * @property int|null $numero
- * @property int|null $pessoa_id pessoa do Cadastro de Pessoas (quando o aluno tem CPF)
+ * @property int $pessoa_id pessoa do Cadastro de Pessoas (fonte de CPF e nascimento)
  * @property string $nome
- * @property string|null $cpf cifrado; nunca devolvido completo
- * @property string|null $cpf_hash
  * @property string|null $cgm
- * @property \Illuminate\Support\Carbon|null $nascimento
  * @property string|null $mae
  * @property string|null $pai
  * @property string|null $foto_path
@@ -47,7 +43,7 @@ final class Aluno extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'tenant_id', 'turma_id', 'turma_origem_id', 'numero', 'nome', 'cpf', 'cgm', 'nascimento', 'mae', 'pai', 'foto_path', 'situacao',
+        'tenant_id', 'turma_id', 'turma_origem_id', 'numero', 'nome', 'cgm', 'mae', 'pai', 'foto_path', 'situacao',
     ];
 
     /** @var array<string, string> */
@@ -56,51 +52,22 @@ final class Aluno extends Model
         'turma_id' => 'integer',
         'turma_origem_id' => 'integer',
         'numero' => 'integer',
-        'nascimento' => 'date:Y-m-d',
         'pessoa_id' => 'integer',
-        'cpf' => 'encrypted',
     ];
-
-    /** @var list<string> */
-    protected $hidden = ['cpf', 'cpf_hash'];
 
     /** @var list<string> */
     protected $appends = ['cpf_mascarado'];
 
-    protected static function booted(): void
-    {
-        // CPF guardado só com dígitos; o hash (HMAC do módulo Pessoas) serve à busca e à unicidade.
-        static::saving(function (self $aluno): void {
-            if (!$aluno->isDirty('cpf')) {
-                return;
-            }
-            $digitos = Documento::somenteDigitos((string) $aluno->cpf);
-            $aluno->cpf = $digitos === '' ? null : $digitos;
-            $aluno->cpf_hash = $digitos === '' ? null : Documento::hash($digitos);
-        });
-    }
-
-    /**
-     * CPF mascarado. Fonte: a pessoa do cadastro central quando ela já está carregada (pessoa pendente não tem CPF);
-     * senão, a cópia local. Não carrega a relação sozinho, para não gerar uma consulta por aluno em listas.
-     */
+    /** CPF mascarado, da pessoa do cadastro central (pessoa pendente não tem CPF). */
     public function getCpfMascaradoAttribute(): ?string
     {
-        if ($this->relationLoaded('pessoa') && $this->pessoa !== null) {
-            return $this->pessoa->documento_pendente ? null : $this->pessoa->cpf_mascarado;
-        }
-
-        return $this->cpf ? Documento::mascarar($this->cpf) : null;
+        return $this->pessoa?->documento_pendente ? null : $this->pessoa?->cpf_mascarado;
     }
 
-    /** Data de nascimento: a da pessoa quando ela já está carregada e tem a data; senão, a cópia local. */
+    /** Data de nascimento, da pessoa do cadastro central. */
     public function nascimentoDaPessoa(): ?\Illuminate\Support\Carbon
     {
-        if ($this->relationLoaded('pessoa') && $this->pessoa?->data_nascimento !== null) {
-            return $this->pessoa->data_nascimento;
-        }
-
-        return $this->nascimento;
+        return $this->pessoa?->data_nascimento;
     }
 
     /** @return BelongsTo<Pessoa, $this> */
