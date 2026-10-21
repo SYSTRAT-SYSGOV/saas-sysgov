@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Capd\Tests\Feature;
 
 use App\Models\Tenant;
+use App\Models\User;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Capd\Models\Servidor;
@@ -128,5 +129,44 @@ final class ServidorLeituraPelaPessoaTest extends TestCase
         ]));
 
         $this->assertSame(['M-1', 'M-4'], $ranking->map(fn (array $i) => $i['servidor']->matricula)->all());
+    }
+
+    private function usuario(): User
+    {
+        $user = User::create(['name' => 'Gestor', 'email' => 'gestor@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
+        $user->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
+
+        return $user;
+    }
+
+    public function test_json_da_lista_traz_o_cpf_da_pessoa_e_nunca_a_relacao(): void
+    {
+        $servidor = $this->servidorComPessoa();
+
+        $resposta = $this->actingAs($this->usuario())->withHeader('X-Tenant-ID', (string) $this->tenant->id)->getJson('/api/capd/servidores');
+
+        $resposta->assertOk();
+        /** @var list<array<string, mixed>> $data */
+        $data = $resposta->json('data');
+        $item = array_values(array_filter($data, fn (array $s): bool => $s['id'] === $servidor->id))[0];
+        $this->assertSame('529.982.247-25', $item['cpf'], 'a cópia local divergente (000.000.000-00) não vence a pessoa');
+        $this->assertArrayNotHasKey('pessoa', $item);
+        $this->assertStringNotContainsString('Joana Pereira', $resposta->getContent(), 'dado civil da pessoa não sai na lista');
+    }
+
+    public function test_json_da_ficha_traz_o_cpf_da_pessoa_e_nunca_a_relacao(): void
+    {
+        $servidor = $this->servidorComPessoa();
+
+        $resposta = $this->actingAs($this->usuario())->withHeader('X-Tenant-ID', (string) $this->tenant->id)->getJson("/api/capd/servidores/{$servidor->id}");
+
+        $resposta->assertOk()->assertJsonPath('cpf', '529.982.247-25')->assertJsonMissingPath('pessoa');
+    }
+
+    public function test_json_sem_pessoa_carregada_mantem_a_coluna_atual(): void
+    {
+        $servidor = $this->novo(['matricula' => 'M-9', 'nome_completo' => 'Legado', 'cpf' => '111.444.777-35']);
+
+        $this->assertSame('111.444.777-35', $servidor->toArray()['cpf']);
     }
 }

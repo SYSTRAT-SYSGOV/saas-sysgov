@@ -78,6 +78,9 @@ final class Servidor extends Model
         'metadata',
     ];
 
+    /** @var list<string> */
+    protected $hidden = ['pessoa'];
+
     protected $casts = [
         'tenant_id'             => 'integer',
         'user_id'               => 'integer',
@@ -218,6 +221,22 @@ final class Servidor extends Model
             $q->whereHas('pessoa', fn ($p) => $p->where('documento_hash', Documento::hash($digitos)))
                 ->orWhereIn('cpf', [$digitos, $formatado]);
         });
+    }
+
+    /**
+     * No JSON, o `cpf` vem da pessoa quando ela está carregada, para o contrato com o frontend não depender da coluna
+     * (a etapa B a remove). A relação em si nunca sai na resposta: ela traz dado civil que o cliente não pede.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        $dados = parent::toArray();
+        if ($this->relationLoaded('pessoa')) {
+            $dados['cpf'] = $this->cpfFormatado();
+        }
+
+        return $dados;
     }
 
     /** @return BelongsTo<PlanoCarreira, $this> */
