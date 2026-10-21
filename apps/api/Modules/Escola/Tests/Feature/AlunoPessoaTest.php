@@ -214,6 +214,49 @@ final class AlunoPessoaTest extends TestCase
         $this->assertSame(0, $this->noTenant($this->tenant, fn () => Aluno::query()->count()));
     }
 
+    /** @return \Illuminate\Testing\TestResponse<\Symfony\Component\HttpFoundation\Response> */
+    private function importarCsv(string $csv): \Illuminate\Testing\TestResponse
+    {
+        return $this->naEscolaHttp($this->escolaA)->post('/api/escola/alunos/importar', ['arquivo' => UploadedFile::fake()->createWithContent('alunos.csv', $csv)]);
+    }
+
+    public function test_csv_de_menor_sem_cpf_usa_o_responsavel_cadastrado_pelo_cpf(): void
+    {
+        $responsavel = $this->responsavel();
+
+        $this->importarCsv("NOME;TURMA;NASCIMENTO;RESPONSAVEL_CPF\nDavi Souza;6º A;10/03/2016;111.444.777-35\n")
+            ->assertOk()->assertJsonPath('criados', 1)->assertJsonPath('sem_pessoa', []);
+
+        $pessoa = $this->noTenant($this->tenant, fn () => Pessoa::query()->where('responsavel_id', $responsavel->id)->sole());
+        $this->assertTrue($pessoa->documento_pendente);
+        $this->assertSame('2016-03-10', $pessoa->data_nascimento->toDateString());
+        $this->assertSame($pessoa->id, $this->noTenant($this->tenant, fn () => Aluno::query()->sole()->pessoa_id));
+    }
+
+    public function test_csv_com_responsavel_nao_cadastrado_nao_grava_o_aluno(): void
+    {
+        $this->importarCsv("NOME;TURMA;NASCIMENTO;RESPONSAVEL_CPF\nDavi Souza;6º A;10/03/2016;529.982.247-25\n")
+            ->assertOk()->assertJsonPath('criados', 0)
+            ->assertJsonPath('sem_pessoa.0.motivo', 'responsavel_nao_cadastrado');
+
+        $this->assertSame(0, $this->noTenant($this->tenant, fn () => Aluno::query()->count()));
+        $this->assertSame(0, $this->noTenant($this->tenant, fn () => Pessoa::query()->count()));
+    }
+
+    public function test_csv_com_cpf_de_responsavel_invalido_e_rejeitado(): void
+    {
+        $this->importarCsv("NOME;TURMA;NASCIMENTO;RESPONSAVEL_CPF\nDavi Souza;6º A;10/03/2016;111.111.111-11\n")
+            ->assertOk()->assertJsonPath('criados', 0)
+            ->assertJsonPath('rejeitadas.0.motivo', 'CPF do responsável inválido (Davi Souza).');
+    }
+
+    public function test_csv_de_menor_sem_cpf_e_sem_responsavel_nao_grava_o_aluno(): void
+    {
+        $this->importarCsv("NOME;TURMA;NASCIMENTO\nDavi Souza;6º A;10/03/2016\n")
+            ->assertOk()->assertJsonPath('criados', 0)
+            ->assertJsonPath('sem_pessoa.0.motivo', 'responsavel_obrigatorio');
+    }
+
     public function test_transferencia_encerra_o_vinculo_e_mantem_a_pessoa(): void
     {
         $id = $this->cadastrar($this->escolaA, $this->turmaA, ['nome' => 'Ana Lima', 'cpf' => self::CPF]);
