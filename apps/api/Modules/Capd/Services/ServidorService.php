@@ -26,10 +26,11 @@ final class ServidorService
             ->where('tenant_id', $tenantId)
             ->when(!empty($filters['search']), function ($q) use ($filters): void {
                 $search = '%' . $filters['search'] . '%';
-                $q->where(function ($sub) use ($search): void {
+                $q->where(function ($sub) use ($search, $filters): void {
                     $sub->where('nome_completo', 'like', $search)
                         ->orWhere('matricula', 'like', $search)
                         ->orWhere('cpf', 'like', $search)
+                        ->orWhere(fn ($c) => $c->comCpf((string) $filters['search']))
                         ->orWhere('cargo_efetivo', 'like', $search)
                         ->orWhere('orgao_lotacao', 'like', $search);
                 });
@@ -38,7 +39,7 @@ final class ServidorService
             ->when(isset($filters['estagio_probatorio']), fn ($q) => $q->where('estagio_probatorio', (bool) $filters['estagio_probatorio']))
             ->when(!empty($filters['orgao_lotacao']), fn ($q) => $q->where('orgao_lotacao', $filters['orgao_lotacao']))
             ->when(isset($filters['chefia_imediata_id']), fn ($q) => $q->where('chefia_imediata_id', $filters['chefia_imediata_id']))
-            ->with(['chefiaImediata:id,nome_completo,matricula', 'user:id,name,email', 'orgUnit.parent'])
+            ->with(['chefiaImediata:id,nome_completo,matricula', 'user:id,name,email', 'orgUnit.parent', 'pessoa'])
             ->orderBy('nome_completo')
             ->paginate($perPage);
     }

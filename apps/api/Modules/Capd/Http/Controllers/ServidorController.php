@@ -63,7 +63,7 @@ final class ServidorController extends Controller
 
         $servidor = $this->servidorService->create($validated);
 
-        return response()->json($servidor, 201);
+        return response()->json($servidor->load('pessoa'), 201);
     }
 
     public function show(Servidor $servidor): JsonResponse
@@ -73,6 +73,7 @@ final class ServidorController extends Controller
             'subordinados:id,nome_completo,matricula,cargo_efetivo',
             'afastamentos',
             'avaliacoes.ciclo',
+            'pessoa',
         ]);
 
         return response()->json($servidor);
@@ -97,7 +98,7 @@ final class ServidorController extends Controller
 
         $servidor = $this->servidorService->update($servidor, $validated);
 
-        return response()->json($servidor);
+        return response()->json($servidor->load('pessoa'));
     }
 
     public function destroy(Servidor $servidor): JsonResponse

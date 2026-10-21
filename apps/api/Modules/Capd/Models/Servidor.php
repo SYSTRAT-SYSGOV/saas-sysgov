@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\OrgChart\Models\OrgUnit;
 use Modules\Pessoas\Models\Pessoa;
+use Modules\Pessoas\Support\Documento;
 
 /**
  * Servidor no módulo CAPD.
@@ -76,6 +77,9 @@ final class Servidor extends Model
         'origem_sistema',
         'metadata',
     ];
+
+    /** @var list<string> */
+    protected $hidden = ['pessoa'];
 
     protected $casts = [
         'tenant_id'             => 'integer',
@@ -144,6 +148,95 @@ final class Servidor extends Model
     public function pessoa(): BelongsTo
     {
         return $this->belongsTo(Pessoa::class, 'pessoa_id');
+    }
+
+    /**
+     * CPF só com dígitos. Fonte: a pessoa do cadastro central quando ela já está carregada (pessoa pendente não tem CPF);
+     * senão, a cópia local. Não carrega a relação sozinho, para não gerar uma consulta por servidor em listas.
+     */
+    public function cpfDigitos(): string
+    {
+        if ($this->relationLoaded('pessoa') && $this->pessoa !== null) {
+            if ($this->pessoa->documento_pendente) {
+                return '';
+            }
+
+            try {
+                return Documento::somenteDigitos((string) $this->pessoa->documento);
+            } catch (\Throwable) {
+                // Documento ilegível (chave trocada ou dado corrompido): cai na cópia local.
+            }
+        }
+
+        return Documento::somenteDigitos((string) $this->cpf);
+    }
+
+    /** CPF com pontuação (000.000.000-00), ou vazio. */
+    public function cpfFormatado(): string
+    {
+        $d = $this->cpfDigitos();
+
+        return strlen($d) === 11 ? vsprintf('%s.%s.%s-%s', [substr($d, 0, 3), substr($d, 3, 3), substr($d, 6, 3), substr($d, 9, 2)]) : '';
+    }
+
+    /** Data de nascimento: a da pessoa quando ela já está carregada e tem a data; senão, a cópia local. */
+    public function nascimentoDaPessoa(): ?\Illuminate\Support\Carbon
+    {
+        if ($this->relationLoaded('pessoa') && $this->pessoa?->data_nascimento !== null) {
+            return $this->pessoa->data_nascimento;
+        }
+
+        return $this->data_nascimento;
+    }
+
+    /** Nome social: o da pessoa quando ela já está carregada; senão, a cópia local. */
+    public function nomeSocialDaPessoa(): ?string
+    {
+        if ($this->relationLoaded('pessoa') && $this->pessoa !== null) {
+            return $this->pessoa->nome_social;
+        }
+
+        return $this->nome_social;
+    }
+
+    /**
+     * Servidores com esse CPF (11 dígitos): pelo documento da pessoa do cadastro central ou, enquanto a cópia local
+     * existir, pelo CPF gravado no servidor (com ou sem pontuação). Com outro tamanho, não casa com ninguém.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder<Servidor> $query
+     * @return \Illuminate\Database\Eloquent\Builder<Servidor>
+     */
+    public function scopeComCpf($query, string $cpf)
+    {
+        $digitos = Documento::somenteDigitos($cpf);
+
+        return $query->where(function ($q) use ($digitos): void {
+            if (strlen($digitos) !== 11) {
+                $q->whereRaw('1 = 0');
+
+                return;
+            }
+
+            $formatado = substr($digitos, 0, 3) . '.' . substr($digitos, 3, 3) . '.' . substr($digitos, 6, 3) . '-' . substr($digitos, 9, 2);
+            $q->whereHas('pessoa', fn ($p) => $p->where('documento_hash', Documento::hash($digitos)))
+                ->orWhereIn('cpf', [$digitos, $formatado]);
+        });
+    }
+
+    /**
+     * No JSON, o `cpf` vem da pessoa quando ela está carregada, para o contrato com o frontend não depender da coluna
+     * (a etapa B a remove). A relação em si nunca sai na resposta: ela traz dado civil que o cliente não pede.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        $dados = parent::toArray();
+        if ($this->relationLoaded('pessoa')) {
+            $dados['cpf'] = $this->cpfFormatado();
+        }
+
+        return $dados;
     }
 
     /** @return BelongsTo<PlanoCarreira, $this> */
