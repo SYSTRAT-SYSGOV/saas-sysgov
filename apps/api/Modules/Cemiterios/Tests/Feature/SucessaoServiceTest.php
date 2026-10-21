@@ -184,16 +184,18 @@ final class SucessaoServiceTest extends CemiteriosTestCase
         $cpf = $this->cpfValido();
         $pessoa = Pessoa::create(['tipo' => 'fisica', 'documento' => $cpf, 'nome' => 'Com Pessoa']);
         $sucessao = $this->novoProcessoEm(EstadoSucessao::Validada);
-        $ligado = $this->service->adicionarHerdeiro($sucessao, ['nome' => 'Com Pessoa', 'parentesco' => 'filho', 'documento' => 'copia-local', 'pessoa_id' => $pessoa->id]);
-        $solto = $this->service->adicionarHerdeiro($sucessao, ['nome' => 'Sem Pessoa', 'parentesco' => 'neto', 'documento' => '12345678909']);
+        $ligado = $this->service->adicionarHerdeiro($sucessao, ['nome' => 'Com Pessoa', 'parentesco' => 'filho', 'documento' => '***.982.247-**', 'pessoa_id' => $pessoa->id]);
+        $solto = $this->service->adicionarHerdeiro($sucessao, ['nome' => 'Sem Documento', 'parentesco' => 'neto']);
 
         $json = $ligado->fresh()->toArray();
         self::assertSame($pessoa->cpf_mascarado, $json['documento']);
         self::assertArrayNotHasKey('pessoa', $json);
         self::assertSame($cpf, $ligado->fresh()->documentoDaPessoa());
 
-        self::assertSame('12345678909', $solto->fresh()->toArray()['documento'], 'sem pessoa vale a cópia local');
-        self::assertSame('12345678909', $solto->fresh()->documentoDaPessoa());
+        // Sem documento, a pessoa nasce pendente: não há o que mostrar nem usar para achar o titular.
+        self::assertNull($solto->fresh()->toArray()['documento']);
+        self::assertNull($solto->fresh()->documentoDaPessoa());
+        self::assertTrue($solto->fresh()->pessoa->documento_pendente);
     }
 
     private function novaConcessao(): Concessao

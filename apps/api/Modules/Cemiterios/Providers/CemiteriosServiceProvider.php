@@ -59,7 +59,7 @@ final class CemiteriosServiceProvider extends ServiceProvider
         $registry->registrar(new ConciliacaoPorModelo(
             'cemiterios-operadores',
             OperadorCemiterio::class,
-            fn (OperadorCemiterio $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, $r->cpf_cnpj, ['nome' => $r->nome], null, false),
+            fn (OperadorCemiterio $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, null, ['nome' => $r->nome], null, false),
             [],
         ));
         $registry->registrar(new ConciliacaoPorModelo(
@@ -71,7 +71,7 @@ final class CemiteriosServiceProvider extends ServiceProvider
         $registry->registrar(new ConciliacaoPorModelo(
             'cemiterios-herdeiros',
             SucessaoHerdeiro::class,
-            fn (SucessaoHerdeiro $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, $r->documento, ['nome' => $r->nome], null, false),
+            fn (SucessaoHerdeiro $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, null, ['nome' => $r->nome], null, false),
             [],
         ));
         $registry->registrar(new ConciliacaoPorModelo(
@@ -102,7 +102,6 @@ final class CemiteriosServiceProvider extends ServiceProvider
             Console\ReconciliarInventarioCommand::class,
             Console\ReconciliarTitularesLegadosCommand::class,
             Console\MigrarSucessaoLegada::class,
-            Console\CriptografarDocumentosOperadores::class,
         ]);
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {

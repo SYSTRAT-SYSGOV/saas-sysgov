@@ -10,17 +10,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Modules\Cemiterios\Support\Documento;
 
 /**
  * @property int $id
  * @property int $tenant_id
- * @property int|null $pessoa_id
+ * @property int $pessoa_id pessoa do Cadastro de Pessoas (fonte do documento)
  * @property int|null $park_id
  * @property string $nome
  * @property string $tipo
- * @property string|null $cpf_cnpj
- * @property string|null $documento_hash
  * @property string|null $matricula_funcional
  * @property string|null $alvara_numero
  * @property \Illuminate\Support\Carbon|null $alvara_validade
@@ -44,30 +41,17 @@ final class OperadorCemiterio extends Model
 
     protected $guarded = ['id', 'tenant_id'];
 
-    protected $hidden = ['cpf_cnpj'];
-
     protected $appends = ['documento_mascarado'];
 
     protected $casts = [
         'alvara_validade' => 'date',
         'aso_validade' => 'date',
         'epi_ultimo_registro' => 'date',
-        'cpf_cnpj' => 'encrypted',
     ];
 
     public function getDocumentoMascaradoAttribute(): string
     {
-        if ($this->pessoa_id && $this->pessoa) {
-            return $this->pessoa->cpf_mascarado;
-        }
-        if (!$this->cpf_cnpj) {
-            return '—';
-        }
-        try {
-            return Documento::mascarar((string) $this->cpf_cnpj);
-        } catch (\Throwable) {
-            return '—';
-        }
+        return $this->pessoa->cpf_mascarado;
     }
 
     /** @return BelongsTo<\Modules\Pessoas\Models\Pessoa, $this> */

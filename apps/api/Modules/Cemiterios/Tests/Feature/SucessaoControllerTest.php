@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Cemiterios\Tests\Feature;
 
+use Modules\Cemiterios\Tests\Support\RegistroDeTeste;
 use App\Models\Tenant;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -122,7 +123,7 @@ final class SucessaoControllerTest extends CemiteriosTestCase
         $sucessao = $this->novaSucessao('inventario_judicial');
         $sucessao->update(['estado' => 'em_analise']);
 
-        $herdeiro = $sucessao->herdeiros()->create([
+        $herdeiro = RegistroDeTeste::herdeiro(['sucessao_id' => $sucessao->id,
             'nome' => 'Herdeiro X',
             'parentesco' => 'filho',
             'ordem' => 1,
@@ -141,7 +142,7 @@ final class SucessaoControllerTest extends CemiteriosTestCase
         $sucessao = $this->novaSucessao('inventario_judicial');
         $sucessao->update(['estado' => 'em_analise']);
 
-        $herdeiro = $sucessao->herdeiros()->create([
+        $herdeiro = RegistroDeTeste::herdeiro(['sucessao_id' => $sucessao->id,
             'nome' => 'Herdeiro Y',
             'parentesco' => 'filho',
             'ordem' => 1,

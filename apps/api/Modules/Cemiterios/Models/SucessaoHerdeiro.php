@@ -15,10 +15,9 @@ use Modules\Cemiterios\Support\Parentesco;
  * @property int $id
  * @property int $tenant_id
  * @property int $sucessao_id
- * @property int|null $pessoa_id
+ * @property int $pessoa_id pessoa do Cadastro de Pessoas (fonte do documento)
  * @property string $nome
  * @property Parentesco $parentesco
- * @property string|null $documento
  * @property int $ordem
  * @property bool $direito_representacao
  * @property bool $titular_indicado
@@ -56,35 +55,30 @@ final class SucessaoHerdeiro extends Model
     }
 
     /**
-     * Documento completo para regra de negócio (criar ou achar o novo titular): o da pessoa do cadastro central; sem
-     * pessoa, ou com documento pendente, a cópia local. Quem escolhe uma pessoa no seletor deixa na cópia o CPF
-     * mascarado, que não serve para identificar ninguém.
+     * Documento completo para regra de negócio (criar ou achar o novo titular): o da pessoa do cadastro central, ou
+     * `null` quando a pessoa está com documento pendente ou ilegível (chave trocada, dado corrompido).
      */
     public function documentoDaPessoa(): ?string
     {
-        if ($this->pessoa !== null && ! $this->pessoa->documento_pendente) {
-            // Documento ilegível (chave trocada ou dado corrompido): cai na cópia local.
-            $documento = rescue(fn (): string => (string) $this->pessoa->documento, '', false);
-            if ($documento !== '') {
-                return $documento;
-            }
+        if ($this->pessoa->documento_pendente) {
+            return null;
         }
 
-        return $this->documento;
+        $documento = rescue(fn (): string => (string) $this->pessoa->documento, '', false);
+
+        return $documento !== '' ? $documento : null;
     }
 
     /**
-     * No JSON, o `documento` de quem tem pessoa é o CPF/CNPJ mascarado dela, o mesmo que o seletor de pessoas já
-     * grava na cópia; a relação em si não sai. Sem pessoa, ou com documento pendente, vale a cópia local.
+     * No JSON, o `documento` é o CPF/CNPJ mascarado da pessoa (`null` com documento pendente), o mesmo formato que o
+     * seletor de pessoas mostra; a relação em si não sai.
      *
      * @return array<string, mixed>
      */
     public function toArray(): array
     {
         $dados = parent::toArray();
-        if ($this->pessoa !== null && ! $this->pessoa->documento_pendente) {
-            $dados['documento'] = $this->pessoa->cpf_mascarado;
-        }
+        $dados['documento'] = $this->pessoa->documento_pendente ? null : $this->pessoa->cpf_mascarado;
 
         return $dados;
     }

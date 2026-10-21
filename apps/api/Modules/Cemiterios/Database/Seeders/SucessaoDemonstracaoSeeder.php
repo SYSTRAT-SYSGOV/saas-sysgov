@@ -114,9 +114,22 @@ final class SucessaoDemonstracaoSeeder extends Seeder
         ]);
     }
 
+    /** CPF de demonstração estável por sufixo e com dígitos verificadores válidos (o cadastro de pessoas recusa os inválidos). */
     private function cpfDemonstracao(string $sufixo): string
     {
-        return str_pad((string) crc32($sufixo), 11, '0', STR_PAD_LEFT);
+        $digitos = array_map('intval', str_split(str_pad((string) (crc32($sufixo) % 1_000_000_000), 9, '0', STR_PAD_LEFT)));
+        if (count(array_unique($digitos)) === 1) {
+            $digitos[8] = ($digitos[8] + 1) % 10; // sequência repetida (000000000...) não é CPF válido
+        }
+        foreach ([10, 11] as $peso) {
+            $soma = 0;
+            foreach ($digitos as $i => $d) {
+                $soma += $d * ($peso - $i);
+            }
+            $digitos[] = ($soma * 10 % 11) % 10;
+        }
+
+        return implode('', $digitos);
     }
 
     private function criarSucessaoSolicitada(SucessaoService $service, Cemiterio $parque, ViaSucessao $via, int $indiceVia): void
