@@ -27,8 +27,8 @@ Nada da etapa B roda sem trava liberada, backup verificado e confirmação.
 - [ ] 3.3 Concessionários: definir a nova chave do portal (Gov.br) antes de mexer em `documento`.
 
 ## 4. Encerramento
-- [ ] 4.1 Remover `Support/Documento` e fallbacks que sobrarem; atualizar o relatório de adoção com o que foi mantido de propósito.
-- [ ] 4.2 Corrigir a spec principal de `procurement` e arquivar as changes da série (`/opsx:archive`).
+- [ ] 4.1 Remover `Support/Documento` e fallbacks que sobrarem; atualizar o relatório de adoção com o que foi mantido de propósito. **Ainda não dá para apagar:** as cópias de `Support/Documento` de Cemitérios, Campanha e Inservível continuam em uso por colunas mantidas de propósito (concessionários e empreiteiros, Campanha, Inservível). `Cemiterios/Support/Documento` só sai depois da task 3.3. A cópia do Cemitérios usada por `CriptografarDocumentosOperadores` some com o comando, que o PR da etapa B dos Cemitérios aposenta.
+- [ ] 4.2 Corrigir a spec principal de `procurement` e arquivar as changes da série (`/opsx:archive`). **Feito:** a spec principal de `procurement` passou a validar (`openspec validate procurement --type spec`): faltavam os cabeçalhos `## Purpose` e `## Requirements`, e 7 seções `### Invariant:` eram lidas como requisitos sem cenário (agora em `## Invariants`). Nenhum texto foi alterado. **Não feito:** arquivar a série com `/opsx:archive`, porque ela ainda não terminou (Fase 5 com 3.3 e os deploys das etapas B pendentes). `admin`, `client`, `contracts`, `finance`, `licita` e `orgchart` têm o mesmo defeito de cabeçalho e continuam inválidas; não bloqueiam este plano.
 
 ## Mantido de propósito (não entra na Fase 5)
 Colunas **M** da tabela do `design.md`: certificados e participantes de Cursos, licitações, óbitos, cadastro submetido do Inservível, contatos do responsável no Escola, contatos operacionais da Campanha, motorista do Passeio e PIS/PASEP.
