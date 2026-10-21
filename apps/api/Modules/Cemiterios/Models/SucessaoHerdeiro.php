@@ -36,6 +36,12 @@ final class SucessaoHerdeiro extends Model
 
     protected $guarded = ['id', 'tenant_id'];
 
+    /** A pessoa é a fonte do documento: vem junto, sem consulta por herdeiro, e nunca sai inteira na resposta. */
+    protected $with = ['pessoa'];
+
+    /** @var list<string> */
+    protected $hidden = ['pessoa'];
+
     protected $casts = [
         'parentesco' => Parentesco::class,
         'ordem' => 'integer',
@@ -47,6 +53,40 @@ final class SucessaoHerdeiro extends Model
     public function sucessao(): BelongsTo
     {
         return $this->belongsTo(Sucessao::class, 'sucessao_id');
+    }
+
+    /**
+     * Documento completo para regra de negócio (criar ou achar o novo titular): o da pessoa do cadastro central; sem
+     * pessoa, ou com documento pendente, a cópia local. Quem escolhe uma pessoa no seletor deixa na cópia o CPF
+     * mascarado, que não serve para identificar ninguém.
+     */
+    public function documentoDaPessoa(): ?string
+    {
+        if ($this->pessoa !== null && ! $this->pessoa->documento_pendente) {
+            // Documento ilegível (chave trocada ou dado corrompido): cai na cópia local.
+            $documento = rescue(fn (): string => (string) $this->pessoa->documento, '', false);
+            if ($documento !== '') {
+                return $documento;
+            }
+        }
+
+        return $this->documento;
+    }
+
+    /**
+     * No JSON, o `documento` de quem tem pessoa é o CPF/CNPJ mascarado dela, o mesmo que o seletor de pessoas já
+     * grava na cópia; a relação em si não sai. Sem pessoa, ou com documento pendente, vale a cópia local.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        $dados = parent::toArray();
+        if ($this->pessoa !== null && ! $this->pessoa->documento_pendente) {
+            $dados['documento'] = $this->pessoa->cpf_mascarado;
+        }
+
+        return $dados;
     }
 
     /** @return BelongsTo<SucessaoHerdeiro, $this> */
