@@ -17,7 +17,7 @@ Nada da etapa B roda sem trava liberada, backup verificado e confirmação.
 - [ ] 1.5 (B) Tirar de `AlunoPessoaService` e `AlunoService` a escrita e a leitura dessas três colunas; `nome`, `mae` e `pai` seguem copiados da pessoa pelo evento. A conciliação do Escola (`ConciliacaoAlunos`) cumpre seu papel e é aposentada junto.
 
 ## 2. Capd
-- [ ] 2.1 (A) Leituras de `cpf`, `nome_social`, `data_nascimento` via pessoa (listagem, espelho de avaliação, exportações). Verificar: avaliações seladas inalteradas.
+- [x] 2.1 (A) Leituras de `cpf`, `nome_social`, `data_nascimento` via pessoa (listagem, espelho de avaliação, exportações). Verificar: avaliações seladas inalteradas. Feito: `Servidor::cpfDigitos/cpfFormatado/nascimentoDaPessoa/nomeSocialDaPessoa` e o escopo `comCpf` (hash da pessoa, com a cópia local como reserva) em busca da lista, do painel e do token de embed; exportação CSV, desempate do ranking e consolidação leem da pessoa. Teste: `ServidorLeituraPelaPessoaTest`. **Efeito para a etapa B:** a busca por CPF parcial (`like`) só vive na cópia local; sem a coluna, a busca por CPF exige os 11 dígitos. No backend, o espelho de avaliação não lê essas colunas; falta conferir o frontend (`apps/web-client`) antes da etapa B.
 - [ ] 2.2 (B) Migration de remoção dessas três colunas e `pessoa_id` NOT NULL, com a trava.
 - [ ] 2.3 (A, depois de 2.2) Propagar `email` e `telefone` dos contatos da pessoa ao servidor e trocar o login por vínculo `user_id`/`pessoa_id`; só então avaliar a remoção.
 

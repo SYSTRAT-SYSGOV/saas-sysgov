@@ -28,7 +28,7 @@ final class EmbedTokenService
             ->where(function ($q) use ($cpfOuMatricula, $cpfLimpo) {
                 $q->where('matricula', $cpfOuMatricula);
                 if (strlen($cpfLimpo) === 11) {
-                    $q->orWhere('cpf', 'like', "%{$cpfLimpo}%");
+                    $q->orWhere(fn ($c) => $c->comCpf($cpfLimpo));
                 }
             })
             ->first();

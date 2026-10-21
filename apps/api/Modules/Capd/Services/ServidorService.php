@@ -26,10 +26,11 @@ final class ServidorService
             ->where('tenant_id', $tenantId)
             ->when(!empty($filters['search']), function ($q) use ($filters): void {
                 $search = '%' . $filters['search'] . '%';
-                $q->where(function ($sub) use ($search): void {
+                $q->where(function ($sub) use ($search, $filters): void {
                     $sub->where('nome_completo', 'like', $search)
                         ->orWhere('matricula', 'like', $search)
                         ->orWhere('cpf', 'like', $search)
+                        ->orWhere(fn ($c) => $c->comCpf((string) $filters['search']))
                         ->orWhere('cargo_efetivo', 'like', $search)
                         ->orWhere('orgao_lotacao', 'like', $search);
                 });
