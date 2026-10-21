@@ -18,5 +18,5 @@
 ## 4. Validação
 
 - [x] 4.1 Suítes do backend (Escola, Pessoas, Pedagógico, Passeio, Portfolio, Formatura), PHPStan e web-client verdes.
-- [ ] 4.2 Dry-run em produção (`pessoas:conciliar escola --dry-run`) depois do deploy da Fase 0 e desta fase; decidir o destino dos alunos de demonstração que saem como `sem_responsavel`.
-- [ ] 4.3 Validação manual em homologação (cadastro sem CPF com responsável, regularização, importação CSV) e conferência visual do formulário conforme DESIGN_SYSTEM.
+- [x] 4.2 Dry-run em produção (`pessoas:conciliar escola --dry-run`) depois do deploy da Fase 0 e desta fase; decidir o destino dos alunos de demonstração que saem como `sem_responsavel`. **Feito em 21/10/2026:** `pessoas:conciliar <alias> --dry-run` rodou em produção para os 13 aliases e, em seguida, a conciliação real; resultado final no relatório de adoção da Fase 5 (517 de 517 vinculados, 0 divergências). Os alunos de demonstração sem responsável passaram a vincular depois do PR #81 (responsável dispensado no registro de óbito) e da correção do seeder.
+- [ ] 4.3 Validação manual em homologação (cadastro sem CPF com responsável, regularização, importação CSV) e conferência visual do formulário conforme DESIGN_SYSTEM. **Não feito como etapa separada:** não existe ambiente de homologação e os dados de produção são de teste. O usuário conferiu visualmente o Escola em 21/10; fica aberta para registro histórico e não bloqueia o arquivamento. A importação CSV agora aceita `RESPONSAVEL_CPF` (Fase 5).

@@ -15,4 +15,4 @@
 ## 3. Validação
 
 - [x] 3.1 Suítes de Pessoas, Procurement, Inservível, Passeio e Cursos (707 testes) e PHPStan do projeto todo verdes.
-- [ ] 3.2 Dry-run em produção de cada alias depois do deploy; revisar `documento_invalido` e os motoristas repetidos.
+- [x] 3.2 Dry-run em produção de cada alias depois do deploy; revisar `documento_invalido` e os motoristas repetidos. **Feito em 21/10/2026:** `pessoas:conciliar <alias> --dry-run` rodou em produção para os 13 aliases e, em seguida, a conciliação real; resultado final no relatório de adoção da Fase 5 (517 de 517 vinculados, 0 divergências). Inservível, Passeio e Procurement têm 0 registros em produção.

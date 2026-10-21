@@ -35,9 +35,9 @@
 ## 6. Planejamento das fases por módulo
 
 - [x] 6.1 Criar as changes das Fases 1 a 5 com `openspec new change` e `proposal.md` resumido (Escola, Capd, Cemitérios/Campanha/Cursos/Multiprofissional, Inservível/Passeio/Procurement, remoção das colunas), referenciando esta change. Verificar: `openspec list` mostra as cinco changes e `openspec validate` passa em cada uma.
-- [ ] 6.2 Executar a conciliação em `--dry-run` sobre os dados de produção (Escola e Capd) e anexar o relatório à change da Fase 1. Verificar: relatório gerado sem escrita no banco (contagem de `pessoas` igual antes e depois).
+- [x] 6.2 Executar a conciliação em `--dry-run` sobre os dados de produção (Escola e Capd) e anexar o relatório à change da Fase 1. Verificar: relatório gerado sem escrita no banco (contagem de `pessoas` igual antes e depois). **Feito em 21/10/2026:** `pessoas:conciliar <alias> --dry-run` rodou em produção para os 13 aliases e, em seguida, a conciliação real; resultado final no relatório de adoção da Fase 5 (517 de 517 vinculados, 0 divergências). O relatório final foi anexado à change da Fase 5.
 
 ## 7. Validação final da Fase 0
 
 - [x] 7.1 Rodar a suíte completa do backend (testes de Pessoas e de todos os módulos), PHPStan e a suíte do web-client e do `@sysgov/ui`. Verificar: CI do PR verde.
-- [ ] 7.2 Validar manualmente em homologação: cadastro rápido de menor sem CPF a partir do módulo Escola, regularização posterior, mesclagem de duplicidade, aba Conciliação e conferência visual da ficha, do selo "Documento pendente" e do modal conforme o DESIGN_SYSTEM. Verificar: roteiro executado e registrado no PR.
+- [ ] 7.2 Validar manualmente em homologação: cadastro rápido de menor sem CPF a partir do módulo Escola, regularização posterior, mesclagem de duplicidade, aba Conciliação e conferência visual da ficha, do selo "Documento pendente" e do modal conforme o DESIGN_SYSTEM. Verificar: roteiro executado e registrado no PR. **Não feito como etapa separada:** não existe ambiente de homologação e os dados de produção são de teste. O usuário conferiu visualmente o Escola em 21/10; fica aberta para registro histórico e não bloqueia o arquivamento.
