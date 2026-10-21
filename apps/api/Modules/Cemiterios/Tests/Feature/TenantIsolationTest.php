@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Cemiterios\Tests\Feature;
 
+use Modules\Cemiterios\Tests\Support\RegistroDeTeste;
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
@@ -198,7 +199,7 @@ final class TenantIsolationTest extends CemiteriosTestCase
         [$amenidadeLng, $amenidadeLat] = Geo::desprojetar([[0, 0]], $ref)[0];
         Amenidade::create(['park_id' => $jazigo->park_id, 'tipo' => 'portaria', 'lat' => $amenidadeLat, 'lng' => $amenidadeLng]);
 
-        $operador = OperadorCemiterio::create(['nome' => 'Operador A', 'tipo' => 'coveiro']);
+        $operador = RegistroDeTeste::operador(['nome' => 'Operador A', 'tipo' => 'coveiro']);
         OperadorLicenca::create(['operator_id' => $operador->id, 'numero' => 'ALV-A-001', 'validade' => '2030-01-01']);
         OperadorPenalidade::create(['operator_id' => $operador->id, 'tipo' => 'advertencia', 'inicio' => '2026-01-01', 'motivo' => 'Atraso reiterado.']);
         LegadoFalecidoIndice::create(['park_id' => $jazigo->park_id, 'quadra_legado' => 'LEG-A', 'lote_legado' => 'L-A']);

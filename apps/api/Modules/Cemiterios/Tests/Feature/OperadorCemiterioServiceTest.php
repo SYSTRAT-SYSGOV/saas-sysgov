@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Cemiterios\Tests\Feature;
 
+use Modules\Cemiterios\Tests\Support\RegistroDeTeste;
 use App\Models\AuditLog;
 use App\Models\Tenant;
 use Modules\Cemiterios\Models\OperadorCemiterio;
@@ -28,7 +29,7 @@ final class OperadorCemiterioServiceTest extends CemiteriosTestCase
 
     public function test_credenciar_preserva_historico_e_calcula_o_vigente(): void
     {
-        $pedreiro = OperadorCemiterio::create(['nome' => 'Pedreiro', 'tipo' => 'pedreiro']);
+        $pedreiro = RegistroDeTeste::operador(['nome' => 'Pedreiro', 'tipo' => 'pedreiro']);
 
         $this->service->credenciar($pedreiro, ['numero' => 'ALV-001', 'validade' => today()->addMonths(6)->toDateString()]);
         $this->service->credenciar($pedreiro, ['numero' => 'ALV-002', 'validade' => today()->addYear()->toDateString()]);
@@ -42,19 +43,19 @@ final class OperadorCemiterioServiceTest extends CemiteriosTestCase
 
     public function test_status_credenciamento_reflete_vencimento(): void
     {
-        $pedreiro = OperadorCemiterio::create(['nome' => 'Pedreiro', 'tipo' => 'pedreiro']);
+        $pedreiro = RegistroDeTeste::operador(['nome' => 'Pedreiro', 'tipo' => 'pedreiro']);
         self::assertSame('sem_credenciamento', $this->service->statusCredenciamento($pedreiro));
 
         $this->service->credenciar($pedreiro, ['numero' => 'ALV-VENCIDO', 'validade' => today()->subMonth()->toDateString()]);
         self::assertSame('vencido', $this->service->statusCredenciamento($pedreiro->fresh()));
 
-        $coveiro = OperadorCemiterio::create(['nome' => 'Coveiro', 'tipo' => 'coveiro']);
+        $coveiro = RegistroDeTeste::operador(['nome' => 'Coveiro', 'tipo' => 'coveiro']);
         self::assertSame('dispensado', $this->service->statusCredenciamento($coveiro));
     }
 
     public function test_sancionar_advertencia_suspensao_e_descredenciamento(): void
     {
-        $operador = OperadorCemiterio::create(['nome' => 'Operador', 'tipo' => 'coveiro', 'situacao' => 'ativo']);
+        $operador = RegistroDeTeste::operador(['nome' => 'Operador', 'tipo' => 'coveiro', 'situacao' => 'ativo']);
 
         $this->service->sancionar($operador, ['tipo' => 'advertencia', 'inicio' => today()->toDateString(), 'motivo' => 'Atraso.']);
         self::assertSame('ativo', $operador->fresh()->situacao);
@@ -71,7 +72,7 @@ final class OperadorCemiterioServiceTest extends CemiteriosTestCase
 
     public function test_validar_disponibilidade_bloqueia_descredenciado_sem_override_possivel(): void
     {
-        $operador = OperadorCemiterio::create(['nome' => 'Descredenciado', 'tipo' => 'coveiro']);
+        $operador = RegistroDeTeste::operador(['nome' => 'Descredenciado', 'tipo' => 'coveiro']);
         $this->service->sancionar($operador, ['tipo' => 'descredenciamento', 'inicio' => today()->toDateString(), 'motivo' => 'Grave.']);
 
         $this->expectException(RegraNegocioException::class);
@@ -80,7 +81,7 @@ final class OperadorCemiterioServiceTest extends CemiteriosTestCase
 
     public function test_validar_disponibilidade_bloqueia_suspenso_e_exige_justificativa_no_override(): void
     {
-        $operador = OperadorCemiterio::create(['nome' => 'Suspenso', 'tipo' => 'coveiro']);
+        $operador = RegistroDeTeste::operador(['nome' => 'Suspenso', 'tipo' => 'coveiro']);
         $this->service->sancionar($operador, [
             'tipo' => 'suspensao', 'inicio' => today()->toDateString(), 'fim' => today()->addDays(5)->toDateString(), 'motivo' => 'Falta grave.',
         ]);
@@ -108,14 +109,14 @@ final class OperadorCemiterioServiceTest extends CemiteriosTestCase
 
     public function test_validar_disponibilidade_permite_operador_sem_sancao(): void
     {
-        $operador = OperadorCemiterio::create(['nome' => 'Regular', 'tipo' => 'coveiro']);
+        $operador = RegistroDeTeste::operador(['nome' => 'Regular', 'tipo' => 'coveiro']);
         $this->expectNotToPerformAssertions();
         $this->service->validarDisponibilidade($operador);
     }
 
     public function test_status_saude_ocupacional(): void
     {
-        $operador = OperadorCemiterio::create(['nome' => 'Operador', 'tipo' => 'coveiro']);
+        $operador = RegistroDeTeste::operador(['nome' => 'Operador', 'tipo' => 'coveiro']);
         self::assertSame('nao_informado', $this->service->statusSaudeOcupacional($operador));
 
         $operador->update(['aso_validade' => today()->subDay()->toDateString()]);

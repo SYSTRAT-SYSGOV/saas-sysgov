@@ -55,13 +55,11 @@ final class OperadorCemiterioController extends Controller
             ->when($statusSaude === 'valido', fn ($query) => $query->whereDate('aso_validade', '>', today()->addDays(30)))
             ->when($statusSaude === 'nao_informado', fn ($query) => $query->whereNull('aso_validade'))
             ->when($q !== '', function ($query) use ($q): void {
-                $documentoHash = Documento::hash($q);
                 $digitos = Documento::somenteDigitos($q);
-                $query->where(function ($sub) use ($q, $documentoHash, $digitos): void {
+                $query->where(function ($sub) use ($q, $digitos): void {
                     $sub->where('nome', 'like', "%{$q}%")
                         ->orWhere('matricula_funcional', 'like', "%{$q}%")
-                        ->orWhere('alvara_numero', 'like', "%{$q}%")
-                        ->orWhere('documento_hash', $documentoHash);
+                        ->orWhere('alvara_numero', 'like', "%{$q}%");
                     // O documento mora na pessoa do cadastro central (hash do módulo Pessoas, chave diferente da do módulo).
                     if (in_array(strlen($digitos), [11, 14], true)) {
                         $sub->orWhereHas('pessoa', fn ($p) => $p->where('documento_hash', \Modules\Pessoas\Support\Documento::hash($digitos)));
@@ -94,12 +92,7 @@ final class OperadorCemiterioController extends Controller
 
     public function store(CadastrarOperadorRequest $request): JsonResponse
     {
-        $dados = $request->validated();
-        $docLimpo = Documento::somenteDigitos($dados['cpf_cnpj'] ?? '');
-        $dados['cpf_cnpj'] = $docLimpo ?: null;
-        $dados['documento_hash'] = $docLimpo ? Documento::hash($docLimpo) : null;
-
-        $operador = $this->operadores->cadastrar($dados);
+        $operador = $this->operadores->cadastrar($request->validated());
 
         return response()->json($operador, 201);
     }
@@ -122,15 +115,7 @@ final class OperadorCemiterioController extends Controller
     public function update(AtualizarOperadorRequest $request, int $id): JsonResponse
     {
         $operador = OperadorCemiterio::findOrFail($id);
-        $dados = $request->validated();
-
-        if (array_key_exists('cpf_cnpj', $dados)) {
-            $docLimpo = Documento::somenteDigitos($dados['cpf_cnpj'] ?? '');
-            $dados['cpf_cnpj'] = $docLimpo ?: null;
-            $dados['documento_hash'] = $docLimpo ? Documento::hash($docLimpo) : null;
-        }
-
-        $operador = $this->operadores->atualizar($operador, $dados);
+        $operador = $this->operadores->atualizar($operador, $request->validated());
 
         return response()->json($operador->fresh());
     }

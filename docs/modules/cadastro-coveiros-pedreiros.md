@@ -10,9 +10,8 @@
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                          cemetery_operators                              │
-│ id, tenant_id, park_id (FK nullable),                                    │
-│ nome, tipo (coveiro|pedreiro), cpf_cnpj (encrypted+hidden),              │
-│ documento_hash, matricula_funcional,                                     │
+│ id, tenant_id, pessoa_id (FK obrigatória, cadastro central), park_id,    │
+│ nome, tipo (coveiro|pedreiro), matricula_funcional,                      │
 │ alvara_numero, alvara_validade (espelham o credenciamento vigente),      │
 │ aso_validade, epi_ultimo_registro, telefone, email,                      │
 │ situacao (ativo|suspenso|inativo), observacoes, soft delete              │
@@ -32,9 +31,11 @@
 - `cemetery_operators`, `cemetery_operator_licenses` e `cemetery_operator_penalties` têm
   `tenant_id` com índices compostos e usam o trait `TenantAware` (escopo global + preenchimento
   automático) — nenhuma delas é acessível fora do tenant corrente.
-- `cpf_cnpj` é armazenado com cast Eloquent `encrypted` e `hidden` (nunca serializado em claro);
-  `documento_hash` (HMAC-SHA256, mesma chave/mecanismo de `Empreiteiro`) é usado para busca por
-  igualdade do valor limpo — busca parcial deixou de ser suportada.
+- O documento (CPF/CNPJ) **não é guardado no operador**: vive na pessoa do cadastro central (`pessoa_id` é
+  obrigatório desde a Fase 5 da unificação de pessoas). O `cpf_cnpj` enviado no cadastro só serve para achar ou
+  criar a pessoa (`PessoaDoDocumentoService`); sem documento, a pessoa fica pendente; documento que não é CPF nem
+  CNPJ válido é recusado (422). A API expõe apenas `documento_mascarado`, lido da pessoa. A busca por documento
+  completo usa o `documento_hash` da pessoa — busca parcial não é suportada.
 - `alvara_numero`/`alvara_validade` em `cemetery_operators` são campos **calculados/espelhados**
   a partir do credenciamento de maior validade ainda não vencida (`OperadorCemiterioService::
   sincronizarCredencialVigente()`), mantidos por compatibilidade com consultas existentes.
@@ -47,7 +48,7 @@
 
 | Regra | Descrição | Implementação |
 |---|---|---|
-| RN-OP-001 | Documento pessoal nunca em texto puro | `OperadorCemiterio::$hidden`/`$casts['cpf_cnpj' => 'encrypted']`; API expõe apenas `documento_mascarado` |
+| RN-OP-001 | Documento pessoal nunca em texto puro | O operador não guarda o documento (vive, cifrado, na pessoa); API expõe apenas `documento_mascarado` |
 | RN-OP-002 | Segmentação por necrópole | `park_id` nullable (`null` = atua em todas as necrópoles do tenant); listagem filtra por `park_id` |
 | RN-OP-003 | Histórico de credenciamento com integridade | `OperadorCemiterioService::credenciar()` cria `OperadorLicenca` com hash SHA-256 do arquivo, sem apagar credenciamentos anteriores |
 | RN-OP-004 | Alerta de vencimento (30 dias) | `OperadorCemiterioService::statusCredenciamento()`/`statusSaudeOcupacional()` — `valido`\|`a_vencer`\|`vencido`\|`sem_credenciamento`/`nao_informado` |
@@ -56,7 +57,7 @@
 | RN-OP-007 | Override de suspensão auditado | Suspensão aceita override explícito (`override_suspensao` + `justificativa_override` obrigatória) por usuário com `cemiterios.cadastros.manage`, registrado em `audit_logs` (`operador.suspensao.override`); descredenciamento nunca aceita override |
 | RN-OP-008 | Vínculo por ID prioritário sobre nome | `OperadorCemiterioController::historico()` consulta `WHERE coveiro_id = ? OR (coveiro_id IS NULL AND coveiro_nome IN (...))` — união sem duplicar, sem exigir ID nos registros legados |
 | RN-OP-009 | Leitura e gestão como permissões distintas | `cemiterios.cadastros.view` (leitura) é separada de `cemiterios.cadastros.manage` (escrita); seeder concede `.view` automaticamente a quem já tinha `.manage` |
-| RN-OP-010 | Migração de dados idempotente | `cemiterio:criptografar-documentos-operadores` criptografa `cpf_cnpj` legado in-place e cria o primeiro `OperadorLicenca` a partir do alvará vigente, dentro de uma transação por tenant; roda várias vezes sem duplicar nem reprocessar valores já criptografados |
+| RN-OP-010 | ~~Migração de dados idempotente~~ (aposentada) | O comando `cemiterio:criptografar-documentos-operadores` foi removido na Fase 5: o documento deixou de existir no operador, e os credenciamentos já foram criados a partir do alvará vigente |
 
 ## 3. Endpoints da API
 
@@ -119,7 +120,6 @@ são rastreadas, sem validar o conteúdo exigido.
 
 | Comando | Uso | Função |
 |---|---|---|
-| `cemiterio:criptografar-documentos-operadores` | Sob demanda (`--tenant`, `--dry-run`) | Criptografa `cpf_cnpj` em texto puro existente e recalcula `documento_hash`; para operadores com `alvara_numero`/`alvara_validade` preenchidos e sem nenhum credenciamento registrado, cria o primeiro `OperadorLicenca` (RN-OP-010) |
 
 ## 8. Testes
 

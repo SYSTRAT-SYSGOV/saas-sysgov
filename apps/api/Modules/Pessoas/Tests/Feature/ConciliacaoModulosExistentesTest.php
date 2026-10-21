@@ -9,7 +9,6 @@ use Modules\Campanha\Models\Coordenador;
 use Modules\Campanha\Support\CampanhaContext;
 use Modules\Cemiterios\Models\Concessionario;
 use Modules\Cemiterios\Models\Falecido;
-use Modules\Cemiterios\Models\OperadorCemiterio;
 use Modules\Cursos\Models\Participante;
 use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Models\PessoaDivergencia;
@@ -61,18 +60,14 @@ final class ConciliacaoModulosExistentesTest extends PessoasTestCase
         $this->assertSame(0, $this->conciliar('cursos')['criadas_pendentes']);
     }
 
-    public function test_cemiterios_operador_e_falecido_sem_alterar_a_situacao_registrada(): void
+    public function test_cemiterios_falecido_sem_alterar_a_situacao_registrada(): void
     {
-        $operador = OperadorCemiterio::create(['nome' => 'José Coveiro', 'tipo' => 'coveiro', 'cpf_cnpj' => self::CPF, 'situacao' => 'ativo']);
         $falecido = Falecido::create(['nome' => 'Maria Antiga', 'nascimento' => '1940-05-01', 'falecimento' => '2020-03-10', 'certidao_numero' => 'C-1']);
 
-        $this->conciliar('cemiterios-operadores');
         $relatorio = $this->conciliar('cemiterios-falecidos');
 
         $this->assertSame(1, $relatorio['criadas_pendentes']);
-        $this->assertNotNull($operador->fresh()->pessoa_id);
         $this->assertSame($falecido->fresh()->pessoa_id, Pessoa::query()->where('documento_pendente', true)->sole()->id);
-        $this->assertSame('ativo', $operador->fresh()->situacao);
         $this->assertSame('2020-03-10', $falecido->fresh()->falecimento->toDateString());
     }
 
