@@ -15,8 +15,8 @@
 ## 3. Validação
 
 - [x] 3.1 Suítes CAPD, Pessoas e Escola (415 testes) e PHPStan do projeto todo verdes.
-- [ ] 3.2 Dry-run em produção (`pessoas:conciliar capd --dry-run`) depois do deploy; conferir os servidores com `000.000.000-00` (viram pessoa pendente).
-- [ ] 3.3 Validação manual em homologação (cadastro de servidor, sincronização de RH, espelho de avaliação já selada).
+- [x] 3.2 Dry-run em produção (`pessoas:conciliar capd --dry-run`) depois do deploy; conferir os servidores com `000.000.000-00` (viram pessoa pendente). **Feito em 21/10/2026:** `pessoas:conciliar <alias> --dry-run` rodou em produção para os 13 aliases e, em seguida, a conciliação real; resultado final no relatório de adoção da Fase 5 (517 de 517 vinculados, 0 divergências). O Capd tem 0 servidores em produção, então não havia `000.000.000-00` a conferir.
+- [ ] 3.3 Validação manual em homologação (cadastro de servidor, sincronização de RH, espelho de avaliação já selada). **Não feito como etapa separada:** não existe ambiente de homologação e os dados de produção são de teste. O usuário conferiu visualmente o Escola em 21/10; fica aberta para registro histórico e não bloqueia o arquivamento. O Capd não tem servidores em produção: cadastro, sincronização de RH e espelho selado foram exercitados só nos testes automatizados e no ensaio de migration.
 
 ## Fora desta fase
 - E-mail e telefone do servidor permanecem no CAPD: no cadastro central ficam em contatos (tabela própria) e o login do servidor ainda se apoia no e-mail (`ServidorController`). Entram na Fase 5, com a remoção das colunas.

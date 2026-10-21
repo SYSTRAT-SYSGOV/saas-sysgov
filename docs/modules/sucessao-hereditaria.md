@@ -21,7 +21,7 @@
 ┌───────────────────┐   ┌───────────────────────┐  ┌──────────────────────┐
 │ sucessao_herdeiros │   │  sucessao_documentos   │  │  sucessao_historico   │
 │ nome, parentesco,  │   │ tipo (enum), arquivo,  │  │ de_estado, para_estado│
-│ documento, ordem,  │   │ hash (SHA-256)         │  │ motivo (JSON),        │
+│ pessoa_id, ordem,  │   │ hash (SHA-256)         │  │ motivo (JSON),        │
 │ direito_representa-│   │ soft delete            │  │ usuario_id            │
 │ cao, titular_indi- │   └───────────────────────┘  │ append-only           │
 │ cado,               │                              └──────────────────────┘
