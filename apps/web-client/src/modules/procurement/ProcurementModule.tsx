@@ -82,7 +82,7 @@ export const ProcurementModule: React.FC = () => {
 
       <Card className="gap-0 py-0">
         <div className="p-3">
-          <DataTable columns={columns} data={filtered} emptyText="Nenhuma licitação encontrada." pageSize={10} />
+          <DataTable exportable exportFileName="procurement-procurement" exportTitle="Compras — Procurement" columns={columns} data={filtered} emptyText="Nenhuma licitação encontrada." pageSize={10} />
         </div>
       </Card>
     </div>
