@@ -174,7 +174,7 @@ export const OrdensServicoView: React.FC = () => {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <DataTable columns={columns} data={ordens} pageSize={15} />
+            <DataTable exportable exportFileName="vistoria-ordens-servico" exportTitle="Vistoria — Ordens Servico" columns={columns} data={ordens} pageSize={15} />
           </CardContent>
         </Card>
       )}
