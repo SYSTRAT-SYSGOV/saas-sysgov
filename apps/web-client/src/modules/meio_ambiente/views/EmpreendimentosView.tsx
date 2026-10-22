@@ -81,8 +81,18 @@ export const EmpreendimentosView: React.FC = () => {
   const colunas = useMemo<ColumnDef<Empreendimento, unknown>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        cell: ({ row }) =>
+          podeGerenciar && (
+            <Button variant="ghost" size="sm" onClick={() => setModalResponsavel(row.original)}>
+              <UserCog className="mr-1 h-4 w-4" /> Responsável técnico
+            </Button>
+          ),
+      },
+      {
         id: 'identificacao',
-        header: 'Empreendimento',
+        header: 'Empreendimento', meta: { exportValue: (r) => `${r.razao_social ?? r.titular_nome ?? ''}${r.cnpj ? ` (${r.cnpj})` : ''}` },
         cell: ({ row }) => (
           <div>
             <div className="font-medium">{row.original.razao_social ?? row.original.titular_nome ?? '—'}</div>
@@ -93,27 +103,17 @@ export const EmpreendimentosView: React.FC = () => {
       { id: 'atividade', header: 'Atividade', accessorKey: 'atividade' },
       {
         id: 'porte',
-        header: 'Porte',
+        header: 'Porte', meta: { exportValue: (r) => PORTES.find((p) => p.value === r.porte)?.label ?? r.porte },
         cell: ({ row }) => PORTES.find((p) => p.value === row.original.porte)?.label ?? row.original.porte,
       },
       {
         id: 'responsavel',
-        header: 'Responsável Técnico',
+        header: 'Responsável Técnico', meta: { exportValue: (r) => (r.responsavel_tecnico ? `${r.responsavel_tecnico.nome} (${r.responsavel_tecnico.tipo_registro})` : 'Pendente') },
         cell: ({ row }) =>
           row.original.responsavel_tecnico ? (
             <span className="text-sm">{row.original.responsavel_tecnico.nome} ({row.original.responsavel_tecnico.tipo_registro})</span>
           ) : (
             <span className="text-sm text-amber-600">Pendente</span>
-          ),
-      },
-      {
-        id: 'acoes',
-        header: '',
-        cell: ({ row }) =>
-          podeGerenciar && (
-            <Button variant="ghost" size="sm" onClick={() => setModalResponsavel(row.original)}>
-              <UserCog className="mr-1 h-4 w-4" /> Responsável técnico
-            </Button>
           ),
       },
     ],
@@ -141,7 +141,7 @@ export const EmpreendimentosView: React.FC = () => {
       {erro && <div className="mb-4 rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
 
       {aba === 'lista' ? (
-        <DataTable columns={colunas} data={empreendimentos} loading={loading} emptyText="Nenhum empreendimento cadastrado." />
+        <DataTable exportable exportFileName="meio-ambiente-empreendimentos" exportTitle="Meio Ambiente — Empreendimentos" columns={colunas} data={empreendimentos} loading={loading} emptyText="Nenhum empreendimento cadastrado." />
       ) : (
         <Card className="overflow-hidden p-0">
           <ScreenState type={loading ? 'loading' : 'ready'}>
