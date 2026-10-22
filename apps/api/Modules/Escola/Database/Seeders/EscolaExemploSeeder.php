@@ -25,6 +25,7 @@ use Modules\Escola\Models\TurmaMateria;
 use Modules\Escola\Models\Turno;
 use Modules\Escola\Support\EscolaContext;
 use Modules\OrgChart\Models\OrgUnit;
+use Modules\Pessoas\Models\Pessoa;
 
 /**
  * Seeder de dados de demonstração e teste para o módulo Escola.
@@ -339,8 +340,21 @@ final class EscolaExemploSeeder extends Seeder
                 foreach ($nomesAlunos as $numero => $familia) {
                     $numeroChamada = $numero + 1;
                     $nomeAluno = "{$familia[0]} {$prefixo}";
-                    $mae = $familia[1];
-                    $pai = $familia[2];
+                    $nascimentoFormatado = sprintf('201%d-0%d-15', max(0, 8 - $indexTurma), $numeroChamada);
+
+                    $pessoa = Pessoa::firstOrCreate(
+                        [
+                            'tenant_id' => $tenant->id,
+                            'tipo' => 'fisica',
+                            'nome' => $nomeAluno,
+                        ],
+                        [
+                            'nome_mae' => $mae,
+                            'nome_pai' => $pai,
+                            'data_nascimento' => $nascimentoFormatado,
+                            'documento_pendente' => true,
+                        ]
+                    );
 
                     $aluno = Aluno::firstOrCreate(
                         [
@@ -349,10 +363,10 @@ final class EscolaExemploSeeder extends Seeder
                             'nome' => $nomeAluno,
                         ],
                         [
+                            'pessoa_id' => $pessoa->id,
                             'turma_id' => $turma->id,
                             'numero' => $numeroChamada,
                             'situacao' => 'ativo',
-                            'nascimento' => sprintf('201%d-0%d-15', max(0, 8 - $indexTurma), $numeroChamada),
                             'mae' => $mae,
                             'pai' => $pai,
                             'cgm' => sprintf('2026%02d%02d%02d', (int) $prefixo, $turma->id, $numeroChamada),
