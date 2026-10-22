@@ -76,6 +76,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withCommands([MakeModule::class, ProcessOutbox::class, ExpireAccess::class, NotifyExpiringAccess::class, SeedModuleOrgUnit::class, VerificarPrazosLicenciamentoCommand::class, VerificarPrazosRecursosHidricosCommand::class])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectGuestsTo(fn () => null);
         $middleware->trustProxies(at: '*');
         $middleware->append(\App\Http\Middleware\CloseConnectionOnCliServer::class);
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
