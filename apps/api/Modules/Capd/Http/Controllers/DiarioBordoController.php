@@ -17,6 +17,7 @@ use Modules\Capd\Models\DiarioBordo;
 use Modules\Capd\Models\Evidencia;
 use Modules\Capd\Models\FatorAvaliacao;
 use Modules\Capd\Models\Servidor;
+use Modules\Capd\Services\ServidorPessoaService;
 use Modules\Capd\Policies\DiarioBordoPolicy;
 
 /**
@@ -93,11 +94,11 @@ final class DiarioBordoController extends Controller
 
         if ($servidorRecord && ! $servidorRecord->user_id) {
             $user = User::firstOrCreate(
-                ['email' => $servidorRecord->email ?: "servidor.{$servidorRecord->matricula}@{$tenantId}.gov.br"],
+                ['email' => $servidorRecord->emailDaPessoa() ?: "servidor.{$servidorRecord->matricula}@{$tenantId}.gov.br"],
                 ['name' => $servidorRecord->nome_completo, 'password' => Hash::make('sysgov@2026')]
             );
             $user->tenants()->syncWithoutDetaching([$tenantId => ['status' => 'active', 'is_primary' => true]]);
-            $servidorRecord->update(['user_id' => $user->id]);
+            app(ServidorPessoaService::class)->vincularUsuario($servidorRecord, $user);
             $resolvedUserId = (int) $user->id;
         }
 

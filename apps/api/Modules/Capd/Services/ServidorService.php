@@ -38,7 +38,7 @@ final class ServidorService
             ->when(isset($filters['estagio_probatorio']), fn ($q) => $q->where('estagio_probatorio', (bool) $filters['estagio_probatorio']))
             ->when(!empty($filters['orgao_lotacao']), fn ($q) => $q->where('orgao_lotacao', $filters['orgao_lotacao']))
             ->when(isset($filters['chefia_imediata_id']), fn ($q) => $q->where('chefia_imediata_id', $filters['chefia_imediata_id']))
-            ->with(['chefiaImediata:id,nome_completo,matricula', 'user:id,name,email', 'orgUnit.parent', 'pessoa'])
+            ->with(['chefiaImediata:id,nome_completo,matricula', 'user:id,name,email', 'orgUnit.parent', 'pessoa.contatos'])
             ->orderBy('nome_completo')
             ->paginate($perPage);
     }
@@ -60,15 +60,16 @@ final class ServidorService
         $data['tenant_id'] = $tenantId;
         $data['situacao_funcional'] = $data['situacao_funcional'] ?? 'ativo';
         $civis = $this->extrairCivis($data);
+        $contatos = $this->extrairContatos($data);
 
-        return DB::transaction(function () use ($data, $civis): Servidor {
+        return DB::transaction(function () use ($data, $civis, $contatos): Servidor {
             // A pessoa vem antes do servidor: `pessoa_id` é obrigatório e CPF, nome social e nascimento só existem nela.
             $pessoa = $this->pessoas->resolverParaNovo([...$civis, 'nome' => (string) ($data['nome_completo'] ?? '')]);
             $servidor = new Servidor($data);
             $servidor->forceFill(['pessoa_id' => $pessoa->id])->save();
-            $this->pessoas->concluirCadastro($servidor, $pessoa);
+            $this->pessoas->concluirCadastro($servidor, $pessoa, $contatos);
 
-            return $servidor;
+            return $servidor->load('pessoa.contatos');
         });
     }
 
@@ -79,13 +80,14 @@ final class ServidorService
     {
         $camposCivis = array_values(array_intersect(['nome_completo', 'nome_social', 'data_nascimento'], array_keys($data)));
         $civis = $this->extrairCivis($data);
+        $contatos = $this->extrairContatos($data);
         if (trim((string) ($civis['cpf'] ?? '')) !== '' && ServidorPessoaService::cpfValido($civis['cpf']) === null) {
             throw ValidationException::withMessages(['cpf' => 'O CPF informado é inválido.']);
         }
 
-        DB::transaction(function () use ($servidor, $data, $civis, $camposCivis): void {
+        DB::transaction(function () use ($servidor, $data, $civis, $camposCivis, $contatos): void {
             $servidor->update($data);
-            $this->pessoas->sincronizar($servidor, $civis, $camposCivis);
+            $this->pessoas->sincronizar($servidor, $civis, $camposCivis, $contatos);
         });
 
         return $servidor->fresh(['chefiaImediata', 'user']);
@@ -109,6 +111,25 @@ final class ServidorService
         }
 
         return $civis;
+    }
+
+    /**
+     * Retira de `$data` e-mail e telefone, que vivem como contatos da pessoa. Devolve só o que veio.
+     *
+     * @param array<string, mixed> $data
+     * @return array{email?: string|null, telefone?: string|null}
+     */
+    private function extrairContatos(array &$data): array
+    {
+        $contatos = [];
+        foreach (['email', 'telefone'] as $campo) {
+            if (array_key_exists($campo, $data)) {
+                $contatos[$campo] = $data[$campo];
+                unset($data[$campo]);
+            }
+        }
+
+        return $contatos;
     }
 
     /**

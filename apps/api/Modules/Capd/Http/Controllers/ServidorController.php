@@ -11,6 +11,7 @@ use Illuminate\Routing\Controller;
 use Modules\Capd\Models\Servidor;
 use Modules\Capd\Models\ServidorAfastamento;
 use Modules\Capd\Services\HierarquiaService;
+use Modules\Capd\Services\ServidorPessoaService;
 use Modules\Capd\Services\ServidorService;
 
 final class ServidorController extends Controller
@@ -63,7 +64,7 @@ final class ServidorController extends Controller
 
         $servidor = $this->servidorService->create($validated);
 
-        return response()->json($servidor->load('pessoa'), 201);
+        return response()->json($servidor->load('pessoa.contatos'), 201);
     }
 
     public function show(Servidor $servidor): JsonResponse
@@ -73,7 +74,7 @@ final class ServidorController extends Controller
             'subordinados:id,nome_completo,matricula,cargo_efetivo',
             'afastamentos',
             'avaliacoes.ciclo',
-            'pessoa',
+            'pessoa.contatos',
         ]);
 
         return response()->json($servidor);
@@ -98,7 +99,7 @@ final class ServidorController extends Controller
 
         $servidor = $this->servidorService->update($servidor, $validated);
 
-        return response()->json($servidor->load('pessoa'));
+        return response()->json($servidor->load('pessoa.contatos'));
     }
 
     public function destroy(Servidor $servidor): JsonResponse
@@ -183,12 +184,8 @@ final class ServidorController extends Controller
             ->with(['chefiaImediata', 'subordinados'])
             ->first();
 
-        if (! $servidor && $user->email) {
-            $servidor = Servidor::where('email', $user->email)->first();
-            if ($servidor && ! $servidor->user_id) {
-                $servidor->update(['user_id' => $user->id]);
-            }
-        }
+        // Usuário ainda não ligado: vínculo da pessoa (`pessoas_usuarios`) ou, por último, o e-mail dos contatos dela.
+        $servidor ??= app(ServidorPessoaService::class)->servidorDoUsuario($user)?->load(['chefiaImediata', 'subordinados']);
 
         $lotacao = $servidor?->orgao_lotacao ?? $servidor?->lotacao_fisica;
 

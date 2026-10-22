@@ -20,7 +20,7 @@ use Modules\Pessoas\Support\Documento;
  * @property int $id
  * @property int $tenant_id
  * @property int|null $user_id
- * @property int $pessoa_id pessoa do Cadastro de Pessoas (fonte de CPF, nome social e nascimento)
+ * @property int $pessoa_id pessoa do Cadastro de Pessoas (fonte de CPF, nome social, nascimento, e-mail e telefone)
  * @property string $matricula
  * @property string $nome_completo
  * @property string|null $regime_juridico
@@ -46,8 +46,6 @@ final class Servidor extends Model
         'matricula',
         'pis_pasep',
         'nome_completo',
-        'email',
-        'telefone',
         'regime_juridico',
         'regime_previdenciario',
         'data_admissao',
@@ -73,7 +71,7 @@ final class Servidor extends Model
     ];
 
     /** A pessoa é a fonte de CPF, nome social e nascimento: vem junto, sem consulta por servidor, e nunca sai inteira na resposta. */
-    protected $with = ['pessoa'];
+    protected $with = ['pessoa.contatos'];
 
     /** @var list<string> */
     protected $hidden = ['pessoa'];
@@ -181,6 +179,36 @@ final class Servidor extends Model
         return $this->pessoa?->nome_social;
     }
 
+    /** E-mail principal da pessoa (contatos do cadastro central), ou `null`. */
+    public function emailDaPessoa(): ?string
+    {
+        return $this->contatoDaPessoa(['email']);
+    }
+
+    /** Telefone principal da pessoa: o fixo, ou o celular quando não há fixo. */
+    public function telefoneDaPessoa(): ?string
+    {
+        return $this->contatoDaPessoa(['telefone', 'celular']);
+    }
+
+    /** @param list<string> $tipos em ordem de preferência */
+    private function contatoDaPessoa(array $tipos): ?string
+    {
+        $contatos = $this->pessoa?->contatos;
+        if ($contatos === null) {
+            return null;
+        }
+
+        foreach ($tipos as $tipo) {
+            $contato = $contatos->where('tipo', $tipo)->sortByDesc('principal')->first();
+            if ($contato !== null) {
+                return (string) $contato->valor;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Servidores com esse CPF (11 dígitos), pelo documento da pessoa do cadastro central. Com outro tamanho, não casa
      * com ninguém.
@@ -204,7 +232,7 @@ final class Servidor extends Model
     }
 
     /**
-     * No JSON, `cpf`, `nome_social` e `data_nascimento` vêm da pessoa (o contrato com o frontend não depende das
+     * No JSON, `cpf`, `nome_social`, `data_nascimento`, `email` e `telefone` vêm da pessoa (o contrato com o frontend não depende das
      * colunas, que não existem mais); a relação em si nunca sai. Sem a pessoa carregada (relação com colunas parciais)
      * os campos não entram.
      *
@@ -217,6 +245,8 @@ final class Servidor extends Model
             $dados['cpf'] = $this->cpfFormatado();
             $dados['nome_social'] = $this->nomeSocialDaPessoa();
             $dados['data_nascimento'] = $this->nascimentoDaPessoa()?->toDateString();
+            $dados['email'] = $this->emailDaPessoa();
+            $dados['telefone'] = $this->telefoneDaPessoa();
         }
 
         return $dados;
