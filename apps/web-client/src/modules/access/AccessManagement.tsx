@@ -269,11 +269,11 @@ export const AccessManagement: React.FC = () => {
         />
       )}
 
-      {viewMode === 'painel' && !wizardOpen && (
+      {viewMode === 'painel' && (
         <AdminAccessPanel modules={modules} units={units} notify={notify} />
       )}
 
-      {viewMode === 'lista' && !wizardOpen && (<>
+      {viewMode === 'lista' && (<>
       <AdvancedFilters
         modules={modules}
         units={units}
