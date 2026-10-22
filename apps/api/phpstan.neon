@@ -8,6 +8,9 @@ parameters:
         - app
         - Modules
     tmpDir: storage/framework/phpstan
+    parallel:
+        maximumNumberOfProcesses: 2
+        processTimeout: 300.0
     excludePaths:
         - */vendor/*
         - Modules/*/app/*
