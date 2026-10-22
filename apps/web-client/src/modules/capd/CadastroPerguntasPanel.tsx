@@ -12,6 +12,7 @@ import {
   Modal,
   Switch,
   StatCard,
+  ActionsMenu,
 } from '@sysgov/ui';
 import {
   Plus,
@@ -451,6 +452,25 @@ export const CadastroPerguntasPanel: React.FC = () => {
   const columns = useMemo<ColumnDef<PerguntaComGrupo>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações do fator"
+                items={[
+                  { key: 'editar', label: 'Editar fator / pergunta', icon: <Edit3 className="h-3.5 w-3.5" />, onSelect: () => handleEditarPergunta(row.original) },
+                  { key: 'remover', label: 'Remover fator', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setConfirmDeleteModal({ open: true, perguntaId: row.original.id, codigo: row.original.codigo, modeloId: row.original.modelo_id }) },
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: 'codigo',
         header: 'Cód.',
         size: 80,
@@ -517,41 +537,6 @@ export const CadastroPerguntasPanel: React.FC = () => {
           ) : (
             <StatusChip label="Escala Padrão" variant="neutral" />
           ),
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 110,
-        enableSorting: false,
-        cell: ({ row }) => (
-          <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-              onClick={() => handleEditarPergunta(row.original)}
-              title="Editar fator / pergunta"
-            >
-              <Edit3 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() =>
-                setConfirmDeleteModal({
-                  open: true,
-                  perguntaId: row.original.id,
-                  codigo: row.original.codigo,
-                  modeloId: row.original.modelo_id,
-                })
-              }
-              title="Remover fator"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ),
       },
     ],
     []
@@ -832,6 +817,9 @@ export const CadastroPerguntasPanel: React.FC = () => {
         </CardHeader>
 
         <DataTable
+          exportable
+          exportFileName="capd-cadastro-perguntas"
+          exportTitle="CAPD — Cadastro Perguntas"
           data={perguntasFiltradas}
           columns={columns}
           fixedLayout

@@ -9,6 +9,7 @@ import {
   StatusChip,
   Select,
   StatCard,
+  ActionsMenu,
 } from '@sysgov/ui';
 import type { SelectOption } from '@sysgov/ui';
 import {
@@ -289,6 +290,22 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
   const columnsCit: ColumnDef<ApiDiarioBordo>[] = useMemo(
     () => [
       {
+        id: 'acoes',
+        header: 'Ações',
+        size: 110,
+        cell: ({ row }) => (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 hover:bg-primary/10"
+            onClick={() => setDetalheCitModal(row.original)}
+          >
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            Ver Ficha
+          </Button>
+        ),
+      },
+      {
         id: 'data_ocorrencia',
         header: 'Data Ocorrência',
         size: 120,
@@ -397,22 +414,6 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
           exportHeader: 'Hash SHA-256',
           exportValue: (row) => row.hash_sha256 || '—',
         },
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 110,
-        cell: ({ row }) => (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 hover:bg-primary/10"
-            onClick={() => setDetalheCitModal(row.original)}
-          >
-            <Eye className="h-3.5 w-3.5 text-primary" />
-            Ver Ficha
-          </Button>
-        ),
       },
     ],
     []
@@ -835,6 +836,25 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
   const columnsRecursos: ColumnDef<ApiRecurso>[] = useMemo(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações do recurso"
+                items={[
+                  { key: 'autos', label: 'Ver autos', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => setDetalheRecursoModal(row.original) },
+                  { key: 'imprimir', label: 'Imprimir petição e termo (PDF)', icon: <Printer className="h-3.5 w-3.5" />, onSelect: () => handleImprimirRecurso(row.original) },
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         id: 'protocolo',
         header: 'Protocolo / Data',
         size: 140,
@@ -927,7 +947,7 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
       },
       {
         id: 'fase',
-        header: 'Fase Regimental',
+        header: 'Fase Regimental', meta: { exportValue: (r) => r.status },
         size: 170,
         cell: ({ row }) => {
           const st = row.original.status;
@@ -961,33 +981,6 @@ export const PortalServidorView: React.FC<PortalServidorViewProps> = ({ portalSe
           }
           return <span className="text-[11px] text-muted-foreground">—</span>;
         },
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 150,
-        cell: ({ row }) => (
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10"
-              onClick={() => setDetalheRecursoModal(row.original)}
-            >
-              <Eye className="h-3.5 w-3.5 text-primary" />
-              Ver Autos
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs px-1.5 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
-              title="Imprimir Petição e Termo de Recurso (PDF)"
-              onClick={() => handleImprimirRecurso(row.original)}
-            >
-              <Printer className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ),
       },
     ],
     [handleImprimirRecurso]

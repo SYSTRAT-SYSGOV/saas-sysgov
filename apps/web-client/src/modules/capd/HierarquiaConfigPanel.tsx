@@ -9,6 +9,7 @@ import {
   Switch,
   Modal,
   StatCard,
+  ActionsMenu,
 } from '@sysgov/ui';
 import { Field, EmptyState, DataTable, ConfirmDialog } from '@/components/ui';
 import {
@@ -31,6 +32,7 @@ import {
   Building2,
   CheckCircle2,
   AlertTriangle,
+  Edit3,
 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { SysgovApi } from '@sysgov/sdk';
@@ -226,6 +228,25 @@ export const HierarquiaConfigPanel: React.FC = () => {
   const columns = useMemo<ColumnDef<NivelHierarquiaItem>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações do nível"
+                items={[
+                  { key: 'editar', label: 'Editar', icon: <Edit3 className="h-3.5 w-3.5" />, onSelect: () => abrirEdicao(row.original as ApiNivelHierarquia) },
+                  ...(row.original.ativo ? [{ key: 'desativar', label: 'Desativar nível', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => solicitarDesativacao(row.original as ApiNivelHierarquia) }] : []),
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: 'nivel',
         header: 'Nível',
         size: 80,
@@ -304,34 +325,6 @@ export const HierarquiaConfigPanel: React.FC = () => {
               Inativo
             </Badge>
           ),
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 110,
-        cell: ({ row }) => (
-          <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs px-2"
-              onClick={() => abrirEdicao(row.original as ApiNivelHierarquia)}
-            >
-              Editar
-            </Button>
-            {row.original.ativo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10"
-                onClick={() => solicitarDesativacao(row.original as ApiNivelHierarquia)}
-                title="Desativar este nível hierárquico"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </div>
-        ),
       },
     ],
     [],
@@ -493,6 +486,9 @@ export const HierarquiaConfigPanel: React.FC = () => {
           </div>
 
           <DataTable
+            exportable
+            exportFileName="capd-hierarquia-config"
+            exportTitle="CAPD — Hierarquia Config"
             columns={columns}
             data={niveisFiltrados}
             loading={loading}

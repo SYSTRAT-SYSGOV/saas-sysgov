@@ -11,6 +11,7 @@ import {
   Select,
   Modal,
   StatCard,
+  ActionsMenu,
 } from '@sysgov/ui';
 import {
   UserCheck,
@@ -1808,6 +1809,121 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
   const columnsAvaliacoes: ColumnDef<ApiAvaliacao>[] = React.useMemo(
     () => [
       {
+        id: 'actions',
+        header: () => <div className="text-center w-full">Ações Rápidas</div>,
+        size: 190,
+        cell: ({ row }) => {
+          const av = row.original;
+          const isPad = av.status_avaliacao === 'suspensa_licenca' || (av as any).bloqueio_pad;
+          const temRecurso = (av as any).tem_recurso || recursos.some((r) => r.avaliacao_id === av.id);
+          const respCount = Object.keys(av.respostas_fatores || {}).filter(
+            (k) => av.respostas_fatores[k]?.grau
+          ).length;
+
+          if (isPad) {
+            return (
+              <div className="flex justify-center items-center w-full">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs font-medium px-3 text-rose-600 border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg flex items-center gap-1.5 transition-all shadow-2xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFeedback({
+                      open: true,
+                      type: 'warning',
+                      title: 'Servidor com Bloqueio PAD',
+                      message:
+                        'Este servidor está com o ciclo avaliativo suspenso em virtude de processo administrativo disciplinar instaurado (art. 18 da Lei nº 1.704/2006).',
+                    });
+                  }}
+                >
+                  <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
+                  Ver Bloqueio
+                </Button>
+              </div>
+            );
+          }
+
+          if (temRecurso) {
+            return (
+              <div className="flex justify-center items-center w-full">
+                <Button
+                  size="sm"
+                  className="h-8 text-xs font-medium px-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-1.5 transition-all shadow-2xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const rec = recursos.find((r) => r.avaliacao_id === av.id);
+                    if (rec) setSelectedRecursoId(rec.id);
+                    setActiveTab('contrarrazoes');
+                  }}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Ver Recurso
+                </Button>
+              </div>
+            );
+          }
+
+          if (av.homologada || av.data_conclusao) {
+            return (
+              <div className="flex justify-center items-center w-full">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs font-medium px-3.5 text-foreground hover:bg-muted border-border rounded-lg flex items-center gap-1.5 transition-all shadow-2xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAvaliacaoEmFocoId(av.id);
+                    setModalEspelhoOpen(true);
+                  }}
+                >
+                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                  Ver Espelho
+                </Button>
+              </div>
+            );
+          }
+
+          if (respCount > 0) {
+            return (
+              <div className="flex justify-center items-center w-full">
+                <Button
+                  size="sm"
+                  className="h-8 text-xs font-semibold px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAvaliacaoEmFocoId(av.id);
+                    setModalAvaliarOpen(true);
+                  }}
+                >
+                  <ClipboardEdit className="h-3.5 w-3.5" />
+                  Continuar Avaliação
+                </Button>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex justify-center items-center w-full">
+              <Button
+                variant="default"
+                size="sm"
+                className="h-8 text-xs font-semibold px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAvaliacaoEmFocoId(av.id);
+                  setModalAvaliarOpen(true);
+                }}
+              >
+                <Play className="h-3.5 w-3.5 fill-current" />
+                Iniciar Avaliação
+              </Button>
+            </div>
+          );
+        },
+      },
+      {
         id: 'servidor',
         header: 'Servidor',
         size: 260,
@@ -1980,127 +2096,28 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
           );
         },
       },
-      {
-        id: 'actions',
-        header: () => <div className="text-center w-full">Ações Rápidas</div>,
-        size: 190,
-        cell: ({ row }) => {
-          const av = row.original;
-          const isPad = av.status_avaliacao === 'suspensa_licenca' || (av as any).bloqueio_pad;
-          const temRecurso = (av as any).tem_recurso || recursos.some((r) => r.avaliacao_id === av.id);
-          const respCount = Object.keys(av.respostas_fatores || {}).filter(
-            (k) => av.respostas_fatores[k]?.grau
-          ).length;
-
-          if (isPad) {
-            return (
-              <div className="flex justify-center items-center w-full">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-xs font-medium px-3 text-rose-600 border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg flex items-center gap-1.5 transition-all shadow-2xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFeedback({
-                      open: true,
-                      type: 'warning',
-                      title: 'Servidor com Bloqueio PAD',
-                      message:
-                        'Este servidor está com o ciclo avaliativo suspenso em virtude de processo administrativo disciplinar instaurado (art. 18 da Lei nº 1.704/2006).',
-                    });
-                  }}
-                >
-                  <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
-                  Ver Bloqueio
-                </Button>
-              </div>
-            );
-          }
-
-          if (temRecurso) {
-            return (
-              <div className="flex justify-center items-center w-full">
-                <Button
-                  size="sm"
-                  className="h-8 text-xs font-medium px-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-1.5 transition-all shadow-2xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const rec = recursos.find((r) => r.avaliacao_id === av.id);
-                    if (rec) setSelectedRecursoId(rec.id);
-                    setActiveTab('contrarrazoes');
-                  }}
-                >
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  Ver Recurso
-                </Button>
-              </div>
-            );
-          }
-
-          if (av.homologada || av.data_conclusao) {
-            return (
-              <div className="flex justify-center items-center w-full">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-xs font-medium px-3.5 text-foreground hover:bg-muted border-border rounded-lg flex items-center gap-1.5 transition-all shadow-2xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setAvaliacaoEmFocoId(av.id);
-                    setModalEspelhoOpen(true);
-                  }}
-                >
-                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                  Ver Espelho
-                </Button>
-              </div>
-            );
-          }
-
-          if (respCount > 0) {
-            return (
-              <div className="flex justify-center items-center w-full">
-                <Button
-                  size="sm"
-                  className="h-8 text-xs font-semibold px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setAvaliacaoEmFocoId(av.id);
-                    setModalAvaliarOpen(true);
-                  }}
-                >
-                  <ClipboardEdit className="h-3.5 w-3.5" />
-                  Continuar Avaliação
-                </Button>
-              </div>
-            );
-          }
-
-          return (
-            <div className="flex justify-center items-center w-full">
-              <Button
-                variant="default"
-                size="sm"
-                className="h-8 text-xs font-semibold px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAvaliacaoEmFocoId(av.id);
-                  setModalAvaliarOpen(true);
-                }}
-              >
-                <Play className="h-3.5 w-3.5 fill-current" />
-                Iniciar Avaliação
-              </Button>
-            </div>
-          );
-        },
-      },
     ],
     [recursos]
   );
 
   const columnsCit: ColumnDef<ApiDiarioBordo>[] = React.useMemo(
     () => [
+      {
+        id: 'acoes',
+        header: 'Ações',
+        size: 110,
+        cell: ({ row }) => (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 hover:bg-primary/10"
+            onClick={() => setDetalheCitModal(row.original)}
+          >
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            Ver Ficha
+          </Button>
+        ),
+      },
       {
         id: 'data_ocorrencia',
         header: 'Data Ocorrência',
@@ -2200,22 +2217,6 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
             <span className="text-[11px] text-muted-foreground font-mono">—</span>
           );
         },
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 110,
-        cell: ({ row }) => (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 hover:bg-primary/10"
-            onClick={() => setDetalheCitModal(row.original)}
-          >
-            <Eye className="h-3.5 w-3.5 text-primary" />
-            Ver Ficha
-          </Button>
-        ),
       },
     ],
     []
@@ -2552,6 +2553,26 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
   const columnsDevolutivas: ColumnDef<any>[] = React.useMemo(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const av = row.original;
+          const realizada = av.devolutiva_realizada;
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações da devolutiva"
+                items={[
+                  ...(realizada ? [{ key: 'ver-ata', label: 'Ver ata', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => setDetalheDevolutivaModal(av) }, { key: 'pdf', label: 'Imprimir ata em PDF', icon: <Printer className="h-3.5 w-3.5" />, onSelect: () => handleImprimirAtaDevolutiva(av) }] : [{ key: 'registrar', label: 'Registrar entrevista', icon: <Calendar className="h-3.5 w-3.5" />, onSelect: () => { setSelectedAvaliacaoId(av.id); setDataDevolutiva(new Date().toISOString().split('T')[0]); setResumoEntrevista(''); setAcordosDesenvolvimento(''); setModalDevolutivaOpen(true); } }]),
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         id: 'servidor',
         header: 'Servidor Avaliado',
         size: 260,
@@ -2713,61 +2734,6 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
           return <span className="text-[11px] text-muted-foreground italic">Aguardando pactuação</span>;
         },
       },
-      {
-        id: 'acoes',
-        header: () => <div className="text-center w-full">Ações</div>,
-        size: 180,
-        cell: ({ row }) => {
-          const av = row.original;
-          const realizada = av.devolutiva_realizada;
-
-          return (
-            <div className="flex items-center justify-center gap-1.5">
-              {realizada ? (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10 text-foreground"
-                    onClick={() => setDetalheDevolutivaModal(av)}
-                    title="Visualizar Ata Completa da Devolutiva"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-primary" />
-                    Ver Ata
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10 text-foreground"
-                    onClick={() => handleImprimirAtaDevolutiva(av)}
-                    title="Imprimir Ata Oficial em PDF A4"
-                  >
-                    <Printer className="h-3.5 w-3.5 text-muted-foreground" />
-                    PDF
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 shadow-xs"
-                  onClick={() => {
-                    setSelectedAvaliacaoId(av.id);
-                    setDataDevolutiva(new Date().toISOString().split('T')[0]);
-                    setResumoEntrevista('');
-                    setAcordosDesenvolvimento('');
-                    setModalDevolutivaOpen(true);
-                  }}
-                >
-                  <Calendar className="h-3.5 w-3.5 mr-1" />
-                  Registrar Entrevista
-                </Button>
-              )}
-            </div>
-          );
-        },
-      },
     ],
     [handleImprimirAtaDevolutiva]
   );
@@ -2902,6 +2868,26 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
   // ── Colunas DataTable: Recursos e Contrarrazões (Arts. 30 e 31) ───────────
   const columnsContrarrazoes: ColumnDef<any>[] = React.useMemo(
     () => [
+      {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const rec = row.original;
+          const respondido = !!rec.contestacao_chefia;
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações do recurso"
+                items={[
+                  ...(!respondido ? [{ key: 'contrarrazoes', label: 'Emitir contrarrazões', icon: <MessageSquare className="h-3.5 w-3.5" />, onSelect: () => { setSelectedRecursoId(rec.id); setTextoContrarrazao(''); setManterOuRetificar('manter'); setNovoGrauProposto(rec.grau_original ? rec.grau_original + 1 : 3); setModalContrarrazaoOpen(true); } }] : [{ key: 'parecer', label: 'Ver parecer', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => setDetalheRecursoModal(rec) }, { key: 'pdf', label: 'Imprimir termo em PDF', icon: <Printer className="h-3.5 w-3.5" />, onSelect: () => handleImprimirTermoContrarrazao(rec) }]),
+                ]}
+              />
+            </div>
+          );
+        },
+      },
       {
         id: 'protocolo',
         header: 'Protocolo / Data',
@@ -3068,61 +3054,6 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
                 <div className="font-mono text-[10px] text-muted-foreground">
                   Emitida em {dtManifestacao}
                 </div>
-              )}
-            </div>
-          );
-        },
-      },
-      {
-        id: 'acoes',
-        header: () => <div className="text-center w-full">Ações</div>,
-        size: 180,
-        cell: ({ row }) => {
-          const rec = row.original;
-          const respondido = !!rec.contestacao_chefia;
-
-          return (
-            <div className="flex items-center justify-center gap-1.5">
-              {!respondido ? (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-7 text-xs font-semibold px-2.5 rounded-md flex items-center gap-1 shadow-xs"
-                  onClick={() => {
-                    setSelectedRecursoId(rec.id);
-                    setTextoContrarrazao('');
-                    setManterOuRetificar('manter');
-                    setNovoGrauProposto(rec.grau_original ? rec.grau_original + 1 : 3);
-                    setModalContrarrazaoOpen(true);
-                  }}
-                >
-                  <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                  Emitir Contrarrazões
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10 text-foreground"
-                    onClick={() => setDetalheRecursoModal(rec)}
-                    title="Visualizar Parecer das Contrarrazões"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-primary" />
-                    Ver Parecer
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs font-semibold px-2 rounded-md flex items-center gap-1 hover:bg-primary/10 text-foreground"
-                    onClick={() => handleImprimirTermoContrarrazao(rec)}
-                    title="Imprimir Termo Oficial em PDF A4"
-                  >
-                    <Printer className="h-3.5 w-3.5 text-muted-foreground" />
-                    PDF
-                  </Button>
-                </>
               )}
             </div>
           );
