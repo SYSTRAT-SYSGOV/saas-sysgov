@@ -16,6 +16,7 @@ import { PagamentosFormatura } from './components/PagamentosFormatura';
 import { RelatorioFormatura } from './components/RelatorioFormatura';
 import { TurmasConsulta } from './components/TurmasConsulta';
 import { AlunosConsulta } from './components/AlunosConsulta';
+import { SeletorEscola } from '../escola/components/ComEscola';
 
 export type Aba = 'painel' | 'formandos' | 'pagamentos' | 'alunos' | 'turmas' | 'relatorios' | 'configuracao';
 
@@ -119,6 +120,8 @@ export const ModuloFormaturaMain: React.FC = () => {
           />
         </CardContent>
       </Card>
+
+      <SeletorEscola />
 
       <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)}>
         <TabsList className="print:hidden">

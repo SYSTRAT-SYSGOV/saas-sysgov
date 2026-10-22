@@ -8,6 +8,7 @@ import { ListaAlunos } from './components/ListaAlunos';
 import { CabecalhoAluno } from './components/CabecalhoAluno';
 import { LinhaDoTempo } from './components/LinhaDoTempo';
 import { PainelDesempenho } from './components/PainelDesempenho';
+import { SeletorEscola } from '../escola/components/ComEscola';
 
 const anoAtual = new Date().getFullYear();
 const ANOS = [anoAtual + 1, anoAtual, anoAtual - 1, anoAtual - 2].map((a) => ({ value: a, label: String(a) }));
@@ -42,6 +43,8 @@ export const ModuloPortfolioMain: React.FC = () => {
           emptyText="Nenhuma turma disponível"
         />
       </div>
+
+      <SeletorEscola />
 
       <div className="grid gap-4 md:grid-cols-[320px_1fr]">
         <Card><CardContent className="p-3">

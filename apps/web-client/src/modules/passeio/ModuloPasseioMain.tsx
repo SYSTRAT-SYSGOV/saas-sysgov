@@ -16,6 +16,7 @@ import { InscricoesTermos } from './components/InscricoesTermos';
 import { TurmasPasseio } from './components/TurmasPasseio';
 import { OnibusAssentos } from './components/OnibusAssentos';
 import { RelatoriosPasseio, type InicialRelatorio } from './components/RelatoriosPasseio';
+import { SeletorEscola } from '../escola/components/ComEscola';
 
 export type Aba = 'painel' | 'passeios' | 'inscricoes' | 'turmas' | 'onibus' | 'relatorios';
 
@@ -150,6 +151,8 @@ export const ModuloPasseioMain: React.FC = () => {
           />
         </CardContent>
       </Card>
+
+      <SeletorEscola />
 
       <Tabs value={aba} onValueChange={(v) => irPara(v as Aba)}>
         <TabsList className="print:hidden">
