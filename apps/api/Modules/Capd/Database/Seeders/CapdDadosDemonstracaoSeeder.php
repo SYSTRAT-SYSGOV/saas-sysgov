@@ -32,6 +32,7 @@ use Modules\Capd\Models\Servidor;
 use Modules\Capd\Models\ServidorAfastamento;
 use Modules\Capd\Models\Sessao;
 use Modules\Capd\Models\SessaoPauta;
+use Modules\Capd\Services\ServidorPessoaService;
 
 /**
  * Seeder de Demonstração Completo do Módulo CAPD (SAPDS / SYSGOV).
@@ -326,13 +327,12 @@ final class CapdDadosDemonstracaoSeeder extends Seeder
                 );
                 $userSec->tenants()->syncWithoutDetaching([$tenantId => ['status' => 'active', 'is_primary' => true]]);
 
-                $servSec = Servidor::withoutGlobalScope('tenant')->updateOrCreate(
-                    ['tenant_id' => $tenantId, 'matricula' => $secData['matricula']],
+                $servSec = $this->servidorDemonstracao(
+                    $tenantId,
+                    $secData['matricula'],
                     [
                         'user_id'               => $userSec->id,
-                        'cpf'                   => $secData['cpf'],
                         'nome_completo'         => $secData['nome'],
-                        'email'                 => $secData['email'],
                         'regime_juridico'       => 'comissionado',
                         'regime_previdenciario' => 'rgps',
                         'data_admissao'         => '2021-01-01',
@@ -344,7 +344,8 @@ final class CapdDadosDemonstracaoSeeder extends Seeder
                         'situacao_funcional'    => 'ativo',
                         'estagio_probatorio'    => false,
                         'carga_horaria_semanal' => 40,
-                    ]
+                    ],
+                    ['cpf' => $secData['cpf'], 'email' => $secData['email']]
                 );
                 $secretariosServidores[$secCode] = $servSec;
 
@@ -383,13 +384,12 @@ final class CapdDadosDemonstracaoSeeder extends Seeder
                 );
                 $userDir->tenants()->syncWithoutDetaching([$tenantId => ['status' => 'active', 'is_primary' => true]]);
 
-                $servDir = Servidor::withoutGlobalScope('tenant')->updateOrCreate(
-                    ['tenant_id' => $tenantId, 'matricula' => $dirData['matricula']],
+                $servDir = $this->servidorDemonstracao(
+                    $tenantId,
+                    $dirData['matricula'],
                     [
                         'user_id'               => $userDir->id,
-                        'cpf'                   => $dirData['cpf'],
                         'nome_completo'         => $dirData['nome'],
-                        'email'                 => $dirData['email'],
                         'regime_juridico'       => 'estatutario',
                         'regime_previdenciario' => 'rpps',
                         'data_admissao'         => '2012-04-10',
@@ -402,7 +402,8 @@ final class CapdDadosDemonstracaoSeeder extends Seeder
                         'situacao_funcional'    => 'ativo',
                         'estagio_probatorio'    => false,
                         'carga_horaria_semanal' => 40,
-                    ]
+                    ],
+                    ['cpf' => $dirData['cpf'], 'email' => $dirData['email']]
                 );
                 $diretoresServidores[$depCode] = $servDir;
 
@@ -707,14 +708,12 @@ final class CapdDadosDemonstracaoSeeder extends Seeder
                 $secCode = $departamentosParentMap[$sDef['dep']] ?? 'SMAD';
                 $secObj = $secretariasMap[$secCode];
 
-                $serv = Servidor::withoutGlobalScope('tenant')->updateOrCreate(
-                    ['tenant_id' => $tenantId, 'matricula' => $sDef['mat']],
+                $serv = $this->servidorDemonstracao(
+                    $tenantId,
+                    $sDef['mat'],
                     [
                         'user_id'               => $userS->id,
-                        'cpf'                   => $sDef['cpf'],
                         'nome_completo'         => $sDef['nome'],
-                        'email'                 => $sDef['email'],
-                        'data_nascimento'       => '1985-06-15',
                         'data_admissao'         => $sDef['estagio'] ? '2023-03-01' : '2016-02-15',
                         'regime_juridico'       => 'estatutario',
                         'regime_previdenciario' => 'rpps',
@@ -728,7 +727,8 @@ final class CapdDadosDemonstracaoSeeder extends Seeder
                         'estagio_probatorio'    => $sDef['estagio'],
                         'estagio_fase_atual'    => $sDef['estagio_fase'] ?? null,
                         'carga_horaria_semanal' => 40,
-                    ]
+                    ],
+                    ['cpf' => $sDef['cpf'], 'email' => $sDef['email'], 'data_nascimento' => '1985-06-15']
                 );
 
                 OrgUnitUser::withoutGlobalScope('tenant')->updateOrCreate(
@@ -1110,5 +1110,56 @@ final class CapdDadosDemonstracaoSeeder extends Seeder
         });
 
         echo "==> Módulo CAPD populado com sucesso: 5 Secretarias, 10 Departamentos, 15 Chefias, 50 Servidores Operacionais, 150 Avaliações nos 3 Ciclos e 5 Recursos!\n";
+    }
+
+    /**
+     * Cria ou atualiza o servidor de demonstração pela pessoa do cadastro central: CPF, nascimento, e-mail e telefone
+     * não são colunas do servidor desde a Fase 5. Os CPFs fictícios do roteiro viram CPFs de dígitos válidos (o
+     * cadastro de pessoas recusa os inválidos), estáveis por CPF de origem.
+     *
+     * @param array<string, mixed> $dados colunas do servidor
+     * @param array{cpf: string, email: string, data_nascimento?: string} $pessoa dados que vivem na pessoa
+     */
+    private function servidorDemonstracao(int $tenantId, string $matricula, array $dados, array $pessoa): Servidor
+    {
+        $servicos = app(ServidorPessoaService::class);
+        $civis = ['cpf' => $this->cpfDemonstracao($pessoa['cpf'])];
+        if (isset($pessoa['data_nascimento'])) {
+            $civis['data_nascimento'] = $pessoa['data_nascimento'];
+        }
+        $contatos = ['email' => $pessoa['email']];
+
+        $servidor = Servidor::withoutGlobalScope('tenant')->where('tenant_id', $tenantId)->where('matricula', $matricula)->first();
+        if ($servidor !== null) {
+            $servidor->update($dados);
+            $servicos->sincronizar($servidor, $civis, [], $contatos);
+
+            return $servidor;
+        }
+
+        $nova = $servicos->resolverParaNovo([...$civis, 'nome' => (string) $dados['nome_completo']]);
+        $servidor = new Servidor([...$dados, 'tenant_id' => $tenantId, 'matricula' => $matricula]);
+        $servidor->forceFill(['pessoa_id' => $nova->id])->save();
+        $servicos->concluirCadastro($servidor, $nova, $contatos);
+
+        return $servidor;
+    }
+
+    /** CPF de demonstração estável por origem e com dígitos verificadores válidos. */
+    private function cpfDemonstracao(string $origem): string
+    {
+        $digitos = array_map('intval', str_split(str_pad((string) (crc32('capd-' . $origem) % 1_000_000_000), 9, '0', STR_PAD_LEFT)));
+        if (count(array_unique($digitos)) === 1) {
+            $digitos[8] = ($digitos[8] + 1) % 10; // sequência repetida não é CPF válido
+        }
+        foreach ([10, 11] as $peso) {
+            $soma = 0;
+            foreach ($digitos as $i => $d) {
+                $soma += $d * ($peso - $i);
+            }
+            $digitos[] = ($soma * 10 % 11) % 10;
+        }
+
+        return implode('', $digitos);
     }
 }
