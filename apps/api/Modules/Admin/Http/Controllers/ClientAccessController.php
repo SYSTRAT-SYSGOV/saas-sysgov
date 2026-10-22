@@ -10,6 +10,7 @@ use App\Models\UserModuleAccess;
 use App\Services\ModuleAccessService;
 use App\Support\AuditLogger;
 use App\Support\TenantContext;
+use Modules\Pessoas\Services\PessoaDoUsuarioService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -274,6 +275,8 @@ final class ClientAccessController
 
             return $user;
         });
+
+        app(PessoaDoUsuarioService::class)->garantir($user, app(TenantContext::class)->get(), $actor->id, 'admin');
 
         $this->audit->record('tenant', 'access.user_created', "User #{$user->id}", null, [
             'tenant_id' => $tenantId,

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Pessoas\Services\PessoaDoUsuarioService;
 
 final class UserService
 {
@@ -123,6 +124,7 @@ final class UserService
                     ->update(['tenant_id' => $tenant->id]);
             }
             $user->clearPermissionCache($tenant->id);
+            app(PessoaDoUsuarioService::class)->garantir($user, $tenant, auth()->id(), 'admin');
 
             $this->audit->record('admin', 'tenant_admin.created', "TenantAdmin #{$user->id} for Tenant #{$tenant->id}", null, $user->toArray());
             $this->outbox->publish('TenantAdminCreated', [
