@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { accessApi, AccessDashboardData, AccessUser, AccessModule, OrgUnitNode, Cargo, AccessGroup, AccessCategory } from './AccessApi';
 import { AdminAccessPanel, NewUserWizard, UserEditModal, AdvancedFilters, UserFilters } from './evolution';
-import { Card, Badge } from '@sysgov/ui';
+import { Card, Badge, ActionsMenu } from '@sysgov/ui';
 import { Tabs } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';
@@ -152,6 +152,14 @@ export const AccessManagement: React.FC = () => {
 
   const userColumns: ColumnDef<AccessUser, any>[] = [
     {
+      id: 'acoes', header: '', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu triggerLabel="Ações do usuário" items={[{ key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => openEdit(row.original) }]} />
+        </div>
+      ),
+    },
+    {
       id: 'name',
       header: 'Nome',
       accessorKey: 'name',
@@ -191,20 +199,6 @@ export const AccessManagement: React.FC = () => {
             </Badge>
           ))}
         </div>
-      ),
-    },
-    {
-      id: 'actions',
-      header: 'Ações',
-      enableSorting: false,
-      cell: ({ row }) => (
-        <button
-          onClick={() => openEdit(row.original)}
-          className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          title="Editar usuário"
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
       ),
     },
   ];
@@ -304,6 +298,9 @@ export const AccessManagement: React.FC = () => {
 
         <div className="p-3">
           <DataTable
+            exportable
+            exportFileName="access-access"
+            exportTitle="Acessos — Access"
             columns={userColumns}
             data={safeUsers}
             loading={loading}

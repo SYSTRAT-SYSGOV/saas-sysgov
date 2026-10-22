@@ -155,6 +155,62 @@ describe('DataTable', () => {
     });
   });
 
+  describe('exportação automática por accessor', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    const csvExportado = async (cols: ColumnDef<TestItem, any>[]) => {
+      const originalCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        const el = originalCreateElement(tag);
+        if (tag === 'a') el.click = vi.fn();
+        return el;
+      });
+      const createObjectURL = vi.fn((_blob: Blob) => 'blob:mock');
+      (URL as any).createObjectURL = createObjectURL;
+      (URL as any).revokeObjectURL = vi.fn();
+
+      render(<DataTable columns={cols} data={data} pageSize={10} exportable />);
+      fireEvent.click(screen.getByText('Exportar'));
+      fireEvent.click(screen.getByText('CSV'));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const blob: Blob = createObjectURL.mock.calls[0][0];
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsText(blob);
+      });
+    };
+
+    it('exporta colunas com accessorKey e cabeçalho em texto, sem exigir meta.exportValue', async () => {
+      const cols: ColumnDef<TestItem, any>[] = [
+        { accessorKey: 'id', header: 'ID' },
+        { accessorKey: 'name', header: 'Nome', cell: ({ row }) => <b>{row.original.name}</b> },
+        { id: 'acoes', header: '', cell: () => <button>x</button> },
+      ];
+      const text = await csvExportado(cols);
+
+      expect(text).toContain('ID,Nome');
+      expect(text).not.toContain('acoes');
+      expect(text).toContain('Item A');
+    });
+
+    it('meta.exportIgnore tira a coluna do arquivo', async () => {
+      const cols: ColumnDef<TestItem, any>[] = [
+        { accessorKey: 'id', header: 'ID', meta: { exportIgnore: true } },
+        { accessorKey: 'name', header: 'Nome' },
+      ];
+      const text = await csvExportado(cols);
+
+      expect(text).toContain('Nome');
+      expect(text).not.toContain('ID');
+    });
+  });
+
   describe('sorting', () => {
     // Fora de ordem alfabética de propósito — clicar no cabeçalho precisa
     // de fato reordenar, não só já estar por acaso na ordem certa.

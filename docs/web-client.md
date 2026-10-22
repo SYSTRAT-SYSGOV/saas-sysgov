@@ -280,6 +280,20 @@ export const MeuModulo: React.FC = () => {
 export default MeuModulo;
 ```
 
+### 7.1 Padrão de grades (`DataTable`)
+
+Toda grade de dados do portal segue o padrão da tela do Licita:
+
+- **`DataTable` de `@/components/ui`**, com `exportable`, `exportFileName` e `exportTitle` (exporta CSV, XLSX e PDF de todas as
+  linhas filtradas), paginação e seletor de linhas por página (ligados por padrão — não desligue). Tabela `<table>` feita à
+  mão não é aceita para listagens.
+- **Exportação:** colunas com `accessorKey`/`accessorFn` e cabeçalho em texto saem sozinhas (valor simples). Coluna com `cell`
+  customizada declara `meta.exportValue` com o que a célula mostra na tela. `meta.exportIgnore` tira uma coluna do arquivo.
+- **Ações da linha:** coluna `acoes` **à esquerda**, com cabeçalho vazio, usando `ActionsMenu` de `@sysgov/ui`. Com mais de uma ação
+  vira dropdown (⋮); com uma só, o botão fica direto na linha (o `ActionsMenu` já faz isso). Ações condicionais entram no
+  array `items` com `...(condição ? [item] : [])`.
+- **Testes:** para acionar um item do menu use `acionarMenu` de `src/test-utils/acoesMenu.ts`.
+
 ---
 
 ## 📝 8. Rotas Registradas
