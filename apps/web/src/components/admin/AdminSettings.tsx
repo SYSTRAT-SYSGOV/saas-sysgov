@@ -1,18 +1,10 @@
 import React, { useState } from 'react';
 import {
   Settings,
-  Palette,
-  Shield,
-  Bell,
-  Globe,
   Save,
   RotateCcw,
   CheckCircle2,
-  Sparkles,
   Layout,
-  Lock,
-  Mail,
-  Sliders,
 } from 'lucide-react';
 import { useAdminConfig } from '../../contexts/AdminConfigContext';
 import { SystemBrandingConfig } from '../../types/admin';
@@ -27,23 +19,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
   const { config, updateConfig, resetConfig } = useAdminConfig();
 
   const [form, setForm] = useState<SystemBrandingConfig>({ ...config });
-  const [activeTab, setActiveTab] = useState<'branding' | 'security' | 'notifications'>('branding');
-
-  // Security settings state
-  const [securitySettings, setSecuritySettings] = useState({
-    enforce2FA: true,
-    sessionTimeoutMinutes: 60,
-    minPasswordLength: 8,
-    maxLoginAttempts: 5,
-  });
-
-  // Notifications state
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailAlerts: true,
-    webhookNotifications: true,
-    weeklyReportDigest: true,
-    loginNewDeviceAlert: true,
-  });
 
   const handleSaveAll = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +26,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
     onAddToast({
       type: 'success',
       title: 'Configurações Salvas',
-      message: 'A identidade visual e parâmetros do sistema foram atualizados.',
+      message: 'A identidade visual foi salva neste navegador.',
     });
   };
 
@@ -72,10 +47,11 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Settings className="w-5 h-5 text-slate-500" />
-            Configurações Globais & White-Label
+            White-Label &amp; Identidade Visual
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Personalize a identidade da plataforma, marca, paleta de cores corporativa, regras de segurança e notificações.
+            Personalize a marca e a paleta de cores do painel. As preferências ficam salvas apenas neste navegador; não
+            valem para outros usuários nem outros dispositivos.
           </p>
         </div>
 
@@ -100,47 +76,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 text-xs font-semibold">
-        <button
-          onClick={() => setActiveTab('branding')}
-          className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
-            activeTab === 'branding'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Palette className="w-4 h-4" />
-          Personalização & White-Label
-        </button>
-
-        <button
-          onClick={() => setActiveTab('security')}
-          className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
-            activeTab === 'security'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Shield className="w-4 h-4" />
-          Segurança & Sessões
-        </button>
-
-        <button
-          onClick={() => setActiveTab('notifications')}
-          className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
-            activeTab === 'notifications'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Bell className="w-4 h-4" />
-          Notificações & Alertas
-        </button>
-      </div>
-
       {/* Tab: Branding & White-Label */}
-      {activeTab === 'branding' && (
+      {(
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 p-6 space-y-4">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -314,125 +251,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
         </div>
       )}
 
-      {/* Tab: Security */}
-      {activeTab === 'security' && (
-        <Card className="p-6 space-y-4 max-w-2xl">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Lock className="w-4 h-4 text-rose-500" />
-            Políticas de Acesso & Segurança
-          </h2>
-
-          <div className="space-y-3 pt-2">
-            <label className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs cursor-pointer">
-              <div>
-                <span className="font-semibold text-slate-900 dark:text-white block">
-                  Exigir Autenticação em Dois Fatores (2FA)
-                </span>
-                <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                  Obrigatório para todos os usuários com papel de Administrador e Gestor.
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={securitySettings.enforce2FA}
-                onChange={(e) =>
-                  setSecuritySettings({ ...securitySettings, enforce2FA: e.target.checked })
-                }
-                className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
-              />
-            </label>
-
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Tempo Limite da Sessão (minutos)
-                </label>
-                <input
-                  type="number"
-                  value={securitySettings.sessionTimeoutMinutes}
-                  onChange={(e) =>
-                    setSecuritySettings({
-                      ...securitySettings,
-                      sessionTimeoutMinutes: Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-primary focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Tamanho Mínimo da Senha
-                </label>
-                <input
-                  type="number"
-                  value={securitySettings.minPasswordLength}
-                  onChange={(e) =>
-                    setSecuritySettings({
-                      ...securitySettings,
-                      minPasswordLength: Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-primary focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Tab: Notifications */}
-      {activeTab === 'notifications' && (
-        <Card className="p-6 space-y-4 max-w-2xl">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Mail className="w-4 h-4 text-blue-500" />
-            Canais de Notificação & Alertas
-          </h2>
-
-          <div className="space-y-3 pt-2">
-            <label className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs cursor-pointer">
-              <div>
-                <span className="font-semibold text-slate-900 dark:text-white block">
-                  Alertas Críticos por E-mail
-                </span>
-                <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                  Envio imediato de incidentes, falhas de API ou bloqueio de rate-limit.
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={notificationSettings.emailAlerts}
-                onChange={(e) =>
-                  setNotificationSettings({ ...notificationSettings, emailAlerts: e.target.checked })
-                }
-                className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs cursor-pointer">
-              <div>
-                <span className="font-semibold text-slate-900 dark:text-white block">
-                  Resumo Semanal Executivo (Digest)
-                </span>
-                <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                  Relatório consolidado de MRR, novos usuários e métricas aos domingos.
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={notificationSettings.weeklyReportDigest}
-                onChange={(e) =>
-                  setNotificationSettings({
-                    ...notificationSettings,
-                    weeklyReportDigest: e.target.checked,
-                  })
-                }
-                className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4"
-              />
-            </label>
-          </div>
-        </Card>
-      )}
     </div>
   );
 };

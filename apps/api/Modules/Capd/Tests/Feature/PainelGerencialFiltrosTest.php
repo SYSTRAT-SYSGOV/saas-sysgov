@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -98,7 +99,7 @@ final class PainelGerencialFiltrosTest extends TestCase
         ]);
 
         $user1 = User::create(['name' => 'Professora Ana', 'email' => 'ana@teste.gov.br', 'password' => bcrypt('password')]);
-        $servidor1 = Servidor::create([
+        $servidor1 = ServidorDeTeste::criar([
             'user_id'            => $user1->id,
             'matricula'          => 'MAT-101',
             'nome_completo'      => 'Ana Souza',
@@ -111,7 +112,7 @@ final class PainelGerencialFiltrosTest extends TestCase
         ]);
 
         $user2 = User::create(['name' => 'Médico Bruno', 'email' => 'bruno@teste.gov.br', 'password' => bcrypt('password')]);
-        $servidor2 = Servidor::create([
+        $servidor2 = ServidorDeTeste::criar([
             'user_id'            => $user2->id,
             'matricula'          => 'MAT-102',
             'nome_completo'      => 'Bruno Lima',

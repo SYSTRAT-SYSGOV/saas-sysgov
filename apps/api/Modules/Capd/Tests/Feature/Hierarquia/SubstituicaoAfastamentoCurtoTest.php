@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature\Hierarquia;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -45,7 +46,7 @@ final class SubstituicaoAfastamentoCurtoTest extends TestCase
         OrgUnitUser::create(['tenant_id' => $tenant->id, 'org_unit_id' => $departamento->id, 'user_id' => $responsavel->id, 'role' => 'responsavel', 'valid_from' => Carbon::parse('2020-01-01')]);
 
         $servidorUser = User::factory()->create();
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SERV-004', 'cpf' => '444.444.444-44',
             'nome_completo' => 'Ciclano', 'cargo_efetivo' => 'Auxiliar', 'orgao_lotacao' => 'Departamento',
             'user_id' => $servidorUser->id, 'org_unit_id' => $departamento->id,
@@ -61,7 +62,7 @@ final class SubstituicaoAfastamentoCurtoTest extends TestCase
 
         ['servidor' => $servidor] = $this->montarArvore($tenant, NivelHierarquia::REGRA_SUBSTITUTO_LEGAL);
 
-        $substituto = Servidor::create([
+        $substituto = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SERV-005', 'cpf' => '555.555.555-55',
             'nome_completo' => 'Substituto', 'cargo_efetivo' => 'Auxiliar', 'orgao_lotacao' => 'Departamento',
         ]);

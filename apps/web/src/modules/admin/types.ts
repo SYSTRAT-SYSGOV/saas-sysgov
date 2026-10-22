@@ -86,7 +86,14 @@ export interface Invitation {
 export interface Paginated<T> {
   data: T[];
   links?: Record<string, unknown>;
-  meta?: { current_page: number; last_page: number; total: number; per_page: number };
+  meta?: {
+    current_page: number;
+    last_page: number;
+    total: number;
+    per_page: number;
+    /** Totais do conjunto filtrado inteiro (listagem de tenants). */
+    summary?: { total: number; active: number; mrr_cents: number; user_count: number };
+  };
 }
 
 export interface SaasModule {

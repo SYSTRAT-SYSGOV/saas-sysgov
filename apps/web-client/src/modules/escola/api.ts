@@ -75,16 +75,36 @@ export interface DadosAluno {
   pai?: string | null;
   situacao?: SituacaoAluno;
   contatos?: Contato[];
+  /** Aluno menor sem CPF: pessoa física responsável, do Cadastro de Pessoas. */
+  responsavel_id?: number | null;
+  /** Cria a pessoa mesmo havendo outra com o mesmo nome e nascimento. */
+  confirmar_novo?: boolean;
 }
 
-export interface ResultadoImportacaoAlunos { criados: number; atualizados: number; rejeitadas: { linha: number; motivo: string }[] }
+export interface ResultadoImportacaoAlunos {
+  criados: number;
+  atualizados: number;
+  rejeitadas: { linha: number; motivo: string }[];
+  /** Linhas sem CPF que coincidem com pessoa existente: não foram gravadas até confirmar. */
+  possiveis_duplicidades: { linha: number; nome: string; sugestoes: { id: number; nome: string }[] }[];
+  /** Alunos gravados sem pessoa (faltou nascimento ou responsável); ficam para a conciliação. */
+  sem_pessoa: { linha: number; nome: string; motivo: string }[];
+}
 export interface ResultadoImportacaoMaterias { importadas: number; ignoradas: number }
 
 /* ------------------------------------------------------------------ */
 /* Erros                                                                */
 /* ------------------------------------------------------------------ */
 
-export interface ErroApi { status: number; mensagem: string; campos?: Record<string, string[]> }
+export interface ErroApi {
+  status: number;
+  mensagem: string;
+  campos?: Record<string, string[]>;
+  /** Código da regra de negócio do cadastro de pessoas (ex.: `responsavel_obrigatorio`). */
+  codigo?: string;
+  /** Contexto da regra (ex.: `sugestoes` de pessoa semelhante). */
+  dados?: Record<string, unknown>;
+}
 
 /**
  * Normaliza erros da API: regra de negócio (422 {"error"}), validação (422 {"message","errors"}),
@@ -109,7 +129,7 @@ export function erroApi(erro: unknown): ErroApi {
       padrao[status] ||
       'Não foi possível concluir a operação.';
 
-    return { status, mensagem, campos: errors };
+    return { status, mensagem, campos: errors, codigo: typeof data?.code === 'string' ? data.code : undefined, dados: data };
   }
 
   return { status: 0, mensagem: 'Falha de comunicação com o servidor.' };
@@ -194,7 +214,11 @@ export const escolaApi = {
   atualizarAluno: (id: number, dados: DadosAluno) => put<Aluno>(`/alunos/${id}`, dados),
   excluirAluno: (id: number) => del(`/alunos/${id}`),
   excluirAlunos: (ids: number[]) => post<{ excluidos: number }>('/alunos/excluir', { ids }),
-  importarAlunos: (file: File) => post<ResultadoImportacaoAlunos>('/alunos/importar', arquivo('arquivo', file)),
+  importarAlunos: (file: File, confirmarDuplicidades = false) => {
+    const form = arquivo('arquivo', file);
+    if (confirmarDuplicidades) form.append('confirmar_duplicidades', '1');
+    return post<ResultadoImportacaoAlunos>('/alunos/importar', form);
+  },
   enviarFoto: (id: number, file: File) => post<Aluno>(`/alunos/${id}/foto`, arquivo('foto', file)),
   urlFoto: (id: number) => `${base}/alunos/${id}/foto`,
 

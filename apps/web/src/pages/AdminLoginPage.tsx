@@ -16,7 +16,8 @@ import {
   Terminal,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { loginAdminMaster } from '../services/api';
+import { loginAdminMaster, AdminLoginError } from '../services/api';
+import { withApiBase } from '../config/env';
 import { useAuthContext } from '../contexts/AuthContext';
 
 interface AdminLoginPageProps {
@@ -35,6 +36,54 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [mfaStep, setMfaStep] = useState<'none' | 'code' | 'setup'>('none');
+  const [mfaCode, setMfaCode] = useState('');
+  const [setupSecret, setSetupSecret] = useState<string | null>(null);
+  const [setupQr, setSetupQr] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ user: any; token: string } | null>(null);
+
+  const finishLogin = (user: any, token: string) => {
+    loginAdminSession(user, token);
+    if (onLoginSuccess) {
+      onLoginSuccess();
+    }
+    navigate('/admin/dashboard', { replace: true });
+  };
+
+  const authHeaders = (token: string) => ({
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    Authorization: `Bearer ${token}`,
+  });
+
+  const startMfaSetup = async (token: string) => {
+    const res = await fetch(withApiBase('/api/admin/me/mfa/setup'), { method: 'POST', headers: authHeaders(token) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Falha ao iniciar a configuração do MFA.');
+    setSetupSecret(data.secret || data.otpauth_url || null);
+    setSetupQr(typeof data.qr_code_url === 'string' && data.qr_code_url.startsWith('data:image/') ? data.qr_code_url : null);
+  };
+
+  const confirmMfaSetup = async () => {
+    if (!pending) return;
+
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(withApiBase('/api/admin/me/mfa/confirm'), {
+        method: 'POST',
+        headers: authHeaders(pending.token),
+        body: JSON.stringify({ code: mfaCode.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.errors?.code?.[0] || data.message || 'Código inválido.');
+      finishLogin(pending.user, pending.token);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Código inválido.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   React.useEffect(() => {
     if (isAuthenticated) {
@@ -53,31 +102,41 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
       return;
     }
 
+    // Passo de configuração do MFA: confirma o código com o token já emitido, sem refazer o
+    // login (refazer o login gerava um novo segredo a cada envio e o código nunca batia).
+    if (mfaStep === 'setup' && pending) {
+      await confirmMfaSetup();
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
-      const response = await loginAdminMaster(email.trim(), password);
-      if (response.success && response.user) {
-        loginAdminSession(response.user, response.token);
-        if (onLoginSuccess) {
-          onLoginSuccess();
+      const response = await loginAdminMaster(email.trim(), password, mfaStep === 'code' ? mfaCode.trim() : undefined);
+      if (response.success && response.user && response.token) {
+        if (response.mfa_setup_required) {
+          setPending({ user: response.user, token: response.token });
+          setMfaStep('setup');
+          setMfaCode('');
+          await startMfaSetup(response.token);
+        } else {
+          finishLogin(response.user, response.token);
         }
-        navigate('/admin/dashboard', { replace: true });
       } else {
         setErrorMessage(response.message || 'Credenciais master inválidas.');
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Credenciais master inválidas.');
+      if (err instanceof AdminLoginError && err.code === 'MFA_CODE_REQUIRED') {
+        setMfaStep('code');
+        setMfaCode('');
+        setErrorMessage(null);
+      } else {
+        setErrorMessage(err.message || 'Credenciais master inválidas.');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleQuickFillMaster = () => {
-    setEmail('admin@sgfiscal.com.br');
-    setPassword('admin123');
-    setErrorMessage(null);
   };
 
   return (
@@ -194,7 +253,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="admin@sgfiscal.com.br"
+                  placeholder="seu.email@empresa.com.br"
                   className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono"
                   required
                 />
@@ -204,7 +263,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
                 <span>Senha Mestra</span>
-                <span className="text-[11px] text-slate-400 font-mono">Demo: admin123</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -220,6 +278,40 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                 />
               </div>
             </div>
+
+            {mfaStep !== 'none' && (
+              <div className="space-y-2">
+                {mfaStep === 'setup' && (
+                  <div className="text-xs text-slate-300 bg-slate-950 border border-amber-500/40 rounded-xl p-3 space-y-1">
+                    <p className="font-semibold text-amber-300">Configure a verificação em duas etapas (obrigatória)</p>
+                    <p>No app autenticador (Google Authenticator, Authy…), escaneie o QR code abaixo e digite o código de 6 dígitos.</p>
+                    {setupQr && (
+                      <img
+                        src={setupQr}
+                        alt="QR code para configurar o autenticador"
+                        className="mx-auto my-2 w-44 h-44 rounded-lg bg-white p-1"
+                      />
+                    )}
+                    <details>
+                      <summary className="cursor-pointer text-slate-400">Não consegue escanear? Use a chave manual</summary>
+                      <p className="font-mono break-all select-all text-slate-100 mt-1">{setupSecret ?? 'Gerando chave…'}</p>
+                    </details>
+                  </div>
+                )}
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Código de verificação (6 dígitos)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={e => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono tracking-widest"
+                  required
+                />
+              </div>
+            )}
 
             <button
               type="submit"
@@ -239,16 +331,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
               )}
             </button>
 
-            {/* Quick pre-fill button */}
-            <div className="pt-3 text-center border-t border-slate-800/80">
-              <button
-                type="button"
-                onClick={handleQuickFillMaster}
-                className="text-xs text-amber-400 hover:text-amber-300 underline underline-offset-2 font-mono cursor-pointer"
-              >
-                Preencher credenciais Master (Demonstração)
-              </button>
-            </div>
           </form>
         </div>
       </main>

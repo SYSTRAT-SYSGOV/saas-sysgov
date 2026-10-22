@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,7 +22,7 @@ final class EmbedTokenTest extends TestCase
         $tenant = Tenant::create(['name' => 'Prefeitura de Araucária', 'slug' => 'araucaria', 'type' => 'prefeitura', 'status' => 'active']);
         app(TenantContext::class)->set($tenant);
 
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id'          => $tenant->id,
             'matricula'          => 'SERV-900',
             'cpf'                => '111.222.333-44',
@@ -50,7 +51,7 @@ final class EmbedTokenTest extends TestCase
         $tenant = Tenant::create(['name' => 'Prefeitura de Araucária', 'slug' => 'araucaria', 'type' => 'prefeitura', 'status' => 'active']);
         app(TenantContext::class)->set($tenant);
 
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id'          => $tenant->id,
             'matricula'          => 'HEAD-100',
             'cpf'                => '222.333.444-55',

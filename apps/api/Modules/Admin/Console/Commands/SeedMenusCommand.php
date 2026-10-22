@@ -34,7 +34,6 @@ final class SeedMenusCommand extends Command
                 'items' => [
                     ['label' => 'Usuários & Permissões', 'route' => 'admin_users', 'icon' => 'Users', 'shortcut' => 'U', 'module_alias' => 'users', 'order' => 1],
                     ['label' => 'Organizações & Tenants', 'route' => 'admin_tenants', 'icon' => 'Building2', 'shortcut' => 'T', 'module_alias' => 'tenants', 'order' => 2],
-                    ['label' => 'Registros & Tabelas', 'route' => 'admin_records', 'icon' => 'Table', 'shortcut' => 'R', 'module_alias' => 'records', 'order' => 3],
                     ['label' => 'Módulos da Plataforma', 'route' => 'module_catalog', 'icon' => 'Database', 'shortcut' => 'C', 'module_alias' => 'catalog', 'order' => 5],
                 ],
             ],
@@ -45,7 +44,7 @@ final class SeedMenusCommand extends Command
                 'order' => 3,
                 'items' => [
                     ['label' => 'Faturamento & Invoices', 'route' => 'admin_billing', 'icon' => 'CreditCard', 'shortcut' => 'F', 'module_alias' => 'billing', 'order' => 1],
-                    ['label' => 'APIs & Integrações', 'route' => 'admin_apis', 'icon' => 'Plug', 'shortcut' => 'I', 'module_alias' => 'apis', 'order' => 2],
+                    ['label' => 'Saúde & Integrações', 'route' => 'admin_apis', 'icon' => 'Plug', 'shortcut' => 'I', 'module_alias' => 'apis', 'order' => 2],
                     ['label' => 'Logs & Auditoria', 'route' => 'admin_logs', 'icon' => 'ShieldAlert', 'shortcut' => 'L', 'module_alias' => 'compliance', 'order' => 3],
                 ],
             ],
@@ -68,13 +67,14 @@ final class SeedMenusCommand extends Command
             MenuItem::where('menu_group_id', $legacyGroup->getKey())->delete();
             $legacyGroup->delete();
         }
-        MenuItem::whereIn('route', ['contratos', 'helpdesk', 'contabilidade'])->delete();
+        // Telas removidas do painel (admin_records era um CRUD com dados fictícios).
+        MenuItem::whereIn('route', ['contratos', 'helpdesk', 'contabilidade', 'admin_records'])->delete();
 
         foreach ($groups as $groupData) {
             $items = $groupData['items'];
             unset($groupData['items']);
 
-            $group = MenuGroup::updateOrCreate(['slug' => $groupData['slug']], $groupData + ['is_active' => true]);
+            $group = MenuGroup::updateOrCreate(['slug' => $groupData['slug']], $groupData + ['is_active' => true, 'audience' => 'admin']);
 
             foreach ($items as $item) {
                 MenuItem::updateOrCreate(

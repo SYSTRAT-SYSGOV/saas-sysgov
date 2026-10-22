@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Cemiterios\Tests\Feature;
 
+use Modules\Cemiterios\Tests\Support\RegistroDeTeste;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Storage;
 use Modules\Cemiterios\Models\Falecido;
 use Modules\Cemiterios\Models\Inumacao;
 use Modules\Cemiterios\Models\OperadorCemiterio;
 use Modules\Cemiterios\Tests\CemiteriosTestCase;
+use Modules\Pessoas\Models\Pessoa;
 
 final class OperadoresTest extends CemiteriosTestCase
 {
@@ -21,6 +23,18 @@ final class OperadoresTest extends CemiteriosTestCase
         Storage::fake('local');
         $this->tenant = $this->criarTenant();
         $this->noTenant($this->tenant);
+    }
+
+    public function test_busca_do_operador_por_cpf_acha_pela_pessoa_mesmo_sem_a_copia_local(): void
+    {
+        $pessoa = Pessoa::create(['tipo' => 'fisica', 'documento' => '52998224725', 'nome' => 'Operador Da Pessoa']);
+        $ligado = RegistroDeTeste::operador(['pessoa_id' => $pessoa->id, 'nome' => 'Operador Da Pessoa', 'tipo' => 'coveiro', 'situacao' => 'ativo']);
+        RegistroDeTeste::operador(['nome' => 'Outro Operador', 'tipo' => 'coveiro', 'situacao' => 'ativo']);
+
+        $resposta = $this->como($this->admin($this->tenant), $this->tenant)->getJson('/api/cemiterios/operadores?q=529.982.247-25');
+
+        $resposta->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $ligado->id);
+        $this->como($this->admin($this->tenant), $this->tenant)->getJson('/api/cemiterios/operadores?q=111.444.777-35')->assertOk()->assertJsonCount(0, 'data');
     }
 
     public function test_cadastro_e_listagem_de_coveiros_e_pedreiros(): void
@@ -79,7 +93,7 @@ final class OperadoresTest extends CemiteriosTestCase
         $admin = $this->admin($this->tenant);
         $jazigo = $this->novoJazigo(concedido: false);
 
-        $coveiro = OperadorCemiterio::create([
+        $coveiro = RegistroDeTeste::operador([
             'nome' => 'Carlos Pereira',
             'tipo' => 'coveiro',
             'matricula_funcional' => 'MAT-7700',
@@ -113,8 +127,8 @@ final class OperadoresTest extends CemiteriosTestCase
         $jazigo = $this->novoJazigo(concedido: false);
         $parkId = $jazigo->park_id;
 
-        $opDaNecropole = OperadorCemiterio::create(['nome' => 'Lotado na Necrópole', 'tipo' => 'coveiro', 'park_id' => $parkId]);
-        OperadorCemiterio::create(['nome' => 'Sem Necrópole Fixa', 'tipo' => 'coveiro']);
+        $opDaNecropole = RegistroDeTeste::operador(['nome' => 'Lotado na Necrópole', 'tipo' => 'coveiro', 'park_id' => $parkId]);
+        RegistroDeTeste::operador(['nome' => 'Sem Necrópole Fixa', 'tipo' => 'coveiro']);
 
         $resp = $this->como($admin, $this->tenant)->getJson("/api/cemiterios/operadores?park_id={$parkId}");
         $resp->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $opDaNecropole->id);
@@ -123,7 +137,7 @@ final class OperadoresTest extends CemiteriosTestCase
     public function test_credenciamento_gera_historico_e_atualiza_credencial_vigente(): void
     {
         $admin = $this->admin($this->tenant);
-        $pedreiro = OperadorCemiterio::create(['nome' => 'Pedreiro Credenciado', 'tipo' => 'pedreiro']);
+        $pedreiro = RegistroDeTeste::operador(['nome' => 'Pedreiro Credenciado', 'tipo' => 'pedreiro']);
 
         $resp = $this->como($admin, $this->tenant)->postJson("/api/cemiterios/operadores/{$pedreiro->id}/licencas", [
             'numero' => 'ALV-2026/500',
@@ -142,7 +156,7 @@ final class OperadoresTest extends CemiteriosTestCase
     {
         $admin = $this->admin($this->tenant);
         $jazigo = $this->novoJazigo();
-        $coveiro = OperadorCemiterio::create(['nome' => 'Coveiro Suspenso', 'tipo' => 'coveiro']);
+        $coveiro = RegistroDeTeste::operador(['nome' => 'Coveiro Suspenso', 'tipo' => 'coveiro']);
 
         $resp = $this->como($admin, $this->tenant)->postJson("/api/cemiterios/operadores/{$coveiro->id}/penalidades", [
             'tipo' => 'suspensao',
@@ -170,7 +184,7 @@ final class OperadoresTest extends CemiteriosTestCase
         $admin = $this->admin($this->tenant);
         $jazigo = $this->novoJazigo(concedido: false);
 
-        $coveiro = OperadorCemiterio::create(['nome' => 'Coveiro Vinculado', 'tipo' => 'coveiro', 'matricula_funcional' => 'MAT-01']);
+        $coveiro = RegistroDeTeste::operador(['nome' => 'Coveiro Vinculado', 'tipo' => 'coveiro', 'matricula_funcional' => 'MAT-01']);
 
         $falecidoNovo = Falecido::create(['nome' => 'Falecido Novo', 'falecimento' => '2026-06-01']);
         Inumacao::create([
@@ -209,42 +223,30 @@ final class OperadoresTest extends CemiteriosTestCase
         $resp = $this->como($admin, $this->tenant)->postJson('/api/cemiterios/operadores', [
             'nome' => 'Operador Documentado',
             'tipo' => 'coveiro',
-            'cpf_cnpj' => '111.222.333-44',
+            'cpf_cnpj' => '529.982.247-25',
         ]);
         $resp->assertCreated()->assertJsonMissingPath('cpf_cnpj');
         $id = (int) $resp->json('id');
 
         $this->como($admin, $this->tenant)->getJson('/api/cemiterios/operadores')
-            ->assertOk()->assertJsonMissing(['cpf_cnpj' => '111.222.333-44'])
-            ->assertJsonPath('data.0.documento_mascarado', '***.222.333-**');
+            ->assertOk()->assertJsonMissing(['cpf_cnpj' => '529.982.247-25'])
+            ->assertJsonPath('data.0.documento_mascarado', '***.982.247-**');
 
         $this->como($admin, $this->tenant)->getJson("/api/cemiterios/operadores/{$id}")
-            ->assertOk()->assertJsonMissingPath('cpf_cnpj')->assertJsonPath('documento_mascarado', '***.222.333-**');
+            ->assertOk()->assertJsonMissingPath('cpf_cnpj')->assertJsonPath('documento_mascarado', '***.982.247-**');
 
         // Busca pelo documento completo continua localizando o registro correto (via documento_hash).
-        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/operadores?q=' . urlencode('111.222.333-44'))
+        $this->como($admin, $this->tenant)->getJson('/api/cemiterios/operadores?q=' . urlencode('529.982.247-25'))
             ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $id);
 
-        self::assertDatabaseMissing('cemetery_operators', ['cpf_cnpj' => '111.222.333-44']);
-    }
+        // O documento mora na pessoa do cadastro central: o operador não tem mais a coluna e aponta para ela.
+        self::assertFalse(\Illuminate\Support\Facades\Schema::hasColumn('cemetery_operators', 'cpf_cnpj'));
+        $pessoa = Pessoa::query()->where('documento_hash', \Modules\Pessoas\Support\Documento::hash('52998224725'))->sole();
+        self::assertSame($pessoa->id, OperadorCemiterio::query()->findOrFail($id)->pessoa_id);
 
-    public function test_migracao_de_dados_preserva_alvara_existente_e_e_idempotente(): void
-    {
-        $operador = OperadorCemiterio::create([
-            'nome' => 'Legado com Alvará', 'tipo' => 'pedreiro',
-            'alvara_numero' => 'ALV-LEGADO-01', 'alvara_validade' => today()->addYear()->toDateString(),
-        ]);
-        \Illuminate\Support\Facades\DB::table('cemetery_operators')->where('id', $operador->id)->update(['cpf_cnpj' => '99988877766']);
-
-        $this->artisan('cemiterio:criptografar-documentos-operadores', ['--tenant' => $this->tenant->slug])->assertSuccessful();
-
-        self::assertSame(1, $operador->licencas()->count());
-        self::assertSame('ALV-LEGADO-01', $operador->licencas()->first()->numero);
-        self::assertNotSame('99988877766', \Illuminate\Support\Facades\DB::table('cemetery_operators')->where('id', $operador->id)->value('cpf_cnpj'));
-
-        // Idempotente: rodar de novo não duplica o credenciamento nem falha ao tentar recriptografar.
-        $this->artisan('cemiterio:criptografar-documentos-operadores', ['--tenant' => $this->tenant->slug])->assertSuccessful();
-        self::assertSame(1, $operador->licencas()->count());
+        // Documento que não é CPF nem CNPJ válido é recusado, em vez de gravado como texto.
+        $this->como($admin, $this->tenant)->postJson('/api/cemiterios/operadores', ['nome' => 'Doc Ruim', 'tipo' => 'coveiro', 'cpf_cnpj' => '111.222.333-44'])
+            ->assertStatus(422)->assertJsonValidationErrors('cpf_cnpj');
     }
 
     public function test_isolamento_multi_tenant_operadores(): void
@@ -253,7 +255,7 @@ final class OperadoresTest extends CemiteriosTestCase
         $tenantB = $this->criarTenant('pref-b');
         $adminB = $this->admin($tenantB);
 
-        $opA = OperadorCemiterio::create([
+        $opA = RegistroDeTeste::operador([
             'nome' => 'Operador A',
             'tipo' => 'coveiro',
             'situacao' => 'ativo',

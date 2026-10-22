@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -25,27 +26,27 @@ final class ServidorMeusSubordinadosTest extends TestCase
         $outraChefiaUser = User::create(['name' => 'Outra Chefia', 'email' => 'outra.chefia@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
         $outraChefiaUser->tenants()->attach($tenant->id, ['status' => 'active', 'is_primary' => true]);
 
-        $chefiaServidor = Servidor::create([
+        $chefiaServidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'user_id' => $chefiaUser->id, 'matricula' => 'CHEFE-001', 'cpf' => '10020030044',
             'nome_completo' => 'Chefia Direta', 'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps',
             'cargo_efetivo' => 'Diretor', 'orgao_lotacao' => 'SMAD', 'situacao_funcional' => 'ativo',
             'estagio_probatorio' => false, 'carga_horaria_semanal' => 40,
         ]);
-        $outraChefiaServidor = Servidor::create([
+        $outraChefiaServidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'user_id' => $outraChefiaUser->id, 'matricula' => 'CHEFE-002', 'cpf' => '20030040055',
             'nome_completo' => 'Outra Chefia', 'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps',
             'cargo_efetivo' => 'Diretor', 'orgao_lotacao' => 'SMF', 'situacao_funcional' => 'ativo',
             'estagio_probatorio' => false, 'carga_horaria_semanal' => 40,
         ]);
 
-        Servidor::create([
+        ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SUB-001', 'cpf' => '30040050066',
             'nome_completo' => 'Subordinado Um', 'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps',
             'cargo_efetivo' => 'Analista', 'orgao_lotacao' => 'SMAD', 'situacao_funcional' => 'ativo',
             'estagio_probatorio' => false, 'carga_horaria_semanal' => 40,
             'chefia_imediata_id' => $chefiaServidor->id,
         ]);
-        Servidor::create([
+        ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SUB-002', 'cpf' => '40050060077',
             'nome_completo' => 'Subordinado Dois', 'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps',
             'cargo_efetivo' => 'Técnico', 'orgao_lotacao' => 'SMAD', 'situacao_funcional' => 'ativo',
@@ -53,7 +54,7 @@ final class ServidorMeusSubordinadosTest extends TestCase
             'chefia_imediata_id' => $chefiaServidor->id,
         ]);
         // Subordinado de outra chefia — não deve aparecer no filtro da primeira.
-        Servidor::create([
+        ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SUB-003', 'cpf' => '50060070088',
             'nome_completo' => 'Subordinado Três', 'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps',
             'cargo_efetivo' => 'Fiscal', 'orgao_lotacao' => 'SMF', 'situacao_funcional' => 'ativo',

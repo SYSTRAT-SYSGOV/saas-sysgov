@@ -18,6 +18,7 @@ use Modules\Inservivel\Enums\StatusEntidade;
  * @property int $id
  * @property int $tenant_id
  * @property int|null $user_id
+ * @property int|null $pessoa_id pessoa jurídica do Cadastro de Pessoas
  * @property string $razao_social
  * @property string $nome_fantasia
  * @property string $cnpj
@@ -34,7 +35,7 @@ final class Entidade extends Model
     protected $table = 'inservivel_entidades';
 
     protected $fillable = [
-        'tenant_id', 'user_id', 'razao_social', 'nome_fantasia', 'cnpj', 'inscricao_estadual', 'inscricao_municipal',
+        'tenant_id', 'user_id', 'pessoa_id', 'razao_social', 'nome_fantasia', 'cnpj', 'inscricao_estadual', 'inscricao_municipal',
         'endereco', 'cep', 'cidade', 'uf', 'telefone', 'celular', 'email', 'representante_legal', 'cpf_representante',
         'rg_representante', 'cargo_representante', 'tempo_funcionamento_anos', 'area_atuacao', 'finalidade',
         'numero_beneficiarios', 'certificacoes', 'banco', 'agencia', 'conta', 'chave_pix', 'status', 'motivo_reprovacao',
@@ -46,6 +47,7 @@ final class Entidade extends Model
     protected $casts = [
         'tenant_id' => 'integer',
         'user_id' => 'integer',
+        'pessoa_id' => 'integer',
         'cpf_representante' => 'encrypted',
         'status' => StatusEntidade::class,
         'tempo_funcionamento_anos' => 'integer',

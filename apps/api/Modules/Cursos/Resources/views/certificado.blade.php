@@ -73,5 +73,7 @@
         </td>
         <td class="qr"><img src="{{ $qrCode }}" alt="QR code de validação"></td>
     </tr></table>
+
+    @include('cursos::certificado-verso')
 </body>
 </html>

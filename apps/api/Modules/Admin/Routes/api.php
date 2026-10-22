@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Admin\Http\Controllers\AdminDashboardController;
+use Modules\Admin\Http\Controllers\AdminProfileController;
 use Modules\Admin\Http\Controllers\AuditController;
 use Modules\Admin\Http\Controllers\TenantController;
 use Modules\Admin\Http\Controllers\AnalystController;
@@ -27,10 +29,10 @@ use Modules\Admin\Http\Controllers\AiSettingsController;
 // Rotas públicas (self-service e SSO) — fora do middleware platform-admin
 Route::prefix('api/admin')->middleware('bindings')->group(function (): void {
     // Auth & MFA Setup (público)
-    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
-    Route::post('/auth/mfa/verify', [MfaController::class, 'verify']);
-    Route::post('/auth/accept-invitation', [AuthController::class, 'acceptInvitation']);
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-sensivel');
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-sensivel');
+    Route::post('/auth/mfa/verify', [MfaController::class, 'verify'])->middleware('throttle:auth-sensivel');
+    Route::post('/auth/accept-invitation', [AuthController::class, 'acceptInvitation'])->middleware('throttle:auth-sensivel');
 
     // OIDC SSO (RN-USR-008)
     Route::get('/oidc/redirect/{tenant}', [OidcController::class, 'redirect']);
@@ -40,11 +42,7 @@ Route::prefix('api/admin')->middleware('bindings')->group(function (): void {
 // Module Catalog público (para consumo do web-client) — prefixo separado sem platform-admin
 Route::prefix('api/public')->middleware('bindings')->group(function (): void {
     Route::get('/module-catalog/catalog', [ModuleCatalogController::class, 'catalog']);
-    Route::get('/module-catalog/test', function () { return response()->json(['ok' => true]); });
 });
-
-// Teste direto
-Route::get('/api/test-catalog', function () { return response()->json(['test' => 'direct route works']); });
 
 // Rotas autenticadas do web-admin (platform-admin + gate MFA)
 Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->group(function (): void {
@@ -77,8 +75,10 @@ Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->g
     Route::post('/users/{user}/reset-password', [UserAdminController::class, 'requestPasswordReset']);
 
     // Tenant Admin Onboarding (RN-USR-011)
+    Route::get('/tenants/{tenant}/users/admins', [UserAdminController::class, 'listTenantAdmins']);
     Route::post('/tenants/{tenant}/users/admin', [UserAdminController::class, 'createTenantAdmin']);
     Route::put('/tenants/{tenant}/users/admin', [UserAdminController::class, 'updateTenantAdmin']);
+    Route::put('/tenants/{tenant}/users/admin/{user}', [UserAdminController::class, 'updateTenantAdmin']);
 
     // Tenant Users View (read-only for support) — registrado antes de users/{user}
     Route::get('/tenants/{tenant}/users/view', [TenantUserViewController::class, 'index']);
@@ -113,6 +113,15 @@ Route::middleware(['platform-admin', 'mfa', 'bindings'])->prefix('api/admin')->g
     Route::post('/me/mfa/setup', [MfaController::class, 'setup']);
     Route::post('/me/mfa/confirm', [MfaController::class, 'confirm']);
     Route::post('/me/mfa/disable', [MfaController::class, 'disable']);
+
+    // Perfil, senha e sessões do próprio administrador
+    Route::put('/me/profile', [AdminProfileController::class, 'updateProfile']);
+    Route::post('/me/password', [AdminProfileController::class, 'updatePassword'])->middleware('throttle:auth-sensivel');
+    Route::get('/me/sessions', [AdminProfileController::class, 'sessions']);
+    Route::delete('/me/sessions/{id}', [AdminProfileController::class, 'revokeSession'])->whereNumber('id');
+
+    // Dashboard administrativo (indicadores e séries reais)
+    Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
     // Audit & Monitoring
     Route::get('/audit-logs', [AuditController::class, 'index']);

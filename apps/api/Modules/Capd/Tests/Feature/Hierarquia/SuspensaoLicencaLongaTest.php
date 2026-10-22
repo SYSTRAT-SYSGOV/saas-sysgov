@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature\Hierarquia;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -26,7 +27,7 @@ final class SuspensaoLicencaLongaTest extends TestCase
         app(TenantContext::class)->set($tenant);
 
         $servidorUser = User::factory()->create();
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SERV-006', 'cpf' => '666.666.666-66',
             'nome_completo' => 'Sicrano', 'cargo_efetivo' => 'Auxiliar', 'orgao_lotacao' => 'Departamento',
             'user_id' => $servidorUser->id,

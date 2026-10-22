@@ -184,8 +184,8 @@ final class NotaCalculoService
                 }
 
                 // 3. Idade civil DESC (data_nascimento ASC = mais velho)
-                $nascA = $a['servidor']->data_nascimento ?? now()->toDateString();
-                $nascB = $b['servidor']->data_nascimento ?? now()->toDateString();
+                $nascA = $a['servidor']->nascimentoDaPessoa() ?? now()->toDateString();
+                $nascB = $b['servidor']->nascimentoDaPessoa() ?? now()->toDateString();
 
                 return Carbon::parse($nascA)->timestamp <=> Carbon::parse($nascB)->timestamp;
             })

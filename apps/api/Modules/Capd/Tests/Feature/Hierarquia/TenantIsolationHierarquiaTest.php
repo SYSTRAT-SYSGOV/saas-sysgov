@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature\Hierarquia;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -29,7 +30,7 @@ final class TenantIsolationHierarquiaTest extends TestCase
         $context->set($tenantA);
         $unidadeA = OrgUnit::create(['tenant_id' => $tenantA->id, 'name' => 'Unidade A', 'code' => 'UN-ISO-A', 'type' => 'departamento', 'level' => 1, 'path' => '0']);
         $unidadeA->update(['path' => (string) $unidadeA->id]);
-        $servidorA = Servidor::create([
+        $servidorA = ServidorDeTeste::criar([
             'tenant_id' => $tenantA->id, 'matricula' => 'SERV-ISO-A', 'cpf' => '121.212.121-21',
             'nome_completo' => 'Servidor A', 'cargo_efetivo' => 'Analista', 'orgao_lotacao' => 'Unidade A',
             'user_id' => User::factory()->create()->id, 'org_unit_id' => $unidadeA->id,
@@ -41,7 +42,7 @@ final class TenantIsolationHierarquiaTest extends TestCase
         $context->set($tenantB);
         $unidadeB = OrgUnit::create(['tenant_id' => $tenantB->id, 'name' => 'Unidade B', 'code' => 'UN-ISO-B', 'type' => 'departamento', 'level' => 1, 'path' => '0']);
         $unidadeB->update(['path' => (string) $unidadeB->id]);
-        $servidorB = Servidor::create([
+        $servidorB = ServidorDeTeste::criar([
             'tenant_id' => $tenantB->id, 'matricula' => 'SERV-ISO-B', 'cpf' => '232.323.232-32',
             'nome_completo' => 'Servidor B', 'cargo_efetivo' => 'Analista', 'orgao_lotacao' => 'Unidade B',
             'user_id' => User::factory()->create()->id, 'org_unit_id' => $unidadeB->id,

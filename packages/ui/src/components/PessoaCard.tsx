@@ -14,6 +14,7 @@ export interface PessoaCardData {
   status?: 'ativo' | 'inativo' | 'falecido';
   falecido?: boolean;
   data_falecimento?: string | null;
+  documento_pendente?: boolean;
   email?: string | null;
   telefone?: string | null;
   vinculos?: PessoaVinculoData[];
@@ -58,6 +59,9 @@ export const PessoaCard: React.FC<PessoaCardProps> = ({
             </div>
             <div className="flex items-center gap-2 text-xs text-gov-text-secondary mt-0.5">
               <span className="font-mono tabular-nums">{pessoa.cpf_mascarado}</span>
+              {pessoa.documento_pendente && (
+                <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4">Documento pendente</Badge>
+              )}
               {isFalecido ? (
                 <span className="inline-flex items-center px-1.5 py-0 h-4 rounded text-[10px] font-semibold bg-neutral-800 text-neutral-200 border border-neutral-700">
                   Falecido(a)
@@ -125,6 +129,9 @@ export const PessoaCard: React.FC<PessoaCardProps> = ({
                 <span className="flex items-center gap-1 shrink-0">
                   <ShieldCheck className="size-3.5 text-gov-primary" />
                   CPF: <strong className="font-mono tabular-nums text-gov-text-primary">{pessoa.cpf_mascarado}</strong>
+                  {pessoa.documento_pendente && (
+                    <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4 ml-1">Documento pendente</Badge>
+                  )}
                 </span>
                 {pessoa.email && (
                   <span className="flex items-center gap-1 truncate max-w-[240px]" title={pessoa.email}>

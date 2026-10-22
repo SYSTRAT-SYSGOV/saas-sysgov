@@ -53,6 +53,12 @@ final readonly class PessoaPolicy
         return ! $possuiVinculosAtivos;
     }
 
+    public function merge(User $user, Pessoa $pessoa): bool
+    {
+        return $this->temPermissao($user, 'cadastros.pessoas.merge')
+            && $this->mesmoTenant($user, $pessoa);
+    }
+
     public function promote(User $user, Pessoa $pessoa): bool
     {
         return $pessoa->tipo === 'fisica'

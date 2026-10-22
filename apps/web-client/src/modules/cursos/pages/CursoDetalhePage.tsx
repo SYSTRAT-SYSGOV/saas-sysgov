@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, ClipboardList, FileText, HelpCircle, ImagePlus, Layers, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, ClipboardList, FileText, HelpCircle, ImagePlus, Layers, Pencil, Plus, Trash2, Award } from 'lucide-react';
 import { ActionsMenu, Button, Card, type ActionsMenuItem } from '@sysgov/ui';
 import { ConfirmDialog, EmptyState, PageHeader, ScreenState, StatusChip, Tabs, type TabsItem } from '@/components/ui';
 import { sysgovApi, type Aula, type CursoDetalhe, type StatusCurso } from '@sysgov/sdk';
@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '@/lib/apiErrors';
 import { AulaFormModal } from '../components/AulaFormModal';
 import { AvaliacoesTab } from '../components/AvaliacoesTab';
 import { CursoFormModal } from '../components/CursoFormModal';
+import { EmissaoAvulsaModal } from '../components/EmissaoAvulsaModal';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { MateriaisTab } from '../components/MateriaisTab';
 import { QuestoesTab } from '../components/QuestoesTab';
@@ -36,6 +37,7 @@ export const CursoDetalhePage: React.FC<Props> = ({ cursoId, onVoltar, onAbrirTu
   const [editando, setEditando] = useState(false);
   const [aulaEmEdicao, setAulaEmEdicao] = useState<Aula | null | undefined>(undefined);
   const [novaTurma, setNovaTurma] = useState(false);
+  const [emissaoAvulsa, setEmissaoAvulsa] = useState(false);
   const [aba, setAba] = useState<AbaCurso>('geral');
   const [confirmarExclusao, setConfirmarExclusao] = useState<{ tipo: 'curso' } | { tipo: 'aula'; aula: Aula } | null>(null);
   const inputCapa = useRef<HTMLInputElement>(null);
@@ -111,6 +113,11 @@ export const CursoDetalhePage: React.FC<Props> = ({ cursoId, onVoltar, onAbrirTu
             {administra && proximo && (
               <Button onClick={() => executar(() => sysgovApi.cursos.alterarStatusCurso(curso.id, proximo.status), 'Não foi possível alterar o status.')}>
                 {proximo.label}
+              </Button>
+            )}
+            {administra && (
+              <Button variant="outline" onClick={() => setEmissaoAvulsa(true)}>
+                <Award className="h-4 w-4" /> Certificados avulsos
               </Button>
             )}
             {acoes.length > 0 && <ActionsMenu items={acoes} triggerLabel="Ações do curso" />}
@@ -275,6 +282,7 @@ export const CursoDetalhePage: React.FC<Props> = ({ cursoId, onVoltar, onAbrirTu
           }
         }}
       />
+      <EmissaoAvulsaModal aberto={emissaoAvulsa} cursoId={curso.id} onClose={() => setEmissaoAvulsa(false)} />
     </div>
   );
 };

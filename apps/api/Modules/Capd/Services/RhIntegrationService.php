@@ -23,6 +23,7 @@ final class RhIntegrationService
     public function __construct(
         private readonly OutboxPublisher $outbox,
         private readonly AuditLogger $audit,
+        private readonly ServidorPessoaService $pessoas,
     ) {}
     /**
      * Sincronização Inbound de Servidores a partir de payload JSON do ERP de RH.
@@ -82,15 +83,13 @@ final class RhIntegrationService
                     continue;
                 }
 
-                $cpf = strlen($cpfRaw) === 11
-                    ? substr($cpfRaw, 0, 3) . '.' . substr($cpfRaw, 3, 3) . '.' . substr($cpfRaw, 6, 3) . '-' . substr($cpfRaw, 9, 2)
-                    : '000.000.000-00';
+                // CPF ausente ou malformado não impede o registro: a pessoa nasce com documento pendente.
+                $civis = ['cpf' => strlen($cpfRaw) === 11 ? $cpfRaw : null];
 
                 $payload = [
                     'tenant_id'             => $tenantId,
                     'matricula'             => $matricula,
                     'nome_completo'         => $nome,
-                    'cpf'                   => $cpf,
                     'cargo_efetivo'         => $cargo,
                     'orgao_lotacao'         => $lotacao,
                     'regime_juridico'       => $regime,
@@ -102,12 +101,26 @@ final class RhIntegrationService
 
                 $servidor = Servidor::where('tenant_id', $tenantId)->where('matricula', $matricula)->first();
 
-                if ($servidor) {
-                    $servidor->update($payload);
-                    $atualizados++;
-                } else {
-                    Servidor::create($payload);
-                    $inseridos++;
+                // A integração nunca sobrescreve a pessoa. Sem pessoa não há servidor (`pessoa_id` é obrigatório):
+                // se o MDM recusar, só este registro é desfeito e o lote segue.
+                try {
+                    DB::transaction(function () use (&$servidor, $payload, $civis, &$inseridos, &$atualizados): void {
+                        if ($servidor) {
+                            $servidor->update($payload);
+                            $this->pessoas->sincronizar($servidor, $civis);
+                            $atualizados++;
+
+                            return;
+                        }
+
+                        $pessoa = $this->pessoas->resolverParaNovo([...$civis, 'nome' => $payload['nome_completo']]);
+                        $servidor = new Servidor($payload);
+                        $servidor->forceFill(['pessoa_id' => $pessoa->id])->save();
+                        $this->pessoas->concluirCadastro($servidor, $pessoa);
+                        $inseridos++;
+                    });
+                } catch (\Throwable $e) {
+                    $erros[] = "Registro {$processados}: servidor não gravado ({$e->getMessage()}).";
                 }
             }
 

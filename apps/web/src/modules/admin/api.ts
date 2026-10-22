@@ -3,6 +3,21 @@ import { withApiBase } from '../../config/env';
 
 const BASE = withApiBase('/api/admin');
 
+const SESSION_KEYS = ['sgf_auth_token', 'sgf_auth_user', 'sgf_auth_role', 'auth_token'];
+
+/** Sessão inválida/expirada (401): limpa o login guardado e volta para a tela de login. */
+function endSession(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    SESSION_KEYS.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // storage indisponível: segue para o login mesmo assim
+  }
+  if (!window.location.pathname.startsWith('/admin/login')) {
+    window.location.assign('/admin/login');
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers ?? {});
   headers.set('Content-Type', 'application/json');
@@ -10,25 +25,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (typeof window !== 'undefined') {
     const stored = window.localStorage.getItem('sgf_auth_token') ?? window.localStorage.getItem('auth_token');
     // Ignora tokens antigos do mock ('jwt_master_*', 'jwt_tenant_*') — o backend os rejeita
-    const token = stored && !stored.startsWith('jwt_master_') && !stored.startsWith('jwt_tenant_') ? stored : 'universal-admin-session-token';
+    const token = stored && !stored.startsWith('jwt_master_') && !stored.startsWith('jwt_tenant_') ? stored : null;
     if (token) headers.set('Authorization', `Bearer ${token}`);
   }
-  let res = await fetch(`${BASE}${path}`, { ...init, headers });
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
 
-  // Token antigo/inválido ou resolvido para usuário não-plataforma (401/403):
-  // limpa e tenta de novo com o token demo reconhecido pelo backend.
-  if ((res.status === 401 || res.status === 403) && typeof window !== 'undefined') {
-    const stored = window.localStorage.getItem('sgf_auth_token') ?? window.localStorage.getItem('auth_token');
-    if (stored && stored !== 'universal-admin-session-token' && !stored.startsWith('jwt_master_')) {
-      console.warn(`[AdminAPI] ${res.status} em ${path} com token armazenado; tentando sessão demo.`);
-      window.localStorage.removeItem('sgf_auth_token');
-      window.localStorage.removeItem('sgf_auth_user');
-      window.localStorage.removeItem('sgf_auth_role');
-      window.localStorage.removeItem('auth_token');
-      const retryHeaders = new Headers(headers);
-      retryHeaders.set('Authorization', 'Bearer universal-admin-session-token');
-      res = await fetch(`${BASE}${path}`, { ...init, headers: retryHeaders });
-    }
+  if (res.status === 401) {
+    endSession();
   }
 
   if (!res.ok) {
@@ -113,22 +116,31 @@ export const adminApi = {
     await request<void>(`/users/${id}/reset-password`, { method: 'POST' });
   },
 
-  // Tenant Admin Onboarding
-  async createTenantAdmin(tenantId: number, payload: { name: string; email: string; password: string; password_confirmation?: string }): Promise<User> {
+  // Administradores do tenant (RN-USR-011) — o tenant pode ter vários
+  async listTenantAdmins(tenantId: number): Promise<User[]> {
+    const res = await request<{ data: User[] }>(`/tenants/${tenantId}/users/admins`);
+    return res.data;
+  },
+
+  async createTenantAdmin(tenantId: number, payload: { name?: string; email: string; password?: string; password_confirmation?: string }): Promise<User> {
     return request<User>(`/tenants/${tenantId}/users/admin`, {
       method: 'POST',
       body: JSON.stringify({
         ...payload,
-        password_confirmation: payload.password_confirmation ?? payload.password,
+        ...(payload.password ? { password_confirmation: payload.password_confirmation ?? payload.password } : {}),
       }),
     });
   },
 
-  async updateTenantAdmin(tenantId: number, payload: { name?: string; password?: string; password_confirmation?: string }): Promise<User> {
-    return request<User>(`/tenants/${tenantId}/users/admin`, {
+  async updateTenantAdmin(tenantId: number, userId: number, payload: { name?: string; password?: string; password_confirmation?: string }): Promise<User> {
+    return request<User>(`/tenants/${tenantId}/users/admin/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
+  },
+
+  async deactivateTenantAdmin(tenantId: number, userId: number, reason: string): Promise<void> {
+    await request<void>(`/tenants/${tenantId}/users/${userId}/deactivate`, { method: 'POST', body: JSON.stringify({ reason }) });
   },
 
   async getTenantUsers(tenantId: number, params?: { search?: string; page?: number }): Promise<Paginated<User>> {
@@ -214,11 +226,15 @@ export const adminApi = {
   },
 
   // Tenants
-  async getTenants(params?: { q?: string; status?: string; type?: string }): Promise<Paginated<Tenant>> {
+  async getTenants(params?: { q?: string; status?: string; type?: string; page?: number; per_page?: number; sort?: string; direction?: 'asc' | 'desc' }): Promise<Paginated<Tenant>> {
     const qs = new URLSearchParams();
     if (params?.q) qs.set('q', params.q);
     if (params?.status) qs.set('status', params.status);
     if (params?.type) qs.set('type', params.type);
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.per_page) qs.set('per_page', String(params.per_page));
+    if (params?.sort) qs.set('sort', params.sort);
+    if (params?.direction) qs.set('direction', params.direction);
     const q = qs.toString();
     return request<Paginated<Tenant>>(`/tenants${q ? `?${q}` : ''}`);
   },

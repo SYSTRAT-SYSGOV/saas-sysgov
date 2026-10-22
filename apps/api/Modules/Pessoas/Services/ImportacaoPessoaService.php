@@ -31,6 +31,9 @@ final readonly class ImportacaoPessoaService
         $documento = (string) ($dadosExternos['cnpj'] ?? $dadosExternos['cpf'] ?? '');
         $rotulo = $tipo === 'juridica' ? 'CNPJ' : 'CPF';
 
+        if ($documento === '') {
+            return ['pessoa' => null, 'criada' => false, 'erro' => "{$rotulo} ausente: a importação exige o documento; pessoa sem documento é cadastrada pelo módulo de origem"];
+        }
         if (!Documento::valido($documento, $tipo)) {
             return ['pessoa' => null, 'criada' => false, 'erro' => "{$rotulo} inválido: {$documento}"];
         }

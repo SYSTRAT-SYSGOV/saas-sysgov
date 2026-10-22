@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Escola\Tests\Feature;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Tenant;
 use App\Models\UserModuleAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,7 +88,7 @@ final class MultiEscolaTest extends TestCase
     {
         $turno = Turno::create(['nome' => "Manhã {$sufixo}", 'ordem' => 1]);
         $turma = Turma::create(['nome' => "6º {$sufixo}", 'turno_id' => $turno->id, 'ano_letivo' => 2026]);
-        $aluno = Aluno::create(['nome' => "Aluno {$sufixo}", 'turma_id' => $turma->id, 'situacao' => 'ativo']);
+        $aluno = AlunoDeTeste::criar(['nome' => "Aluno {$sufixo}", 'turma_id' => $turma->id, 'situacao' => 'ativo']);
         $contato = AlunoContato::create(['aluno_id' => $aluno->id, 'telefone' => '41999990000']);
         $materia = Materia::create(['nome' => "Matemática {$sufixo}"]);
         $vinculo = TurmaMateria::create(['turma_id' => $turma->id, 'materia_id' => $materia->id]);
@@ -121,7 +122,7 @@ final class MultiEscolaTest extends TestCase
         $alunoB = $this->naEscola($this->tenant, $this->escolaB, function (): Aluno {
             $turma = Turma::create(['nome' => '6º B', 'turno_id' => Turno::create(['nome' => 'Manhã', 'ordem' => 1])->id, 'ano_letivo' => 2026]);
 
-            return Aluno::create(['nome' => 'ALUNO B', 'turma_id' => $turma->id, 'situacao' => 'ativo']);
+            return AlunoDeTeste::criar(['nome' => 'ALUNO B', 'turma_id' => $turma->id, 'situacao' => 'ativo']);
         });
         $admin = $this->usuario($this->tenant);
 

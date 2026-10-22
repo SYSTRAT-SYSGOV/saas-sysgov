@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -40,7 +41,7 @@ final class SimularProgressaoEscalaNfcTest extends TestCase
         $this->admin->tenants()->attach($this->tenant->id, ['status' => 'active', 'is_primary' => true]);
 
         $servidorUser = User::create(['name' => 'Servidor Simulação NFC', 'email' => 'servidor.simulacao.nfc@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
-        $this->servidor = Servidor::create([
+        $this->servidor = ServidorDeTeste::criar([
             'tenant_id' => $this->tenant->id, 'user_id' => $servidorUser->id, 'matricula' => 'SIM-NFC-001',
             'cpf' => '22233344455', 'nome_completo' => 'Servidor Simulação NFC', 'data_admissao' => now()->subYears(3)->toDateString(),
             'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps', 'cargo_efetivo' => 'Analista',

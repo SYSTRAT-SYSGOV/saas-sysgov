@@ -4,7 +4,7 @@ import { Plus, X, ArrowLeftRight, Info, AlertTriangle, FileUp } from 'lucide-rea
 
 import { useArquivoAutenticado } from '@/hooks/useArquivoAutenticado';
 
-import { escolaApi, erroApi, type Aluno as AlunoPedagogico, type Contato as ContatoAluno, type SituacaoAluno as StatusAluno, type Turma as TurmaPedagogica } from '../api';
+import { escolaApi, erroApi, type PessoaResumo, type ResultadoImportacaoAlunos, type Aluno as AlunoPedagogico, type Contato as ContatoAluno, type SituacaoAluno as StatusAluno, type Turma as TurmaPedagogica } from '../api';
 import { pedagogicoApi } from '../../pedagogico/api';
 import AdminModal, { inputCls, labelCls, btnPrimary, btnSecondary, btnDanger, type Toast } from './AdminModal';
 
@@ -62,6 +62,29 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
   );
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  // Sem CPF e sem pessoa ligada, o aluno vira pessoa com documento pendente: menor exige responsável.
+  const [responsavel, setResponsavel] = useState<PessoaResumo | null>(null);
+  const [buscaResp, setBuscaResp] = useState('');
+  const [sugestoesResp, setSugestoesResp] = useState<PessoaResumo[]>([]);
+  const [semelhantes, setSemelhantes] = useState<{ id: number; nome: string }[]>([]);
+  const [confirmarNovo, setConfirmarNovo] = useState(false);
+  const precisaResponsavel = !cpf.trim() && !aluno?.pessoa_id;
+
+  useEffect(() => {
+    const termo = buscaResp.trim();
+    if (termo.length < 3) {
+      setSugestoesResp([]);
+      return;
+    }
+    let cancelado = false;
+    const t = window.setTimeout(() => {
+      escolaApi.buscarPessoas(termo).then(r => !cancelado && setSugestoesResp(r)).catch(() => !cancelado && setSugestoesResp([]));
+    }, 300);
+    return () => {
+      cancelado = true;
+      window.clearTimeout(t);
+    };
+  }, [buscaResp]);
 
   // Remanejamento só faz sentido quando o aluno já existe e muda de situação
   const remanejando = status === 'remanejado' && isEdit && aluno!.situacao !== 'remanejado';
@@ -99,6 +122,8 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
       pai: pai.trim() || null,
       nascimento: nascimento || null,
       contatos: contatos.filter(c => c.telefone.trim()).map(c => ({ telefone: c.telefone.trim(), descricao: c.descricao?.trim() || null })),
+      ...(precisaResponsavel && responsavel ? { responsavel_id: responsavel.id } : {}),
+      ...(confirmarNovo ? { confirmar_novo: true } : {}),
     };
 
     setSalvando(true);
@@ -112,7 +137,10 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
       });
       await onSaved();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      const falha = erroApi(e);
+      const sugestoes = falha.codigo === 'pessoa_semelhante_existente' ? (falha.dados?.sugestoes as { id: number; nome: string }[] | undefined) : undefined;
+      setSemelhantes(sugestoes ?? []);
+      setErro(falha.mensagem);
     } finally {
       setSalvando(false);
     }
@@ -158,6 +186,34 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
               : 'Com CPF, o aluno é ligado ao Cadastro de Pessoas do município (opcional).'}
           </p>
         </div>
+
+        {precisaResponsavel && (
+          <div>
+            <label className={labelCls}>Responsável (pessoa do cadastro)</label>
+            {responsavel ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm">
+                <span>{responsavel.nome} <span className="font-mono text-xs text-slate-500">{responsavel.cpf_mascarado}</span></span>
+                <button type="button" onClick={() => setResponsavel(null)} className="text-xs font-semibold text-red-600">Trocar</button>
+              </div>
+            ) : (
+              <>
+                <input className={inputCls} value={buscaResp} onChange={e => setBuscaResp(e.target.value)} placeholder="Buscar por nome ou CPF" />
+                {sugestoesResp.length > 0 && (
+                  <ul className="mt-1 rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
+                    {sugestoesResp.map(p => (
+                      <li key={p.id}>
+                        <button type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800" onClick={() => { setResponsavel(p); setBuscaResp(''); setSugestoesResp([]); }}>
+                          {p.nome} <span className="font-mono text-xs text-slate-500">{p.cpf_mascarado}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sem CPF, o aluno é cadastrado com documento pendente. Menor de idade exige o responsável e o nascimento.</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
@@ -243,6 +299,18 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
         </div>
 
         {erro && <p role="alert" className="text-sm font-medium text-red-600">{erro}</p>}
+        {semelhantes.length > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 text-sm">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">Já existe pessoa com o mesmo nome e nascimento:</p>
+            <ul className="mt-1 list-disc pl-5 text-amber-900 dark:text-amber-200">
+              {semelhantes.map(p => <li key={p.id}>{p.nome}</li>)}
+            </ul>
+            <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">Se for a mesma criança, informe o CPF ou cancele e use o cadastro existente. Se for outra pessoa, confirme.</p>
+            <button type="button" className={`${btnSecondary} mt-2`} onClick={() => { setConfirmarNovo(true); setSemelhantes([]); setErro('Confirmado: clique em Salvar para cadastrar como nova pessoa.'); }}>
+              É outra pessoa — cadastrar mesmo assim
+            </button>
+          </div>
+        )}
       </form>
     </AdminModal>
   );
@@ -377,24 +445,36 @@ interface ImportarCSVModalProps {
 export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClose, onImported, onToast }) => {
   const [file, setFile] = useState<File | null>(null);
   const [resultado, setResultado] = useState<{ resumo: string[]; erros: string[] } | null>(null);
+  const [duplicidades, setDuplicidades] = useState<ResultadoImportacaoAlunos['possiveis_duplicidades']>([]);
   const [processando, setProcessando] = useState(false);
 
   const cabecalho = tipo === 'alunos'
-    ? 'NOME; CPF; CGM; TURMA; NUMERO; MAE; PAI; NASCIMENTO; CONTATO'
+    ? 'NOME; CPF; CGM; TURMA; NUMERO; MAE; PAI; NASCIMENTO; CONTATO; RESPONSAVEL_CPF'
     : 'TURMA; NUMERO; MATERIA; TRIMESTRE; NOTA';
 
   const [erro, setErro] = useState('');
   const anoLetivo = new Date().getFullYear();
 
-  const handleImport = async () => {
+  const handleImport = async (confirmarDuplicidades = false) => {
     if (!file) return;
     setProcessando(true);
     setErro('');
     try {
       if (tipo === 'alunos') {
-        const r = await escolaApi.importarAlunos(file);
+        const r = await escolaApi.importarAlunos(file, confirmarDuplicidades);
         const erros = r.rejeitadas.map(x => `Linha ${x.linha}: ${x.motivo}`);
-        setResultado({ resumo: [`${r.criados} alunos novos importados.`, `${r.atualizados} cadastros existentes atualizados.`], erros });
+        const resumo = [`${r.criados} alunos novos importados.`, `${r.atualizados} cadastros existentes atualizados.`];
+        if (r.sem_pessoa.length > 0) {
+          resumo.push(`${r.sem_pessoa.length} alunos não foram importados: sem CPF é preciso informar o nascimento e, para menor, o CPF do responsável (coluna RESPONSAVEL_CPF) já cadastrado em Pessoas.`);
+          const motivos: Record<string, string> = {
+            dados_insuficientes: 'faltam nome ou nascimento',
+            responsavel_obrigatorio: 'menor sem CPF precisa de RESPONSAVEL_CPF',
+            responsavel_nao_cadastrado: 'o responsável não está cadastrado em Pessoas',
+          };
+          r.sem_pessoa.forEach(x => erros.push(`Linha ${x.linha} (${x.nome}): não importado, ${motivos[x.motivo] ?? x.motivo}.`));
+        }
+        setDuplicidades(r.possiveis_duplicidades);
+        setResultado({ resumo, erros });
         onToast({ type: erros.length ? 'warning' : 'success', title: 'Importação concluída', message: `${r.criados} novos, ${r.atualizados} atualizados.` });
       } else {
         const r = await pedagogicoApi.importarNotas(file, anoLetivo);
@@ -416,11 +496,18 @@ export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClos
       onClose={onClose}
       footer={
         resultado ? (
-          <button onClick={onClose} className={btnPrimary}>Fechar</button>
+          <>
+            {duplicidades.length > 0 && (
+              <button onClick={() => handleImport(true)} disabled={processando} className={btnSecondary}>
+                {processando ? 'Importando...' : 'Importar as duplicidades mesmo assim'}
+              </button>
+            )}
+            <button onClick={onClose} className={btnPrimary}>Fechar</button>
+          </>
         ) : (
           <>
             <button onClick={onClose} className={btnSecondary}>Cancelar</button>
-            <button onClick={handleImport} disabled={!file || processando} className={btnPrimary}>
+            <button onClick={() => handleImport()} disabled={!file || processando} className={btnPrimary}>
               {processando ? 'Importando...' : 'Iniciar Importação'}
             </button>
           </>
@@ -432,6 +519,14 @@ export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClos
           {resultado.resumo.map(l => (
             <p key={l} className="text-sm font-semibold text-slate-800 dark:text-slate-200">{l}</p>
           ))}
+          {duplicidades.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold text-amber-700 mb-1">{duplicidades.length} linhas não foram gravadas: já existe pessoa com o mesmo nome e nascimento.</p>
+              <ul className="max-h-40 overflow-y-auto text-xs text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg p-2 space-y-0.5">
+                {duplicidades.map(d => <li key={d.linha}>• Linha {d.linha}: {d.nome}</li>)}
+              </ul>
+            </div>
+          )}
           {resultado.erros.length > 0 && (
             <div>
               <p className="text-sm font-semibold text-amber-700 mb-1">{resultado.erros.length} registros falharam:</p>
@@ -451,7 +546,7 @@ export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClos
           </code>
           {tipo === 'alunos' && (
             <p className="text-xs text-slate-500">
-              A turma deve existir com o mesmo nome. Alunos com o mesmo CPF, o mesmo CGM ou o mesmo nome na mesma turma são atualizados. Com CPF, o aluno é ligado ao Cadastro de Pessoas.
+              A turma deve existir com o mesmo nome. Alunos com o mesmo CPF, o mesmo CGM ou o mesmo nome na mesma turma são atualizados. Todo aluno é ligado ao Cadastro de Pessoas: com CPF pela pessoa existente; sem CPF, como documento pendente (precisa do nascimento; menor também do responsável, que o CSV não traz).
             </p>
           )}
           <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/40">

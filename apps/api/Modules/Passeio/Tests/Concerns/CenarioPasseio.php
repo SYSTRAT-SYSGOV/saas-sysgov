@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Passeio\Tests\Concerns;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -74,7 +75,7 @@ trait CenarioPasseio
             $turno = Turno::firstOrCreate(['nome' => 'Manhã'], ['ordem' => 1]);
             $t = Turma::firstOrCreate(['nome' => $turma, 'turno_id' => $turno->id, 'ano_letivo' => 2026]);
 
-            return Aluno::create(['nome' => $nome, 'turma_id' => $t->id, 'situacao' => 'ativo']);
+            return AlunoDeTeste::criar(['nome' => $nome, 'turma_id' => $t->id, 'situacao' => 'ativo']);
         });
     }
 

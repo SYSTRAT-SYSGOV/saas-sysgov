@@ -1,9 +1,10 @@
 import * as React from 'react';
+import { Badge } from './badge';
 import { Popover } from 'radix-ui';
 import { User, Check, ChevronsUpDown, UserPlus, X, Loader2 } from 'lucide-react';
 import { Button } from './button';
 import { PessoaSearchInput } from './PessoaSearchInput';
-import { PessoaFormModal, type NovoCadastroRapidoPessoaInput } from './PessoaFormModal';
+import { PessoaFormModal, type NovoCadastroRapidoPessoaInput, type PessoaFormModalProps } from './PessoaFormModal';
 import { cn } from '../lib/utils';
 
 export interface PessoaPickerOption {
@@ -14,6 +15,8 @@ export interface PessoaPickerOption {
   status?: 'ativo' | 'inativo' | 'falecido';
   falecido?: boolean;
   data_falecimento?: string | null;
+  /** Pessoa física sem CPF informado: o CPF mascarado vem como "—". */
+  documento_pendente?: boolean;
 }
 
 export interface PessoaPickerProps {
@@ -31,6 +34,8 @@ export interface PessoaPickerProps {
   onCreatePessoa?: (data: NovoCadastroRapidoPessoaInput) => Promise<PessoaPickerOption | null | void> | PessoaPickerOption | null | void;
   disabled?: boolean;
   className?: string;
+  /** Repassado ao modal de cadastro rápido (ex.: `permitirSemCpf`, `renderResponsavel`, `semelhantes`). */
+  formModalProps?: Partial<Omit<PessoaFormModalProps, 'open' | 'onClose' | 'onSubmit'>>;
 }
 
 export const PessoaPicker: React.FC<PessoaPickerProps> = ({
@@ -48,6 +53,7 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
   onCreatePessoa,
   disabled = false,
   className,
+  formModalProps,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -164,6 +170,9 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
                   <span className="text-xs text-gov-text-secondary font-mono tabular-nums bg-gov-border/30 dark:bg-white/5 px-1.5 py-0.5 rounded shrink-0">
                     {selected.cpf_mascarado}
                   </span>
+                  {selected.documento_pendente && (
+                    <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Documento pendente</Badge>
+                  )}
                   {selected.falecido && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-neutral-800 text-neutral-200 border border-neutral-700 shrink-0">
                       Falecido(a)
@@ -243,6 +252,9 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gov-text-secondary font-mono tabular-nums mt-0.5 truncate">
                           <span>{pessoa.cpf_mascarado}</span>
+                          {pessoa.documento_pendente && (
+                            <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4">Documento pendente</Badge>
+                          )}
                           {pessoa.falecido && pessoa.data_falecimento && (
                             <span className="text-[11px] text-neutral-400">Óbito: {pessoa.data_falecimento}</span>
                           )}
@@ -286,6 +298,7 @@ export const PessoaPicker: React.FC<PessoaPickerProps> = ({
         {/* Modal de cadastro rápido integrado */}
         {canCreate && onCreatePessoa && (
           <PessoaFormModal
+            {...formModalProps}
             open={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             onSubmit={handleQuickCreateSuccess}

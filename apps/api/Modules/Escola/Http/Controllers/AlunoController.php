@@ -35,18 +35,19 @@ final class AlunoController extends Controller
         $busca = trim((string) $request->query('busca', ''));
 
         $pagina = Aluno::query()
-            ->with(['turma.turno', 'turmaOrigem', 'contatos'])
+            ->with(['turma.turno', 'turmaOrigem', 'contatos', 'pessoa'])
             ->when($request->query('turma_id'), fn ($q, $v) => $q->where('turma_id', (int) $v))
             ->when($request->query('situacao'), fn ($q, $v) => $q->where('situacao', (string) $v))
             ->when($busca !== '', function ($q) use ($busca): void {
                 $termo = '%' . $busca . '%';
-                // CPF completo (com ou sem máscara) busca pelo hash; o CPF em si é cifrado.
+                // CPF completo (com ou sem máscara) busca pelo hash da pessoa; o CPF em si é cifrado. Mãe e pai ficam na
+                // cópia do aluno: no cadastro central são cifrados e não admitem `like`.
                 $cpf = \Modules\Pessoas\Support\Documento::somenteDigitos($busca);
                 $q->where(fn ($w) => $w->where('nome', 'like', $termo)
                     ->orWhere('mae', 'like', $termo)
                     ->orWhere('pai', 'like', $termo)
                     ->orWhereHas('turma', fn ($t) => $t->where('nome', 'like', $termo))
-                    ->when(strlen($cpf) === 11, fn ($c) => $c->orWhere('cpf_hash', \Modules\Pessoas\Support\Documento::hash($cpf))));
+                    ->when(strlen($cpf) === 11, fn ($c) => $c->orWhereHas('pessoa', fn ($p) => $p->where('documento_hash', \Modules\Pessoas\Support\Documento::hash($cpf)))));
             })
             ->orderByRaw('numero IS NULL')
             ->orderBy('numero')
@@ -65,7 +66,7 @@ final class AlunoController extends Controller
     {
         $this->authorize('view', $aluno);
 
-        return response()->json(new AlunoResource($aluno->load(['turma.turno', 'turmaOrigem', 'contatos'])));
+        return response()->json(new AlunoResource($aluno->load(['turma.turno', 'turmaOrigem', 'contatos', 'pessoa'])));
     }
 
     public function update(SalvarAlunoRequest $request, Aluno $aluno): JsonResponse
@@ -101,13 +102,13 @@ final class AlunoController extends Controller
     public function importar(ImportarAlunosRequest $request): JsonResponse
     {
         return $this->executar(fn (): JsonResponse => response()->json(
-            $this->alunos->importar(LeitorCsv::de($request->file('arquivo')))
+            $this->alunos->importar(LeitorCsv::de($request->file('arquivo')), $request->boolean('confirmar_duplicidades'))
         ));
     }
 
     public function enviarFoto(EnviarFotoRequest $request, Aluno $aluno): JsonResponse
     {
-        return response()->json(new AlunoResource($this->alunos->definirFoto($aluno, $request->file('foto'))));
+        return response()->json(new AlunoResource($this->alunos->definirFoto($aluno, $request->file('foto'))->load('pessoa')));
     }
 
     /** Foto servida só por rota autenticada do próprio tenant (disco privado). */

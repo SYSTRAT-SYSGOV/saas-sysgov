@@ -104,7 +104,8 @@ final class CertificadoNotaTest extends TestCase
         $resposta = $this->como($this->admin, $this->tenant)->postJson('/api/cursos/modelos-certificado', ['nome' => 'B', 'titulo' => 'T', 'corpo' => '{{nota}} e {{cpf_completo}}']);
 
         $this->assertErroDeNegocio($resposta, 'cpf_completo');
-        $this->assertStringContainsString('{{nota}}', (string) $resposta->json('error'), 'a lista de campos válidos inclui {{nota}}');
+        // {{nota}} segue aceito (formato antigo); a mensagem indica as variáveis atuais (D10).
+        $this->assertStringContainsString('{NOME}', (string) $resposta->json('error'));
     }
 
     public function test_certificado_antigo_sem_a_chave_nota_continua_abrindo_o_pdf(): void

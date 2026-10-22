@@ -85,6 +85,11 @@ final class CadastroEntidadeService
                 $this->ligarPessoa($usuario, (string) $dados['cpf_representante'], (string) $dados['representante_legal']);
 
                 $entidade = Entidade::query()->create([...$dados, 'user_id' => $usuario->id, 'status' => StatusEntidade::Pendente, 'lotes_ganhos' => 0]);
+                // Entidade com CNPJ válido liga à pessoa jurídica do cadastro central (criada se não existir).
+                $juridica = $this->pessoas->tentarPorCnpj($entidade->cnpj, $entidade->razao_social, $entidade->nome_fantasia, 'inservivel');
+                if ($juridica !== null) {
+                    $entidade->update(['pessoa_id' => $juridica->id]);
+                }
                 foreach ($gravados as $chave => $gravado) {
                     $entidade->documentos()->create([...$gravado, 'tipo' => $chave, 'data_envio' => now()->toDateString(), 'validade' => $validades[$chave] ?? null, 'situacao' => 'pendente']);
                 }

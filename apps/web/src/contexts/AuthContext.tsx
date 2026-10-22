@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type AuthRole = 'EMPRESA_MASTER' | 'PREFEITURA_CLIENTE';
 
+const LEGACY_DEMO_TOKEN = 'universal-admin-session-token';
+
 export interface AuthUser {
   id: string;
   nome: string;
@@ -21,7 +23,7 @@ interface AuthContextType {
   setCurrentUser: (user: AuthUser | null) => void;
   login: (email: string, password: string) => boolean;
   loginTenantSession: (user: AuthUser, token?: string) => void;
-  loginAdminSession: (user: AuthUser, token?: string) => void;
+  loginAdminSession: (user: AuthUser, token: string) => void;
   logout: () => void;
 }
 
@@ -33,13 +35,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const savedUser = localStorage.getItem('sgf_auth_user');
       if (savedUser) return JSON.parse(savedUser);
     } catch {}
-    return {
-      id: 'usr-master-1',
-      nome: 'Carlos Eduardo Silva',
-      email: 'carlos.silva@sysgov.online',
-      cargo: 'Super Administrador',
-      role: 'EMPRESA_MASTER',
-    };
+    return null;
   });
 
   const [authRole, setAuthRoleState] = useState<AuthRole>(() => {
@@ -53,10 +49,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
       const savedToken = localStorage.getItem('sgf_auth_token');
-      if (savedToken) return true;
-      return true; // Padrão autenticado em modo desenvolvimento/demonstração
+      // Sessão guardada por versões antigas (token de demonstração) não vale mais.
+      return !!savedToken && savedToken !== LEGACY_DEMO_TOKEN;
     } catch {
-      return true;
+      return false;
     }
   });
 
@@ -67,25 +63,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch {}
   };
 
-  const login = (email: string, password: string): boolean => {
-    if (!email || !password) return false;
-    const user: AuthUser = {
-      id: 'usr-' + Date.now(),
-      nome: email.split('@')[0],
-      email,
-      cargo: 'Administrador',
-      role: 'EMPRESA_MASTER',
-    };
-    setCurrentUser(user);
-    setAuthRoleState('EMPRESA_MASTER');
-    setIsAuthenticated(true);
-    try {
-      localStorage.setItem('sgf_auth_user', JSON.stringify(user));
-      localStorage.setItem('sgf_auth_role', 'EMPRESA_MASTER');
-      localStorage.setItem('sgf_auth_token', 'universal-admin-session-token');
-    } catch {}
-    return true;
+  const login = (_email: string, _password: string): boolean => {
+    // Login local sem backend removido: autenticação só via API (loginAdminSession/loginTenantSession).
+    return false;
   };
+
 
   const loginTenantSession = (user: AuthUser, token?: string) => {
     if (!token) {
@@ -102,8 +84,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch {}
   };
 
-  const loginAdminSession = (user: AuthUser, token?: string) => {
-    const validToken = token || 'universal-admin-session-token';
+  const loginAdminSession = (user: AuthUser, token: string) => {
+    const validToken = token;
     setCurrentUser(user);
     setAuthRoleState('EMPRESA_MASTER');
     setIsAuthenticated(true);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -47,7 +48,7 @@ final class EvolucaoCiclosTest extends TestCase
     {
         $u = User::create(['name' => "Servidor {$matricula}", 'email' => strtolower($matricula) . '@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
 
-        return Servidor::create([
+        return ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'user_id' => $u->id, 'matricula' => $matricula,
             'cpf' => substr(str_pad((string) crc32($matricula), 11, '0'), 0, 11),
             'nome_completo' => "Servidor {$matricula}", 'data_nascimento' => '1985-01-01', 'data_admissao' => '2018-01-01',

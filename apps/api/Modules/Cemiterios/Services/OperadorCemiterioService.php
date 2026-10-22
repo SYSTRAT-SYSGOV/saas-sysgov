@@ -20,7 +20,7 @@ final readonly class OperadorCemiterioService
 {
     private const DISCO = 's3';
 
-    public function __construct(private AuditLogger $audit) {}
+    public function __construct(private AuditLogger $audit, private PessoaDoDocumentoService $pessoas) {}
 
     /** @param array<string, mixed> $dados */
     public function cadastrar(array $dados): OperadorCemiterio
@@ -28,7 +28,7 @@ final readonly class OperadorCemiterioService
         $alvaraNumero = $dados['alvara_numero'] ?? null;
         $alvaraValidade = $dados['alvara_validade'] ?? null;
 
-        $operador = OperadorCemiterio::create($dados);
+        $operador = OperadorCemiterio::create($this->comPessoa($dados));
 
         $this->audit->record(
             module: 'cemiterios',
@@ -49,7 +49,7 @@ final readonly class OperadorCemiterioService
     public function atualizar(OperadorCemiterio $operador, array $dados): OperadorCemiterio
     {
         $before = $operador->toArray();
-        $operador->update($dados);
+        $operador->update($this->comPessoa($dados, $operador));
 
         $this->audit->record(
             module: 'cemiterios',
@@ -60,6 +60,28 @@ final readonly class OperadorCemiterioService
         );
 
         return $operador;
+    }
+
+    /**
+     * O documento do operador mora na pessoa do cadastro central (`pessoa_id` é obrigatório): o `cpf_cnpj` digitado só
+     * serve para achar ou criar essa pessoa. Na edição, `pessoa_id` nulo ou documento vazio ou mascarado (o que a tela
+     * devolve) mantêm a pessoa atual.
+     *
+     * @param array<string, mixed> $dados
+     * @return array<string, mixed>
+     */
+    private function comPessoa(array $dados, ?OperadorCemiterio $atual = null): array
+    {
+        $pessoaId = isset($dados['pessoa_id']) ? (int) $dados['pessoa_id'] : null;
+        $documento = isset($dados['cpf_cnpj']) ? trim((string) $dados['cpf_cnpj']) : '';
+        unset($dados['cpf_cnpj'], $dados['documento_hash'], $dados['pessoa_id']);
+
+        if ($atual === null || $pessoaId !== null || $documento !== '') {
+            $nome = (string) ($dados['nome'] ?? $atual->nome ?? '');
+            $dados['pessoa_id'] = $this->pessoas->resolver($nome, $documento, $pessoaId, $atual?->pessoa, 'cpf_cnpj')->id;
+        }
+
+        return $dados;
     }
 
     /**

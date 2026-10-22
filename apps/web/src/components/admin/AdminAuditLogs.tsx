@@ -14,7 +14,6 @@ import {
 import { AuditLogEntry } from '../../types/admin';
 import { ScreenState, ScreenStateType } from '../ui/ScreenState';
 import api from '../../api/client';
-import { INITIAL_AUDIT_LOGS } from '../../services/adminMockData';
 import { Card, Modal, Button } from '@sysgov/ui';
 
 interface AdminAuditLogsProps {
@@ -37,6 +36,14 @@ interface RawAuditLog {
   created_at?: string;
 }
 
+const PER_PAGE = 50;
+
+interface AuditLogsPage {
+  data?: RawAuditLog[];
+  last_page?: number;
+  total?: number;
+}
+
 export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) => {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [screenState, setScreenState] = useState<ScreenStateType>('loading');
@@ -45,21 +52,23 @@ export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) =>
   const [levelFilter, setLevelFilter] = useState<string>('ALL');
   const [serviceFilter, setServiceFilter] = useState<string>('ALL');
   const [selectedPayloadLog, setSelectedPayloadLog] = useState<AuditLogEntry | null>(null);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [totalLogs, setTotalLogs] = useState(0);
 
   const fetchLogs = useCallback(async () => {
     setScreenState('loading');
     setErrorMessage('');
     try {
-      const res = await api.get<{ data?: RawAuditLog[] } | RawAuditLog[]>('/api/admin/audit-logs');
+      const res = await api.get<AuditLogsPage | RawAuditLog[]>(`/api/admin/audit-logs?page=${page}&per_page=${PER_PAGE}`);
       const rawList = Array.isArray(res) ? res : res.data || [];
+      if (!Array.isArray(res)) {
+        setLastPage(res.last_page ?? 1);
+        setTotalLogs(res.total ?? rawList.length);
+      }
 
       if (rawList.length === 0) {
-        // Fallback para mock se o banco estiver vazio em ambiente local
-        if (INITIAL_AUDIT_LOGS.length > 0) {
-          setLogs(INITIAL_AUDIT_LOGS);
-          setScreenState('ready');
-          return;
-        }
+        // Sem fallback para dados de exemplo: lista vazia mostra o estado vazio.
         setLogs([]);
         setScreenState('empty');
         return;
@@ -99,16 +108,11 @@ export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) =>
       setLogs(mapped);
       setScreenState('ready');
     } catch (err: any) {
-      // Se a API falhar ou estiver offline, usamos o mock resiliente
-      if (INITIAL_AUDIT_LOGS.length > 0) {
-        setLogs(INITIAL_AUDIT_LOGS);
-        setScreenState('ready');
-      } else {
-        setErrorMessage(err.message || 'Falha ao conectar ao servidor de auditoria.');
-        setScreenState('error');
-      }
+      setLogs([]);
+      setErrorMessage(err.message || 'Falha ao conectar ao servidor de auditoria.');
+      setScreenState('error');
     }
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     fetchLogs();
@@ -344,9 +348,29 @@ export const AdminAuditLogs: React.FC<AdminAuditLogsProps> = ({ onAddToast }) =>
 
           <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>
-              Exibindo <strong className="text-slate-900 dark:text-white font-mono tabular-nums">{filteredLogs.length}</strong> logs de auditoria
+              Exibindo <strong className="text-slate-900 dark:text-white font-mono tabular-nums">{filteredLogs.length}</strong> log(s) nesta página
             </span>
-            <span className="text-[11px] font-mono">audit-ledger-hmac</span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono tabular-nums" data-testid="audit-page-info">
+                Página {page} de {lastPage} • {totalLogs} registro(s)
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || screenState === 'loading'}
+                className="px-2.5 py-1 rounded-md border border-slate-300 dark:border-slate-700 font-semibold disabled:opacity-40"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                disabled={page >= lastPage || screenState === 'loading'}
+                className="px-2.5 py-1 rounded-md border border-slate-300 dark:border-slate-700 font-semibold disabled:opacity-40"
+              >
+                Próxima
+              </button>
+            </div>
           </div>
         </Card>
       </ScreenState>

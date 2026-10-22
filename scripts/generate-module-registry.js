@@ -198,7 +198,10 @@ function discoverModulesFromFilesystem() {
 
 function resolveComponentPath(alias, name) {
   const studly = capitalizeFirst(alias);
+  // Alias com separadores (ex.: meio_ambiente, meio-ambiente) vira PascalCase: MeioAmbiente
+  const pascal = alias.split(/[_\-\s]+/).filter(Boolean).map(capitalizeFirst).join('');
   const candidates = [
+    { file: path.join(WEB_MODULES_DIR, alias, `${pascal}Module.tsx`), import: `@/modules/${alias}/${pascal}Module` },
     { file: path.join(WEB_MODULES_DIR, alias, `${studly}Module.tsx`), import: `@/modules/${alias}/${studly}Module` },
     { file: path.join(WEB_MODULES_DIR, alias, `${name}Module.tsx`), import: `@/modules/${alias}/${name}Module` },
     { file: path.join(WEB_MODULES_DIR, alias, 'index.tsx'), import: `@/modules/${alias}` },

@@ -130,9 +130,10 @@ final class Concessao extends Model
     }
 
     /** Alias legado de `data_inicio`. */
-    public function getInicioAttribute(): string
+    public function getInicioAttribute(): ?string
     {
-        return $this->data_inicio->toDateString();
+        // Pode vir sem a coluna (ex.: with('concessao:id,numero,estado,tipo') na lista de abandono).
+        return isset($this->attributes['data_inicio']) ? $this->data_inicio->toDateString() : null;
     }
 
     /** Alias legado de `data_fim`. */

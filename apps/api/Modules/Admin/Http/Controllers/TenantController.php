@@ -6,6 +6,7 @@ namespace Modules\Admin\Http\Controllers;
 
 use App\Models\Tenant;
 use App\Services\CnpjService;
+use App\Services\TenantSummary;
 use App\Services\TenantProvisionService;
 use App\Support\AuditLogger;
 use App\Support\OutboxPublisher;
@@ -19,33 +20,31 @@ final class TenantController
 {
     use AuthorizesRequests;
 
+    /** Campos aceitos em `sort` (lista branca — nunca interpolar entrada do usuário na query). */
+    private const SORTABLE = ['name', 'slug', 'status', 'type', 'plan', 'created_at', 'monthly_fee_cents'];
+
+    private const MAX_PER_PAGE = 100;
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Tenant::class);
 
-        $query = Tenant::query()->with('modules:id,alias,name,monthly_fee_cents')->latest();
+        // Escopo + filtros (compartilhados entre a página e os totais do conjunto filtrado)
+        $base = Tenant::query();
 
         // Analista de suporte: vê apenas a carteira de clientes liberada (tenant_analyst)
-        $user = $request->user();
-        if ($user && $user->isSupportAnalyst() && !$user->is_platform_admin) {
-            $query->whereIn('tenants.id', fn ($q) => $q
-                ->select('tenant_analyst.tenant_id')
-                ->from('tenant_analyst')
-                ->where('tenant_analyst.user_id', $user->id)
-                ->where(fn ($w) => $w->whereNull('tenant_analyst.expires_at')->orWhere('tenant_analyst.expires_at', '>', now()))
-            );
-        }
+        $base->forUser($request->user());
 
         if ($type = $request->string('type')->toString()) {
-            $query->where('type', $type);
+            $base->where('type', $type);
         }
 
         if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+            $base->where('status', $status);
         }
 
         if ($search = $request->string('q')->toString()) {
-            $query->where(function ($q) use ($search) {
+            $base->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('slug', 'like', "%{$search}%")
                   ->orWhere('cnpj', 'like', "%{$search}%")
@@ -53,7 +52,34 @@ final class TenantController
             });
         }
 
-        return response()->json($query->paginate(25));
+        $summary = (new TenantSummary())->for($base);
+
+        $sort = $request->string('sort')->toString();
+        $sort = in_array($sort, self::SORTABLE, true) ? $sort : 'created_at';
+        $direction = strtolower($request->string('direction')->toString()) === 'asc' ? 'asc' : 'desc';
+        $perPage = $request->integer('per_page', 25);
+        $perPage = $perPage < 1 ? 25 : min($perPage, self::MAX_PER_PAGE);
+
+        $paginator = (clone $base)
+            ->with('modules:id,alias,name,monthly_fee_cents')
+            ->withCount('users')
+            ->orderBy($sort, $direction)
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->through(fn (Tenant $tenant): array => array_merge($tenant->toArray(), [
+                'mrr_cents' => $tenant->monthlyMrrCents(),
+                'user_count' => (int) $tenant->getAttribute('users_count'),
+            ]));
+
+        return response()->json(array_merge($paginator->toArray(), [
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'summary' => $summary,
+            ],
+        ]));
     }
 
     public function show(Tenant $tenant): JsonResponse
@@ -119,8 +145,11 @@ final class TenantController
             // na lista de checkboxes, então sem isso o sync() abaixo o removia do
             // tenant sempre que os módulos eram editados, deixando o Painel do
             // Cliente inteiro inacessível (a rota "/" exige o módulo "dashboard").
-            if (!in_array('dashboard', $moduleAliases, true)) {
-                $moduleAliases[] = 'dashboard';
+            // O mesmo vale para os demais módulos de base ("users"): fora da lista, o sync() os removeria.
+            foreach (\Modules\Admin\Models\Module::BASE as $alias) {
+                if (!in_array($alias, $moduleAliases, true)) {
+                    $moduleAliases[] = $alias;
+                }
             }
 
             $modules = \Modules\Admin\Models\Module::query()->whereIn('alias', $moduleAliases)->get();

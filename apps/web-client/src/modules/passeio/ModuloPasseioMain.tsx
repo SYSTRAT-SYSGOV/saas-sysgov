@@ -57,7 +57,7 @@ export function escolherAtivo(passeios: Passeio[], daUrl: number | null): Passei
     ?? null;
 }
 
-/** Passeio & Transporte Escolar sobre o Cadastro Escolar: tudo lido e gravado pela API (design D18–D20). */
+/** Passeio sobre o Cadastro Escolar: tudo lido e gravado pela API (design D18–D20). */
 export const ModuloPasseioMain: React.FC = () => {
   const { can } = useCan();
   const [parametros, setParametros] = useSearchParams();
@@ -133,7 +133,7 @@ export const ModuloPasseioMain: React.FC = () => {
               <Bus className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground">Passeio & Transporte Escolar</h1>
+              <h1 className="text-lg font-bold text-foreground">Passeio</h1>
               <p className="text-sm text-muted-foreground">
                 {ativo ? `${ativo.destino} — ${ativo.cidade} · ${formatarData(ativo.data_passeio)}` : 'Passeios dos alunos do Cadastro Escolar'}
               </p>

@@ -16,9 +16,9 @@ class ApiClient {
     try {
       const stored = localStorage.getItem('sgf_auth_token') ?? localStorage.getItem('auth_token');
       // Ignora tokens antigos do mock ('jwt_master_*') — o backend os rejeita (401)
-      return stored && !stored.startsWith('jwt_master_') ? stored : 'universal-admin-session-token';
+      return stored && !stored.startsWith('jwt_master_') ? stored : null;
     } catch {
-      return 'universal-admin-session-token';
+      return null;
     }
   }
 

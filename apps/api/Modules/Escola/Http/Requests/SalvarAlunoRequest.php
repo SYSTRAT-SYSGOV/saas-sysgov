@@ -37,6 +37,9 @@ final class SalvarAlunoRequest extends FormRequest
             'nascimento' => ['nullable', 'date', 'before_or_equal:today'],
             'mae' => ['nullable', 'string', 'max:200'],
             'pai' => ['nullable', 'string', 'max:200'],
+            // Aluno sem CPF vira pessoa com documento pendente: menor exige responsável (pessoa física).
+            'responsavel_id' => ['nullable', 'integer'],
+            'confirmar_novo' => ['sometimes', 'boolean'],
             'situacao' => ['sometimes', Rule::enum(SituacaoAluno::class)],
             'contatos' => ['sometimes', 'array', 'max:10'],
             'contatos.*.telefone' => ['required', 'string', 'max:30'],

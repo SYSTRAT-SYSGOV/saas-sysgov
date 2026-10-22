@@ -101,6 +101,10 @@ public function show(Request $request, User $user): JsonResponse
         $roleSlug = $validated['role_slug'] ?? null;
         unset($validated['role_slug']);
 
+        if (array_key_exists('is_active', $validated) && $validated['is_active'] === false) {
+            (new \App\Services\TenantAdminGuard())->assertNotLastAdmin($user, $tenantId);
+        }
+
         $before = $user->fresh(['roles'])->toArray();
 
         if ($validated !== []) {
@@ -215,6 +219,8 @@ if ($roleSlug) {
     {
         $tenantId = app(TenantContext::class)->id();
         $this->assertCan($request->user(), 'deactivate', $user);
+
+        (new \App\Services\TenantAdminGuard())->assertNotLastAdmin($user, $tenantId);
 
         $before = $user->toArray();
 

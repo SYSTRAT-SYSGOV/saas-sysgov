@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Pessoas\Http\Controllers\DivergenciaController;
 use Modules\Pessoas\Http\Controllers\ImportacaoController;
 use Modules\Pessoas\Http\Controllers\IntegracaoController;
 use Modules\Pessoas\Http\Controllers\PessoaController;
@@ -19,6 +20,7 @@ Route::pattern('contato', '[0-9]+');
 Route::pattern('socio', '[0-9]+');
 Route::pattern('integracao', '[0-9]+');
 Route::pattern('syncLog', '[0-9]+');
+Route::pattern('divergencia', '[0-9]+');
 
 Route::get('/', [PessoaController::class, 'index']);
 Route::get('/export', [PessoaController::class, 'export']);
@@ -27,6 +29,8 @@ Route::get('/{pessoa}', [PessoaController::class, 'show']);
 Route::put('/{pessoa}', [PessoaController::class, 'update']);
 Route::delete('/{pessoa}', [PessoaController::class, 'destroy']);
 Route::post('/{pessoa}/auditar-acesso-sensivel', [PessoaController::class, 'auditarAcessoSensivel']);
+Route::post('/{pessoa}/regularizar-documento', [PessoaController::class, 'regularizarDocumento']);
+Route::post('/{pessoa}/mesclar', [PessoaController::class, 'mesclar']);
 
 Route::post('/{pessoa}/vinculos', [PessoaController::class, 'storeVinculo']);
 Route::post('/{pessoa}/vinculos/{vinculo}/encerrar', [PessoaController::class, 'encerrarVinculo']);
@@ -48,6 +52,10 @@ Route::put('/{pessoa}/socios/{socio}', [PessoaController::class, 'updateSocio'])
 Route::post('/{pessoa}/socios/{socio}/encerrar', [PessoaController::class, 'encerrarSocio']);
 
 Route::post('/{pessoa}/promover', [PromocaoController::class, 'promover']);
+
+Route::get('/adocao', [DivergenciaController::class, 'adocao']);
+Route::get('/divergencias', [DivergenciaController::class, 'index']);
+Route::post('/divergencias/{divergencia}/resolver', [DivergenciaController::class, 'resolver']);
 
 Route::post('/importacoes', [ImportacaoController::class, 'importar']);
 

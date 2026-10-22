@@ -26,6 +26,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class Module extends Model
 {
+    /**
+     * Módulos de base: fazem parte de todo tenant e não são oferecidos nem desligáveis pelo catálogo. `dashboard` é o
+     * Painel do Cliente (a rota "/" o exige) e `users` é "Usuários & Acessos" (usuários, perfis e permissões do
+     * tenant). O item de menu de cada um só aparece se o módulo estiver ativo no tenant.
+     */
+    public const BASE = ['dashboard', 'users'];
+
     protected $table = 'modules';
     protected $fillable = ['name', 'alias', 'metadata', 'enabled', 'monthly_fee_cents', 'description'];
     protected $casts = [

@@ -24,6 +24,13 @@ final class CapdServiceProvider extends ServiceProvider
             \Modules\Capd\Listeners\SendCycleNotification::class,
         );
 
+        // Conciliação dos servidores com o cadastro central (`pessoas:conciliar capd`).
+        $this->app->make(\Modules\Pessoas\Services\ConciliacaoRegistry::class)->registrar(new \Modules\Capd\Support\ConciliacaoServidores());
+        \Illuminate\Support\Facades\Event::listen(
+            \Modules\Pessoas\Events\PessoaAtualizada::class,
+            \Modules\Capd\Listeners\AtualizarServidoresDaPessoa::class,
+        );
+
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
 
         if ($this->app->runningInConsole()) {

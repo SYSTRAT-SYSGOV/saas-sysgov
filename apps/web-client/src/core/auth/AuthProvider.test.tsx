@@ -14,29 +14,50 @@ describe('AuthProvider', () => {
     <AuthProvider>{children}</AuthProvider>
   );
 
-  it('deve inicializar com o estado padrão/demonstração quando não há storage', async () => {
+  it('NÃO abre sessão de demonstração quando não há storage e o backend está inacessível', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
 
     await waitFor(
       () => {
         expect(result.current.isLoading).toBe(false);
-        expect(result.current.isAuthenticated).toBe(true);
       },
-      { timeout: 3000 }
+      { timeout: 6000 }
     );
 
-    expect(result.current.user?.name).toBe('Administrador da Prefeitura de Araucária');
-    expect(result.current.tenant?.slug).toBe('araucaria-pr');
-    expect(result.current.tenants.length).toBeGreaterThan(0);
-    expect(result.current.navigation.length).toBeGreaterThan(0);
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.token).toBeNull();
+    expect(result.current.user).toBeNull();
+    expect(result.current.tenant).toBeNull();
+  });
+
+  it('NÃO cai em sessão de demonstração quando o login falha por erro de rede', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false), { timeout: 6000 });
+
+    const post = vi.spyOn(apiClient, 'post').mockRejectedValue(new Error('Network Error'));
+    await act(async () => {
+      await expect(result.current.login({ email: 'qualquer@x.com', password: 'x' })).rejects.toThrow();
+    });
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(localStorage.getItem('sysgov_auth_token')).toBeNull();
+    post.mockRestore();
   });
 
   it('deve alternar o tenant ativo via switchTenant', async () => {
-    const { result } = renderHook(() => useAuth(), { wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+    const systrat = { id: 1, name: 'SYSTRAT (Sistema)', slug: 'systrat', type: 'interno', settings: {} };
+    const outro = { id: 2, name: 'Outro', slug: 'outro', type: 'prefeitura', settings: {} };
+    localStorage.setItem('sysgov_auth_token', 'token-salvo');
+    localStorage.setItem('sysgov_auth_state', JSON.stringify({
+      token: 'token-salvo', user: { id: 1, name: 'Admin' }, tenant: outro, tenants: [outro, systrat],
+      modules: ['dashboard'], permissions: ['*'], navigation: [],
+    }));
+    const me = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { tenant: outro } });
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue({
+      data: { token: 'token-salvo', user: { id: 1, name: 'Admin' }, tenant: systrat, tenants: [outro, systrat], modules: ['dashboard'], permissions: ['*'], navigation: [] },
     });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.tenant?.id).toBe(2));
 
     await act(async () => {
       await result.current.switchTenant(1);
@@ -44,6 +65,8 @@ describe('AuthProvider', () => {
 
     expect(result.current.tenant?.id).toBe(1);
     expect(result.current.tenant?.slug).toBe('systrat');
+    me.mockRestore();
+    post.mockRestore();
   });
 
   it('deve limpar os dados ao executar logout', async () => {

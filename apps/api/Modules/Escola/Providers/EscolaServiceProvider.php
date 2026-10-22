@@ -43,6 +43,9 @@ final class EscolaServiceProvider extends ServiceProvider
         // Escola de trabalho da requisição (usado também por Pedagógico, Formatura e Passeio).
         $this->app->make(Router::class)->aliasMiddleware('escola', ResolveEscola::class);
 
+        // Conciliação das cópias de dado civil dos alunos com o cadastro central (`pessoas:conciliar escola`).
+        $this->app->make(\Modules\Pessoas\Services\ConciliacaoRegistry::class)->registrar(new \Modules\Escola\Support\ConciliacaoAlunos());
+
         Event::listen(\Modules\Pessoas\Events\PessoaAtualizada::class, AtualizarAlunosDaPessoa::class);
 
         Gate::policy(Escola::class, EscolaPolicy::class);

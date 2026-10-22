@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature\Hierarquia;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -49,7 +50,7 @@ final class ImpedimentoBloqueiaSubidaTest extends TestCase
         OrgUnitUser::create(['tenant_id' => $tenant->id, 'org_unit_id' => $secretaria->id, 'user_id' => $r2->id, 'role' => 'responsavel', 'valid_from' => Carbon::parse('2020-01-01')]);
 
         $servidorUser = User::factory()->create();
-        $servidor = Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'matricula' => 'SERV-003', 'cpf' => '333.333.333-33',
             'nome_completo' => 'Beltrano', 'cargo_efetivo' => 'Assistente', 'orgao_lotacao' => 'Departamento',
             'user_id' => $servidorUser->id, 'org_unit_id' => $departamento->id,

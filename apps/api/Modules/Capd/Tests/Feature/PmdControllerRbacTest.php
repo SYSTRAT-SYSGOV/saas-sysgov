@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -55,7 +56,7 @@ final class PmdControllerRbacTest extends TestCase
 
         $servidorUser = User::create(['name' => 'Alvo PMD', 'email' => 'alvo.pmd@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
 
-        $this->servidor = Servidor::create([
+        $this->servidor = ServidorDeTeste::criar([
             'tenant_id'             => $this->tenant->id,
             'user_id'               => $servidorUser->id,
             'matricula'             => 'PMD-RBAC-001',

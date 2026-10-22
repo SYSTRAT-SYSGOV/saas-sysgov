@@ -118,6 +118,20 @@ final class CaptacaoTest extends TestCase
         $this->assertSame('43999991234', $eleitor->whatsapp);
     }
 
+    public function test_cadastro_de_eleitor_nao_cria_pessoa_no_cadastro_central(): void
+    {
+        $this->basePublica();
+        $tenant = $this->criarTenant();
+        $campanha = $this->campanha($tenant);
+        $link = $this->link($campanha);
+
+        $this->postJson("/api/public/campanha/links/{$link->codigo}/cadastros", $this->envio($this->abrir($link)))->assertCreated();
+        $this->postJson("/api/public/campanha/links/{$link->codigo}/cadastros", $this->envio($this->abrir($link), ['nome' => 'Ana Atualizada']))->assertCreated();
+
+        // Eleitor fica fora do MDM (consentimento LGPD e anonimização): nenhuma pessoa é criada nem alterada.
+        $this->assertSame(0, DB::table('pessoas')->count());
+    }
+
     // ------------------------------------------------------------------ 2.3 formulário público
 
     public function test_formulario_mostra_campanha_termo_e_municipios_da_uf(): void

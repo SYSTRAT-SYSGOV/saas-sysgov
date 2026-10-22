@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -71,7 +72,7 @@ final class AvaliadorCriaAvaliacaoTest extends TestCase
         $servidorUser = User::create(['name' => 'Servidor Teste', 'email' => 'servidor.aberto@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
         $servidorUser->tenants()->attach($tenant->id, ['status' => 'active', 'is_primary' => true]);
 
-        $chefiaServidor = \Modules\Capd\Models\Servidor::create([
+        $chefiaServidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id,
             'user_id' => $chefiaUser->id,
             'matricula' => 'CHEF-001',
@@ -81,7 +82,7 @@ final class AvaliadorCriaAvaliacaoTest extends TestCase
             'orgao_lotacao' => 'SMAD',
         ]);
 
-        $servidor = \Modules\Capd\Models\Servidor::create([
+        $servidor = ServidorDeTeste::criar([
             'tenant_id' => $tenant->id,
             'user_id' => $servidorUser->id,
             'matricula' => 'SERV-001',

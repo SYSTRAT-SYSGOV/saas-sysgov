@@ -54,7 +54,7 @@ final class RoleAdminController
         unset($validated['permission_ids']);
 
         $role = \App\Models\Role::create($validated + ['guard_name' => 'web']);
-        $role->permissions()->sync($permissionIds);
+        $role->sincronizarPermissoesExato($permissionIds);
 
         app(\App\Support\AuditLogger::class)->record('admin', 'role.created', "Role #{$role->id}", null, $role->toArray());
 
@@ -78,7 +78,7 @@ final class RoleAdminController
 
         $role->fill($validated)->save();
         if (is_array($permissionIds)) {
-            $role->permissions()->sync($permissionIds);
+            $role->sincronizarPermissoesExato($permissionIds);
         }
 
         app(\App\Support\AuditLogger::class)->record('admin', 'role.updated', "Role #{$role->id}", $before, $role->fresh('permissions')->toArray());

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Pedagogico\Tests\Feature;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,7 +106,7 @@ final class EstruturaIsolamentoTest extends TestCase
     {
         $turno = Turno::create(['nome' => "Manhã {$s}", 'ordem' => 1]);
         $turma = Turma::create(['nome' => "6º {$s}", 'turno_id' => $turno->id, 'ano_letivo' => 2026]);
-        $aluno = Aluno::create(['nome' => "Aluno {$s}", 'turma_id' => $turma->id, 'situacao' => 'ativo']);
+        $aluno = AlunoDeTeste::criar(['nome' => "Aluno {$s}", 'turma_id' => $turma->id, 'situacao' => 'ativo']);
         $materia = Materia::create(['nome' => "Matemática {$s}"]);
         $categoria = \Modules\Escola\Models\CategoriaOcorrencia::create(['nome' => "Falta {$s}", 'cor' => '#ffffff']);
         $ficha = PreConselho::create(['turma_id' => $turma->id, 'materia_id' => $materia->id, 'ano_letivo' => 2026, 'periodo' => 1, 'data_registro' => '2026-04-10', 'desempenho_geral' => 'bom']);

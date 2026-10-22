@@ -44,6 +44,8 @@ final class PainelGerencialService
 
     /**
      * Monta a query Eloquent aplicando todos os filtros solicitados.
+     *
+     * @return Builder<Servidor>
      */
     public function montarQueryFiltros(array $filtros): Builder
     {
@@ -180,7 +182,7 @@ final class PainelGerencialService
             $query->where(function ($q) use ($busca): void {
                 $q->where('nome_completo', 'like', "%{$busca}%")
                     ->orWhere('matricula', 'like', "%{$busca}%")
-                    ->orWhere('cpf', 'like', "%{$busca}%");
+                    ->orWhere(fn ($c) => $c->comCpf((string) $busca));
             });
         }
 
@@ -516,7 +518,7 @@ final class PainelGerencialService
     public function exportarCsv(array $filtros): string
     {
         $query = $this->montarQueryFiltros($filtros);
-        $servidores = $query->get();
+        $servidores = $query->with('pessoa')->get();
 
         $output = fopen('php://temp', 'r+');
         fputcsv($output, [
@@ -538,10 +540,10 @@ final class PainelGerencialService
             fputcsv($output, [
                 $servidor->matricula,
                 $servidor->nome_completo,
-                $servidor->cpf,
+                $servidor->cpfFormatado(),
                 $servidor->cargo_efetivo,
                 $servidor->orgao_lotacao,
-                $servidor->chefiaImediata?->name ?? 'Não Definido',
+                $servidor->chefiaImediata->nome_completo ?? 'Não Definido',
                 $av?->nota_final !== null ? number_format((float) $av->nota_final, 2, '.', '') : '0.00',
                 $av?->data_conclusao ? ($av->homologada ? 'Homologada' : 'Submetida') : 'Pendente',
                 $av?->homologada ? 'Sim' : 'Não',

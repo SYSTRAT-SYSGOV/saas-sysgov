@@ -9,6 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Modules\Pessoas\Support\RegistroConciliacao;
+use Modules\Pessoas\Support\ConciliacaoPorModelo;
+use Modules\Pessoas\Services\ConciliacaoRegistry;
 use Modules\Inservivel\Models\Bem;
 use Modules\Inservivel\Models\Categoria;
 use Modules\Inservivel\Models\Configuracao;
@@ -33,6 +36,14 @@ final class InservivelServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+
+        // Conciliação das cópias de dado civil com o cadastro central (`pessoas:conciliar <alias>`).
+        $registry = $this->app->make(ConciliacaoRegistry::class);
+        $registry->registrar(new ConciliacaoPorModelo(
+            'inservivel-entidades',
+            Entidade::class,
+            fn (Entidade $r): RegistroConciliacao => new RegistroConciliacao($r->id, $r->pessoa_id, $r->cnpj, ['nome' => $r->razao_social], null, true, ['razao_social' => (string) $r->razao_social, 'nome_fantasia' => $r->nome_fantasia]),
+        ));
         $this->loadViewsFrom(__DIR__ . '/../Resources/views', 'inservivel');
 
         Gate::policy(Bem::class, BemPolicy::class);

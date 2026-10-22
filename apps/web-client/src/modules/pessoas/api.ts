@@ -61,6 +61,7 @@ export interface PessoaCompacta {
   nome: string;
   nome_social: string | null;
   cpf_mascarado: string;
+  documento_pendente?: boolean;
   status: 'ativo' | 'inativo' | 'falecido';
   falecido?: boolean;
   data_falecimento?: string | null;
@@ -80,6 +81,8 @@ export interface Pessoa {
   responsavel_id?: number | null;
   cpf_mascarado: string;
   documento_mascarado?: string;
+  /** Pessoa física sem CPF informado; aguarda regularização. */
+  documento_pendente?: boolean;
   data_nascimento: string | null;
   sexo: string | null;
   nome_mae: string | null;
@@ -134,7 +137,49 @@ export const STATUS_SYNC_LOG: Record<StatusSyncLog, string> = {
   nao_encontrado: 'Não encontrado',
 };
 
-export interface ErroApi { status: number; mensagem: string; codigo?: string; campos?: Record<string, string[]> }
+export interface ErroApi {
+  status: number;
+  mensagem: string;
+  codigo?: string;
+  campos?: Record<string, string[]>;
+  /** Corpo completo da resposta de erro (ex.: `sugestoes`, `pessoa_existente`, `mesclagem_disponivel`). */
+  dados?: Record<string, unknown>;
+}
+
+/** Pessoa já cadastrada com o mesmo nome e nascimento, sugerida antes de criar um cadastro sem CPF. */
+export interface PessoaSemelhante { id: number; nome: string; cpf_mascarado: string; documento_pendente: boolean }
+
+export type DecisaoDivergencia = 'modulo' | 'mdm';
+
+export interface PessoaDivergencia {
+  id: number;
+  pessoa_id: number;
+  pessoa_nome: string | null;
+  modulo: string;
+  tabela: string;
+  registro_id: number;
+  campo: string;
+  valor_modulo: string | null;
+  valor_mdm: string | null;
+  estado: 'aberta' | 'resolvida';
+  decisao: DecisaoDivergencia | null;
+  resolvida_em: string | null;
+}
+
+export interface AdocaoModulo {
+  modulo: string;
+  tabela: string;
+  total: number;
+  vinculados: number;
+  sem_vinculo: number;
+  documento_pendente: number;
+  divergencias_abertas: number;
+}
+
+export interface AdocaoPessoas {
+  modulos: AdocaoModulo[];
+  totais: Omit<AdocaoModulo, 'modulo' | 'tabela'>;
+}
 
 export function erroApi(erro: unknown): ErroApi {
   if (axios.isAxiosError(erro) && erro.response) {
@@ -146,6 +191,7 @@ export function erroApi(erro: unknown): ErroApi {
       mensagem: (typeof message === 'string' && message) || padrao[status] || 'Não foi possível concluir a operação.',
       codigo: typeof code === 'string' ? code : undefined,
       campos: errors as Record<string, string[]> | undefined,
+      dados: data,
     };
   }
   return { status: 0, mensagem: 'Falha de comunicação com o servidor.' };
@@ -165,6 +211,11 @@ export const pessoasApi = {
   criar: (dados: Record<string, unknown>) => post<Pessoa>('', dados),
   atualizar: (id: number, dados: Record<string, unknown>) => put<Pessoa>(`/${id}`, dados),
   excluir: (id: number) => del<{ deleted: boolean }>(`/${id}`),
+  regularizarDocumento: (id: number, cpf: string) => post<Pessoa>(`/${id}/regularizar-documento`, { cpf }),
+  mesclar: (id: number, destinoId: number) => post<Pessoa>(`/${id}/mesclar`, { destino_id: destinoId }),
+  listarDivergencias: (filtros: Record<string, unknown> = {}) => get<Paginado<PessoaDivergencia>>('/divergencias', filtros),
+  resolverDivergencia: (id: number, decisao: DecisaoDivergencia) => post<PessoaDivergencia>(`/divergencias/${id}/resolver`, { decisao }),
+  adocao: () => get<AdocaoPessoas>('/adocao'),
   adicionarVinculo: (pessoaId: number, dados: { tipo_vinculo: TipoVinculo; matricula?: string; inicio?: string }) => post<PessoaVinculo>(`/${pessoaId}/vinculos`, dados),
   encerrarVinculo: (pessoaId: number, vinculoId: number, fim?: string) => post<PessoaVinculo>(`/${pessoaId}/vinculos/${vinculoId}/encerrar`, fim ? { fim } : {}),
   adicionarDocumento: (pessoaId: number, dados: { tipo: PessoaDocumento['tipo']; numero: string; orgao_emissor?: string; uf_emissao?: string; data_emissao?: string }) => post<PessoaDocumento>(`/${pessoaId}/documentos`, dados),

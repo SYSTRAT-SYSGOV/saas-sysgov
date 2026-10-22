@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\OrgChart\Models\OrgUnit;
+use Modules\Pessoas\Models\Pessoa;
+use Modules\Pessoas\Support\Documento;
 
 /**
  * Servidor no módulo CAPD.
@@ -18,8 +20,11 @@ use Modules\OrgChart\Models\OrgUnit;
  * @property int $id
  * @property int $tenant_id
  * @property int|null $user_id
+ * @property int $pessoa_id pessoa do Cadastro de Pessoas (fonte de CPF, nome social e nascimento)
  * @property string $matricula
  * @property string $nome_completo
+ * @property string|null $regime_juridico
+ * @property \Illuminate\Support\Carbon|null $data_exercicio
  * @property string|null $cargo_efetivo
  * @property string|null $orgao_lotacao
  * @property string|null $lotacao_fisica
@@ -37,14 +42,12 @@ final class Servidor extends Model
     protected $fillable = [
         'tenant_id',
         'user_id',
+        'pessoa_id',
         'matricula',
-        'cpf',
         'pis_pasep',
         'nome_completo',
-        'nome_social',
         'email',
         'telefone',
-        'data_nascimento',
         'regime_juridico',
         'regime_previdenciario',
         'data_admissao',
@@ -69,14 +72,20 @@ final class Servidor extends Model
         'metadata',
     ];
 
+    /** A pessoa é a fonte de CPF, nome social e nascimento: vem junto, sem consulta por servidor, e nunca sai inteira na resposta. */
+    protected $with = ['pessoa'];
+
+    /** @var list<string> */
+    protected $hidden = ['pessoa'];
+
     protected $casts = [
         'tenant_id'             => 'integer',
         'user_id'               => 'integer',
+        'pessoa_id'             => 'integer',
         'plano_carreira_id'     => 'integer',
         'org_unit_id'           => 'integer',
         'chefia_imediata_id'    => 'integer',
         'carga_horaria_semanal' => 'integer',
-        'data_nascimento'       => 'date',
         'data_admissao'         => 'date',
         'data_posse'            => 'date',
         'data_exercicio'        => 'date',
@@ -129,6 +138,88 @@ final class Servidor extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<Pessoa, $this> */
+    public function pessoa(): BelongsTo
+    {
+        return $this->belongsTo(Pessoa::class, 'pessoa_id');
+    }
+
+    /**
+     * CPF só com dígitos, da pessoa do cadastro central (vazio com documento pendente, ilegível ou pessoa não
+     * carregada: relações com colunas parciais, como `chefiaImediata:id,nome_completo`, não trazem o `pessoa_id`).
+     */
+    public function cpfDigitos(): string
+    {
+        $pessoa = $this->pessoa;
+        if ($pessoa === null || $pessoa->documento_pendente) {
+            return '';
+        }
+
+        // Documento ilegível (chave trocada ou dado corrompido): sem CPF, e não erro na tela.
+        return Documento::somenteDigitos(rescue(fn (): string => (string) $pessoa->documento, '', false));
+    }
+
+    /** CPF com pontuação (000.000.000-00), ou vazio. */
+    public function cpfFormatado(): string
+    {
+        $d = $this->cpfDigitos();
+
+        return strlen($d) === 11 ? vsprintf('%s.%s.%s-%s', [substr($d, 0, 3), substr($d, 3, 3), substr($d, 6, 3), substr($d, 9, 2)]) : '';
+    }
+
+    /** Data de nascimento, da pessoa do cadastro central. */
+    public function nascimentoDaPessoa(): ?\Illuminate\Support\Carbon
+    {
+        return $this->pessoa?->data_nascimento;
+    }
+
+    /** Nome social, da pessoa do cadastro central. */
+    public function nomeSocialDaPessoa(): ?string
+    {
+        return $this->pessoa?->nome_social;
+    }
+
+    /**
+     * Servidores com esse CPF (11 dígitos), pelo documento da pessoa do cadastro central. Com outro tamanho, não casa
+     * com ninguém.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder<Servidor> $query
+     * @return \Illuminate\Database\Eloquent\Builder<Servidor>
+     */
+    public function scopeComCpf($query, string $cpf)
+    {
+        $digitos = Documento::somenteDigitos($cpf);
+
+        return $query->where(function ($q) use ($digitos): void {
+            if (strlen($digitos) !== 11) {
+                $q->whereRaw('1 = 0');
+
+                return;
+            }
+
+            $q->whereHas('pessoa', fn ($p) => $p->where('documento_hash', Documento::hash($digitos)));
+        });
+    }
+
+    /**
+     * No JSON, `cpf`, `nome_social` e `data_nascimento` vêm da pessoa (o contrato com o frontend não depende das
+     * colunas, que não existem mais); a relação em si nunca sai. Sem a pessoa carregada (relação com colunas parciais)
+     * os campos não entram.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        $dados = parent::toArray();
+        if ($this->pessoa !== null) {
+            $dados['cpf'] = $this->cpfFormatado();
+            $dados['nome_social'] = $this->nomeSocialDaPessoa();
+            $dados['data_nascimento'] = $this->nascimentoDaPessoa()?->toDateString();
+        }
+
+        return $dados;
     }
 
     /** @return BelongsTo<PlanoCarreira, $this> */

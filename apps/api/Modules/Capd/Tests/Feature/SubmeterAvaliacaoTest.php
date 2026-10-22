@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -98,7 +99,7 @@ final class SubmeterAvaliacaoTest extends TestCase
         // Vincula o servidor ao plano GERAL explicitamente — sem isso, a resolução do
         // modelo vigente fica ambígua entre FORM_GERAL_V1/FORM_MAGISTERIO_V1.
         $planoGeral = \Modules\Capd\Models\PlanoCarreira::where('tenant_id', $tenant->id)->where('codigo', 'GERAL')->firstOrFail();
-        Servidor::create([
+        ServidorDeTeste::criar([
             'tenant_id' => $tenant->id, 'user_id' => $servidorUser->id, 'matricula' => 'PESOS-REAIS-001',
             'cpf' => '11122233344', 'nome_completo' => 'Servidor Pesos Reais',
             'regime_juridico' => 'estatutario', 'regime_previdenciario' => 'rpps',

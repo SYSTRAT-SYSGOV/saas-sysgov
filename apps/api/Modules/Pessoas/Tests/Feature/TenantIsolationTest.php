@@ -53,6 +53,11 @@ final class TenantIsolationTest extends PessoasTestCase
         $usuario = User::create(['name' => 'Usuário A', 'email' => 'usuario-a-' . $tenant->id . '@teste.gov.br', 'password' => bcrypt('secret')]);
         $pessoa->usuario()->create(['user_id' => $usuario->id, 'promovido_em' => now()]);
 
+        \Modules\Pessoas\Models\PessoaDivergencia::create([
+            'pessoa_id' => $pessoa->id, 'modulo' => 'escola', 'tabela' => 'escola_alunos', 'registro_id' => 1,
+            'campo' => 'nome', 'valor_modulo' => 'Nome do módulo', 'valor_mdm' => 'Nome do MDM',
+        ]);
+
         $integracao = \Modules\Pessoas\Models\PessoaIntegracao::create(['nome' => 'Cadastro Único Municipal', 'driver' => 'generic_rest']);
         \Modules\Pessoas\Models\PessoaSyncLog::create(['integracao_id' => $integracao->id, 'status' => 'sucesso']);
     }

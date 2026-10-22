@@ -20,7 +20,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Modules\Cursos\Enums\StatusInscricao;
 use Modules\Cursos\Enums\TipoCertificado;
+use Modules\Cursos\Models\Assinatura;
 use Modules\Cursos\Models\Certificado;
+use Modules\Cursos\Models\Curso;
 use Modules\Cursos\Models\Formacao;
 use Modules\Cursos\Models\Inscricao;
 use Modules\Cursos\Models\ModeloCertificado;
@@ -74,6 +76,9 @@ final class CertificadoService
             'fim' => $turma->data_fim,
             // Só cursos com nota mínima imprimem a nota (spec); nos demais, e nas formações, vale o travessão.
             'nota' => $curso->nota_minima !== null ? $inscricao->nota_apurada : null,
+            'responsavel' => $curso->responsavel,
+            'conteudo_programatico' => $curso->conteudo_programatico,
+            'verso_linhas' => self::linhasDoConteudo($curso->conteudo_programatico),
         ], ['inscricao_id' => $inscricao->id]);
     }
 
@@ -112,6 +117,12 @@ final class CertificadoService
                 'carga_horaria_minutos' => $formacao->cursos->whereIn('id', $concluidas->keys())->sum('carga_horaria_minutos'),
                 'inicio' => $concluidas->min(fn (Inscricao $i) => $i->turma->data_inicio),
                 'fim' => $concluidas->max(fn (Inscricao $i) => $i->turma->data_fim),
+                // Verso da formação: cada curso concluído com a sua carga horária.
+                'verso_linhas' => $formacao->cursos->whereIn('id', $concluidas->keys())
+                    ->map(fn ($c): string => $c->titulo . ' — ' . self::formatarCargaHoraria((int) $c->carga_horaria_minutos))
+                    ->values()->all(),
+                'verso_titulo' => 'Cursos da formação',
+                'conteudo_programatico' => $formacao->cursos->whereIn('id', $concluidas->keys())->pluck('titulo')->implode("\n"),
             ], ['formacao_id' => $formacao->id]);
         }
 
@@ -141,17 +152,198 @@ final class CertificadoService
             throw new DomainException('Certificado revogado não pode ser baixado.');
         }
 
-        $dados = $certificado->dados;
-        $url = self::urlValidacao($certificado->codigo);
+        return $this->pdfDeDados($certificado->dados, $certificado->codigoFormatado(), self::urlValidacao($certificado->codigo));
+    }
 
-        return Pdf::loadView('cursos::certificado', [
-            'dados' => $dados,
-            'codigo' => $certificado->codigoFormatado(),
+    /** HTML que vira o PDF do certificado (o mesmo desenho; útil para conferir o leiaute). */
+    public function html(Certificado $certificado): string
+    {
+        return $this->montarView($certificado->dados, $certificado->codigoFormatado(), self::urlValidacao($certificado->codigo))[0];
+    }
+
+    /**
+     * PDF de exemplo do modelo (salvo ou com as alterações ainda não salvas do construtor), sem
+     * gravar nada: não cria certificado nem consome código.
+     */
+    public function preVisualizar(ModeloCertificado $modelo, ?Curso $curso = null): string
+    {
+        $carga = $curso !== null ? (int) $curso->carga_horaria_minutos : 1200;
+        $tenant = Tenant::query()->whereKey($this->tenantContext->id())->first(['name', 'city']);
+        $valores = [
+            'participante' => 'Maria da Silva Exemplo',
+            'curso' => $curso !== null ? $curso->titulo : 'Curso de Exemplo',
+            'carga_horaria' => self::formatarCargaHoraria($carga),
+            'periodo' => now()->subWeek()->format('d/m/Y') . ' a ' . now()->format('d/m/Y'),
+            'data_emissao' => now()->format('d/m/Y'),
+            'orgao' => (string) $tenant?->name,
+            'nota' => '9,50',
+            'cpf' => '123.456.789-00',
+            'empresa' => 'Empresa Exemplo Ltda.',
+            'cnpj' => '00.000.000/0001-00',
+            'carga_horas' => self::formatarHoras($carga),
+            'data_extenso' => self::dataPorExtenso(now(), $tenant?->city),
+            'data_conclusao' => now()->format('d/m/Y'),
+            'responsavel' => $curso?->responsavel ?: 'Responsável pelo curso',
+            'conteudo_programatico' => trim((string) $curso?->conteudo_programatico),
+        ];
+        $verso = self::linhasDoConteudo($curso?->conteudo_programatico) ?: ['Introdução e objetivos do curso', 'Módulo 1 — Fundamentos', 'Módulo 2 — Prática supervisionada', 'Avaliação final'];
+        $dados = $this->montarDados($modelo, $valores, TipoCertificado::Curso, $carga, $verso, null);
+
+        return $this->pdfDeDados($dados, 'EXEM-PLO0-0000', self::urlValidacao('EXEMPLO00000'));
+    }
+
+    /**
+     * Renderiza a partir de um snapshot. Snapshot com `leiaute` usa a view visual; os demais (todos
+     * os certificados anteriores a esta mudança) seguem na view de leiaute fixo, inalterada.
+     *
+     * @param array<string, mixed> $dados
+     */
+    private function pdfDeDados(array $dados, string $codigo, string $url): string
+    {
+        [$html, $papel, $orientacao] = $this->montarView($dados, $codigo, $url);
+
+        return Pdf::loadHTML($html)->setPaper($papel, $orientacao)
+            ->setOption(['isFontSubsettingEnabled' => true, 'defaultFont' => 'DejaVu Sans'])
+            ->output();
+    }
+
+    /**
+     * @param array<string, mixed> $dados
+     * @return array{0: string, 1: string|list<int|float>, 2: string} HTML, papel e orientação
+     */
+    private function montarView(array $dados, string $codigo, string $url): array
+    {
+        $qrCode = (new QRCode(new QROptions(['outputInterface' => QRGdImagePNG::class, 'outputBase64' => true, 'scale' => 6])))->render($url);
+        // {CODIGO_CERTIFICADO} só existe agora: o corpo e o complemento guardam a marcação.
+        foreach (['corpo', 'complementar'] as $chave) {
+            if (isset($dados[$chave]) && is_string($dados[$chave])) {
+                $dados[$chave] = ModeloCertificadoService::renderizar($dados[$chave], ['codigo' => $codigo]);
+            }
+        }
+        $leiaute = $dados['leiaute'] ?? null;
+        $orientacao = is_array($leiaute) ? (string) ($leiaute['orientacao'] ?? 'paisagem') : 'paisagem';
+        [$largura, $altura] = LeiauteCertificado::PAGINA[$orientacao] ?? LeiauteCertificado::PAGINA['paisagem'];
+
+        $comum = [
+            'codigo' => $codigo,
             'urlValidacao' => $url,
-            'qrCode' => (new QRCode(new QROptions(['outputInterface' => QRGdImagePNG::class, 'outputBase64' => true, 'scale' => 6])))->render($url),
+            'qrCode' => $qrCode,
             'logotipo' => $this->imagemEmbutida($dados['logotipo_path'] ?? null),
-            'assinaturas' => array_map(fn (array $a): array => [...$a, 'imagem' => $this->imagemEmbutida($a['imagem_path'] ?? null)], $dados['assinaturas'] ?? []),
-        ])->setPaper('a4', 'landscape')->setOption(['isFontSubsettingEnabled' => true, 'defaultFont' => 'DejaVu Sans'])->output();
+            'largura' => $largura,
+            'altura' => $altura,
+            'verso' => $dados['verso'] ?? null,
+            'versoFundo' => $this->imagemEmbutida($dados['verso']['fundo_path'] ?? null),
+        ];
+
+        if (is_array($leiaute)) {
+            $valores = [...$dados, 'codigo' => $codigo];
+            $html = view('cursos::certificado-visual', [
+                ...$comum,
+                'titulo' => (string) ($dados['titulo'] ?? 'Certificado'),
+                'fundo' => $this->imagemEmbutida($leiaute['fundo_path'] ?? null),
+                'elementos' => array_map(fn (array $el): array => $this->elementoParaView($el, $valores), $leiaute['elementos'] ?? []),
+            ])->render();
+        } else {
+            $html = view('cursos::certificado', [
+                ...$comum,
+                'dados' => $dados,
+                'assinaturas' => array_map(fn (array $a): array => [...$a, 'imagem' => $this->imagemEmbutida($a['imagem_path'] ?? null)], $dados['assinaturas'] ?? []),
+            ])->render();
+        }
+
+        // Papel com exatamente as dimensões do leiaute em pontos (A4 = 842 × 595): com 'a4' o
+        // DomPDF usa 841,89 × 595,28 e um contêiner de 842 pt de altura (retrato) transborda
+        // para uma página em branco. O modelo padrão segue em 'a4' paisagem, como antes.
+        $papel = is_array($leiaute) ? [0, 0, $largura, $altura] : 'a4';
+
+        return [$html, $papel, is_array($leiaute) ? 'portrait' : 'landscape'];
+    }
+
+    /**
+     * Elemento do snapshot pronto para a view: texto já resolvido e imagens embutidas.
+     *
+     * @param array<string, mixed> $el
+     * @param array<string, mixed> $valores
+     * @return array<string, mixed>
+     */
+    private function elementoParaView(array $el, array $valores): array
+    {
+        return match ($el['tipo']) {
+            'texto' => [...$el, 'conteudo' => $el['campo'] !== null
+                ? (string) ($valores[$el['campo']] ?? '')
+                : ModeloCertificadoService::renderizar((string) $el['texto'], array_map(fn ($v): string => is_scalar($v) ? (string) $v : '', $valores))],
+            'assinatura' => [...$el, 'imagem' => $this->imagemEmbutida($el['imagem_path'] ?? null)],
+            'selo' => [...$el, 'imagem' => $this->imagemEmbutida($el['selo_path'] ?? null)],
+            default => $el,
+        };
+    }
+
+    /**
+     * Snapshot do que será impresso (design D5/D6): valores, título e corpo renderizados e, no
+     * modelo visual, o leiaute com as assinaturas resolvidas (nome, cargo, registro e arquivos da
+     * época). O PDF é sempre desenhado a partir disto, nunca do modelo atual.
+     *
+     * @param array<string, string> $valores
+     * @param list<string> $versoLinhas
+     * @return array<string, mixed>
+     */
+    public function montarDados(ModeloCertificado $modelo, array $valores, TipoCertificado $tipo, int $cargaHorariaMinutos, array $versoLinhas, ?string $versoTitulo): array
+    {
+        // Leiaute do curso (D8): texto atual da biblioteca; os demais modelos usam o próprio texto.
+        $texto = $modelo->texto;
+        $dados = [
+            ...$valores,
+            'tipo' => $tipo->value,
+            'carga_horaria_minutos' => $cargaHorariaMinutos,
+            'titulo' => $texto !== null ? ($texto->tipo_certificado ?: 'Certificado') : $modelo->titulo,
+            'corpo' => ModeloCertificadoService::renderizar($texto !== null ? $texto->texto_principal : $modelo->corpo, $valores),
+            'complementar' => ModeloCertificadoService::renderizar((string) $texto?->texto_complementar, $valores),
+            'logotipo_path' => $modelo->logotipo_path,
+            'assinaturas' => $modelo->assinaturas ?? [],
+        ];
+
+        if ($modelo->visual()) {
+            $elementos = $modelo->elementos ?? [];
+            $assinaturas = Assinatura::query()->whereIn('id', LeiauteCertificado::assinaturasReferenciadas($elementos))->get()->keyBy('id');
+            $dados['leiaute'] = [
+                'orientacao' => $modelo->orientacao,
+                'fundo_path' => $modelo->caminhoDoFundo(),
+                'elementos' => array_values(array_filter(array_map(function (array $el) use ($assinaturas): ?array {
+                    if (!in_array($el['tipo'], ['assinatura', 'selo'], true)) {
+                        return $el;
+                    }
+                    /** @var Assinatura|null $assinatura */
+                    $assinatura = $assinaturas->get((int) $el['assinatura_id']);
+                    if ($assinatura === null) {
+                        return null;
+                    }
+
+                    return [...$el, 'nome' => $assinatura->nome, 'linha_cargo' => $assinatura->linhaCargo(), 'imagem_path' => $assinatura->imagem_path, 'selo_path' => $assinatura->selo_path];
+                }, $elementos))),
+            ];
+        }
+
+        $versoLinhas = array_values(array_filter(array_map('trim', $versoLinhas), fn (string $l): bool => $l !== ''));
+        if ($modelo->verso_ativo && $versoLinhas !== []) {
+            $dados['verso'] = [
+                'titulo' => $versoTitulo ?? 'Conteúdo programático',
+                'subtitulo' => $valores['curso'] . ' — carga horária de ' . $valores['carga_horaria'],
+                'linhas' => $versoLinhas,
+                'fundo_path' => $modelo->verso_fundo_path,
+            ];
+        }
+
+        return $dados;
+    }
+
+    /**
+     * Linhas do conteúdo programático do curso (uma por tópico).
+     *
+     * @return list<string>
+     */
+    public static function linhasDoConteudo(?string $conteudo): array
+    {
+        return array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $conteudo) ?: []), fn (string $l): bool => $l !== ''));
     }
 
     public static function urlValidacao(string $codigo): string
@@ -172,32 +364,34 @@ final class CertificadoService
     }
 
     /**
-     * @param array{curso: string, carga_horaria_minutos: int, inicio: Carbon|null, fim: Carbon|null, nota?: string|float|null} $conteudo
-     * @param array<string, int> $referencia inscricao_id ou formacao_id
+     * @param array{curso: string, carga_horaria_minutos: int, inicio: Carbon|null, fim: Carbon|null, nota?: string|float|null, responsavel?: string|null, conteudo_programatico?: string|null, verso_linhas?: list<string>, verso_titulo?: string} $conteudo
+     * @param array<string, int|string> $referencia inscricao_id, formacao_id ou curso_id + concluido_em (avulso)
      */
-    private function emitir(ModeloCertificado $modelo, Participante $participante, TipoCertificado $tipo, array $conteudo, array $referencia): Certificado
+    public function emitir(ModeloCertificado $modelo, Participante $participante, TipoCertificado $tipo, array $conteudo, array $referencia): Certificado
     {
-        $orgao = Tenant::query()->whereKey($this->tenantContext->id())->value('name');
+        $tenant = Tenant::query()->whereKey($this->tenantContext->id())->first(['name', 'city']);
         $emissao = now();
+        $empresa = $participante->empresa;
         $valores = [
             'participante' => $participante->nome,
             'curso' => $conteudo['curso'],
             'carga_horaria' => self::formatarCargaHoraria($conteudo['carga_horaria_minutos']),
             'periodo' => self::formatarPeriodo($conteudo['inicio'], $conteudo['fim']),
             'data_emissao' => $emissao->format('d/m/Y'),
-            'orgao' => (string) $orgao,
+            'orgao' => (string) $tenant?->name,
             'nota' => self::formatarNota($conteudo['nota'] ?? null),
+            // Variáveis do formato do sistema de referência (D10).
+            'cpf' => $participante->cpfFormatado(),
+            'empresa' => $empresa?->nomeImpresso() ?? 'Autônomo',
+            'cnpj' => $empresa?->cnpjFormatado() ?? '',
+            'carga_horas' => self::formatarHoras($conteudo['carga_horaria_minutos']),
+            'data_extenso' => self::dataPorExtenso($emissao, $tenant?->city),
+            'data_conclusao' => ($conteudo['fim'] ?? $emissao)->format('d/m/Y'),
+            'responsavel' => trim((string) ($conteudo['responsavel'] ?? '')),
+            'conteudo_programatico' => trim((string) ($conteudo['conteudo_programatico'] ?? '')),
         ];
 
-        $dados = [
-            ...$valores,
-            'tipo' => $tipo->value,
-            'carga_horaria_minutos' => $conteudo['carga_horaria_minutos'],
-            'titulo' => $modelo->titulo,
-            'corpo' => ModeloCertificadoService::renderizar($modelo->corpo, $valores),
-            'logotipo_path' => $modelo->logotipo_path,
-            'assinaturas' => $modelo->assinaturas ?? [],
-        ];
+        $dados = $this->montarDados($modelo, $valores, $tipo, $conteudo['carga_horaria_minutos'], $conteudo['verso_linhas'] ?? [], $conteudo['verso_titulo'] ?? null);
 
         for ($tentativa = 1; ; $tentativa++) {
             try {
@@ -269,6 +463,22 @@ final class CertificadoService
         }
 
         return $horas === 0 ? "{$resto} minutos" : sprintf('%dh%02d', $horas, $resto);
+    }
+
+    /** {CARGA_HORARIA}: só o número de horas, como no sistema de referência ("20", "1,5"). */
+    public static function formatarHoras(int $minutos): string
+    {
+        return $minutos % 60 === 0 ? (string) intdiv($minutos, 60) : rtrim(rtrim(number_format($minutos / 60, 2, ',', ''), '0'), ',');
+    }
+
+    /** {DATA}: "Araucária, 02 de outubro de 2026" (sem cidade cadastrada, só a data). */
+    public static function dataPorExtenso(Carbon $data, ?string $cidade): string
+    {
+        $meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+        $texto = $data->format('d') . ' de ' . $meses[$data->month - 1] . ' de ' . $data->format('Y');
+        $cidade = trim((string) $cidade);
+
+        return $cidade !== '' ? "{$cidade}, {$texto}" : $texto;
     }
 
     private static function formatarPeriodo(?Carbon $inicio, ?Carbon $fim): string

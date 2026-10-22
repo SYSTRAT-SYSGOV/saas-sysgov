@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Portfolio\Tests\Concerns;
 
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -112,7 +113,7 @@ trait CenarioPortfolio
     /** @param array<string, mixed> $atributos */
     protected function aluno(Tenant $tenant, ?Turma $turma, string $nome, array $atributos = []): Aluno
     {
-        return $this->noTenant($tenant, fn (): Aluno => Aluno::create([
+        return $this->noTenant($tenant, fn (): Aluno => AlunoDeTeste::criar([
             'nome' => $nome, 'turma_id' => $turma?->id, 'situacao' => 'ativo',
             'numero' => $turma !== null ? (int) Aluno::query()->where('turma_id', $turma->id)->max('numero') + 1 : null, ...$atributos,
         ]));

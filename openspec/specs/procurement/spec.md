@@ -4,6 +4,8 @@
 > Source: apps/api/Modules/Procurement (Services/{ProcurementFlowService,MarketResearchService,BiddingRoomService,ContractExecutionService,LegalDeadlinesService,AuditHMACService,PncpIntegrationService}, Http/Controllers/{LicitacaoController,LicitacaoLifecycleController,LicitacaoArtefatosController,LicitacaoPrecosController,LicitacaoLancesController,LicitacaoContratosController}, Models/{Licitacao,LicitacaoArtefato,LicitacaoPreco,LicitacaoParticipante,LicitacaoLance,LicitacaoContrato,LicitacaoAditivo,LicitacaoPagamento,LicitacaoMedicao,LicitacaoParecer}, Policies/{LicitacaoPolicy,ProcurementArtefatoPolicy}, Routes/api.php, Config/config.php, Database/Migrations, Tests/Feature)
 > Last verified: 2026-09-19 (commit 2bd3aae)
 
+## Purpose
+
 Escopo: ciclo completo de contratação pública sob a Lei 14.133/2021 — fase interna
 (DFD → ETP → pesquisa de mercado → TR → parecer jurídico), publicação do edital com prazo
 legal mínimo, sala de disputa eletrônica com anti-spam e empate ficto ME/EPP, adjudicação e
@@ -11,7 +13,7 @@ homologação com segregação de funções, e execução contratual (aditivos, 
 pagamentos). Cobre ainda a integração assíncrona com o PNCP via Outbox, auditoria HMAC
 encadeada e isolamento multi-tenant.
 
----
+## Requirements
 
 ### Requirement: Abertura de processo licitatório nasce em rascunho e escopada à unidade permitida
 <!-- id: LicitacaoController.store -->
@@ -541,6 +543,21 @@ artefatos, preços, participantes, contratos e aditivos, carimbado com `tenant_i
 - **THEN** retorna o payload versionado com os dados do tenant e grava auditoria `procurement.exported` com `count`
 
 ---
+
+### Requirement: Participantes de licitação vinculados à pessoa jurídica do cadastro central
+O sistema SHALL vincular cada participante de licitação a uma pessoa jurídica do cadastro central, resolvida pelo CNPJ, e SHALL preservar sem alteração os participantes de licitações já homologadas.
+
+#### Scenario: Licitação homologada preservada
+- **WHEN** a conciliação processa participantes de uma licitação homologada
+- **THEN** os dados registrados na homologação permanecem inalterados e apenas o vínculo com a pessoa é acrescentado
+
+#### Scenario: CNPJ inválido
+- **WHEN** a conciliação encontra um participante com CNPJ inválido
+- **THEN** o participante não gera pessoa automaticamente e a ocorrência é registrada como divergência para revisão
+
+## Invariants
+
+Regras transversais ao módulo (não são requisitos com cenário próprio).
 
 ### Invariant: Todo dado do Procurement é isolado por tenant
 <!-- entities: Licitacao, LicitacaoArtefato, LicitacaoPreco, LicitacaoParticipante, LicitacaoLance, LicitacaoContrato, LicitacaoAditivo, LicitacaoMedicao, LicitacaoPagamento, LicitacaoParecer, LicitacaoDocumento, ProcurementArtefato, ContratoLicitacao, AditivoContratual, MedicaoContratual, PagamentoContratual -->

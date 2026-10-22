@@ -50,7 +50,7 @@ export type UpdateTenantInput = Partial<CreateTenantInput>;
 export type CreateUserInput = { name: string; email: string; password: string; is_platform_admin?: boolean; tenant_id?: number | null; role_id?: number | null };
 export type CreateSystratUserInput = { name: string; email: string; password: string; password_confirmation: string; role_slug: string };
 export type CreateInvitationInput = { email: string; role_slug: string; tenant_id?: number };
-export type CreateTenantAdminInput = { name: string; email: string; password: string };
+export type CreateTenantAdminInput = { name?: string; email: string; password?: string; password_confirmation?: string };
 export type CreateContractInput = { number: string; title: string; starts_at: string; ends_at: string; amount_cents: number; status?: 'draft' | 'active' | 'suspended' | 'ended' };
 export type UpdateContractInput = Partial<Pick<CreateContractInput, 'title' | 'starts_at' | 'ends_at' | 'amount_cents' | 'status'>>;
 
@@ -62,6 +62,19 @@ import { LicitaModuleClient } from './modules/licita';
 import { CapdModuleClient } from './modules/capd';
 import { CursosModuleClient } from './modules/cursos';
 import { ProtocoloModuleClient } from './modules/protocolo';
+
+/**
+ * URL base padrão da API. Em desenvolvimento (localhost) aponta para o backend local; em qualquer
+ * outro host usa o mesmo domínio da página (`/api`, servido pelo proxy reverso). Sem isso, em produção
+ * o navegador tentava chamar `localhost:8000` e as telas falhavam com "Failed to fetch".
+ */
+export function resolveDefaultBaseUrl(location?: { hostname: string; origin: string }): string {
+  const loc = location ?? (typeof window !== 'undefined' ? window.location : undefined);
+  if (loc && loc.hostname !== 'localhost' && loc.hostname !== '127.0.0.1') {
+    return `${loc.origin}/api`;
+  }
+  return 'http://localhost:8000/api';
+}
 
 export class SysgovApi implements ApiRequester {
   private token: string | null = typeof window !== 'undefined' ? localStorage.getItem('sysgov_token') : null;
@@ -75,7 +88,7 @@ export class SysgovApi implements ApiRequester {
   public readonly cursos: CursosModuleClient;
   public readonly protocolo: ProtocoloModuleClient;
 
-  constructor(private readonly baseUrl = 'http://localhost:8000/api') {
+  constructor(private readonly baseUrl: string = resolveDefaultBaseUrl()) {
     this.org = new OrgModuleClient(this);
     this.contractsApi = new ContractsModuleClient(this);
     this.catalogApi = new CatalogModuleClient(this);
@@ -252,6 +265,12 @@ export class SysgovApi implements ApiRequester {
   async resetUserPassword(id: number): Promise<{ message: string }> { return this.request(`/admin/users/${id}/reset-password`, { method: 'POST' }); }
   async createTenantAdmin(tenantId: number, input: CreateTenantAdminInput): Promise<ApiUserAdmin> {
     return this.request(`/admin/tenants/${tenantId}/users/admin`, { method: 'POST', body: JSON.stringify(input) });
+  }
+  async listTenantAdmins(tenantId: number): Promise<{ data: ApiUserAdmin[] }> {
+    return this.request(`/admin/tenants/${tenantId}/users/admins`);
+  }
+  async updateTenantAdmin(tenantId: number, userId: number, input: { name?: string; password?: string; password_confirmation?: string }): Promise<ApiUserAdmin> {
+    return this.request(`/admin/tenants/${tenantId}/users/admin/${userId}`, { method: 'PUT', body: JSON.stringify(input) });
   }
   async tenantUsers(tenantId: number, params?: { search?: string; page?: number }): Promise<Paginated<ApiUserAdmin>> {
     const qs = new URLSearchParams();

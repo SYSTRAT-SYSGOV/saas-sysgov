@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use App\Models\Tenant;
 use Modules\Admin\Models\Module;
 
 final class ModuleCatalogSeeder extends Seeder
@@ -17,6 +18,7 @@ final class ModuleCatalogSeeder extends Seeder
     {
         $catalog = [
             ['name' => 'Painel Geral', 'alias' => 'dashboard', 'monthly_fee_cents' => 0, 'description' => 'Visão geral, KPIs e indicadores do município.'],
+            ['name' => 'Usuários e Acessos', 'alias' => 'users', 'monthly_fee_cents' => 0, 'description' => 'Usuários, perfis e permissões do tenant.'],
             ['name' => 'Organograma', 'alias' => 'org', 'monthly_fee_cents' => 14900, 'description' => 'Estrutura hierárquica municipal (gabinete, secretarias, departamentos).'],
             ['name' => 'Contratos & Aditivos', 'alias' => 'contracts', 'monthly_fee_cents' => 24900, 'description' => 'Gestão de contratos, aditivos, medições e pagamentos.'],
             ['name' => 'Execução Financeira', 'alias' => 'finance', 'monthly_fee_cents' => 29900, 'description' => 'Receitas, despesas, empenhos e conciliação.'],
@@ -30,6 +32,12 @@ final class ModuleCatalogSeeder extends Seeder
                 ['alias' => $data['alias']],
                 ['name' => $data['name'], 'monthly_fee_cents' => $data['monthly_fee_cents'], 'description' => $data['description'], 'enabled' => true]
             );
+        }
+
+        // Módulos de base ativos em todo tenant (existente ou novo). Idempotente: roda a cada subida do container.
+        $base = Module::query()->whereIn('alias', Module::BASE)->pluck('id');
+        foreach (Tenant::query()->get() as $tenant) {
+            $tenant->modules()->syncWithoutDetaching($base->mapWithKeys(fn (int $id): array => [$id => ['enabled' => true]])->all());
         }
 
         $this->command?->info('Catálogo de módulos SaaS semeado.');

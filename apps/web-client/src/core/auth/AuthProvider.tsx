@@ -12,7 +12,7 @@ interface AuthContextType {
   navigation: MenuGroup[];
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { email: string; password?: string; tenantSlug?: string }) => Promise<LoginResponse>;
+  login: (credentials: { email: string; password?: string; tenantSlug?: string; mfa_code?: string }) => Promise<LoginResponse>;
   loginWithSSO: () => void;
   logout: () => void;
   switchTenant: (tenantId: number) => Promise<void>;
@@ -205,7 +205,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .get('/health', { timeout: 4000 })
       .then(() => setIsLoading(false))
       .catch(() => {
-        saveSession(DEMO_RESPONSE);
+        // Backend inacessível: nunca abrir sessão de demonstração — segue deslogado.
         setIsLoading(false);
       });
   }, []);
@@ -226,7 +226,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const login = async (credentials: { email: string; password?: string; tenantSlug?: string }): Promise<LoginResponse> => {
+  const login = async (credentials: { email: string; password?: string; tenantSlug?: string; mfa_code?: string }): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
       const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
@@ -238,19 +238,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error.response) {
         throw error;
       }
-      // Erro de rede (backend inacessível): fallback para demonstração
-      console.warn('Backend endpoint indisponível, aplicando fallback local:', error);
-      const selectedTenant = DEMO_RESPONSE.tenants.find(t => t.slug === credentials.tenantSlug) || DEMO_RESPONSE.tenant;
-      const customResponse: LoginResponse = {
-        ...DEMO_RESPONSE,
-        user: {
-          ...DEMO_RESPONSE.user!,
-          email: credentials.email,
-        },
-        tenant: selectedTenant,
-      };
-      saveSession(customResponse);
-      return customResponse;
+      // Erro de rede (backend inacessível): não abre sessão de demonstração.
+      throw error;
     } finally {
       setIsLoading(false);
     }

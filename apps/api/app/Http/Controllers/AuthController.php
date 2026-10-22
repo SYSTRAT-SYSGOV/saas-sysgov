@@ -10,9 +10,12 @@ use App\Models\User;
 use App\Services\MfaService;
 use Modules\Client\Services\ClientNavigationService;
 use Modules\OrgChart\Models\OrgUnitUser;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 final class AuthController
@@ -49,9 +52,15 @@ final class AuthController
         // Em local o primeiro admin é criado sem MFA — o gate é liberado para bootstrap.
         if ($user->requiresMfa() && !app()->environment('local')) {
             if (!$user->mfa_enabled || !$user->mfa_secret) {
+                // Senha já validada: emite um token opaco de uso único-propósito (10 min) que só
+                // serve para configurar o MFA via /auth/mfa-setup/*. Não é um token de API.
+                $setupToken = Str::random(64);
+                Cache::put('mfa-setup:' . hash('sha256', $setupToken), $user->id, now()->addMinutes(10));
+
                 return response()->json([
                     'message' => 'MFA obrigatório para este papel. Configure a autenticação de dois fatores.',
                     'error_code' => 'MFA_REQUIRED',
+                    'mfa_setup_token' => $setupToken,
                 ], 403);
             }
 
@@ -100,6 +109,61 @@ final class AuthController
     }
 
     /**
+     * Inicia a configuração de MFA no login do web-client (usuário sem MFA em papel obrigatório).
+     * POST /api/auth/mfa-setup/start  { setup_token }
+     */
+    public function mfaSetupStart(Request $request): JsonResponse
+    {
+        $user = $this->userFromMfaSetupToken($request);
+        $data = $this->mfaService->enable($user);
+
+        return response()->json([
+            'secret' => $data['secret'],
+            'otpauth_url' => $data['otpauth_url'],
+            'qr_code_url' => $data['qr_code_url'],
+        ]);
+    }
+
+    /**
+     * Confirma o código TOTP e ativa o MFA. Não emite token de API: o cliente refaz o login
+     * com o código recém-confirmado.
+     * POST /api/auth/mfa-setup/confirm  { setup_token, code }
+     */
+    public function mfaSetupConfirm(Request $request): JsonResponse
+    {
+        $request->validate(['code' => ['required', 'string', 'size:6']]);
+        $user = $this->userFromMfaSetupToken($request);
+
+        if (!$this->mfaService->confirm($user, (string) $request->input('code'))) {
+            throw ValidationException::withMessages(['code' => 'Código MFA inválido. Verifique e tente novamente.']);
+        }
+
+        Cache::forget('mfa-setup:' . hash('sha256', (string) $request->input('setup_token')));
+
+        return response()->json(['confirmed' => true]);
+    }
+
+    private function userFromMfaSetupToken(Request $request): User
+    {
+        $token = (string) $request->input('setup_token', '');
+        $userId = $token !== '' ? Cache::get('mfa-setup:' . hash('sha256', $token)) : null;
+        $user = $userId ? User::query()->find($userId) : null;
+
+        if (!$user || !$user->is_active) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Sessão de configuração expirada. Entre novamente.',
+                'error_code' => 'MFA_SETUP_EXPIRED',
+            ], 401));
+        }
+
+        if ($user->mfa_enabled && $user->mfa_confirmed_at) {
+            throw new HttpResponseException(response()->json(['message' => 'MFA já está ativo para este usuário.'], 409));
+        }
+
+        return $user;
+    }
+
+    /**
      * Login do painel web-admin (Fluxo A) — usado pelo AdminLoginPage
      * POST /api/auth/login-admin
      * Retorna { success, token, user, message } conforme esperado pelo frontend.
@@ -128,6 +192,30 @@ final class AuthController
             return response()->json(['success' => false, 'token' => '', 'user' => null, 'message' => 'Acesso restrito à equipe SYSTRAT.'], 403);
         }
 
+        // MFA no login do painel admin: com MFA ativo o código TOTP é obrigatório (antes só a
+        // senha bastava). Sem MFA configurado o token sai, mas EnsureMfa só libera o setup.
+        $mfaSetupRequired = false;
+        if ($user->requiresMfa() && !app()->environment('local')) {
+            if ($user->mfa_enabled && $user->mfa_confirmed_at && $user->mfa_secret) {
+                $mfaCode = (string) $request->input('mfa_code', '');
+                if ($mfaCode === '') {
+                    return response()->json([
+                        'success' => false, 'token' => '', 'user' => null,
+                        'message' => 'Código MFA necessário para concluir o login.',
+                        'error_code' => 'MFA_CODE_REQUIRED', 'mfa_challenge' => true,
+                    ], 422);
+                }
+                if (!$this->mfaService->verify($user, $mfaCode)) {
+                    return response()->json([
+                        'success' => false, 'token' => '', 'user' => null,
+                        'message' => 'Código MFA inválido.', 'error_code' => 'MFA_CODE_INVALID',
+                    ], 422);
+                }
+            } else {
+                $mfaSetupRequired = true;
+            }
+        }
+
         $token = $user->createToken('sysgov-admin', ['api'])->plainTextToken;
 
         return response()->json([
@@ -139,6 +227,7 @@ final class AuthController
                 'email' => $user->email,
                 'role' => 'EMPRESA_MASTER',
             ],
+            'mfa_setup_required' => $mfaSetupRequired,
             'message' => 'Login realizado com sucesso.',
         ]);
     }

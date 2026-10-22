@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Tests\Feature;
 
+use Modules\Capd\Tests\Support\ServidorDeTeste;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -50,7 +51,7 @@ final class ConsolidacaoNfcTest extends TestCase
         $userA = User::create(['name' => 'Carlos Silveira', 'email' => 'carlos@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
         $userB = User::create(['name' => 'Mariana Souza', 'email' => 'mariana@araucaria.pr.gov.br', 'password' => bcrypt('secret')]);
 
-        $this->servidorA = Servidor::create([
+        $this->servidorA = ServidorDeTeste::criar([
             'tenant_id'             => $this->tenant->id,
             'user_id'               => $userA->id,
             'matricula'             => 'MAT-001',
@@ -67,7 +68,7 @@ final class ConsolidacaoNfcTest extends TestCase
             'carga_horaria_semanal' => 40,
         ]);
 
-        $this->servidorB = Servidor::create([
+        $this->servidorB = ServidorDeTeste::criar([
             'tenant_id'             => $this->tenant->id,
             'user_id'               => $userB->id,
             'matricula'             => 'MAT-002',

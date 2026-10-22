@@ -1,0 +1,29 @@
+{
+    "name": "Multiprofissional",
+    "alias": "multiprofissional",
+    "description": "Equipe multiprofissional da educação — profissionais, equipes por escola, estudantes acompanhados (condições/CID e laudos com acesso restrito) e registro de atendimentos com sigilo e auditoria",
+    "priority": 40,
+    "providers": [
+        "Modules\\Multiprofissional\\Providers\\MultiprofissionalServiceProvider",
+        "Modules\\Multiprofissional\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Pessoas",
+        "Escola"
+    ],
+    "permissions": {
+        "multiprofissional.view": "Consultar equipes, profissionais, estudantes acompanhados (sem dados clínicos) e atendimentos",
+        "multiprofissional.atender": "Registrar atendimentos e editar os próprios",
+        "multiprofissional.acompanhar": "Gerir estudantes acompanhados, condições (CID) e laudos",
+        "multiprofissional.manage": "Gerenciar cadastros, profissionais, equipes e todos os atendimentos (inclusive sigilosos)",
+        "multiprofissional.audit": "Consultar a auditoria do módulo"
+    },
+    "menu": {
+        "label": "Multiprofissional",
+        "icon": "HeartHandshake",
+        "order": 62,
+        "permission": "multiprofissional.view",
+        "group": "GESTÃO SETORIAL"
+    }
+}

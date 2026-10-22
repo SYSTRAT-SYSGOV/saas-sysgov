@@ -47,12 +47,12 @@
 | **RN-USR-003** | Segregação de funções | Quem convida não define a própria role; `suporte` nunca executa escrita |
 | **RN-USR-004** | Convite com token + expiração 72h | `InvitationService::invite()` → expira em 72h; aceite após expiração → **410**; reuso → **409** |
 | **RN-USR-005** | MFA obrigatório p/ papéis privilegiados | `AuthController::login` exige TOTP para `super_admin`/`admin_ops`/`admin_tenant` |
-| **RN-USR-006** | Último super_admin protegido | `UserService::deactivate/update` lançam `ValidationException` (422) |
+| **RN-USR-006** | Último super_admin e último `admin_tenant` ativo protegidos | `UserService::deactivate/update` e `TenantAdminGuard` lançam `ValidationException` (422); exceção: desativação de emergência da SYSTRAT (com motivo) |
 | **RN-USR-007** | Auditoria imutável HMAC encadeado | `AuditLogger` gera `hash(registro + prev_hash)`; `AuditLog` bloqueia update/delete |
 | **RN-USR-008** | SSO OpenID Connect por tenant | `OidcController` (state + PKCE); vínculo por e-mail; 409 se não vinculado |
 | **RN-USR-009** | Reset de senha com token + expiração | `UserService::requestPasswordReset/resetPassword`; política mínima 8 chars |
 | **RN-USR-010** | E-mail sempre via Outbox | `OutboxPublisher` para `UserInvited`, `PasswordResetRequested`, etc. |
-| **RN-USR-011** | Divisão de painéis | web-admin = usuários SYSTRAT + admin inicial + visão read-only do tenant; CRUD do tenant é do web-client |
+| **RN-USR-011** | Divisão de painéis | web-admin = usuários SYSTRAT + administradores do tenant (quantos forem necessários) + visão read-only do tenant; CRUD do tenant é do web-client |
 
 ## 3. Roles e Permissões
 
@@ -93,9 +93,11 @@ roles.assign
 |---|---|---|
 | CRUD usuários SYSTRAT | web-admin | `/admin/users` |
 | Gestão de roles & permissões | web-admin | `/admin/roles`, `/admin/permissions` |
-| **Criar admin inicial do tenant** | web-admin | `POST /admin/tenants/{tenant}/users/admin` (idempotente → 409) |
+| **Listar administradores do tenant** | web-admin | `GET /admin/tenants/{tenant}/users/admins` |
+| **Cadastrar administrador do tenant** (N por tenant) | web-admin | `POST /admin/tenants/{tenant}/users/admin` (idempotente por e-mail → 409 se o e-mail já é admin ativo do tenant; e-mail já cadastrado é reaproveitado sem alterar nome/senha) |
+| **Editar um administrador** (nome/senha) | web-admin | `PUT /admin/tenants/{tenant}/users/admin/{user}` (sem `{user}`: só se houver exatamente 1 admin ativo; senão 422) |
 | Visão read-only dos usuários do tenant | web-admin | `GET /admin/tenants/{tenant}/users` |
-| Desativação de emergência | web-admin | `POST /admin/tenants/{tenant}/users/{user}/deactivate` (motivo obrigatório) |
+| Desativação de emergência / de um administrador | web-admin | `POST /admin/tenants/{tenant}/users/{user}/deactivate` (motivo obrigatório; pode desativar o último admin → audita `tenant_admin.deactivated` com `emergency=true` e publica `TenantWithoutAdmin`) |
 | **CRUD diário dos usuários do tenant** | **web-client** | `/api/users` (fora do escopo deste módulo) |
 | MFA do próprio usuário | ambos | `POST /me/mfa/setup`, `/me/mfa/confirm`, `/me/mfa/disable` |
 | Reset de senha self-service | ambos | `POST /auth/forgot-password`, `/auth/reset-password` |

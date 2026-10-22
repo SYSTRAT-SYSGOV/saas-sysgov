@@ -11,6 +11,7 @@ use Modules\Cemiterios\Models\ProcessoSucessao;
 use Modules\Cemiterios\Models\Sucessao;
 use Modules\Cemiterios\Models\SucessaoHerdeiro;
 use Modules\Cemiterios\Models\SucessaoHistorico;
+use Modules\Cemiterios\Services\PessoaDoDocumentoService;
 use Modules\Cemiterios\Support\EstadoSucessao;
 use Modules\Cemiterios\Support\ViaSucessao;
 use Modules\Cemiterios\Support\Parentesco;
@@ -96,12 +97,18 @@ final class MigrarSucessaoLegada extends Command
 
                     // Migra herdeiros
                     foreach ($legado->herdeiros as $index => $herdeiro) {
+                        // O documento do legado só serve para achar a pessoa; ilegível, o herdeiro vira pessoa sem documento.
+                        $pessoa = rescue(
+                            fn () => app(PessoaDoDocumentoService::class)->resolver($herdeiro->nome, $herdeiro->documento),
+                            fn () => app(PessoaDoDocumentoService::class)->resolver($herdeiro->nome, null),
+                            false,
+                        );
                         SucessaoHerdeiro::create([
                             'tenant_id' => $legado->tenant_id,
                             'sucessao_id' => $sucessao->getKey(),
+                            'pessoa_id' => $pessoa->id,
                             'nome' => $herdeiro->nome,
                             'parentesco' => Parentesco::tryFrom($herdeiro->parentesco) ?? Parentesco::Outro,
-                            'documento' => $herdeiro->documento,
                             'ordem' => $index + 1,
                             'direito_representacao' => false,
                             'titular_indicado' => $herdeiro->titular_indicado ?? false,

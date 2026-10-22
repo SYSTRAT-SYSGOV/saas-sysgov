@@ -34,6 +34,7 @@ final class SucessaoService
         private readonly DocumentoSucessaoService $documentoService,
         private readonly SucessaoConfigService $configService,
         private readonly OutboxPublisher $outbox,
+        private readonly PessoaDoDocumentoService $pessoas,
     ) {}
 
     /**
@@ -168,12 +169,15 @@ final class SucessaoService
      */
     public function adicionarHerdeiro(Sucessao $sucessao, array $dados): SucessaoHerdeiro
     {
+        // O documento mora na pessoa (`pessoa_id` é obrigatório): o digitado só serve para achá-la ou criá-la.
+        $pessoa = $this->pessoas->resolver($dados['nome'], $dados['documento'] ?? null, isset($dados['pessoa_id']) ? (int) $dados['pessoa_id'] : null);
+
         return SucessaoHerdeiro::create([
             'tenant_id' => $sucessao->tenant_id,
             'sucessao_id' => $sucessao->getKey(),
+            'pessoa_id' => $pessoa->id,
             'nome' => $dados['nome'],
             'parentesco' => $dados['parentesco'] instanceof Parentesco ? $dados['parentesco'] : (Parentesco::tryFrom($dados['parentesco']) ?? Parentesco::Filho),
-            'documento' => $dados['documento'] ?? null,
             'ordem' => $dados['ordem'] ?? 1,
             'direito_representacao' => $dados['direito_representacao'] ?? false,
             'titular_indicado' => $dados['titular_indicado'] ?? false,
@@ -184,7 +188,7 @@ final class SucessaoService
     /**
      * Adiciona ou atualiza herdeiros do processo.
      *
-     * @param array<int, array{nome: string, parentesco: Parentesco|string, documento?: string|null, ordem: int, direito_representacao?: bool, titular_indicado?: bool, herdeiro_representado_id?: int|null}> $herdeiros
+     * @param array<int, array{nome: string, parentesco: Parentesco|string, documento?: string|null, pessoa_id?: int|null, ordem: int, direito_representacao?: bool, titular_indicado?: bool, herdeiro_representado_id?: int|null}> $herdeiros
      */
     public function upsertHerdeiros(Sucessao $sucessao, array $herdeiros): Collection
     {
@@ -206,12 +210,14 @@ final class SucessaoService
 
             // Cria novos herdeiros
             $novos = collect($herdeiros)->map(function (array $h) use ($sucessao): SucessaoHerdeiro {
+                $pessoa = $this->pessoas->resolver($h['nome'], $h['documento'] ?? null, isset($h['pessoa_id']) ? (int) $h['pessoa_id'] : null);
+
                 return SucessaoHerdeiro::create([
                     'tenant_id' => $sucessao->tenant_id,
                     'sucessao_id' => $sucessao->getKey(),
+                    'pessoa_id' => $pessoa->id,
                     'nome' => $h['nome'],
                     'parentesco' => $h['parentesco'] instanceof Parentesco ? $h['parentesco'] : Parentesco::tryFrom($h['parentesco']),
-                    'documento' => $h['documento'] ?? null,
                     'ordem' => $h['ordem'],
                     'direito_representacao' => $h['direito_representacao'] ?? false,
                     'titular_indicado' => $h['titular_indicado'] ?? false,
@@ -227,7 +233,8 @@ final class SucessaoService
                 after: $novos->toArray()
             );
 
-            return $novos;
+            // `collect()->map()` devolve a Collection genérica; o retorno declarado é a do Eloquent.
+            return new Collection($novos->all());
         });
     }
 
@@ -297,7 +304,7 @@ final class SucessaoService
             $antigoTitularId = $concessao->holder_id;
 
             // Cria ou busca o novo concessionário
-            $docLimpo = \Modules\Cemiterios\Support\Documento::somenteDigitos($titularIndicado->documento ?? '');
+            $docLimpo = \Modules\Cemiterios\Support\Documento::somenteDigitos($titularIndicado->documentoDaPessoa() ?? '');
             $novoTitular = null;
 
             if (strlen($docLimpo) === 11 || strlen($docLimpo) === 14) {
