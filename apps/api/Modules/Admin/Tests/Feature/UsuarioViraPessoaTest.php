@@ -7,6 +7,8 @@ namespace Modules\Admin\Tests\Feature;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\UserInvitation;
+use App\Services\InvitationService;
 use App\Services\UserService;
 use App\Support\TenantContext;
 use Database\Seeders\RbacSeeder;
@@ -220,5 +222,56 @@ final class UsuarioViraPessoaTest extends TestCase
         $this->assertTrue($vinculos->has($this->adminTenant->id));
         $this->assertCount(3, $vinculos); // o administrador do setUp, o novo e a Maria (pareada)
         $this->assertSame(2, Pessoa::withoutGlobalScopes()->count() - 1); // a pareada não duplicou: só nasceram as do administrador e do novo
+    }
+
+    public function test_aceitar_convite_de_orgao_cria_a_pessoa_e_de_plataforma_nao(): void
+    {
+        $papel = Role::where('slug', 'admin_tenant')->where('tenant_id', $this->tenant->id)->firstOrFail();
+        $convites = app(InvitationService::class);
+
+        $convite = UserInvitation::create(['tenant_id' => $this->tenant->id, 'email' => 'convidada@cliente.test', 'token' => hash('sha256', 'abc'), 'role_slug' => $papel->slug, 'invited_by' => $this->adminTenant->id, 'expires_at' => now()->addHours(72)]);
+        $user = $convites->accept('abc');
+
+        $vinculo = PessoaUsuario::withoutGlobalScopes()->where('user_id', $user->id)->sole();
+        $this->assertSame($this->tenant->id, (int) $vinculo->tenant_id);
+        $this->assertSame($this->adminTenant->id, $vinculo->promovido_por);
+        $this->assertSame('convidada@cliente.test', Pessoa::withoutGlobalScopes()->findOrFail($vinculo->pessoa_id)->contatos()->where('tipo', 'email')->value('valor'));
+        $this->assertNotNull($convite->fresh()->accepted_at);
+
+        $papelPlataforma = Role::where('scope', 'systrat')->firstOrFail();
+        UserInvitation::create(['tenant_id' => null, 'email' => 'analista@systrat.test', 'token' => hash('sha256', 'xyz'), 'role_slug' => $papelPlataforma->slug, 'invited_by' => $this->adminTenant->id, 'expires_at' => now()->addHours(72)]);
+        $analista = $convites->accept('xyz');
+
+        $this->assertSame(0, PessoaUsuario::withoutGlobalScopes()->where('user_id', $analista->id)->count());
+    }
+
+    public function test_aceitar_convite_nao_sobrescreve_usuario_existente(): void
+    {
+        $papel = Role::where('slug', 'admin_tenant')->where('tenant_id', $this->tenant->id)->firstOrFail();
+        $existente = User::create(['name' => 'Maria Souza', 'email' => 'maria@cliente.test', 'password' => 'StrongPass!123', 'is_active' => true, 'is_systrat' => true]);
+        $senha = $existente->password;
+        UserInvitation::create(['tenant_id' => $this->tenant->id, 'email' => 'maria@cliente.test', 'token' => hash('sha256', 'abc'), 'role_slug' => $papel->slug, 'invited_by' => $this->adminTenant->id, 'expires_at' => now()->addHours(72)]);
+
+        $user = app(InvitationService::class)->accept('abc');
+
+        $this->assertSame($existente->id, $user->id);
+        $fresco = $existente->fresh();
+        $this->assertSame('Maria Souza', $fresco->name);
+        $this->assertSame($senha, $fresco->password);
+        $this->assertTrue($fresco->is_systrat); // convite de órgão não rebaixa
+        $this->assertTrue($fresco->tenants()->where('tenants.id', $this->tenant->id)->exists());
+    }
+
+    public function test_convite_de_plataforma_promove_usuario_existente_sem_mexer_no_nome(): void
+    {
+        $papel = Role::where('scope', 'systrat')->firstOrFail();
+        $existente = User::create(['name' => 'Maria Souza', 'email' => 'maria@cliente.test', 'password' => 'StrongPass!123', 'is_active' => true]);
+        UserInvitation::create(['tenant_id' => null, 'email' => 'maria@cliente.test', 'token' => hash('sha256', 'xyz'), 'role_slug' => $papel->slug, 'invited_by' => $this->adminTenant->id, 'expires_at' => now()->addHours(72)]);
+
+        app(InvitationService::class)->accept('xyz');
+
+        $fresco = $existente->fresh();
+        $this->assertSame('Maria Souza', $fresco->name);
+        $this->assertTrue($fresco->is_systrat);
     }
 }

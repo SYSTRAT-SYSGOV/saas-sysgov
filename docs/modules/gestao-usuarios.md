@@ -118,13 +118,13 @@ Usuário ──POST /auth/accept-invitation──▶ InvitationService::accept()
 
 ## 5.1 Usuário e Cadastro de Pessoas
 
-Todo usuário de órgão criado no admin (`POST /api/users`, `POST /api/access/users` e o cadastro de administrador do tenant) passa a ter **pessoa** no Cadastro de Pessoas do órgão (`PessoaDoUsuarioService`), ligada por `pessoas_usuarios`:
+Todo usuário de órgão criado no admin (`POST /api/users`, `POST /api/access/users`, o cadastro de administrador do tenant e o aceite de convite de órgão) passa a ter **pessoa** no Cadastro de Pessoas do órgão (`PessoaDoUsuarioService`), ligada por `pessoas_usuarios`:
 
 - se já existe **uma** pessoa física do órgão, sem usuário, com o e-mail do usuário nos contatos, o usuário é ligado a ela (sem duplicar);
 - com **mais de uma** candidata nada é ligado e o caso vai para a auditoria (`pessoa.usuario_ambiguo`);
 - senão nasce uma pessoa sem documento (`documento_pendente`), com o nome do usuário e o e-mail como contato principal.
 
-O vínculo é único por usuário: quem já está ligado a uma pessoa de outro órgão não ganha uma segunda. Usuários da plataforma (Systrat) não viram pessoa. Falha ao montar a pessoa nunca impede a criação do usuário. Para usuários que já existiam, `php artisan pessoas:vincular-usuarios [--tenant=slug] [--dry-run]` aplica a mesma regra (só usuários de órgão ativos; rode antes com `--dry-run`; pode repetir). A promoção manual (`POST /api/pessoas/{id}/promover`) continua existindo para o caminho inverso (pessoa → usuário).
+O vínculo é único por usuário: quem já está ligado a uma pessoa de outro órgão não ganha uma segunda. Usuários da plataforma (Systrat) não viram pessoa. No convite o nome é o provisório (parte do e-mail antes do `@`), a corrigir na própria pessoa. Falha ao montar a pessoa nunca impede a criação do usuário. Para usuários que já existiam, `php artisan pessoas:vincular-usuarios [--tenant=slug] [--dry-run]` aplica a mesma regra (só usuários de órgão ativos; rode antes com `--dry-run`; pode repetir). A promoção manual (`POST /api/pessoas/{id}/promover`) continua existindo para o caminho inverso (pessoa → usuário).
 
 ## 6. MFA (RN-USR-005)
 
