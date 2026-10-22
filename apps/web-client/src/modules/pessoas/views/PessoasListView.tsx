@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
+import { ActionsMenu } from '@sysgov/ui';
 import type { ColumnDef } from '@tanstack/react-table';
-import { UserPlus, Users, ShieldCheck, FileDown, Upload } from 'lucide-react';
+import { UserPlus, Users, ShieldCheck, FileDown, Upload , Eye } from 'lucide-react';
 import { Button, DataTable, PageHeader, StatusChip } from '@/components/ui';
 import { TIPOS_VINCULO, type Pessoa } from '../api';
 import { NovaPessoaWizard } from '../NovaPessoaWizard';
@@ -70,6 +71,25 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
   const colunas = useMemo<ColumnDef<Pessoa, unknown>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações da pessoa"
+                items={[
+                  ...(podePromover && !row.original.usuario ? [{ key: 'promover', label: 'Promover a usuário do sistema', icon: <ShieldCheck className="h-3.5 w-3.5" />, onSelect: () => onPromover(row.original) }] : []),
+                  { key: 'gerenciar', label: 'Gerenciar', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => onAbrirDetalhe(row.original) },
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         id: 'nome',
         header: 'Nome',
         size: 260,
@@ -109,7 +129,7 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
       },
       {
         id: 'vinculos',
-        header: 'Vínculos',
+        header: 'Vínculos', meta: { exportValue: (r) => (r.vinculos ?? []).map((v) => TIPOS_VINCULO[v.tipo_vinculo]).join(', ') },
         size: 220,
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1 max-w-sm">
@@ -144,28 +164,6 @@ export const PessoasListView: React.FC<PessoasListViewProps> = ({
             />
           );
         },
-      },
-      {
-        id: 'acoes',
-        header: '',
-        size: 160,
-        cell: ({ row }) => (
-          <div className="flex gap-1 justify-end">
-            {podePromover && !row.original.usuario && (
-              <Button
-                size="xs"
-                variant="outline"
-                onClick={() => onPromover(row.original)}
-                title="Promover a usuário do sistema"
-              >
-                <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Promover
-              </Button>
-            )}
-            <Button size="xs" variant="outline" onClick={() => onAbrirDetalhe(row.original)}>
-              Gerenciar
-            </Button>
-          </div>
-        ),
       },
     ],
     [podePromover, onPromover, onAbrirDetalhe]

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ActionsMenu } from '@sysgov/ui';
 import type { ColumnDef } from '@tanstack/react-table';
 import { GitMerge } from 'lucide-react';
 import { Button, DataTable, PageHeader, Select, StatusChip } from '@/components/ui';
@@ -33,27 +34,22 @@ export const ConciliacaoPanel: React.FC = () => {
 
   const colunasAdocao: ColumnDef<AdocaoModulo, unknown>[] = [
     { id: 'modulo', header: 'Módulo', accessorKey: 'modulo' },
-    { id: 'total', header: 'Registros', cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.total}</span> },
-    { id: 'vinculados', header: 'Com pessoa', cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.vinculados}</span> },
+    { id: 'total', header: 'Registros', meta: { exportValue: (r) => r.total }, cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.total}</span> },
+    { id: 'vinculados', header: 'Com pessoa', meta: { exportValue: (r) => r.vinculados }, cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.vinculados}</span> },
     {
-      id: 'sem_vinculo', header: 'Sem pessoa', cell: ({ row }) => (
+      id: 'sem_vinculo', header: 'Sem pessoa', meta: { exportValue: (r) => r.sem_vinculo }, cell: ({ row }) => (
         <StatusChip label={String(row.original.sem_vinculo)} variant={row.original.sem_vinculo > 0 ? 'warning' : 'success'} />
       ),
     },
-    { id: 'documento_pendente', header: 'Documento pendente', cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.documento_pendente}</span> },
+    { id: 'documento_pendente', header: 'Documento pendente', meta: { exportValue: (r) => r.documento_pendente }, cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.documento_pendente}</span> },
     {
-      id: 'divergencias_abertas', header: 'Divergências abertas', cell: ({ row }) => (
+      id: 'divergencias_abertas', header: 'Divergências abertas', meta: { exportValue: (r) => r.divergencias_abertas }, cell: ({ row }) => (
         <StatusChip label={String(row.original.divergencias_abertas)} variant={row.original.divergencias_abertas > 0 ? 'danger' : 'success'} />
       ),
     },
   ];
 
   const colunasDivergencias: ColumnDef<PessoaDivergencia, unknown>[] = [
-    { id: 'pessoa', header: 'Pessoa', cell: ({ row }) => row.original.pessoa_nome ?? `#${row.original.pessoa_id}` },
-    { id: 'modulo', header: 'Módulo', accessorKey: 'modulo' },
-    { id: 'campo', header: 'Campo', cell: ({ row }) => ROTULO_CAMPO[row.original.campo] ?? row.original.campo },
-    { id: 'valor_modulo', header: 'No módulo', cell: ({ row }) => <span className="text-sm">{row.original.valor_modulo ?? '—'}</span> },
-    { id: 'valor_mdm', header: 'No cadastro central', cell: ({ row }) => <span className="text-sm">{row.original.valor_mdm ?? '—'}</span> },
     {
       id: 'acoes', header: '', cell: ({ row }) => {
         const d = row.original;
@@ -68,17 +64,23 @@ export const ConciliacaoPanel: React.FC = () => {
           );
         }
         return (
-          <div className="flex items-center gap-1.5">
-            <Button size="xs" variant="outline" onClick={() => void resolver(d, 'mdm')} disabled={ocupado} title="Mantém o dado da pessoa e encerra a divergência">
-              Manter cadastro central
-            </Button>
-            <Button size="xs" variant="outline" onClick={() => setConfirmando(d.id)} disabled={ocupado} title="Altera o dado da pessoa para o valor do módulo">
-              Usar valor do módulo
-            </Button>
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações da divergência"
+              items={[
+                { key: 'manter', label: 'Manter cadastro central', disabled: ocupado, onSelect: () => void resolver(d, 'mdm') },
+                { key: 'usar-modulo', label: 'Usar valor do módulo', disabled: ocupado, onSelect: () => setConfirmando(d.id) },
+              ]}
+            />
           </div>
         );
       },
     },
+    { id: 'pessoa', header: 'Pessoa', meta: { exportValue: (r) => r.pessoa_nome ?? `#${r.pessoa_id}` }, cell: ({ row }) => row.original.pessoa_nome ?? `#${row.original.pessoa_id}` },
+    { id: 'modulo', header: 'Módulo', accessorKey: 'modulo' },
+    { id: 'campo', header: 'Campo', meta: { exportValue: (r) => ROTULO_CAMPO[r.campo] ?? r.campo }, cell: ({ row }) => ROTULO_CAMPO[row.original.campo] ?? row.original.campo },
+    { id: 'valor_modulo', header: 'No módulo', meta: { exportValue: (r) => r.valor_modulo }, cell: ({ row }) => <span className="text-sm">{row.original.valor_modulo ?? '—'}</span> },
+    { id: 'valor_mdm', header: 'No cadastro central', meta: { exportValue: (r) => r.valor_mdm }, cell: ({ row }) => <span className="text-sm">{row.original.valor_mdm ?? '—'}</span> },
   ];
 
   const opcoesModulo = (adocao.dados?.modulos ?? []).map((m) => ({ value: m.modulo, label: m.modulo }));
@@ -95,7 +97,7 @@ export const ConciliacaoPanel: React.FC = () => {
 
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">Adoção por módulo</h3>
-        <DataTable columns={colunasAdocao} data={adocao.dados?.modulos ?? []} loading={adocao.carregando} emptyText="Nenhum módulo registrou conciliação ainda." />
+        <DataTable exportable exportFileName="pessoas-conciliacao-1" exportTitle="Pessoas — Conciliacao 1" columns={colunasAdocao} data={adocao.dados?.modulos ?? []} loading={adocao.carregando} emptyText="Nenhum módulo registrou conciliação ainda." />
       </div>
 
       <div className="space-y-2">
@@ -103,7 +105,7 @@ export const ConciliacaoPanel: React.FC = () => {
           <h3 className="text-sm font-semibold">Divergências abertas</h3>
           <Select value={modulo} onChange={(v) => setModulo(v)} options={opcoesModulo} placeholder="Todos os módulos" />
         </div>
-        <DataTable columns={colunasDivergencias} data={divergencias.dados?.data ?? []} loading={divergencias.carregando} emptyText="Nenhuma divergência aberta." />
+        <DataTable exportable exportFileName="pessoas-conciliacao-2" exportTitle="Pessoas — Conciliacao 2" columns={colunasDivergencias} data={divergencias.dados?.data ?? []} loading={divergencias.carregando} emptyText="Nenhuma divergência aberta." />
       </div>
     </div>
   );

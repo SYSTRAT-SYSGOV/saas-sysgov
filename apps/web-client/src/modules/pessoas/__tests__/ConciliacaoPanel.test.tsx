@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ConciliacaoPanel } from '../ConciliacaoPanel';
 import { pessoasApi, type PessoaDivergencia } from '../api';
+import { acionarMenu } from '@/test-utils/acoesMenu';
 
 vi.mock('../api', async (importOriginal) => {
   const original = await importOriginal<typeof import('../api')>();
@@ -49,7 +50,7 @@ describe('ConciliacaoPanel', () => {
     vi.mocked(pessoasApi.resolverDivergencia).mockResolvedValue({ ...divergencia, estado: 'resolvida', decisao: 'mdm' });
     render(<ConciliacaoPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Manter cadastro central/i }));
+    await acionarMenu(/Ações da divergência/i, /Manter cadastro central/i);
 
     await waitFor(() => expect(pessoasApi.resolverDivergencia).toHaveBeenCalledWith(3, 'mdm'));
   });
@@ -58,7 +59,7 @@ describe('ConciliacaoPanel', () => {
     vi.mocked(pessoasApi.resolverDivergencia).mockResolvedValue({ ...divergencia, estado: 'resolvida', decisao: 'modulo' });
     render(<ConciliacaoPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Usar valor do módulo/i }));
+    await acionarMenu(/Ações da divergência/i, /Usar valor do módulo/i);
     expect(pessoasApi.resolverDivergencia).not.toHaveBeenCalled();
     expect(screen.getByText(/Atualizar a pessoa com o valor do módulo/i)).toBeInTheDocument();
 
