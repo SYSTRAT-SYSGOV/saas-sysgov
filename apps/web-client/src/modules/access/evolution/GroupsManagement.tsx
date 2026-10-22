@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Loader2, Save, Users, UserCheck, Briefcase, Layer
 import { accessApi, AccessCategory, AccessGroup, AccessGroupAccess, AccessUser } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
 import { OrgUnitNode } from '../AccessApi';
-import { Card, Modal, Badge } from '@sysgov/ui';
+import { Card, Modal, Badge, ActionsMenu } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -98,33 +98,37 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
   };
 
   const categoryColumns: ColumnDef<AccessCategory, any>[] = [
+    {
+      id: 'acoes', header: '', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu triggerLabel="Ações da categoria" items={[
+            { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => { setCatName(row.original.name); setCatDesc(row.original.description ?? ''); setCatModal({ edit: row.original }); } },
+            { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => deleteCategory(row.original) },
+          ]} />
+        </div>
+      ),
+    },
     { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
     { id: 'groups_count', header: 'Grupos', accessorKey: 'groups_count', cell: ({ row }) => <span className="text-muted-foreground">{row.original.groups_count ?? 0} grupos</span> },
     { id: 'description', header: 'Descrição', accessorKey: 'description', cell: ({ row }) => <span className="text-muted-foreground">{row.original.description ?? ''}</span> },
-    {
-      id: 'actions', header: 'Ações', enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex justify-end gap-1">
-          <button onClick={() => { setCatName(row.original.name); setCatDesc(row.original.description ?? ''); setCatModal({ edit: row.original }); }} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
-          <button onClick={() => deleteCategory(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
-        </div>
-      ),
-    },
   ];
 
   const groupColumns: ColumnDef<AccessGroup, any>[] = [
-    { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
-    { id: 'details', header: 'Detalhes', accessorFn: (row) => row.category?.name ?? '', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.category?.name ?? 'sem categoria'} · {row.original.accesses?.length ?? 0} módulos · {row.original.users_count ?? 0} usuários</span> },
     {
-      id: 'actions', header: 'Ações', enableSorting: false,
+      id: 'acoes', header: '', enableSorting: false,
       cell: ({ row }) => (
-        <div className="flex justify-end gap-1">
-          <button onClick={() => setShowUsers(showUsers === row.original.id ? null : row.original.id)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Users className="h-4 w-4" /></button>
-          <button onClick={() => openGroup(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
-          <button onClick={() => deleteGroup(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
+        <div className="flex justify-center">
+          <ActionsMenu triggerLabel="Ações do grupo" items={[
+            { key: 'usuarios', label: 'Ver usuários', icon: <Users className="h-3.5 w-3.5" />, onSelect: () => setShowUsers(showUsers === row.original.id ? null : row.original.id) },
+            { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => openGroup(row.original) },
+            { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => deleteGroup(row.original) },
+          ]} />
         </div>
       ),
     },
+    { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
+    { id: 'details', header: 'Detalhes', accessorFn: (row) => row.category?.name ?? '', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.category?.name ?? 'sem categoria'} · {row.original.accesses?.length ?? 0} módulos · {row.original.users_count ?? 0} usuários</span> },
   ];
 
   return (
@@ -140,7 +144,7 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
           </button>
         </div>
         <div className="p-3">
-          <DataTable columns={categoryColumns} data={categories} loading={loading} emptyText="Nenhuma categoria." pageSize={10} />
+          <DataTable exportable exportFileName="access-groups-1" exportTitle="Acessos — Groups 1" columns={categoryColumns} data={categories} loading={loading} emptyText="Nenhuma categoria." pageSize={10} />
         </div>
       </Card>
 
@@ -155,7 +159,7 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
           </button>
         </div>
         <div className="p-3">
-          <DataTable columns={groupColumns} data={groups} loading={loading} emptyText="Nenhum grupo cadastrado." pageSize={10} />
+          <DataTable exportable exportFileName="access-groups-2" exportTitle="Acessos — Groups 2" columns={groupColumns} data={groups} loading={loading} emptyText="Nenhum grupo cadastrado." pageSize={10} />
         </div>
       </Card>
 

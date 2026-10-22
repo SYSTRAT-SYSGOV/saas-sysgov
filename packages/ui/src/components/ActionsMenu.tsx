@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Loader2, MoreVertical } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { buttonVariants } from './button';
+import { Button, buttonVariants } from './button';
 import {
   DropdownMenu as DropdownMenuPrimitive,
   DropdownMenuContent,
@@ -25,8 +25,9 @@ export interface ActionsMenuProps {
 }
 
 /**
- * Menu de ações em dropdown para linhas de grid (ex.: editar, baixar PDFs).
- * Por baixo usa o DropdownMenu real do Radix (teclado/foco/ARIA nativos).
+ * Ações de uma linha de grid (ex.: editar, baixar PDFs). Com mais de uma ação vira um
+ * dropdown (DropdownMenu real do Radix: teclado/foco/ARIA nativos); com uma só, o botão
+ * da ação fica direto na linha, sem menu.
  */
 export const ActionsMenu: React.FC<ActionsMenuProps> = ({
   items,
@@ -34,6 +35,27 @@ export const ActionsMenu: React.FC<ActionsMenuProps> = ({
   className,
 }) => {
   if (items.length === 0) return null;
+
+  if (items.length === 1) {
+    const [item] = items;
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="xs"
+        className={className}
+        title={item.label}
+        disabled={item.disabled || item.loading}
+        onClick={(e) => {
+          e.stopPropagation();
+          item.onSelect();
+        }}
+      >
+        {item.loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : item.icon}
+        <span>{item.label}</span>
+      </Button>
+    );
+  }
 
   return (
     <DropdownMenuPrimitive>

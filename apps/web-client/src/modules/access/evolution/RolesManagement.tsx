@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Loader2, Save, ShieldCheck, Filter } from 'lucide-react';
 import { accessApi, TenantRole, TenantPermission } from '../AccessApi';
-import { Modal, Badge, Card } from '@sysgov/ui';
+import { Modal, Badge, Card, ActionsMenu } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -69,6 +69,17 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
 
   const roleColumns: ColumnDef<TenantRole, any>[] = [
     {
+      id: 'acoes', header: '', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu triggerLabel="Ações da role" items={[
+            { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => openEdit(row.original) },
+            { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => handleDelete(row.original), disabled: row.original.is_system },
+          ]} />
+        </div>
+      ),
+    },
+    {
       id: 'name', header: 'Role', accessorKey: 'name',
       cell: ({ row }) => (
         <>
@@ -89,15 +100,6 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
       ),
     },
     { id: 'is_system', header: 'Sistema', accessorKey: 'is_system', cell: ({ row }) => row.original.is_system ? <Badge variant="warning">Sim</Badge> : <span className="text-muted-foreground">Não</span> },
-    {
-      id: 'actions', header: 'Ações', enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex justify-end gap-1">
-          <button onClick={() => openEdit(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
-          <button onClick={() => handleDelete(row.original)} disabled={row.original.is_system} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
-        </div>
-      ),
-    },
   ];
 
   return (
@@ -115,7 +117,7 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <div className="p-3">
-          <DataTable columns={roleColumns} data={roles} loading={loading} emptyText="Nenhuma role cadastrada." pageSize={10} />
+          <DataTable exportable exportFileName="access-roles" exportTitle="Acessos — Roles" columns={roleColumns} data={roles} loading={loading} emptyText="Nenhuma role cadastrada." pageSize={10} />
         </div>
       )}
 
