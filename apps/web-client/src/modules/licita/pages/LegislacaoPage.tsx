@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Card, Button, Badge } from '@sysgov/ui';
+import { Card, Button, Badge, ActionsMenu } from '@sysgov/ui';
 import { PageHeader, ScreenState, EmptyState, SearchInput, DataTable } from '@/components/ui';
 import { Plus, BookOpen, Trash2, Pencil, FileDown } from 'lucide-react';
 import DOMPurify from 'dompurify';
@@ -96,49 +96,20 @@ export const LegislacaoPage: React.FC<LegislacaoPageProps> = ({ onNovoDocumento,
       {
         id: 'acoes',
         header: '',
-        size: 130,
+        size: 56,
         enableSorting: false,
         cell: ({ row }) => {
           const documento = row.original;
           return (
-            <div className="flex justify-center gap-1">
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Baixar PDF"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleGerarPdf(documento);
-                }}
-              >
-                <FileDown className="h-3.5 w-3.5" />
-              </Button>
-              {podeEditar(documento) && (
-                <>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    title="Editar"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEditarDocumento(documento);
-                    }}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    title="Excluir"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(documento);
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                  </Button>
-                </>
-              )}
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações do documento"
+                items={[
+                  { key: 'pdf', label: 'Baixar PDF', icon: <FileDown className="h-3.5 w-3.5" />, onSelect: () => handleGerarPdf(documento) },
+                  ...(podeEditar(documento) ? [{ key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => onEditarDocumento(documento) }] : []),
+                  ...(podeEditar(documento) ? [{ key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => handleDelete(documento) }] : []),
+                ]}
+              />
             </div>
           );
         },
