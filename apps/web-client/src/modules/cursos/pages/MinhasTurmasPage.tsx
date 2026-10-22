@@ -58,7 +58,7 @@ export const MinhasTurmasPage: React.FC<Props> = ({ onAbrirTurma }) => {
   if (carregando && turmas.length === 0) return <ScreenState type="loading" title="Carregando suas turmas..." />;
   if (erro) return <ScreenState type="error" title="Erro ao carregar" description={erro} actionLabel="Tentar novamente" onAction={carregar} />;
 
-  return <DataTable columns={colunas} data={turmas} emptyText="Você não é instrutor de nenhuma turma." onRowClick={(t) => onAbrirTurma(t.id)} />;
+  return <DataTable exportable exportFileName="cursos-minhas-turmas" exportTitle="Cursos — Minhas Turmas" columns={colunas} data={turmas} emptyText="Você não é instrutor de nenhuma turma." onRowClick={(t) => onAbrirTurma(t.id)} />;
 };
 
 export default MinhasTurmasPage;

@@ -261,7 +261,7 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
                 <Download className="h-4 w-4" /> Exportar CSV
               </Button>
             </div>
-            <DataTable columns={colunasResumo} data={relatorio.inscritos} searchable searchPlaceholder="Buscar participante..." emptyText="Nenhuma inscrição ainda." />
+            <DataTable exportable exportFileName="cursos-turma-detalhe-1" exportTitle="Cursos — Turma Detalhe 1" columns={colunasResumo} data={relatorio.inscritos} searchable searchPlaceholder="Buscar participante..." emptyText="Nenhuma inscrição ainda." />
           </Card>
         </>
       )}
@@ -348,7 +348,7 @@ export const TurmaDetalhePage: React.FC<Props> = ({ turmaId, onVoltar }) => {
                 <Download className="h-4 w-4" /> Exportar CSV
               </Button>
             </div>
-            <DataTable columns={colunas} data={inscritos} searchable searchPlaceholder="Buscar participante..." emptyText="Nenhuma inscrição ainda." />
+            <DataTable exportable exportFileName="cursos-turma-detalhe-2" exportTitle="Cursos — Turma Detalhe 2" columns={colunas} data={inscritos} searchable searchPlaceholder="Buscar participante..." emptyText="Nenhuma inscrição ainda." />
           </Card>
         </>
       )}
