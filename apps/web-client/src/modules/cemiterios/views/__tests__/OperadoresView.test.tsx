@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { OperadoresView } from '../OperadoresView';
+import { acionarMenu } from '@/test-utils/acoesMenu';
 import {
   cemiteriosApi,
   type HistoricoOperador,
@@ -215,8 +216,7 @@ describe('OperadoresView Component', () => {
       expect(screen.getByText('Sebastião Coveiro')).toBeInTheDocument();
     });
 
-    const botoesHistorico = screen.getAllByRole('button', { name: /Histórico/i });
-    fireEvent.click(botoesHistorico[0]);
+    await acionarMenu(/Ações do profissional/i, /Histórico operacional/i);
 
     await waitFor(() => {
       expect(screen.getByText('Histórico Operacional')).toBeInTheDocument();

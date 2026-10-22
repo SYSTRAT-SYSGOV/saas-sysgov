@@ -9,7 +9,7 @@ import { ConcessoesFiltros } from './ConcessoesFiltros';
 import { ConcessionariosFiltros, type FiltrosConcessionarios } from './ConcessionariosFiltros';
 import { ModalEditarConcessionario } from './ModalEditarConcessionario';
 import { DrawerHistoricoConcessao } from './DrawerHistoricoConcessao';
-import { PessoaPicker } from '@sysgov/ui';
+import { PessoaPicker, ActionsMenu } from '@sysgov/ui';
 import { usePessoaPicker } from '@/modules/pessoas/hooks';
 import { pessoasApi } from '@/modules/pessoas/api';
 import { ModalFichaPessoa } from '@/modules/pessoas/views/ModalFichaPessoa';
@@ -30,6 +30,10 @@ import {
   FileSpreadsheet,
   FileText,
   Landmark,
+  History,
+  RefreshCw,
+  ArrowRightLeft,
+  XCircle,
 } from 'lucide-react';
 
 const SITUACAO: Record<string, 'success' | 'warning' | 'danger'> = { vigente: 'success', expirada: 'warning', extinta: 'danger' };
@@ -126,6 +130,27 @@ export const ConcessoesView: React.FC = () => {
   }, [concessoes.dados?.total, listaConcessoes]);
 
   const colunasConcessoes = useMemo<ColumnDef<Concessao, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações da concessão"
+              items={[
+                { key: 'historico', label: 'Histórico', icon: <History className="h-3.5 w-3.5" />, onSelect: () => setHistorico(row.original) },
+                ...(gerencia && row.original.modalidade === 'temporaria' && row.original.situacao === 'vigente' ? [{ key: 'renovar', label: 'Renovar', icon: <RefreshCw className="h-3.5 w-3.5" />, onSelect: () => setRenovar(row.original) }] : []),
+                ...(gerencia && row.original.situacao === 'vigente' ? [{ key: 'transferir', label: 'Transferir titular', icon: <ArrowRightLeft className="h-3.5 w-3.5" />, onSelect: () => setTransferir(row.original) }] : []),
+                ...(gerencia && row.original.situacao === 'vigente' ? [{ key: 'renunciar', label: 'Renunciar', icon: <XCircle className="h-3.5 w-3.5" />, onSelect: () => setRenunciar(row.original) }] : []),
+              ]}
+            />
+          </div>
+        );
+      },
+    },
     {
       id: 'numero',
       header: 'Concessão / Proc.',
@@ -279,24 +304,6 @@ export const ConcessoesView: React.FC = () => {
       ),
       meta: { exportHeader: 'Situação', exportValue: (r) => r.situacao, sortValue: (r) => r.situacao },
     },
-    {
-      id: 'acoes',
-      header: '',
-      cell: ({ row }) => (
-        <div className="flex flex-wrap justify-end gap-1.5">
-          <Button size="xs" variant="ghost" onClick={() => setHistorico(row.original)}>Histórico</Button>
-          {gerencia && row.original.modalidade === 'temporaria' && row.original.situacao === 'vigente' && (
-            <Button size="xs" variant="outline" onClick={() => setRenovar(row.original)}>Renovar</Button>
-          )}
-          {gerencia && row.original.situacao === 'vigente' && (
-            <Button size="xs" variant="outline" onClick={() => setTransferir(row.original)}>Transferir titular</Button>
-          )}
-          {gerencia && row.original.situacao === 'vigente' && (
-            <Button size="xs" variant="outline" onClick={() => setRenunciar(row.original)}>Renunciar</Button>
-          )}
-        </div>
-      ),
-    },
   ], [gerencia]);
 
   const listaTitulares = titulares.dados?.data ?? [];
@@ -309,6 +316,25 @@ export const ConcessoesView: React.FC = () => {
   }, [titulares.dados?.total, listaTitulares]);
 
   const colunasTitulares = useMemo<ColumnDef<Concessionario, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações do titular"
+              items={[
+                ...(gerencia ? [{ key: 'editar', label: 'Editar titular', icon: <Edit3 className="h-3.5 w-3.5" />, onSelect: () => setModalEditarTitular(row.original) }] : []),
+                ...(row.original.pessoa_id ? [{ key: 'ficha', label: 'Ficha no Cadastro Central', icon: <ExternalLink className="h-3.5 w-3.5" />, onSelect: () => setPessoaModalId(row.original.pessoa_id!) }] : []),
+              ]}
+            />
+          </div>
+        );
+      },
+    },
     {
       id: 'nome',
       header: 'Concessionário / Titular',
@@ -516,38 +542,6 @@ export const ConcessoesView: React.FC = () => {
         return <span className="text-xs text-muted-foreground">{labels[base] ?? base ?? '—'}</span>;
       },
       meta: { exportHeader: 'Base Legal LGPD', exportValue: (r) => r.base_legal ?? '' },
-    },
-    {
-      id: 'acoes',
-      header: '',
-      cell: ({ row }) => (
-        <div className="flex items-center justify-end gap-1.5">
-          {gerencia && (
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => setModalEditarTitular(row.original)}
-              className="gap-1 h-7 text-xs"
-              title="Editar dados cadastrais, endereço com CEP e contatos"
-            >
-              <Edit3 className="h-3 w-3" />
-              <span>Editar</span>
-            </Button>
-          )}
-          {row.original.pessoa_id && (
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => setPessoaModalId(row.original.pessoa_id!)}
-              className="gap-1 h-7 text-xs text-primary"
-              title="Ver ficha completa no Cadastro Central"
-            >
-              <ExternalLink className="h-3 w-3" />
-              <span>Ficha</span>
-            </Button>
-          )}
-        </div>
-      ),
     },
   ], [gerencia]);
 

@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { FileText , MessageSquare , Gavel } from 'lucide-react';
+import { ActionsMenu } from '@sysgov/ui';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button, DataTable, StatusChip, Tabs } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
@@ -49,33 +51,42 @@ export const VistoriaView: React.FC = () => {
   const recarregar = () => Promise.all([vistorias.recarregar(), processos.recarregar()]);
 
   const colVistorias = useMemo<ColumnDef<Vistoria, unknown>[]>(() => [
-    { id: 'jazigo', header: 'Jazigo (ID)', cell: ({ row }) => <Mono>{row.original.plot_id}</Mono> },
-    { id: 'data', header: 'Data', cell: ({ row }) => <Mono>{formatarData(row.original.data)}</Mono> },
-    { id: 'estado', header: 'Estado', cell: ({ row }) => ESTADO_CONSERVACAO[row.original.estado_conservacao] ?? row.original.estado_conservacao },
-    { id: 'risco', header: 'Risco', cell: ({ row }) => <StatusChip label={row.original.risco} variant={RISCO[row.original.risco]} /> },
-    { id: 'fotos', header: 'Fotos', cell: ({ row }) => <Mono>{row.original.fotos.length}</Mono> },
+    { id: 'jazigo', header: 'Jazigo (ID)', meta: { exportValue: (r) => r.plot_id }, cell: ({ row }) => <Mono>{row.original.plot_id}</Mono> },
+    { id: 'data', header: 'Data', meta: { exportValue: (r) => r.data }, cell: ({ row }) => <Mono>{formatarData(row.original.data)}</Mono> },
+    { id: 'estado', header: 'Estado', meta: { exportValue: (r) => ESTADO_CONSERVACAO[r.estado_conservacao] ?? r.estado_conservacao }, cell: ({ row }) => ESTADO_CONSERVACAO[row.original.estado_conservacao] ?? row.original.estado_conservacao },
+    { id: 'risco', header: 'Risco', meta: { exportValue: (r) => r.risco }, cell: ({ row }) => <StatusChip label={row.original.risco} variant={RISCO[row.original.risco]} /> },
+    { id: 'fotos', header: 'Fotos', meta: { exportValue: (r) => r.fotos.length }, cell: ({ row }) => <Mono>{row.original.fotos.length}</Mono> },
   ], []);
 
   const colProcessos = useMemo<ColumnDef<ProcessoAbandono, unknown>[]>(() => [
-    { id: 'jazigo', header: 'Jazigo', cell: ({ row }) => <Mono>{row.original.jazigo?.codigo ?? row.original.plot_id}</Mono> },
-    { id: 'concessao', header: 'Concessão', cell: ({ row }) => row.original.concessao?.numero ?? '—' },
-    { id: 'situacao', header: 'Situação', cell: ({ row }) => <StatusChip label={row.original.situacao} variant={SITUACAO_PROCESSO[row.original.situacao]} /> },
-    { id: 'prazo', header: 'Prazo do edital', cell: ({ row }) => <Mono>{formatarData(row.original.prazo_fim)}</Mono> },
     {
-      id: 'remocao', header: '', cell: ({ row }) => row.original.remocao_pendente ? <StatusChip label="remoção pendente" variant="danger" /> : null,
-    },
-    {
-      id: 'acoes', header: '', cell: ({ row }) => {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
         const p = row.original;
         if (!can('cemiterios.abandono.manage')) return null;
         return (
-          <div className="flex flex-wrap gap-1">
-            {p.situacao === 'instaurado' && <Button size="xs" variant="outline" onClick={() => setModal({ tipo: 'edital', alvo: p })}>Publicar edital</Button>}
-            {(p.situacao === 'instaurado' || p.situacao === 'em_edital') && <Button size="xs" variant="outline" onClick={() => setModal({ tipo: 'manifestacao', alvo: p })}>Manifestação</Button>}
-            {p.situacao === 'em_edital' && <Button size="xs" onClick={() => setModal({ tipo: 'decisao', alvo: p })}>Decidir</Button>}
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações do processo"
+              items={[
+                ...(p.situacao === 'instaurado' ? [{ key: 'edital', label: 'Publicar edital', icon: <FileText className="h-3.5 w-3.5" />, onSelect: () => setModal({ tipo: 'edital', alvo: p }) }] : []),
+                ...(p.situacao === 'instaurado' || p.situacao === 'em_edital' ? [{ key: 'manifestacao', label: 'Manifestação', icon: <MessageSquare className="h-3.5 w-3.5" />, onSelect: () => setModal({ tipo: 'manifestacao', alvo: p }) }] : []),
+                ...(p.situacao === 'em_edital' ? [{ key: 'decisao', label: 'Decidir', icon: <Gavel className="h-3.5 w-3.5" />, onSelect: () => setModal({ tipo: 'decisao', alvo: p }) }] : []),
+              ]}
+            />
           </div>
         );
       },
+    },
+    { id: 'jazigo', header: 'Jazigo', meta: { exportValue: (r) => r.jazigo?.codigo ?? r.plot_id }, cell: ({ row }) => <Mono>{row.original.jazigo?.codigo ?? row.original.plot_id}</Mono> },
+    { id: 'concessao', header: 'Concessão', meta: { exportValue: (r) => r.concessao?.numero }, cell: ({ row }) => row.original.concessao?.numero ?? '—' },
+    { id: 'situacao', header: 'Situação', meta: { exportValue: (r) => r.situacao }, cell: ({ row }) => <StatusChip label={row.original.situacao} variant={SITUACAO_PROCESSO[row.original.situacao]} /> },
+    { id: 'prazo', header: 'Prazo do edital', meta: { exportValue: (r) => r.prazo_fim }, cell: ({ row }) => <Mono>{formatarData(row.original.prazo_fim)}</Mono> },
+    {
+      id: 'remocao', header: '', cell: ({ row }) => row.original.remocao_pendente ? <StatusChip label="remoção pendente" variant="danger" /> : null,
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [can]);
@@ -92,8 +103,8 @@ export const VistoriaView: React.FC = () => {
       <ErroBox erro={erro ?? vistorias.erro ?? processos.erro} />
 
       {aba === 'vistorias'
-        ? <DataTable columns={colVistorias} data={vistorias.dados?.data ?? []} loading={vistorias.carregando} emptyText="Nenhuma vistoria registrada." />
-        : <DataTable columns={colProcessos} data={processos.dados?.data ?? []} loading={processos.carregando} emptyText="Nenhum processo de abandono." />}
+        ? <DataTable exportable exportFileName="cemiterios-vistoria-1" exportTitle="Cemitérios — Vistoria 1" columns={colVistorias} data={vistorias.dados?.data ?? []} loading={vistorias.carregando} emptyText="Nenhuma vistoria registrada." />
+        : <DataTable exportable exportFileName="cemiterios-vistoria-2" exportTitle="Cemitérios — Vistoria 2" columns={colProcessos} data={processos.dados?.data ?? []} loading={processos.carregando} emptyText="Nenhum processo de abandono." />}
 
       <FormModal aberto={modal?.tipo === 'vistoria'} titulo="Nova vistoria" campos={CAMPOS_VISTORIA} onFechar={() => setModal(null)}
         onEnviar={async (v) => { await cemiteriosApi.registrarVistoria({ ...v, plot_id: Number(v.plot_id) }); await recarregar(); }} />

@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
+import { FileText , Gavel , CheckCircle2 , XCircle } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Button, DataTable, StatusChip, Tabs } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import { cemiteriosApi, formatarData, type AlvaraObra, type Empreiteiro } from '../api';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
 import { useCemiteriosNavigation } from '../CemiteriosContext';
-import { PessoaPicker, PessoaCard, PessoaFormModal, type NovoCadastroRapidoPessoaInput, type PessoaPickerOption } from '@sysgov/ui';
+import { PessoaPicker, PessoaCard, PessoaFormModal, type NovoCadastroRapidoPessoaInput, type PessoaPickerOption, ActionsMenu } from '@sysgov/ui';
 import { usePessoas } from '@/modules/pessoas/hooks';
 import { pessoasApi } from '@/modules/pessoas/api';
 
@@ -51,8 +52,27 @@ export const EmpreiteirosView: React.FC = () => {
 
   const colEmpreiteiros = useMemo<ColumnDef<Empreiteiro, unknown>[]>(() => [
     {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações do empreiteiro"
+              items={[
+                ...(row.original.situacao !== 'cancelado' ? [{ key: 'alvara', label: 'Alvará anual', icon: <FileText className="h-3.5 w-3.5" />, onSelect: () => setModal({ tipo: 'alvara', alvo: row.original }) }] : []),
+                ...(row.original.situacao !== 'cancelado' ? [{ key: 'penalidade', label: 'Penalidade', icon: <Gavel className="h-3.5 w-3.5" />, onSelect: () => setModal({ tipo: 'penalidade', alvo: row.original }) }] : []),
+              ]}
+            />
+          </div>
+        );
+      },
+    },
+    {
       id: 'nome',
-      header: 'Nome',
+      header: 'Nome', meta: { exportValue: (r) => r.pessoa?.nome ?? r.nome },
       cell: ({ row }) => {
         const nomeExibicao = row.original.pessoa?.nome ?? row.original.nome;
         return (
@@ -69,43 +89,46 @@ export const EmpreiteirosView: React.FC = () => {
     },
     {
       id: 'doc',
-      header: 'CPF/CNPJ',
+      header: 'CPF/CNPJ', meta: { exportValue: (r) => r.pessoa?.cpf_mascarado ?? r.documento_mascarado },
       cell: ({ row }) => {
         const docExibicao = row.original.pessoa?.cpf_mascarado ?? row.original.documento_mascarado;
         return <Mono>{docExibicao}</Mono>;
       },
     },
     { id: 'rt', header: 'Responsável técnico', accessorFn: (r) => r.responsavel_tecnico ?? '—' },
-    { id: 'situacao', header: 'Situação', cell: ({ row }) => <StatusChip label={row.original.situacao} variant={SITUACAO[row.original.situacao]} /> },
-    {
-      id: 'acoes', header: '', cell: ({ row }) => row.original.situacao === 'cancelado' ? null : (
-        <div className="flex gap-1">
-          <Button size="xs" variant="outline" onClick={() => setModal({ tipo: 'alvara', alvo: row.original })}>Alvará anual</Button>
-          <Button size="xs" variant="outline" onClick={() => setModal({ tipo: 'penalidade', alvo: row.original })}>Penalidade</Button>
-        </div>
-      ),
-    },
+    { id: 'situacao', header: 'Situação', meta: { exportValue: (r) => r.situacao }, cell: ({ row }) => <StatusChip label={row.original.situacao} variant={SITUACAO[row.original.situacao]} /> },
   ], []);
 
   const colObras = useMemo<ColumnDef<AlvaraObra, unknown>[]>(() => [
-    { id: 'id', header: 'Alvará', cell: ({ row }) => <Mono>#{row.original.id}</Mono> },
-    { id: 'jazigo', header: 'Jazigo (ID)', cell: ({ row }) => <Mono>{row.original.plot_id}</Mono> },
-    { id: 'descricao', header: 'Descrição', accessorKey: 'descricao' },
-    { id: 'dim', header: 'Projeto (m)', cell: ({ row }) => <Mono>{row.original.comprimento_m} × {row.original.largura_m}</Mono> },
-    { id: 'prazo', header: 'Prazo', cell: ({ row }) => <Mono>{formatarData(row.original.prazo_fim)}</Mono> },
     {
-      id: 'situacao', header: 'Situação', cell: ({ row }) => (
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações do alvará de obra"
+              items={[
+                ...(row.original.situacao === 'pendente' ? [{ key: 'concluir', label: 'Concluir obra', icon: <CheckCircle2 className="h-3.5 w-3.5" />, onSelect: () => { void (async () => { if (await executar(() => cemiteriosApi.encerrarObra(row.original.id, 'concluida'))) await recarregar(); })(); } }] : []),
+                ...(row.original.situacao === 'pendente' ? [{ key: 'cancelar', label: 'Cancelar obra', icon: <XCircle className="h-3.5 w-3.5" />, onSelect: () => { void (async () => { if (await executar(() => cemiteriosApi.encerrarObra(row.original.id, 'cancelada'))) await recarregar(); })(); } }] : []),
+              ]}
+            />
+          </div>
+        );
+      },
+    },
+    { id: 'id', header: 'Alvará', meta: { exportValue: (r) => `#${r.id}` }, cell: ({ row }) => <Mono>#{row.original.id}</Mono> },
+    { id: 'jazigo', header: 'Jazigo (ID)', meta: { exportValue: (r) => r.plot_id }, cell: ({ row }) => <Mono>{row.original.plot_id}</Mono> },
+    { id: 'descricao', header: 'Descrição', accessorKey: 'descricao' },
+    { id: 'dim', header: 'Projeto (m)', meta: { exportValue: (r) => `${r.comprimento_m} × ${r.largura_m}` }, cell: ({ row }) => <Mono>{row.original.comprimento_m} × {row.original.largura_m}</Mono> },
+    { id: 'prazo', header: 'Prazo', meta: { exportValue: (r) => r.prazo_fim }, cell: ({ row }) => <Mono>{formatarData(row.original.prazo_fim)}</Mono> },
+    {
+      id: 'situacao', header: 'Situação', meta: { exportValue: (r) => r.sinalizada ? `${r.situacao} (providência)` : r.situacao }, cell: ({ row }) => (
         <div className="flex gap-1">
           <StatusChip label={row.original.situacao} variant={row.original.situacao === 'pendente' ? 'info' : 'neutral'} />
           {row.original.sinalizada && <StatusChip label="providência" variant="danger" />}
-        </div>
-      ),
-    },
-    {
-      id: 'acoes', header: '', cell: ({ row }) => row.original.situacao !== 'pendente' ? null : (
-        <div className="flex gap-1">
-          <Button size="xs" variant="outline" onClick={async () => { if (await executar(() => cemiteriosApi.encerrarObra(row.original.id, 'concluida'))) await recarregar(); }}>Concluir</Button>
-          <Button size="xs" variant="ghost" onClick={async () => { if (await executar(() => cemiteriosApi.encerrarObra(row.original.id, 'cancelada'))) await recarregar(); }}>Cancelar</Button>
         </div>
       ),
     },
@@ -123,8 +146,8 @@ export const EmpreiteirosView: React.FC = () => {
       </div>
       <ErroBox erro={erro ?? empreiteiros.erro ?? obras.erro} />
       {aba === 'empreiteiros'
-        ? <DataTable columns={colEmpreiteiros} data={empreiteiros.dados?.data ?? []} loading={empreiteiros.carregando} searchable emptyText="Nenhum empreiteiro." />
-        : <DataTable columns={colObras} data={obras.dados?.data ?? []} loading={obras.carregando} emptyText="Nenhuma obra." />}
+        ? <DataTable exportable exportFileName="cemiterios-empreiteiros-1" exportTitle="Cemitérios — Empreiteiros 1" columns={colEmpreiteiros} data={empreiteiros.dados?.data ?? []} loading={empreiteiros.carregando} searchable emptyText="Nenhum empreiteiro." />
+        : <DataTable exportable exportFileName="cemiterios-empreiteiros-2" exportTitle="Cemitérios — Empreiteiros 2" columns={colObras} data={obras.dados?.data ?? []} loading={obras.carregando} emptyText="Nenhuma obra." />}
 
       <FormModal
         aberto={modal?.tipo === 'novo'}

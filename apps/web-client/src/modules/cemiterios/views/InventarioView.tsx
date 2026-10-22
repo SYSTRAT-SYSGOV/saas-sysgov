@@ -19,7 +19,7 @@ import {
   UserX,
   Filter,
 } from 'lucide-react';
-import { Accordion, Card, CardHeader, CardTitle, CardContent, Badge, Button } from '@sysgov/ui';
+import { Accordion, Card, CardHeader, CardTitle, CardContent, Badge, Button, ActionsMenu } from '@sysgov/ui';
 import { ConfirmDialog, DataTable } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import {
@@ -245,6 +245,26 @@ export const InventarioView: React.FC = () => {
   // Definição das Colunas com TanStack Table
   const colunas = useMemo<ColumnDef<Jazigo, unknown>[]>(() => {
     const cols: ColumnDef<Jazigo, unknown>[] = [
+      {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações do jazigo"
+                items={[
+                  { key: 'ver', label: 'Ver túmulo', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => setSelecionado(row.original) },
+                  { key: 'qr', label: 'Plaqueta QR Code', icon: <QrCode className="h-3.5 w-3.5" />, onSelect: () => setQrJazigo(row.original) },
+                  { key: 'ficha', label: 'Ficha cadastral', icon: <FileText className="h-3.5 w-3.5" />, onSelect: () => setFichaJazigo(row.original) },
+                ]}
+              />
+            </div>
+          );
+        },
+      },
       {
         id: 'select',
         size: 38,
@@ -554,55 +574,6 @@ export const InventarioView: React.FC = () => {
 
           return <GrupoAlertasRegulorios alertas={alertas} limite={1} />;
         },
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 110,
-        cell: ({ row }) => (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelecionado(row.original);
-              }}
-              className="h-7 text-xs px-2 gap-1 text-primary border-primary/30 hover:bg-primary/10 font-semibold"
-              title={`Abrir informações completas do túmulo ${row.original.codigo}`}
-              aria-label="Ver Túmulo"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              <span>Ver</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setQrJazigo(row.original);
-              }}
-              title="Plaqueta QR Code"
-              aria-label="Plaqueta QR Code"
-              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-            >
-              <QrCode className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setFichaJazigo(row.original);
-              }}
-              title="Ficha Cadastral"
-              aria-label="Ficha Cadastral"
-              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-            >
-              <FileText className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ),
       },
     ];
 

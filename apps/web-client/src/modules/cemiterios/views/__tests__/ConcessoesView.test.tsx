@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ConcessoesView } from '../ConcessoesView';
 import { cemiteriosApi } from '../../api';
+import { acionarMenu } from '@/test-utils/acoesMenu';
 
 vi.mock('@/core/rbac/useCan', () => ({
   useCan: () => ({
@@ -168,8 +169,7 @@ describe('ConcessoesView — Subaba Concessionários com Filtros e DataTable Ric
     const tabConcessionarios = screen.getByRole('tab', { name: /concessionários/i });
     fireEvent.click(tabConcessionarios);
 
-    const botoesEditar = await screen.findAllByRole('button', { name: /editar/i });
-    fireEvent.click(botoesEditar[0]);
+    await acionarMenu(/Ações do titular/i, /editar titular/i);
 
     // O modal deve ser exibido com size 2xl e campos sem quebras
     expect(await screen.findByText(/Editar Concessionário — #10/i)).toBeInTheDocument();
@@ -212,8 +212,7 @@ describe('ConcessoesView — Subaba Concessionários com Filtros e DataTable Ric
     const tabConcessionarios = screen.getByRole('tab', { name: /concessionários/i });
     fireEvent.click(tabConcessionarios);
 
-    const botoesEditar = await screen.findAllByRole('button', { name: /editar/i });
-    fireEvent.click(botoesEditar[0]);
+    await acionarMenu(/Ações do titular/i, /editar titular/i);
 
     // O modal deve conter as seções de Endereço Residencial (Integração CEP), Contatos e Observações
     expect(await screen.findByText('Endereço Residencial (Integração CEP)')).toBeInTheDocument();
