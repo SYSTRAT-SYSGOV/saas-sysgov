@@ -124,7 +124,7 @@ Todo usuário de órgão criado no admin (`POST /api/users`, `POST /api/access/u
 - com **mais de uma** candidata nada é ligado e o caso vai para a auditoria (`pessoa.usuario_ambiguo`);
 - senão nasce uma pessoa sem documento (`documento_pendente`), com o nome do usuário e o e-mail como contato principal.
 
-O vínculo é único por usuário: quem já está ligado a uma pessoa de outro órgão não ganha uma segunda. Usuários da plataforma (Systrat) não viram pessoa. Falha ao montar a pessoa nunca impede a criação do usuário. A promoção manual (`POST /api/pessoas/{id}/promover`) continua existindo para o caminho inverso (pessoa → usuário).
+O vínculo é único por usuário: quem já está ligado a uma pessoa de outro órgão não ganha uma segunda. Usuários da plataforma (Systrat) não viram pessoa. Falha ao montar a pessoa nunca impede a criação do usuário. Para usuários que já existiam, `php artisan pessoas:vincular-usuarios [--tenant=slug] [--dry-run]` aplica a mesma regra (só usuários de órgão ativos; rode antes com `--dry-run`; pode repetir). A promoção manual (`POST /api/pessoas/{id}/promover`) continua existindo para o caminho inverso (pessoa → usuário).
 
 ## 6. MFA (RN-USR-005)
 

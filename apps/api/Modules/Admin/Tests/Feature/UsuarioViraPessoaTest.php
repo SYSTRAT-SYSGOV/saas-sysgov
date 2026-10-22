@@ -179,4 +179,46 @@ final class UsuarioViraPessoaTest extends TestCase
         $this->assertSame($this->tenant->id, (int) $vinculo->tenant_id);
         $this->assertSame('Novo Admin', Pessoa::withoutGlobalScopes()->findOrFail($vinculo->pessoa_id)->nome);
     }
+
+    private function vincularVinculoAoOrgao(User $user, string $status = 'active'): void
+    {
+        $user->tenants()->syncWithoutDetaching([$this->tenant->id => ['status' => $status]]);
+    }
+
+    public function test_backfill_dry_run_so_mostra(): void
+    {
+        $novo = $this->usuario('novo@cliente.test');
+        $this->vincularVinculoAoOrgao($novo);
+
+        $this->artisan('pessoas:vincular-usuarios', ['--tenant' => $this->tenant->slug, '--dry-run' => true])
+            ->expectsOutputToContain('criar')->assertSuccessful();
+
+        $this->assertSame(0, Pessoa::withoutGlobalScopes()->count());
+        $this->assertSame(0, PessoaUsuario::withoutGlobalScopes()->count());
+    }
+
+    public function test_backfill_cria_pareia_e_ignora_plataforma_e_inativo(): void
+    {
+        $novo = $this->usuario('novo@cliente.test');
+        $this->vincularVinculoAoOrgao($novo);
+        $existente = $this->pessoaComEmail('maria@cliente.test');
+        $maria = $this->usuario('maria@cliente.test');
+        $this->vincularVinculoAoOrgao($maria);
+        $inativo = $this->usuario('inativo@cliente.test');
+        $this->vincularVinculoAoOrgao($inativo, 'inactive');
+        $plataforma = User::create(['name' => 'Plataforma', 'email' => 'plataforma@systrat.test', 'password' => 'StrongPass!123', 'is_active' => true, 'is_systrat' => true]);
+        $this->vincularVinculoAoOrgao($plataforma);
+
+        $this->artisan('pessoas:vincular-usuarios', ['--tenant' => $this->tenant->slug])->assertSuccessful();
+        $this->artisan('pessoas:vincular-usuarios', ['--tenant' => $this->tenant->slug])->assertSuccessful(); // repetir não muda nada
+
+        $vinculos = PessoaUsuario::withoutGlobalScopes()->pluck('pessoa_id', 'user_id');
+        $this->assertSame($existente->id, $vinculos[$maria->id]);
+        $this->assertNotNull($vinculos[$novo->id]);
+        $this->assertArrayNotHasKey($inativo->id, $vinculos->all());
+        $this->assertArrayNotHasKey($plataforma->id, $vinculos->all());
+        $this->assertTrue($vinculos->has($this->adminTenant->id));
+        $this->assertCount(3, $vinculos); // o administrador do setUp, o novo e a Maria (pareada)
+        $this->assertSame(2, Pessoa::withoutGlobalScopes()->count() - 1); // a pareada não duplicou: só nasceram as do administrador e do novo
+    }
 }

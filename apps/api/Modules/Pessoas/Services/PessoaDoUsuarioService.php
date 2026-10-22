@@ -63,12 +63,7 @@ final class PessoaDoUsuarioService
 
         return DB::transaction(function () use ($user, $tenant, $porUsuarioId, $origem): ?Pessoa {
             $email = mb_strtolower(trim((string) $user->email));
-            $candidatas = $email === '' ? collect() : Pessoa::query()
-                ->where('tipo', 'fisica')
-                ->whereDoesntHave('usuario')
-                ->whereHas('contatos', fn ($c) => $c->where('tipo', 'email')->whereRaw('LOWER(valor) = ?', [$email]))
-                ->limit(2)
-                ->get();
+            $candidatas = $this->candidatas($email);
 
             if ($candidatas->count() > 1) {
                 $this->audit->record('pessoas', 'pessoa.usuario_ambiguo', "User #{$user->id}", null, ['origem' => $origem, 'pessoas' => $candidatas->pluck('id')->all()]);
@@ -92,6 +87,45 @@ final class PessoaDoUsuarioService
 
             return $pessoa;
         });
+    }
+
+    /**
+     * O que `garantir` faria com o usuário, sem gravar nada: `plataforma`, `ligado`, `ligado_em_outro_orgao`,
+     * `ambiguo`, `parear` ou `criar`.
+     */
+    public function situacao(User $user, Tenant $tenant): string
+    {
+        if ($user->is_systrat) {
+            return 'plataforma';
+        }
+
+        return $this->noOrgao($tenant, function () use ($user, $tenant): string {
+            $ligado = PessoaUsuario::withoutGlobalScopes()->where('user_id', $user->id)->first();
+            if ($ligado !== null) {
+                return (int) $ligado->tenant_id === $tenant->id ? 'ligado' : 'ligado_em_outro_orgao';
+            }
+
+            return match ($this->candidatas(mb_strtolower(trim((string) $user->email)))->count()) {
+                0 => 'criar',
+                1 => 'parear',
+                default => 'ambiguo',
+            };
+        });
+    }
+
+    /**
+     * Pessoas físicas do órgão, sem usuário, com esse e-mail entre os contatos (no máximo 2: só importa se é uma ou mais).
+     *
+     * @return \Illuminate\Support\Collection<int, Pessoa>
+     */
+    private function candidatas(string $email): \Illuminate\Support\Collection
+    {
+        return $email === '' ? collect() : Pessoa::query()
+            ->where('tipo', 'fisica')
+            ->whereDoesntHave('usuario')
+            ->whereHas('contatos', fn ($c) => $c->where('tipo', 'email')->whereRaw('LOWER(valor) = ?', [$email]))
+            ->limit(2)
+            ->get();
     }
 
     private function criarPessoa(User $user, string $email, string $origem): Pessoa
