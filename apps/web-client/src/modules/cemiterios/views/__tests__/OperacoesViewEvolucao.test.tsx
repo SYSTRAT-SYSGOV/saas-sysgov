@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CemiteriosProvider } from '../../CemiteriosContext';
 import { OperacoesView } from '../OperacoesView';
 import { cemiteriosApi, type OrdemServico, type Inumacao, type Exumacao, type Trasladacao } from '../../api';
+import { acionarMenu } from '@/test-utils/acoesMenu';
 
 vi.mock('@/core/rbac/useCan', () => ({
   useCan: () => ({
@@ -188,11 +189,7 @@ describe('OperacoesViewEvolucao Suite', () => {
       </CemiteriosProvider>
     );
 
-    await waitFor(() => {
-      const botoesDetalhes = screen.getAllByRole('button', { name: /Detalhes/i });
-      expect(botoesDetalhes.length).toBeGreaterThan(0);
-      fireEvent.click(botoesDetalhes[0]);
-    });
+    await acionarMenu(/Ações da ordem de serviço/i, /Detalhes da OS/i);
 
     await waitFor(() => {
       expect(screen.getByText(/Ordem de Serviço Nº 42\/2026/i)).toBeInTheDocument();

@@ -24,7 +24,7 @@ import { useCemiteriosNavigation } from '../CemiteriosContext';
 import { HistoricoCredenciamentoOperador } from '../components/HistoricoCredenciamentoOperador';
 import { SancoesOperador } from '../components/SancoesOperador';
 import { ErroBox, FormModal, Mono, useAcao, useDados } from './comum';
-import { PessoaPicker, PessoaCard, PessoaFormModal, type NovoCadastroRapidoPessoaInput, type PessoaPickerOption } from '@sysgov/ui';
+import { PessoaPicker, PessoaCard, PessoaFormModal, type NovoCadastroRapidoPessoaInput, type PessoaPickerOption, ActionsMenu } from '@sysgov/ui';
 import { usePessoas } from '@/modules/pessoas/hooks';
 import { pessoasApi } from '@/modules/pessoas/api';
 
@@ -161,8 +161,30 @@ export const OperadoresView: React.FC = () => {
 
   const colunas = useMemo<ColumnDef<OperadorCemiterio, unknown>[]>(() => [
     {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const o = row.original;
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações do profissional"
+              items={[
+                { key: 'historico', label: 'Histórico operacional', icon: <History className="h-3.5 w-3.5" />, onSelect: () => { void (async () => { const hist = await cemiteriosApi.historicoOperador(o.id); setHistoricoDrawer(hist); })(); } },
+                { key: 'credenciamentos', label: 'Credenciamentos (alvarás)', icon: <FileCheck className="h-3.5 w-3.5" />, onSelect: () => setCredenciamentoOperador(o) },
+                { key: 'sancoes', label: 'Sanções administrativas', icon: <ShieldAlert className="h-3.5 w-3.5" />, onSelect: () => setSancoesOperador(o) },
+                ...(gerencia ? [{ key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => abrirEdicao(o) }] : []),
+              ]}
+            />
+          </div>
+        );
+      },
+    },
+    {
       id: 'nome',
-      header: 'Nome do Profissional',
+      header: 'Nome do Profissional', meta: { exportValue: (r) => r.pessoa?.nome ?? r.nome },
       cell: ({ row }) => {
         const o = row.original;
         const nomeExibicao = o.pessoa?.nome ?? o.nome;
@@ -187,7 +209,7 @@ export const OperadoresView: React.FC = () => {
     },
     {
       id: 'tipo',
-      header: 'Função Operacional',
+      header: 'Função Operacional', meta: { exportValue: (r) => r.tipo },
       cell: ({ row }) => {
         const isCoveiro = row.original.tipo === 'coveiro';
         return (
@@ -206,7 +228,7 @@ export const OperadoresView: React.FC = () => {
     },
     {
       id: 'registro',
-      header: 'Matrícula / Alvará',
+      header: 'Matrícula / Alvará', meta: { exportValue: (r) => (r.tipo === 'coveiro' ? r.matricula_funcional : r.alvara_numero) },
       cell: ({ row }) => {
         const o = row.original;
         if (o.tipo === 'coveiro') {
@@ -230,7 +252,7 @@ export const OperadoresView: React.FC = () => {
     },
     {
       id: 'status_alvara',
-      header: 'Regularidade Cadastral',
+      header: 'Regularidade Cadastral', meta: { exportValue: (r) => r.status_alvara },
       cell: ({ row }) => {
         const status = row.original.status_alvara ?? 'dispensado';
         const badge = STATUS_ALVARA_BADGES[status] ?? STATUS_ALVARA_BADGES.dispensado;
@@ -239,7 +261,7 @@ export const OperadoresView: React.FC = () => {
     },
     {
       id: 'status_saude_ocupacional',
-      header: 'Saúde Ocupacional',
+      header: 'Saúde Ocupacional', meta: { exportValue: (r) => r.status_saude_ocupacional },
       cell: ({ row }) => {
         const status = row.original.status_saude_ocupacional ?? 'nao_informado';
         const badge = STATUS_SAUDE_BADGES[status] ?? STATUS_SAUDE_BADGES.nao_informado;
@@ -248,50 +270,13 @@ export const OperadoresView: React.FC = () => {
     },
     {
       id: 'situacao',
-      header: 'Situação',
+      header: 'Situação', meta: { exportValue: (r) => r.situacao },
       cell: ({ row }) => (
         <StatusChip
           label={row.original.situacao}
           variant={row.original.situacao === 'ativo' ? 'success' : 'neutral'}
         />
       ),
-    },
-    {
-      id: 'acoes',
-      header: '',
-      cell: ({ row }) => {
-        const o = row.original;
-        return (
-          <div className="flex items-center gap-1.5 justify-end">
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={async () => {
-                const hist = await cemiteriosApi.historicoOperador(o.id);
-                setHistoricoDrawer(hist);
-              }}
-              title="Ver histórico operacional de sepultamentos e obras"
-            >
-              <History className="h-3.5 w-3.5 mr-1 text-primary" />
-              Histórico
-            </Button>
-
-            <Button size="xs" variant="outline" onClick={() => setCredenciamentoOperador(o)} title="Ver histórico de credenciamentos (alvarás)">
-              <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
-            </Button>
-
-            <Button size="xs" variant="outline" onClick={() => setSancoesOperador(o)} title="Ver sanções administrativas">
-              <ShieldAlert className="h-3.5 w-3.5 text-rose-600" />
-            </Button>
-
-            {gerencia && (
-              <Button size="xs" variant="outline" onClick={() => abrirEdicao(o)}>
-                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
-            )}
-          </div>
-        );
-      },
     },
   ], [gerencia]);
 
@@ -428,6 +413,9 @@ export const OperadoresView: React.FC = () => {
 
       {/* Tabela de Operadores */}
       <DataTable
+        exportable
+        exportFileName="cemiterios-operadores"
+        exportTitle="Cemitérios — Operadores"
         columns={colunas}
         data={operadores.dados?.data ?? []}
         loading={operadores.carregando}

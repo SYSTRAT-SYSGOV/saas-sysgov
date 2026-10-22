@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
+import { ActionsMenu } from '@sysgov/ui';
 import type { ColumnDef } from '@tanstack/react-table';
-import { FileDown, Receipt } from 'lucide-react';
+import { FileDown, Receipt , CheckCircle2 } from 'lucide-react';
 import { Button, Card, DataTable, KpiCard, StatusChip, Tabs } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
 import { cemiteriosApi, formatarCentavos, formatarData, type Guia, type Preco } from '../api';
@@ -38,8 +39,8 @@ const Precos: React.FC = () => {
 
   const colunas = useMemo<ColumnDef<Preco, unknown>[]>(() => [
     { id: 'servico', header: 'Serviço', accessorFn: (r) => SERVICOS[r.servico] ?? r.servico },
-    { id: 'valor', header: 'Valor', cell: ({ row }) => <Mono className="font-bold">{formatarCentavos(row.original.valor_centavos)}</Mono> },
-    { id: 'inicio', header: 'Vigência', cell: ({ row }) => <Mono>{formatarData(row.original.vigencia_inicio)} → {row.original.vigencia_fim ? formatarData(row.original.vigencia_fim) : 'atual'}</Mono> },
+    { id: 'valor', header: 'Valor', meta: { exportValue: (r) => r.valor_centavos / 100 }, cell: ({ row }) => <Mono className="font-bold">{formatarCentavos(row.original.valor_centavos)}</Mono> },
+    { id: 'inicio', header: 'Vigência', meta: { exportValue: (r) => `${r.vigencia_inicio} → ${r.vigencia_fim ?? 'atual'}` }, cell: ({ row }) => <Mono>{formatarData(row.original.vigencia_inicio)} → {row.original.vigencia_fim ? formatarData(row.original.vigencia_fim) : 'atual'}</Mono> },
   ], []);
 
   return (
@@ -49,7 +50,7 @@ const Precos: React.FC = () => {
         {can('cemiterios.financeiro.reajuste') && <Button variant="outline" onClick={() => setModal('reajuste')}>Reajuste manual</Button>}
       </div>
       <ErroBox erro={tabela.erro} />
-      <DataTable columns={colunas} data={tabela.dados?.historico ?? []} loading={tabela.carregando} emptyText="Tabela de preços vazia." />
+      <DataTable exportable exportFileName="cemiterios-financeiro-1" exportTitle="Cemitérios — Financeiro 1" columns={colunas} data={tabela.dados?.historico ?? []} loading={tabela.carregando} emptyText="Tabela de preços vazia." />
       {(reajustes.dados ?? []).length > 0 && (
         <Card className="p-4">
           <h3 className="mb-2 text-sm font-semibold">Reajustes aplicados</h3>
@@ -89,25 +90,32 @@ const Guias: React.FC = () => {
   const { erro, executar } = useAcao();
 
   const colunas = useMemo<ColumnDef<Guia, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações da guia"
+              items={[
+                { key: 'pdf', label: 'Baixar PDF da guia', icon: <FileDown className="h-3.5 w-3.5" />, onSelect: () => void cemiteriosApi.pdfGuia(row.original) },
+                ...(row.original.situacao === 'emitida' ? [{ key: 'segunda-via', label: 'Emitir 2ª via', icon: <Receipt className="h-3.5 w-3.5" />, onSelect: () => { void (async () => { if (await executar(() => cemiteriosApi.segundaVia(row.original.id))) await guias.recarregar(); })(); } }] : []),
+                ...(row.original.situacao === 'emitida' ? [{ key: 'baixa', label: 'Registrar baixa', icon: <CheckCircle2 className="h-3.5 w-3.5" />, onSelect: () => setBaixa(row.original) }] : []),
+              ]}
+            />
+          </div>
+        );
+      },
+    },
     { id: 'numero', header: 'Número', accessorKey: 'numero', cell: ({ row }) => <Mono className="font-bold">{row.original.numero}</Mono> },
     { id: 'contribuinte', header: 'Contribuinte', accessorKey: 'contribuinte_nome' },
     { id: 'servico', header: 'Serviço', accessorFn: (r) => `${SERVICOS[r.servico] ?? r.servico}${r.exercicio ? ` ${r.exercicio}` : ''}` },
-    { id: 'valor', header: 'Valor', cell: ({ row }) => <Mono>{formatarCentavos(row.original.valor_centavos)}</Mono> },
-    { id: 'vencimento', header: 'Vencimento', cell: ({ row }) => <Mono>{formatarData(row.original.vencimento)}</Mono> },
-    { id: 'situacao', header: 'Situação', cell: ({ row }) => <SituacaoGuia guia={row.original} /> },
-    {
-      id: 'acoes', header: '', cell: ({ row }) => (
-        <div className="flex gap-1">
-          <Button size="xs" variant="outline" aria-label="PDF" onClick={() => void cemiteriosApi.pdfGuia(row.original)}><FileDown className="h-3 w-3" /></Button>
-          {row.original.situacao === 'emitida' && (
-            <>
-              <Button size="xs" variant="outline" onClick={async () => { if (await executar(() => cemiteriosApi.segundaVia(row.original.id))) await guias.recarregar(); }}>2ª via</Button>
-              <Button size="xs" onClick={() => setBaixa(row.original)}>Baixa</Button>
-            </>
-          )}
-        </div>
-      ),
-    },
+    { id: 'valor', header: 'Valor', meta: { exportValue: (r) => r.valor_centavos / 100 }, cell: ({ row }) => <Mono>{formatarCentavos(row.original.valor_centavos)}</Mono> },
+    { id: 'vencimento', header: 'Vencimento', meta: { exportValue: (r) => r.vencimento }, cell: ({ row }) => <Mono>{formatarData(row.original.vencimento)}</Mono> },
+    { id: 'situacao', header: 'Situação', meta: { exportValue: (r) => (r.vencida ? 'vencida' : r.situacao) }, cell: ({ row }) => <SituacaoGuia guia={row.original} /> },
   ], [executar, guias]);
 
   return (
@@ -115,7 +123,7 @@ const Guias: React.FC = () => {
       <Button variant="outline" onClick={() => setLote(true)}><Receipt className="h-4 w-4" /> Gerar guias anuais</Button>
       {aviso && <p className="rounded-md border border-border bg-accent/50 p-3 text-sm" role="status">{aviso}</p>}
       <ErroBox erro={erro ?? guias.erro} />
-      <DataTable columns={colunas} data={guias.dados?.data ?? []} loading={guias.carregando} searchable emptyText="Nenhuma guia emitida." />
+      <DataTable exportable exportFileName="cemiterios-financeiro-2" exportTitle="Cemitérios — Financeiro 2" columns={colunas} data={guias.dados?.data ?? []} loading={guias.carregando} searchable emptyText="Nenhuma guia emitida." />
       <FormModal aberto={baixa !== null} titulo={`Baixa manual da guia ${baixa?.numero ?? ''}`} rotuloEnviar="Registrar pagamento" onFechar={() => setBaixa(null)}
         campos={[
           { nome: 'pago_em', rotulo: 'Data do pagamento', tipo: 'date', obrigatorio: true },
@@ -146,11 +154,11 @@ const Inadimplencia: React.FC = () => {
     [servico, cemiterioAtivoId]
   );
   const colunas = useMemo<ColumnDef<Guia, unknown>[]>(() => [
-    { id: 'numero', header: 'Guia', cell: ({ row }) => <Mono>{row.original.numero}</Mono> },
+    { id: 'numero', header: 'Guia', meta: { exportValue: (r) => r.numero }, cell: ({ row }) => <Mono>{row.original.numero}</Mono> },
     { id: 'contribuinte', header: 'Contribuinte', accessorKey: 'contribuinte_nome' },
     { id: 'servico', header: 'Serviço', accessorFn: (r) => SERVICOS[r.servico] ?? r.servico },
-    { id: 'valor', header: 'Valor', cell: ({ row }) => <Mono>{formatarCentavos(row.original.valor_centavos)}</Mono> },
-    { id: 'vencimento', header: 'Vencida em', cell: ({ row }) => <Mono>{formatarData(row.original.vencimento)}</Mono> },
+    { id: 'valor', header: 'Valor', meta: { exportValue: (r) => r.valor_centavos / 100 }, cell: ({ row }) => <Mono>{formatarCentavos(row.original.valor_centavos)}</Mono> },
+    { id: 'vencimento', header: 'Vencida em', meta: { exportValue: (r) => r.vencimento }, cell: ({ row }) => <Mono>{formatarData(row.original.vencimento)}</Mono> },
   ], []);
 
   return (
@@ -166,7 +174,7 @@ const Inadimplencia: React.FC = () => {
         ))}
       </div>
       <ErroBox erro={dados.erro} />
-      <DataTable columns={colunas} data={dados.dados?.guias ?? []} loading={dados.carregando} emptyText="Nenhuma guia vencida." />
+      <DataTable exportable exportFileName="cemiterios-financeiro-3" exportTitle="Cemitérios — Financeiro 3" columns={colunas} data={dados.dados?.guias ?? []} loading={dados.carregando} emptyText="Nenhuma guia vencida." />
     </div>
   );
 };
