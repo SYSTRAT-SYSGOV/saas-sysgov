@@ -11,6 +11,7 @@ import SistemaAdmin from './SistemaAdmin';
 import EscolasAdmin from './EscolasAdmin';
 import { useAuth } from '@/core/auth/AuthProvider';
 import type { Toast } from './AdminModal';
+import { SeletorEscola } from './ComEscola';
 
 export type AdminTab = 'alunos' | 'equipe' | 'usuarios' | 'turmas' | 'materias' | 'categorias' | 'trimestres' | 'sistema' | 'escolas';
 
@@ -65,6 +66,8 @@ export const AdminPainel: React.FC<AdminPainelProps> = ({ onToast }) => {
           })}
         </nav>
       </div>
+
+      <SeletorEscola />
 
       <div className="bg-white/80 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-8 shadow-sm">
         {tab === 'escolas' && gerenciaEscolas ? (
