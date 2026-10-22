@@ -71,6 +71,9 @@ final class ProcessoService
                     'numero' => $numero,
                     'ano' => $ano,
                     'assunto' => $dadosProcesso['assunto'],
+                    'descricao' => $dadosProcesso['descricao'] ?? null,
+                    'tipo_processo' => $dadosProcesso['tipo_processo'] ?? 'administrativo_geral',
+                    'sigiloso' => (bool) ($dadosProcesso['sigiloso'] ?? false),
                     'origem' => $dadosProcesso['origem'],
                     'orgao_origem_id' => $dadosProcesso['orgao_origem_id'],
                     'orgao_atual_id' => $dadosProcesso['orgao_atual_id'] ?? $dadosProcesso['orgao_origem_id'],
@@ -181,4 +184,281 @@ final class ProcessoService
             throw $e;
         }
     }
+
+    /**
+     * Conclui formalmente um processo administrativo.
+     */
+    public function concluir(Processo $processo, int $usuarioId, ?string $despacho = null): Processo
+    {
+        if (in_array($processo->status, ['concluido', 'arquivado'], true)) {
+            throw new \LogicException("O processo #{$processo->numero_formatado} já se encontra {$processo->status}.");
+        }
+
+        return DB::transaction(function () use ($processo, $usuarioId, $despacho): Processo {
+            $andamentoAnterior = $processo->andamentoAtual;
+            $sequencia = ($andamentoAnterior?->sequencia ?? 0) + 1;
+
+            if ($andamentoAnterior !== null) {
+                $andamentoAnterior->update([
+                    'and_atual' => false,
+                    'data_envio' => now(),
+                ]);
+            }
+
+            $tipoConclusao = TipoTramitacao::withoutGlobalScopes()
+                ->where('tenant_id', $processo->tenant_id)
+                ->where('slug', 'conclusao')
+                ->first();
+
+            if ($tipoConclusao === null) {
+                (new TiposTramitacaoDefaultSeeder())->run($processo->tenant_id);
+                $tipoConclusao = TipoTramitacao::withoutGlobalScopes()
+                    ->where('tenant_id', $processo->tenant_id)
+                    ->where('slug', 'conclusao')
+                    ->firstOrFail();
+            }
+
+            $novoAndamento = Andamento::create([
+                'tenant_id' => $processo->tenant_id,
+                'processo_id' => $processo->id,
+                'orgao_origem_id' => $processo->orgao_atual_id,
+                'orgao_destino_id' => $processo->orgao_atual_id,
+                'tipo_tramitacao_id' => $tipoConclusao->id,
+                'usuario_id' => $usuarioId,
+                'usuario_recebedor_id' => $usuarioId,
+                'descricao' => $despacho ?? 'Processo concluído e encerrado.',
+                'data_recebimento' => now(),
+                'data_envio' => null,
+                'and_atual' => true,
+                'sequencia' => $sequencia,
+            ]);
+
+            $processo->update([
+                'status' => 'concluido',
+                'data_conclusao' => now(),
+                'ultimo_andamento_id' => $novoAndamento->id,
+            ]);
+
+            $this->auditLogger->record(
+                module: 'protocolo',
+                action: 'processo.concluir',
+                resource: "Processo #{$processo->id} ({$processo->numero_formatado})",
+                before: ['status' => $processo->getOriginal('status')],
+                after: ['status' => 'concluido', 'data_conclusao' => now()->toIso8601String()]
+            );
+
+            return $processo->fresh(['orgaoAtual', 'andamentoAtual']);
+        });
+    }
+
+    /**
+     * Arquiva um processo em uma das 3 fases arquivísticas: corrente, intermediário ou permanente.
+     */
+    public function arquivar(
+        Processo $processo,
+        int $usuarioId,
+        string $tipoArquivamento = 'corrente',
+        ?string $despacho = null
+    ): Processo {
+        if (!in_array($tipoArquivamento, ['corrente', 'intermediario', 'permanente'], true)) {
+            throw new \InvalidArgumentException("Tipo de arquivamento inválido: '{$tipoArquivamento}'. Permitidos: corrente, intermediario, permanente.");
+        }
+
+        if ($processo->status === 'arquivado') {
+            throw new \LogicException("O processo #{$processo->numero_formatado} já se encontra arquivado.");
+        }
+
+        return DB::transaction(function () use ($processo, $usuarioId, $tipoArquivamento, $despacho): Processo {
+            $andamentoAnterior = $processo->andamentoAtual;
+            $sequencia = ($andamentoAnterior?->sequencia ?? 0) + 1;
+
+            if ($andamentoAnterior !== null) {
+                $andamentoAnterior->update([
+                    'and_atual' => false,
+                    'data_envio' => now(),
+                ]);
+            }
+
+            $tipoArquivamentoTramitacao = TipoTramitacao::withoutGlobalScopes()
+                ->where('tenant_id', $processo->tenant_id)
+                ->where('slug', 'arquivamento')
+                ->first();
+
+            if ($tipoArquivamentoTramitacao === null) {
+                (new TiposTramitacaoDefaultSeeder())->run($processo->tenant_id);
+                $tipoArquivamentoTramitacao = TipoTramitacao::withoutGlobalScopes()
+                    ->where('tenant_id', $processo->tenant_id)
+                    ->where('slug', 'arquivamento')
+                    ->firstOrFail();
+            }
+
+            $novoAndamento = Andamento::create([
+                'tenant_id' => $processo->tenant_id,
+                'processo_id' => $processo->id,
+                'orgao_origem_id' => $processo->orgao_atual_id,
+                'orgao_destino_id' => $processo->orgao_atual_id,
+                'tipo_tramitacao_id' => $tipoArquivamentoTramitacao->id,
+                'usuario_id' => $usuarioId,
+                'usuario_recebedor_id' => $usuarioId,
+                'descricao' => $despacho ?? "Processo arquivado em fase {$tipoArquivamento}.",
+                'data_recebimento' => now(),
+                'data_envio' => null,
+                'and_atual' => true,
+                'sequencia' => $sequencia,
+            ]);
+
+            $processo->update([
+                'status' => 'arquivado',
+                'arquivamento_tipo' => $tipoArquivamento,
+                'data_arquivamento' => now(),
+                'ultimo_andamento_id' => $novoAndamento->id,
+            ]);
+
+            $this->auditLogger->record(
+                module: 'protocolo',
+                action: 'processo.arquivar',
+                resource: "Processo #{$processo->id} ({$processo->numero_formatado})",
+                before: ['status' => $processo->getOriginal('status')],
+                after: ['status' => 'arquivado', 'arquivamento_tipo' => $tipoArquivamento]
+            );
+
+            return $processo->fresh(['orgaoAtual', 'andamentoAtual']);
+        });
+    }
+
+    /**
+     * Desarquiva um processo, retornando-o para a tramitação ativa.
+     */
+    public function desarquivar(Processo $processo, int $usuarioId, ?string $motivo = null): Processo
+    {
+        if ($processo->status !== 'arquivado') {
+            throw new \LogicException("Apenas processos arquivados podem ser desarquivados.");
+        }
+
+        return DB::transaction(function () use ($processo, $usuarioId, $motivo): Processo {
+            $andamentoAnterior = $processo->andamentoAtual;
+            $sequencia = ($andamentoAnterior?->sequencia ?? 0) + 1;
+
+            if ($andamentoAnterior !== null) {
+                $andamentoAnterior->update([
+                    'and_atual' => false,
+                    'data_envio' => now(),
+                ]);
+            }
+
+            $tipoDesarquivamento = TipoTramitacao::withoutGlobalScopes()
+                ->where('tenant_id', $processo->tenant_id)
+                ->where('slug', 'desarquivamento')
+                ->first();
+
+            if ($tipoDesarquivamento === null) {
+                (new TiposTramitacaoDefaultSeeder())->run($processo->tenant_id);
+                $tipoDesarquivamento = TipoTramitacao::withoutGlobalScopes()
+                    ->where('tenant_id', $processo->tenant_id)
+                    ->where('slug', 'desarquivamento')
+                    ->firstOrFail();
+            }
+
+            $novoAndamento = Andamento::create([
+                'tenant_id' => $processo->tenant_id,
+                'processo_id' => $processo->id,
+                'orgao_origem_id' => $processo->orgao_atual_id,
+                'orgao_destino_id' => $processo->orgao_atual_id,
+                'tipo_tramitacao_id' => $tipoDesarquivamento->id,
+                'usuario_id' => $usuarioId,
+                'usuario_recebedor_id' => $usuarioId,
+                'descricao' => $motivo ?? 'Desarquivamento de processo e retorno à tramitação.',
+                'data_recebimento' => now(),
+                'data_envio' => null,
+                'and_atual' => true,
+                'sequencia' => $sequencia,
+            ]);
+
+            $processo->update([
+                'status' => 'em_tramitacao',
+                'arquivamento_tipo' => null,
+                'data_arquivamento' => null,
+                'ultimo_andamento_id' => $novoAndamento->id,
+            ]);
+
+            $this->auditLogger->record(
+                module: 'protocolo',
+                action: 'processo.desarquivar',
+                resource: "Processo #{$processo->id} ({$processo->numero_formatado})",
+                before: ['status' => 'arquivado'],
+                after: ['status' => 'em_tramitacao']
+            );
+
+            return $processo->fresh(['orgaoAtual', 'andamentoAtual']);
+        });
+    }
+
+    /**
+     * Reabre formalmente um processo concluído ou arquivado.
+     */
+    public function reabrir(Processo $processo, int $usuarioId, ?string $motivo = null): Processo
+    {
+        if (!in_array($processo->status, ['concluido', 'arquivado'], true)) {
+            throw new \LogicException("Apenas processos concluídos ou arquivados podem ser reabertos.");
+        }
+
+        return DB::transaction(function () use ($processo, $usuarioId, $motivo): Processo {
+            $andamentoAnterior = $processo->andamentoAtual;
+            $sequencia = ($andamentoAnterior?->sequencia ?? 0) + 1;
+
+            if ($andamentoAnterior !== null) {
+                $andamentoAnterior->update([
+                    'and_atual' => false,
+                    'data_envio' => now(),
+                ]);
+            }
+
+            $tipoReabertura = TipoTramitacao::withoutGlobalScopes()
+                ->where('tenant_id', $processo->tenant_id)
+                ->where('slug', 'reabertura')
+                ->first();
+
+            if ($tipoReabertura === null) {
+                (new TiposTramitacaoDefaultSeeder())->run($processo->tenant_id);
+                $tipoReabertura = TipoTramitacao::withoutGlobalScopes()
+                    ->where('tenant_id', $processo->tenant_id)
+                    ->where('slug', 'reabertura')
+                    ->firstOrFail();
+            }
+
+            $novoAndamento = Andamento::create([
+                'tenant_id' => $processo->tenant_id,
+                'processo_id' => $processo->id,
+                'orgao_origem_id' => $processo->orgao_atual_id,
+                'orgao_destino_id' => $processo->orgao_atual_id,
+                'tipo_tramitacao_id' => $tipoReabertura->id,
+                'usuario_id' => $usuarioId,
+                'usuario_recebedor_id' => $usuarioId,
+                'descricao' => $motivo ?? 'Reabertura formal do processo.',
+                'data_recebimento' => now(),
+                'data_envio' => null,
+                'and_atual' => true,
+                'sequencia' => $sequencia,
+            ]);
+
+            $processo->update([
+                'status' => 'em_tramitacao',
+                'data_conclusao' => null,
+                'arquivamento_tipo' => null,
+                'data_arquivamento' => null,
+                'ultimo_andamento_id' => $novoAndamento->id,
+            ]);
+
+            $this->auditLogger->record(
+                module: 'protocolo',
+                action: 'processo.reabrir',
+                resource: "Processo #{$processo->id} ({$processo->numero_formatado})",
+                before: ['status' => $processo->getOriginal('status')],
+                after: ['status' => 'em_tramitacao']
+            );
+
+            return $processo->fresh(['orgaoAtual', 'andamentoAtual']);
+        });
+    }
 }
+

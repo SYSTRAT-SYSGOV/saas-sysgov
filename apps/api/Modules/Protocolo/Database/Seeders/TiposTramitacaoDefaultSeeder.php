@@ -63,6 +63,30 @@ final class TiposTramitacaoDefaultSeeder extends Seeder
             'prazo_dias' => null,
             'efeito_status' => 'concluido',
         ],
+        [
+            'slug' => 'arquivamento',
+            'nome' => 'Arquivamento',
+            'descricao' => 'Arquivamento corrente, intermediário ou permanente do processo',
+            'ativo' => true,
+            'prazo_dias' => null,
+            'efeito_status' => 'arquivado',
+        ],
+        [
+            'slug' => 'desarquivamento',
+            'nome' => 'Desarquivamento',
+            'descricao' => 'Desarquivamento do processo e retorno à tramitação ativa',
+            'ativo' => true,
+            'prazo_dias' => null,
+            'efeito_status' => 'em_tramitacao',
+        ],
+        [
+            'slug' => 'reabertura',
+            'nome' => 'Reabertura',
+            'descricao' => 'Reabertura formal de processo com novo andamento registrado',
+            'ativo' => true,
+            'prazo_dias' => null,
+            'efeito_status' => 'em_tramitacao',
+        ],
     ];
 
     public function run(?int $tenantId = null): void

@@ -28,6 +28,9 @@ final class StoreProcessoRequest extends FormRequest
 
         return [
             'assunto' => ['required', 'string', 'max:500'],
+            'descricao' => ['nullable', 'string', 'max:5000'],
+            'tipo_processo' => ['nullable', 'string', 'max:100'],
+            'sigiloso' => ['nullable', 'boolean'],
             'origem' => ['required', 'string', 'in:externa,interna'],
             'orgao_origem_id' => [
                 'required',

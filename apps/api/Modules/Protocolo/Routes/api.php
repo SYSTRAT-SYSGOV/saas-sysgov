@@ -30,12 +30,24 @@ Route::get('vinculos', [VinculoController::class, 'consultaReversa'])
     ->name('protocolo.vinculos.consulta-reversa');
 
 Route::prefix('processos')->group(function (): void {
+    // Exportação e consulta pública (antes dos wildcards)
+    Route::get('/export', [ProcessoController::class, 'export'])->name('protocolo.processos.export');
+    Route::get('/consulta-publica', [ProcessoController::class, 'rastrearPublico'])
+        ->withoutMiddleware(['auth:sanctum'])
+        ->name('protocolo.processos.consulta-publica');
+
     Route::get('/', [ProcessoController::class, 'index'])->name('protocolo.processos.index');
     Route::post('/', [ProcessoController::class, 'store'])->name('protocolo.processos.store');
     Route::get('/{processo}', [ProcessoController::class, 'show'])->name('protocolo.processos.show');
     Route::put('/{processo}', [ProcessoController::class, 'update'])->name('protocolo.processos.update');
     Route::delete('/{processo}', [ProcessoController::class, 'destroy'])->name('protocolo.processos.destroy');
     Route::get('/{processo}/filhos', [ProcessoController::class, 'filhos'])->name('protocolo.processos.filhos');
+
+    // Ações de ciclo de vida
+    Route::post('/{processo}/concluir', [ProcessoController::class, 'concluir'])->name('protocolo.processos.concluir');
+    Route::post('/{processo}/arquivar', [ProcessoController::class, 'arquivar'])->name('protocolo.processos.arquivar');
+    Route::post('/{processo}/desarquivar', [ProcessoController::class, 'desarquivar'])->name('protocolo.processos.desarquivar');
+    Route::post('/{processo}/reabrir', [ProcessoController::class, 'reabrir'])->name('protocolo.processos.reabrir');
 
     // Andamentos, tramitação, localização e tempo de permanência
     Route::get('/{processo}/andamentos', [TramitacaoController::class, 'index'])->name('protocolo.processos.andamentos.index');

@@ -26,7 +26,7 @@ final class TiposTramitacaoSeederTest extends TestCase
         // 1ª execução
         $seeder->seedParaTenant($tenant);
 
-        self::assertSame(6, TipoTramitacao::query()->count());
+        self::assertSame(9, TipoTramitacao::query()->count());
 
         $entrada = TipoTramitacao::where('slug', 'entrada')->firstOrFail();
         self::assertSame('Entrada', $entrada->nome);
@@ -41,7 +41,7 @@ final class TiposTramitacaoSeederTest extends TestCase
         // 2ª execução (deve ser 100% idempotente, sem duplicar)
         $seeder->seedParaTenant($tenant);
 
-        self::assertSame(6, TipoTramitacao::query()->count());
+        self::assertSame(9, TipoTramitacao::query()->count());
 
         app(TenantContext::class)->clear();
     }
@@ -57,7 +57,7 @@ final class TiposTramitacaoSeederTest extends TestCase
         self::assertSame(0, $exitCode);
 
         app(TenantContext::class)->set($tenant);
-        self::assertSame(6, TipoTramitacao::query()->count());
+        self::assertSame(9, TipoTramitacao::query()->count());
         app(TenantContext::class)->clear();
     }
 }

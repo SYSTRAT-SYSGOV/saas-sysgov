@@ -21,12 +21,17 @@ use Modules\Pessoas\Models\Pessoa;
  * @property int $numero
  * @property int $ano
  * @property string $assunto
+ * @property string|null $descricao
+ * @property string $tipo_processo
+ * @property bool $sigiloso
  * @property string $origem
  * @property int $orgao_origem_id
  * @property int $orgao_atual_id
  * @property int|null $interessado_pessoa_id
  * @property int|null $processo_pai_id
  * @property string $status
+ * @property string|null $arquivamento_tipo
+ * @property \Illuminate\Support\Carbon|null $data_arquivamento
  * @property int|null $ultimo_andamento_id
  * @property \Illuminate\Support\Carbon $data_abertura
  * @property \Illuminate\Support\Carbon|null $data_conclusao
@@ -50,12 +55,17 @@ final class Processo extends Model
         'numero',
         'ano',
         'assunto',
+        'descricao',
+        'tipo_processo',
+        'sigiloso',
         'origem',
         'orgao_origem_id',
         'orgao_atual_id',
         'interessado_pessoa_id',
         'processo_pai_id',
         'status',
+        'arquivamento_tipo',
+        'data_arquivamento',
         'ultimo_andamento_id',
         'data_abertura',
         'data_conclusao',
@@ -66,6 +76,7 @@ final class Processo extends Model
         'tenant_id' => 'integer',
         'numero' => 'integer',
         'ano' => 'integer',
+        'sigiloso' => 'boolean',
         'orgao_origem_id' => 'integer',
         'orgao_atual_id' => 'integer',
         'interessado_pessoa_id' => 'integer',
@@ -73,6 +84,7 @@ final class Processo extends Model
         'ultimo_andamento_id' => 'integer',
         'data_abertura' => 'datetime',
         'data_conclusao' => 'datetime',
+        'data_arquivamento' => 'datetime',
         'created_by' => 'integer',
     ];
 

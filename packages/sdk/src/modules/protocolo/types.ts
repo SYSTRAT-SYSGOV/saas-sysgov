@@ -43,6 +43,7 @@ export interface Processo {
   numero_formatado: string;
   assunto: string;
   descricao?: string | null;
+  tipo_processo?: string;
   origem: ProcessoOrigem;
   orgao_origem_id: number;
   orgao_atual_id: number;
@@ -50,6 +51,8 @@ export interface Processo {
   processo_pai_id?: number | null;
   ultimo_andamento_id?: number | null;
   status: ProcessoStatus;
+  arquivamento_tipo?: 'corrente' | 'intermediario' | 'permanente' | null;
+  data_arquivamento?: string | null;
   sigiloso: boolean;
   data_abertura: string;
   data_conclusao?: string | null;
@@ -222,16 +225,29 @@ export interface PrazoExcedidoOrgaoItem {
   total_excedidos: number;
 }
 
+export interface TipoProcessoCountItem {
+  tipo: string;
+  total: number;
+}
+
+export interface ProdutividadeUsuarioItem {
+  usuario_id: number;
+  usuario_nome: string;
+  total_tramitacoes: number;
+}
+
 export interface DashboardData {
   total_processos: number;
   por_status: Record<ProcessoStatus, number>;
   por_origem: Record<ProcessoOrigem, number>;
+  por_tipo_processo?: TipoProcessoCountItem[];
   por_orgao: DashboardOrgaoItem[];
   tempo_medio_tramitacao_segundos: number | null;
   tempo_medio_tramitacao_dias: number | null;
   tempo_permanencia_por_orgao: PermanenciaOrgaoItem[];
   total_prazos_excedidos: number;
   prazos_excedidos_por_orgao: PrazoExcedidoOrgaoItem[];
+  produtividade_por_usuario?: ProdutividadeUsuarioItem[];
 }
 
 export interface ListProcessosParams {
@@ -239,6 +255,9 @@ export interface ListProcessosParams {
   status?: ProcessoStatus;
   orgao_id?: number;
   origem?: ProcessoOrigem;
+  tipo_processo?: string;
+  arquivamento_tipo?: string;
+  sigiloso?: boolean;
   ano?: number;
   interessado_id?: number;
   processo_pai_id?: number;
@@ -251,6 +270,7 @@ export interface CreateProcessoInput {
   origem: ProcessoOrigem;
   orgao_origem_id: number;
   orgao_destino_id?: number;
+  tipo_processo?: string;
   interessado_id?: number;
   processo_pai_id?: number;
   descricao?: string;
@@ -263,8 +283,26 @@ export interface CreateProcessoInput {
 export interface UpdateProcessoInput {
   assunto?: string;
   descricao?: string;
+  tipo_processo?: string;
   processo_pai_id?: number | null;
   sigiloso?: boolean;
+}
+
+export interface ConcluirProcessoInput {
+  despacho?: string;
+}
+
+export interface ArquivarProcessoInput {
+  tipo_arquivamento: 'corrente' | 'intermediario' | 'permanente';
+  despacho?: string;
+}
+
+export interface DesarquivarProcessoInput {
+  motivo?: string;
+}
+
+export interface ReabrirProcessoInput {
+  motivo?: string;
 }
 
 export interface TramitarProcessoInput {

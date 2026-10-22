@@ -53,11 +53,13 @@ final class ClientNavigationService
         $hasExplicitModules = !empty($moduleIndex);
         $payload = [];
 
+        $coreAliases = ['users', 'auth'];
+
         foreach ($groups as $group) {
             $items = [];
 
             foreach ($group->items as $item) {
-                if ($hasExplicitModules && $item->module_alias && !isset($moduleIndex[$item->module_alias])) {
+                if ($hasExplicitModules && $item->module_alias && !in_array($item->module_alias, $coreAliases, true) && !isset($moduleIndex[$item->module_alias])) {
                     continue;
                 }
 
@@ -74,7 +76,7 @@ final class ClientNavigationService
 
                 $children = [];
                 foreach ($item->children as $child) {
-                    if ($hasExplicitModules && $child->module_alias && !isset($moduleIndex[$child->module_alias])) {
+                    if ($hasExplicitModules && $child->module_alias && !in_array($child->module_alias, $coreAliases, true) && !isset($moduleIndex[$child->module_alias])) {
                         continue;
                     }
                     if ($child->permission && !in_array('*', $permissions, true) && !in_array($child->permission, $permissions, true)) {

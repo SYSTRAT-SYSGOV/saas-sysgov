@@ -76,6 +76,16 @@ final class DashboardService
             }
         }
 
+        // 3.1 Contagens por tipo de processo
+        $porTipoProcesso = [];
+        foreach ($processos->groupBy('tipo_processo') as $tipo => $listaTipo) {
+            $porTipoProcesso[] = [
+                'tipo' => (string) $tipo,
+                'total' => $listaTipo->count(),
+            ];
+        }
+        usort($porTipoProcesso, fn (array $a, array $b): int => $b['total'] <=> $a['total']);
+
         // 4. Distribuição por órgão atual
         $porOrgao = [];
         $gruposOrgao = $processos->groupBy('orgao_atual_id');
@@ -184,16 +194,48 @@ final class DashboardService
 
         usort($prazosExcedidosPorOrgao, fn (array $a, array $b): int => $b['total_excedidos'] <=> $a['total_excedidos']);
 
+        // 8. Produtividade por usuário (ações e andamentos despachados no período)
+        $produtividadeQuery = Andamento::query()
+            ->where('tenant_id', $tenantId)
+            ->with(['usuario']);
+
+        if ($unitIds !== null) {
+            $produtividadeQuery->where(function ($q) use ($unitIds): void {
+                $q->whereIn('orgao_origem_id', $unitIds)
+                  ->orWhereIn('orgao_destino_id', $unitIds);
+            });
+        }
+
+        if (!empty($filtros['data_inicio'])) {
+            $produtividadeQuery->whereDate('created_at', '>=', $filtros['data_inicio']);
+        }
+        if (!empty($filtros['data_fim'])) {
+            $produtividadeQuery->whereDate('created_at', '<=', $filtros['data_fim']);
+        }
+
+        $produtividade = [];
+        foreach ($produtividadeQuery->get()->groupBy('usuario_id') as $uid => $listaUsuario) {
+            $primeiroAnd = $listaUsuario->first();
+            $produtividade[] = [
+                'usuario_id' => (int) $uid,
+                'usuario_nome' => $primeiroAnd?->usuario?->name ?? "Usuário #{$uid}",
+                'total_tramitacoes' => $listaUsuario->count(),
+            ];
+        }
+        usort($produtividade, fn (array $a, array $b): int => $b['total_tramitacoes'] <=> $a['total_tramitacoes']);
+
         return [
             'total_processos' => $processos->count(),
             'por_status' => $statusCounts,
             'por_origem' => $origemCounts,
+            'por_tipo_processo' => $porTipoProcesso,
             'por_orgao' => $porOrgao,
             'tempo_medio_tramitacao_segundos' => $tempoMedioTramitacaoSegundos,
             'tempo_medio_tramitacao_dias' => $tempoMedioTramitacaoDias,
             'tempo_permanencia_por_orgao' => $permanenciaPorOrgao,
             'total_prazos_excedidos' => $todosExcedidos->count(),
             'prazos_excedidos_por_orgao' => $prazosExcedidosPorOrgao,
+            'produtividade_por_usuario' => array_slice($produtividade, 0, 10),
         ];
     }
 }

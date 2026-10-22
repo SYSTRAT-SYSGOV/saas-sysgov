@@ -26,6 +26,9 @@ final class UpdateProcessoRequest extends FormRequest
 
         return [
             'assunto' => ['sometimes', 'string', 'max:500'],
+            'descricao' => ['nullable', 'string', 'max:5000'],
+            'tipo_processo' => ['nullable', 'string', 'max:100'],
+            'sigiloso' => ['nullable', 'boolean'],
             'interessado_pessoa_id' => [
                 'nullable',
                 'integer',

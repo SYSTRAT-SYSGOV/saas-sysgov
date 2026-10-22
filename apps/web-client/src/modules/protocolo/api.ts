@@ -35,6 +35,43 @@ export const protocoloApi = {
     return res.data;
   },
 
+  concluirProcesso: async (id: number, dados: { despacho?: string } = {}): Promise<ProtocoloSdk.Processo> => {
+    const res = await apiClient.post<ProtocoloSdk.Processo>(`/protocolo/processos/${id}/concluir`, dados);
+    return res.data;
+  },
+
+  arquivarProcesso: async (id: number, dados: { tipo_arquivamento: 'corrente' | 'intermediario' | 'permanente'; despacho?: string }): Promise<ProtocoloSdk.Processo> => {
+    const res = await apiClient.post<ProtocoloSdk.Processo>(`/protocolo/processos/${id}/arquivar`, dados);
+    return res.data;
+  },
+
+  desarquivarProcesso: async (id: number, dados: { motivo?: string } = {}): Promise<ProtocoloSdk.Processo> => {
+    const res = await apiClient.post<ProtocoloSdk.Processo>(`/protocolo/processos/${id}/desarquivar`, dados);
+    return res.data;
+  },
+
+  reabrirProcesso: async (id: number, dados: { motivo?: string } = {}): Promise<ProtocoloSdk.Processo> => {
+    const res = await apiClient.post<ProtocoloSdk.Processo>(`/protocolo/processos/${id}/reabrir`, dados);
+    return res.data;
+  },
+
+  obterUrlExportacao: (params: ProtocoloSdk.ListProcessosParams = {}): string => {
+    const searchParams = new URLSearchParams();
+    if (params.status) searchParams.set('status', params.status);
+    if (params.origem) searchParams.set('origem', params.origem);
+    if (params.tipo_processo) searchParams.set('tipo_processo', params.tipo_processo);
+    if (params.ano) searchParams.set('ano', String(params.ano));
+    const qs = searchParams.toString();
+    return `/api/protocolo/processos/export${qs ? `?${qs}` : ''}`;
+  },
+
+  consultarPublico: async (numero: number, ano: number, documento?: string): Promise<Record<string, unknown>> => {
+    const res = await apiClient.get<Record<string, unknown>>('/protocolo/processos/consulta-publica', {
+      params: { numero, ano, documento },
+    });
+    return res.data;
+  },
+
   // Andamentos e Tramitação
   listarAndamentos: async (processoId: number): Promise<ProtocoloSdk.Andamento[]> => {
     const res = await apiClient.get<ProtocoloSdk.Andamento[]>(`/protocolo/processos/${processoId}/andamentos`);

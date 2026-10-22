@@ -28,11 +28,11 @@ services:
       MYSQL_USER: sysgov
       MYSQL_PASSWORD: secret
       MYSQL_ROOT_PASSWORD: root
-    ports: ["3306:3306"]
+    ports: ["3307:3306"]
     volumes: [sysgov-mysql:/var/lib/mysql]
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    ports: ["6380:6379"]
   web:
     build:
       context: .

@@ -185,6 +185,12 @@ final class {Nome}Controller extends Controller
 ## 9. Checklist de Qualidade antes de Concluir (Obrigatório)
 - [ ] Migration possui coluna tenant_id obrigatório e índice composto ['tenant_id', '...']?
 - [ ] Model inclui a trait TenantAware?
+- [ ] Integração com os 5 Pilares Fundacionais respeitada:
+  - [ ] Usuários/Auth: usa `users.id`, permissões `{modulo}.{recurso}.{acao}` e `AuditLogger::log()`?
+  - [ ] Cadastro de Pessoas: pessoas físicas/jurídicas apontam para `pessoas.id` (`Modules\Pessoas\Models\Pessoa`) sem duplicar tabelas civis? Frontend usa `<PessoaPicker>`?
+  - [ ] OrgChart: lotações/secretarias apontam para `org_units.id` (`Modules\OrgChart\Models\OrgUnit`) e usam `OrgScope`?
+  - [ ] Gerenciamento de Menus: rotas registradas centralmente em `client_menu_items` via `ClientNavigationService`?
+  - [ ] Protocolo & Processos: atos/demandas integrados via `EntidadeVinculavel` e `protocolo_vinculos`?
 - [ ] Valores em dinheiro usam centavos inteiros (amount_cents), nunca float?
 - [ ] Ações de mutação chamam $audit->record(...) e $outbox->publish(...)?
 - [ ] Toda ação de escrita tem Policy server-side?

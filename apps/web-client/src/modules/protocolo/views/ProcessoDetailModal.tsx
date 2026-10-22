@@ -35,6 +35,9 @@ import {
   Plus,
   AlertTriangle,
   Clock,
+  Archive,
+  FolderOpen,
+  RotateCcw,
 } from 'lucide-react';
 
 interface ProcessoDetailModalProps {
@@ -63,6 +66,11 @@ export function ProcessoDetailModal({
 
   // Modais de ação interna
   const [modalTramitarOpen, setModalTramitarOpen] = useState(false);
+  const [modalConcluirOpen, setModalConcluirOpen] = useState(false);
+  const [modalArquivarOpen, setModalArquivarOpen] = useState(false);
+  const [modalReabrirOpen, setModalReabrirOpen] = useState(false);
+  const [tipoArquivamento, setTipoArquivamento] = useState<'corrente' | 'intermediario' | 'permanente'>('corrente');
+  const [despachoCicloVida, setDespachoCicloVida] = useState('');
   const [orgaos, setOrgaos] = useState<{ value: string; label: string }[]>([]);
   const [tiposTramitacao, setTiposTramitacao] = useState<{ value: string; label: string }[]>([]);
   const [destinoTramitarId, setDestinoTramitarId] = useState('');
@@ -182,6 +190,79 @@ export function ProcessoDetailModal({
     }
   };
 
+  const handleConcluir = async () => {
+    if (!processoId) return;
+    setSubmittingAcao(true);
+    setAcaoErro(null);
+
+    try {
+      await protocoloApi.concluirProcesso(processoId, { despacho: despachoCicloVida.trim() || undefined });
+      setModalConcluirOpen(false);
+      setDespachoCicloVida('');
+      carregarDados();
+      onProcessoUpdated?.();
+    } catch (err: any) {
+      setAcaoErro(err.response?.data?.message || 'Falha ao concluir processo.');
+    } finally {
+      setSubmittingAcao(false);
+    }
+  };
+
+  const handleArquivar = async () => {
+    if (!processoId) return;
+    setSubmittingAcao(true);
+    setAcaoErro(null);
+
+    try {
+      await protocoloApi.arquivarProcesso(processoId, {
+        tipo_arquivamento: tipoArquivamento,
+        despacho: despachoCicloVida.trim() || undefined,
+      });
+      setModalArquivarOpen(false);
+      setDespachoCicloVida('');
+      carregarDados();
+      onProcessoUpdated?.();
+    } catch (err: any) {
+      setAcaoErro(err.response?.data?.message || 'Falha ao arquivar processo.');
+    } finally {
+      setSubmittingAcao(false);
+    }
+  };
+
+  const handleDesarquivar = async () => {
+    if (!processoId) return;
+    setSubmittingAcao(true);
+    setAcaoErro(null);
+
+    try {
+      await protocoloApi.desarquivarProcesso(processoId);
+      carregarDados();
+      onProcessoUpdated?.();
+    } catch (err: any) {
+      setAcaoErro(err.response?.data?.message || 'Falha ao desarquivar processo.');
+    } finally {
+      setSubmittingAcao(false);
+    }
+  };
+
+  const handleReabrir = async () => {
+    if (!processoId) return;
+    setSubmittingAcao(true);
+    setAcaoErro(null);
+
+    try {
+      await protocoloApi.reabrirProcesso(processoId, { motivo: despachoCicloVida.trim() || undefined });
+      setModalReabrirOpen(false);
+      setDespachoCicloVida('');
+      carregarDados();
+      onProcessoUpdated?.();
+    } catch (err: any) {
+      setAcaoErro(err.response?.data?.message || 'Falha ao reabrir processo.');
+    } finally {
+      setSubmittingAcao(false);
+    }
+  };
+
   const handleAnexarDoc = async () => {
     if (!processoId || !novoDocArquivo) return;
     const formData = new FormData();
@@ -277,6 +358,10 @@ export function ProcessoDetailModal({
   const andamentoAtual = processo.andamento_atual;
   const podeReceber = andamentoAtual && andamentoAtual.data_recebimento === null && processo.status !== 'concluido' && processo.status !== 'arquivado';
   const podeTramitar = processo.status !== 'concluido' && processo.status !== 'arquivado';
+  const podeConcluir = processo.status !== 'concluido' && processo.status !== 'arquivado';
+  const podeArquivar = processo.status !== 'arquivado';
+  const podeDesarquivar = processo.status === 'arquivado';
+  const podeReabrir = processo.status === 'concluido' || processo.status === 'arquivado';
 
   // Montar itens de timeline para andamentos
   const timelineItems = andamentos.map((and) => ({
@@ -303,8 +388,8 @@ export function ProcessoDetailModal({
         title={`Processo ${processo.numero_formatado}`}
         size="2xl"
         footer={
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between w-full flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {podeReceber && (
                 <Button variant="outline" onClick={handleReceber} isLoading={submittingAcao}>
                   <CheckCircle className="w-4 h-4 mr-1.5 text-emerald-600" />
@@ -314,7 +399,31 @@ export function ProcessoDetailModal({
               {podeTramitar && (
                 <Button onClick={() => setModalTramitarOpen(true)}>
                   <ArrowRight className="w-4 h-4 mr-1.5" />
-                  Tramitar Processo
+                  Tramitar
+                </Button>
+              )}
+              {podeConcluir && (
+                <Button variant="secondary" onClick={() => { setDespachoCicloVida(''); setModalConcluirOpen(true); }}>
+                  <CheckCircle className="w-4 h-4 mr-1.5 text-indigo-600" />
+                  Concluir
+                </Button>
+              )}
+              {podeArquivar && (
+                <Button variant="outline" onClick={() => { setDespachoCicloVida(''); setModalArquivarOpen(true); }}>
+                  <Archive className="w-4 h-4 mr-1.5 text-amber-600" />
+                  Arquivar
+                </Button>
+              )}
+              {podeDesarquivar && (
+                <Button variant="outline" onClick={handleDesarquivar} isLoading={submittingAcao}>
+                  <FolderOpen className="w-4 h-4 mr-1.5 text-cyan-600" />
+                  Desarquivar
+                </Button>
+              )}
+              {podeReabrir && (
+                <Button variant="outline" onClick={() => { setDespachoCicloVida(''); setModalReabrirOpen(true); }}>
+                  <RotateCcw className="w-4 h-4 mr-1.5 text-emerald-600" />
+                  Reabrir
                 </Button>
               )}
             </div>
@@ -325,11 +434,17 @@ export function ProcessoDetailModal({
         }
       >
         <div className="space-y-5">
-          <div className="flex items-center gap-3 pb-2 border-b border-border">
+          <div className="flex items-center gap-3 pb-2 border-b border-border flex-wrap">
             <span className="font-mono tabular-nums text-lg font-bold text-foreground">
               {processo.numero_formatado}
             </span>
             <ProcessoStatusBadge status={processo.status} />
+            {processo.tipo_processo && (
+              <Badge variant="indigo">{processo.tipo_processo.replace('_', ' ').toUpperCase()}</Badge>
+            )}
+            {processo.arquivamento_tipo && (
+              <Badge variant="warning">Fase: {processo.arquivamento_tipo.toUpperCase()}</Badge>
+            )}
             {processo.sigiloso && <Badge variant="danger">Sigiloso</Badge>}
           </div>
           {/* Cabeçalho de metadados do processo */}
@@ -859,6 +974,136 @@ export function ProcessoDetailModal({
               onChange={(e) => setDespachoTramitar(e.target.value)}
               rows={4}
               placeholder="Insira as determinações ou considerações deste despacho..."
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* MODAL DE CONCLUIR PROCESSO */}
+      <Modal
+        open={modalConcluirOpen}
+        onClose={() => setModalConcluirOpen(false)}
+        title={`Concluir Processo ${processo.numero_formatado}`}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="outline" onClick={() => setModalConcluirOpen(false)} disabled={submittingAcao}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConcluir} isLoading={submittingAcao}>
+              Confirmar Conclusão
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {acaoErro && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{acaoErro}</span>
+            </div>
+          )}
+          <p className="text-sm text-muted-foreground">
+            A conclusão encerra as tramitações ativas do processo e registra a data formal de encerramento.
+          </p>
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1">
+              Despacho Final de Conclusão (opcional)
+            </label>
+            <Textarea
+              value={despachoCicloVida}
+              onChange={(e) => setDespachoCicloVida(e.target.value)}
+              rows={3}
+              placeholder="Termo de encerramento / parecer conclusivo..."
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* MODAL DE ARQUIVAR PROCESSO */}
+      <Modal
+        open={modalArquivarOpen}
+        onClose={() => setModalArquivarOpen(false)}
+        title={`Arquivar Processo ${processo.numero_formatado}`}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="outline" onClick={() => setModalArquivarOpen(false)} disabled={submittingAcao}>
+              Cancelar
+            </Button>
+            <Button onClick={handleArquivar} isLoading={submittingAcao}>
+              Confirmar Arquivamento
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {acaoErro && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{acaoErro}</span>
+            </div>
+          )}
+          <Select
+            label="Fase de Arquivamento *"
+            value={tipoArquivamento}
+            onChange={(val) => setTipoArquivamento(val as 'corrente' | 'intermediario' | 'permanente')}
+            options={[
+              { value: 'corrente', label: 'Arquivo Corrente (fácil acesso / em uso periódico)' },
+              { value: 'intermediario', label: 'Arquivo Intermediário (aguardando prazo prescricional)' },
+              { value: 'permanente', label: 'Arquivo Permanente / Histórico (guarda definitiva)' },
+            ]}
+          />
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1">
+              Guia de Arquivamento / Despacho
+            </label>
+            <Textarea
+              value={despachoCicloVida}
+              onChange={(e) => setDespachoCicloVida(e.target.value)}
+              rows={3}
+              placeholder="Localização física/digital na caixa ou arquivo..."
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* MODAL DE REABRIR PROCESSO */}
+      <Modal
+        open={modalReabrirOpen}
+        onClose={() => setModalReabrirOpen(false)}
+        title={`Reabrir Processo ${processo.numero_formatado}`}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="outline" onClick={() => setModalReabrirOpen(false)} disabled={submittingAcao}>
+              Cancelar
+            </Button>
+            <Button onClick={handleReabrir} isLoading={submittingAcao}>
+              Confirmar Reabertura
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {acaoErro && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{acaoErro}</span>
+            </div>
+          )}
+          <p className="text-sm text-muted-foreground">
+            A reabertura cria um novo andamento auditado de reabertura, permitindo novas tramitações e andamentos.
+          </p>
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1">
+              Motivação da Reabertura *
+            </label>
+            <Textarea
+              value={despachoCicloVida}
+              onChange={(e) => setDespachoCicloVida(e.target.value)}
+              rows={3}
+              placeholder="Descreva o motivo legal ou administrativo para desarquivamento e reabertura..."
             />
           </div>
         </div>

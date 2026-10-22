@@ -31,6 +31,7 @@ apps/api/Modules/Procurement/app/
 
 # Editor / IDE / Ferramentas
 .kilo/
+.archify/
 apps/api/public/storage
 graphify-out/
 apps/api/storage/

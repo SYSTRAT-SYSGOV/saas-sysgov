@@ -11,6 +11,25 @@ Todo código gerado DEVE seguir estritamente o [`CODING_STANDARD.md`](./CODING_S
 - **Pacotes Compartilhados**: `packages/ui` (Design System) e `packages/sdk` (SDK TypeScript).
 - **Persistência**: MySQL 8.4 (Transacional), Redis 7 (Cache e Filas), Storage de Objetos (Arquivos e Documentos).
 
+### 🏛️ 1.1 Os 5 Pilares Fundacionais do SYSGOV (Módulos Core Comuns)
+Cinco módulos formam a espinha dorsal comum de todo o ecossistema SYSGOV. **Todos os demais módulos verticais/setoriais** (Escola, Cemitérios, Licitações, Contratos, Meio Ambiente, Vistoria, Obras, etc.) **DEVEM obrigatoriamente se integrar a esses 5 módulos com isolamento lógico estrito de dados (`tenant_id`)**:
+1. **Usuários e Acessos (`Modules/Access` / Auth / RBAC)**:
+   - Todo operador é `App\Models\User`. Permissões seguem `{modulo}.{recurso}.{acao}` validadas via Gates/Policies.
+   - Toda mutação de escrita DEVE registrar trilha imutável no `AuditLogger::log()`.
+2. **Cadastro de Pessoas (`Modules/Pessoas` — MDM & LGPD)**:
+   - Cadastro único municipal de pessoas físicas e jurídicas (`Modules\Pessoas\Models\Pessoa`).
+   - **PROIBIDO** duplicar cadastros de cidadãos, servidores, alunos ou fornecedores em tabelas próprias. Sempre use FK `pessoa_id` apontando para `pessoas.id` com integridade de tenant.
+   - Consultas de CPF/CNPJ devem usar o hash determinístico `documento_hash` (`Documento::hash()`). Frontend DEVE usar `<PessoaPicker>` / `usePessoaPicker`.
+3. **Estrutura Organizacional (`Modules/OrgChart` — Órgãos & OrgScope)**:
+   - Hierarquia de prefeitura, secretarias e departamentos (`Modules\OrgChart\Models\OrgUnit`).
+   - Todo dado pertencente a um setor público vincula-se a `org_unit_id`. Autorizações de escopo administrativo utilizam `OrgScope` (ABAC).
+4. **Gerenciar Menus (`Modules/Client` — Navegação Dinâmica)**:
+   - Todo módulo setorial deve registrar seus itens em `client_menu_items` e expor navegação dinâmica via `ClientNavigationService`, baseada em licenças ativas do tenant e permissões do usuário.
+5. **Protocolo e Processos Administrativos (`Modules/Protocolo`)**:
+   - Autuação oficial sequencial `NNNN/AAAA` atômica por tenant/ano, tramitação entre setores da OrgChart, despachos e prazos/SLA.
+   - Qualquer módulo com atos, solicitações ou requerimentos formais DEVE implementar a interface `Modules\Protocolo\Contracts\EntidadeVinculavel` e integrar-se via tabela polimórfica `protocolo_vinculos`.
+   - Consulte o contrato canônico completo em [`docs/architecture/pilares-fundacionais-sysgov.md`](./docs/architecture/pilares-fundacionais-sysgov.md).
+
 ---
 
 ## 🔒 2. Multi-Tenant & Segurança

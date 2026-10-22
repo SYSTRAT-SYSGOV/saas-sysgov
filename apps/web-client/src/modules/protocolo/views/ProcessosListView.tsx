@@ -27,6 +27,7 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
+  Download,
 } from 'lucide-react';
 
 interface ProcessosListViewProps {
@@ -48,6 +49,7 @@ export function ProcessosListView({
   const [termoBusca, setTermoBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [filtroOrigem, setFiltroOrigem] = useState<string>('');
+  const [filtroTipoProcesso, setFiltroTipoProcesso] = useState<string>('');
   const [filtroOrgao, setFiltroOrgao] = useState<string>('');
   const [paginaAtual, setPaginaAtual] = useState(1);
 
@@ -72,6 +74,7 @@ export function ProcessosListView({
       q: termoBusca.trim() || undefined,
       status: (filtroStatus as ProtocoloSdk.ProcessoStatus) || undefined,
       origem: (filtroOrigem as ProtocoloSdk.ProcessoOrigem) || undefined,
+      tipo_processo: filtroTipoProcesso || undefined,
       orgao_id: filtroOrgao ? Number(filtroOrgao) : undefined,
       page: paginaAtual,
       per_page: 15,
@@ -86,12 +89,23 @@ export function ProcessosListView({
 
   useEffect(() => {
     carregarProcessos();
-  }, [paginaAtual, filtroStatus, filtroOrigem, filtroOrgao]);
+  }, [paginaAtual, filtroStatus, filtroOrigem, filtroTipoProcesso, filtroOrgao]);
 
   const handleBuscar = (e: React.FormEvent) => {
     e.preventDefault();
     setPaginaAtual(1);
     carregarProcessos();
+  };
+
+  const handleExportarCsv = () => {
+    const url = protocoloApi.obterUrlExportacao({
+      q: termoBusca.trim() || undefined,
+      status: (filtroStatus as ProtocoloSdk.ProcessoStatus) || undefined,
+      origem: (filtroOrigem as ProtocoloSdk.ProcessoOrigem) || undefined,
+      tipo_processo: filtroTipoProcesso || undefined,
+      orgao_id: filtroOrgao ? Number(filtroOrgao) : undefined,
+    });
+    window.open(url, '_blank');
   };
 
   const handleExcluir = async (id: number, numeroFormatado: string) => {
@@ -110,7 +124,7 @@ export function ProcessosListView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <form onSubmit={handleBuscar} className="flex items-center gap-2 flex-1 max-w-md">
           <Input
-            placeholder="Buscar por número, assunto ou interessado..."
+            placeholder="Buscar por número, CPF/CNPJ ou assunto..."
             value={termoBusca}
             onChange={(e) => setTermoBusca(e.target.value)}
           />
@@ -119,7 +133,11 @@ export function ProcessosListView({
           </Button>
         </form>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={handleExportarCsv} title="Exportar dados em formato CSV estruturado">
+            <Download className="w-4 h-4 mr-1.5" />
+            Exportar CSV
+          </Button>
           <Button variant="outline" size="sm" onClick={onPromoverRequerimento}>
             <ArrowUpRight className="w-4 h-4 mr-1.5" />
             Promover Requerimento
@@ -133,9 +151,9 @@ export function ProcessosListView({
 
       {/* Filtros Avançados */}
       <Card className="bg-muted/20">
-        <CardContent className="p-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <CardContent className="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <Select
-            label="Filtrar por Status"
+            label="Status"
             value={filtroStatus}
             onChange={(val) => {
               setFiltroStatus(val);
@@ -152,7 +170,7 @@ export function ProcessosListView({
           />
 
           <Select
-            label="Filtrar por Origem"
+            label="Origem"
             value={filtroOrigem}
             onChange={(val) => {
               setFiltroOrigem(val);
@@ -166,7 +184,26 @@ export function ProcessosListView({
           />
 
           <Select
-            label="Filtrar por Órgão Atual"
+            label="Classificação / Tipo"
+            value={filtroTipoProcesso}
+            onChange={(val) => {
+              setFiltroTipoProcesso(val);
+              setPaginaAtual(1);
+            }}
+            options={[
+              { value: '', label: 'Todas as Classificações' },
+              { value: 'administrativo', label: 'Administrativo Comum' },
+              { value: 'licitatorio', label: 'Licitatório / Contratação' },
+              { value: 'financeiro', label: 'Financeiro / Pagamento' },
+              { value: 'rh', label: 'Recursos Humanos / Pessoal' },
+              { value: 'tributario', label: 'Tributário / Fiscal' },
+              { value: 'obras', label: 'Obras & Infraestrutura' },
+              { value: 'ouvidoria', label: 'Ouvidoria / Reclamação' },
+            ]}
+          />
+
+          <Select
+            label="Órgão Atual"
             value={filtroOrgao}
             onChange={(val) => {
               setFiltroOrgao(val);
@@ -185,6 +222,7 @@ export function ProcessosListView({
               <TableRow>
                 <TableHead>Número do Processo</TableHead>
                 <TableHead>Assunto</TableHead>
+                <TableHead>Classificação</TableHead>
                 <TableHead>Interessado</TableHead>
                 <TableHead>Localização Atual</TableHead>
                 <TableHead>Origem</TableHead>
@@ -206,6 +244,15 @@ export function ProcessosListView({
                   </TableCell>
                   <TableCell className="font-medium max-w-xs truncate" title={proc.assunto}>
                     {proc.assunto}
+                  </TableCell>
+                  <TableCell>
+                    {proc.tipo_processo ? (
+                      <Badge variant="indigo" className="text-[11px] capitalize">
+                        {proc.tipo_processo.replace('_', ' ')}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {proc.interessado?.nome || 'Não vinculado'}

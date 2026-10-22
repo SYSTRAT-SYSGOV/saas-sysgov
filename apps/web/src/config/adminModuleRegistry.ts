@@ -189,7 +189,8 @@ export function getAdminModuleById(id: string): AdminModuleDefinition | undefine
 }
 
 export function getAllowedAdminModules(roles: string[]): AdminModuleDefinition[] {
+  const isSuper = roles.includes('SUPER_ADMIN') || roles.includes('EMPRESA_MASTER');
   return Object.values(ADMIN_MODULE_REGISTRY).filter(
-    m => !m.allowedRoles || m.allowedRoles.some(r => roles.includes(r))
+    m => isSuper || !m.allowedRoles || m.allowedRoles.some(r => roles.includes(r))
   );
 }

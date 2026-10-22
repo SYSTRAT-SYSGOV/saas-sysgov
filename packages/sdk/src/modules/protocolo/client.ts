@@ -83,6 +83,39 @@ export class ProtocoloModuleClient {
     return this.api.request(`/${this.moduleName}/processos/${id}/filhos`);
   }
 
+  async concluir(id: number, input: { despacho?: string } = {}): Promise<Processo> {
+    return this.api.request(`/${this.moduleName}/processos/${id}/concluir`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async arquivar(id: number, input: { tipo_arquivamento: 'corrente' | 'intermediario' | 'permanente'; despacho?: string }): Promise<Processo> {
+    return this.api.request(`/${this.moduleName}/processos/${id}/arquivar`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async desarquivar(id: number, input: { motivo?: string } = {}): Promise<Processo> {
+    return this.api.request(`/${this.moduleName}/processos/${id}/desarquivar`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async reabrir(id: number, input: { motivo?: string } = {}): Promise<Processo> {
+    return this.api.request(`/${this.moduleName}/processos/${id}/reabrir`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async rastrearPublico(numero: number, ano: number, documento?: string): Promise<Record<string, unknown>> {
+    const qs = buildQueryString({ numero, ano, documento });
+    return this.api.request(`/${this.moduleName}/processos/consulta-publica${qs}`);
+  }
+
   // ── Tramitação, Localização e Prazos ──────────────────────────────────────
 
   async andamentos(processoId: number): Promise<Andamento[]> {

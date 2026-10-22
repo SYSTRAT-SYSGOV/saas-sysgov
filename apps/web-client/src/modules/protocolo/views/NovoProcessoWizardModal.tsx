@@ -44,6 +44,7 @@ export function NovoProcessoWizardModal({
 
   // Dados Etapa 1: Dados Gerais
   const [assunto, setAssunto] = useState('');
+  const [tipoProcesso, setTipoProcesso] = useState('administrativo_geral');
   const [origem, setOrigem] = useState<ProtocoloSdk.ProcessoOrigem>('interna');
   const [orgaoOrigemId, setOrgaoOrigemId] = useState<string>('');
   const [descricao, setDescricao] = useState('');
@@ -181,6 +182,7 @@ export function NovoProcessoWizardModal({
     try {
       const formData = new FormData();
       formData.append('assunto', assunto.trim());
+      formData.append('tipo_processo', tipoProcesso);
       formData.append('origem', origem);
       formData.append('orgao_origem_id', orgaoOrigemId);
       if (descricao.trim()) formData.append('descricao', descricao.trim());
@@ -267,6 +269,20 @@ export function NovoProcessoWizardModal({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
+                label="Classificação / Tipo do Processo"
+                value={tipoProcesso}
+                onChange={setTipoProcesso}
+                options={[
+                  { value: 'administrativo_geral', label: 'Processo Administrativo Geral' },
+                  { value: 'solicitacao', label: 'Solicitação / Requerimento' },
+                  { value: 'oficio', label: 'Ofício / Comunicação Externa' },
+                  { value: 'licitatorio', label: 'Processo Licitatório / Contratação' },
+                  { value: 'recurso', label: 'Recurso Administrativo / Impugnação' },
+                  { value: 'sindicancia', label: 'Sindicância / Processo Disciplinar' },
+                ]}
+              />
+
+              <Select
                 label="Origem do Processo *"
                 value={origem}
                 onChange={(val) => setOrigem(val as ProtocoloSdk.ProcessoOrigem)}
@@ -275,7 +291,9 @@ export function NovoProcessoWizardModal({
                   { value: 'externa', label: 'Externa (Cidadão / Empresa)' },
                 ]}
               />
+            </div>
 
+            <div>
               <Select
                 label="Órgão de Origem / Autuação *"
                 value={orgaoOrigemId}

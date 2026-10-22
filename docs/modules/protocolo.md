@@ -49,6 +49,12 @@ Todas as requisições exigem autenticação via token Bearer (`auth:sanctum`), 
 | `PUT` | `/api/protocolo/processos/{processo}` | `protocolo.processos.update` | Atualização de dados cadastrais (impede ciclos hierárquicos). |
 | `DELETE` | `/api/protocolo/processos/{processo}` | `protocolo.processos.destroy` | Exclusão lógica (soft delete). Rejeita com 409 se houver filhos ativos. |
 | `GET` | `/api/protocolo/processos/{processo}/filhos` | `protocolo.processos.filhos` | Listagem de sub-processos vinculados hierarquicamente. |
+| `POST` | `/api/protocolo/processos/{processo}/concluir` | `protocolo.processos.concluir` | Encerramento do processo com despacho conclusivo e registro de data formal. |
+| `POST` | `/api/protocolo/processos/{processo}/arquivar` | `protocolo.processos.arquivar` | Arquivamento tipado por fase (`corrente`, `intermediario`, `permanente`). |
+| `POST` | `/api/protocolo/processos/{processo}/desarquivar` | `protocolo.processos.desarquivar` | Desarquivamento do processo e retorno para tramitação ativa. |
+| `POST` | `/api/protocolo/processos/{processo}/reabrir` | `protocolo.processos.reabrir` | Reabertura com motivação legal e geração de novo andamento auditado. |
+| `GET` | `/api/protocolo/processos/export` | `protocolo.processos.export` | Exportação de processos em formato CSV estruturado com BOM UTF-8. |
+| `GET` | `/api/protocolo/processos/consulta-publica` | `protocolo.processos.consulta-publica` | Rastreamento público com anonimização e conformidade LGPD. |
 
 ### Tramitação e Rastreamento
 
