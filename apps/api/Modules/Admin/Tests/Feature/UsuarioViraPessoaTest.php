@@ -244,4 +244,34 @@ final class UsuarioViraPessoaTest extends TestCase
 
         $this->assertSame(0, PessoaUsuario::withoutGlobalScopes()->where('user_id', $analista->id)->count());
     }
+
+    public function test_aceitar_convite_nao_sobrescreve_usuario_existente(): void
+    {
+        $papel = Role::where('slug', 'admin_tenant')->where('tenant_id', $this->tenant->id)->firstOrFail();
+        $existente = User::create(['name' => 'Maria Souza', 'email' => 'maria@cliente.test', 'password' => 'StrongPass!123', 'is_active' => true, 'is_systrat' => true]);
+        $senha = $existente->password;
+        UserInvitation::create(['tenant_id' => $this->tenant->id, 'email' => 'maria@cliente.test', 'token' => hash('sha256', 'abc'), 'role_slug' => $papel->slug, 'invited_by' => $this->adminTenant->id, 'expires_at' => now()->addHours(72)]);
+
+        $user = app(InvitationService::class)->accept('abc');
+
+        $this->assertSame($existente->id, $user->id);
+        $fresco = $existente->fresh();
+        $this->assertSame('Maria Souza', $fresco->name);
+        $this->assertSame($senha, $fresco->password);
+        $this->assertTrue($fresco->is_systrat); // convite de órgão não rebaixa
+        $this->assertTrue($fresco->tenants()->where('tenants.id', $this->tenant->id)->exists());
+    }
+
+    public function test_convite_de_plataforma_promove_usuario_existente_sem_mexer_no_nome(): void
+    {
+        $papel = Role::where('scope', 'systrat')->firstOrFail();
+        $existente = User::create(['name' => 'Maria Souza', 'email' => 'maria@cliente.test', 'password' => 'StrongPass!123', 'is_active' => true]);
+        UserInvitation::create(['tenant_id' => null, 'email' => 'maria@cliente.test', 'token' => hash('sha256', 'xyz'), 'role_slug' => $papel->slug, 'invited_by' => $this->adminTenant->id, 'expires_at' => now()->addHours(72)]);
+
+        app(InvitationService::class)->accept('xyz');
+
+        $fresco = $existente->fresh();
+        $this->assertSame('Maria Souza', $fresco->name);
+        $this->assertTrue($fresco->is_systrat);
+    }
 }
