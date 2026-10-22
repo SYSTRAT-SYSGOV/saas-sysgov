@@ -465,6 +465,28 @@ export const PortalAuditoriaView: React.FC<PortalAuditoriaViewProps> = ({ portal
   const columnsImpedimentos = useMemo<ColumnDef<ApiImpedimentoAuditoria>[]>(
     () => [
       {
+        id: 'acoes',
+        header: 'Ações',
+        size: 110,
+        cell: ({ row }) => (
+          row.original.status === 'ativo' ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] text-amber-600 hover:text-amber-700"
+              onClick={() => {
+                setImpedimentoParaDesativar(row.original);
+                setModalDesativarImpOpen(true);
+              }}
+            >
+              Resolver
+            </Button>
+          ) : (
+            <Badge variant="secondary" className="text-[10px]">Arquivado</Badge>
+          )
+        ),
+      },
+      {
         accessorKey: 'tipo_impedimento',
         header: 'Tipo do Impedimento',
         cell: ({ row }) => (
@@ -524,34 +546,32 @@ export const PortalAuditoriaView: React.FC<PortalAuditoriaViewProps> = ({ portal
           </span>
         ),
       },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 110,
-        cell: ({ row }) => (
-          row.original.status === 'ativo' ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-[11px] text-amber-600 hover:text-amber-700"
-              onClick={() => {
-                setImpedimentoParaDesativar(row.original);
-                setModalDesativarImpOpen(true);
-              }}
-            >
-              Resolver
-            </Button>
-          ) : (
-            <Badge variant="secondary" className="text-[10px]">Arquivado</Badge>
-          )
-        ),
-      },
     ],
     []
   );
 
   // Colunas do DataTable da Amostragem / Anti-Leniência
   const columnsAmostragem: ColumnDef<ItemAmostragemAuditoria>[] = [
+    {
+      id: 'acoes',
+      header: 'Ações',
+      size: 100,
+      cell: ({ row }) => (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs gap-1"
+          onClick={() => {
+            setItemAmostraSelecionado(row.original);
+            setNovoParecerStatus(row.original.status_parecer === 'pendente' ? 'aprovado' : row.original.status_parecer);
+            setNovoParecerTexto(row.original.parecer_texto || '');
+            setModalParecerOpen(true);
+          }}
+        >
+          <Eye className="h-3 w-3" /> Parecer
+        </Button>
+      ),
+    },
     {
       accessorKey: 'servidor_nome',
       header: 'Servidor / Matrícula',
@@ -619,26 +639,6 @@ export const PortalAuditoriaView: React.FC<PortalAuditoriaViewProps> = ({ portal
         if (s === 'diligencia') return <Badge variant="warning" className="text-[10px]">Diligência</Badge>;
         return <Badge variant="secondary" className="text-[10px]">Pendente</Badge>;
       },
-    },
-    {
-      id: 'acoes',
-      header: 'Ações',
-      size: 100,
-      cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs gap-1"
-          onClick={() => {
-            setItemAmostraSelecionado(row.original);
-            setNovoParecerStatus(row.original.status_parecer === 'pendente' ? 'aprovado' : row.original.status_parecer);
-            setNovoParecerTexto(row.original.parecer_texto || '');
-            setModalParecerOpen(true);
-          }}
-        >
-          <Eye className="h-3 w-3" /> Parecer
-        </Button>
-      ),
     },
   ];
 
@@ -909,6 +909,9 @@ export const PortalAuditoriaView: React.FC<PortalAuditoriaViewProps> = ({ portal
               />
             ) : (
               <DataTable
+                exportable
+                exportFileName="capd-portal-auditoria-1"
+                exportTitle="CAPD — Portal Auditoria 1"
                 columns={columnsImpedimentos}
                 data={filteredImpedimentos}
                 pagination={true}
@@ -959,6 +962,9 @@ export const PortalAuditoriaView: React.FC<PortalAuditoriaViewProps> = ({ portal
             </div>
 
             <DataTable
+              exportable
+              exportFileName="capd-portal-auditoria-2"
+              exportTitle="CAPD — Portal Auditoria 2"
               columns={columnsAmostragem}
               data={amostragem}
               pagination={true}
@@ -1066,6 +1072,9 @@ export const PortalAuditoriaView: React.FC<PortalAuditoriaViewProps> = ({ portal
             </div>
 
             <DataTable
+              exportable
+              exportFileName="capd-portal-auditoria-3"
+              exportTitle="CAPD — Portal Auditoria 3"
               columns={columnsTrilha}
               data={filteredTrilha}
               pagination={true}
@@ -1104,6 +1113,9 @@ export const PortalAuditoriaView: React.FC<PortalAuditoriaViewProps> = ({ portal
             </div>
 
             <DataTable
+              exportable
+              exportFileName="capd-portal-auditoria-4"
+              exportTitle="CAPD — Portal Auditoria 4"
               columns={columnsLgpd}
               data={lgpdLogs}
               pagination={true}

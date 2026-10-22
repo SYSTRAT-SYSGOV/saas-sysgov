@@ -7,6 +7,7 @@ import {
   Select,
   Modal,
   Switch,
+  ActionsMenu,
 } from '@sysgov/ui';
 import {
   PageHeader,
@@ -369,6 +370,28 @@ export const GestaoCiclosPanel: React.FC = () => {
   // Colunas do TanStack DataTable
   const columns = useMemo<ColumnDef<ApiCiclo, any>[]>(() => [
     {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const c = row.original;
+        const isAtivo = !['encerrado', 'homologado'].includes(c.status);
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações do ciclo"
+              items={[
+                { key: 'elegiveis', label: 'Elegíveis', icon: <Users className="h-3.5 w-3.5" />, onSelect: () => handleVerElegibilidade(c) },
+                { key: 'editar', label: 'Editar parâmetros', icon: <Edit3 className="h-3.5 w-3.5" />, onSelect: () => handleAbrirEdicao(c) },
+                ...(isAtivo ? [{ key: 'encerrar', label: 'Encerrar ciclo', onSelect: () => setEncerramentoModal({ open: true, ciclo: c, abrirProximo: false }) }, { key: 'encerrar-abrir', label: 'Encerrar e abrir próxima etapa (N+1)', icon: <RotateCw className="h-3.5 w-3.5" />, onSelect: () => setEncerramentoModal({ open: true, ciclo: c, abrirProximo: true }) }] : []),
+              ]}
+            />
+          </div>
+        );
+      },
+    },
+    {
       id: 'ano',
       header: 'Ano / Nome do Ciclo',
       size: 260,
@@ -434,7 +457,7 @@ export const GestaoCiclosPanel: React.FC = () => {
     },
     {
       id: 'vigencia',
-      header: 'Período de Vigência',
+      header: 'Período de Vigência', meta: { exportValue: (r) => `${formatDataIsoParaBr(r.data_inicio || r.data_inicio_avaliacao)} até ${formatDataIsoParaBr(r.data_fim || r.data_fim_avaliacao)}` },
       size: 190,
       cell: ({ row }) => {
         const c = row.original;
@@ -452,7 +475,7 @@ export const GestaoCiclosPanel: React.FC = () => {
     },
     {
       id: 'prazos',
-      header: 'Prazos Operacionais',
+      header: 'Prazos Operacionais', meta: { exportValue: (r) => [r.data_limite_preenchimento, r.data_limite_recurso].map((d) => formatDataIsoParaBr(d)).join(' / ') },
       size: 180,
       cell: ({ row }) => {
         const c = row.original;
@@ -476,7 +499,7 @@ export const GestaoCiclosPanel: React.FC = () => {
     },
     {
       id: 'nota_corte',
-      header: 'Nota de Corte (NFC)',
+      header: 'Nota de Corte (NFC)', meta: { exportValue: (r) => Number(r.nota_corte_nfc ?? 70) },
       size: 150,
       cell: ({ row }) => {
         const corte = Number(row.original.nota_corte_nfc ?? 70.0);
@@ -502,66 +525,6 @@ export const GestaoCiclosPanel: React.FC = () => {
             label={s ? (STATUS_LABEL[s] ?? s.toUpperCase()) : 'N/D'}
             variant={(s && STATUS_VARIANT[s]) ? STATUS_VARIANT[s] : 'neutral'}
           />
-        );
-      },
-    },
-    {
-      id: 'acoes',
-      header: 'Ações de Gestão',
-      size: 260,
-      enableSorting: false,
-      cell: ({ row }) => {
-        const c = row.original;
-        const isAtivo = !['encerrado', 'homologado'].includes(c.status);
-
-        return (
-          <div className="flex items-center justify-end gap-1.5 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs h-7 px-2"
-              onClick={() => handleVerElegibilidade(c)}
-              title="Consultar Elegibilidade e Bloqueios Legais"
-            >
-              <Users className="h-3.5 w-3.5 mr-1 text-primary" />
-              Elegíveis
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground"
-              onClick={() => handleAbrirEdicao(c)}
-              title="Editar Parâmetros do Ciclo"
-            >
-              <Edit3 className="h-3.5 w-3.5 mr-1" />
-              Editar
-            </Button>
-
-            {isAtivo && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-7 px-2 text-rose-600 hover:text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60"
-                  onClick={() => setEncerramentoModal({ open: true, ciclo: c, abrirProximo: false })}
-                  title="Encerrar ciclo atual"
-                >
-                  Encerrar
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="text-xs h-7 px-2 font-semibold bg-primary text-primary-foreground"
-                  onClick={() => setEncerramentoModal({ open: true, ciclo: c, abrirProximo: true })}
-                  title="Encerrar ciclo atual e abrir próxima etapa da cadência trienal"
-                >
-                  <RotateCw className="h-3 w-3 mr-1" />
-                  N+1
-                </Button>
-              </>
-            )}
-          </div>
         );
       },
     },
@@ -803,6 +766,9 @@ export const GestaoCiclosPanel: React.FC = () => {
             ) : modoExibicao === 'tabela' ? (
               filteredCiclos.length > 0 ? (
                 <DataTable
+                  exportable
+                  exportFileName="capd-gestao-ciclos"
+                  exportTitle="CAPD — Gestao Ciclos"
                   columns={columns}
                   data={filteredCiclos}
                   pageSize={10}

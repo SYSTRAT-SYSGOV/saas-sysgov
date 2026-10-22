@@ -851,6 +851,9 @@ export const ConsolidacaoPanel: React.FC = () => {
             <div className="p-3">
               {aba === 'nfc' && (
                 <DataTable
+                  exportable
+                  exportFileName="capd-consolidacao-1"
+                  exportTitle="CAPD — Consolidacao 1"
                   columns={columnsNfc}
                   data={filteredServidores}
                   emptyText="Nenhum servidor encontrado para este ciclo."
@@ -861,6 +864,9 @@ export const ConsolidacaoPanel: React.FC = () => {
 
               {aba === 'ranking' && rankingData && (
                 <DataTable
+                  exportable
+                  exportFileName="capd-consolidacao-2"
+                  exportTitle="CAPD — Consolidacao 2"
                   columns={columnsRanking}
                   data={filteredRanking}
                   emptyText="Nenhum servidor classificado no ranking."
@@ -875,6 +881,9 @@ export const ConsolidacaoPanel: React.FC = () => {
                     Registros imutáveis: cada processamento gera uma nova versão auditada, preservando o histórico anterior.
                   </div>
                   <DataTable
+                    exportable
+                    exportFileName="capd-consolidacao-3"
+                    exportTitle="CAPD — Consolidacao 3"
                     columns={columnsHistorico}
                     data={filteredHistorico}
                     emptyText="Nenhuma consolidação persistida ainda para este triênio. Use 'Processar Consolidação' para gerar a primeira versão."

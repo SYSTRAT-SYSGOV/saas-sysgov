@@ -10,6 +10,7 @@ import {
   Select,
   Modal,
   StatCard,
+  ActionsMenu,
 } from '@sysgov/ui';
 import {
   PageHeader,
@@ -184,6 +185,26 @@ export const PmdPanel: React.FC = () => {
   const columns = useMemo<ColumnDef<PlanoMelhoriaItem, any>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const pmd = row.original;
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações do plano"
+                items={[
+                  { key: 'detalhes', label: 'Detalhes do plano', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => setDetalhePmd(pmd) },
+                  ...(pmd.status !== 'verificado' && pmd.status !== 'cancelado' ? [{ key: 'evolucao', label: 'Evolução', icon: <ArrowUpRight className="h-3.5 w-3.5" />, onSelect: () => abrirVerificacao(pmd) }] : []),
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         id: 'servidor',
         header: 'Servidor / Matrícula',
         accessorFn: (row) => row.servidor?.nome_completo ?? `#${row.servidor_id}`,
@@ -289,39 +310,6 @@ export const PmdPanel: React.FC = () => {
               label={STATUS_PMD_LABEL[s] ?? s}
               variant={STATUS_PMD_VARIANT[s] ?? 'neutral'}
             />
-          );
-        },
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        cell: ({ row }) => {
-          const pmd = row.original;
-          return (
-            <div className="flex items-center justify-end gap-1.5">
-              <Button
-                variant="ghost"
-                size="sm"
-                title="Ver Detalhes do Plano"
-                onClick={() => setDetalhePmd(pmd)}
-                className="gap-1 text-xs"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Detalhes
-              </Button>
-
-              {pmd.status !== 'verificado' && pmd.status !== 'cancelado' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs gap-1 border-primary/40 hover:border-primary"
-                  onClick={() => abrirVerificacao(pmd)}
-                >
-                  <ArrowUpRight className="h-3.5 w-3.5 text-primary" />
-                  Evolução
-                </Button>
-              )}
-            </div>
           );
         },
       },
@@ -474,6 +462,9 @@ export const PmdPanel: React.FC = () => {
             </div>
           ) : (
             <DataTable
+              exportable
+              exportFileName="capd-pmd"
+              exportTitle="CAPD — Pmd"
               columns={columns}
               data={pmdsFiltrados}
               pagination={true}

@@ -185,6 +185,41 @@ export const PendenciasHierarquiaPanel: React.FC = () => {
   const columns: ColumnDef<ApiPendenciaHierarquia, any>[] = useMemo(
     () => [
       {
+        id: 'acoes',
+        header: 'Ações',
+        cell: ({ row }) => {
+          const p = row.original;
+          if (p.status === 'aberta') {
+            return (
+              <div className="text-right">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => abrirResolucao(p)}
+                  className="gap-1.5 hover:border-primary/50"
+                >
+                  <UserCheck className="h-4 w-4 text-primary" />
+                  Resolver
+                </Button>
+              </div>
+            );
+          }
+          return (
+            <div className="text-right">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => abrirDetalhes(p)}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Eye className="h-4 w-4" />
+                Detalhes
+              </Button>
+            </div>
+          );
+        },
+      },
+      {
         id: 'servidor',
         header: 'Servidor',
         accessorFn: (row) => row.servidor?.nome_completo ?? `#${row.servidor_id}`,
@@ -304,41 +339,6 @@ export const PendenciasHierarquiaPanel: React.FC = () => {
               <div className="text-[11px] text-muted-foreground font-mono tabular-nums">
                 {formatarDataHoraBr(p.resolvido_em)}
               </div>
-            </div>
-          );
-        },
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        cell: ({ row }) => {
-          const p = row.original;
-          if (p.status === 'aberta') {
-            return (
-              <div className="text-right">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => abrirResolucao(p)}
-                  className="gap-1.5 hover:border-primary/50"
-                >
-                  <UserCheck className="h-4 w-4 text-primary" />
-                  Resolver
-                </Button>
-              </div>
-            );
-          }
-          return (
-            <div className="text-right">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => abrirDetalhes(p)}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <Eye className="h-4 w-4" />
-                Detalhes
-              </Button>
             </div>
           );
         },
@@ -470,6 +470,9 @@ export const PendenciasHierarquiaPanel: React.FC = () => {
             </div>
           ) : (
             <DataTable
+              exportable
+              exportFileName="capd-pendencias-hierarquia"
+              exportTitle="CAPD — Pendencias Hierarquia"
               columns={columns}
               data={pendenciasFiltradas}
               loading={loading}

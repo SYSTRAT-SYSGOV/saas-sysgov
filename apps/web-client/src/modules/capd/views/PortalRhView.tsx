@@ -11,6 +11,7 @@ import {
   Select,
   Modal,
   StatCard,
+  ActionsMenu,
 } from '@sysgov/ui';
 import {
   BarChart3,
@@ -763,7 +764,7 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
       },
       {
         id: 'servidor',
-        header: 'Servidor Público / Matrícula',
+        header: 'Servidor Público / Matrícula', meta: { exportValue: (r) => `${r.nome} (Mat: ${r.matricula}) - ${r.cargo}` },
         size: 260,
         cell: ({ row }) => {
           const item = row.original;
@@ -785,7 +786,7 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
       },
       {
         id: 'lotacao',
-        header: 'Lotação Institucional',
+        header: 'Lotação Institucional', meta: { exportValue: (r) => `${r.secretaria} — ${r.departamento}` },
         size: 220,
         cell: ({ row }) => {
           const item = row.original;
@@ -980,6 +981,27 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
   const columnsServidoresGeral = useMemo<ColumnDef<ApiServidor>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const userId = row.original.user_id || row.original.id;
+          const av = ultimaAvaliacaoPorServidor.get(userId);
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações do servidor"
+                items={[
+                  ...(av ? [{ key: 'avaliacao', label: 'Ver avaliação', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => { setAvaliacaoEmFocoId(av.id); setModalEspelhoOpen(true); } }] : []),
+                  { key: 'dossie', label: 'Dossiê funcional', icon: <UserCircle className="h-3.5 w-3.5" />, onSelect: () => setServidorDetalheId(row.original.id) },
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         id: 'servidor',
         header: 'Servidor Público',
         size: 260,
@@ -1105,48 +1127,6 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
           exportHeader: 'Vínculo & Situação',
           exportValue: (row) => `${row.estagio_probatorio ? 'Estágio Probatório' : 'Estável'} (${row.situacao_funcional || 'Ativo'})`,
           sortValue: (row) => (row.estagio_probatorio ? 1 : 0),
-        },
-      },
-      {
-        id: 'acoes',
-        header: 'Ação',
-        size: 120,
-        cell: ({ row }) => {
-          const userId = row.original.user_id || row.original.id;
-          const av = ultimaAvaliacaoPorServidor.get(userId);
-          return (
-            <div className="flex items-center justify-center gap-1">
-              {av && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-7 px-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setAvaliacaoEmFocoId(av.id);
-                    setModalEspelhoOpen(true);
-                  }}
-                  title="Ver espelho da avaliação no ciclo"
-                >
-                  <Eye className="h-3 w-3 mr-1 text-primary" />
-                  Avaliação
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setServidorDetalheId(row.original.id);
-                }}
-                title="Abrir dossiê funcional do servidor"
-              >
-                <UserCircle className="h-3.5 w-3.5 mr-1" />
-                Dossiê
-              </Button>
-            </div>
-          );
         },
       },
       // Colunas atômicas complementares exclusivamente para exportação em CSV, Excel e PDF
@@ -1280,6 +1260,27 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
   const columnsEstagioProbatorio = useMemo<ColumnDef<ApiServidor>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const userId = row.original.user_id || row.original.id;
+          const av = ultimaAvaliacaoPorServidor.get(userId);
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações do servidor"
+                items={[
+                  ...(av ? [{ key: 'avaliacao', label: 'Ver avaliação', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => { setAvaliacaoEmFocoId(av.id); setModalEspelhoOpen(true); } }] : []),
+                  { key: 'dossie', label: 'Dossiê funcional', icon: <UserCircle className="h-3.5 w-3.5" />, onSelect: () => setServidorDetalheId(row.original.id) },
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         id: 'servidor',
         header: 'Servidor Público',
         size: 240,
@@ -1411,48 +1412,6 @@ export const PortalRhView: React.FC<PortalRhViewProps> = ({ portalSelector }) =>
           exportHeader: 'Chefia Imediata',
           exportValue: (row) => row.chefia_imediata?.nome_completo || 'Titular da Pasta',
           sortValue: (row) => row.chefia_imediata?.nome_completo || '',
-        },
-      },
-      {
-        id: 'acoes',
-        header: 'Ação',
-        size: 130,
-        cell: ({ row }) => {
-          const userId = row.original.user_id || row.original.id;
-          const av = ultimaAvaliacaoPorServidor.get(userId);
-          return (
-            <div className="flex items-center justify-center gap-1">
-              {av && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-7 px-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setAvaliacaoEmFocoId(av.id);
-                    setModalEspelhoOpen(true);
-                  }}
-                  title="Ver espelho da avaliação no ciclo"
-                >
-                  <Eye className="h-3 w-3 mr-1 text-primary" />
-                  Avaliação
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setServidorDetalheId(row.original.id);
-                }}
-                title="Abrir dossiê funcional do servidor"
-              >
-                <UserCircle className="h-3.5 w-3.5 mr-1" />
-                Dossiê
-              </Button>
-            </div>
-          );
         },
       },
       // Colunas atômicas complementares de exportação (CSV / Excel / PDF)

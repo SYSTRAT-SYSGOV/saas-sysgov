@@ -7,6 +7,7 @@ import {
   Select,
   Modal,
   StatCard,
+  ActionsMenu,
 } from '@sysgov/ui';
 import {
   Gavel,
@@ -694,6 +695,30 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
   const columnsRecursos = useMemo<ColumnDef<ApiRecurso>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const rec = row.original;
+          const pendente = ['interposto', 'em_instrucao', 'pautado'].includes(rec.status);
+          const sorteando = sorteandoRelatorId === rec.id;
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações processuais"
+                items={[
+                  { key: 'autos', label: 'Autos', icon: <FileText className="h-3.5 w-3.5" />, onSelect: () => { setRecursoSelecionado(rec); setModalAutosOpen(true); } },
+                  { key: 'espelho', label: 'Espelho da avaliação', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => { setAvaliacaoEmFocoId(rec.avaliacao_id); setModalEspelhoOpen(true); } },
+                  ...(pendente && !rec.relator_id ? [{ key: 'sortear', label: 'Sortear relator', icon: <RotateCcw className={`h-3.5 w-3.5 ${sorteando ? 'animate-spin' : ''}`} />, disabled: sorteando, onSelect: () => { setRecursoParaSorteio(rec); setModalSorteioOpen(true); } }] : []),
+                  { key: 'julgar', label: 'Julgar', icon: <Scale className="h-3.5 w-3.5" />, onSelect: () => { setRecursoSelecionado(rec); setModalJulgamentoOpen(true); } },
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: 'id',
         header: 'Protocolo',
         size: 95,
@@ -785,74 +810,6 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
           </div>
         ),
       },
-      {
-        id: 'acoes',
-        header: 'Ações Processuais',
-        size: 240,
-        cell: ({ row }) => {
-          const rec = row.original;
-          const pendente = ['interposto', 'em_instrucao', 'pautado'].includes(rec.status);
-          const sorteando = sorteandoRelatorId === rec.id;
-
-          return (
-            <div className="flex items-center justify-end gap-1.5 flex-wrap">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-xs h-7 px-2"
-                onClick={() => {
-                  setRecursoSelecionado(rec);
-                  setModalAutosOpen(true);
-                }}
-              >
-                <FileText className="h-3.5 w-3.5 mr-1" />
-                Autos
-              </Button>
-
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs h-7 px-2"
-                onClick={() => {
-                  setAvaliacaoEmFocoId(rec.avaliacao_id);
-                  setModalEspelhoOpen(true);
-                }}
-              >
-                <Eye className="h-3.5 w-3.5 mr-1 text-primary" />
-                Espelho
-              </Button>
-
-              {pendente && !rec.relator_id && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-7 px-2 border-indigo-300 text-indigo-700 dark:text-indigo-300"
-                  onClick={() => {
-                    setRecursoParaSorteio(rec);
-                    setModalSorteioOpen(true);
-                  }}
-                  disabled={sorteando}
-                >
-                  <RotateCcw className={`h-3 w-3 mr-1 ${sorteando ? 'animate-spin' : ''}`} />
-                  Sortear
-                </Button>
-              )}
-
-              <Button
-                size="sm"
-                className="text-xs h-7 px-2 font-semibold"
-                onClick={() => {
-                  setRecursoSelecionado(rec);
-                  setModalJulgamentoOpen(true);
-                }}
-              >
-                <Scale className="h-3.5 w-3.5 mr-1" />
-                Julgar
-              </Button>
-            </div>
-          );
-        },
-      },
     ],
     [sorteandoRelatorId]
   );
@@ -899,6 +856,27 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
   // Colunas TanStack para o DataTable de Sessões Deliberativas
   const columnsSessoes = useMemo<ColumnDef<ApiSessao>[]>(
     () => [
+      {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const sessao = row.original;
+          const temAta = Boolean(sessao.ata_texto || sessao.hash_ata_sha256);
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações da sessão"
+                items={[
+                  ...(temAta ? [{ key: 'ver-ata', label: 'Ver ata', icon: <ScrollText className="h-3.5 w-3.5" />, onSelect: () => { setSessaoDetalheAta(sessao); setModalDetalheAtaOpen(true); } }] : []),
+                  ...(!sessao.finalizada ? [{ key: 'selar-ata', label: 'Selar ata', icon: <Lock className="h-3.5 w-3.5" />, onSelect: () => { setSessaoParaSelar(sessao); setTextoAtaParaSelar(sessao.ata_texto || ''); setModalSelarAtaOpen(true); } }] : []),
+                ]}
+              />
+            </div>
+          );
+        },
+      },
       {
         accessorKey: 'id',
         header: 'Protocolo',
@@ -1034,52 +1012,6 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
           );
         },
       },
-      {
-        id: 'acoes',
-        header: 'Ações Deliberativas',
-        size: 195,
-        cell: ({ row }) => {
-          const sessao = row.original;
-          const temAta = Boolean(sessao.ata_texto || sessao.hash_ata_sha256);
-
-          return (
-            <div className="flex items-center justify-end gap-1.5 flex-wrap">
-              {temAta && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs px-2.5"
-                  onClick={() => {
-                    setSessaoDetalheAta(sessao);
-                    setModalDetalheAtaOpen(true);
-                  }}
-                  title="Visualizar Ata Deliberativa Integral"
-                >
-                  <ScrollText className="h-3.5 w-3.5 mr-1 text-primary" />
-                  Ver Ata
-                </Button>
-              )}
-
-              {!sessao.finalizada && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="h-7 text-xs px-2.5 font-semibold"
-                  onClick={() => {
-                    setSessaoParaSelar(sessao);
-                    setTextoAtaParaSelar(sessao.ata_texto || '');
-                    setModalSelarAtaOpen(true);
-                  }}
-                  title="Lavrar e Selar Ata com SHA-256"
-                >
-                  <Lock className="h-3.5 w-3.5 mr-1" />
-                  Selar Ata
-                </Button>
-              )}
-            </div>
-          );
-        },
-      },
     ],
     [hashCopiado, comissoes]
   );
@@ -1199,6 +1131,31 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
   // Colunas TanStack para o DataTable do Quadro de Membros (Art. 31)
   const columnsMembros = useMemo<ColumnDef<MembroComissaoRow>[]>(
     () => [
+      {
+        id: 'acoes',
+        header: 'Ações Regimentais',
+        size: 170,
+        cell: ({ row }) => {
+          const m = row.original;
+          return (
+            <div className="flex items-center justify-end gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs px-2.5 text-rose-600 hover:text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60"
+                title="Averbar impedimento formal com fulcro no Art. 31"
+                onClick={() => {
+                  setMembroSelecionado(m);
+                  setModalImpedimentoOpen(true);
+                }}
+              >
+                <ShieldAlert className="h-3.5 w-3.5 mr-1" />
+                Impedimento
+              </Button>
+            </div>
+          );
+        },
+      },
       {
         accessorKey: 'id',
         header: 'ID Membro',
@@ -1346,31 +1303,6 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
           return <StatusChip label="APTO REGIMENTAL" variant="success" />;
         },
       },
-      {
-        id: 'acoes',
-        header: 'Ações Regimentais',
-        size: 170,
-        cell: ({ row }) => {
-          const m = row.original;
-          return (
-            <div className="flex items-center justify-end gap-1.5">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs px-2.5 text-rose-600 hover:text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60"
-                title="Averbar impedimento formal com fulcro no Art. 31"
-                onClick={() => {
-                  setMembroSelecionado(m);
-                  setModalImpedimentoOpen(true);
-                }}
-              >
-                <ShieldAlert className="h-3.5 w-3.5 mr-1" />
-                Impedimento
-              </Button>
-            </div>
-          );
-        },
-      },
     ],
     []
   );
@@ -1378,6 +1310,27 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
   // Colunas TanStack para o DataTable de Portarias de Nomeação
   const columnsPortarias = useMemo<ColumnDef<ApiComissao>[]>(
     () => [
+      {
+        id: 'acoes',
+        header: 'Ações Administrativas',
+        size: 180,
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs px-2.5 font-medium"
+              onClick={() => {
+                setComissaoSelecionadaId(row.original.id);
+                setModalNovoMembroOpen(true);
+              }}
+            >
+              <UserPlus className="h-3.5 w-3.5 mr-1 text-primary" />
+              Designar Membro
+            </Button>
+          </div>
+        ),
+      },
       {
         accessorKey: 'numero_portaria',
         header: 'Portaria Oficial',
@@ -1435,27 +1388,6 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
             label={row.original.ativa ? 'VIGENTE' : 'INATIVA'}
             variant={row.original.ativa ? 'success' : 'neutral'}
           />
-        ),
-      },
-      {
-        id: 'acoes',
-        header: 'Ações Administrativas',
-        size: 180,
-        cell: ({ row }) => (
-          <div className="flex items-center justify-end gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs px-2.5 font-medium"
-              onClick={() => {
-                setComissaoSelecionadaId(row.original.id);
-                setModalNovoMembroOpen(true);
-              }}
-            >
-              <UserPlus className="h-3.5 w-3.5 mr-1 text-primary" />
-              Designar Membro
-            </Button>
-          </div>
         ),
       },
     ],
@@ -2511,6 +2443,9 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
                 {modoExibicaoComissao === 'tabela' ? (
                   membrosFiltrados.length > 0 ? (
                     <DataTable
+                      exportable
+                      exportFileName="capd-portal-cad-1"
+                      exportTitle="CAPD — Portal Cad 1"
                       columns={columnsMembros}
                       data={membrosFiltrados}
                       pageSize={10}
@@ -2668,6 +2603,9 @@ export const PortalCadView: React.FC<PortalCadViewProps> = ({ portalSelector }) 
                 {modoExibicaoComissao === 'tabela' ? (
                   portariasFiltradas.length > 0 ? (
                     <DataTable
+                      exportable
+                      exportFileName="capd-portal-cad-2"
+                      exportTitle="CAPD — Portal Cad 2"
                       columns={columnsPortarias}
                       data={portariasFiltradas}
                       pageSize={10}
