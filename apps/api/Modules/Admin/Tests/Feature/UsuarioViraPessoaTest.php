@@ -7,6 +7,8 @@ namespace Modules\Admin\Tests\Feature;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\UserInvitation;
+use App\Services\InvitationService;
 use App\Services\UserService;
 use App\Support\TenantContext;
 use Database\Seeders\RbacSeeder;
@@ -220,5 +222,26 @@ final class UsuarioViraPessoaTest extends TestCase
         $this->assertTrue($vinculos->has($this->adminTenant->id));
         $this->assertCount(3, $vinculos); // o administrador do setUp, o novo e a Maria (pareada)
         $this->assertSame(2, Pessoa::withoutGlobalScopes()->count() - 1); // a pareada não duplicou: só nasceram as do administrador e do novo
+    }
+
+    public function test_aceitar_convite_de_orgao_cria_a_pessoa_e_de_plataforma_nao(): void
+    {
+        $papel = Role::where('slug', 'admin_tenant')->where('tenant_id', $this->tenant->id)->firstOrFail();
+        $convites = app(InvitationService::class);
+
+        $convite = UserInvitation::create(['tenant_id' => $this->tenant->id, 'email' => 'convidada@cliente.test', 'token' => hash('sha256', 'abc'), 'role_slug' => $papel->slug, 'invited_by' => $this->adminTenant->id, 'expires_at' => now()->addHours(72)]);
+        $user = $convites->accept('abc');
+
+        $vinculo = PessoaUsuario::withoutGlobalScopes()->where('user_id', $user->id)->sole();
+        $this->assertSame($this->tenant->id, (int) $vinculo->tenant_id);
+        $this->assertSame($this->adminTenant->id, $vinculo->promovido_por);
+        $this->assertSame('convidada@cliente.test', Pessoa::withoutGlobalScopes()->findOrFail($vinculo->pessoa_id)->contatos()->where('tipo', 'email')->value('valor'));
+        $this->assertNotNull($convite->fresh()->accepted_at);
+
+        $papelPlataforma = Role::where('scope', 'systrat')->firstOrFail();
+        UserInvitation::create(['tenant_id' => null, 'email' => 'analista@systrat.test', 'token' => hash('sha256', 'xyz'), 'role_slug' => $papelPlataforma->slug, 'invited_by' => $this->adminTenant->id, 'expires_at' => now()->addHours(72)]);
+        $analista = $convites->accept('xyz');
+
+        $this->assertSame(0, PessoaUsuario::withoutGlobalScopes()->where('user_id', $analista->id)->count());
     }
 }

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Pessoas\Services\PessoaDoUsuarioService;
 
 final class InvitationService
 {
@@ -129,6 +130,12 @@ final class InvitationService
                     ->update(['tenant_id' => $invitation->tenant_id]);
             }
             $user->clearPermissionCache($invitation->tenant_id);
+
+            // Usuário de órgão passa a ter pessoa no Cadastro de Pessoas (cria ou pareia pelo e-mail); o nome é o provisório
+            // do convite, corrigido depois na própria pessoa.
+            if ($invitation->tenant_id) {
+                app(PessoaDoUsuarioService::class)->garantir($user, Tenant::findOrFail($invitation->tenant_id), $invitation->invited_by, 'convite');
+            }
 
             // Mark invitation as accepted
             $invitation->update(['accepted_at' => now()]);
