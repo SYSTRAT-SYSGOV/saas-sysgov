@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Card, CardContent, Button } from '@sysgov/ui';
+import { Card, CardContent, Button, ActionsMenu } from '@sysgov/ui';
 import { FileText, Plus, RefreshCw, Eye, Pencil, Send } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScreenState } from '@/components/ui/ScreenState';
@@ -88,6 +88,26 @@ export const ProposicoesView: React.FC = () => {
 
   const columns: ColumnDef<Proposicao>[] = [
     {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações da proposição"
+              items={[
+                { key: 'ver', label: 'Ver proposição', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => setSelectedId(row.original.id) },
+                { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => abrirEditar(row.original.id) },
+                ...(row.original.status === 'protocolado' ? [{ key: 'encaminhar', label: 'Encaminhar', icon: <Send className="h-3.5 w-3.5" />, onSelect: () => setEncaminharProposicao(row.original) }] : []),
+              ]}
+            />
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: 'numero',
       header: 'Número',
       cell: ({ getValue }) => (
@@ -132,26 +152,6 @@ export const ProposicoesView: React.FC = () => {
         </span>
       ),
       size: 100,
-    },
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => setSelectedId(row.original.id)}>
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => abrirEditar(row.original.id)}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          {row.original.status === 'protocolado' && (
-            <Button variant="ghost" size="sm" onClick={() => setEncaminharProposicao(row.original)}>
-              <Send className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      ),
-      size: 110,
     },
   ];
 
@@ -249,6 +249,9 @@ export const ProposicoesView: React.FC = () => {
         <Card>
           <CardContent className="p-0">
             <DataTable
+              exportable
+              exportFileName="requerimentos-proposicoes"
+              exportTitle="Requerimentos — Proposicoes"
               columns={columns}
               data={proposicoesFiltradas}
               pageSize={15}
