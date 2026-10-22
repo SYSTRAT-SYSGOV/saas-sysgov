@@ -518,7 +518,7 @@ final class PainelGerencialService
     public function exportarCsv(array $filtros): string
     {
         $query = $this->montarQueryFiltros($filtros);
-        $servidores = $query->with('pessoa')->get();
+        $servidores = $query->with('pessoa.contatos')->get();
 
         $output = fopen('php://temp', 'r+');
         fputcsv($output, [
