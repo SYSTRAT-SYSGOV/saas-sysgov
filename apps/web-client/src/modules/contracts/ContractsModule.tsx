@@ -203,7 +203,7 @@ export const ContractsModule: React.FC = () => {
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar por número, objeto ou contratada..." />
         </div>
         <div className="p-3">
-          <DataTable columns={columns} data={filtered} emptyText="Nenhum contrato encontrado." pageSize={10} />
+          <DataTable exportable exportFileName="contracts-contracts" exportTitle="Contratos — Contracts" columns={columns} data={filtered} emptyText="Nenhum contrato encontrado." pageSize={10} />
         </div>
       </Card>
     </div>
