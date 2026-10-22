@@ -22,6 +22,16 @@ export const DashboardPendentesComponent: React.FC<DashboardPendentesProps> = ({
   const colunas = useMemo<ColumnDef<DashboardPendentesProcesso, unknown>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        cell: ({ row }) =>
+          onSelectProcesso ? (
+            <button onClick={() => onSelectProcesso(row.original)} className="text-xs font-medium text-primary hover:underline">
+              Ver detalhes
+            </button>
+          ) : null,
+      },
+      {
         id: 'processo',
         header: 'Processo',
         accessorFn: (row) => row.processo_referencia ?? '',
@@ -79,29 +89,21 @@ export const DashboardPendentesComponent: React.FC<DashboardPendentesProps> = ({
           </span>
         ),
       },
-      {
-        id: 'acoes',
-        header: '',
-        cell: ({ row }) =>
-          onSelectProcesso ? (
-            <button onClick={() => onSelectProcesso(row.original)} className="text-xs font-medium text-primary hover:underline">
-              Ver detalhes
-            </button>
-          ) : null,
-      },
     ],
     [onSelectProcesso]
   );
 
   return (
     <DataTable
+      exportable
+      exportFileName="cemiterios-dashboard-pendentes"
+      exportTitle="Cemitérios — Dashboard Pendentes"
       columns={colunas}
       data={processos}
       loading={carregando}
       searchable
       searchPlaceholder="Buscar por processo, titular ou concessão..."
       emptyText="Nenhum processo pendente de análise nesta necrópole."
-      pagination={false}
     />
   );
 };

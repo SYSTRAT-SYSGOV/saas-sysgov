@@ -57,6 +57,8 @@ declare module '@tanstack/react-table' {
      * (o mesmo valor já usado para CSV/XLSX/PDF costuma servir).
      */
     sortValue?: (row: TData) => string | number | boolean | null | undefined;
+    /** Deixa a coluna de fora dos arquivos exportados (a exportação automática a incluiria). */
+    exportIgnore?: boolean;
   }
 }
 
@@ -112,7 +114,10 @@ export interface DataTableProps<TData, TValue> {
   /**
    * Habilita os botões de exportar (CSV/XLSX/PDF). Exporta todas as linhas
    * filtradas (não só a página atual). Cada coluna exportada precisa de
-   * `meta.exportValue` no ColumnDef — colunas sem isso são omitidas.
+   * `meta.exportValue` no ColumnDef. Colunas com `accessorKey`/`accessorFn` e
+   * cabeçalho em texto são exportadas sozinhas (valor simples: texto, número,
+   * sim/não); as demais (célula customizada) sem `exportValue` são omitidas.
+   * `meta.exportIgnore` tira uma coluna da exportação.
    */
   exportable?: boolean;
   /** Nome do arquivo exportado, sem extensão. */
@@ -121,8 +126,27 @@ export interface DataTableProps<TData, TValue> {
   exportTitle?: string;
 }
 
+/** Coluna com valor de dado (não é de ações nem de célula puramente visual) e cabeçalho em texto. */
+function exportaPorAccessor<TData>(col: Column<TData, unknown>): boolean {
+  const def = col.columnDef;
+  return ('accessorKey' in def || 'accessorFn' in def) && typeof def.header === 'string' && def.header !== '';
+}
+
 function getExportableColumns<TData>(columns: Column<TData, unknown>[]) {
-  return columns.filter((col) => typeof col.columnDef.meta?.exportValue === 'function');
+  return columns.filter((col) => {
+    const meta = col.columnDef.meta;
+    if (meta?.exportIgnore) return false;
+    return typeof meta?.exportValue === 'function' || exportaPorAccessor(col);
+  });
+}
+
+function valorExportado<TData>(row: Row<TData>, col: Column<TData, unknown>): string | number {
+  const exportValue = col.columnDef.meta?.exportValue;
+  const value = exportValue ? exportValue(row.original) : row.getValue(col.id);
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  return ''; // objeto/lista sem `exportValue`: não há forma segura de achatar
 }
 
 function buildExportRows<TData>(rows: Row<TData>[], columns: Column<TData, unknown>[]) {
@@ -130,12 +154,7 @@ function buildExportRows<TData>(rows: Row<TData>[], columns: Column<TData, unkno
   const headers = exportCols.map(
     (col) => col.columnDef.meta?.exportHeader ?? (typeof col.columnDef.header === 'string' ? col.columnDef.header : col.id),
   );
-  const body = rows.map((row) =>
-    exportCols.map((col) => {
-      const value = col.columnDef.meta!.exportValue!(row.original);
-      return value === null || value === undefined ? '' : value;
-    }),
-  );
+  const body = rows.map((row) => exportCols.map((col) => valorExportado(row, col)));
   return { headers, body };
 }
 

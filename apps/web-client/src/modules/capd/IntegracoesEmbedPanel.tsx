@@ -380,6 +380,20 @@ export const IntegracoesEmbedPanel: React.FC = () => {
   // Definição das colunas do DataTable de Logs
   const logColumns: ColumnDef<RhSyncLogItem>[] = [
     {
+      id: 'acoes',
+      header: 'Ações',
+      cell: ({ row }) => (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs gap-1"
+          onClick={() => setSelectedLog(row.original)}
+        >
+          <Eye className="h-3 w-3" /> Detalhes
+        </Button>
+      ),
+    },
+    {
       accessorKey: 'created_at',
       header: 'Data / Hora',
       cell: ({ row }) => (
@@ -473,20 +487,6 @@ export const IntegracoesEmbedPanel: React.FC = () => {
           </Badge>
         );
       },
-    },
-    {
-      id: 'acoes',
-      header: 'Ações',
-      cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs gap-1"
-          onClick={() => setSelectedLog(row.original)}
-        >
-          <Eye className="h-3 w-3" /> Detalhes
-        </Button>
-      ),
     },
   ];
 
@@ -771,6 +771,9 @@ export const IntegracoesEmbedPanel: React.FC = () => {
           </div>
 
           <DataTable
+            exportable
+            exportFileName="capd-integracoes-embed"
+            exportTitle="CAPD — Integracoes Embed"
             columns={logColumns}
             data={filteredLogs}
             pagination={true}

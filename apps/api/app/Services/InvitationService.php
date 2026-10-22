@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Pessoas\Services\PessoaDoUsuarioService;
 
 final class InvitationService
 {
@@ -98,17 +99,30 @@ final class InvitationService
             ->firstOrFail();
 
         return DB::transaction(function () use ($invitation, $role): User {
-            // Create or find user
-            $user = User::updateOrCreate(
-                ['email' => $invitation->email],
-                [
+            // Create or find user. Quem já existe mantém nome, senha e ativação: o convite só concede o acesso
+            // (e confirma o e-mail); só convite de plataforma promove a usuário Systrat, e nenhum convite rebaixa.
+            $user = User::where('email', $invitation->email)->first();
+            if ($user === null) {
+                $user = User::create([
+                    'email' => $invitation->email,
                     'name' => explode('@', $invitation->email)[0], // Will be updated by user
                     'password' => null, // User will set via reset password
                     'is_systrat' => $invitation->tenant_id === null,
                     'is_active' => true,
                     'email_verified_at' => now(),
-                ]
-            );
+                ]);
+            } else {
+                $mudancas = [];
+                if ($invitation->tenant_id === null && ! $user->is_systrat) {
+                    $mudancas['is_systrat'] = true;
+                }
+                if ($user->email_verified_at === null) {
+                    $mudancas['email_verified_at'] = now();
+                }
+                if ($mudancas !== []) {
+                    $user->forceFill($mudancas)->save();
+                }
+            }
 
             // Assign role and tenant link
             if ($invitation->tenant_id) {
@@ -129,6 +143,12 @@ final class InvitationService
                     ->update(['tenant_id' => $invitation->tenant_id]);
             }
             $user->clearPermissionCache($invitation->tenant_id);
+
+            // Usuário de órgão passa a ter pessoa no Cadastro de Pessoas (cria ou pareia pelo e-mail); o nome é o provisório
+            // do convite, corrigido depois na própria pessoa.
+            if ($invitation->tenant_id) {
+                app(PessoaDoUsuarioService::class)->garantir($user, Tenant::findOrFail($invitation->tenant_id), $invitation->invited_by, 'convite');
+            }
 
             // Mark invitation as accepted
             $invitation->update(['accepted_at' => now()]);

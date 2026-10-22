@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Loader2, Save, Briefcase } from 'lucide-react';
 import { accessApi, Cargo } from '../AccessApi';
-import { Modal, Badge, Card } from '@sysgov/ui';
+import { Modal, Badge, Card, ActionsMenu } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -48,17 +48,19 @@ export const CargosManagement: React.FC<{ notify: (t: any) => void }> = ({ notif
   };
 
   const cargoColumns: ColumnDef<Cargo, any>[] = [
-    { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
-    { id: 'description', header: 'Descrição', accessorKey: 'description', cell: ({ row }) => <span className="text-muted-foreground">{row.original.description ?? '—'}</span> },
     {
-      id: 'actions', header: 'Ações', enableSorting: false,
+      id: 'acoes', header: '', enableSorting: false,
       cell: ({ row }) => (
-        <div className="flex justify-end gap-1">
-          <button onClick={() => openEdit(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-4 w-4" /></button>
-          <button onClick={() => handleDelete(row.original)} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>
+        <div className="flex justify-center">
+          <ActionsMenu triggerLabel="Ações do cargo" items={[
+            { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => openEdit(row.original) },
+            { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => handleDelete(row.original) },
+          ]} />
         </div>
       ),
     },
+    { id: 'name', header: 'Nome', accessorKey: 'name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.name}</span> },
+    { id: 'description', header: 'Descrição', accessorKey: 'description', cell: ({ row }) => <span className="text-muted-foreground">{row.original.description ?? '—'}</span> },
   ];
 
   return (
@@ -76,7 +78,7 @@ export const CargosManagement: React.FC<{ notify: (t: any) => void }> = ({ notif
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <div className="p-3">
-          <DataTable columns={cargoColumns} data={cargos} loading={loading} emptyText="Nenhum cargo cadastrado." pageSize={10} />
+          <DataTable exportable exportFileName="access-cargos" exportTitle="Acessos — Cargos" columns={cargoColumns} data={cargos} loading={loading} emptyText="Nenhum cargo cadastrado." pageSize={10} />
         </div>
       )}
 

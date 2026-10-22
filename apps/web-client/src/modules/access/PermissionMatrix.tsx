@@ -123,7 +123,7 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = () => {
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar por usuário, módulo ou papel..." />
         </div>
         <div className="p-3">
-          <DataTable columns={columns} data={filtered} emptyText="Nenhum acesso encontrado." pageSize={15} />
+          <DataTable exportable exportFileName="access-permission-matrix" exportTitle="Acessos — Permission Matrix" columns={columns} data={filtered} emptyText="Nenhum acesso encontrado." pageSize={15} />
         </div>
       </Card>
     </div>

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { ActionsMenu } from '@sysgov/ui';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Eye, FileDown, Play, CheckCircle2, PauseCircle, XCircle } from 'lucide-react';
 import { Button, DataTable, StatusChip } from '@/components/ui';
@@ -32,6 +33,28 @@ export const OrdensServicoDataTable: React.FC<OrdensServicoDataTableProps> = ({
   const colunas = useMemo<ColumnDef<OrdemServico, unknown>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const o = row.original;
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações da ordem de serviço"
+                items={[
+                  { key: 'detalhes', label: 'Detalhes da OS', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => onSelecionarOrdem(o) },
+                  { key: 'pdf', label: 'Emitir PDF', icon: <FileDown className="h-3.5 w-3.5" />, onSelect: () => void cemiteriosApi.pdfOrdem(o) },
+                  ...(canExecutar && o.situacao === 'emitida' ? [{ key: 'iniciar', label: 'Iniciar execução', icon: <Play className="h-3.5 w-3.5" />, onSelect: () => onTransicao(o, 'iniciar') }] : []),
+                  ...(canExecutar && (o.situacao === 'emitida' || o.situacao === 'em_execucao') ? [{ key: 'concluir', label: 'Concluir ordem', icon: <CheckCircle2 className="h-3.5 w-3.5" />, onSelect: () => onTransicao(o, 'concluir') }] : []),
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         id: 'numero',
         header: 'Número OS',
         size: 110,
@@ -55,7 +78,7 @@ export const OrdensServicoDataTable: React.FC<OrdensServicoDataTableProps> = ({
       },
       {
         id: 'jazigo',
-        header: 'Túmulo / Jazigo',
+        header: 'Túmulo / Jazigo', meta: { exportValue: (r) => [r.jazigo?.codigo, r.jazigo?.cemiterio?.nome].filter(Boolean).join(' — ') },
         size: 140,
         cell: ({ row }) => (
           <div>
@@ -113,62 +136,6 @@ export const OrdensServicoDataTable: React.FC<OrdensServicoDataTableProps> = ({
             variant={SITUACAO_OS[row.original.situacao] ?? 'neutral'}
           />
         ),
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        size: 160,
-        cell: ({ row }) => {
-          const o = row.original;
-          return (
-            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onSelecionarOrdem(o)}
-                className="h-7 text-xs px-2 gap-1 text-primary border-primary/30 hover:bg-primary/10"
-                title="Ver detalhes da OS"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Detalhes</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void cemiteriosApi.pdfOrdem(o)}
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                title="Emitir PDF"
-              >
-                <FileDown className="h-3.5 w-3.5" />
-              </Button>
-
-              {canExecutar && o.situacao === 'emitida' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onTransicao(o, 'iniciar')}
-                  className="h-7 w-7 p-0 text-primary hover:bg-primary/10"
-                  title="Iniciar Execução"
-                >
-                  <Play className="h-3.5 w-3.5" />
-                </Button>
-              )}
-
-              {canExecutar && (o.situacao === 'emitida' || o.situacao === 'em_execucao') && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onTransicao(o, 'concluir')}
-                  className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-500/10"
-                  title="Concluir Ordem"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          );
-        },
       },
     ],
     [canExecutar, canGerenciar, onSelecionarOrdem, onTransicao]

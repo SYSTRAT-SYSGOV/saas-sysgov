@@ -21,7 +21,10 @@ final class PessoasServiceProvider extends ServiceProvider
         Gate::policy(Pessoa::class, PessoaPolicy::class);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([\Modules\Pessoas\Console\ConciliarPessoasCommand::class]);
+            $this->commands([
+                \Modules\Pessoas\Console\ConciliarPessoasCommand::class,
+                \Modules\Pessoas\Console\VincularUsuariosPessoasCommand::class,
+            ]);
         }
     }
 

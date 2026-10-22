@@ -31,30 +31,18 @@ export const IntegracoesPanel: React.FC = () => {
   };
 
   const colunasIntegracoes: ColumnDef<PessoaIntegracao, unknown>[] = [
-    { id: 'nome', header: 'Nome', accessorKey: 'nome' },
-    { id: 'api_url', header: 'URL', cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.api_url ?? '—'}</span> },
-    { id: 'status', header: 'Status', cell: ({ row }) => <StatusChip label={row.original.is_active ? 'Ativa' : 'Inativa'} variant={row.original.is_active ? 'success' : 'neutral'} /> },
-    { id: 'ultima_sincronizacao_em', header: 'Última sincronização', cell: ({ row }) => <Mono>{row.original.ultima_sincronizacao_em ?? '—'}</Mono> },
     {
       id: 'acoes', header: '', cell: ({ row }) => (
         <Button size="xs" variant="outline" onClick={() => setModal(row.original)}>Editar</Button>
       ),
     },
+    { id: 'nome', header: 'Nome', accessorKey: 'nome' },
+    { id: 'api_url', header: 'URL', meta: { exportValue: (r) => r.api_url }, cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.api_url ?? '—'}</span> },
+    { id: 'status', header: 'Status', meta: { exportValue: (r) => (r.is_active ? 'Ativa' : 'Inativa') }, cell: ({ row }) => <StatusChip label={row.original.is_active ? 'Ativa' : 'Inativa'} variant={row.original.is_active ? 'success' : 'neutral'} /> },
+    { id: 'ultima_sincronizacao_em', header: 'Última sincronização', meta: { exportValue: (r) => r.ultima_sincronizacao_em }, cell: ({ row }) => <Mono>{row.original.ultima_sincronizacao_em ?? '—'}</Mono> },
   ];
 
   const colunasLogs: ColumnDef<PessoaSyncLog, unknown>[] = [
-    { id: 'created_at', header: 'Quando', cell: ({ row }) => <Mono>{row.original.created_at}</Mono> },
-    {
-      id: 'status', header: 'Status', cell: ({ row }) => (
-        <StatusChip label={STATUS_SYNC_LOG[row.original.status]} variant={row.original.status === 'sucesso' ? 'success' : row.original.status === 'erro' ? 'danger' : 'neutral'} />
-      ),
-    },
-    {
-      id: 'contadores', header: 'Processados / sucesso / falha', cell: ({ row }) => (
-        <Mono>{row.original.registros_processados} / {row.original.registros_sucesso} / {row.original.registros_falha}</Mono>
-      ),
-    },
-    { id: 'detalhes', header: 'Detalhes', cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.detalhes?.erro ? String(row.original.detalhes.erro) : '—'}</span> },
     {
       id: 'acoes', header: '', cell: ({ row }) => (
         row.original.status === 'erro' ? (
@@ -64,6 +52,18 @@ export const IntegracoesPanel: React.FC = () => {
         ) : null
       ),
     },
+    { id: 'created_at', header: 'Quando', meta: { exportValue: (r) => r.created_at }, cell: ({ row }) => <Mono>{row.original.created_at}</Mono> },
+    {
+      id: 'status', header: 'Status', meta: { exportValue: (r) => r.status }, cell: ({ row }) => (
+        <StatusChip label={STATUS_SYNC_LOG[row.original.status]} variant={row.original.status === 'sucesso' ? 'success' : row.original.status === 'erro' ? 'danger' : 'neutral'} />
+      ),
+    },
+    {
+      id: 'contadores', header: 'Processados / sucesso / falha', meta: { exportValue: (r) => `${r.registros_processados} / ${r.registros_sucesso} / ${r.registros_falha}` }, cell: ({ row }) => (
+        <Mono>{row.original.registros_processados} / {row.original.registros_sucesso} / {row.original.registros_falha}</Mono>
+      ),
+    },
+    { id: 'detalhes', header: 'Detalhes', meta: { exportValue: (r) => (r.detalhes?.erro ? String(r.detalhes.erro) : '') }, cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.detalhes?.erro ? String(row.original.detalhes.erro) : '—'}</span> },
   ];
 
   return (
@@ -78,7 +78,7 @@ export const IntegracoesPanel: React.FC = () => {
           <h3 className="text-sm font-semibold">Integrações cadastradas</h3>
           <Button size="sm" onClick={() => setModal('nova')}><Plus className="h-4 w-4" /> Nova integração</Button>
         </div>
-        <DataTable columns={colunasIntegracoes} data={integracoes.dados ?? []} loading={integracoes.carregando} emptyText="Nenhuma integração cadastrada." />
+        <DataTable exportable exportFileName="pessoas-integracoes-1" exportTitle="Pessoas — Integracoes 1" columns={colunasIntegracoes} data={integracoes.dados ?? []} loading={integracoes.carregando} emptyText="Nenhuma integração cadastrada." />
       </div>
 
       <div className="space-y-2">
@@ -86,7 +86,7 @@ export const IntegracoesPanel: React.FC = () => {
           <h3 className="text-sm font-semibold">Histórico de sincronização</h3>
           <Select value={statusLog} onChange={(v) => setStatusLog(v as StatusSyncLog | null)} options={opcoesStatusLog} placeholder="Todos os status" />
         </div>
-        <DataTable columns={colunasLogs} data={logs.dados?.data ?? []} loading={logs.carregando} emptyText="Nenhuma sincronização registrada." />
+        <DataTable exportable exportFileName="pessoas-integracoes-2" exportTitle="Pessoas — Integracoes 2" columns={colunasLogs} data={logs.dados?.data ?? []} loading={logs.carregando} emptyText="Nenhuma sincronização registrada." />
       </div>
 
       <FormModal

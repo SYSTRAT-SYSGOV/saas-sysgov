@@ -32,6 +32,22 @@ export const SucessaoList: React.FC<SucessaoListProps> = ({
   const colunas = useMemo<ColumnDef<Sucessao, unknown>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => onDetalhar(row.original)}
+              title="Ver detalhes"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ),
+      },
+      {
         id: 'processo_referencia',
         header: 'Processo',
         accessorFn: (row) => row.processo_referencia ?? '—',
@@ -125,22 +141,6 @@ export const SucessaoList: React.FC<SucessaoListProps> = ({
           </div>
         ),
       },
-      {
-        id: 'acoes',
-        header: '',
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => onDetalhar(row.original)}
-              title="Ver detalhes"
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ),
-      },
     ],
     [onDetalhar]
   );
@@ -158,7 +158,6 @@ export const SucessaoList: React.FC<SucessaoListProps> = ({
         pageSizeSelector
         pageSizeOptions={[10, 25, 50]}
         emptyText="Nenhum processo de sucessão encontrado para os filtros selecionados."
-        pagination={false}
       />
     </div>
   );

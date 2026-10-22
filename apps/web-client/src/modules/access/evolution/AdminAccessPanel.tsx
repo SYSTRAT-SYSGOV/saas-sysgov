@@ -5,7 +5,7 @@ import { AccessBadge, formatDate } from './AccessBadge';
 import { CargosManagement } from './CargosManagement';
 import { GroupsManagement } from './GroupsManagement';
 import { RolesManagement } from './RolesManagement';
-import { Card, Badge } from '@sysgov/ui';
+import { Card, Badge, ActionsMenu } from '@sysgov/ui';
 import { Tabs } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';
@@ -116,7 +116,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
                       <span className="text-xs font-semibold text-muted-foreground">{g.users.length} usuário(s)</span>
                     </div>
                     <div className="p-3">
-                      <DataTable columns={byModuleColumns} data={g.users} emptyText="Sem usuários neste módulo." pageSize={10} pagination={g.users.length > 10} />
+                      <DataTable exportable exportFileName="access-admin-access-1" exportTitle="Acessos — Admin Access 1" columns={byModuleColumns} data={g.users} emptyText="Sem usuários neste módulo." pageSize={10} pagination={g.users.length > 10} />
                     </div>
                   </div>
                 ))}
@@ -125,7 +125,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
             {tab === 'expiring' && (
               <div>
                 {expiring.length === 0 ? <Empty text="Nenhum acesso expirando nos próximos 30 dias." /> : (
-                  <DataTable columns={expiringColumns} data={expiring} emptyText="Nenhum acesso expirando." pageSize={10} />
+                  <DataTable exportable exportFileName="access-admin-access-2" exportTitle="Acessos — Admin Access 2" columns={expiringColumns} data={expiring} emptyText="Nenhum acesso expirando." pageSize={10} />
                 )}
               </div>
             )}
@@ -153,6 +153,21 @@ const MatrixTable: React.FC<{
   const scopeDisplay = (r: AccessMatrixRow) => r.all_org_units ? 'Todas' : r.org_unit_ids.length === 0 ? '—' : r.org_unit_ids.map(unitName).join(', ');
 
   const matrixColumns: ColumnDef<AccessMatrixRow, any>[] = [
+    {
+      id: 'acoes', header: '', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu triggerLabel="Ações do acesso" items={[
+            ...(row.original.status === 'revoked' || row.original.status === 'expired'
+              ? [{ key: 'renovar', label: 'Renovar', icon: <RotateCcw className="h-3.5 w-3.5" />, onSelect: () => onRenew(row.original) }]
+              : []),
+            ...(row.original.status === 'active'
+              ? [{ key: 'revogar', label: 'Revogar', icon: <XCircle className="h-3.5 w-3.5" />, onSelect: () => onRevoke(row.original) }]
+              : []),
+          ]} />
+        </div>
+      ),
+    },
     { id: 'user_name', header: 'Usuário', accessorKey: 'user_name', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.user_name}</span> },
     { id: 'module', header: 'Módulo', accessorKey: 'module', cell: ({ row }) => <span className="font-mono">{row.original.module}</span> },
     { id: 'role', header: 'Papel', accessorKey: 'role', cell: ({ row }) => <span className="font-mono text-muted-foreground">{row.original.role}</span> },
@@ -161,29 +176,12 @@ const MatrixTable: React.FC<{
     { id: 'status', header: 'Status', accessorKey: 'status', cell: ({ row }) => <AccessBadge status={row.original.status} expiring={row.original.expiring} validTo={row.original.valid_to} /> },
     { id: 'valid_to', header: 'Vigência', accessorKey: 'valid_to', cell: ({ row }) => <span className="font-mono text-muted-foreground">{formatDate(row.original.valid_to)}</span> },
     { id: 'granted_by', header: 'Concedido por', accessorKey: 'granted_by', cell: ({ row }) => <span className="text-muted-foreground">{row.original.granted_by ?? '—'}</span> },
-    {
-      id: 'actions', header: 'Ações', enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex justify-end gap-1">
-          {(row.original.status === 'revoked' || row.original.status === 'expired') && (
-            <button onClick={() => onRenew(row.original)} title="Renovar" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-success/10 hover:text-success focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <RotateCcw className="h-4 w-4" />
-            </button>
-          )}
-          {row.original.status === 'active' && (
-            <button onClick={() => onRevoke(row.original)} title="Revogar" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <XCircle className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      ),
-    },
   ];
 
   if (rows.length === 0) return <Empty text="Nenhum acesso configurado." />;
   return (
     <div className="p-3">
-      <DataTable columns={matrixColumns} data={rows} emptyText="Nenhum acesso configurado." pageSize={10} />
+      <DataTable exportable exportFileName="access-admin-access-3" exportTitle="Acessos — Admin Access 3" columns={matrixColumns} data={rows} emptyText="Nenhum acesso configurado." pageSize={10} />
     </div>
   );
 };

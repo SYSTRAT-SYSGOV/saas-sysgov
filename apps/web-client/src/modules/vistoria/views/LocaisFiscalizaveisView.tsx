@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Card, CardContent, Button, Select } from '@sysgov/ui';
+import { Card, CardContent, Button, Select, ActionsMenu } from '@sysgov/ui';
 import { MapPin, Plus, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScreenState } from '@/components/ui/ScreenState';
@@ -79,6 +79,25 @@ export const LocaisFiscalizaveisView: React.FC = () => {
 
   const columns: ColumnDef<LocalFiscalizavel>[] = [
     {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel="Ações do local"
+              items={[
+                { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => abrirEditar(row.original.id) },
+                { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluindo(row.original) },
+              ]}
+            />
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: 'nome',
       header: 'Nome',
       cell: ({ getValue, row }) => (
@@ -103,28 +122,13 @@ export const LocaisFiscalizaveisView: React.FC = () => {
     },
     {
       id: 'coordenadas',
-      header: 'Coordenadas',
+      header: 'Coordenadas', meta: { exportValue: (r) => `${Number(r.latitude).toFixed(5)}, ${Number(r.longitude).toFixed(5)}` },
       cell: ({ row }) => (
         <span className="text-xs font-mono tabular-nums text-muted-foreground">
           {Number(row.original.latitude).toFixed(5)}, {Number(row.original.longitude).toFixed(5)}
         </span>
       ),
       size: 160,
-    },
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => abrirEditar(row.original.id)}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setExcluindo(row.original)}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-      size: 90,
     },
   ];
 
@@ -187,7 +191,7 @@ export const LocaisFiscalizaveisView: React.FC = () => {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <DataTable columns={columns} data={locaisFiltrados} pageSize={15} />
+            <DataTable exportable exportFileName="vistoria-locais-fiscalizaveis" exportTitle="Vistoria — Locais Fiscalizaveis" columns={columns} data={locaisFiltrados} pageSize={15} />
           </CardContent>
         </Card>
       )}

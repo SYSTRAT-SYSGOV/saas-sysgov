@@ -145,7 +145,7 @@ final class ConsolidacaoController extends Controller
         $candidatos = collect($nfcData['servidores'])
             ->filter(fn ($s) => $s['elegivel'] && $s['nfc'] !== null)
             ->map(function (array $s): array {
-                $s['servidor'] = Servidor::with('pessoa')->findOrFail($s['servidor_id']);
+                $s['servidor'] = Servidor::with('pessoa.contatos')->findOrFail($s['servidor_id']);
                 return $s;
             });
 

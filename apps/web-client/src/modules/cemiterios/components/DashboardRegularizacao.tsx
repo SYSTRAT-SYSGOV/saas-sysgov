@@ -22,6 +22,16 @@ export const DashboardRegularizacaoComponent: React.FC<DashboardRegularizacaoPro
   const colunas = useMemo<ColumnDef<DashboardRegularizacaoProcesso, unknown>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        cell: ({ row }) =>
+          onSelectProcesso ? (
+            <button onClick={() => onSelectProcesso(row.original)} className="text-xs font-medium text-primary hover:underline">
+              Ver detalhes
+            </button>
+          ) : null,
+      },
+      {
         id: 'processo',
         header: 'Processo',
         accessorFn: (row) => row.processo_referencia ?? '',
@@ -82,29 +92,21 @@ export const DashboardRegularizacaoComponent: React.FC<DashboardRegularizacaoPro
           </span>
         ),
       },
-      {
-        id: 'acoes',
-        header: '',
-        cell: ({ row }) =>
-          onSelectProcesso ? (
-            <button onClick={() => onSelectProcesso(row.original)} className="text-xs font-medium text-primary hover:underline">
-              Ver detalhes
-            </button>
-          ) : null,
-      },
     ],
     [onSelectProcesso]
   );
 
   return (
     <DataTable
+      exportable
+      exportFileName="cemiterios-dashboard-regularizacao"
+      exportTitle="Cemitérios — Dashboard Regularizacao"
       columns={colunas}
       data={processos}
       loading={carregando}
       searchable
       searchPlaceholder="Buscar por processo, titular ou concessão..."
       emptyText="Nenhum processo de regularização pendente."
-      pagination={false}
     />
   );
 };

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { InventarioView } from '../InventarioView';
 import { cemiteriosApi, type Jazigo, type Parque, type Inumacao } from '../../api';
+import { acionarMenu } from '@/test-utils/acoesMenu';
 
 vi.mock('@/core/rbac/useCan', () => ({
   useCan: () => ({
@@ -159,11 +160,8 @@ describe('InventarioView Component', () => {
 
     render(<InventarioView />);
 
-    // Localiza o botão "Ver Túmulo" na coluna de Ações
-    const btnVerTumulo = await screen.findByRole('button', { name: /ver túmulo/i });
-    expect(btnVerTumulo).toBeInTheDocument();
-
-    fireEvent.click(btnVerTumulo);
+    // "Ver túmulo" fica no menu de ações da linha
+    await acionarMenu(/Ações do jazigo/i, /ver túmulo/i);
 
     // O ModalDetalheJazigo deve abrir exibindo as informações detalhadas e sub-abas
     expect(await screen.findByText(/informações do túmulo — JAZ-001/i)).toBeInTheDocument();

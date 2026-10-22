@@ -212,6 +212,32 @@ export const PainelGerencialPanel: React.FC<Props> = ({ cicloId: initialCicloId 
 
   const columns = useMemo<ColumnDef<ServidorItem, any>[]>(() => [
     {
+      id: 'acoes',
+      header: '',
+      size: 90,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const av = row.original.avaliacoes?.[0];
+        return (
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title="Ver detalhes da avaliação"
+              onClick={() => {
+                if (av?.id) {
+                  window.location.href = `/capd?tab=avaliacoes&avaliacao_id=${av.id}`;
+                }
+              }}
+              disabled={!av?.id}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
+    },
+    {
       id: 'servidor',
       header: 'Servidor Público',
       size: 260,
@@ -318,7 +344,7 @@ export const PainelGerencialPanel: React.FC<Props> = ({ cicloId: initialCicloId 
     },
     {
       id: 'ciencia',
-      header: 'Ciência',
+      header: 'Ciência', meta: { exportValue: (r) => (r.avaliacoes?.[0]?.ciencia_servidor_em ? 'Registrada' : r.avaliacoes?.[0]?.data_conclusao ? 'Pendente' : '') },
       size: 130,
       cell: ({ row }) => {
         const av = row.original.avaliacoes?.[0];
@@ -329,32 +355,6 @@ export const PainelGerencialPanel: React.FC<Props> = ({ cicloId: initialCicloId 
           return <StatusChip label="Pendente" variant="warning" />;
         }
         return <span className="text-muted-foreground text-xs">—</span>;
-      },
-    },
-    {
-      id: 'acoes',
-      header: '',
-      size: 90,
-      enableSorting: false,
-      cell: ({ row }) => {
-        const av = row.original.avaliacoes?.[0];
-        return (
-          <div className="flex justify-end">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              title="Ver detalhes da avaliação"
-              onClick={() => {
-                if (av?.id) {
-                  window.location.href = `/capd?tab=avaliacoes&avaliacao_id=${av.id}`;
-                }
-              }}
-              disabled={!av?.id}
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-          </div>
-        );
       },
     },
   ], []);
@@ -601,6 +601,9 @@ export const PainelGerencialPanel: React.FC<Props> = ({ cicloId: initialCicloId 
               />
             ) : (
               <DataTable
+                exportable
+                exportFileName="capd-painel-gerencial-1"
+                exportTitle="CAPD — Painel Gerencial 1"
                 columns={columns}
                 data={servidores}
                 emptyText="Nenhum servidor encontrado."
@@ -762,6 +765,9 @@ export const PainelGerencialPanel: React.FC<Props> = ({ cicloId: initialCicloId 
           </div>
           <div className="p-3">
             <DataTable
+              exportable
+              exportFileName="capd-painel-gerencial-2"
+              exportTitle="CAPD — Painel Gerencial 2"
               columns={columns}
               data={servidores}
               emptyText="Nenhum liderado encontrado."

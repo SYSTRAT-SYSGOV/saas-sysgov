@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\UserService;
 use App\Support\AuditLogger;
 use App\Support\TenantContext;
+use Modules\Pessoas\Services\PessoaDoUsuarioService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -82,6 +83,7 @@ public function show(Request $request, User $user): JsonResponse
             $tenantId => ['role_id' => $role->id, 'status' => 'active', 'is_primary' => false],
         ]);
         $this->attachTenantRole($user, $role, $tenantId);
+        app(PessoaDoUsuarioService::class)->garantir($user, app(TenantContext::class)->get(), $request->user()?->id, 'admin');
 
         $this->audit->record('tenant', 'user.created', "User #{$user->id} in Tenant #{$tenantId}", null, $user->toArray());
 

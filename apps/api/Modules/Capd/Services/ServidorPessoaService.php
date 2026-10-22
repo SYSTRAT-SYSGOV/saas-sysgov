@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Capd\Services;
 
+use App\Models\User;
 use App\Support\AuditLogger;
 use Modules\Capd\Models\Servidor;
 use Modules\Pessoas\Models\Pessoa;
+use Modules\Pessoas\Models\PessoaContato;
+use Modules\Pessoas\Models\PessoaUsuario;
 use Modules\Pessoas\Models\PessoaVinculo;
 use Modules\Pessoas\Services\PessoaService;
 use Modules\Pessoas\Services\ResolucaoPessoaService;
@@ -20,6 +23,9 @@ use Modules\Pessoas\Support\Documento;
  *   cadastrado; sem CPF válido (ausente, malformado ou o `000.000.000-00` que a integração de RH grava) →
  *   pessoa com documento pendente, para o registro nunca ser descartado.
  * - CPF, nome social e nascimento vivem só na pessoa: chegam aqui como `$civis` e nunca são gravados no servidor.
+ * - E-mail e telefone também: viram o contato principal da pessoa (`$contatos`). O usuário do sistema se liga ao servidor
+ *   por `user_id` e pelo vínculo `pessoas_usuarios` da pessoa; o e-mail do contato só serve para achar o servidor
+ *   de um usuário ainda não ligado.
  * - Matrícula e cargo ficam como vínculo funcional da pessoa; o CAPD guarda só o domínio da avaliação.
  * - O que o usuário edita no servidor (nome, nome social, nascimento) vale para a pessoa; a sincronização de
  *   RH nunca sobrescreve a pessoa. O `nome_completo` do servidor é cópia de exibição (busca e ordenação), atualizada
@@ -46,10 +52,15 @@ final class ServidorPessoaService
         return $this->resolverPessoa(null, $civis);
     }
 
-    /** Depois de gravar o servidor novo (já com `pessoa_id`): cópia de exibição e vínculo funcional. */
-    public function concluirCadastro(Servidor $servidor, Pessoa $pessoa): void
+    /**
+     * Depois de gravar o servidor novo (já com `pessoa_id`): contatos, cópia de exibição e vínculo funcional.
+     *
+     * @param array{email?: string|null, telefone?: string|null} $contatos
+     */
+    public function concluirCadastro(Servidor $servidor, Pessoa $pessoa, array $contatos = []): void
     {
         $this->audit->record('capd', 'servidor.pessoa_ligada', "servidor:{$servidor->id}", ['pessoa_id' => null], ['pessoa_id' => $pessoa->id]);
+        $this->gravarContatos($pessoa, $contatos);
         $this->copiarDadosCivis($servidor, $pessoa->refresh());
         $this->garantirVinculo($servidor, $pessoa);
     }
@@ -60,8 +71,9 @@ final class ServidorPessoaService
      * @param array{cpf?: string|null, nome_social?: string|null, data_nascimento?: string|null} $civis CPF, nome social
      *        e nascimento enviados nesta gravação
      * @param list<string> $camposCivisEditados campos civis enviados pelo usuário nesta gravação (nunca pela integração)
+     * @param array{email?: string|null, telefone?: string|null} $contatos e-mail e telefone enviados nesta gravação
      */
-    public function sincronizar(Servidor $servidor, array $civis = [], array $camposCivisEditados = []): void
+    public function sincronizar(Servidor $servidor, array $civis = [], array $camposCivisEditados = [], array $contatos = []): void
     {
         $anterior = $servidor->pessoa_id;
         $pessoa = $this->resolverPessoa(Pessoa::query()->find($anterior), $civis, $servidor);
@@ -84,8 +96,80 @@ final class ServidorPessoaService
             $this->audit->record('capd', 'servidor.pessoa_ligada', "servidor:{$servidor->id}", ['pessoa_id' => $anterior], ['pessoa_id' => $pessoa->id]);
         }
 
+        $this->gravarContatos($pessoa, $contatos);
         $this->copiarDadosCivis($servidor, $pessoa->refresh());
         $this->garantirVinculo($servidor, $pessoa);
+    }
+
+    /**
+     * Servidor do usuário que ainda não está ligado por `user_id`: primeiro pelo vínculo `pessoas_usuarios` da pessoa,
+     * depois pelo e-mail dos contatos da pessoa. Só adota servidor sem usuário; o achado fica ligado ao usuário.
+     */
+    public function servidorDoUsuario(User $user): ?Servidor
+    {
+        $ligado = PessoaUsuario::query()->where('user_id', $user->id)->first();
+        $servidor = $ligado === null ? null : Servidor::query()->where('pessoa_id', $ligado->pessoa_id)->whereNull('user_id')->orderBy('id')->first();
+
+        if ($servidor === null && trim((string) $user->email) !== '') {
+            $email = mb_strtolower(trim((string) $user->email));
+            $servidor = Servidor::query()
+                ->whereNull('user_id')
+                ->whereHas('pessoa.contatos', fn ($c) => $c->where('tipo', 'email')->whereRaw('LOWER(valor) = ?', [$email]))
+                ->orderBy('id')
+                ->first();
+        }
+
+        if ($servidor !== null) {
+            $this->vincularUsuario($servidor, $user);
+        }
+
+        return $servidor;
+    }
+
+    /** Liga o usuário ao servidor (`user_id`) e à pessoa do servidor (`pessoas_usuarios`), sem tomar vínculo de outro. */
+    public function vincularUsuario(Servidor $servidor, User $user): void
+    {
+        $servidor->forceFill(['user_id' => $user->id])->saveQuietly();
+
+        $semVinculo = ! PessoaUsuario::query()->where('pessoa_id', $servidor->pessoa_id)->orWhere('user_id', $user->id)->exists();
+        if ($semVinculo) {
+            // tenant_id é protegido contra atribuição em massa no model: forceCreate.
+            PessoaUsuario::query()->forceCreate([
+                'tenant_id' => $servidor->tenant_id,
+                'pessoa_id' => $servidor->pessoa_id,
+                'user_id' => $user->id,
+                'promovido_em' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * E-mail e telefone digitados no servidor valem para a pessoa: viram (ou atualizam) o contato principal do tipo.
+     * Campo ausente ou vazio não apaga nada: os contatos são da pessoa e outros módulos os usam.
+     *
+     * @param array{email?: string|null, telefone?: string|null} $contatos
+     */
+    private function gravarContatos(Pessoa $pessoa, array $contatos): void
+    {
+        foreach (['email' => mb_strtolower(trim((string) ($contatos['email'] ?? ''))), 'telefone' => trim((string) ($contatos['telefone'] ?? ''))] as $tipo => $valor) {
+            if ($valor === '') {
+                continue;
+            }
+
+            $doTipo = $pessoa->contatos()->where('tipo', $tipo)->get();
+            $igual = $doTipo->first(fn (PessoaContato $c): bool => mb_strtolower($c->valor) === mb_strtolower($valor));
+            $principal = $doTipo->firstWhere('principal', true);
+
+            if ($igual !== null) {
+                if (! $igual->principal) {
+                    $this->pessoas->atualizarContato($igual, ['principal' => true]);
+                }
+            } elseif ($principal !== null) {
+                $this->pessoas->atualizarContato($principal, ['valor' => $valor]);
+            } else {
+                $this->pessoas->adicionarContato($pessoa, ['tipo' => $tipo, 'valor' => $valor, 'principal' => true]);
+            }
+        }
     }
 
     /** Atualiza a cópia de exibição dos servidores ligados à pessoa. */

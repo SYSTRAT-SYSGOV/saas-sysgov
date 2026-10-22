@@ -10,12 +10,12 @@ use Modules\Pessoas\Support\Documento;
 
 /**
  * Cria servidor para os cenários de teste. Desde a Fase 5 o servidor exige `pessoa_id` e não guarda CPF, nome social
- * nem nascimento: eles vão para a pessoa, achada pelo CPF ou criada junto (sem CPF ela fica pendente). Deve rodar
+ * nem nascimento, e-mail ou telefone: eles vão para a pessoa, achada pelo CPF ou criada junto (sem CPF ela fica pendente). Deve rodar
  * dentro do contexto do tenant, como o `Servidor::create` que substitui.
  */
 final class ServidorDeTeste
 {
-    /** @param array<string, mixed> $atributos campos do servidor; `cpf`, `nome_social` e `data_nascimento` vão para a pessoa */
+    /** @param array<string, mixed> $atributos campos do servidor; `cpf`, `nome_social` e `data_nascimento` vão para a pessoa, `email` e `telefone` para os contatos dela */
     public static function criar(array $atributos): Servidor
     {
         $documento = Documento::somenteDigitos((string) ($atributos['cpf'] ?? ''));
@@ -27,7 +27,12 @@ final class ServidorDeTeste
             'data_nascimento' => $atributos['data_nascimento'] ?? null,
             'documento' => $documento !== '' ? $documento : null,
         ]);
-        unset($atributos['cpf'], $atributos['nome_social'], $atributos['data_nascimento']);
+        foreach (['email', 'telefone'] as $tipo) {
+            if (($atributos[$tipo] ?? '') !== '') {
+                $pessoa->contatos()->create(['tipo' => $tipo, 'valor' => $atributos[$tipo], 'principal' => true]);
+            }
+        }
+        unset($atributos['cpf'], $atributos['nome_social'], $atributos['data_nascimento'], $atributos['email'], $atributos['telefone']);
 
         return Servidor::create([...$atributos, 'pessoa_id' => $pessoa->id]);
     }

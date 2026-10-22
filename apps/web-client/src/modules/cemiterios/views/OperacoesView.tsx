@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ActionsMenu } from '@sysgov/ui';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   FileDown,
@@ -10,6 +11,8 @@ import {
   ArrowRightLeft,
   Scale,
   RefreshCw,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { Button, ConfirmDialog, DataTable, StatusChip, Tabs } from '@/components/ui';
 import { useCan } from '@/core/rbac/useCan';
@@ -422,6 +425,25 @@ const InumacoesView: React.FC<InumacoesViewProps> = ({
   const colunas = useMemo<ColumnDef<Inumacao, unknown>[]>(
     () => [
       {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel="Ações da operação"
+                items={[
+                  ...(row.original.revisao_pendente && can('cemiterios.operacoes.historico') ? [{ key: 'revisar', label: 'Revisar', icon: <CheckCircle2 className="h-3.5 w-3.5" />, onSelect: () => { void (async () => { if (await executar(() => cemiteriosApi.revisar(row.original.id))) { await lista.recarregar(); await onRecarregarOperacoes(); } })(); } }] : []),
+                  ...(row.original.situacao === 'confirmada' && can('cemiterios.operacoes.create') ? [{ key: 'cancelar', label: 'Cancelar operação', icon: <XCircle className="h-3.5 w-3.5" />, onSelect: () => setCancelar(row.original) }] : []),
+                ]}
+              />
+            </div>
+          );
+        },
+      },
+      {
         id: 'falecido',
         header: 'Falecido',
         accessorFn: (r) => r.falecido?.nome ?? '',
@@ -440,7 +462,7 @@ const InumacoesView: React.FC<InumacoesViewProps> = ({
       },
       {
         id: 'jazigo',
-        header: 'Túmulo / Gaveta',
+        header: 'Túmulo / Gaveta', meta: { exportValue: (r) => [r.jazigo?.codigo, r.gaveta_numero ? `Gaveta ${r.gaveta_numero}` : null].filter(Boolean).join(' · ') },
         cell: ({ row }) => (
           <div className="flex items-center gap-1.5">
             <div>
@@ -469,7 +491,7 @@ const InumacoesView: React.FC<InumacoesViewProps> = ({
       },
       {
         id: 'data',
-        header: 'Sepultamento',
+        header: 'Sepultamento', meta: { exportValue: (r) => r.sepultado_em },
         cell: ({ row }) => (
           <span className="font-mono text-xs tabular-nums text-foreground">
             {formatarData(row.original.sepultado_em)}
@@ -478,7 +500,7 @@ const InumacoesView: React.FC<InumacoesViewProps> = ({
       },
       {
         id: 'profissionais',
-        header: 'Coveiro / Equipe',
+        header: 'Coveiro / Equipe', meta: { exportValue: (r) => [r.coveiro_nome ? `Cov: ${r.coveiro_nome}` : null, r.pedreiro_nome ? `Ped: ${r.pedreiro_nome}` : null].filter(Boolean).join(' · ') },
         cell: ({ row }) => {
           const partes = [
             row.original.coveiro_nome ? `Cov: ${row.original.coveiro_nome}` : null,
@@ -493,7 +515,7 @@ const InumacoesView: React.FC<InumacoesViewProps> = ({
       },
       {
         id: 'carencia',
-        header: 'Carência Desde',
+        header: 'Carência Desde', meta: { exportValue: (r) => r.carencia_desde },
         cell: ({ row }) => (
           <span className="font-mono text-xs tabular-nums text-foreground">
             {formatarData(row.original.carencia_desde)}
@@ -502,7 +524,7 @@ const InumacoesView: React.FC<InumacoesViewProps> = ({
       },
       {
         id: 'situacao',
-        header: 'Situação',
+        header: 'Situação', meta: { exportValue: (r) => (r.revisao_pendente ? `${r.situacao} (revisão pendente)` : r.situacao) },
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
             <StatusChip
@@ -511,38 +533,6 @@ const InumacoesView: React.FC<InumacoesViewProps> = ({
             />
             {row.original.revisao_pendente && (
               <StatusChip label="revisão pendente" variant="warning" />
-            )}
-          </div>
-        ),
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        cell: ({ row }) => (
-          <div className="flex items-center gap-1">
-            {row.original.revisao_pendente && can('cemiterios.operacoes.historico') && (
-              <Button
-                size="xs"
-                variant="outline"
-                onClick={async () => {
-                  if (await executar(() => cemiteriosApi.revisar(row.original.id))) {
-                    await lista.recarregar();
-                    await onRecarregarOperacoes();
-                  }
-                }}
-              >
-                Revisar
-              </Button>
-            )}
-            {row.original.situacao === 'confirmada' && can('cemiterios.operacoes.create') && (
-              <Button
-                size="xs"
-                variant="ghost"
-                onClick={() => setCancelar(row.original)}
-                className="text-destructive hover:bg-destructive/10"
-              >
-                Cancelar
-              </Button>
             )}
           </div>
         ),
@@ -625,7 +615,7 @@ const ExumacoesView: React.FC = () => {
       { id: 'tipo', header: 'Tipo', accessorKey: 'tipo' },
       {
         id: 'prazo',
-        header: 'Prazo Legal Aplicado',
+        header: 'Prazo Legal Aplicado', meta: { exportValue: (r) => r.prazo_aplicado_anos },
         cell: ({ row }) => (
           <Mono className="text-xs font-semibold">
             {row.original.prazo_aplicado_anos ?? '—'} anos
@@ -634,7 +624,7 @@ const ExumacoesView: React.FC = () => {
       },
       {
         id: 'liberada',
-        header: 'Liberada em',
+        header: 'Liberada em', meta: { exportValue: (r) => r.liberada_em },
         cell: ({ row }) => (
           <Mono className="text-xs tabular-nums text-foreground">
             {formatarData(row.original.liberada_em)}
@@ -643,7 +633,7 @@ const ExumacoesView: React.FC = () => {
       },
       {
         id: 'situacao',
-        header: 'Situação Sanitária',
+        header: 'Situação Sanitária', meta: { exportValue: (r) => r.situacao },
         cell: ({ row }) => (
           <StatusChip
             label={row.original.situacao}
@@ -653,7 +643,7 @@ const ExumacoesView: React.FC = () => {
       },
       {
         id: 'motivo',
-        header: 'Motivo da Suspensão / Destino',
+        header: 'Motivo da Suspensão / Destino', meta: { exportValue: (r) => r.motivo_suspensao || r.destino },
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
             {row.original.motivo_suspensao || row.original.destino || '—'}
