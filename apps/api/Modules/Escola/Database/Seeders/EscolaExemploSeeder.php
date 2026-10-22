@@ -340,6 +340,8 @@ final class EscolaExemploSeeder extends Seeder
                 foreach ($nomesAlunos as $numero => $familia) {
                     $numeroChamada = $numero + 1;
                     $nomeAluno = "{$familia[0]} {$prefixo}";
+                    $mae = $familia[1];
+                    $pai = $familia[2];
                     $nascimentoFormatado = sprintf('201%d-0%d-15', max(0, 8 - $indexTurma), $numeroChamada);
 
                     $pessoa = Pessoa::firstOrCreate(
