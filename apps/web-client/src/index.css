@@ -1,6 +1,13 @@
 @import './styles/tokens.css';
 @import "tailwindcss";
 
+/* O portal não tem tema escuro (os tokens de styles/tokens.css só têm o tema claro e nada aplica a classe `.dark`).
+   No Tailwind v4 o `dark:` segue por padrão o modo escuro do sistema operacional, o que pintava de azul-marinho
+   (`dark:bg-slate-900`) cartões e campos como o assistente "Novo Usuário" para quem usa o SO em modo escuro, no meio
+   de uma tela clara. Aqui `dark:` só vale dentro de `.dark`, que ninguém aplica hoje: um tema escuro futuro liga
+   isso de propósito, em vez de vazar do SO. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* @sysgov/ui vive fora da raiz do projeto (packages/ui, workspace
    separado) — o scanner automático de conteúdo do Tailwind v4 não
    inclui esse diretório por padrão, então classes usadas SÓ lá dentro
