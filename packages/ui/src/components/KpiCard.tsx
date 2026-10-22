@@ -1,12 +1,14 @@
 import React from 'react';
-import { Card } from './card';
+import { StatCard } from './StatCard';
 import { cn } from '../lib/utils';
 
 export interface KpiCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
+  /** Não é mais exibido: o padrão do card (StatCard) não tem ícone. Mantido para não quebrar quem ainda o passa. */
   icon?: React.ReactNode;
+  /** Não é mais exibido (ver `icon`). */
   iconBgColor?: string;
   trend?: {
     value: string;
@@ -14,46 +16,51 @@ export interface KpiCardProps {
     label?: string;
   };
   statusBadge?: React.ReactNode;
+  /** Cor da barra à esquerda (classe Tailwind), ex.: "border-l-emerald-500". Padrão: cor primária. */
+  accentClassName?: string;
+  /** Cor do valor (classe Tailwind), ex.: "text-emerald-600 dark:text-emerald-400". Padrão: cor primária. */
+  valueClassName?: string;
   className?: string;
 }
 
 /**
- * Card de indicador das telas iniciais dos módulos. Segue o visual do StatCard (padrão do módulo CAPD):
- * barra de destaque à esquerda, rótulo discreto, valor grande em fonte monoespaçada e legenda embaixo.
- * Mantém a API anterior (ícone, tendência, selo) para não alterar quem já o usa.
+ * Card de indicador das telas iniciais dos módulos: é o StatCard (padrão do módulo CAPD) — barra de cor à esquerda,
+ * rótulo discreto, valor grande em fonte monoespaçada e legenda embaixo. Mantém a API anterior (título, valor,
+ * legenda, tendência, selo) para não alterar quem já o usa.
  */
 export const KpiCard: React.FC<KpiCardProps> = ({
   title,
   value,
   subtitle,
-  icon,
-  iconBgColor = 'bg-primary/10 text-primary',
   trend,
   statusBadge,
+  accentClassName = 'border-l-primary',
+  valueClassName = 'text-primary',
   className,
 }) => {
   const temLegenda = Boolean(subtitle || trend || statusBadge);
+  const legenda = temLegenda ? (
+    <span className="flex flex-wrap items-center gap-2">
+      {statusBadge}
+      {trend && (
+        <span className={cn('inline-flex items-center gap-1 font-bold tabular-nums', trend.isPositive ? 'text-status-success' : 'text-status-danger')}>
+          {trend.value}
+          {trend.label && <span className="font-normal text-muted-foreground"> {trend.label}</span>}
+        </span>
+      )}
+      {subtitle && !trend && <span>{subtitle}</span>}
+    </span>
+  ) : undefined;
 
   return (
-    <Card className={cn('gap-1 p-4 border-l-4 border-l-primary shadow-2xs', className)}>
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-xs font-medium text-muted-foreground">{title}</span>
-        {icon && <div className={cn('shrink-0 rounded-lg p-1.5', iconBgColor)}>{icon}</div>}
-      </div>
-      <div className="text-2xl font-bold font-mono tabular-nums text-foreground">{value}</div>
-      {temLegenda && (
-        <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono font-medium text-muted-foreground">
-          {statusBadge}
-          {trend && (
-            <span className={cn('inline-flex items-center gap-1 font-bold tabular-nums', trend.isPositive ? 'text-status-success' : 'text-status-danger')}>
-              {trend.value}
-              {trend.label && <span className="font-normal text-muted-foreground"> {trend.label}</span>}
-            </span>
-          )}
-          {subtitle && !trend && <span>{subtitle}</span>}
-        </div>
-      )}
-    </Card>
+    <StatCard
+      label={title}
+      value={value}
+      caption={legenda}
+      accentClassName={accentClassName}
+      valueClassName={valueClassName}
+      className={className}
+    />
   );
 };
 
