@@ -60,7 +60,6 @@ function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [ano, setAno] = React.useState<number>(2026);
   const [isPresentationMode, setIsPresentationMode] = React.useState<boolean>(false);
   const [toasts, setToasts] = React.useState<ToastMessage[]>([]);
 
@@ -128,7 +127,7 @@ function AdminLayout() {
   };
 
   return (
-    <div className="dashboard-full min-h-screen bg-muted text-foreground  font-sans flex flex-col antialiased selection:bg-primary selection:text-white relative overflow-x-hidden max-w-full transition-colors duration-200">
+    <div className="dashboard-full min-h-screen bg-gov-page text-foreground  font-sans flex flex-col antialiased selection:bg-primary selection:text-white relative overflow-x-hidden max-w-full transition-colors duration-200">
       <ToastContainer
         toasts={toasts}
         onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
@@ -158,8 +157,6 @@ function AdminLayout() {
           setActiveTab={handleNavigateTab}
           onToggleSidebar={handleToggleSidebar}
           onLogout={handleLogout}
-          anoSelecionado={ano}
-          onSelectAno={setAno}
           tenantInfo={{
             id: 'tenant-01',
             nomePrefeitura: config.companyName,
@@ -176,7 +173,7 @@ function AdminLayout() {
           authRole={authRole}
         />
 
-        <main className="flex-1 w-full max-w-full px-3 sm:px-5 lg:px-7 py-4 sm:py-5 transition-all duration-300 pb-16 overflow-x-hidden bg-muted ">
+        <main className="flex-1 w-full max-w-full px-3 sm:px-5 lg:px-7 py-4 sm:py-5 transition-all duration-300 pb-16 overflow-x-hidden bg-gov-page ">
           <Outlet context={{ onNavigate: handleNavigateTab, onAddToast: addToast } satisfies AdminLayoutContext} />
         </main>
 
