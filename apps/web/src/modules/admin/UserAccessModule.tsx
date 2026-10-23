@@ -44,16 +44,16 @@ export const UserAccessModule: React.FC<Props> = ({ onAddToast = () => {}, initi
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Cabeçalho do módulo */}
-      <div className="bg-white dark:bg-[#101a3a] p-6 rounded-2xl border border-slate-200 dark:border-[#1a2a52] shadow-sm">
+      <div className="bg-card p-6 rounded-2xl border border-border  shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-            <UserCog className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+            <UserCog className="w-6 h-6 text-primary " />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-xl font-bold text-foreground tracking-tight">
               Gestão de Usuários & Acessos (RBAC)
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Usuários cadastrados, controle de acesso baseado em papéis (RBAC), permissões granulares e convites.
             </p>
           </div>
@@ -62,7 +62,7 @@ export const UserAccessModule: React.FC<Props> = ({ onAddToast = () => {}, initi
 
       {/* Submenus (Abas) */}
       <Card className="gap-0 py-0 overflow-hidden">
-        <div className="flex flex-wrap border-b border-slate-200 dark:border-[#1a2a52]">
+        <div className="flex flex-wrap border-b border-border ">
           {tabs.map((it) => {
             const isActive = tab === it.id;
             return (
@@ -70,9 +70,9 @@ export const UserAccessModule: React.FC<Props> = ({ onAddToast = () => {}, initi
                 key={it.id}
                 onClick={() => handleTabChange(it.id)}
                 className={`flex items-center gap-2 px-5 py-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-                  isActive
-                    ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20 font-bold'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+ isActive
+                    ? 'border-primary text-status-success  bg-status-success-bg/40  font-bold'
+                    : 'border-transparent text-muted-foreground  hover:text-foreground  hover:bg-accent '
                 }`}
                 title={it.desc}
               >

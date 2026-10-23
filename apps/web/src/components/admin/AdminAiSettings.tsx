@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Sparkles, Save, Wand2, Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { Card, Button } from '@sysgov/ui';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { ScreenState } from '@/components/ui/ScreenState';
+import { Card, Button, PageHeader, ScreenState } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
 import { adminApi } from '@/modules/admin/api';
 import type { AiSettings } from '@/modules/admin/types';
+import { useFormValidationModal } from '@sysgov/ui';
 
 interface AdminAiSettingsProps {
   onAddToast: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -39,6 +38,7 @@ const toForm = (s: AiSettings): FormState => ({
  */
 export const AdminAiSettings: React.FC<AdminAiSettingsProps> = ({ onAddToast }) => {
   const [settings, setSettings] = useState<AiSettings | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [form, setForm] = useState<FormState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +67,7 @@ export const AdminAiSettings: React.FC<AdminAiSettingsProps> = ({ onAddToast }) 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
+    if (!validar([['Provedor', form.provider], ['URL base da API', form.baseUrl], ['Modelo', form.model]])) return;
     setSaving(true);
     setTestResult(null);
     try {
@@ -82,7 +83,7 @@ export const AdminAiSettings: React.FC<AdminAiSettingsProps> = ({ onAddToast }) 
       setForm(toForm(updated));
       onAddToast({ type: 'success', title: 'Configuração salva', message: 'A configuração de IA da plataforma foi atualizada.' });
     } catch (err: any) {
-      onAddToast({ type: 'error', title: 'Erro ao salvar', message: err?.message || 'Não foi possível salvar a configuração.' });
+      if (!tratarErro(err)) onAddToast({ type: 'error', title: 'Erro ao salvar', message: err?.message || 'Não foi possível salvar a configuração.' });
     } finally {
       setSaving(false);
     }
@@ -109,27 +110,24 @@ export const AdminAiSettings: React.FC<AdminAiSettingsProps> = ({ onAddToast }) 
 
   if (loading) {
     return (
-      <ScreenState state="loading" loadingMessage="Carregando configuração de IA...">
-        <></>
-      </ScreenState>
+      <ScreenState type="loading" title="Carregando configuração de IA..." />
     );
   }
   if (error || !form || !settings) {
     return (
-      <ScreenState state="error" errorMessage={error ?? 'Erro ao carregar a configuração de IA.'} errorAction={{ label: 'Tentar novamente', onClick: load }}>
-        <></>
-      </ScreenState>
+      <ScreenState type="error" description={error ?? 'Erro ao carregar a configuração de IA.'} actionLabel="Tentar novamente" onAction={load} />
     );
   }
 
   return (
     <div className="space-y-6">
+      {modalValidacao}
       <PageHeader
         title="Configurações de IA"
         subtitle="Configuração única de IA da plataforma — usada por todos os tenants. Não existe configuração por órgão."
       />
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form noValidate onSubmit={handleSave} className="space-y-6">
         <Card className="p-6 space-y-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -202,8 +200,8 @@ export const AdminAiSettings: React.FC<AdminAiSettingsProps> = ({ onAddToast }) 
           {testResult && (
             <div
               className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                testResult.ok
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+ testResult.ok
+                  ? 'border-status-success-border bg-status-success-bg text-status-success   '
                   : 'border-destructive/30 bg-destructive/10 text-destructive'
               }`}
             >

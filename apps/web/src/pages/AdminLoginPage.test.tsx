@@ -94,7 +94,7 @@ describe('AdminLoginPage', () => {
 
     const emailInput = screen.getByPlaceholderText('seu.email@empresa.com.br');
     const passInput = screen.getByPlaceholderText('••••••••');
-    const submitBtn = screen.getByRole('button', { name: /Entrar no Backoffice Master/i });
+    const submitBtn = screen.getByRole('button', { name: /Entrar no painel/i });
 
     fireEvent.change(emailInput, { target: { value: 'admin@sgfiscal.com.br' } });
     fireEvent.change(passInput, { target: { value: 'admin123' } });
@@ -124,7 +124,7 @@ describe('AdminLoginPage', () => {
 
     const emailInput = screen.getByPlaceholderText('seu.email@empresa.com.br');
     const passInput = screen.getByPlaceholderText('••••••••');
-    const submitBtn = screen.getByRole('button', { name: /Entrar no Backoffice Master/i });
+    const submitBtn = screen.getByRole('button', { name: /Entrar no painel/i });
 
     fireEvent.change(emailInput, { target: { value: 'admin@sgfiscal.com.br' } });
     fireEvent.change(passInput, { target: { value: 'senha-errada' } });

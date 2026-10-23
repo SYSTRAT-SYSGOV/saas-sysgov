@@ -3,17 +3,21 @@ import { Plus, Search, Pencil, Power, RotateCcw, KeyRound, Users, Loader2, Shiel
 import { adminApi } from './api';
 import { User, Role } from './types';
 import { useAuthContext } from '../../contexts/AuthContext';
-import { Modal, Input, Select, Button } from '@sysgov/ui';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Modal, Input, Select, Button, DataTable, ActionsMenu } from '@sysgov/ui';
+import { useFormValidationModal } from '@sysgov/ui';
 
 export const UserManagement: React.FC = () => {
   const { currentUser } = useAuthContext();
   const isSelf = (user: User) => String(user.id) === String(currentUser?.id ?? '');
   const [users, setUsers] = useState<User[]>([]);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [roles, setRoles] = useState<Role[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [perPage, setPerPage] = useState(25);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deactivating, setDeactivating] = useState<User | null>(null);
@@ -26,6 +30,7 @@ export const UserManagement: React.FC = () => {
         search: search || undefined,
         status: status || undefined,
         page,
+        per_page: perPage,
       });
       setUsers(res.data);
       setMeta(res.meta ?? { current_page: page, last_page: 1, total: 0 });
@@ -35,7 +40,7 @@ export const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, status]);
+  }, [search, status, perPage]);
 
   useEffect(() => {
     loadUsers();
@@ -43,8 +48,9 @@ export const UserManagement: React.FC = () => {
   }, [loadUsers]);
 
   const handleDeactivate = async (user: User) => {
-    if (!reason.trim() || reason.trim().length < 10) {
-      alert('Informe o motivo da desativação (mínimo 10 caracteres).');
+    if (!validar([['Motivo da desativação', reason]])) return;
+    if (reason.trim().length < 10) {
+      invalidar([['Motivo da desativação', 'Informe o motivo da desativação (mínimo 10 caracteres).']]);
       return;
     }
     try {
@@ -53,7 +59,7 @@ export const UserManagement: React.FC = () => {
       setReason('');
       loadUsers(meta.current_page);
     } catch (error: any) {
-      alert(error.message || 'Erro ao desativar usuário.');
+      if (!tratarErro(error)) alert(error.message || 'Erro ao desativar usuário.');
     }
   };
 
@@ -62,7 +68,7 @@ export const UserManagement: React.FC = () => {
       await adminApi.reactivateUser(user.id);
       loadUsers(meta.current_page);
     } catch (error: any) {
-      alert(error.message || 'Erro ao reativar usuário.');
+      if (!tratarErro(error)) alert(error.message || 'Erro ao reativar usuário.');
     }
   };
 
@@ -104,7 +110,7 @@ export const UserManagement: React.FC = () => {
       setEditingUser(null);
       loadUsers(meta.current_page);
     } catch (error: any) {
-      alert(error.message || 'Erro ao salvar usuário.');
+      if (!tratarErro(error)) alert(error.message || 'Erro ao salvar usuário.');
     }
   };
 
@@ -113,38 +119,70 @@ export const UserManagement: React.FC = () => {
 
   const statusBadge = (user: User) => {
     if (!user.is_active) {
-      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">INATIVO</span>;
+      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground ">INATIVO</span>;
     }
-    return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">ATIVO</span>;
+    return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-status-success-bg text-status-success ">ATIVO</span>;
   };
 
   const mfaBadge = (user: User) =>
     user.mfa_enabled ? (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
         <ShieldCheck className="w-3 h-3" /> MFA
       </span>
     ) : (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-destructive/10 text-status-danger border border-status-danger-border">
         <ShieldAlert className="w-3 h-3" /> Sem MFA
       </span>
     );
 
+  const columns: ColumnDef<User>[] = [
+    {
+      id: 'acoes', header: '', enableSorting: false,
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu triggerLabel="Ações do usuário" items={[
+              { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => { setEditingUser(user); setModalOpen(true); } },
+              { key: 'reset', label: 'Reset de senha', icon: <KeyRound className="h-3.5 w-3.5" />, onSelect: () => handleResetPassword(user) },
+              ...(user.is_active
+                ? (isSelf(user) ? [] : [{ key: 'desativar', label: 'Desativar', icon: <Power className="h-3.5 w-3.5" />, onSelect: () => { setDeactivating(user); setReason(''); } }])
+                : [{ key: 'reativar', label: 'Reativar', icon: <RotateCcw className="h-3.5 w-3.5" />, onSelect: () => handleReactivate(user) }]),
+            ]} />
+          </div>
+        );
+      },
+      meta: { exportIgnore: true },
+    },
+    { accessorKey: 'name', header: 'Nome' },
+    { accessorKey: 'email', header: 'E-mail', cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.original.email}</span> },
+    { id: 'roles', header: 'Roles', accessorFn: (u) => roleNames(u) },
+    { id: 'status', header: 'Status', accessorFn: (u) => (u.is_active ? 'Ativo' : 'Inativo'), cell: ({ row }) => statusBadge(row.original) },
+    { id: 'mfa', header: 'MFA', accessorFn: (u) => (u.mfa_enabled ? 'Com MFA' : 'Sem MFA'), cell: ({ row }) => mfaBadge(row.original) },
+    {
+      id: 'created_at', header: 'Criado em',
+      accessorFn: (u) => (u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—'),
+      cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.original.created_at ? new Date(row.original.created_at).toLocaleDateString('pt-BR') : '—'}</span>,
+    },
+  ];
+
   if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {modalValidacao}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-emerald-600" /> Usuários SYSTRAT
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" /> Usuários SYSTRAT
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Equipe da plataforma: super_admin, admin_ops e suporte.
           </p>
         </div>
@@ -153,22 +191,22 @@ export const UserManagement: React.FC = () => {
         </Button>
       </div>
 
-      <div className="mod-card p-4 border-b mod-border">
+      <div className="bg-card border border-border rounded-xl p-4 border-b border-border">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 mod-text-secondary" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Buscar por nome ou e-mail..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); loadUsers(1); }}
-              className="mod-input w-full pl-10"
+              className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full pl-10"
             />
           </div>
           <select
             value={status}
             onChange={(e) => { setStatus(e.target.value); loadUsers(1); }}
-            className="mod-input md:w-48"
+            className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 md:w-48"
           >
             <option value="">Todos os status</option>
             <option value="active">Ativos</option>
@@ -177,82 +215,21 @@ export const UserManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="mod-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b mod-border text-left text-xs uppercase tracking-wider mod-text-secondary">
-                <th className="py-3 px-4 font-semibold">Nome</th>
-                <th className="py-3 px-4 font-semibold">E-mail</th>
-                <th className="py-3 px-4 font-semibold">Roles</th>
-                <th className="py-3 px-4 font-semibold">Status</th>
-                <th className="py-3 px-4 font-semibold">MFA</th>
-                <th className="py-3 px-4 font-semibold">Criado em</th>
-                <th className="py-3 px-4 text-right font-semibold">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {users.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center mod-text-secondary">Nenhum usuário encontrado.</td>
-                </tr>
-              ) : (
-                users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">{user.name}</td>
-                    <td className="py-3 px-4 font-mono text-xs text-slate-500">{user.email}</td>
-                    <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-300">{roleNames(user)}</td>
-                    <td className="py-3 px-4">{statusBadge(user)}</td>
-                    <td className="py-3 px-4">{mfaBadge(user)}</td>
-                    <td className="py-3 px-4 font-mono text-xs text-slate-500">
-                      {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '—'}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <button onClick={() => { setEditingUser(user); setModalOpen(true); }} title="Editar" className="p-2 mod-text-secondary hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleResetPassword(user)} title="Reset de senha" className="p-2 mod-text-secondary hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 rounded-lg transition-colors">
-                          <KeyRound className="w-4 h-4" />
-                        </button>
-                        {user.is_active ? (
-                          isSelf(user) ? (
-                            <span title="Você não pode desativar a própria conta" className="p-2 mod-text-secondary opacity-40 cursor-not-allowed inline-flex">
-                              <Power className="w-4 h-4" />
-                            </span>
-                          ) : (
-                            <button onClick={() => { setDeactivating(user); setReason(''); }} title="Desativar" className="p-2 mod-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors">
-                              <Power className="w-4 h-4" />
-                            </button>
-                          )
-                        ) : (
-                          <button onClick={() => handleReactivate(user)} title="Reativar" className="p-2 mod-text-secondary hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg transition-colors">
-                            <RotateCcw className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {meta.last_page > 1 && (
-          <div className="px-4 py-3 border-t mod-border flex items-center justify-between text-sm mod-text-secondary">
-            <span>Página {meta.current_page} de {meta.last_page} — {meta.total} usuários</span>
-            <div className="flex items-center gap-2">
-              <button onClick={() => loadUsers(meta.current_page - 1)} disabled={meta.current_page === 1} className="px-3 py-1.5 border mod-border rounded-lg hover:mod-inner disabled:opacity-50 text-xs">
-                Anterior
-              </button>
-              <button onClick={() => loadUsers(meta.current_page + 1)} disabled={meta.current_page === meta.last_page} className="px-3 py-1.5 border mod-border rounded-lg hover:mod-inner disabled:opacity-50 text-xs">
-                Próxima
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      <DataTable<User, unknown>
+        columns={columns}
+        data={users}
+        loading={loading}
+        emptyText="Nenhum usuário encontrado."
+        pageSizeOptions={[10, 25, 50, 100]}
+        paginationState={{
+          currentPage: meta.current_page,
+          totalPages: meta.last_page,
+          onPageChange: (p) => loadUsers(p),
+          total: meta.total,
+          perPage,
+          onPerPageChange: (n) => { setPerPage(n); },
+        }}
+      />
 
       {modalOpen && (
         <UserFormModal
@@ -267,12 +244,12 @@ export const UserManagement: React.FC = () => {
         open={!!deactivating}
         onClose={() => setDeactivating(null)}
         title="Desativar Usuário"
-        icon={<Power size={18} className="text-rose-500" />}
+        icon={<Power size={18} className="text-status-danger" />}
         size="sm"
         footer={
           <>
             <Button variant="outline" onClick={() => setDeactivating(null)}>Cancelar</Button>
-            <Button onClick={() => deactivating && handleDeactivate(deactivating)} className="bg-rose-600 hover:bg-rose-700">Desativar</Button>
+            <Button onClick={() => deactivating && handleDeactivate(deactivating)} className="bg-destructive hover:bg-destructive">Desativar</Button>
           </>
         }
       >
@@ -290,7 +267,7 @@ export const UserManagement: React.FC = () => {
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
                 placeholder="Mín. 10 caracteres..."
-                className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 "
               />
             </div>
           </div>
@@ -306,6 +283,7 @@ const UserFormModal: React.FC<{
   onClose: () => void;
   onSave: (data: any) => void;
 }> = ({ user, roles, onClose, onSave }) => {
+  const { modal: modalValidacao, validar } = useFormValidationModal();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -330,6 +308,7 @@ const UserFormModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Nome', formData.name], ['E-mail', formData.email]])) return;
     if (!formData.role_slug) {
       setRoleError(true);
       return;
@@ -345,7 +324,7 @@ const UserFormModal: React.FC<{
       open
       onClose={onClose}
       title={user ? 'Editar Usuário' : 'Novo Usuário SYSTRAT'}
-      icon={<Users size={18} className="text-emerald-500" />}
+      icon={<Users size={18} className="text-primary" />}
       size="lg"
       footer={
         <>
@@ -356,17 +335,16 @@ const UserFormModal: React.FC<{
         </>
       }
     >
-      <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
+      {modalValidacao}
+      <form noValidate id="user-form" onSubmit={handleSubmit} className="space-y-4">
         <Input
           label="Nome *"
-          required
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
         />
         <Input
           label="E-mail *"
           type="email"
-          required
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           className="font-mono"

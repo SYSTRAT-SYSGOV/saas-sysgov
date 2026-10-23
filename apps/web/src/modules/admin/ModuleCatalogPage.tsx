@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { DataTable } from '@/components/ui/DataTable';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Field } from '@/components/ui/Field';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { ScreenState } from '@/components/ui/ScreenState';
+import { ApiRequestError } from '@/api/errors';
 import { Plus, Edit, Trash2, ToggleRight, ToggleLeft, Search, Loader2, Shield, Key, LayoutDashboard, ChevronDown, X, Save, ArrowLeft } from 'lucide-react';
-import { Modal, Button } from '@sysgov/ui';
+import { Modal, Button, DataTable, ConfirmDialog, PageHeader, ActionsMenu, Switch } from '@sysgov/ui';
+import { useFormValidationModal } from '@sysgov/ui';
 
 interface Module {
   id: number;
@@ -45,10 +44,7 @@ interface ModuleFormData {
 
 export function ModuleCatalogPage() {
   const [modules, setModules] = useState<Module[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(15);
-  const [search, setSearch] = useState('');
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -68,29 +64,17 @@ export function ModuleCatalogPage() {
   const fetchModules = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        per_page: String(perPage),
-        search,
-      });
-      const res = await fetch(`/api/admin/module-catalog?${params}`);
+      // O catálogo é pequeno: carrega tudo e deixa a grade padrão (busca, paginação, exportação) trabalhar no cliente.
+      const res = await fetch('/api/admin/module-catalog?per_page=500');
       if (!res.ok) throw new Error('Falha ao carregar módulos');
       const data = await res.json();
       setModules(data.data);
-      setTotal(data.total);
     } catch (error) {
       console.error('Erro ao buscar módulos:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    setPage(1);
-  };
-
-  const handlePageChange = (newPage: number) => setPage(newPage);
 
   const openCreateDialog = () => {
     setEditingModule(null);
@@ -126,6 +110,7 @@ export function ModuleCatalogPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Nome', formData.name], ['Alias', formData.alias]])) return;
     setSaving(true);
     try {
       const payload = {
@@ -153,15 +138,15 @@ export function ModuleCatalogPage() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || 'Erro ao salvar módulo');
+        const err = await res.json().catch(() => ({}));
+        throw new ApiRequestError(err.message || 'Erro ao salvar módulo', res.status, err);
       }
 
       setDialogOpen(false);
       fetchModules();
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      alert(error instanceof Error ? error.message : 'Erro desconhecido');
+      if (!tratarErro(error)) alert(error instanceof Error ? error.message : 'Erro desconhecido');
     } finally {
       setSaving(false);
     }
@@ -205,44 +190,43 @@ export function ModuleCatalogPage() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100) + '/mês';
   };
 
-  const columns = [
-    { key: 'name', header: 'Módulo', render: (m: Module) => (
-      <div>
-        <strong className="font-mono">{m.name}</strong>
-        <span className="ml-2 text-xs text-slate-500 dark:text-slate-400 font-mono">({m.alias})</span>
-      </div>
-    )},
-    { key: 'description', header: 'Descrição', className: 'hidden md:table-cell' },
-    { key: 'monthly_fee_cents', header: 'Preço', render: (m: Module) => formatCurrency(m.monthly_fee_cents) },
-    { key: 'enabled', header: 'Status', render: (m: Module) => (
-      <button
-        onClick={() => handleToggle(m)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          m.enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
-        }`}
-        role="switch"
-        aria-checked={m.enabled}
-        aria-label={m.enabled ? 'Desativar' : 'Ativar'}
-      >
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          m.enabled ? 'translate-x-6' : 'translate-x-1'
-        }`} />
-      </button>
-    )},
-    { key: 'actions', header: 'Ações', render: (m: Module) => (
-      <div className="flex items-center gap-2">
-        <button onClick={() => openEditDialog(m)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Editar">
-          <Edit className="w-4 h-4" />
-        </button>
-        <button onClick={() => confirmDelete(m)} className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400" aria-label="Excluir">
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-    )},
+  const columns: ColumnDef<Module>[] = [
+    {
+      id: 'acoes', header: '', enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu triggerLabel="Ações do módulo" items={[
+            { key: 'editar', label: 'Editar', icon: <Edit className="h-3.5 w-3.5" />, onSelect: () => openEditDialog(row.original) },
+            { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => confirmDelete(row.original) },
+          ]} />
+        </div>
+      ),
+      meta: { exportIgnore: true },
+    },
+    {
+      id: 'name', header: 'Módulo', accessorFn: (m) => `${m.name} (${m.alias})`,
+      cell: ({ row: { original: m } }) => (
+        <div>
+          <strong className="font-mono">{m.name}</strong>
+          <span className="ml-2 text-xs text-muted-foreground font-mono">({m.alias})</span>
+        </div>
+      ),
+    },
+    { accessorKey: 'description', header: 'Descrição', cell: ({ row }) => row.original.description ?? '—' },
+    {
+      id: 'monthly_fee_cents', header: 'Preço', accessorFn: (m) => formatCurrency(m.monthly_fee_cents),
+    },
+    {
+      id: 'enabled', header: 'Status', accessorFn: (m) => (m.enabled ? 'Ativo' : 'Inativo'),
+      cell: ({ row: { original: m } }) => (
+        <Switch checked={m.enabled} onCheckedChange={() => handleToggle(m)} aria-label={m.enabled ? 'Desativar' : 'Ativar'} />
+      ),
+    },
   ];
 
   return (
     <div className="space-y-6">
+      {modalValidacao}
       <PageHeader
         title="Módulos da Plataforma"
         subtitle="Catálogo de módulos disponíveis para provisionamento nos tenants"
@@ -257,20 +241,14 @@ export function ModuleCatalogPage() {
         columns={columns}
         data={modules}
         loading={loading}
-        emptyMessage="Nenhum módulo cadastrado"
-        pagination={true}
-        paginationState={{
-          currentPage: page,
-          totalPages: Math.ceil(total / perPage),
-          onPageChange: handlePageChange,
-          total,
-          perPage,
-        }}
-        search={{
-          value: search,
-          onChange: handleSearch,
-          placeholder: 'Buscar por nome ou alias...',
-        }}
+        emptyText="Nenhum módulo cadastrado"
+        searchable
+        searchPlaceholder="Buscar por nome ou alias..."
+        pagination
+        pageSizeSelector
+        exportable
+        exportFileName="catalogo-de-modulos"
+        exportTitle="Catálogo de módulos da plataforma"
       />
 
       {/* Create/Edit Dialog */}
@@ -288,7 +266,7 @@ export function ModuleCatalogPage() {
           </>
         }
       >
-        <form id="module-form" onSubmit={handleSubmit} className="space-y-4">
+        <form noValidate id="module-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field
               label="Nome"
@@ -390,12 +368,11 @@ export function ModuleCatalogPage() {
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         title="Excluir Módulo"
-        message={`Tem certeza que deseja excluir o módulo "${deleteTarget?.name}"? Esta ação não pode ser desfeita.`}
-        confirmText="Excluir"
-        cancelText="Cancelar"
-        onConfirm={handleDelete}
-        loading={saving}
-        variant="destructive"
+        description={`Tem certeza que deseja excluir o módulo "${deleteTarget?.name}"? Esta ação não pode ser desfeita.`}
+        confirmLabel={saving ? 'Excluindo…' : 'Excluir'}
+        cancelLabel="Cancelar"
+        onConfirm={() => handleDelete()}
+        destructive
       />
     </div>
   );

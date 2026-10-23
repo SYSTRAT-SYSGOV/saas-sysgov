@@ -187,8 +187,9 @@ describe('Admin — telas usam dados reais (sem mock)', () => {
       vi.mocked(api.get).mockResolvedValue({ data: [row], last_page: 3, total: 120 });
 
       render(<AdminAuditLogs />);
-      await screen.findByTestId('audit-page-info');
-      fireEvent.click(screen.getByText('Próxima'));
+      expect(await screen.findByText('user.created')).toBeInTheDocument();
+      expect(screen.getByText(/120 registros/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Próxima/ }));
 
       await waitFor(() => expect(api.get).toHaveBeenLastCalledWith(expect.stringContaining('page=2')));
     });

@@ -4,6 +4,7 @@ import { Card } from '@sysgov/ui';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { ScreenState, ScreenStateType } from '../ui/ScreenState';
 import api from '../../api/client';
+import { useFormValidationModal } from '@sysgov/ui';
 
 interface AdminUserProfileProps {
   onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -36,6 +37,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
   );
 
   const [name, setName] = useState(currentUser?.nome ?? '');
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -76,7 +78,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
       if (currentUser) setCurrentUser({ ...currentUser, nome: res.data.name });
       toast({ type: 'success', title: 'Perfil atualizado', message: 'Seu nome foi salvo.' });
     } catch (err: any) {
-      toast({ type: 'error', title: 'Falha ao salvar', message: err?.message || 'Não foi possível salvar o perfil.' });
+      if (!tratarErro(err)) toast({ type: 'error', title: 'Falha ao salvar', message: err?.message || 'Não foi possível salvar o perfil.' });
     } finally {
       setSavingProfile(false);
     }
@@ -105,7 +107,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
       toast({ type: 'success', title: 'Senha alterada', message: res.message });
       await loadSessions();
     } catch (err: any) {
-      toast({ type: 'error', title: 'Senha não alterada', message: err?.message || 'Não foi possível alterar a senha.' });
+      if (!tratarErro(err)) toast({ type: 'error', title: 'Senha não alterada', message: err?.message || 'Não foi possível alterar a senha.' });
     } finally {
       setSavingPassword(false);
     }
@@ -117,7 +119,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
       toast({ type: 'success', title: 'Sessão encerrada', message: 'O acesso dessa sessão foi revogado.' });
       await loadSessions();
     } catch (err: any) {
-      toast({ type: 'error', title: 'Falha ao encerrar', message: err?.message || 'Não foi possível encerrar a sessão.' });
+      if (!tratarErro(err)) toast({ type: 'error', title: 'Falha ao encerrar', message: err?.message || 'Não foi possível encerrar a sessão.' });
     }
   };
 
@@ -126,6 +128,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {modalValidacao}
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground">
           <UserCheck className="h-5 w-5 text-primary" /> Meu Perfil &amp; Segurança
@@ -136,7 +139,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card className="p-5">
           <h2 className="mb-4 text-sm font-semibold text-foreground">Dados da conta</h2>
-          <form onSubmit={handleUpdateProfile} className="space-y-3">
+          <form noValidate onSubmit={handleUpdateProfile} className="space-y-3">
             <label className="block space-y-1">
               <span className="text-xs font-semibold text-muted-foreground">Nome</span>
               <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} maxLength={160} />
@@ -161,7 +164,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
           <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
             <KeyRound className="h-4 w-4 text-primary" /> Alterar senha
           </h2>
-          <form onSubmit={handleChangePassword} className="space-y-3">
+          <form noValidate onSubmit={handleChangePassword} className="space-y-3">
             <label className="block space-y-1">
               <span className="text-xs font-semibold text-muted-foreground">Senha atual</span>
               <input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className={inputClass} />
@@ -204,7 +207,7 @@ export const AdminUserProfile: React.FC<AdminUserProfileProps> = ({ onAddToast }
                   <Laptop className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      {s.name} {s.is_current && <span className="ml-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">sessão atual</span>}
+                      {s.name} {s.is_current && <span className="ml-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">sessão atual</span>}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Criada em {formatDateTime(s.created_at)} • último uso: {formatDateTime(s.last_used_at)}
