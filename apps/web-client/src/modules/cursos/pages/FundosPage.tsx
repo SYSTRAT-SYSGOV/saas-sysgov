@@ -6,6 +6,7 @@ import { ConfirmDialog, EmptyState, ScreenState, StatusChip } from '@/components
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { prepararFundo } from '../construtor/pdfParaImagem';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /**
  * Biblioteca de fundos de certificado (D8). O arquivo pode ser PDF (a 1ª página vira imagem no
@@ -15,6 +16,7 @@ import { prepararFundo } from '../construtor/pdfParaImagem';
 export const FundosPage: React.FC = () => {
   const [fundos, setFundos] = useState<FundoCertificado[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
   const [ativo, setAtivo] = useState(true);
@@ -27,7 +29,7 @@ export const FundosPage: React.FC = () => {
     try {
       setFundos((await sysgovApi.cursos.listarFundos()).fundos);
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível carregar os fundos.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível carregar os fundos.'));
       setFundos([]);
     }
   }, []);
@@ -38,9 +40,9 @@ export const FundosPage: React.FC = () => {
 
   const cadastrar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Nome do modelo', nome]])) return;
     if (!arquivo) {
-      setErro('Escolha o arquivo do fundo.');
-      return;
+      invalidar([['validação', 'Escolha o arquivo do fundo.']]); return;
     }
     setSalvando(true);
     setErro(null);
@@ -54,7 +56,7 @@ export const FundosPage: React.FC = () => {
       setCampoArquivo((n) => n + 1);
       await carregar();
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível cadastrar o fundo.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível cadastrar o fundo.'));
     } finally {
       setSalvando(false);
     }
@@ -65,7 +67,7 @@ export const FundosPage: React.FC = () => {
       await sysgovApi.cursos.atualizarFundo(f.id, { ativo: !f.ativo });
       await carregar();
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível alterar o fundo.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível alterar o fundo.'));
     }
   };
 
@@ -73,11 +75,12 @@ export const FundosPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {modalValidacao}
       <Card className="p-4">
         <h3 className="mb-3 text-base font-semibold">Cadastrar novo fundo</h3>
-        <form onSubmit={cadastrar} className="space-y-3">
+        <form noValidate onSubmit={cadastrar} className="space-y-3">
           <div className="grid gap-3 md:grid-cols-[1fr_12rem]">
-            <Input label="Nome do modelo" value={nome} onChange={(e) => setNome(e.target.value)} required maxLength={150} />
+            <Input label="Nome do modelo" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={150} />
             <Select label="Status" value={ativo ? '1' : '0'} onChange={(v) => setAtivo(v === '1')} options={[{ value: '1', label: 'Ativo' }, { value: '0', label: 'Inativo' }]} />
           </div>
           <Input label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} maxLength={255} />

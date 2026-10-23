@@ -11,6 +11,7 @@ import {
 } from '../formato';
 import { CamposEntidadeForm, FORM_ENTIDADE_VAZIO, paraDadosEntidade, type FormEntidade } from './CamposEntidadeForm';
 import { CampoTexto } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Ficha da entidade para o Gestor: dados, documentos, status, lotes, senha e exclusão (spec: Entidades; Validade). */
 export const EntidadeFicha: React.FC<{ entidadeId: number; avisar: Toast; onVoltar: () => void }> = ({ entidadeId, avisar, onVoltar }) => {
@@ -142,17 +143,19 @@ const StatusModal: React.FC<{ aberto: boolean; entidade: Entidade; onFechar: () 
   const [faltantes, setFaltantes] = useState<string[]>([]);
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const [foiAberto, setFoiAberto] = useState(false);
   if (aberto !== foiAberto) { setFoiAberto(aberto); if (aberto) { setStatus(entidade.status); setFaltantes([]); setObservacao(''); setErro(null); } }
   const exigeMotivo = status === 'reprovada' || status === 'desabilitada';
   const salvar = async () => {
     setSalvando(true); setErro(null);
-    try { onSalvo(await inservivelApi.alterarStatusEntidade(entidade.id, status, exigeMotivo ? faltantes : [], exigeMotivo ? vazioParaNulo(observacao) : null)); } catch (e) { setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
+    try { onSalvo(await inservivelApi.alterarStatusEntidade(entidade.id, status, exigeMotivo ? faltantes : [], exigeMotivo ? vazioParaNulo(observacao) : null)); } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
   };
   return (
     <Modal open={aberto} onClose={onFechar} title="Alterar status da entidade" size="lg"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-3">
         <Select label="Novo status" value={status} onChange={(v) => setStatus(v as StatusEntidade)}
           options={(Object.keys(ROTULO_STATUS_ENTIDADE) as StatusEntidade[]).map((s) => ({ value: s, label: ROTULO_STATUS_ENTIDADE[s] }))} />
@@ -231,18 +234,20 @@ const EditarEntidadeModal: React.FC<{ entidade: Entidade | null; onFechar: () =>
   const [form, setForm] = useState<FormEntidade>(FORM_ENTIDADE_VAZIO);
   const [atual, setAtual] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if ((entidade?.id ?? null) !== atual) { setAtual(entidade?.id ?? null); if (entidade) setForm(paraForm(entidade)); setErro(null); }
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!entidade) return;
     setSalvando(true); setErro(null);
-    try { onSalvo(await inservivelApi.atualizarEntidade(entidade.id, dadosEdicao(form, true))); } catch (e) { setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
+    try { onSalvo(await inservivelApi.atualizarEntidade(entidade.id, dadosEdicao(form, true))); } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
   };
   return (
     <Modal open={entidade !== null} onClose={onFechar} title="Editar entidade" size="2xl"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-editar-entidade" isLoading={salvando}>Salvar</Button></>}>
-      <form id="form-editar-entidade" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-editar-entidade" onSubmit={salvar} className="space-y-3">
         {erro && <AlertCard priority="danger" title="Não foi possível salvar" description={erro} />}
         <p className="text-xs text-muted-foreground">O e-mail é o login da entidade e não muda aqui. O CPF atual é {entidade?.cpf_representante_mascarado}; preencha só para trocar.</p>
         <CamposEntidadeForm form={form} onChange={setForm} bloquear={['email']} cpfOpcional />
@@ -267,9 +272,9 @@ const SenhaModal: React.FC<{
   return (
     <Modal open={aberto} onClose={fechar} title={titulo} size="md"
       footer={<><Button variant="outline" onClick={fechar} disabled={enviando}>Cancelar</Button><Button variant={perigo ? 'destructive' : 'primary'} type="submit" form={`form-senha-${botao}`} isLoading={enviando} disabled={!senha}>{botao}</Button></>}>
-      <form id={`form-senha-${botao}`} onSubmit={enviar} className="space-y-3 text-sm">
+      <form noValidate id={`form-senha-${botao}`} onSubmit={enviar} className="space-y-3 text-sm">
         {aviso && <p>{aviso}</p>}
-        <Input label={rotulo} type="password" autoComplete={perigo ? 'current-password' : 'new-password'} value={senha} onChange={(e) => setSenha(e.target.value)} required minLength={perigo ? undefined : 8} />
+        <Input label={rotulo} type="password" autoComplete={perigo ? 'current-password' : 'new-password'} value={senha} onChange={(e) => setSenha(e.target.value)} minLength={perigo ? undefined : 8} />
         {erro && <AlertCard priority="danger" title="Não foi possível concluir" description={erro} />}
       </form>
     </Modal>

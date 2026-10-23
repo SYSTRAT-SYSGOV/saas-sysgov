@@ -8,10 +8,12 @@ import { periodoInvalido, periodoParaApi, recebidoDosParticipantes, ROTULO_FORMA
 import type { PropsAba } from '../ModuloFormaturaMain';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
 import { RegistrarPagamentoModal } from './RegistrarPagamentoModal';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Pagamentos do ano letivo (D12), com filtro de período, registro e estorno. */
 export const PagamentosFormatura: React.FC<PropsAba> = ({ ano, dados, recarregar, avisar, permissoes }) => {
   const [inicio, setInicio] = useState('');
+  const { tratarErro } = useFormValidationModal();
   const [fim, setFim] = useState('');
   const [periodo, setPeriodo] = useState<Periodo>({});
   const [registrando, setRegistrando] = useState(false);
@@ -107,7 +109,7 @@ export const PagamentosFormatura: React.FC<PropsAba> = ({ ano, dados, recarregar
             avisar({ type: 'success', title: 'Pagamento estornado', message: 'Totais atualizados.' });
             await recarregar();
           } catch (e) {
-            avisar({ type: 'error', title: 'Estorno não realizado', message: erroApi(e).mensagem });
+            if (!tratarErro(e)) avisar({ type: 'error', title: 'Estorno não realizado', message: erroApi(e).mensagem });
           }
         }}
       />

@@ -3,6 +3,7 @@ import { Vote } from 'lucide-react';
 import { Button, Input, Modal, Select } from '@sysgov/ui';
 import { erroApi } from '../../escola/api';
 import { campanhaApi, type Campanha, type DadosCampanha } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 export const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 const CARGOS = ['Presidente', 'Governador', 'Senador', 'Deputado Federal', 'Deputado Estadual', 'Prefeito', 'Vereador'];
@@ -14,6 +15,7 @@ export const CampanhaFormModal: React.FC<{ campanha: Campanha | 'nova' | null; o
   const [form, setForm] = useState<DadosCampanha>(VAZIO);
   const [atual, setAtual] = useState<Campanha | 'nova' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (campanha !== atual) {
     setAtual(campanha);
@@ -24,13 +26,14 @@ export const CampanhaFormModal: React.FC<{ campanha: Campanha | 'nova' | null; o
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Nome da campanha', form.nome], ['Ano da eleição', form.ano]])) return;
     setSalvando(true);
     setErro(null);
     try {
       const salva = nova ? await campanhaApi.criarCampanha(form) : await campanhaApi.atualizarCampanha((campanha as Campanha).id, form);
       await onSalva(salva, nova);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -45,10 +48,11 @@ export const CampanhaFormModal: React.FC<{ campanha: Campanha | 'nova' | null; o
       size="lg"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-campanha" isLoading={salvando}>Salvar</Button></>}
     >
-      <form id="form-campanha" onSubmit={salvar} className="space-y-3">
-        <Input label="Nome da campanha *" placeholder="Ex.: Deputado Estadual 2026" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} required maxLength={200} />
+      {modalValidacao}
+      <form noValidate id="form-campanha" onSubmit={salvar} className="space-y-3">
+        <Input label="Nome da campanha *" placeholder="Ex.: Deputado Estadual 2026" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} maxLength={200} />
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="Ano da eleição *" type="number" min={2000} max={2100} value={form.ano} onChange={(e) => setForm((f) => ({ ...f, ano: Number(e.target.value) }))} required className="font-mono tabular-nums" />
+          <Input label="Ano da eleição *" type="number" min={2000} max={2100} value={form.ano} onChange={(e) => setForm((f) => ({ ...f, ano: Number(e.target.value) }))} className="font-mono tabular-nums" />
           <Select label="Cargo" value={form.cargo} onChange={(v) => setForm((f) => ({ ...f, cargo: v }))} options={CARGOS.map((c) => ({ value: c, label: c }))} />
           <Select label="UF de atuação" value={form.uf} onChange={(v) => setForm((f) => ({ ...f, uf: v }))} options={UFS.map((u) => ({ value: u, label: u }))} />
         </div>

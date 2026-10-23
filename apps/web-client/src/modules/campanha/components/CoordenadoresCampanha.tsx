@@ -9,6 +9,7 @@ import { campanhaApi, type Coordenador, type TipoCoordenador } from '../api';
 import { ROTULO_TIPO_COORDENADOR, formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const VAZIO = { nome: '', tipo: 'regional' as TipoCoordenador, cpf: '', codigo_ibge: null as number | null, regiao: '', meta_votos: '0', telefone: '', whatsapp: '', email: '', observacoes: '' };
 
@@ -17,6 +18,7 @@ export const CoordenadoresCampanha: React.FC<PropsAba> = ({ campanha, permissoes
   const lista = useCarga(() => campanhaApi.coordenadores(), [campanha.id, versao]);
   const municipios = useMunicipiosDaCampanha(campanha.id);
   const [editando, setEditando] = useState<Coordenador | 'novo' | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [excluir, setExcluir] = useState<Coordenador | null>(null);
 
   if (lista.erro) return <AlertCard priority="danger" title="Não foi possível carregar os coordenadores" description={lista.erro} actionLabel="Tentar novamente" onAction={() => void lista.recarregar()} />;
@@ -66,7 +68,7 @@ export const CoordenadoresCampanha: React.FC<PropsAba> = ({ campanha, permissoes
             await campanhaApi.excluirCoordenador(excluir.id);
             alterou();
           } catch (e) {
-            avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem });
+            if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem });
           }
         }}
       />
@@ -78,6 +80,7 @@ const CoordenadorModal: React.FC<{ registro: Coordenador | 'novo' | null; munici
   const [form, setForm] = useState(VAZIO);
   const [atual, setAtual] = useState<Coordenador | 'novo' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (registro !== atual) {
     setAtual(registro);
@@ -91,6 +94,7 @@ const CoordenadorModal: React.FC<{ registro: Coordenador | 'novo' | null; munici
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Nome', form.nome]])) return;
     setSalvando(true);
     setErro(null);
     try {
@@ -100,7 +104,7 @@ const CoordenadorModal: React.FC<{ registro: Coordenador | 'novo' | null; munici
       });
       onSalvo(salvo.nome);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -109,9 +113,10 @@ const CoordenadorModal: React.FC<{ registro: Coordenador | 'novo' | null; munici
   return (
     <Modal open={registro !== null} onClose={onFechar} title={registro === 'novo' ? 'Novo coordenador' : 'Editar coordenador'} icon={<UserCog className="h-5 w-5" />} size="lg"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-coordenador" isLoading={salvando}>Salvar</Button></>}>
-      <form id="form-coordenador" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-coordenador" onSubmit={salvar} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
-          <Input label="Nome *" value={form.nome} onChange={texto('nome')} required maxLength={200} />
+          <Input label="Nome *" value={form.nome} onChange={texto('nome')} maxLength={200} />
           <Select label="Tipo" value={form.tipo} onChange={(v) => setForm((f) => ({ ...f, tipo: v as TipoCoordenador }))} options={(Object.keys(ROTULO_TIPO_COORDENADOR) as TipoCoordenador[]).map((t) => ({ value: t, label: ROTULO_TIPO_COORDENADOR[t] }))} />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">

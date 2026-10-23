@@ -5,6 +5,7 @@ import { Tabs } from '@/components/ui';
 import { sysgovApi, type EmpresaCursos, type ModeloCertificado, type PessoaCertificadoAvulso, type ResultadoEmissaoAvulsa } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { ErroFormulario } from './ErroFormulario';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   aberto: boolean;
@@ -32,6 +33,7 @@ export const EmissaoAvulsaModal: React.FC<Props> = ({ aberto, cursoId, onClose }
   const [resultado, setResultado] = useState<ResultadoEmissaoAvulsa | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     if (!aberto) return;
@@ -62,7 +64,7 @@ export const EmissaoAvulsaModal: React.FC<Props> = ({ aberto, cursoId, onClose }
         ? await sysgovApi.cursos.emitirCertificadosAvulsos(cursoId, { pessoas: pessoas.filter((p) => p.nome.trim()), ...extra })
         : await sysgovApi.cursos.importarCertificadosAvulsos(cursoId, arquivo as File, extra));
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível emitir os certificados.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível emitir os certificados.'));
     } finally {
       setEnviando(false);
     }

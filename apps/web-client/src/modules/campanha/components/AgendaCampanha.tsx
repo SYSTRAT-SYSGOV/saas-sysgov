@@ -9,6 +9,7 @@ import { campanhaApi, type Evento, type ItemAgenda, type MunicipioLinha, type Re
 import { formatarData, formatarDataHora } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { SelectMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 export const ROTULO_AGENDA: Record<TipoAgenda, string> = { evento: 'Evento', reuniao: 'Reunião', visita: 'Visita' };
 const TITULO_NOVO: Record<TipoAgenda, string> = { evento: 'Novo evento', reuniao: 'Nova reunião', visita: 'Nova visita' };
@@ -26,6 +27,7 @@ export const AgendaCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisa
   const municipios = useMunicipiosDaCampanha(campanha.id);
   const responsaveis = useCarga(() => campanhaApi.responsaveisDemanda(), [campanha.id]);
   const [filtros, setFiltros] = useState<{ de: string; ate: string; tipo?: TipoAgenda; codigo_ibge?: number }>({ de: somarDias(-30), ate: somarDias(60) });
+  const { tratarErro } = useFormValidationModal();
   const lista = useCarga(() => campanhaApi.agenda(filtros), [campanha.id, versao, JSON.stringify(filtros)]);
   const [aberto, setAberto] = useState<Abertura>(null);
   const [excluir, setExcluir] = useState<ItemAgenda | null>(null);
@@ -78,7 +80,7 @@ export const AgendaCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisa
       <ConfirmarModal aberto={excluir !== null} titulo="Excluir da agenda" perigo rotuloConfirmar="Excluir" mensagem={<>Excluir <strong>{excluir?.titulo}</strong>?</>} onFechar={() => setExcluir(null)}
         onConfirmar={async () => {
           if (!excluir) return;
-          try { await campanhaApi.excluirDaAgenda(excluir.tipo, excluir.id); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
+          try { await campanhaApi.excluirDaAgenda(excluir.tipo, excluir.id); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
         }} />
     </Card>
   );
@@ -93,6 +95,7 @@ const CompromissoModal: React.FC<{
   const [form, setForm] = useState<Form>({});
   const [atual, setAtual] = useState<Abertura>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (aberto !== atual) {
     setAtual(aberto);
@@ -118,7 +121,13 @@ const CompromissoModal: React.FC<{
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (!form.codigo_ibge) { setErro('Escolha o município.'); return; }
+    const obrigatorios: Array<[string, unknown]> = tipo === 'evento'
+      ? [['Nome do evento', s('nome')], ['Data e hora', s('inicio')], ['Local / ponto de encontro', s('local')]]
+      : tipo === 'reuniao'
+        ? [['Título', s('titulo')], ['Data e hora', s('inicio')]]
+        : [['Liderança visitada', s('lideranca')], ['Data', s('data')], ['Assunto', s('assunto')]];
+    if (!validar(obrigatorios)) return;
+    if (!form.codigo_ibge) { invalidar([['validação', 'Escolha o município.']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -137,7 +146,7 @@ const CompromissoModal: React.FC<{
       }
       onSalvo(SALVO[tipo]);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -145,7 +154,7 @@ const CompromissoModal: React.FC<{
 
   const virarDemanda = async () => {
     if (!registro) return;
-    try { await campanhaApi.demandaDaVisita(registro.id); onSalvo('Demanda criada'); } catch (e) { avisar({ type: 'error', title: 'Não foi possível criar a demanda', message: erroApi(e).mensagem }); }
+    try { await campanhaApi.demandaDaVisita(registro.id); onSalvo('Demanda criada'); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível criar a demanda', message: erroApi(e).mensagem }); }
   };
   const visita = registro as Visita | null;
 
@@ -156,14 +165,15 @@ const CompromissoModal: React.FC<{
         <Button variant="outline" onClick={onFechar} disabled={salvando}>{ro ? 'Fechar' : 'Cancelar'}</Button>
         {!ro && <Button type="submit" form="form-compromisso" isLoading={salvando}>Salvar</Button>}
       </>}>
-      <form id="form-compromisso" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-compromisso" onSubmit={salvar} className="space-y-3">
         {tipo === 'evento' && (<>
-          <Input label="Nome do evento (comício, carreata…) *" value={s('nome')} onChange={texto('nome')} required maxLength={200} disabled={ro} />
+          <Input label="Nome do evento (comício, carreata…) *" value={s('nome')} onChange={texto('nome')} maxLength={200} disabled={ro} />
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectMunicipio label="Município *" municipios={municipios} value={(form.codigo_ibge as number | null) ?? null} onChange={(v) => setForm((f) => ({ ...f, codigo_ibge: v }))} disabled={ro} />
-            <Input label="Data e hora *" type="datetime-local" value={s('inicio')} onChange={texto('inicio')} required disabled={ro} />
+            <Input label="Data e hora *" type="datetime-local" value={s('inicio')} onChange={texto('inicio')} disabled={ro} />
           </div>
-          <Input label="Local / ponto de encontro *" value={s('local')} onChange={texto('local')} required maxLength={255} disabled={ro} />
+          <Input label="Local / ponto de encontro *" value={s('local')} onChange={texto('local')} maxLength={255} disabled={ro} />
           <div className="grid gap-3 sm:grid-cols-3">
             {responsavel}
             <Input label="Público estimado" type="number" min={0} value={s('publico_estimado')} onChange={texto('publico_estimado')} disabled={ro} className="font-mono tabular-nums" />
@@ -172,10 +182,10 @@ const CompromissoModal: React.FC<{
           <label className="block space-y-1 text-sm font-medium">Observações e checklist<Textarea rows={3} value={s('observacoes')} onChange={texto('observacoes')} disabled={ro} /></label>
         </>)}
         {tipo === 'reuniao' && (<>
-          <Input label="Título *" value={s('titulo')} onChange={texto('titulo')} required maxLength={200} disabled={ro} />
+          <Input label="Título *" value={s('titulo')} onChange={texto('titulo')} maxLength={200} disabled={ro} />
           <div className="grid gap-3 sm:grid-cols-3">
             <SelectMunicipio label="Município *" municipios={municipios} value={(form.codigo_ibge as number | null) ?? null} onChange={(v) => setForm((f) => ({ ...f, codigo_ibge: v }))} disabled={ro} />
-            <Input label="Data e hora *" type="datetime-local" value={s('inicio')} onChange={texto('inicio')} required disabled={ro} />
+            <Input label="Data e hora *" type="datetime-local" value={s('inicio')} onChange={texto('inicio')} disabled={ro} />
             <Input label="Local" value={s('local')} onChange={texto('local')} maxLength={255} disabled={ro} />
           </div>
           <label className="block space-y-1 text-sm font-medium">Participantes<Textarea rows={2} value={s('participantes')} onChange={texto('participantes')} disabled={ro} /></label>
@@ -188,13 +198,13 @@ const CompromissoModal: React.FC<{
           </div>
         </>)}
         {tipo === 'visita' && (<>
-          <Input label="Liderança visitada (associação, comerciante…) *" value={s('lideranca')} onChange={texto('lideranca')} required maxLength={200} disabled={ro} />
+          <Input label="Liderança visitada (associação, comerciante…) *" value={s('lideranca')} onChange={texto('lideranca')} maxLength={200} disabled={ro} />
           <div className="grid gap-3 sm:grid-cols-3">
             <SelectMunicipio label="Município *" municipios={municipios} value={(form.codigo_ibge as number | null) ?? null} onChange={(v) => setForm((f) => ({ ...f, codigo_ibge: v }))} disabled={ro} />
             <Input label="Bairro" value={s('bairro')} onChange={texto('bairro')} maxLength={150} disabled={ro} />
-            <Input label="Data *" type="date" value={s('data')} onChange={texto('data')} required disabled={ro} />
+            <Input label="Data *" type="date" value={s('data')} onChange={texto('data')} disabled={ro} />
           </div>
-          <label className="block space-y-1 text-sm font-medium">Assunto principal *<Textarea rows={2} value={s('assunto')} onChange={texto('assunto')} required disabled={ro} /></label>
+          <label className="block space-y-1 text-sm font-medium">Assunto principal *<Textarea rows={2} value={s('assunto')} onChange={texto('assunto')} disabled={ro} /></label>
           <label className="block space-y-1 text-sm font-medium">Resultado / reações<Textarea rows={2} value={s('resultado')} onChange={texto('resultado')} disabled={ro} /></label>
           <label className="block space-y-1 text-sm font-medium">Encaminhamento solicitado (ofício, demanda)<Textarea rows={2} value={s('encaminhamento')} onChange={texto('encaminhamento')} disabled={ro} /></label>
           {visita?.demanda_id && <p className="text-xs text-muted-foreground">Esta visita já virou demanda (aba Demandas).</p>}

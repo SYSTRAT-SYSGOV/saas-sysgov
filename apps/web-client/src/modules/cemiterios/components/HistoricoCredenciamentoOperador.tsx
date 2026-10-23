@@ -3,6 +3,7 @@ import { Button, Field, Input, Modal } from '@/components/ui';
 import { FileCheck, Upload } from 'lucide-react';
 import { cemiteriosApi, formatarData } from '../api';
 import { ErroBox, Mono, useAcao, useDados } from '../views/comum';
+import { validarObrigatoriosGlobal } from '@/lib/validationModalHost';
 
 interface HistoricoCredenciamentoOperadorProps {
   operadorId: number;
@@ -19,6 +20,7 @@ export const HistoricoCredenciamentoOperador: React.FC<HistoricoCredenciamentoOp
   const [arquivo, setArquivo] = useState<File | null>(null);
 
   const credenciar = async () => {
+    if (!validarObrigatoriosGlobal([['Número do Alvará', numero], ['Validade', validade]])) return;
     const resultado = await executar(() => cemiteriosApi.credenciarOperador(operadorId, { numero, validade }, arquivo));
     if (resultado !== null) {
       setModalAberto(false);
@@ -75,7 +77,7 @@ export const HistoricoCredenciamentoOperador: React.FC<HistoricoCredenciamentoOp
         footer={
           <div className="flex justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setModalAberto(false)}>Cancelar</Button>
-            <Button size="sm" onClick={credenciar} disabled={enviando || !numero || !validade}>
+            <Button size="sm" onClick={credenciar} disabled={enviando}>
               {enviando ? 'Enviando…' : 'Registrar'}
             </Button>
           </div>

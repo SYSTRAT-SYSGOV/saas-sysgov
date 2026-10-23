@@ -4,6 +4,7 @@ import { ExternalLink, MessageCircle, Trash2 } from 'lucide-react';
 import { Button, Input, Modal, Select, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
 import { formatarCentavos, formatarData } from '@/lib/formatacao';
 import { erroApi, formaturaApi, type Formando, type Pagamento } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 import { linkWhatsApp, previaValorDevido, ROTULO_FORMA, simularParcelas, situacaoDoFormando } from '../formato';
 import type { PropsAba } from '../ModuloFormaturaMain';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -12,6 +13,7 @@ import { RegistrarPagamentoModal } from './RegistrarPagamentoModal';
 /** Ficha do formando: convidados, observações e telefone (gravado no Cadastro Escolar, D14) e pagamentos. */
 export const FichaFormando: React.FC<{ formando: Formando; aberto: boolean; props: PropsAba; onFechar: () => void }> = ({ formando, aberto, props, onFechar }) => {
   const { ano, dados, recarregar, avisar, permissoes } = props;
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const navigate = useNavigate();
   const [telefone, setTelefone] = useState(formando.telefone ?? '');
   const [convidados, setConvidados] = useState(String(formando.convidados));
@@ -55,7 +57,7 @@ export const FichaFormando: React.FC<{ formando: Formando; aberto: boolean; prop
       await recarregar();
       onFechar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
     } finally {
       setSalvando(false);
     }
@@ -64,6 +66,7 @@ export const FichaFormando: React.FC<{ formando: Formando; aberto: boolean; prop
   const podeEditar = permissoes.editarFormandos;
   return (
     <>
+      {modalValidacao}
       <Modal
         open={aberto}
         onClose={onFechar}

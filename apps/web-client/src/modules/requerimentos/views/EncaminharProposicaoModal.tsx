@@ -4,6 +4,7 @@ import { Send, AlertCircle } from 'lucide-react';
 import { requerimentosApi } from '../api';
 import type { Proposicao } from '../api';
 import { getApiErrorMessage } from '@/lib/apiErrors';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface EncaminharProposicaoModalProps {
   proposicao: Proposicao;
@@ -34,6 +35,7 @@ export const EncaminharProposicaoModal: React.FC<EncaminharProposicaoModalProps>
   const [observacao, setObservacao] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const handleSubmit = async () => {
     setEnviando(true);
@@ -48,7 +50,7 @@ export const EncaminharProposicaoModal: React.FC<EncaminharProposicaoModalProps>
       });
       onEncaminhado();
     } catch (err: unknown) {
-      setErro(getApiErrorMessage(err, 'Erro ao encaminhar a proposição.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Erro ao encaminhar a proposição.'));
     } finally {
       setEnviando(false);
     }
@@ -63,6 +65,7 @@ export const EncaminharProposicaoModal: React.FC<EncaminharProposicaoModalProps>
       title="Encaminhar Proposição"
       description={`${proposicao.numero} — ${proposicao.ementa}`}
     >
+      {modalValidacao}
       <div className="space-y-4">
         <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
           <strong>{PODER_LABEL[proposicao.poder_origem] ?? proposicao.poder_origem}</strong>

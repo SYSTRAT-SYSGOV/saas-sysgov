@@ -7,6 +7,7 @@ import { useArquivoAutenticado } from '@/hooks/useArquivoAutenticado';
 import { escolaApi, erroApi, type PessoaResumo, type ResultadoImportacaoAlunos, type Aluno as AlunoPedagogico, type Contato as ContatoAluno, type SituacaoAluno as StatusAluno, type Turma as TurmaPedagogica } from '../api';
 import { pedagogicoApi } from '../../pedagogico/api';
 import AdminModal, { inputCls, labelCls, btnPrimary, btnSecondary, btnDanger, type Toast } from './AdminModal';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 // ─── Novo / Editar Aluno ───────────────────────────────────────────────
 
@@ -61,6 +62,7 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
     aluno?.contatos?.length ? aluno.contatos : [{ telefone: '', descricao: '' }]
   );
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, invalidar } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   // Sem CPF e sem pessoa ligada, o aluno vira pessoa com documento pendente: menor exige responsável.
   const [responsavel, setResponsavel] = useState<PessoaResumo | null>(null);
@@ -102,11 +104,11 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
     e.preventDefault();
     setErro('');
     const turma = turmas.find(t => t.id === Number(turmaId));
-    if (!nome.trim()) return setErro('Informe o nome completo.');
-    if (!turma) return setErro('Selecione a turma.');
-    if (cpf.trim() && !cpfValido(cpf)) return setErro('CPF inválido.');
+    if (!nome.trim()) return invalidar([['validação', 'Informe o nome completo.']]);
+    if (!turma) return invalidar([['validação', 'Selecione a turma.']]);
+    if (cpf.trim() && !cpfValido(cpf)) return invalidar([['validação', 'CPF inválido.']]);
     if (remanejando && turma.id === aluno!.turma?.id) {
-      return setErro('Para remanejar, selecione uma turma DIFERENTE da atual.');
+      return invalidar([['validação', 'Para remanejar, selecione uma turma DIFERENTE da atual.']]);
     }
 
     const num = parseInt(numero, 10);
@@ -157,11 +159,12 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
         </>
       }
     >
-      <form id="form-aluno" onSubmit={handleSubmit} className="space-y-4">
+      {modalValidacao}
+      <form noValidate id="form-aluno" onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-2">
             <label className={labelCls}>Nome Completo *</label>
-            <input className={inputCls} value={nome} onChange={e => setNome(e.target.value)} required autoFocus />
+            <input className={inputCls} value={nome} onChange={e => setNome(e.target.value)} autoFocus />
           </div>
           <div>
             <label className={labelCls}>CGM</label>
@@ -238,7 +241,7 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
           <label className={`${labelCls} ${remanejando ? '!text-sky-700 dark:!text-sky-300 flex items-center gap-1' : ''}`}>
             {remanejando ? <><ArrowLeftRight className="w-3.5 h-3.5" /> TURMA DE DESTINO</> : 'Turma *'}
           </label>
-          <select className={inputCls} value={turmaId} onChange={e => setTurmaId(e.target.value)} required>
+          <select className={inputCls} value={turmaId} onChange={e => setTurmaId(e.target.value)}>
             <option value="">Selecione...</option>
             {turmas.map(t => (
               <option key={t.id} value={t.id}>{t.nome} - {t.turno?.nome ?? '—'} ({t.ano_letivo})</option>
@@ -333,6 +336,7 @@ export const NotasAlunoModal: React.FC<NotasAlunoModalProps> = ({ aluno, onClose
   const [originais, setOriginais] = useState<Record<string, string>>({});
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
 
   // Matérias vinculadas à turma do aluno + boletim do ano letivo da turma.
@@ -361,14 +365,14 @@ export const NotasAlunoModal: React.FC<NotasAlunoModalProps> = ({ aluno, onClose
     setGrades({ ...grades, [mid]: { ...(grades[mid] || {}), [tri]: v } });
 
   const handleSave = async () => {
-    if (turmaId === null) return setErro('O aluno está sem turma; vincule-o a uma turma para lançar notas.');
+    if (turmaId === null) return invalidar([['validação', 'O aluno está sem turma; vincule-o a uma turma para lançar notas.']]);
     const alteradas: { materia: number; tri: number; nota: number }[] = [];
     for (const m of materias) {
       for (const tri of [1, 2, 3]) {
         const raw = (grades[m.id]?.[tri] ?? '').trim().replace(',', '.');
         if (raw === '' || raw === originais[`${m.id}-${tri}`]) continue;
         const nota = Number(raw);
-        if (Number.isNaN(nota) || nota < 0 || nota > 10) return setErro(`Nota inválida em ${m.nome} (${tri}º tri): use 0 a 10.`);
+        if (Number.isNaN(nota) || nota < 0 || nota > 10) return invalidar([['validação', `Nota inválida em ${m.nome} (${tri}º tri): use 0 a 10.`]]);
         alteradas.push({ materia: m.id, tri, nota: Math.round(nota * 10) / 10 });
       }
     }
@@ -382,7 +386,7 @@ export const NotasAlunoModal: React.FC<NotasAlunoModalProps> = ({ aluno, onClose
       onToast({ type: 'success', title: 'Notas atualizadas', message: `${alteradas.length} nota(s) de ${aluno.nome} salvas.` });
       await onSaved();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -400,6 +404,7 @@ export const NotasAlunoModal: React.FC<NotasAlunoModalProps> = ({ aluno, onClose
         </>
       }
     >
+      {modalValidacao}
       {carregando && <p className="text-sm text-slate-500 mb-3">Carregando notas…</p>}
       {!carregando && materias.length === 0 && (
         <p className="text-sm text-slate-500 mb-3">Nenhuma matéria vinculada à turma do aluno. Vincule as matérias em Turmas → Editar.</p>
@@ -453,6 +458,7 @@ export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClos
     : 'TURMA; NUMERO; MATERIA; TRIMESTRE; NOTA';
 
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const anoLetivo = new Date().getFullYear();
 
   const handleImport = async (confirmarDuplicidades = false) => {
@@ -484,7 +490,7 @@ export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClos
       }
       onImported();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setProcessando(false);
     }
@@ -514,6 +520,7 @@ export const ImportarCSVModal: React.FC<ImportarCSVModalProps> = ({ tipo, onClos
         )
       }
     >
+      {modalValidacao}
       {resultado ? (
         <div className="space-y-3">
           {resultado.resumo.map(l => (
@@ -583,6 +590,7 @@ export const LimparTurmaModal: React.FC<LimparTurmaModalProps> = ({ turmas, onCl
   }, [turmas]);
   const turma = turmas.find(t => t.id === Number(turmaId));
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [excluindo, setExcluindo] = useState(false);
 
   const handleExcluir = async () => {
@@ -594,7 +602,7 @@ export const LimparTurmaModal: React.FC<LimparTurmaModalProps> = ({ turmas, onCl
       onToast({ type: 'success', title: 'Turma limpa', message: `${excluidos} alunos removidos de ${turma.nome}.` });
       await onDone();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setExcluindo(false);
     }
@@ -616,6 +624,7 @@ export const LimparTurmaModal: React.FC<LimparTurmaModalProps> = ({ turmas, onCl
         </>
       }
     >
+      {modalValidacao}
       {etapa === 1 ? (
         <div className="space-y-4">
           <p className="text-sm text-red-600 flex gap-2">

@@ -5,6 +5,7 @@ import type { Toast } from '../../escola/components/AdminModal';
 import { portfolioApi, type MateriaPortfolio, type Trabalho } from '../api';
 import { formatarAvaliacao, hojeLocal, lerAvaliacao } from '../formato';
 import { reduzirImagem, validarArquivo } from '../reduzirImagem';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   aberto: boolean;
@@ -28,6 +29,7 @@ export const TrabalhoFormModal: React.FC<Props> = ({ aberto, alunoId, materias, 
   const [observacoes, setObservacoes] = useState('');
   const [fotos, setFotos] = useState<File[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const jaTem = trabalho?.imagens.length ?? 0;
   // Trabalho já gravado nesta abertura do modal e fotos já enviadas: se uma foto falhar, "Salvar" de novo
@@ -55,7 +57,7 @@ export const TrabalhoFormModal: React.FC<Props> = ({ aberto, alunoId, materias, 
     const arquivos = Array.from(lista ?? []);
     const invalida = arquivos.map(validarArquivo).find((m) => m !== null);
     if (invalida) { setErro(invalida); return; }
-    if (jaTem + arquivos.length > LIMITE) { setErro(`Cada trabalho aceita no máximo ${LIMITE} imagens.`); return; }
+    if (jaTem + arquivos.length > LIMITE) { invalidar([['validação', `Cada trabalho aceita no máximo ${LIMITE} imagens.`]]); return; }
     setErro(null);
     setFotos(arquivos);
     enviadasRef.current = 0;
@@ -63,9 +65,9 @@ export const TrabalhoFormModal: React.FC<Props> = ({ aberto, alunoId, materias, 
 
   const salvar = async () => {
     const nota = lerAvaliacao(avaliacao);
-    if (!titulo.trim()) { setErro('Informe o título do trabalho.'); return; }
-    if (materiaId === null) { setErro('Escolha a matéria.'); return; }
-    if (nota === null) { setErro('Informe uma avaliação de 0 a 10 com no máximo uma casa decimal.'); return; }
+    if (!titulo.trim()) { invalidar([['validação', 'Informe o título do trabalho.']]); return; }
+    if (materiaId === null) { invalidar([['validação', 'Escolha a matéria.']]); return; }
+    if (nota === null) { invalidar([['validação', 'Informe uma avaliação de 0 a 10 com no máximo uma casa decimal.']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -101,6 +103,7 @@ export const TrabalhoFormModal: React.FC<Props> = ({ aberto, alunoId, materias, 
         <Button onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
       </>}
     >
+      {modalValidacao}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="sm:col-span-2 text-sm">Título
           <Input aria-label="Título" maxLength={160} value={titulo} onChange={(e) => setTitulo(e.target.value)} />

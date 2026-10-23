@@ -7,6 +7,7 @@ import { validarNotaMinima, paraNumero } from '../utils/validacoes';
 import { CampoTexto } from './CampoTexto';
 import { ErroFormulario } from './ErroFormulario';
 import { ModeloCertificadoSelect } from './ModeloCertificadoSelect';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   open: boolean;
@@ -23,6 +24,7 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
   const [modeloId, setModeloId] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     if (!open) return;
@@ -49,9 +51,9 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Título', form.titulo]])) return;
     if (cargaMinutos <= 0) {
-      setErro('Informe a carga horária.');
-      return;
+      invalidar([['validação', 'Informe a carga horária.']]); return;
     }
     // Evento não tem avaliação: não leva nota mínima (o servidor também recusa).
     const problemaNota = form.tipo === 'curso' ? validarNotaMinima(form.nota_minima) : null;
@@ -75,7 +77,7 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
     try {
       onSalvo(curso ? await sysgovApi.cursos.atualizarCurso(curso.id, dados) : await sysgovApi.cursos.criarCurso(dados));
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar o curso.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar o curso.'));
     } finally {
       setSalvando(false);
     }
@@ -85,7 +87,8 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
 
   return (
     <Modal open={open} onClose={onClose} title={curso ? 'Editar curso' : 'Novo curso ou evento'} icon={<BookOpen className="h-5 w-5" />} size="lg">
-      <form onSubmit={salvar} className="space-y-4">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4">
         <ErroFormulario mensagem={erro} />
         <Select
           label="Tipo"
@@ -96,7 +99,7 @@ export const CursoFormModal: React.FC<Props> = ({ open, curso, onClose, onSalvo 
             { value: 'evento', label: 'Evento', hint: 'Palestra ou workshop — turma única' },
           ]}
         />
-        <Input label="Título" value={form.titulo} onChange={(e) => set('titulo')(e.target.value)} required maxLength={255} />
+        <Input label="Título" value={form.titulo} onChange={(e) => set('titulo')(e.target.value)} maxLength={255} />
         <Input label="Responsável pelo curso (sai em {RESPONSAVEL} no certificado)" value={form.responsavel} onChange={(e) => set('responsavel')(e.target.value)} maxLength={150} />
         <CampoTexto label="Descrição" value={form.descricao} onChange={(e) => set('descricao')(e.target.value)} rows={4} maxLength={10000} />
         <CampoTexto

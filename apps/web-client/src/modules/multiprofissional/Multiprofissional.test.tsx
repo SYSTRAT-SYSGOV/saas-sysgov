@@ -75,7 +75,7 @@ describe('Registro de atendimento', () => {
 
     expect(screen.getByRole('checkbox', { name: 'Carla Psicóloga' })).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Inclua ao menos um estudante.');
+    expect(await screen.findByText('Inclua ao menos um estudante.')).toBeInTheDocument();
     expect(api.salvarAtendimento).not.toHaveBeenCalled();
   });
 

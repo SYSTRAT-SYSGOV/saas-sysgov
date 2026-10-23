@@ -10,6 +10,7 @@ import { campanhaApi, type CaboEleitoral, type Coordenador } from '../api';
 import { formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const VAZIO = {
   nome: '', cpf: '', codigo_ibge: null as number | null, bairro: '', endereco: '', coordenador_id: null as number | null, votos_estimados: '0', area_atuacao: '',
@@ -24,6 +25,7 @@ export const CabosCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisar
   }, [campanha.id, versao]);
   const municipios = useMunicipiosDaCampanha(campanha.id);
   const [busca, setBusca] = useState('');
+  const { tratarErro } = useFormValidationModal();
   const [municipio, setMunicipio] = useState<number | null>(null);
   const [editando, setEditando] = useState<CaboEleitoral | 'novo' | null>(null);
   const [excluir, setExcluir] = useState<CaboEleitoral | null>(null);
@@ -70,7 +72,7 @@ export const CabosCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisar
       <ConfirmarModal aberto={excluir !== null} titulo="Excluir cabo eleitoral" mensagem={<>Excluir <strong>{excluir?.nome}</strong>?</>} rotuloConfirmar="Excluir" perigo onFechar={() => setExcluir(null)}
         onConfirmar={async () => {
           if (!excluir) return;
-          try { await campanhaApi.excluirCabo(excluir.id); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
+          try { await campanhaApi.excluirCabo(excluir.id); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
         }} />
     </Card>
   );
@@ -80,6 +82,7 @@ const CaboModal: React.FC<{ registro: CaboEleitoral | 'novo' | null; municipios:
   const [form, setForm] = useState(VAZIO);
   const [atual, setAtual] = useState<CaboEleitoral | 'novo' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (registro !== atual) {
     setAtual(registro);
@@ -93,9 +96,10 @@ const CaboModal: React.FC<{ registro: CaboEleitoral | 'novo' | null; municipios:
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (form.codigo_ibge === null) { setErro('Escolha o município.'); return; }
+    if (!validar([['Nome', form.nome]])) return;
+    if (form.codigo_ibge === null) { invalidar([['validação', 'Escolha o município.']]); return; }
     const valor = form.ajuda_custo ? paraCentavos(form.valor_ajuda || '0') : 0;
-    if (valor === null) { setErro('Informe a ajuda de custo em reais (ex.: 300,00).'); return; }
+    if (valor === null) { invalidar([['validação', 'Informe a ajuda de custo em reais (ex.: 300,00).']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -107,7 +111,7 @@ const CaboModal: React.FC<{ registro: CaboEleitoral | 'novo' | null; municipios:
       });
       onSalvo(salvo.nome);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -116,9 +120,10 @@ const CaboModal: React.FC<{ registro: CaboEleitoral | 'novo' | null; municipios:
   return (
     <Modal open={registro !== null} onClose={onFechar} title={registro === 'novo' ? 'Novo cabo eleitoral' : 'Editar cabo eleitoral'} icon={<Megaphone className="h-5 w-5" />} size="xl"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-cabo" isLoading={salvando}>Salvar</Button></>}>
-      <form id="form-cabo" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-cabo" onSubmit={salvar} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
-          <Input label="Nome *" value={form.nome} onChange={texto('nome')} required maxLength={200} />
+          <Input label="Nome *" value={form.nome} onChange={texto('nome')} maxLength={200} />
           <Input label={registro !== 'novo' && registro?.cpf_mascarado ? `CPF (atual ${registro.cpf_mascarado})` : 'CPF (opcional)'} value={form.cpf} onChange={texto('cpf')} maxLength={14} className="font-mono tabular-nums" />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">

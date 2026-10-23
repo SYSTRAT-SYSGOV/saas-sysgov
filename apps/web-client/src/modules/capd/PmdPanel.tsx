@@ -48,6 +48,7 @@ import {
   STATUS_PMD_VARIANT,
 } from './PmdPanel.utils';
 import type { PlanoMelhoriaItem } from './PmdPanel.utils';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -74,6 +75,7 @@ export const PmdPanel: React.FC = () => {
   const [filtroUrgencia, setFiltroUrgencia] = useState<'todos' | 'vencidos' | 'vencendo_em_breve' | 'no_prazo'>('todos');
   const [search, setSearch] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [sucesso, setSucesso] = useState<string | null>(null);
   const [detalhePmd, setDetalhePmd] = useState<PlanoMelhoriaItem | null>(null);
 
@@ -157,7 +159,7 @@ export const PmdPanel: React.FC = () => {
       setVerModal(false);
       await carregar();
     } catch (e: any) {
-      setErro(e?.response?.data?.message ?? 'Erro ao registrar verificação.');
+      if (!tratarErro(e)) setErro(e?.response?.data?.message ?? 'Erro ao registrar verificação.');
     } finally {
       setSavingVerif(false);
     }
@@ -175,7 +177,7 @@ export const PmdPanel: React.FC = () => {
       }
       await carregar();
     } catch (e: any) {
-      setErro(e?.response?.data?.message ?? 'Não foi possível concluir as ações do plano.');
+      if (!tratarErro(e)) setErro(e?.response?.data?.message ?? 'Não foi possível concluir as ações do plano.');
     } finally {
       setConcluindoAcoes(null);
     }

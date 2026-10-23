@@ -23,6 +23,7 @@ import { SysgovApi } from '@sysgov/sdk';
 import type { ApiCiclo, ApiServidor, ApiDiarioBordo, ApiAvaliacao } from '@sysgov/sdk';
 import { useAuth } from '@/core/auth/useAuth';
 import { EspelhoAvaliacaoModal } from './EspelhoAvaliacaoModal';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -70,6 +71,7 @@ export const NovaAvaliacaoWizard: React.FC<NovaAvaliacaoWizardProps> = ({
   const [carregandoDados, setCarregandoDados] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
 
   // Inicialização e carregamento automático
   useEffect(() => {
@@ -326,7 +328,7 @@ export const NovaAvaliacaoWizard: React.FC<NovaAvaliacaoWizardProps> = ({
       onCreated(avaliacao);
       onClose();
     } catch (err: any) {
-      setErro(err?.response?.data?.message || err?.message || 'Falha ao iniciar a avaliação.');
+      if (!tratarErro(err)) setErro(err?.response?.data?.message || err?.message || 'Falha ao iniciar a avaliação.');
     } finally {
       setSalvando(false);
     }

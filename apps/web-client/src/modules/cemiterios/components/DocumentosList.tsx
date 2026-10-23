@@ -5,6 +5,7 @@ import type { SucessaoDocumento, TipoDocumentoSucessao } from '../api';
 import { useSucessaoDocumentos } from '../hooks/useSucessaoDocumentos';
 import { ErroBox, Mono } from '../views/comum';
 import { TIPO_DOCUMENTO_LABELS } from './sucessao.utils';
+import { validarObrigatoriosGlobal } from '@/lib/validationModalHost';
 
 interface DocumentosListProps {
   sucessaoId: number;
@@ -47,7 +48,7 @@ export const DocumentosList: React.FC<DocumentosListProps> = ({ sucessaoId, read
   }, [sucessaoId, carregar]);
 
   const handleUpload = useCallback(async () => {
-    if (!arquivoSelecionado) return;
+    if (!validarObrigatoriosGlobal([['Arquivo', arquivoSelecionado]]) || !arquivoSelecionado) return;
     await upload(tipoDocumento, arquivoSelecionado);
     setModalUpload(false);
     setArquivoSelecionado(null);
@@ -138,7 +139,7 @@ export const DocumentosList: React.FC<DocumentosListProps> = ({ sucessaoId, read
             <Button size="sm" variant="outline" onClick={() => setModalUpload(false)}>
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleUpload} disabled={enviando || !arquivoSelecionado}>
+            <Button size="sm" onClick={handleUpload} disabled={enviando}>
               {enviando ? 'Enviando…' : 'Enviar'}
             </Button>
           </div>

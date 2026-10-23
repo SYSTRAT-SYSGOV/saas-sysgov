@@ -7,6 +7,7 @@ import { Card, Modal, Badge, ActionsMenu } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface GroupsManagementProps {
   modules: { alias: string; name: string }[];
@@ -18,6 +19,7 @@ const inputCls = 'w-full rounded-lg border border-input bg-background px-3 py-2 
 
 export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, units, notify }) => {
   const [categories, setCategories] = useState<AccessCategory[]>([]);
+  const { tratarErro } = useFormValidationModal();
   const [groups, setGroups] = useState<AccessGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [catModal, setCatModal] = useState<{ edit?: AccessCategory } | null>(null);
@@ -49,13 +51,13 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
       if (catModal?.edit) await accessApi.updateCategory(catModal.edit.id, { name: catName.trim(), description: catDesc.trim() || null });
       else await accessApi.createCategory({ name: catName.trim(), description: catDesc.trim() || null });
       notify({ type: 'success', title: 'Salvo', message: 'Categoria salva.' }); setCatModal(null); load();
-    } catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || e?.message }); }
+    } catch (e: any) { if (!tratarErro(e)) notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || e?.message }); }
   };
 
   const deleteCategory = async (c: AccessCategory) => {
     if (!window.confirm(`Excluir categoria "${c.name}"? Grupos ficarão sem categoria.`)) return;
     try { await accessApi.deleteCategory(c.id); load(); }
-    catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.message }); }
+    catch (e: any) { if (!tratarErro(e)) notify({ type: 'error', title: 'Erro', message: e?.message }); }
   };
 
   const toggleUser = async (groupId: number, userId: number, isMember: boolean) => {
@@ -64,7 +66,7 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
       else { await accessApi.assignGroupUsers(groupId, [userId]); }
       notify({ type: 'success', title: isMember ? 'Removido' : 'Atribuído', message: 'Usuário atualizado.' });
       load();
-    } catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.message }); }
+    } catch (e: any) { if (!tratarErro(e)) notify({ type: 'error', title: 'Erro', message: e?.message }); }
   };
 
   const openGroup = (g?: AccessGroup) => {
@@ -80,13 +82,13 @@ export const GroupsManagement: React.FC<GroupsManagementProps> = ({ modules, uni
       if (groupModal?.edit) await accessApi.updateGroup(groupModal.edit.id, payload);
       else await accessApi.createGroup(payload);
       notify({ type: 'success', title: 'Salvo', message: 'Grupo salvo.' }); setGroupModal(null); load();
-    } catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || e?.message }); }
+    } catch (e: any) { if (!tratarErro(e)) notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || e?.message }); }
   };
 
   const deleteGroup = async (g: AccessGroup) => {
     if (!window.confirm(`Excluir grupo "${g.name}"?`)) return;
     try { await accessApi.deleteGroup(g.id); load(); }
-    catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.message }); }
+    catch (e: any) { if (!tratarErro(e)) notify({ type: 'error', title: 'Erro', message: e?.message }); }
   };
 
   const updateAccess = (alias: string, patch: Partial<AccessGroupAccess>) => {

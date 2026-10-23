@@ -7,6 +7,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type RelacaoPrefeito } from '../api';
 import { ROTULO_RELACAO, VARIANTE_RELACAO } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const RELACOES = Object.keys(ROTULO_RELACAO) as RelacaoPrefeito[];
 
@@ -14,6 +15,7 @@ const RELACOES = Object.keys(ROTULO_RELACAO) as RelacaoPrefeito[];
 export const PrefeitosCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisar, alterou, versao, abrirMunicipio }) => {
   const lista = useCarga(() => campanhaApi.prefeitos(), [campanha.id, versao]);
   const [relacao, setRelacao] = useState<RelacaoPrefeito | 'todas'>('todas');
+  const { tratarErro } = useFormValidationModal();
   const [busca, setBusca] = useState('');
   const [salvando, setSalvando] = useState<number | null>(null);
 
@@ -29,7 +31,7 @@ export const PrefeitosCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
       else await campanhaApi.salvarPrefeito(ibge, { relacao: nova });
       alterou();
     } catch (e) {
-      avisar({ type: 'error', title: 'Não foi possível alterar', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível alterar', message: erroApi(e).mensagem });
     } finally {
       setSalvando(null);
     }

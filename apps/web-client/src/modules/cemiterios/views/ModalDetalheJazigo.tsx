@@ -66,6 +66,7 @@ import { PessoaPicker, PessoaFormModal, type NovoCadastroRapidoPessoaInput } fro
 import { usePessoaPicker } from '@/modules/pessoas/hooks';
 import { pessoasApi } from '@/modules/pessoas/api';
 import { ModalFichaPessoa } from '@/modules/pessoas/views/ModalFichaPessoa';
+import { invalidarGlobal, tratarErroValidacaoGlobal } from '@/lib/validationModalHost';
 
 
 export function formatarCpfCnpj(doc: string | null | undefined): string {
@@ -346,6 +347,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
       onAlterado?.();
     } catch (e: any) {
       console.error('Erro ao atualizar jazigo:', e);
+      if (tratarErroValidacaoGlobal(e)) return;
       const msg =
         e?.response?.data?.errors
           ? Object.values(e.response.data.errors).flat().join(' ')
@@ -400,7 +402,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
   const salvarNovaConcessao = async () => {
     if (!j?.id) return;
     if (!formNovaConcessao.pessoa_id && !formNovaConcessao.holder_id) {
-      alert('Selecione ou cadastre o titular concessionário no seletor de pessoas.');
+      invalidarGlobal([['Titular', 'Selecione ou cadastre o titular concessionário no seletor de pessoas.']]);
       return;
     }
     setSalvandoNovaConcessao(true);
@@ -444,6 +446,7 @@ export const ModalDetalheJazigo: React.FC<ModalDetalheJazigoProps> = ({
       onAlterado?.();
     } catch (e: any) {
       console.error('Erro ao conceder jazigo:', e);
+      if (tratarErroValidacaoGlobal(e)) return;
       const msg =
         e?.response?.data?.errors
           ? Object.values(e.response.data.errors).flat().join(' ')

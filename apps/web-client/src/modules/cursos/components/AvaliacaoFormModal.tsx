@@ -7,6 +7,7 @@ import { htmlParaTexto } from '../utils/htmlSeguro';
 import { LIBERACAO_IMEDIATA, liberacaoDe, liberacaoParaApi, paraNumero, validarLiberacao, type LiberacaoForm } from '../utils/validacoes';
 import { ErroFormulario } from './ErroFormulario';
 import { RegraLiberacaoFields } from './RegraLiberacaoFields';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   open: boolean;
@@ -29,6 +30,7 @@ export const AvaliacaoFormModal: React.FC<Props> = ({ open, cursoId, aulas, aval
   const [escolhidas, setEscolhidas] = useState<number[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
 
   // Depois da primeira tentativa, questões e ordem não mudam mais (a nota já depende delas).
   const travada = (avaliacao?.tentativas_count ?? 0) > 0;
@@ -64,7 +66,7 @@ export const AvaliacaoFormModal: React.FC<Props> = ({ open, cursoId, aulas, aval
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (titulo.trim() === '') return setErro('Informe o título da avaliação.');
+    if (titulo.trim() === '') return invalidar([['validação', 'Informe o título da avaliação.']]);
     const problema = validarLiberacao(liberacao);
     if (problema) {
       setErro(problema);
@@ -73,9 +75,9 @@ export const AvaliacaoFormModal: React.FC<Props> = ({ open, cursoId, aulas, aval
     const pesoN = Number(peso);
     const tentativasN = Number(tentativas);
     const tempoN = paraNumero(tempo);
-    if (!Number.isInteger(pesoN) || pesoN < 1 || pesoN > 10) return setErro('O peso deve ser um inteiro de 1 a 10.');
-    if (!Number.isInteger(tentativasN) || tentativasN < 1 || tentativasN > 10) return setErro('O número de tentativas deve ser de 1 a 10.');
-    if (tempoN !== null && (!Number.isInteger(tempoN) || tempoN < 1 || tempoN > 1440)) return setErro('O tempo limite deve ser de 1 a 1440 minutos, ou ficar em branco.');
+    if (!Number.isInteger(pesoN) || pesoN < 1 || pesoN > 10) return invalidar([['validação', 'O peso deve ser um inteiro de 1 a 10.']]);
+    if (!Number.isInteger(tentativasN) || tentativasN < 1 || tentativasN > 10) return invalidar([['validação', 'O número de tentativas deve ser de 1 a 10.']]);
+    if (tempoN !== null && (!Number.isInteger(tempoN) || tempoN < 1 || tempoN > 1440)) return invalidar([['validação', 'O tempo limite deve ser de 1 a 1440 minutos, ou ficar em branco.']]);
 
     setSalvando(true);
     setErro(null);
@@ -93,7 +95,7 @@ export const AvaliacaoFormModal: React.FC<Props> = ({ open, cursoId, aulas, aval
       else await sysgovApi.cursos.criarAvaliacao(cursoId, dados);
       onSalvo();
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar a avaliação.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar a avaliação.'));
     } finally {
       setSalvando(false);
     }
@@ -101,9 +103,10 @@ export const AvaliacaoFormModal: React.FC<Props> = ({ open, cursoId, aulas, aval
 
   return (
     <Modal open={open} onClose={onClose} title={avaliacao ? 'Editar avaliação' : 'Nova avaliação'} icon={<ClipboardList className="h-5 w-5" />} size="xl">
-      <form onSubmit={salvar} noValidate className="space-y-4">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4">
         <ErroFormulario mensagem={erro} />
-        <Input label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} required maxLength={255} />
+        <Input label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={255} />
         <div>
           <p className="mb-1 text-sm font-medium text-foreground">Instruções</p>
           <RichTextEditor value={instrucoes} onChange={setInstrucoes} minHeight={120} />

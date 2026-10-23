@@ -8,6 +8,7 @@ import { TIPO_MATERIAL, formatarDataHora, formatarTamanho } from '../utils/forma
 import { abrirPdfEmNovaAba } from '../utils/arquivos';
 import { ErroFormulario } from './ErroFormulario';
 import { TextoSeguro } from './TextoSeguro';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Só os players que o servidor monta (YouTube sem cookies e Vimeo): outro endereço nunca vira iframe. */
 const EMBED_PERMITIDO = /^https:\/\/(www\.youtube-nocookie\.com\/embed\/[\w-]{11}|player\.vimeo\.com\/video\/\d+)$/;
@@ -19,6 +20,7 @@ const ICONE = { arquivo: FileText, video: PlayCircle, link: Link2, texto: FileTe
 export const MaterialParticipante: React.FC<{ material: ConteudoMaterial }> = ({ material }) => {
   const [aberto, setAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [abrindo, setAbrindo] = useState(false);
   const Icone = material.liberado ? ICONE[material.tipo] : Lock;
 
@@ -28,7 +30,7 @@ export const MaterialParticipante: React.FC<{ material: ConteudoMaterial }> = ({
     try {
       abrirPdfEmNovaAba(await sysgovApi.cursos.baixarArquivoMaterial(material.id));
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível abrir o PDF.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível abrir o PDF.'));
     } finally {
       setAbrindo(false);
     }

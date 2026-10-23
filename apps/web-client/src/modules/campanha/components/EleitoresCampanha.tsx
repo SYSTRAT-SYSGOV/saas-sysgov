@@ -9,6 +9,7 @@ import { campanhaApi, type CategoriaDemanda, type Eleitor, type FiltrosEleitores
 import { ROTULO_CATEGORIA, ROTULO_PRIORIDADE, formatarData, formatarDataHora, formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { SelectMunicipio, useMunicipiosDaCampanha } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /**
  * Eleitores captados (spec: Base de eleitores com acesso restrito). Quem não tem campanha.eleitores.view vê só os
@@ -61,6 +62,7 @@ const Indicadores: React.FC<{ dados: IndicadoresEleitores; detalhado: boolean }>
 );
 
 const ListaEleitores: React.FC<PropsAba> = ({ campanha, permissoes, avisar, alterou, versao }) => {
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const municipios = useMunicipiosDaCampanha(campanha.id);
   const [filtros, setFiltros] = useState<FiltrosEleitores>({ pagina: 1 });
   const [rascunho, setRascunho] = useState({ busca: '', bairro: '', de: '', ate: '' });
@@ -84,7 +86,7 @@ const ListaEleitores: React.FC<PropsAba> = ({ campanha, permissoes, avisar, alte
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      avisar({ type: 'error', title: 'Não foi possível exportar', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível exportar', message: erroApi(e).mensagem });
     } finally {
       setExportando(false);
     }
@@ -95,8 +97,9 @@ const ListaEleitores: React.FC<PropsAba> = ({ campanha, permissoes, avisar, alte
 
   return (
     <Card>
+      {modalValidacao}
       <CardContent className="space-y-3 py-4">
-        <form onSubmit={aplicar} className="grid items-end gap-2 md:grid-cols-[1fr_14rem_10rem_9rem_9rem_auto]">
+        <form noValidate onSubmit={aplicar} className="grid items-end gap-2 md:grid-cols-[1fr_14rem_10rem_9rem_9rem_auto]">
           <Input label="Buscar" placeholder="Nome ou WhatsApp" value={rascunho.busca} onChange={(e) => setRascunho((r) => ({ ...r, busca: e.target.value }))} leftIcon={<Search className="h-4 w-4" />} />
           <SelectMunicipio label="Município" municipios={municipios.dados} value={filtros.codigo_ibge ?? null} onChange={(v) => setFiltros((f) => ({ ...f, codigo_ibge: v ?? undefined, pagina: 1 }))} opcional />
           <Input label="Bairro" value={rascunho.bairro} onChange={(e) => setRascunho((r) => ({ ...r, bairro: e.target.value }))} />
@@ -146,6 +149,7 @@ const ListaEleitores: React.FC<PropsAba> = ({ campanha, permissoes, avisar, alte
 
 const FichaEleitor: React.FC<Pick<PropsAba, 'permissoes' | 'avisar'> & { eleitor: Eleitor | null; onFechar: () => void; onAlterado: () => void }> = ({ eleitor, permissoes, avisar, onFechar, onAlterado }) => {
   const [excluir, setExcluir] = useState(false);
+  const { tratarErro } = useFormValidationModal();
   const [demanda, setDemanda] = useState(false);
   const campo = (rotulo: string, valor: React.ReactNode, mono = false) => (
     <p><span className="block text-xs text-muted-foreground">{rotulo}</span><span className={mono ? 'font-mono tabular-nums' : ''}>{valor ?? '—'}</span></p>
@@ -190,7 +194,7 @@ const FichaEleitor: React.FC<Pick<PropsAba, 'permissoes' | 'avisar'> & { eleitor
         onFechar={() => setExcluir(false)}
         onConfirmar={async () => {
           if (!e) return;
-          try { await campanhaApi.excluirEleitor(e.id); avisar({ type: 'success', title: 'Eleitor excluído', message: 'A exclusão ficou registrada na auditoria.' }); onAlterado(); } catch (err) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(err).mensagem }); }
+          try { await campanhaApi.excluirEleitor(e.id); avisar({ type: 'success', title: 'Eleitor excluído', message: 'A exclusão ficou registrada na auditoria.' }); onAlterado(); } catch (err) { if (!tratarErro(err)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(err).mensagem }); }
         }} />
       <DemandaDoEleitorModal eleitor={demanda ? e : null} onFechar={() => setDemanda(false)} onCriada={() => { setDemanda(false); avisar({ type: 'success', title: 'Demanda criada', message: e?.municipio ?? '' }); onAlterado(); }} />
     </>
@@ -224,7 +228,7 @@ const DemandaDoEleitorModal: React.FC<{ eleitor: Eleitor | null; onFechar: () =>
   return (
     <Modal open={eleitor !== null} onClose={onFechar} title="Transformar em demanda" icon={<ClipboardList className="h-5 w-5" />}
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-demanda-eleitor" isLoading={salvando}>Criar demanda</Button></>}>
-      <form id="form-demanda-eleitor" onSubmit={salvar} className="space-y-3 text-sm">
+      <form noValidate id="form-demanda-eleitor" onSubmit={salvar} className="space-y-3 text-sm">
         <p className="rounded-md border border-border bg-muted/40 p-3">{eleitor?.demanda}</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Select label="Categoria" value={categoria} onChange={(v) => setCategoria(v as CategoriaDemanda)} options={Object.entries(ROTULO_CATEGORIA).map(([value, label]) => ({ value, label }))} />

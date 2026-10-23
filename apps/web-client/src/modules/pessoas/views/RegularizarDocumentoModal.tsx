@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertCard, Button, Field, Input, Modal } from '@/components/ui';
 import { pessoasApi, erroApi, type ErroApi, type Pessoa } from '../api';
 import { ErroBox } from './comum';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface PessoaExistente {
   id: number;
@@ -39,6 +40,7 @@ export const RegularizarDocumentoModal: React.FC<RegularizarDocumentoModalProps>
   const [cpf, setCpf] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<ErroApi | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [existente, setExistente] = useState<PessoaExistente | null>(null);
 
   const regularizar = async (e: React.FormEvent) => {
@@ -69,7 +71,7 @@ export const RegularizarDocumentoModal: React.FC<RegularizarDocumentoModalProps>
       await pessoasApi.mesclar(pessoa.id, existente.id);
       await onMesclado();
     } catch (err) {
-      setErro(erroApi(err));
+      if (!tratarErro(err)) setErro(erroApi(err));
     } finally {
       setEnviando(false);
     }

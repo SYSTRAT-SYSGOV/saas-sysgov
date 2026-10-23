@@ -9,6 +9,7 @@ import type { Toast } from '../../escola/components/AdminModal';
 import { passeioApi, type Passeio } from '../api';
 import { FORM_VAZIO, OPCOES_STATUS, STATUS, dadosDoForm, formDoPasseio, periodoDoPasseio, type FormPasseio } from '../formato';
 import type { Permissoes } from '../ModuloPasseioMain';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   passeios: Passeio[];
@@ -22,6 +23,7 @@ interface Props {
 /** Cadastro dos passeios da escola: busca, criar/editar em Modal e excluir com confirmação. */
 export const PasseiosLista: React.FC<Props> = ({ passeios, ativoId, permissoes, avisar, recarregar, selecionar }) => {
   const [busca, setBusca] = useState('');
+  const { tratarErro } = useFormValidationModal();
   const [editando, setEditando] = useState<Passeio | 'novo' | null>(null);
   const [excluir, setExcluir] = useState<Passeio | null>(null);
 
@@ -99,7 +101,7 @@ export const PasseiosLista: React.FC<Props> = ({ passeios, ativoId, permissoes, 
             avisar({ type: 'success', title: 'Passeio excluído', message: excluir.nome });
             await recarregar();
           } catch (e) {
-            avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem });
+            if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem });
           }
         }}
       />
@@ -111,6 +113,7 @@ export const PasseiosLista: React.FC<Props> = ({ passeios, ativoId, permissoes, 
 export const PasseioFormModal: React.FC<{ passeio: Passeio | 'novo' | null; onFechar: () => void; onSalvo: (p: Passeio, novo: boolean) => Promise<void> }> = ({ passeio, onFechar, onSalvo }) => {
   const [form, setForm] = useState<FormPasseio>(FORM_VAZIO);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const [aberto, setAberto] = useState<Passeio | 'novo' | null>(null);
 
@@ -125,6 +128,7 @@ export const PasseioFormModal: React.FC<{ passeio: Passeio | 'novo' | null; onFe
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Nome do passeio ou evento', form.nome], ['Data do passeio', form.data_passeio], ['Saída', form.horario_saida], ['Local de saída', form.local_saida], ['Destino', form.destino], ['Cidade', form.cidade], ['Responsável', form.responsavel]])) return;
     const dados = dadosDoForm(form);
     if (typeof dados === 'string') {
       setErro(dados);
@@ -137,7 +141,7 @@ export const PasseioFormModal: React.FC<{ passeio: Passeio | 'novo' | null; onFe
       const salvo = novo ? await passeioApi.criarPasseio(dados) : await passeioApi.atualizarPasseio((passeio as Passeio).id, dados);
       await onSalvo(salvo, novo);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -152,21 +156,22 @@ export const PasseioFormModal: React.FC<{ passeio: Passeio | 'novo' | null; onFe
       size="xl"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-passeio" isLoading={salvando}>Salvar</Button></>}
     >
-      <form id="form-passeio" onSubmit={salvar} className="space-y-3">
-        <Input label="Nome do passeio ou evento *" value={form.nome} onChange={definir('nome')} required maxLength={250} />
+      {modalValidacao}
+      <form noValidate id="form-passeio" onSubmit={salvar} className="space-y-3">
+        <Input label="Nome do passeio ou evento *" value={form.nome} onChange={definir('nome')} maxLength={250} />
         <div className="grid gap-3 sm:grid-cols-4">
-          <Input label="Data do passeio *" type="date" value={form.data_passeio} onChange={definir('data_passeio')} required className="font-mono tabular-nums" />
+          <Input label="Data do passeio *" type="date" value={form.data_passeio} onChange={definir('data_passeio')} className="font-mono tabular-nums" />
           <Input label="Prazo dos termos" type="date" value={form.data_limite_autorizacao} onChange={definir('data_limite_autorizacao')} max={form.data_passeio || undefined} className="font-mono tabular-nums" />
-          <Input label="Saída *" type="time" value={form.horario_saida} onChange={definir('horario_saida')} required className="font-mono tabular-nums" />
+          <Input label="Saída *" type="time" value={form.horario_saida} onChange={definir('horario_saida')} className="font-mono tabular-nums" />
           <Input label="Retorno previsto" type="time" value={form.horario_retorno} onChange={definir('horario_retorno')} className="font-mono tabular-nums" />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="Local de saída *" value={form.local_saida} onChange={definir('local_saida')} required maxLength={250} />
-          <Input label="Destino *" value={form.destino} onChange={definir('destino')} required maxLength={250} />
-          <Input label="Cidade *" value={form.cidade} onChange={definir('cidade')} required maxLength={150} />
+          <Input label="Local de saída *" value={form.local_saida} onChange={definir('local_saida')} maxLength={250} />
+          <Input label="Destino *" value={form.destino} onChange={definir('destino')} maxLength={250} />
+          <Input label="Cidade *" value={form.cidade} onChange={definir('cidade')} maxLength={150} />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="Responsável *" value={form.responsavel} onChange={definir('responsavel')} required maxLength={200} />
+          <Input label="Responsável *" value={form.responsavel} onChange={definir('responsavel')} maxLength={200} />
           <Input label="Valor por aluno (R$)" value={form.valor} onChange={definir('valor')} inputMode="decimal" className="font-mono tabular-nums" />
           <Select label="Status" value={form.status} onChange={(v) => setForm((f) => ({ ...f, status: v as FormPasseio['status'] }))} options={OPCOES_STATUS} />
         </div>

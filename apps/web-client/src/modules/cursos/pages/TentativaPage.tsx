@@ -9,6 +9,7 @@ import { TentativaQuestao, TentativaQuestaoResultado, type EstadoSalvamento } fr
 import { TextoSeguro } from '../components/TextoSeguro';
 import { STATUS_TENTATIVA, formatarContagem, formatarDataHora, formatarNota } from '../utils/formatos';
 import { ESPERA_AUTOSAVE_MS, diferencaDoServidor, restanteAtePrazo } from '../utils/tentativa';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   tentativaId: number;
@@ -25,6 +26,7 @@ export const TentativaPage: React.FC<Props> = ({ tentativaId, onVoltar }) => {
   const [tentativa, setTentativa] = useState<TentativaParticipante | null>(null);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [aviso, setAviso] = useState<string | null>(null);
   const [salvamento, setSalvamento] = useState<Record<number, EstadoSalvamento>>({});
   const [restante, setRestante] = useState<number | null>(null);
@@ -121,7 +123,7 @@ export const TentativaPage: React.FC<Props> = ({ tentativaId, onVoltar }) => {
         aplicar(await sysgovApi.cursos.enviarTentativa(tentativaId));
         setAviso(porTempo ? 'O tempo terminou. Sua tentativa foi enviada com as respostas salvas até o prazo.' : null);
       } catch (e) {
-        setErro(getApiErrorMessage(e, 'Não foi possível enviar a avaliação.'));
+        if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível enviar a avaliação.'));
       } finally {
         setEncerrando(false);
       }

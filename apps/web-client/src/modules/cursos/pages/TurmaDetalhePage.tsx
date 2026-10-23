@@ -13,6 +13,7 @@ import { QrCheckInModal } from '../components/QrCheckInModal';
 import { TurmaFormModal } from '../components/TurmaFormModal';
 import { UsuarioPicker } from '../components/UsuarioPicker';
 import { MODALIDADE, STATUS_INSCRICAO, STATUS_TURMA, baixarBlob, formatarData, formatarDataHora, formatarHora, formatarNota, formatarPercentual } from '../utils/formatos';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   turmaId: number;
@@ -429,6 +430,7 @@ const AgendarAulaModal: React.FC<{
   const [fim, setFim] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     if (!open) return;
@@ -455,13 +457,14 @@ const AgendarAulaModal: React.FC<{
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Início', inicio], ['Fim', fim]])) return;
     setSalvando(true);
     setErro(null);
     try {
       await sysgovApi.cursos.agendarAula(turma.id, { aula_id: Number(aulaId), inicio, fim });
       onSalvo();
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível agendar a aula.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível agendar a aula.'));
     } finally {
       setSalvando(false);
     }
@@ -469,7 +472,8 @@ const AgendarAulaModal: React.FC<{
 
   return (
     <Modal open={open} onClose={onClose} title="Agendar aula" icon={<CalendarPlus className="h-5 w-5" />} size="md">
-      <form onSubmit={salvar} className="space-y-4">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4">
         <ErroFormulario mensagem={erro} />
         <Select
           label="Aula"
@@ -478,8 +482,8 @@ const AgendarAulaModal: React.FC<{
           options={aulas.map((a) => ({ value: String(a.id), label: a.titulo, hint: jaAgendadas.has(a.id) ? 'já agendada — será reagendada' : undefined }))}
           emptyText="O curso não tem aulas cadastradas."
         />
-        <Input label="Início" type="datetime-local" value={inicio} onChange={(e) => aoMudarInicio(e.target.value)} required className="font-mono tabular-nums" />
-        <Input label="Fim" type="datetime-local" value={fim} onChange={(e) => setFim(e.target.value)} required className="font-mono tabular-nums" />
+        <Input label="Início" type="datetime-local" value={inicio} onChange={(e) => aoMudarInicio(e.target.value)} className="font-mono tabular-nums" />
+        <Input label="Fim" type="datetime-local" value={fim} onChange={(e) => setFim(e.target.value)} className="font-mono tabular-nums" />
         <p className="text-xs text-muted-foreground">
           Período da turma: <span className="font-mono tabular-nums">{formatarData(turma.data_inicio)} a {formatarData(turma.data_fim)}</span>
         </p>
@@ -505,6 +509,7 @@ const InscreverParticipanteModal: React.FC<{
   const [usuario, setUsuario] = useState<InstrutorResumo[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     if (open) {
@@ -521,7 +526,7 @@ const InscreverParticipanteModal: React.FC<{
       const inscricao = await sysgovApi.cursos.inscreverUsuario(turmaId, usuario[0].id);
       onSalvo(`${usuario[0].name} inscrito(a): ${STATUS_INSCRICAO[inscricao.status].label.toLowerCase()}.`);
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível inscrever.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível inscrever.'));
     } finally {
       setSalvando(false);
     }
@@ -545,6 +550,7 @@ const InscreverParticipanteModal: React.FC<{
         </div>
       }
     >
+      {modalValidacao}
       <div className="space-y-3">
         <ErroFormulario mensagem={erro} />
         <p className="text-sm text-muted-foreground">A inscrição direta dispensa o período de inscrição e a aprovação. Se a turma estiver lotada, entra na lista de espera.</p>

@@ -10,6 +10,7 @@ import {
   type RelatorioAmbientalResumo,
   type TipoRelatorioAmbiental,
 } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const TIPOS_RELATORIO: { value: TipoRelatorioAmbiental; label: string }[] = [
   { value: 'rars', label: 'Relatório Anual de Resíduos Sólidos (RARS)' },
@@ -37,6 +38,7 @@ export const RelatoriosAmbientaisView: React.FC = () => {
   const [exercicio, setExercicio] = useState(String(anoAnterior));
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
 
   const carregar = useCallback(async () => {
     try {
@@ -59,7 +61,7 @@ export const RelatoriosAmbientaisView: React.FC = () => {
       await meioAmbienteApi.gerarRelatorioAmbiental(tipo, Number(exercicio));
       await carregar();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setGerando(false);
     }

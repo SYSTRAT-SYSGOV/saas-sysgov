@@ -8,6 +8,7 @@ import { pedagogicoApi } from '../../pedagogico/api';
 import { useCarga } from '../useCarga';
 import AdminModal, { inputCls, labelCls, btnPrimary, btnSecondary, EstadoCarga, type Toast } from './AdminModal';
 import { ConfirmModal } from './AlunoModals';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 type TurnoView = number | 'all' | null;
 
@@ -348,6 +349,7 @@ const TurmaFormModal: React.FC<TurmaFormModalProps> = ({ turma, turnos, onClose,
   const equipe = useCarga(escolaApi.equipe);
   const pedagogas = (equipe.dados ?? []).filter(m => m.cargo === 'pedagoga');
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
 
   const toggleMateria = (id: number) => {
@@ -364,9 +366,9 @@ const TurmaFormModal: React.FC<TurmaFormModalProps> = ({ turma, turnos, onClose,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const anoNum = parseInt(ano, 10);
-    if (!nome.trim()) return setErro('Informe o nome da turma.');
-    if (turnoId === '') return setErro('Selecione o turno.');
-    if (Number.isNaN(anoNum)) return setErro('Informe o ano letivo.');
+    if (!nome.trim()) return invalidar([['validação', 'Informe o nome da turma.']]);
+    if (turnoId === '') return invalidar([['validação', 'Selecione o turno.']]);
+    if (Number.isNaN(anoNum)) return invalidar([['validação', 'Informe o ano letivo.']]);
     setSalvando(true);
     setErro('');
     try {
@@ -376,7 +378,7 @@ const TurmaFormModal: React.FC<TurmaFormModalProps> = ({ turma, turnos, onClose,
       onToast({ type: 'success', title: isEdit ? 'Turma atualizada' : 'Turma cadastrada', message: `${nome.trim()} salva com sucesso.` });
       await onSaved();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -393,10 +395,11 @@ const TurmaFormModal: React.FC<TurmaFormModalProps> = ({ turma, turnos, onClose,
         </>
       }
     >
-      <form id="form-turma" onSubmit={handleSubmit} className="space-y-4">
+      {modalValidacao}
+      <form noValidate id="form-turma" onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className={labelCls} htmlFor="turma-nome">Nome</label>
-          <input id="turma-nome" className={inputCls} value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex.: 6º A" autoFocus required />
+          <input id="turma-nome" className={inputCls} value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex.: 6º A" autoFocus />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -408,7 +411,7 @@ const TurmaFormModal: React.FC<TurmaFormModalProps> = ({ turma, turnos, onClose,
           </div>
           <div>
             <label className={labelCls} htmlFor="turma-ano">Ano letivo</label>
-            <input id="turma-ano" type="number" min={2000} max={2100} className={`${inputCls} font-mono`} value={ano} onChange={e => setAno(e.target.value)} required />
+            <input id="turma-ano" type="number" min={2000} max={2100} className={`${inputCls} font-mono`} value={ano} onChange={e => setAno(e.target.value)} />
           </div>
         </div>
         <div>

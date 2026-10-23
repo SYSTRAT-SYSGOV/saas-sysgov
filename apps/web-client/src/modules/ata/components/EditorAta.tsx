@@ -11,6 +11,7 @@ import { AssinarModal } from './AssinarModal';
 import { VisualizadorPdf } from './VisualizadorPdf';
 import { useDitado } from './useDitado';
 import { useGravacaoIa } from './useGravacaoIa';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Acrescenta um trecho ditado ao fim do último parágrafo (ou num parágrafo novo). */
 export function anexarDitado(html: string, texto: string): string {
@@ -50,7 +51,8 @@ export const EditorAta: React.FC<{ id: number; opcoes: Opcoes; avisar: Toast; ao
     }
   }, [ata]);
 
-  const erro = (e: unknown, titulo = 'Não foi possível concluir') => avisar({ type: 'error', title: titulo, message: mensagemDeErro(e) });
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
+  const erro = (e: unknown, titulo = 'Não foi possível concluir') => { if (!tratarErro(e)) avisar({ type: 'error', title: titulo, message: mensagemDeErro(e) }); };
   const atualizar = (nova: AtaDetalhe) => carga.definir(nova);
   const editar = (novo: string) => {
     setHtml(novo);
@@ -123,6 +125,7 @@ export const EditorAta: React.FC<{ id: number; opcoes: Opcoes; avisar: Toast; ao
 
   return (
     <div className="space-y-4">
+      {modalValidacao}
       <Card className="print:hidden">
         <CardContent className="flex flex-wrap items-center gap-2 p-3">
           <Button variant="outline" onClick={aoVoltar}><ArrowLeft className="mr-1 h-4 w-4" />Voltar</Button>

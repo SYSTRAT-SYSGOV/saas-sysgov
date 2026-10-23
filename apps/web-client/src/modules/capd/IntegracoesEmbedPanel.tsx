@@ -50,6 +50,7 @@ import {
   getDriverLabel,
   formatIsoDate,
 } from './IntegracoesEmbedPanel.utils';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -179,6 +180,7 @@ const INITIAL_LOGS: RhSyncLogItem[] = [
 ];
 
 export const IntegracoesEmbedPanel: React.FC = () => {
+  const { modal: modalValidacao, validar } = useFormValidationModal();
   // Estado das sub-abas internas
   const [activeSubTab, setActiveSubTab] = useState<'conectores' | 'logs' | 'embed'>('conectores');
 
@@ -292,6 +294,7 @@ export const IntegracoesEmbedPanel: React.FC = () => {
   // Handler para salvar conector (novo ou edição)
   const handleSalvarConector = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Nome do conector', conectorFormData.nome]])) return;
     if (!conectorFormData.nome.trim()) return;
 
     if (editingConector) {
@@ -492,6 +495,7 @@ export const IntegracoesEmbedPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {modalValidacao}
       {/* Alerta de Cópia / Notificação Flutuante */}
       {copySuccess && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-200 rounded-lg text-sm flex items-center justify-between animate-fade-in">
@@ -971,14 +975,13 @@ export const IntegracoesEmbedPanel: React.FC = () => {
           }}
           title={editingConector ? 'Editar Conector ERP' : 'Cadastrar Novo Conector ERP'}
         >
-          <form onSubmit={handleSalvarConector} className="space-y-4 pt-2 text-xs">
+          <form noValidate onSubmit={handleSalvarConector} className="space-y-4 pt-2 text-xs">
             <div className="space-y-1">
               <label className="font-semibold text-foreground">Nome Identificador:</label>
               <Input
                 placeholder="Ex: Betha Sistemas - Folha de Pessoal"
                 value={conectorFormData.nome}
                 onChange={(e) => setConectorFormData({ ...conectorFormData, nome: e.target.value })}
-                required
               />
             </div>
 

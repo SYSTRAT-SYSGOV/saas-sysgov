@@ -177,6 +177,7 @@ describe('QuestaoFormModal — alternativas da objetiva', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     expect(await screen.findByText('Informe o enunciado da questão.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Entendi' }));
 
     enunciado();
     fireEvent.change(screen.getByLabelText('Pontuação'), { target: { value: '0' } });
@@ -252,6 +253,7 @@ describe('AvaliacaoFormModal', () => {
     fireEvent.change(screen.getByLabelText('Peso na nota final (1 a 10)'), { target: { value: '11' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     expect(await screen.findByText('O peso deve ser um inteiro de 1 a 10.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Entendi' }));
 
     fireEvent.change(screen.getByLabelText('Peso na nota final (1 a 10)'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Tentativas (1 a 10)'), { target: { value: '0' } });

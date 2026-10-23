@@ -3,6 +3,7 @@ import { Lock } from 'lucide-react';
 import { Button, Checkbox, Input, Modal, Select, Textarea } from '@sysgov/ui';
 import { multiApi, mensagemDeErro, type Atendimento, type Opcoes, type Ref } from '../api';
 import { BuscaAluno, ListaEscolhidos, SelecaoMultipla } from './Selecao';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 function agoraLocal(): string {
   const d = new Date();
@@ -39,16 +40,17 @@ export const AtendimentoModal: React.FC<{
   const [tipos, setTipos] = useState<number[]>(atendimento?.tipos.map((t) => t.id) ?? []);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const relatoOculto = atendimento ? !atendimento.relato_visivel : false;
 
   const campo = (k: keyof typeof dados) => (v: string | boolean) => setDados((d) => ({ ...d, [k]: v }));
 
   const salvar = async () => {
     setErro(null);
-    if (!dados.escola_id) return setErro('Escolha a escola do atendimento.');
-    if (alunos.length === 0) return setErro('Inclua ao menos um estudante.');
-    if (profissionais.length === 0) return setErro('Marque ao menos um profissional.');
-    if (tipos.length === 0) return setErro('Marque ao menos um tipo de atendimento.');
+    if (!dados.escola_id) return invalidar([['validação', 'Escolha a escola do atendimento.']]);
+    if (alunos.length === 0) return invalidar([['validação', 'Inclua ao menos um estudante.']]);
+    if (profissionais.length === 0) return invalidar([['validação', 'Marque ao menos um profissional.']]);
+    if (tipos.length === 0) return invalidar([['validação', 'Marque ao menos um tipo de atendimento.']]);
     setSalvando(true);
     try {
       await multiApi.salvarAtendimento(atendimento?.id ?? null, {
@@ -64,7 +66,7 @@ export const AtendimentoModal: React.FC<{
       });
       aoSalvar();
     } catch (e) {
-      setErro(mensagemDeErro(e));
+      if (!tratarErro(e)) setErro(mensagemDeErro(e));
     } finally {
       setSalvando(false);
     }
@@ -78,6 +80,7 @@ export const AtendimentoModal: React.FC<{
       size="xl"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando} disabled={relatoOculto}>Salvar</Button></>}
     >
+      {modalValidacao}
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label="Data e hora *" type="datetime-local" value={dados.data_hora} onChange={(e) => { campo('data_hora')(e.target.value); if (e.target.value) campo('turno')(turnoDe(e.target.value)); }} />

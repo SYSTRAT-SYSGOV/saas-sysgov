@@ -404,7 +404,7 @@ export const SubEntidadesManager: React.FC<SubEntidadesManagerProps> = ({
           </div>
         }
       >
-        <form id="form-sub-documento" onSubmit={salvarDoc} className="space-y-4">
+        <form noValidate id="form-sub-documento" onSubmit={salvarDoc} className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Field label="Tipo de Documento" required>
@@ -432,7 +432,6 @@ export const SubEntidadesManager: React.FC<SubEntidadesManagerProps> = ({
                   placeholder="Ex: 12.345.678-9"
                   value={formDoc.numero}
                   onChange={(e) => setFormDoc({ ...formDoc, numero: e.target.value })}
-                  required
                 />
               </Field>
             </div>
@@ -491,7 +490,7 @@ export const SubEntidadesManager: React.FC<SubEntidadesManagerProps> = ({
           </div>
         }
       >
-        <form id="form-sub-endereco" onSubmit={salvarEnd} className="space-y-4">
+        <form noValidate id="form-sub-endereco" onSubmit={salvarEnd} className="space-y-4">
           {/* BARRA DE CEP COM API INTEGRADA */}
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
             <div className="flex flex-wrap items-end gap-3">
@@ -619,7 +618,7 @@ export const SubEntidadesManager: React.FC<SubEntidadesManagerProps> = ({
           </div>
         }
       >
-        <form id="form-sub-contato" onSubmit={salvarCtc} className="space-y-4">
+        <form noValidate id="form-sub-contato" onSubmit={salvarCtc} className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Field label="Tipo de Contato" required>
@@ -651,7 +650,6 @@ export const SubEntidadesManager: React.FC<SubEntidadesManagerProps> = ({
                   placeholder={formCtc.tipo === 'email' ? 'contato@dominio.com.br' : '(00) 00000-0000'}
                   value={formCtc.valor}
                   onChange={(e) => setFormCtc({ ...formCtc, valor: e.target.value })}
-                  required
                 />
               </Field>
             </div>

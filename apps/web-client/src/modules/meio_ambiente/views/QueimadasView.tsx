@@ -10,6 +10,7 @@ import {
   type OcorrenciaQueimada,
   type QueimadaFeatureCollection,
 } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 export const QueimadasView: React.FC = () => {
   const { can } = useCan();
@@ -104,6 +105,7 @@ const NovaOcorrenciaModal: React.FC<{ onClose: () => void; onCriada: () => void 
   const [areaQueimadaHa, setAreaQueimadaHa] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -117,7 +119,7 @@ const NovaOcorrenciaModal: React.FC<{ onClose: () => void; onCriada: () => void 
       });
       onCriada();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -125,6 +127,7 @@ const NovaOcorrenciaModal: React.FC<{ onClose: () => void; onCriada: () => void 
 
   return (
     <Dialog open onClose={onClose} title="Nova Ocorrência de Queimada" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando || !latitude || !longitude}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Input label="Data da Ocorrência" type="date" value={data} onChange={(e) => setData(e.target.value)} />
@@ -143,6 +146,7 @@ const ResponsavelModal: React.FC<{ ocorrencia: OcorrenciaQueimada; onClose: () =
   const [execucaoVistoriaId, setExecucaoVistoriaId] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -154,7 +158,7 @@ const ResponsavelModal: React.FC<{ ocorrencia: OcorrenciaQueimada; onClose: () =
       });
       onVinculado();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -162,6 +166,7 @@ const ResponsavelModal: React.FC<{ ocorrencia: OcorrenciaQueimada; onClose: () =
 
   return (
     <Dialog open onClose={onClose} title="Identificar Responsável" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Input label="ID do Empreendimento Responsável" value={empreendimentoId} onChange={(e) => setEmpreendimentoId(e.target.value)} />

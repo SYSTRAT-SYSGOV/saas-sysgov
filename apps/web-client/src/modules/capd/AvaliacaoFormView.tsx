@@ -20,6 +20,7 @@ import { GRAU_TONE } from './graduTone';
 import { MatrizEscalaGrafica, FATORES_CANONICOS } from './components/MatrizEscalaGrafica';
 import type { FatorItem } from './components/MatrizEscalaGrafica';
 import { TopoAvaliacaoServidor } from './components/TopoAvaliacaoServidor';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -78,6 +79,7 @@ export const AvaliacaoFormView: React.FC<Props> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [avaliacao, setAvaliacao] = useState<ApiAvaliacao | null>(null);
   const [fatores, setFatores] = useState<ApiFator[]>(FATORES_CANONICOS as any);
   const [respostas, setRespostas] = useState<Record<string, RespostaFator>>({});
@@ -381,7 +383,7 @@ export const AvaliacaoFormView: React.FC<Props> = ({
       await api.capd.uploadEvidencia(incidente.id, file);
       recarregarCit(avaliacao.ciclo_id, avaliacao.servidor_id);
     } catch (e: any) {
-      setErro(e?.response?.data?.message || 'Erro ao anexar evidência ao incidente CIT.');
+      if (!tratarErro(e)) setErro(e?.response?.data?.message || 'Erro ao anexar evidência ao incidente CIT.');
     } finally {
       setAnexandoEvidencia(null);
     }
@@ -556,7 +558,7 @@ export const AvaliacaoFormView: React.FC<Props> = ({
       );
       fecharModalGrau();
     } catch (e: any) {
-      setErro(e?.response?.data?.message || 'Erro ao gravar justificativa e nota.');
+      if (!tratarErro(e)) setErro(e?.response?.data?.message || 'Erro ao gravar justificativa e nota.');
     } finally {
       setModalConfirmando(false);
     }
@@ -572,7 +574,7 @@ export const AvaliacaoFormView: React.FC<Props> = ({
       onRascunhoSalvo?.({ ...(avaliacao || {}), ...(res || {}), id: avaliacaoId, respostas_fatores: respostas });
       setSucesso('Rascunho salvo com sucesso.');
     } catch (e: any) {
-      setErro(e?.response?.data?.message || 'Erro ao salvar rascunho.');
+      if (!tratarErro(e)) setErro(e?.response?.data?.message || 'Erro ao salvar rascunho.');
     } finally {
       setSalvando(false);
     }
@@ -795,6 +797,7 @@ export const AvaliacaoFormView: React.FC<Props> = ({
 
   return (
     <div className="space-y-4">
+      {modalValidacao}
       <Button variant="ghost" size="sm" onClick={onClose} className="-ml-2">
         <ArrowLeft className="h-4 w-4 mr-1.5" />
         Voltar para Avaliações de Subordinados

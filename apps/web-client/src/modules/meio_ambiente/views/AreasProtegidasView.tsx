@@ -11,6 +11,7 @@ import {
   type GeoJsonFeatureCollection,
   type TipoAreaProtegida,
 } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const TIPOS: { value: TipoAreaProtegida; label: string }[] = [
   { value: 'app', label: 'Área de Preservação Permanente (APP)' },
@@ -121,6 +122,7 @@ const NovaAreaProtegidaModal: React.FC<{ onClose: () => void; onCriada: () => vo
   const [coordenadas, setCoordenadas] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -135,7 +137,7 @@ const NovaAreaProtegidaModal: React.FC<{ onClose: () => void; onCriada: () => vo
       });
       onCriada();
     } catch (e) {
-      setErro(e instanceof SyntaxError ? 'Coordenadas inválidas — informe um JSON de pares [longitude, latitude].' : erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(e instanceof SyntaxError ? 'Coordenadas inválidas — informe um JSON de pares [longitude, latitude].' : erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -143,6 +145,7 @@ const NovaAreaProtegidaModal: React.FC<{ onClose: () => void; onCriada: () => vo
 
   return (
     <Dialog open onClose={onClose} title="Nova Área Protegida" size="lg" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando || !coordenadas}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Select label="Tipo" value={tipo} onChange={(v) => setTipo(v as TipoAreaProtegida)} options={TIPOS} />

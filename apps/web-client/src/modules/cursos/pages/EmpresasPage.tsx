@@ -5,6 +5,7 @@ import { sysgovApi, type EmpresaCursos, type EmpresaCursosInput } from '@sysgov/
 import { ConfirmDialog, EmptyState, ScreenState, StatusChip } from '@/components/ui';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { ErroFormulario } from '../components/ErroFormulario';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const VAZIO = { razao_social: '', nome_fantasia: '', cnpj: '', email: '', telefone: '', responsavel: '', observacoes: '' };
 
@@ -25,13 +26,14 @@ export const EmpresasPage: React.FC = () => {
   const [editando, setEditando] = useState<EmpresaCursos | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [excluir, setExcluir] = useState<EmpresaCursos | null>(null);
 
   const carregar = useCallback(async () => {
     try {
       setEmpresas((await sysgovApi.cursos.listarEmpresas()).empresas);
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível carregar as empresas.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível carregar as empresas.'));
       setEmpresas([]);
     }
   }, []);
@@ -60,6 +62,7 @@ export const EmpresasPage: React.FC = () => {
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Razão social', form.razao_social]])) return;
     setSalvando(true);
     setErro(null);
     const dados: EmpresaCursosInput = {
@@ -77,7 +80,7 @@ export const EmpresasPage: React.FC = () => {
       cancelar();
       await carregar();
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível salvar a empresa.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível salvar a empresa.'));
     } finally {
       setSalvando(false);
     }
@@ -88,7 +91,7 @@ export const EmpresasPage: React.FC = () => {
       await sysgovApi.cursos.atualizarEmpresa(e.id, { ativa: !e.ativa });
       await carregar();
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível alterar a empresa.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível alterar a empresa.'));
     }
   };
 
@@ -96,11 +99,12 @@ export const EmpresasPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {modalValidacao}
       <Card className="p-4">
         <h3 className="mb-3 text-base font-semibold">{editando ? `Editar empresa — ${editando.razao_social}` : 'Cadastrar nova empresa'}</h3>
-        <form onSubmit={salvar} className="space-y-3">
+        <form noValidate onSubmit={salvar} className="space-y-3">
           <div className="grid gap-3 md:grid-cols-[1fr_1fr_14rem]">
-            <Input label="Razão social *" value={form.razao_social} onChange={(e) => definir('razao_social', e.target.value)} required maxLength={150} />
+            <Input label="Razão social *" value={form.razao_social} onChange={(e) => definir('razao_social', e.target.value)} maxLength={150} />
             <Input label="Nome fantasia (sai em {EMPRESA})" value={form.nome_fantasia} onChange={(e) => definir('nome_fantasia', e.target.value)} maxLength={150} />
             <Input label="CNPJ" value={form.cnpj} onChange={(e) => definir('cnpj', e.target.value)} maxLength={18} placeholder="00.000.000/0000-00" className="font-mono tabular-nums" />
           </div>

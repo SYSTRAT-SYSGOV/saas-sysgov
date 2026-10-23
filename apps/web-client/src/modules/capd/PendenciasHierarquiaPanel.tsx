@@ -43,6 +43,7 @@ import {
   gerarCsvPendencias,
   obterConfigTipoPendencia,
 } from './PendenciasHierarquiaPanel.utils';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -62,6 +63,7 @@ export const PendenciasHierarquiaPanel: React.FC = () => {
   const [avaliadorNome, setAvaliadorNome] = useState<string>('');
   const [resolvendo, setResolvendo] = useState<boolean>(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
 
   // Sugestões de Servidores / Avaliadores no Modal
   const [servidoresCandidatos, setServidoresCandidatos] = useState<any[]>([]);
@@ -161,7 +163,7 @@ export const PendenciasHierarquiaPanel: React.FC = () => {
       setModalAberto(false);
       await carregar();
     } catch (e: any) {
-      setErro(e?.message || 'Não foi possível resolver a pendência de hierarquia.');
+      if (!tratarErro(e)) setErro(e?.message || 'Não foi possível resolver a pendência de hierarquia.');
     } finally {
       setResolvendo(false);
     }

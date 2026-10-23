@@ -9,6 +9,7 @@ import { campanhaApi, type Vereador, type VereadorEleito } from '../api';
 import { formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const VAZIO = {
   codigo_ibge: null as number | null, ref_mandatario_id: null as number | null, nome: '', partido: '', numero: '', mandato: '', telefone: '', whatsapp: '', email: '',
@@ -20,6 +21,7 @@ export const VereadoresCampanha: React.FC<PropsAba> = ({ campanha, permissoes, a
   const lista = useCarga(() => campanhaApi.vereadores(), [campanha.id, versao]);
   const municipios = useMunicipiosDaCampanha(campanha.id);
   const [municipio, setMunicipio] = useState<number | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [soAliados, setSoAliados] = useState(false);
   const [editando, setEditando] = useState<Vereador | 'novo' | null>(null);
   const [excluir, setExcluir] = useState<Vereador | null>(null);
@@ -64,7 +66,7 @@ export const VereadoresCampanha: React.FC<PropsAba> = ({ campanha, permissoes, a
       <ConfirmarModal aberto={excluir !== null} titulo="Excluir vereador" mensagem={<>Excluir <strong>{excluir?.nome}</strong>?</>} rotuloConfirmar="Excluir" perigo onFechar={() => setExcluir(null)}
         onConfirmar={async () => {
           if (!excluir) return;
-          try { await campanhaApi.excluirVereador(excluir.id); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
+          try { await campanhaApi.excluirVereador(excluir.id); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
         }} />
     </Card>
   );
@@ -75,6 +77,7 @@ const VereadorModal: React.FC<{ registro: Vereador | 'novo' | null; municipios: 
   const [atual, setAtual] = useState<Vereador | 'novo' | null>(null);
   const [eleitos, setEleitos] = useState<VereadorEleito[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (registro !== atual) {
     setAtual(registro);
@@ -101,7 +104,7 @@ const VereadorModal: React.FC<{ registro: Vereador | 'novo' | null; municipios: 
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (form.codigo_ibge === null) { setErro('Escolha o município.'); return; }
+    if (form.codigo_ibge === null) { invalidar([['validação', 'Escolha o município.']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -114,7 +117,7 @@ const VereadorModal: React.FC<{ registro: Vereador | 'novo' | null; municipios: 
       });
       onSalvo(salvo.nome);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -123,7 +126,8 @@ const VereadorModal: React.FC<{ registro: Vereador | 'novo' | null; municipios: 
   return (
     <Modal open={registro !== null} onClose={onFechar} title={registro === 'novo' ? 'Novo vereador' : 'Editar vereador'} icon={<Users className="h-5 w-5" />} size="xl"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-vereador" isLoading={salvando}>Salvar</Button></>}>
-      <form id="form-vereador" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-vereador" onSubmit={salvar} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <SelectMunicipio label="Município *" municipios={municipios} value={form.codigo_ibge} onChange={(v) => setForm((f) => ({ ...f, codigo_ibge: v, ref_mandatario_id: null }))} />
           <Select label="Vereador eleito (TSE)" value={form.ref_mandatario_id ?? 'nenhum'} disabled={eleitos.length === 0} onChange={(v) => escolherEleito(v === 'nenhum' ? null : Number(v))}

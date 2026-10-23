@@ -6,6 +6,7 @@ import { getApiErrorMessage } from '@/lib/apiErrors';
 import { paraInputDataHora } from '../utils/formatos';
 import { ErroFormulario } from './ErroFormulario';
 import { UsuarioPicker } from './UsuarioPicker';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   open: boolean;
@@ -38,6 +39,7 @@ export const TurmaFormModal: React.FC<Props> = ({ open, cursoId, turma, onClose,
   const [instrutores, setInstrutores] = useState<InstrutorResumo[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     if (!open) return;
@@ -67,9 +69,9 @@ export const TurmaFormModal: React.FC<Props> = ({ open, cursoId, turma, onClose,
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Nome da turma', form.nome], ['Início das aulas', form.data_inicio], ['Fim das aulas', form.data_fim], ['Inscrições a partir de', form.inscricoes_inicio], ['Inscrições até', form.inscricoes_fim]])) return;
     if (instrutores.length === 0) {
-      setErro('Escolha ao menos um instrutor.');
-      return;
+      invalidar([['validação', 'Escolha ao menos um instrutor.']]); return;
     }
     setSalvando(true);
     setErro(null);
@@ -89,7 +91,7 @@ export const TurmaFormModal: React.FC<Props> = ({ open, cursoId, turma, onClose,
     try {
       onSalvo(turma ? await sysgovApi.cursos.atualizarTurma(turma.id, dados) : await sysgovApi.cursos.criarTurma(cursoId, dados));
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar a turma.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar a turma.'));
     } finally {
       setSalvando(false);
     }
@@ -97,17 +99,18 @@ export const TurmaFormModal: React.FC<Props> = ({ open, cursoId, turma, onClose,
 
   return (
     <Modal open={open} onClose={onClose} title={turma ? 'Editar turma' : 'Nova turma'} icon={<Users className="h-5 w-5" />} size="xl">
-      <form onSubmit={salvar} className="space-y-4">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4">
         <ErroFormulario mensagem={erro} />
-        <Input label="Nome da turma" value={form.nome} onChange={(e) => set('nome')(e.target.value)} required maxLength={150} placeholder="Ex.: Turma 2026/1" />
+        <Input label="Nome da turma" value={form.nome} onChange={(e) => set('nome')(e.target.value)} maxLength={150} placeholder="Ex.: Turma 2026/1" />
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Início das aulas" type="date" value={form.data_inicio} onChange={(e) => set('data_inicio')(e.target.value)} required className="font-mono tabular-nums" />
-          <Input label="Fim das aulas" type="date" value={form.data_fim} onChange={(e) => set('data_fim')(e.target.value)} required className="font-mono tabular-nums" />
-          <Input label="Inscrições a partir de" type="datetime-local" value={form.inscricoes_inicio} onChange={(e) => set('inscricoes_inicio')(e.target.value)} required className="font-mono tabular-nums" />
-          <Input label="Inscrições até" type="datetime-local" value={form.inscricoes_fim} onChange={(e) => set('inscricoes_fim')(e.target.value)} required className="font-mono tabular-nums" />
+          <Input label="Início das aulas" type="date" value={form.data_inicio} onChange={(e) => set('data_inicio')(e.target.value)} className="font-mono tabular-nums" />
+          <Input label="Fim das aulas" type="date" value={form.data_fim} onChange={(e) => set('data_fim')(e.target.value)} className="font-mono tabular-nums" />
+          <Input label="Inscrições a partir de" type="datetime-local" value={form.inscricoes_inicio} onChange={(e) => set('inscricoes_inicio')(e.target.value)} className="font-mono tabular-nums" />
+          <Input label="Inscrições até" type="datetime-local" value={form.inscricoes_fim} onChange={(e) => set('inscricoes_fim')(e.target.value)} className="font-mono tabular-nums" />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Vagas" type="number" min={1} value={form.vagas} onChange={(e) => set('vagas')(e.target.value)} required className="font-mono tabular-nums" />
+          <Input label="Vagas" type="number" min={1} value={form.vagas} onChange={(e) => set('vagas')(e.target.value)} className="font-mono tabular-nums" />
           <Select
             label="Modalidade"
             value={form.modalidade}
@@ -119,8 +122,8 @@ export const TurmaFormModal: React.FC<Props> = ({ open, cursoId, turma, onClose,
             ]}
           />
         </div>
-        {exigeLocal && <Input label="Local" value={form.local} onChange={(e) => set('local')(e.target.value)} required maxLength={255} />}
-        {exigeLink && <Input label="Link da sala virtual" type="url" value={form.link} onChange={(e) => set('link')(e.target.value)} required maxLength={500} />}
+        {exigeLocal && <Input label="Local" value={form.local} onChange={(e) => set('local')(e.target.value)} maxLength={255} />}
+        {exigeLink && <Input label="Link da sala virtual" type="url" value={form.link} onChange={(e) => set('link')(e.target.value)} maxLength={500} />}
         <div className="flex items-center gap-3">
           <Switch id="aprovacao-manual" checked={form.aprovacao_manual} onCheckedChange={(v) => set('aprovacao_manual')(v)} label="Exigir aprovação das inscrições" />
           <label htmlFor="aprovacao-manual" className="text-sm text-foreground">

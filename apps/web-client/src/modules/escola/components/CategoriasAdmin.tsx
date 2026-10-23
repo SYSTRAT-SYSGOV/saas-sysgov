@@ -4,6 +4,7 @@ import { escolaApi, erroApi, type Categoria as CategoriaOcorrencia } from '../ap
 import { useCarga } from '../useCarga';
 import AdminModal, { inputCls, labelCls, btnPrimary, btnSecondary, EstadoCarga, type Toast } from './AdminModal';
 import { ConfirmModal } from './AlunoModals';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 type ModalState =
   | { kind: 'form'; categoria: CategoriaOcorrencia | null }
@@ -130,19 +131,20 @@ const CategoriaFormModal: React.FC<CategoriaFormModalProps> = ({ categoria, onCl
   const [nome, setNome] = useState(categoria?.nome || '');
   const [cor, setCor] = useState(categoria?.cor || '#6366f1');
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const n = nome.trim();
-    if (!n) return setErro('Informe o nome da categoria.');
+    if (!n) return invalidar([['validação', 'Informe o nome da categoria.']]);
     setSalvando(true);
     try {
       await escolaApi.salvarCategoria({ nome: n, cor }, categoria?.id);
       onToast({ type: 'success', title: categoria ? 'Categoria atualizada' : 'Categoria cadastrada', message: `${n} salva com sucesso.` });
       onSaved();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -160,10 +162,11 @@ const CategoriaFormModal: React.FC<CategoriaFormModalProps> = ({ categoria, onCl
         </>
       }
     >
-      <form id="form-categoria" onSubmit={handleSubmit} className="space-y-4">
+      {modalValidacao}
+      <form noValidate id="form-categoria" onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className={labelCls} htmlFor="cat-nome">Nome</label>
-          <input id="cat-nome" className={inputCls} value={nome} onChange={e => { setNome(e.target.value); setErro(''); }} autoFocus required />
+          <input id="cat-nome" className={inputCls} value={nome} onChange={e => { setNome(e.target.value); setErro(''); }} autoFocus />
         </div>
         <div>
           <label className={labelCls} htmlFor="cat-cor">Cor</label>

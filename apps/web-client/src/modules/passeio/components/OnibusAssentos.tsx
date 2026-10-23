@@ -7,6 +7,7 @@ import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
 import { passeioApi, type DadosVeiculo, type MapaAssentos, type Veiculo } from '../api';
 import { CAPACIDADES_COMUNS, distribuir, semAssento } from '../formato';
 import type { PropsAba } from '../ModuloPasseioMain';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 type Clique = { veiculo: Veiculo; numero: number; ocupante: MapaAssentos['ocupados'][number] | null };
 
@@ -205,6 +206,7 @@ const VeiculoModal: React.FC<{ veiculo: Veiculo | 'novo' | null; passeioId: numb
   const [form, setForm] = useState<DadosVeiculo>(VAZIO);
   const [atual, setAtual] = useState<Veiculo | 'novo' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (veiculo !== atual) {
     setAtual(veiculo);
@@ -215,6 +217,7 @@ const VeiculoModal: React.FC<{ veiculo: Veiculo | 'novo' | null; passeioId: numb
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Identificação', form.identificacao], ['Lugares', form.capacidade]])) return;
     setSalvando(true);
     setErro(null);
     const dados = { ...form, placa: form.placa?.trim() || null, motorista: form.motorista?.trim() || null, telefone: form.telefone?.trim() || null, cor: form.cor || null, capacidade: Number(form.capacidade) };
@@ -223,7 +226,7 @@ const VeiculoModal: React.FC<{ veiculo: Veiculo | 'novo' | null; passeioId: numb
       else if (veiculo) await passeioApi.atualizarVeiculo(veiculo.id, dados);
       await onSalvo(dados.identificacao);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -238,9 +241,10 @@ const VeiculoModal: React.FC<{ veiculo: Veiculo | 'novo' | null; passeioId: numb
       size="lg"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-veiculo" isLoading={salvando}>Salvar</Button></>}
     >
-      <form id="form-veiculo" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-veiculo" onSubmit={salvar} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
-          <Input label="Identificação *" placeholder="Ex.: Ônibus 01" value={form.identificacao} onChange={texto('identificacao')} required maxLength={150} />
+          <Input label="Identificação *" placeholder="Ex.: Ônibus 01" value={form.identificacao} onChange={texto('identificacao')} maxLength={150} />
           <Input label="Placa" value={form.placa ?? ''} onChange={texto('placa')} maxLength={10} className="font-mono uppercase tabular-nums" />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -248,7 +252,7 @@ const VeiculoModal: React.FC<{ veiculo: Veiculo | 'novo' | null; passeioId: numb
           <Input label="Telefone do motorista" value={form.telefone ?? ''} onChange={texto('telefone')} maxLength={30} className="font-mono tabular-nums" />
         </div>
         <div className="grid items-end gap-3 sm:grid-cols-[10rem_1fr_8rem]">
-          <Input label="Lugares *" type="number" min={1} max={100} value={form.capacidade} onChange={(e) => setForm((f) => ({ ...f, capacidade: Number(e.target.value) }))} required className="font-mono tabular-nums" />
+          <Input label="Lugares *" type="number" min={1} max={100} value={form.capacidade} onChange={(e) => setForm((f) => ({ ...f, capacidade: Number(e.target.value) }))} className="font-mono tabular-nums" />
           <div className="flex flex-wrap gap-1" aria-label="Capacidades comuns">
             {CAPACIDADES_COMUNS.map((c) => (
               <Button key={c} type="button" size="xs" variant={form.capacidade === c ? 'primary' : 'outline'} onClick={() => setForm((f) => ({ ...f, capacidade: c }))} className="font-mono tabular-nums">{c}</Button>

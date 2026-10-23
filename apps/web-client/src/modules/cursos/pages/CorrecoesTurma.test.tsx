@@ -139,10 +139,12 @@ describe('Aba Correções da turma', () => {
     fireEvent.change(screen.getByLabelText(/Pontos/), { target: { value: '3' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar correção' }));
     expect(await screen.findByText('Os pontos devem ficar entre 0 e 2.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Entendi' }));
 
     fireEvent.change(screen.getByLabelText(/Pontos/), { target: { value: '-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar correção' }));
-    expect(screen.getByText('Os pontos devem ficar entre 0 e 2.')).toBeInTheDocument();
+    expect(await screen.findByText('Os pontos devem ficar entre 0 e 2.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Entendi' }));
 
     fireEvent.change(screen.getByLabelText(/Pontos/), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar correção' }));

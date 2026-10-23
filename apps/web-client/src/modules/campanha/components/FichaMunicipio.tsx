@@ -6,6 +6,7 @@ import type { Toast } from '../../escola/components/AdminModal';
 import { campanhaApi, type CampanhaAtual, type Coordenador, type FichaMunicipio, type Influencia, type RelacaoPrefeito, type Situacao } from '../api';
 import { ROTULO_RELACAO, ROTULO_SITUACAO, SITUACOES, VARIANTE_RELACAO, formatarNumero } from '../formato';
 import type { Permissoes } from '../ModuloCampanhaMain';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   ibge: number | null;
@@ -27,6 +28,7 @@ export const FichaMunicipioModal: React.FC<Props> = ({ ibge, campanha, permissoe
   const [form, setForm] = useState({ situacao: 'sem_atuacao' as Situacao, meta_votos: '0', votos_anterior: '0', coordenador_id: null as number | null, potencial: '', historico: '', observacoes: '' });
   const [prefeito, setPrefeito] = useState({ relacao: 'sem_informacao' as RelacaoPrefeito, influencia: 'media' as Influencia, whatsapp: '' });
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export const FichaMunicipioModal: React.FC<Props> = ({ ibge, campanha, permissoe
         setForm({ situacao: f.situacao, meta_votos: String(f.meta_votos), votos_anterior: String(f.votos_anterior), coordenador_id: f.coordenador?.id ?? null, potencial: f.potencial ?? '', historico: f.historico ?? '', observacoes: f.observacoes ?? '' });
         setPrefeito({ relacao: f.prefeito.relacao, influencia: f.prefeito.influencia ?? 'media', whatsapp: f.prefeito.contato?.whatsapp ?? '' });
       })
-      .catch((e) => !cancelado && setErro(erroApi(e).mensagem));
+      .catch((e) => { if (!cancelado && !tratarErro(e)) setErro(erroApi(e).mensagem); });
     return () => { cancelado = true; };
   }, [ibge]);
 
@@ -67,7 +69,7 @@ export const FichaMunicipioModal: React.FC<Props> = ({ ibge, campanha, permissoe
       onSalvo();
       onFechar();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -85,6 +87,7 @@ export const FichaMunicipioModal: React.FC<Props> = ({ ibge, campanha, permissoe
       size="2xl"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Fechar</Button>{pode && <Button leftIcon={<Save className="h-4 w-4" />} onClick={() => void salvar()} isLoading={salvando} disabled={!ficha}>Salvar</Button>}</>}
     >
+      {modalValidacao}
       {!ficha ? (erro ? <p className="text-sm text-destructive" role="alert">{erro}</p> : <Skeleton className="h-80 w-full" />) : (
         <div className="space-y-5">
           <section className="grid gap-3 rounded-md border border-border p-3 text-sm sm:grid-cols-4">

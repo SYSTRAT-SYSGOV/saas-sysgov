@@ -10,6 +10,7 @@ import {
   type ParcelamentoMulta,
   type TipoInfracaoAmbiental,
 } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const TIPOS_INFRACAO: { value: TipoInfracaoAmbiental; label: string }[] = [
   { value: 'desmatamento', label: 'Desmatamento' },
@@ -44,6 +45,7 @@ export const FiscalizacaoAmbientalView: React.FC = () => {
   const [areaAfetadaHa, setAreaAfetadaHa] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [autoEmitido, setAutoEmitido] = useState<AutoInfracaoAmbiental | null>(null);
 
   const [processoSancionatorioId, setProcessoSancionatorioId] = useState('');
@@ -72,7 +74,7 @@ export const FiscalizacaoAmbientalView: React.FC = () => {
       });
       setAutoEmitido(auto);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }

@@ -259,7 +259,7 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
           )}
         </div>
 
-        <form id={formId} onSubmit={handleSubmit} className="space-y-6">
+        <form noValidate id={formId} onSubmit={handleSubmit} className="space-y-6">
           {/* ── 1. Dados do Falecido ── */}
           <div className="rounded-xl border border-border bg-card/50 p-4 space-y-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b pb-2">
@@ -311,7 +311,6 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
                     placeholder="Nome completo conforme certidão"
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
-                    required
                   />
                 </Field>
               </div>
@@ -341,7 +340,6 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
                     className="font-mono tabular-nums"
                     value={falecimento}
                     onChange={(e) => setFalecimento(e.target.value)}
-                    required
                   />
                 </Field>
               </div>
@@ -543,7 +541,6 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
                       className="font-mono tabular-nums"
                       value={plotId}
                       onChange={(e) => setPlotId(e.target.value)}
-                      required
                     />
                   )}
                 </Field>
@@ -587,7 +584,6 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
                     className="font-mono tabular-nums"
                     value={sepultadoEm}
                     onChange={(e) => setSepultadoEm(e.target.value)}
-                    required
                   />
                 </Field>
               </div>
@@ -682,7 +678,6 @@ export const ModalNovaInumacao: React.FC<ModalNovaInumacaoProps> = ({
                       placeholder="Ex.: Livro B-12, Folha 45, Termo nº 1842"
                       value={livroReferencia}
                       onChange={(e) => setLivroReferencia(e.target.value)}
-                      required
                     />
                   </Field>
                 </div>

@@ -49,6 +49,7 @@ import { FerramentaMedicao } from './FerramentaMedicao';
 import { FiltrosRapidosMapa, type FiltroRapidoStatus } from './FiltrosRapidosMapa';
 import { BotaoExportacaoGis } from './BotaoExportacaoGis';
 import { ModalEditarCemiterio } from './ModalEditarCemiterio';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const ZOOM_DETALHE_JAZIGOS = 19; // abaixo disso, jazigos aparecem agrupados (clusterizados)
 const ICONE_AMENIDADE: Record<Amenidade['tipo'], string> = {
@@ -82,6 +83,7 @@ export const MapaView: React.FC = () => {
   const [feicoes, setFeicoes] = useState<Partial<Record<Camada, FeatureCollection>>>({});
   const [versao, setVersao] = useState(0);
   const [erro, setErro] = useState<ErroApi | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [selecionado, setSelecionado] = useState<number | null>(null);
   const [envelope, setEnvelope] = useState<Caixa | null>(null);
   const [alvo, setAlvo] = useState<{ tipo: Camada; id: string }>({ tipo: 'jazigos', id: '' });
@@ -195,7 +197,7 @@ export const MapaView: React.FC = () => {
       setFeicoes(resultados);
       setVersao((v) => v + 1);
     } catch (e) {
-      setErro(erroApi(e));
+      if (!tratarErro(e)) setErro(erroApi(e));
     }
   }, [visiveis, cemiterioAtivoId]);
 
@@ -234,7 +236,7 @@ export const MapaView: React.FC = () => {
 
   const salvarDesenho = useCallback(async (geometria: Polygon) => {
     if (!alvo.id) {
-      setErro({ status: 422, mensagem: 'Informe o ID do cemitério, quadra ou jazigo antes de desenhar.' });
+      invalidar([['validação', 'Informe o ID do cemitério, quadra ou jazigo antes de desenhar.']]);
       return;
     }
     try {
@@ -243,14 +245,14 @@ export const MapaView: React.FC = () => {
       setVersao((v) => v + 1);
       if (caixaAtual) void carregar(caixaAtual.caixa, caixaAtual.zoom);
     } catch (e) {
-      setErro(erroApi(e));
+      if (!tratarErro(e)) setErro(erroApi(e));
     }
   }, [alvo, caixaAtual, carregar]);
 
   const salvarVia = useCallback(async (geometria: LineString) => {
     if (!cemiterioAtivoId) return;
     if (!novaViaCodigo.trim()) {
-      setErro({ status: 422, mensagem: 'Informe o código da via antes de desenhar.' });
+      invalidar([['validação', 'Informe o código da via antes de desenhar.']]);
       return;
     }
     try {
@@ -260,7 +262,7 @@ export const MapaView: React.FC = () => {
       setDesenhandoVia(false);
       setVersao((v) => v + 1);
     } catch (e) {
-      setErro(erroApi(e));
+      if (!tratarErro(e)) setErro(erroApi(e));
     }
   }, [cemiterioAtivoId, novaViaCodigo]);
 
@@ -442,7 +444,7 @@ export const MapaView: React.FC = () => {
       pdf.addImage(dataUrlFinal, 'PNG', 0, 0, canvas.width * escala, canvas.height * escala);
       pdf.save(`${nomeArquivo}.pdf`);
     } catch (e) {
-      setErro(erroApi(e));
+      if (!tratarErro(e)) setErro(erroApi(e));
     } finally {
       setExportando(false);
     }
@@ -450,6 +452,7 @@ export const MapaView: React.FC = () => {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
+      {modalValidacao}
       <Card className="relative overflow-hidden p-0 border border-border">
         {/* Controle de Camadas Base Abertas */}
         <ControleCamadasBase

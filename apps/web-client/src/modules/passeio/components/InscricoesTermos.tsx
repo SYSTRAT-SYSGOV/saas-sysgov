@@ -7,6 +7,7 @@ import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
 import { passeioApi, type AlteracaoInscricao, type Inscricao } from '../api';
 import { FILTRO_INICIAL, csvInscricoes, filtrarInscricoes, listaDaTurma, naoInscrito, type FiltroInscricoes } from '../formato';
 import type { PropsAba } from '../ModuloPasseioMain';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const sim = (v: boolean, rotuloSim: string, rotuloNao: string) => <StatusChip label={v ? rotuloSim : rotuloNao} variant={v ? 'success' : 'neutral'} />;
 
@@ -16,6 +17,7 @@ const sim = (v: boolean, rotuloSim: string, rotuloNao: string) => <StatusChip la
  */
 export const InscricoesTermos: React.FC<PropsAba> = ({ ativo, dados, recarregar, avisar, permissoes }) => {
   const [filtro, setFiltro] = useState<FiltroInscricoes>(FILTRO_INICIAL);
+  const { tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState<number | null>(null);
   const [inscrever, setInscrever] = useState(false);
   const [observacao, setObservacao] = useState<Inscricao | null>(null);
@@ -50,7 +52,7 @@ export const InscricoesTermos: React.FC<PropsAba> = ({ ativo, dados, recarregar,
       else await passeioApi.atualizarInscricao(i.id, mudanca);
       await recarregar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Não foi possível alterar', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível alterar', message: erroApi(e).mensagem });
     } finally {
       setSalvando(null);
     }
@@ -158,7 +160,7 @@ export const InscricoesTermos: React.FC<PropsAba> = ({ ativo, dados, recarregar,
             await passeioApi.excluirInscricao(remover.id);
             await recarregar();
           } catch (e) {
-            avisar({ type: 'error', title: 'Não foi possível remover', message: erroApi(e).mensagem });
+            if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível remover', message: erroApi(e).mensagem });
           }
         }}
       />
@@ -173,6 +175,7 @@ const InscreverModal: React.FC<Pick<PropsAba, 'ativo' | 'dados' | 'avisar' | 're
   const [alunos, setAlunos] = useState<Aluno[] | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     setAlunoId(null);
@@ -207,7 +210,7 @@ const InscreverModal: React.FC<Pick<PropsAba, 'ativo' | 'dados' | 'avisar' | 're
       await recarregar();
       fechar();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setEnviando(false);
     }
