@@ -318,6 +318,10 @@ return <>{modal}…</>;
 - Quando um teste abre a modal, ela deixa o resto da tela inacessível (`aria-hidden`): feche com o botão "Entendi" antes de interagir de novo.
 - Spec: `openspec/changes/padronizar-validacao-formularios-modal`.
 
+### 7.3 Painel admin e pacote compartilhado
+
+O painel admin (`apps/web`) usa o mesmo Design System Gov.br do portal. Tokens, tema do Tailwind e estilos globais ficam em `packages/ui/src/styles/` (`govbr-tokens.css`, `govbr-theme.css`, `govbr-base.css`) e os dois `index.css` só os importam. Não definir cores, fontes nem raios nos apps. Componentes compartilhados (`DataTable`, `Field`, `PageHeader`, `ScreenState`, `ConfirmDialog`, `ValidationErrorModal`, `useFormValidationModal`) vêm de `@sysgov/ui`. No admin não há tema escuro nem presets de cor.
+
 ## 📝 8. Rotas Registradas
 
 | Rota | Módulo | Guard |

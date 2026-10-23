@@ -19,7 +19,11 @@ export const AdminConfigProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return { ...DEFAULT_ADMIN_CONFIG, ...JSON.parse(saved) };
+        const guardada = JSON.parse(saved) as Partial<SystemBrandingConfig> & { themeId?: string };
+        // Descarta o tema de destaque antigo (esmeralda e presets): o admin usa o azul Gov.br do portal.
+        delete guardada.themeId;
+        if (guardada.primaryColor?.toLowerCase() === '#10b981') delete guardada.primaryColor;
+        return { ...DEFAULT_ADMIN_CONFIG, ...guardada };
       }
     } catch {}
     return DEFAULT_ADMIN_CONFIG;
@@ -32,16 +36,6 @@ export const AdminConfigProvider: React.FC<{ children: ReactNode }> = ({ childre
       return false;
     }
   });
-
-  // Aplica o tema escolhido (Accent Theme) na raiz do documento via
-  // data-theme, lido pelos overrides de CSS em src/index.css (seção
-  // "5c. Presets de Tema do Admin"). Roda a cada mudança de config e
-  // uma vez no boot, para refletir o que veio do localStorage.
-  useEffect(() => {
-    try {
-      document.documentElement.setAttribute('data-theme', config.themeId);
-    } catch {}
-  }, [config.themeId]);
 
   const updateConfig = (newConfig: Partial<SystemBrandingConfig>) => {
     setConfig(prev => {

@@ -130,7 +130,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({ 
                         <XAxis dataKey="mes" fontSize={11} />
                         <YAxis fontSize={11} tickFormatter={(v: number) => `R$ ${v.toLocaleString('pt-BR')}`} width={90} />
                         <Tooltip formatter={(v: number) => [`R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita paga']} />
-                        <Bar dataKey="valor" name="Receita paga" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="valor" name="Receita paga" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -150,8 +150,8 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({ 
                         <YAxis fontSize={11} allowDecimals={false} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="organizacoes" name="Organizações" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="usuarios" name="Usuários" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="organizacoes" name="Organizações" fill="var(--gov-primary-hover)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="usuarios" name="Usuários" fill="var(--status-info-base)" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

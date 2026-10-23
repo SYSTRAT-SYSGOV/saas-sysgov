@@ -76,8 +76,8 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = () => {
                     <YAxis fontSize={11} allowDecimals={false} />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="novos" name="Novos" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="encerrados" name="Encerrados" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="novos" name="Novos" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="encerrados" name="Encerrados" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -96,7 +96,7 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = () => {
                     <XAxis dataKey="mes" fontSize={11} />
                     <YAxis fontSize={11} domain={[0, 100]} unit="%" />
                     <Tooltip formatter={(v: number) => [`${v}%`, 'Retenção']} />
-                    <Line type="monotone" dataKey="retencao" name="Retenção" stroke="#6366f1" strokeWidth={2} connectNulls={false} />
+                    <Line type="monotone" dataKey="retencao" name="Retenção" stroke="var(--gov-primary-hover)" strokeWidth={2} connectNulls={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

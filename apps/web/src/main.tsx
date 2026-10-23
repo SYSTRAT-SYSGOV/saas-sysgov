@@ -31,19 +31,19 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6 font-sans">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 max-w-lg w-full text-center space-y-4 shadow-2xl">
-            <div className="w-14 h-14 bg-rose-500/20 text-rose-400 border border-rose-500/40 rounded-xl flex items-center justify-center mx-auto text-2xl font-bold font-mono">
+        <div className="min-h-screen bg-gov-alternative text-white flex items-center justify-center p-6 font-sans">
+          <div className="bg-gov-alternative border border-white/20 rounded-xl p-8 max-w-lg w-full text-center space-y-4 shadow-2xl">
+            <div className="w-14 h-14 bg-destructive/20 text-status-danger border border-status-danger-border rounded-xl flex items-center justify-center mx-auto text-2xl font-bold font-mono">
               ⚠
             </div>
             <h1 className="text-xl font-bold text-white uppercase tracking-wider">
               Erro de Renderização
             </h1>
-            <p className="text-xs text-slate-300 leading-relaxed font-sans">
+            <p className="text-xs text-muted-foreground leading-relaxed font-sans">
               Ocorreu uma inconsistência temporária ao carregar este módulo ou alternar o perfil de prefeitura.
             </p>
             {this.state.error && (
-              <pre className="text-[10px] font-mono text-rose-300 bg-slate-950/80 p-3 rounded border border-slate-800 text-left overflow-x-auto max-h-48">
+              <pre className="text-[10px] font-mono text-status-danger bg-gov-alternative p-3 rounded border border-white/20 text-left overflow-x-auto max-h-48">
                 {this.state.error.message || String(this.state.error)}
                 {'\n\n'}
                 {this.state.error.stack}

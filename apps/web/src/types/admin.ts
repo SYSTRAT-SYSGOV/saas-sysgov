@@ -54,7 +54,7 @@ export interface MetricCardData {
   periodLabel: string;
   badge?: string;
   sparklineData?: number[];
-  colorScheme: 'emerald' | 'indigo' | 'cyan' | 'amber' | 'rose' | 'slate';
+  colorScheme: 'success' | 'indigo' | 'cyan' | 'amber' | 'rose' | 'neutral';
 }
 
 export interface ActivityEvent {
@@ -142,8 +142,6 @@ export interface SystemBrandingConfig {
   faviconUrl?: string;
   primaryColor: string;
   secondaryColor: string;
-  /** Id de um tema em `ADMIN_THEMES` (src/config/adminThemes.ts). Default: 'navy'. */
-  themeId: string;
   enableDarkMode: boolean;
   showPoweredBy: boolean;
   supportEmail: string;

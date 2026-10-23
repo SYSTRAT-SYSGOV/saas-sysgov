@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { MenuGroup, MenuItem } from './types';
 import { adminApi } from './api';
+import { useFormValidationModal } from '@sysgov/ui';
 
 
 interface Props {
@@ -63,32 +64,32 @@ const SortableItem: React.FC<{
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 p-3 mod-card mod-row-hover text-xs transition-colors group"
+      className="flex items-center gap-3 p-3 bg-card border border-border rounded-xl hover:bg-accent text-xs transition-colors group"
     >
-      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Arrastar item">
+      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground " aria-label="Arrastar item">
         <GripVertical size={14} />
       </button>
-      <span className="flex-1 mod-text-primary font-medium">{item.label}</span>
+      <span className="flex-1 text-foreground font-medium">{item.label}</span>
       {item.shortcut && (
-        <span className="font-mono tabular-nums text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 mod-text-secondary">
+        <span className="font-mono tabular-nums text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
           [{item.shortcut}]
         </span>
       )}
       {item.permission && (
-        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700/40">
+        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-accent text-primary  border border-primary/30 ">
           {item.permission}
         </span>
       )}
       {item.badge && item.badge.value > 0 && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-700/40 px-2 py-0.5">
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold rounded-full bg-status-danger-bg text-status-danger  border border-status-danger-border  px-2 py-0.5">
           <ShieldAlert size={10} /> {item.badge.value}
         </span>
       )}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-        <button onClick={() => onEdit(item)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-blue-500" title="Editar">
+        <button onClick={() => onEdit(item)} className="p-1 rounded hover:bg-accent text-primary" title="Editar">
           <Edit size={14} />
         </button>
-        <button onClick={() => onDelete(item)} className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500" title="Excluir">
+        <button onClick={() => onDelete(item)} className="p-1 rounded hover:bg-status-danger-bg text-status-danger" title="Excluir">
           <Trash2 size={14} />
         </button>
       </div>
@@ -107,6 +108,7 @@ export const MenuManager: React.FC<Props> = ({
   onDeleteItem: externalOnDeleteItem,
 }) => {
   const [internalGroups, setInternalGroups] = useState<MenuGroup[]>([]);
+  const { modal: modalValidacao, validar } = useFormValidationModal();
   const [loadingMenus, setLoadingMenus] = useState(externalGroups === undefined);
   const [menusError, setMenusError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -278,22 +280,23 @@ export const MenuManager: React.FC<Props> = ({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      {modalValidacao}
       <div className="space-y-6">
         {externalGroups === undefined && loadingMenus && (
-          <p className="text-sm mod-text-secondary" role="status">Carregando menus...</p>
+          <p className="text-sm text-muted-foreground" role="status">Carregando menus...</p>
         )}
         {externalGroups === undefined && menusError && (
-          <div className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-300" role="alert">
+          <div className="rounded-lg border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger " role="alert">
             {menusError}{' '}
             <button type="button" onClick={loadMenus} className="font-semibold underline">Tentar novamente</button>
           </div>
         )}
-        <div className="mod-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold mod-text-primary flex items-center gap-2">
-              <FolderTree className="text-indigo-500" size={20} /> Gerenciador de Menus Dinâmico
+            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+              <FolderTree className="text-primary" size={20} /> Gerenciador de Menus Dinâmico
             </h1>
-            <p className="text-sm mod-text-secondary mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Arraste os itens para reorganizar posições ou movê-los entre grupos.
             </p>
           </div>
@@ -307,21 +310,21 @@ export const MenuManager: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="mod-card p-4 flex items-center gap-3">
+        <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 mod-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-muted-foreground/70 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar grupo ou item de menu..."
-              className="mod-input w-full pl-10"
+              className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full pl-10"
             />
           </div>
         </div>
 
         <div className="space-y-4">
           {filtered.length === 0 ? (
-            <div className="mod-card p-8 text-center text-xs mod-text-secondary">
+            <div className="bg-card border border-border rounded-xl p-8 text-center text-xs text-muted-foreground">
               Nenhum menu ou item localizado para a busca informada.
             </div>
           ) : (
@@ -330,17 +333,17 @@ export const MenuManager: React.FC<Props> = ({
               const itemIds = (group.items || []).map((i) => `item-${i.id}`);
 
               return (
-                <div key={group.id} className="mod-card overflow-hidden shadow-sm">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#101a3a]/40 border-b mod-border">
+                <div key={group.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                  <div className="flex items-center justify-between p-4 bg-muted border-b border-border">
                     <button
                       onClick={() => toggle(group.id)}
                       className="flex items-center gap-3 flex-1 text-left min-w-0"
                     >
-                      {isOpen ? <ChevronDown size={16} className="mod-text-secondary" /> : <ChevronRight size={16} className="mod-text-secondary" />}
-                      <span className="text-xs font-bold uppercase tracking-wider mod-text-primary truncate">
+                      {isOpen ? <ChevronDown size={16} className="text-muted-foreground" /> : <ChevronRight size={16} className="text-muted-foreground" />}
+                      <span className="text-xs font-bold uppercase tracking-wider text-foreground truncate">
                         {group.name}
                       </span>
-                      <span className="sgf-badge-oficial px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums">
+                      <span className="bg-status-success-bg text-status-success border border-status-success-border px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums">
                         {group.items.length} {group.items.length === 1 ? 'item' : 'itens'}
                       </span>
                     </button>
@@ -348,21 +351,21 @@ export const MenuManager: React.FC<Props> = ({
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleCreateItem(group.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-primary/30 text-primary  hover:bg-accent  transition-colors"
                         title="Adicionar Item"
                       >
                         <Plus size={12} /> Adicionar Item
                       </button>
                       <button
                         onClick={() => handleEditGroup(group)}
-                        className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-blue-500 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-accent text-primary transition-colors"
                         title="Editar Grupo"
                       >
                         <Edit size={14} />
                       </button>
                       <button
                         onClick={() => handleDeleteGroup(group)}
-                        className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-500 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-status-danger-bg text-status-danger transition-colors"
                         title="Excluir Grupo"
                       >
                         <Trash2 size={14} />
@@ -371,9 +374,9 @@ export const MenuManager: React.FC<Props> = ({
                   </div>
 
                   {isOpen && (
-                    <div className="p-3 bg-white dark:bg-[#152244]/40">
+                    <div className="p-3 bg-card ">
                       {group.items.length === 0 ? (
-                        <div className="text-center py-6 text-xs mod-text-secondary italic border border-dashed mod-border rounded-xl">
+                        <div className="text-center py-6 text-xs text-muted-foreground italic border border-dashed border-border rounded-xl">
                           Nenhum item neste grupo. Clique em "Adicionar Item" ou arraste itens para cá.
                         </div>
                       ) : (
@@ -400,20 +403,21 @@ export const MenuManager: React.FC<Props> = ({
 
         {/* Modal de Novo Grupo quando standalone */}
         {creatingGroup && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-            <div className="mod-card w-full max-w-lg shadow-2xl p-6">
-              <div className="flex items-center justify-between pb-3 border-b mod-border">
-                <h2 className="text-sm font-bold mod-text-primary">Novo Grupo de Menu</h2>
-                <button onClick={() => setCreatingGroup(false)} className="p-1 rounded-lg mod-text-secondary hover:mod-inner">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gov-alternative backdrop-blur-sm animate-fade-in">
+            <div className="bg-card border border-border rounded-xl w-full max-w-lg shadow-2xl p-6">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <h2 className="text-sm font-bold text-foreground">Novo Grupo de Menu</h2>
+                <button onClick={() => setCreatingGroup(false)} className="p-1 rounded-lg text-muted-foreground hover:bg-muted">
                   <X size={16} />
                 </button>
               </div>
               <form
+                noValidate
                 onSubmit={(e) => {
                   e.preventDefault();
                   const form = e.target as HTMLFormElement;
                   const name = (form.elements.namedItem('groupName') as HTMLInputElement).value.trim();
-                  if (!name) return;
+                  if (!validar([['Nome do Grupo', name]])) return;
 
                   const newGroup: MenuGroup = {
                     id: Date.now(),
@@ -429,14 +433,14 @@ export const MenuManager: React.FC<Props> = ({
                 className="mt-4 space-y-3 text-xs"
               >
                 <div>
-                  <label className="block font-semibold mod-text-secondary mb-1">Nome do Grupo</label>
-                  <input name="groupName" required autoFocus placeholder="Ex: Organograma" className="mod-input w-full" />
+                  <label className="block font-semibold text-muted-foreground mb-1">Nome do Grupo</label>
+                  <input name="groupName" autoFocus placeholder="Ex: Organograma" className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full" />
                 </div>
                 <div className="mt-5 flex justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setCreatingGroup(false)}
-                    className="px-4 py-2 text-xs rounded-lg mod-text-secondary hover:mod-inner"
+                    className="px-4 py-2 text-xs rounded-lg text-muted-foreground hover:bg-muted"
                   >
                     Cancelar
                   </button>
@@ -454,35 +458,35 @@ export const MenuManager: React.FC<Props> = ({
 
         {/* Modal de Edição de Item quando standalone */}
         {editingItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-            <div className="mod-card w-full max-w-lg shadow-2xl p-6">
-              <div className="flex items-center justify-between pb-3 border-b mod-border">
-                <h2 className="text-sm font-bold mod-text-primary">Editar Item: {editingItem.label}</h2>
-                <button onClick={() => setEditingItem(null)} className="p-1 rounded-lg mod-text-secondary hover:mod-inner">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gov-alternative backdrop-blur-sm animate-fade-in">
+            <div className="bg-card border border-border rounded-xl w-full max-w-lg shadow-2xl p-6">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <h2 className="text-sm font-bold text-foreground">Editar Item: {editingItem.label}</h2>
+                <button onClick={() => setEditingItem(null)} className="p-1 rounded-lg text-muted-foreground hover:bg-muted">
                   <X size={16} />
                 </button>
               </div>
               <div className="mt-4 space-y-3 text-xs">
                 <div>
-                  <label className="block font-semibold mod-text-secondary mb-1">Rótulo</label>
+                  <label className="block font-semibold text-muted-foreground mb-1">Rótulo</label>
                   <input
-                    className="mod-input w-full"
+                    className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full"
                     value={editingItem.label}
                     onChange={(e) => setEditingItem({ ...editingItem, label: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mod-text-secondary mb-1">Rota</label>
+                  <label className="block font-semibold text-muted-foreground mb-1">Rota</label>
                   <input
-                    className="mod-input w-full font-mono"
+                    className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full font-mono"
                     value={editingItem.route}
                     onChange={(e) => setEditingItem({ ...editingItem, route: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mod-text-secondary mb-1">Permissão Obrigatória</label>
+                  <label className="block font-semibold text-muted-foreground mb-1">Permissão Obrigatória</label>
                   <input
-                    className="mod-input w-full font-mono"
+                    className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full font-mono"
                     value={editingItem.permission || ''}
                     onChange={(e) => setEditingItem({ ...editingItem, permission: e.target.value })}
                   />
@@ -491,7 +495,7 @@ export const MenuManager: React.FC<Props> = ({
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   onClick={() => setEditingItem(null)}
-                  className="px-4 py-2 text-xs rounded-lg mod-text-secondary hover:mod-inner"
+                  className="px-4 py-2 text-xs rounded-lg text-muted-foreground hover:bg-muted"
                 >
                   Cancelar
                 </button>
@@ -515,21 +519,23 @@ export const MenuManager: React.FC<Props> = ({
 
         {/* Modal de Novo Item quando standalone */}
         {creatingForGroupId !== null && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-            <div className="mod-card w-full max-w-lg shadow-2xl p-6">
-              <div className="flex items-center justify-between pb-3 border-b mod-border">
-                <h2 className="text-sm font-bold mod-text-primary">Adicionar Item de Menu</h2>
-                <button onClick={() => setCreatingForGroupId(null)} className="p-1 rounded-lg mod-text-secondary hover:mod-inner">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gov-alternative backdrop-blur-sm animate-fade-in">
+            <div className="bg-card border border-border rounded-xl w-full max-w-lg shadow-2xl p-6">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <h2 className="text-sm font-bold text-foreground">Adicionar Item de Menu</h2>
+                <button onClick={() => setCreatingForGroupId(null)} className="p-1 rounded-lg text-muted-foreground hover:bg-muted">
                   <X size={16} />
                 </button>
               </div>
               <form
+                noValidate
                 onSubmit={(e) => {
                   e.preventDefault();
                   const form = e.target as HTMLFormElement;
                   const label = (form.elements.namedItem('itemLabel') as HTMLInputElement).value;
                   const route = (form.elements.namedItem('itemRoute') as HTMLInputElement).value;
                   const perm = (form.elements.namedItem('itemPerm') as HTMLInputElement).value;
+                  if (!validar([['Rótulo', label], ['Rota', route]])) return;
 
                   const newItem: MenuItem = {
                     id: Date.now(),
@@ -552,22 +558,22 @@ export const MenuManager: React.FC<Props> = ({
                 className="mt-4 space-y-3 text-xs"
               >
                 <div>
-                  <label className="block font-semibold mod-text-secondary mb-1">Rótulo do Item</label>
-                  <input name="itemLabel" required placeholder="Ex: Novo Módulo" className="mod-input w-full" />
+                  <label className="block font-semibold text-muted-foreground mb-1">Rótulo do Item</label>
+                  <input name="itemLabel" placeholder="Ex: Novo Módulo" className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full" />
                 </div>
                 <div>
-                  <label className="block font-semibold mod-text-secondary mb-1">Rota</label>
-                  <input name="itemRoute" required placeholder="Ex: /admin/novo-modulo" className="mod-input w-full font-mono" />
+                  <label className="block font-semibold text-muted-foreground mb-1">Rota</label>
+                  <input name="itemRoute" placeholder="Ex: /admin/novo-modulo" className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full font-mono" />
                 </div>
                 <div>
-                  <label className="block font-semibold mod-text-secondary mb-1">Permissão (opcional)</label>
-                  <input name="itemPerm" placeholder="Ex: novo_modulo.view" className="mod-input w-full font-mono" />
+                  <label className="block font-semibold text-muted-foreground mb-1">Permissão (opcional)</label>
+                  <input name="itemPerm" placeholder="Ex: novo_modulo.view" className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full font-mono" />
                 </div>
                 <div className="mt-5 flex justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setCreatingForGroupId(null)}
-                    className="px-4 py-2 text-xs rounded-lg mod-text-secondary hover:mod-inner"
+                    className="px-4 py-2 text-xs rounded-lg text-muted-foreground hover:bg-muted"
                   >
                     Cancelar
                   </button>
