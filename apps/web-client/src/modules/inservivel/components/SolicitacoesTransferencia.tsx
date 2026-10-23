@@ -9,10 +9,12 @@ import { inservivelApi, type Transferencia } from '../api';
 import { abrirArquivo, formatarDataHora, rotuloUnidade, VARIANTE_TRANSFERENCIA } from '../formato';
 import type { PropsAba } from '../ModuloInservivelMain';
 import { CampoTexto } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Solicitações de transferência — só o Patrimônio vê e decide (spec: Transferência interna entre secretarias). */
 export const SolicitacoesTransferencia: React.FC<PropsAba> = ({ avisar }) => {
   const [escopo, setEscopo] = useState<'solicitacoes' | 'historico'>('solicitacoes');
+  const { tratarErro } = useFormValidationModal();
   const [versao, setVersao] = useState(0);
   const [aprovar, setAprovar] = useState<Transferencia | null>(null);
   const [recusar, setRecusar] = useState<Transferencia | null>(null);
@@ -64,7 +66,7 @@ export const SolicitacoesTransferencia: React.FC<PropsAba> = ({ avisar }) => {
         mensagem={aprovar ? <>O bem <span className="font-mono">{aprovar.bem.numero_patrimonial}</span> passa de <strong>{rotuloUnidade(aprovar.origem)}</strong> para <strong>{rotuloUnidade(aprovar.destino)}</strong> e fica Disponível.</> : null}
         onConfirmar={async () => {
           if (!aprovar) return;
-          try { await inservivelApi.aprovar(aprovar.id); avisar({ type: 'success', title: 'Transferência aprovada', message: aprovar.bem.numero_patrimonial }); setVersao((v) => v + 1); } catch (e) { avisar({ type: 'error', title: 'Não foi possível aprovar', message: erroApi(e).mensagem }); }
+          try { await inservivelApi.aprovar(aprovar.id); avisar({ type: 'success', title: 'Transferência aprovada', message: aprovar.bem.numero_patrimonial }); setVersao((v) => v + 1); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível aprovar', message: erroApi(e).mensagem }); }
         }} />
       <RecusarModal transferencia={recusar} onFechar={() => setRecusar(null)} onRecusada={() => { avisar({ type: 'success', title: 'Solicitação recusada', message: 'O bem voltou à vitrine.' }); setRecusar(null); setVersao((v) => v + 1); }} />
     </Card>
@@ -74,12 +76,13 @@ export const SolicitacoesTransferencia: React.FC<PropsAba> = ({ avisar }) => {
 const RecusarModal: React.FC<{ transferencia: Transferencia | null; onFechar: () => void; onRecusada: () => void }> = ({ transferencia, onFechar, onRecusada }) => {
   const [motivo, setMotivo] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [enviando, setEnviando] = useState(false);
   const fechar = () => { setMotivo(''); setErro(null); onFechar(); };
   const enviar = async () => {
     if (!transferencia) return;
     setEnviando(true); setErro(null);
-    try { await inservivelApi.recusar(transferencia.id, motivo.trim()); setMotivo(''); onRecusada(); } catch (e) { setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
+    try { await inservivelApi.recusar(transferencia.id, motivo.trim()); setMotivo(''); onRecusada(); } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
   };
   return (
     <Modal open={transferencia !== null} onClose={fechar} title="Recusar solicitação" size="md"

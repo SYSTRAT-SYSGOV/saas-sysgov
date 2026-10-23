@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 import type { ApiModeloFormulario, ApiModeloFatorPeso, ApiFatoresPesosResponse } from '@sysgov/sdk';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -69,6 +70,7 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
   const [loadingModelos, setLoadingModelos]     = useState(false);
   const [saving, setSaving]                     = useState(false);
   const [erro, setErro]                         = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [sucesso, setSucesso]                   = useState<string | null>(null);
   const [alterado, setAlterado]                 = useState(false);
 
@@ -243,11 +245,11 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
 
   const salvar = async () => {
     if (!selectedModeloId) {
-      setErro('Selecione um modelo de formulário.');
+      invalidar([['Modelo', 'Selecione um modelo de formulário.']]);
       return;
     }
     if (!somaValida) {
-      setErro(`A soma dos pesos deve ser exatamente 100%. Soma atual: ${somaAtual.toFixed(2)}%`);
+      invalidar([['Pesos', `A soma dos pesos deve ser exatamente 100%. Soma atual: ${somaAtual.toFixed(2)}%`]]);
       return;
     }
     setSaving(true);
@@ -266,7 +268,7 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
       setAlterado(false);
       carregarPesos(selectedModeloId);
     } catch (e: any) {
-      setErro(e?.response?.data?.message ?? 'Erro ao salvar pesos.');
+      if (!tratarErro(e)) setErro(e?.response?.data?.message ?? 'Erro ao salvar pesos.');
     } finally {
       setSaving(false);
     }
@@ -276,6 +278,7 @@ export const FatoresPesosPanel: React.FC<Props> = ({ modeloId: propModeloId }) =
 
   return (
     <div className="space-y-6">
+      {modalValidacao}
       {/* ── PageHeader Canônico com Seletor e Ações ── */}
       <PageHeader
         icon={<Sliders className="h-6 w-6 text-primary" />}

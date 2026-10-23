@@ -8,6 +8,7 @@ import { LIBERACAO_IMEDIATA, liberacaoDe, liberacaoParaApi, validarLiberacao, va
 import { CampoTexto } from './CampoTexto';
 import { ErroFormulario } from './ErroFormulario';
 import { RegraLiberacaoFields } from './RegraLiberacaoFields';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   open: boolean;
@@ -32,6 +33,7 @@ export const MaterialFormModal: React.FC<Props> = ({ open, cursoId, aulas, mater
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const inputArquivo = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -61,9 +63,9 @@ export const MaterialFormModal: React.FC<Props> = ({ open, cursoId, aulas, mater
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Título', titulo]])) return;
     if (titulo.trim() === '') {
-      setErro('Informe o título do material.');
-      return;
+      invalidar([['validação', 'Informe o título do material.']]); return;
     }
     const problema = validarLiberacao(liberacao);
     if (problema) {
@@ -75,12 +77,10 @@ export const MaterialFormModal: React.FC<Props> = ({ open, cursoId, aulas, mater
       return;
     }
     if (tipo === 'texto' && conteudo.replace(/<[^>]*>/g, '').trim() === '') {
-      setErro('Informe o conteúdo do texto.');
-      return;
+      invalidar([['validação', 'Informe o conteúdo do texto.']]); return;
     }
     if (tipo === 'arquivo' && publicado && !arquivo && !material?.arquivo_nome) {
-      setErro('Envie o arquivo PDF antes de publicar o material.');
-      return;
+      invalidar([['validação', 'Envie o arquivo PDF antes de publicar o material.']]); return;
     }
 
     setSalvando(true);
@@ -101,7 +101,7 @@ export const MaterialFormModal: React.FC<Props> = ({ open, cursoId, aulas, mater
       if (publicarDepois) await sysgovApi.cursos.atualizarMaterial(salvo.id, { publicado: true });
       onSalvo();
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar o material.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar o material.'));
     } finally {
       setSalvando(false);
     }
@@ -109,10 +109,11 @@ export const MaterialFormModal: React.FC<Props> = ({ open, cursoId, aulas, mater
 
   return (
     <Modal open={open} onClose={onClose} title={material ? 'Editar material' : 'Novo material'} icon={<Paperclip className="h-5 w-5" />} size="lg">
-      <form onSubmit={salvar} noValidate className="space-y-4">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4">
         <ErroFormulario mensagem={erro} />
         <Select label="Tipo" value={tipo} onChange={(v) => setTipo(v as TipoMaterial)} options={TIPOS} disabled={!!material} />
-        <Input label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} required maxLength={255} />
+        <Input label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={255} />
         <CampoTexto label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={2} maxLength={10000} />
 
         {tipo === 'texto' && (
@@ -122,7 +123,7 @@ export const MaterialFormModal: React.FC<Props> = ({ open, cursoId, aulas, mater
           </div>
         )}
         {tipo === 'link' && (
-          <Input label="Endereço do link" type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" required maxLength={2048} helperText="Só endereços http ou https." />
+          <Input label="Endereço do link" type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" maxLength={2048} helperText="Só endereços http ou https." />
         )}
         {tipo === 'video' && (
           <Input

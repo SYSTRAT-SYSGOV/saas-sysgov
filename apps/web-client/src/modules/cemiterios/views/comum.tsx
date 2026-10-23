@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCard, Button, Field, Input, Modal, Select, StatusChip, Switch, Textarea } from '@/components/ui';
 import { ESTADOS, erroApi, type EstadoJazigo, type ErroApi } from '../api';
+import { tratarErroValidacaoGlobal } from '@/lib/validationModalHost';
 
 // Cache em memória de curta duração para evitar "flash" de carregamento e acelerar navegação (SWR)
 const cacheDadosMemoria = new Map<string, { dados: unknown; timestamp: number }>();
@@ -79,7 +80,7 @@ export function useAcao() {
     try {
       return await acao();
     } catch (e) {
-      setErro(erroApi(e));
+      if (!tratarErroValidacaoGlobal(e)) setErro(erroApi(e));
       return null;
     } finally {
       setEnviando(false);

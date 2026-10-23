@@ -8,6 +8,7 @@ import { pedagogicoApi, type Cronograma } from '../../pedagogico/api';
 import { useCarga } from '../useCarga';
 import AdminModal, { inputCls, labelCls, btnPrimary, btnSecondary, EstadoCarga, type Toast } from './AdminModal';
 import { ConfirmModal } from './AlunoModals';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 type ModalState =
   | { kind: 'escola' }
@@ -226,6 +227,7 @@ const EscolaFormModal: React.FC<EscolaFormModalProps> = ({ unidade, logoAtual, o
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [previa, setPrevia] = useState<string | null>(logoAtual);
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
 
   const escolherLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,7 +239,7 @@ const EscolaFormModal: React.FC<EscolaFormModalProps> = ({ unidade, logoAtual, o
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome.trim()) return setErro('Informe o nome da escola.');
+    if (!nome.trim()) return invalidar([['validação', 'Informe o nome da escola.']]);
     setSalvando(true);
     try {
       await escolaApi.salvarUnidade(nome.trim());
@@ -245,7 +247,7 @@ const EscolaFormModal: React.FC<EscolaFormModalProps> = ({ unidade, logoAtual, o
       onToast({ type: 'success', title: 'Dados da escola atualizados', message: `${nome.trim()} salva com sucesso.` });
       await onSaved();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -263,10 +265,11 @@ const EscolaFormModal: React.FC<EscolaFormModalProps> = ({ unidade, logoAtual, o
         </>
       }
     >
-      <form id="form-escola" onSubmit={handleSubmit} className="space-y-4">
+      {modalValidacao}
+      <form noValidate id="form-escola" onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className={labelCls} htmlFor="esc-nome">Nome</label>
-          <input id="esc-nome" className={inputCls} value={nome} onChange={e => { setNome(e.target.value); setErro(''); }} autoFocus required />
+          <input id="esc-nome" className={inputCls} value={nome} onChange={e => { setNome(e.target.value); setErro(''); }} autoFocus />
         </div>
         <div>
           <label className={labelCls} htmlFor="esc-logo">Logo (PNG, JPEG ou WEBP, até 2 MB)</label>
@@ -296,21 +299,22 @@ const CronogramaFormModal: React.FC<CronogramaFormModalProps> = ({ item, onClose
   const [inicio, setInicio] = useState(item?.data_inicio || '');
   const [fim, setFim] = useState(item?.data_fim || '');
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const anoNum = parseInt(ano, 10);
-    if (Number.isNaN(anoNum)) return setErro('Informe o ano letivo.');
-    if (!inicio || !fim) return setErro('Informe as datas de início e fim.');
-    if (fim < inicio) return setErro('A data de fim deve ser igual ou posterior à data de início.');
+    if (Number.isNaN(anoNum)) return invalidar([['validação', 'Informe o ano letivo.']]);
+    if (!inicio || !fim) return invalidar([['validação', 'Informe as datas de início e fim.']]);
+    if (fim < inicio) return invalidar([['validação', 'A data de fim deve ser igual ou posterior à data de início.']]);
     setSalvando(true);
     try {
       await pedagogicoApi.salvarCronograma({ ano_letivo: anoNum, periodo, data_inicio: inicio, data_fim: fim }, item?.id);
       onToast({ type: 'success', title: item ? 'Data atualizada' : 'Data cadastrada', message: `Pré-conselho do ${periodo}º trimestre de ${anoNum} salvo.` });
       await onSaved();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -328,10 +332,11 @@ const CronogramaFormModal: React.FC<CronogramaFormModalProps> = ({ item, onClose
         </>
       }
     >
-      <form id="form-cronograma" onSubmit={handleSubmit} className="space-y-4">
+      {modalValidacao}
+      <form noValidate id="form-cronograma" onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className={labelCls} htmlFor="cron-ano">Ano</label>
-          <input id="cron-ano" type="number" min={2020} max={2100} className={`${inputCls} font-mono`} value={ano} onChange={e => { setAno(e.target.value); setErro(''); }} required />
+          <input id="cron-ano" type="number" min={2020} max={2100} className={`${inputCls} font-mono`} value={ano} onChange={e => { setAno(e.target.value); setErro(''); }} />
         </div>
         <div>
           <label className={labelCls} htmlFor="cron-periodo">Período</label>
@@ -342,11 +347,11 @@ const CronogramaFormModal: React.FC<CronogramaFormModalProps> = ({ item, onClose
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelCls} htmlFor="cron-inicio">Início</label>
-            <input id="cron-inicio" type="date" className={inputCls} value={inicio} onChange={e => { setInicio(e.target.value); setErro(''); }} required />
+            <input id="cron-inicio" type="date" className={inputCls} value={inicio} onChange={e => { setInicio(e.target.value); setErro(''); }} />
           </div>
           <div>
             <label className={labelCls} htmlFor="cron-fim">Fim</label>
-            <input id="cron-fim" type="date" min={inicio || undefined} className={inputCls} value={fim} onChange={e => { setFim(e.target.value); setErro(''); }} required />
+            <input id="cron-fim" type="date" min={inicio || undefined} className={inputCls} value={fim} onChange={e => { setFim(e.target.value); setErro(''); }} />
           </div>
         </div>
         {erro && <p role="alert" className="text-sm font-medium text-red-600">{erro}</p>}

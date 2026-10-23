@@ -3,6 +3,8 @@ import { UserPlus, Send, Loader2, Landmark, User, Link2, ShieldCheck, CheckCircl
 import { Button, Modal, Select, Switch, Input, Field } from '@/components/ui';
 import { accessApi, AccessModule, AccessUser, AccessGroup, Cargo, OrgUnitNode, ModuleAccessItem } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { getApiErrorMessage } from '@/lib/apiErrors';
 
 interface NewUserWizardProps {
   modules: AccessModule[];
@@ -80,6 +82,7 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
 }) => {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
 
   // Listas auxiliares (cargos e grupos de acesso)
   const [cargos, setCargos] = useState<Cargo[]>([]);
@@ -127,10 +130,15 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
     }
   };
 
-  const canNext = () => {
-    if (step === 0) return name.trim().length >= 3 && /\S+@\S+\.\S+/.test(email);
-    if (step === 1) return role.trim().length > 0;
-    if (step === 2) return true;
+  /** Confere a etapa atual; campos faltando ou inválidos abrem a modal padrão em vez de travar o botão. */
+  const etapaValida = (): boolean => {
+    if (step === 0) {
+      if (!validar([['Nome completo', name], ['E-mail', email]])) return false;
+      if (name.trim().length < 3) { invalidar([['Nome completo', 'O nome deve ter pelo menos 3 caracteres.']]); return false; }
+      if (!/\S+@\S+\.\S+/.test(email)) { invalidar([['E-mail', 'Informe um e-mail válido.']]); return false; }
+      return true;
+    }
+    if (step === 1) return validar([['Papel no vínculo', role]]);
     return true;
   };
 
@@ -165,7 +173,7 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
       onCreated(user);
       onClose();
     } catch (e: any) {
-      notify({ type: 'error', title: 'Falha ao criar usuário', message: e?.response?.data?.message || e?.message || 'Erro ao salvar.' });
+      if (!tratarErro(e)) notify({ type: 'error', title: 'Falha ao criar usuário', message: getApiErrorMessage(e, 'Erro ao salvar.') });
     } finally {
       setSubmitting(false);
     }
@@ -201,7 +209,7 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
                 {sendInvite ? 'Enviar convite' : 'Criar usuário'}
               </Button>
             ) : (
-              <Button type="button" onClick={() => canNext() && setStep((s) => s + 1)} disabled={!canNext()}>
+              <Button type="button" onClick={() => etapaValida() && setStep((s) => s + 1)}>
                 Avançar →
               </Button>
             )}
@@ -209,6 +217,7 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
         </div>
       }
     >
+      {modalValidacao}
       <div className="space-y-6">
         {/* Stepper */}
         <div className="grid grid-cols-2 gap-2 border-b border-border pb-4 sm:grid-cols-4">

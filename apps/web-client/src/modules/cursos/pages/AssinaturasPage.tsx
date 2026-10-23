@@ -6,6 +6,7 @@ import { sysgovApi, type AssinaturaOrgao } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { AssinaturaDesenhada, type AssinaturaDesenhadaRef } from '../components/AssinaturaDesenhada';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /**
  * Biblioteca de assinaturas do órgão (modelos visuais de certificado): nome, cargo, registro
@@ -15,6 +16,7 @@ import { AssinaturaDesenhada, type AssinaturaDesenhadaRef } from '../components/
 export const AssinaturasPage: React.FC = () => {
   const [assinaturas, setAssinaturas] = useState<AssinaturaOrgao[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [edicao, setEdicao] = useState<AssinaturaOrgao | null | undefined>(undefined);
   const [excluir, setExcluir] = useState<AssinaturaOrgao | null>(null);
 
@@ -36,7 +38,7 @@ export const AssinaturasPage: React.FC = () => {
       await sysgovApi.cursos.atualizarAssinatura(a.id, { ativa: !a.ativa });
       await carregar();
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível alterar a assinatura.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível alterar a assinatura.'));
     }
   };
 
@@ -44,6 +46,7 @@ export const AssinaturasPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {modalValidacao}
       <ErroFormulario mensagem={erro} />
       <div className="flex justify-end">
         <Button onClick={() => setEdicao(null)}><Plus className="h-4 w-4" /> Nova assinatura</Button>
@@ -115,6 +118,7 @@ const AssinaturaFormModal: React.FC<{ assinatura: AssinaturaOrgao | null | undef
   const desenho = useRef<AssinaturaDesenhadaRef>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     if (!aberto) return;
@@ -130,14 +134,14 @@ const AssinaturaFormModal: React.FC<{ assinatura: AssinaturaOrgao | null | undef
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Nome do responsável', nome]])) return;
     setSalvando(true);
     setErro(null);
     try {
       // Desenhada na tela vale no lugar do arquivo (uma ou outra, como no sistema de referência).
       const desenhada = desenhou ? await desenho.current?.gerarPng() : null;
       if (!assinatura && !desenhada && !imagem) {
-        setErro('Desenhe a assinatura na área indicada ou envie a imagem (PNG).');
-        return;
+        invalidar([['validação', 'Desenhe a assinatura na área indicada ou envie a imagem (PNG).']]); return;
       }
       const dados = { nome, cargo: cargo || null, registro_profissional: registro || null, ativa };
       const salva = assinatura ? await sysgovApi.cursos.atualizarAssinatura(assinatura.id, dados) : await sysgovApi.cursos.criarAssinatura(dados);
@@ -146,7 +150,7 @@ const AssinaturaFormModal: React.FC<{ assinatura: AssinaturaOrgao | null | undef
       if (selo) await sysgovApi.cursos.enviarSeloDaAssinatura(salva.id, selo);
       onSalvo();
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar a assinatura.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar a assinatura.'));
     } finally {
       setSalvando(false);
     }
@@ -154,10 +158,11 @@ const AssinaturaFormModal: React.FC<{ assinatura: AssinaturaOrgao | null | undef
 
   return (
     <Modal open={aberto} onClose={onClose} title={assinatura ? 'Editar assinatura' : 'Nova assinatura'} icon={<Stamp className="h-5 w-5" />} size="lg">
-      <form onSubmit={salvar} className="space-y-4">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4">
         <ErroFormulario mensagem={erro} />
         <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
-          <Input label="Nome do responsável" value={nome} onChange={(e) => setNome(e.target.value)} required maxLength={150} />
+          <Input label="Nome do responsável" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={150} />
           <Select label="Status" value={ativa ? '1' : '0'} onChange={(v) => setAtiva(v === '1')} options={[{ value: '1', label: 'Ativa' }, { value: '0', label: 'Inativa' }]} />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">

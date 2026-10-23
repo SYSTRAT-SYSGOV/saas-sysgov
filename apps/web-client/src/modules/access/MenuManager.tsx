@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/core/api/client';
 import { MenuGroup, MenuItem } from './MenuApi';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { getApiErrorMessage } from '@/lib/apiErrors';
 
 interface Toast { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string; }
 
@@ -30,6 +32,7 @@ const EMPTY_ITEM: ItemFormData = { label: '', route: '', icon: '', permission: '
 type DragState = { type: 'item'; itemId: number; groupId: number; parentId: number | null } | null;
 
 export const MenuManager: React.FC = () => {
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const notify = (t: Toast) => {
     setToasts((prev) => [...prev, t]);
@@ -83,7 +86,7 @@ export const MenuManager: React.FC = () => {
   const openEditGroup = (g: MenuGroup) => { setEditingGroup(g); setGroupForm({ name: g.name, slug: g.slug, icon: g.icon ?? '' }); setGroupModalOpen(true); };
 
   const handleSaveGroup = async () => {
-    if (!groupForm.name.trim() || !groupForm.slug.trim()) { notify({ type: 'warning', title: 'Campos obrigatórios', message: 'Nome e slug são obrigatórios.' }); return; }
+    if (!validar([['Nome', groupForm.name], ['Slug', groupForm.slug]])) return;
     setGroupSaving(true);
     try {
       if (editingGroup) {
@@ -96,7 +99,7 @@ export const MenuManager: React.FC = () => {
       setGroupModalOpen(false);
       load();
     } catch (e: any) {
-      notify({ type: 'error', title: 'Erro ao salvar', message: e?.response?.data?.message || e?.message || 'Erro ao salvar.' });
+      if (!tratarErro(e)) notify({ type: 'error', title: 'Erro ao salvar', message: getApiErrorMessage(e, 'Erro ao salvar.') });
     } finally { setGroupSaving(false); }
   };
 
@@ -150,7 +153,7 @@ export const MenuManager: React.FC = () => {
   };
 
   const handleSaveItem = async () => {
-    if (!itemForm.label.trim() || !itemForm.route.trim()) { notify({ type: 'warning', title: 'Campos obrigatórios', message: 'Rótulo e rota são obrigatórios.' }); return; }
+    if (!validar([['Rótulo', itemForm.label], ['Rota', itemForm.route]])) return;
     setItemSaving(true);
     try {
       const payload = {
@@ -173,7 +176,7 @@ export const MenuManager: React.FC = () => {
       setItemModalOpen(false);
       load();
     } catch (e: any) {
-      notify({ type: 'error', title: 'Erro ao salvar', message: e?.response?.data?.message || e?.message || 'Erro ao salvar.' });
+      if (!tratarErro(e)) notify({ type: 'error', title: 'Erro ao salvar', message: getApiErrorMessage(e, 'Erro ao salvar.') });
     } finally { setItemSaving(false); }
   };
 
@@ -257,6 +260,7 @@ export const MenuManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {modalValidacao}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary">Gerenciador de Menus</h1>

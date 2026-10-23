@@ -751,14 +751,13 @@ export const PessoaDetailView: React.FC<PessoaDetailViewProps> = ({
           </div>
         }
       >
-        <form id="form-editar-civil" onSubmit={salvarCivil} className="space-y-4">
+        <form noValidate id="form-editar-civil" onSubmit={salvarCivil} className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2">
               <Field label="Nome Completo" required>
                 <Input
                   value={formCivil.nome}
                   onChange={(e) => setFormCivil({ ...formCivil, nome: e.target.value })}
-                  required
                 />
               </Field>
             </div>

@@ -5,6 +5,7 @@ import { ChevronRight, ChevronDown, Building2, Shield, RefreshCw, Network, Layer
 import { apiClient } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 import { Card, Badge, Select, SelectOption, Switch } from '@sysgov/ui';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Module { id: number; alias: string; name: string; }
 interface OrgUnitNode {
@@ -42,6 +43,7 @@ const ModuleGranularityManager: React.FC = () => {
   const { tenant } = useAuth();
   const navigate = useNavigate();
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const { tratarErro } = useFormValidationModal();
   const notify = useCallback((t: Toast) => {
     setToasts((prev) => [...prev, t]);
     setTimeout(() => setToasts((prev) => prev.filter((x) => x !== t)), 5000);
@@ -105,7 +107,7 @@ const ModuleGranularityManager: React.FC = () => {
       });
       loadOrgUnits(selectedModule);
     } catch (e: any) {
-      notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || 'Não foi possível atualizar.' });
+      if (!tratarErro(e)) notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || 'Não foi possível atualizar.' });
     } finally {
       setSaving(null);
     }

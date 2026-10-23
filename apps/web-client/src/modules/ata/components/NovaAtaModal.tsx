@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, Trash2, UserPlus } from 'lucide-react';
 import { Button, Checkbox, Input, Modal, Select } from '@sysgov/ui';
 import { ataApi, mensagemDeErro, type Opcoes, type ParticipanteEntrada, type Ref } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Linha extends ParticipanteEntrada { chave: string }
 
@@ -23,6 +24,7 @@ export const NovaAtaModal: React.FC<{ opcoes: Opcoes; aoFechar: () => void; aoCr
   const [achadas, setAchadas] = useState<Ref[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
 
   const campo = (k: keyof typeof dados) => (v: string | boolean) => setDados((d) => ({ ...d, [k]: v }));
   const adicionar = (p: ParticipanteEntrada) => setParticipantes((l) => [...l, { ...p, chave: Math.random().toString(36).slice(2) }]);
@@ -39,8 +41,7 @@ export const NovaAtaModal: React.FC<{ opcoes: Opcoes; aoFechar: () => void; aoCr
 
   const salvar = async () => {
     setErro(null);
-    if (!dados.titulo.trim() || !dados.org_unit_id || !dados.redator.trim()) return setErro('Preencha título, secretaria e redator.');
-    if (participantes.length === 0) return setErro('Informe ao menos um participante.');
+    if (!validar([['Título', dados.titulo], ['Secretaria', dados.org_unit_id], ['Redator', dados.redator], ['Participantes', participantes]])) return;
     setSalvando(true);
     try {
       const ata = await ataApi.criar({
@@ -51,7 +52,7 @@ export const NovaAtaModal: React.FC<{ opcoes: Opcoes; aoFechar: () => void; aoCr
       });
       aoCriar(ata.id);
     } catch (e) {
-      setErro(mensagemDeErro(e));
+      if (!tratarErro(e)) setErro(mensagemDeErro(e));
     } finally {
       setSalvando(false);
     }
@@ -65,6 +66,7 @@ export const NovaAtaModal: React.FC<{ opcoes: Opcoes; aoFechar: () => void; aoCr
       size="xl"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Criar e redigir</Button></>}
     >
+      {modalValidacao}
       <div className="space-y-4">
         <Input label="Título da ata *" value={dados.titulo} onChange={(e) => campo('titulo')(e.target.value)} maxLength={255} />
         <div className="grid gap-3 sm:grid-cols-2">

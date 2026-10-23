@@ -6,6 +6,7 @@ import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
 import { useCarga } from '../../escola/useCarga';
 import { inservivelApi, type ItemParametro, type TipoParametro } from '../api';
 import type { PropsAba } from '../ModuloInservivelMain';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const TIPOS: { id: TipoParametro; rotulo: string; singular: string }[] = [
   { id: 'situacoes', rotulo: 'Situações', singular: 'situação' },
@@ -16,6 +17,7 @@ const TIPOS: { id: TipoParametro; rotulo: string; singular: string }[] = [
 /** Parâmetros do sistema (spec: Parâmetros e situações por papel). */
 export const ParametrosInservivel: React.FC<PropsAba> = ({ avisar }) => {
   const [tipo, setTipo] = useState<TipoParametro>('situacoes');
+  const { tratarErro } = useFormValidationModal();
   const [versao, setVersao] = useState(0);
   const [editar, setEditar] = useState<ItemParametro | 'novo' | null>(null);
   const [excluir, setExcluir] = useState<ItemParametro | null>(null);
@@ -69,7 +71,7 @@ export const ParametrosInservivel: React.FC<PropsAba> = ({ avisar }) => {
         mensagem={<>Excluir <strong>{excluir?.nome}</strong>? Itens usados por bens não podem ser excluídos.</>}
         onConfirmar={async () => {
           if (!excluir) return;
-          try { await inservivelApi.excluirParametro(tipo, excluir.id); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
+          try { await inservivelApi.excluirParametro(tipo, excluir.id); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
         }} />
       {lista.dados && tipo !== 'categorias' && (
         <SubstituirModal aberto={substituir} campo={tipo === 'situacoes' ? 'situacao' : 'estado_conservacao'} itens={lista.dados.itens} onFechar={() => setSubstituir(false)}
@@ -84,19 +86,22 @@ const ParametroModal: React.FC<{ tipo: TipoParametro; singular: string; item: It
   const [ativo, setAtivo] = useState(true);
   const [atual, setAtual] = useState<ItemParametro | 'novo' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (item !== atual) { setAtual(item); setNome(item && item !== 'novo' ? item.nome : ''); setAtivo(item && item !== 'novo' ? item.ativo : true); setErro(null); }
   const sistema = item !== null && item !== 'novo' && item.papel !== null;
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Nome', nome]])) return;
     setSalvando(true); setErro(null);
-    try { await inservivelApi.salvarParametro(tipo, item && item !== 'novo' ? item.id : null, { nome: nome.trim(), ativo }); onSalvo(nome.trim()); } catch (e) { setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
+    try { await inservivelApi.salvarParametro(tipo, item && item !== 'novo' ? item.id : null, { nome: nome.trim(), ativo }); onSalvo(nome.trim()); } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
   };
   return (
     <Modal open={item !== null} onClose={onFechar} title={item === 'novo' ? `Nova ${singular}` : `Editar ${singular}`} size="md"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-parametro" isLoading={salvando}>Salvar</Button></>}>
-      <form id="form-parametro" onSubmit={salvar} className="space-y-3">
-        <Input label="Nome *" value={nome} onChange={(e) => setNome(e.target.value)} required maxLength={120} />
+      {modalValidacao}
+      <form noValidate id="form-parametro" onSubmit={salvar} className="space-y-3">
+        <Input label="Nome *" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} />
         <label className="flex items-center gap-2 text-sm"><Switch checked={ativo} onCheckedChange={setAtivo} disabled={sistema} />Ativo{sistema && ' (situação de sistema: sempre ativa)'}</label>
         {erro && <AlertCard priority="danger" title="Não foi possível salvar" description={erro} />}
       </form>
@@ -108,16 +113,18 @@ const SubstituirModal: React.FC<{ aberto: boolean; campo: 'situacao' | 'estado_c
   const [atualId, setAtualId] = useState('');
   const [novoId, setNovoId] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [enviando, setEnviando] = useState(false);
   const opcoes = itens.filter((i) => i.papel !== 'em_lote' && i.papel !== 'em_transferencia').map((i) => ({ value: String(i.id), label: `${i.nome} (${i.bens} bens)` }));
   const fechar = () => { setAtualId(''); setNovoId(''); setErro(null); onFechar(); };
   const enviar = async () => {
     setEnviando(true); setErro(null);
-    try { const r = await inservivelApi.substituir(campo, Number(atualId), Number(novoId)); setAtualId(''); setNovoId(''); onFeito(r.bens_alterados); } catch (e) { setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
+    try { const r = await inservivelApi.substituir(campo, Number(atualId), Number(novoId)); setAtualId(''); setNovoId(''); onFeito(r.bens_alterados); } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
   };
   return (
     <Modal open={aberto} onClose={fechar} title={`Substituir ${campo === 'situacao' ? 'situação' : 'estado de conservação'} em massa`} size="md"
       footer={<><Button variant="outline" onClick={fechar} disabled={enviando}>Cancelar</Button><Button onClick={() => void enviar()} isLoading={enviando} disabled={!atualId || !novoId || atualId === novoId}>Substituir</Button></>}>
+      {modalValidacao}
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">Todos os bens da prefeitura com o valor atual passam para o novo valor.</p>
         <Select label="Valor atual" value={atualId} onChange={setAtualId} options={opcoes} />

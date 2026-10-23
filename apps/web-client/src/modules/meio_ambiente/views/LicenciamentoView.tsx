@@ -10,6 +10,7 @@ import {
   type ProcessoLicenciamento,
   type ResultadoVistoriaTecnica,
 } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const FASES: { value: FaseLicenciamento; label: string }[] = [
   { value: 'LP', label: 'Licença Prévia (LP)' },
@@ -130,6 +131,7 @@ const NovoProcessoModal: React.FC<{ empreendimentoId: number; onClose: () => voi
   const [fase, setFase] = useState<FaseLicenciamento>('LP');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -138,7 +140,7 @@ const NovoProcessoModal: React.FC<{ empreendimentoId: number; onClose: () => voi
       await meioAmbienteApi.abrirProcessoLicenciamento(empreendimentoId, fase);
       onCriado();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -151,6 +153,7 @@ const NovoProcessoModal: React.FC<{ empreendimentoId: number; onClose: () => voi
         <Button onClick={salvar} disabled={salvando}>{salvando ? 'Abrindo...' : 'Abrir Processo'}</Button>
       </>
     }>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Select label="Fase" value={fase} onChange={(v) => setFase(v as FaseLicenciamento)} options={FASES} />

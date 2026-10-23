@@ -5,11 +5,13 @@ import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { mensagemDeErro, multiApi, type Opcoes, type Profissional } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Profissionais: ligados ao Cadastro de Pessoas pelo CPF (D2) e, opcionalmente, a um usuário (D3). */
 export const Profissionais: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () => void }> = ({ opcoes, avisar, aoMudar }) => {
   const carga = useCarga(() => multiApi.profissionais(), []);
   const [editando, setEditando] = useState<Profissional | 'novo' | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const gerenciar = opcoes.permissoes.gerenciar;
 
   const excluir = async (p: Profissional) => {
@@ -19,7 +21,7 @@ export const Profissionais: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: (
       await carga.recarregar();
       aoMudar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Profissional', message: mensagemDeErro(e) });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Profissional', message: mensagemDeErro(e) });
     }
   };
 
@@ -76,6 +78,7 @@ const ProfissionalModal: React.FC<{ opcoes: Opcoes; profissional: Profissional |
   const [busca, setBusca] = useState('');
   const [achados, setAchados] = useState<Usuario[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
 
   const buscar = async (q: string) => {
@@ -90,8 +93,8 @@ const ProfissionalModal: React.FC<{ opcoes: Opcoes; profissional: Profissional |
 
   const salvar = async () => {
     setErro(null);
-    if (!profissional && (!dados.cpf.trim() || !dados.nome.trim())) return setErro('Informe CPF e nome.');
-    if (!dados.cargo_id) return setErro('Escolha o cargo (cadastre-o na aba Cadastros).');
+    if (!profissional && (!dados.cpf.trim() || !dados.nome.trim())) return invalidar([['validação', 'Informe CPF e nome.']]);
+    if (!dados.cargo_id) return invalidar([['validação', 'Escolha o cargo (cadastre-o na aba Cadastros).']]);
     setSalvando(true);
     try {
       await multiApi.salvarProfissional(profissional?.id ?? null, {
@@ -104,7 +107,7 @@ const ProfissionalModal: React.FC<{ opcoes: Opcoes; profissional: Profissional |
       });
       aoSalvar();
     } catch (e) {
-      setErro(mensagemDeErro(e));
+      if (!tratarErro(e)) setErro(mensagemDeErro(e));
     } finally {
       setSalvando(false);
     }
@@ -113,6 +116,7 @@ const ProfissionalModal: React.FC<{ opcoes: Opcoes; profissional: Profissional |
   return (
     <Modal open onClose={aoFechar} title={profissional ? `Editar ${profissional.nome}` : 'Novo profissional'} size="lg"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {profissional ? (
           <p className="text-sm">CPF <span className="font-mono tabular-nums">{profissional.cpf_mascarado}</span> — nome e CPF vêm do Cadastro de Pessoas.</p>

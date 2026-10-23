@@ -11,6 +11,7 @@ import type { PropsAba } from '../ModuloInservivelMain';
 import { CampoTexto } from './Comuns';
 import { ExcluirLoteModal, LoteDetalhe } from './LoteDetalhe';
 import { SeletorBens } from './SeletorBens';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Lotes e sorteio (spec: Lotes): cards dos lotes, criação e gestão do lote. */
 export const LotesSorteio: React.FC<PropsAba> = (props) => {
@@ -95,6 +96,7 @@ const CriarLoteModal: React.FC<{ aberto: boolean; onFechar: () => void; onCriado
   const [form, setForm] = useState(vazio);
   const [bens, setBens] = useState<Map<number, BemResumo>>(new Map());
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const [foiAberto, setFoiAberto] = useState(false);
   if (aberto !== foiAberto) {
@@ -105,6 +107,7 @@ const CriarLoteModal: React.FC<{ aberto: boolean; onFechar: () => void; onCriado
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Descrição', form.descricao], ['Número', form.numero], ['Data de criação', form.data_criacao], ['Responsável', form.responsavel]])) return;
     setSalvando(true); setErro(null);
     try {
       const lote = await inservivelApi.criarLote({
@@ -112,20 +115,21 @@ const CriarLoteModal: React.FC<{ aberto: boolean; onFechar: () => void; onCriado
         data_sorteio_prevista: vazioParaNulo(form.data_sorteio_prevista), observacoes: vazioParaNulo(form.observacoes), bens: [...bens.keys()],
       });
       onCriado(lote.id, lote.numero);
-    } catch (e) { setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
+    } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
   };
 
   return (
     <Modal open={aberto} onClose={onFechar} title="Criar lote" icon={<Package className="h-5 w-5" />} size="2xl"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-lote" isLoading={salvando}>Criar lote</Button></>}>
-      <form id="form-lote" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-lote" onSubmit={salvar} className="space-y-3">
         {erro && <AlertCard priority="danger" title="Não foi possível criar o lote" description={erro} />}
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="Número *" value={form.numero} onChange={texto('numero')} required maxLength={30} placeholder="Ex.: 007 (vira 007/ano)" className="font-mono tabular-nums" />
-          <Input label="Data de criação *" type="date" value={form.data_criacao} onChange={texto('data_criacao')} required className="font-mono" />
+          <Input label="Número *" value={form.numero} onChange={texto('numero')} maxLength={30} placeholder="Ex.: 007 (vira 007/ano)" className="font-mono tabular-nums" />
+          <Input label="Data de criação *" type="date" value={form.data_criacao} onChange={texto('data_criacao')} className="font-mono" />
           <Input label="Sorteio previsto" type="datetime-local" value={form.data_sorteio_prevista} onChange={texto('data_sorteio_prevista')} className="font-mono" />
         </div>
-        <Input label="Responsável *" value={form.responsavel} onChange={texto('responsavel')} required maxLength={255} />
+        <Input label="Responsável *" value={form.responsavel} onChange={texto('responsavel')} maxLength={255} />
         <CampoTexto rotulo="Descrição *" value={form.descricao} onChange={texto('descricao')} required rows={2} maxLength={5000} />
         <CampoTexto rotulo="Observações" value={form.observacoes} onChange={texto('observacoes')} rows={2} maxLength={5000} />
         <div>

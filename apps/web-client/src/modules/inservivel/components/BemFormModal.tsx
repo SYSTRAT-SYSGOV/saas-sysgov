@@ -6,6 +6,7 @@ import type { Toast } from '../../escola/components/AdminModal';
 import { inservivelApi, type Bem, type Opcoes } from '../api';
 import { formatarCentavos, paraCentavos, vazioParaNulo } from '../formato';
 import { CampoTexto, FotoBem, SelectUnidades } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const VAZIO = {
   numero_patrimonial: '', plaqueta_antiga: '', descricao: '', categoria_id: '', marca: '', modelo: '', numero_serie: '', situacao_id: '', estado_conservacao_id: '',
@@ -29,6 +30,7 @@ export const BemFormModal: React.FC<{ bem: number | 'novo' | null; opcoes: Opcoe
   const [registro, setRegistro] = useState<Bem | null>(null);
   const [carregado, setCarregado] = useState<number | 'novo' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
 
   if (bem !== carregado) {
@@ -49,10 +51,11 @@ export const BemFormModal: React.FC<{ bem: number | 'novo' | null; opcoes: Opcoe
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Descrição', form.descricao], ['Nº patrimonial', form.numero_patrimonial]])) return;
     const contabil = form.valor_contabil.trim() === '' ? 0 : paraCentavos(form.valor_contabil);
     const avaliado = form.valor_avaliado.trim() === '' ? 0 : paraCentavos(form.valor_avaliado);
-    if (contabil === null || avaliado === null) { setErro('Informe os valores em reais (ex.: 1.500,00).'); return; }
-    if (form.secretaria === null) { setErro('Escolha a secretaria do bem.'); return; }
+    if (contabil === null || avaliado === null) { invalidar([['validação', 'Informe os valores em reais (ex.: 1.500,00).']]); return; }
+    if (form.secretaria === null) { invalidar([['validação', 'Escolha a secretaria do bem.']]); return; }
     setSalvando(true); setErro(null);
     try {
       const salvo = await inservivelApi.salvarBem(bem === 'novo' ? null : (bem as number), {
@@ -74,7 +77,7 @@ export const BemFormModal: React.FC<{ bem: number | 'novo' | null; opcoes: Opcoe
         onFechar();
       }
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -87,7 +90,7 @@ export const BemFormModal: React.FC<{ bem: number | 'novo' | null; opcoes: Opcoe
     onSalvo();
   };
   const acaoFoto = async (acao: () => Promise<unknown>, sucesso: string) => {
-    try { await acao(); await recarregarFotos(); avisar({ type: 'success', title: sucesso, message: registro?.numero_patrimonial ?? '' }); } catch (e) { avisar({ type: 'error', title: 'Não foi possível concluir', message: erroApi(e).mensagem }); }
+    try { await acao(); await recarregarFotos(); avisar({ type: 'success', title: sucesso, message: registro?.numero_patrimonial ?? '' }); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível concluir', message: erroApi(e).mensagem }); }
   };
 
   const carregando = bem !== null && bem !== 'novo' && registro === null && !erro;
@@ -95,11 +98,12 @@ export const BemFormModal: React.FC<{ bem: number | 'novo' | null; opcoes: Opcoe
   return (
     <Modal open={bem !== null} onClose={onFechar} title={bem === 'novo' ? 'Adicionar bem' : `Editar bem ${registro?.numero_patrimonial ?? ''}`} icon={<Package className="h-5 w-5" />} size="2xl"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Fechar</Button><Button type="submit" form="form-bem" isLoading={salvando} disabled={carregando}>Salvar</Button></>}>
+      {modalValidacao}
       {carregando ? <Skeleton className="h-96 w-full" /> : (
-        <form id="form-bem" onSubmit={salvar} className="space-y-4">
+        <form noValidate id="form-bem" onSubmit={salvar} className="space-y-4">
           {erro && <AlertCard priority="danger" title="Verifique os dados" description={erro} />}
           <div className="grid gap-3 sm:grid-cols-3">
-            <Input label="Nº patrimonial *" value={form.numero_patrimonial} onChange={texto('numero_patrimonial')} required maxLength={50} className="font-mono tabular-nums" />
+            <Input label="Nº patrimonial *" value={form.numero_patrimonial} onChange={texto('numero_patrimonial')} maxLength={50} className="font-mono tabular-nums" />
             <Input label="Plaqueta antiga" value={form.plaqueta_antiga} onChange={texto('plaqueta_antiga')} maxLength={50} className="font-mono tabular-nums" />
             <Select label="Categoria" value={form.categoria_id} onChange={(v) => setForm((f) => ({ ...f, categoria_id: v }))} options={[{ value: '', label: '(sem categoria)' }, ...opcoes.categorias.map((c) => ({ value: String(c.id), label: c.nome }))]} />
           </div>

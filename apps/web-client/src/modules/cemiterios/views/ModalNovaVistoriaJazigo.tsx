@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Button, Textarea, Badge } from '@sysgov/ui';
 import { ClipboardCheck, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { cemiteriosApi, type Jazigo } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 export interface ModalNovaVistoriaJazigoProps {
   aberto: boolean;
@@ -38,6 +39,7 @@ export const ModalNovaVistoriaJazigo: React.FC<ModalNovaVistoriaJazigoProps> = (
   const [fotos, setFotos] = useState<File[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
 
   if (!jazigo) return null;
 
@@ -49,6 +51,7 @@ export const ModalNovaVistoriaJazigo: React.FC<ModalNovaVistoriaJazigoProps> = (
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Data da Inspeção', data], ['Parecer Técnico / Observações', observacoes]])) return;
     setSalvando(true);
     setErro(null);
 
@@ -66,7 +69,7 @@ export const ModalNovaVistoriaJazigo: React.FC<ModalNovaVistoriaJazigoProps> = (
       fechar();
     } catch (err: any) {
       console.error('Erro ao registrar vistoria:', err);
-      setErro(err?.message || 'Falha ao registrar a vistoria técnica.');
+      if (!tratarErro(err)) setErro(err?.message || 'Falha ao registrar a vistoria técnica.');
     } finally {
       setSalvando(false);
     }
@@ -90,7 +93,8 @@ export const ModalNovaVistoriaJazigo: React.FC<ModalNovaVistoriaJazigoProps> = (
       description="Registro de laudo de conservação física com anexação fotográfica e fé pública."
       className="max-w-lg"
     >
-      <form onSubmit={salvar} className="space-y-4 py-2 text-xs">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4 py-2 text-xs">
         {erro && (
           <div className="p-2.5 rounded bg-destructive/10 text-destructive border border-destructive/20 font-medium">
             {erro}
@@ -104,7 +108,6 @@ export const ModalNovaVistoriaJazigo: React.FC<ModalNovaVistoriaJazigoProps> = (
               type="date"
               value={data}
               onChange={(e) => setData(e.target.value)}
-              required
               className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-foreground font-mono"
             />
           </div>

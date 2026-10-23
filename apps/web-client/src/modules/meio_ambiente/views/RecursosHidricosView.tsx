@@ -11,6 +11,7 @@ import {
   type OutorgaAgua,
   type TipoCaptacao,
 } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const TIPOS_CAPTACAO: { value: TipoCaptacao; label: string }[] = [
   { value: 'poco', label: 'Poço' },
@@ -133,6 +134,7 @@ const NovaOutorgaModal: React.FC<{ empreendimentoId: number; onClose: () => void
   const [finalidade, setFinalidade] = useState<FinalidadeOutorga>('industrial');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -141,7 +143,7 @@ const NovaOutorgaModal: React.FC<{ empreendimentoId: number; onClose: () => void
       await meioAmbienteApi.cadastrarOutorgaAgua(empreendimentoId, { tipo_captacao: tipoCaptacao, vazao_m3_hora: Number(vazao), finalidade });
       onCriada();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -149,6 +151,7 @@ const NovaOutorgaModal: React.FC<{ empreendimentoId: number; onClose: () => void
 
   return (
     <Dialog open onClose={onClose} title="Nova Outorga de Água" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando || !vazao}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Select label="Tipo de Captação" value={tipoCaptacao} onChange={(v) => setTipoCaptacao(v as TipoCaptacao)} options={TIPOS_CAPTACAO} />
@@ -165,6 +168,7 @@ const NovaLicencaModal: React.FC<{ empreendimentoId: number; onClose: () => void
   const [parametros, setParametros] = useState<ParametroForm[]>([{ parametro: '', limite_min: '', limite_max: '', unidade: '' }]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const atualizarParametro = (i: number, campo: keyof ParametroForm, valor: string) => {
     setParametros((prev) => prev.map((p, idx) => (idx === i ? { ...p, [campo]: valor } : p)));
@@ -187,7 +191,7 @@ const NovaLicencaModal: React.FC<{ empreendimentoId: number; onClose: () => void
       );
       onCriada();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -195,6 +199,7 @@ const NovaLicencaModal: React.FC<{ empreendimentoId: number; onClose: () => void
 
   return (
     <Dialog open onClose={onClose} title="Nova Licença de Lançamento de Efluentes" size="lg" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         {parametros.map((p, i) => (
@@ -217,6 +222,7 @@ const MedicaoModal: React.FC<{ parametroId: number; onClose: () => void; onRegis
   const [valor, setValor] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -225,7 +231,7 @@ const MedicaoModal: React.FC<{ parametroId: number; onClose: () => void; onRegis
       await meioAmbienteApi.registrarMedicaoEfluente(parametroId, Number(valor));
       onRegistrada();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -233,6 +239,7 @@ const MedicaoModal: React.FC<{ parametroId: number; onClose: () => void; onRegis
 
   return (
     <Dialog open onClose={onClose} title="Registrar Medição" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando || !valor}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Input label="Valor Medido" type="number" value={valor} onChange={(e) => setValor(e.target.value)} />

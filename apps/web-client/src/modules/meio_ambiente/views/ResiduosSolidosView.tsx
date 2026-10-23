@@ -12,6 +12,7 @@ import {
   type TipoColeta,
   type TipoGeradorResiduo,
 } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const TIPOS_GERADOR: { value: TipoGeradorResiduo; label: string }[] = [
   { value: 'domiciliar', label: 'Domiciliar' },
@@ -121,6 +122,7 @@ const NovoGeradorModal: React.FC<{ onClose: () => void; onCriado: () => void }> 
   const [tipo, setTipo] = useState<TipoGeradorResiduo>('domiciliar');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -129,7 +131,7 @@ const NovoGeradorModal: React.FC<{ onClose: () => void; onCriado: () => void }> 
       await meioAmbienteApi.cadastrarGeradorResiduo({ nome: nome || undefined, tipo });
       onCriado();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -137,6 +139,7 @@ const NovoGeradorModal: React.FC<{ onClose: () => void; onCriado: () => void }> 
 
   return (
     <Dialog open onClose={onClose} title="Novo Gerador de Resíduos" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Input label="Nome (opcional)" value={nome} onChange={(e) => setNome(e.target.value)} />
@@ -151,6 +154,7 @@ const NovoPontoModal: React.FC<{ onClose: () => void; onCriado: () => void }> = 
   const [categoria, setCategoria] = useState<CategoriaLogisticaReversa>('pilhas_baterias');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -159,7 +163,7 @@ const NovoPontoModal: React.FC<{ onClose: () => void; onCriado: () => void }> = 
       await meioAmbienteApi.cadastrarPontoLogisticaReversa({ nome, categoria });
       onCriado();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -167,6 +171,7 @@ const NovoPontoModal: React.FC<{ onClose: () => void; onCriado: () => void }> = 
 
   return (
     <Dialog open onClose={onClose} title="Novo Ponto de Logística Reversa" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando || !nome}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Input label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
@@ -183,6 +188,7 @@ const ColetaModal: React.FC<{ gerador: GeradorResiduo; onClose: () => void; onRe
   const [destinacao, setDestinacao] = useState<DestinacaoResiduo>('aterro');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -191,7 +197,7 @@ const ColetaModal: React.FC<{ gerador: GeradorResiduo; onClose: () => void; onRe
       await meioAmbienteApi.registrarColetaResiduo(gerador.id, { tipo_coleta: tipoColeta, rota: rota || undefined, volume_kg: Number(volumeKg), destinacao });
       onRegistrada();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -199,6 +205,7 @@ const ColetaModal: React.FC<{ gerador: GeradorResiduo; onClose: () => void; onRe
 
   return (
     <Dialog open onClose={onClose} title={`Registrar Coleta — ${gerador.nome ?? `Gerador #${gerador.id}`}`} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando || !volumeKg}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Select label="Tipo de Coleta" value={tipoColeta} onChange={(v) => setTipoColeta(v as TipoColeta)} options={[{ value: 'regular', label: 'Regular' }, { value: 'seletiva', label: 'Seletiva' }]} />
@@ -214,6 +221,7 @@ const EntregaModal: React.FC<{ ponto: PontoLogisticaReversa; onClose: () => void
   const [quantidadeKg, setQuantidadeKg] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -222,7 +230,7 @@ const EntregaModal: React.FC<{ ponto: PontoLogisticaReversa; onClose: () => void
       await meioAmbienteApi.registrarEntregaLogisticaReversa(ponto.id, Number(quantidadeKg));
       onRegistrada();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -230,6 +238,7 @@ const EntregaModal: React.FC<{ ponto: PontoLogisticaReversa; onClose: () => void
 
   return (
     <Dialog open onClose={onClose} title={`Registrar Entrega — ${ponto.nome}`} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={salvando || !quantidadeKg}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Input label="Quantidade (kg)" type="number" value={quantidadeKg} onChange={(e) => setQuantidadeKg(e.target.value)} />

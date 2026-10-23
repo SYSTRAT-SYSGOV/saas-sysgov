@@ -178,7 +178,7 @@ export const ModalNovaTrasladacao: React.FC<ModalNovaTrasladacaoProps> = ({
       }
     >
       <div className="space-y-5">
-        <form id={formId} onSubmit={handleSubmit} className="space-y-5">
+        <form noValidate id={formId} onSubmit={handleSubmit} className="space-y-5">
           {/* ── 1. Sepultamento de Origem ── */}
           <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3.5">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b pb-2">
@@ -211,7 +211,6 @@ export const ModalNovaTrasladacao: React.FC<ModalNovaTrasladacaoProps> = ({
                     className="font-mono tabular-nums"
                     value={burialId}
                     onChange={(e) => setBurialId(e.target.value)}
-                    required
                   />
                 )}
               </Field>
@@ -280,7 +279,6 @@ export const ModalNovaTrasladacao: React.FC<ModalNovaTrasladacaoProps> = ({
                       className="font-mono tabular-nums"
                       value={plotDestinoId}
                       onChange={(e) => setPlotDestinoId(e.target.value)}
-                      required
                     />
                   )}
                 </Field>
@@ -297,7 +295,6 @@ export const ModalNovaTrasladacao: React.FC<ModalNovaTrasladacaoProps> = ({
                     placeholder="Cidade / Estado / Cemitério receptor"
                     value={destinoExterno}
                     onChange={(e) => setDestinoExterno(e.target.value)}
-                    required
                   />
                 </Field>
 
@@ -312,7 +309,6 @@ export const ModalNovaTrasladacao: React.FC<ModalNovaTrasladacaoProps> = ({
                     className="font-mono tabular-nums"
                     value={documentoDestino}
                     onChange={(e) => setDocumentoDestino(e.target.value)}
-                    required
                   />
                 </Field>
               </div>

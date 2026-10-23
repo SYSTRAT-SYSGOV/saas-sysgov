@@ -6,6 +6,7 @@ import { getApiErrorMessage } from '@/lib/apiErrors';
 import { TIPO_QUESTAO } from '../utils/formatos';
 import { ALTERNATIVAS_MAX, ALTERNATIVAS_MIN, paraNumero, validarAlternativas, type AlternativaForm } from '../utils/validacoes';
 import { ErroFormulario } from './ErroFormulario';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   open: boolean;
@@ -33,6 +34,7 @@ export const QuestaoFormModal: React.FC<Props> = ({ open, cursoId, questao, onCl
   const [alternativas, setAlternativas] = useState<AlternativaForm[]>(vazias());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     if (!open) return;
@@ -57,13 +59,11 @@ export const QuestaoFormModal: React.FC<Props> = ({ open, cursoId, questao, onCl
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (enunciado.replace(/<[^>]*>/g, '').trim() === '') {
-      setErro('Informe o enunciado da questão.');
-      return;
+      invalidar([['validação', 'Informe o enunciado da questão.']]); return;
     }
     const pontos = paraNumero(pontuacao);
     if (pontos === null || Number.isNaN(pontos) || pontos <= 0 || pontos > 100) {
-      setErro('A pontuação deve ser maior que zero (até 100).');
-      return;
+      invalidar([['validação', 'A pontuação deve ser maior que zero (até 100).']]); return;
     }
     if (tipo === 'objetiva') {
       const problema = validarAlternativas(alternativas);
@@ -85,7 +85,7 @@ export const QuestaoFormModal: React.FC<Props> = ({ open, cursoId, questao, onCl
       else await sysgovApi.cursos.criarQuestao(cursoId, { ...dados, tipo });
       onSalvo();
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar a questão.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar a questão.'));
     } finally {
       setSalvando(false);
     }
@@ -95,7 +95,8 @@ export const QuestaoFormModal: React.FC<Props> = ({ open, cursoId, questao, onCl
 
   return (
     <Modal open={open} onClose={onClose} title={questao ? 'Editar questão' : 'Nova questão'} icon={<CircleHelp className="h-5 w-5" />} size="lg">
-      <form onSubmit={salvar} noValidate className="space-y-4">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4">
         <ErroFormulario mensagem={erro} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Select

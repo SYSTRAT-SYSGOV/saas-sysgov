@@ -10,6 +10,7 @@ import { campanhaApi, type CaboEleitoral, type Coordenador, type Material, type 
 import { abrirArquivo, formatarData, formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 export const TIPOS_MATERIAL: Record<string, string> = {
   santinho: 'Santinho', folder: 'Folder', adesivo: 'Adesivo', bandeira: 'Bandeira', praguinha: 'Praguinha', cartaz: 'Cartaz', banner: 'Banner',
@@ -33,6 +34,7 @@ export const MateriaisCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
   }, [campanha.id, versao]);
   const municipios = useMunicipiosDaCampanha(campanha.id);
   const [material, setMaterial] = useState<Material | 'novo' | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [remessa, setRemessa] = useState<Remessa | 'nova' | null>(null);
   const [excluir, setExcluir] = useState<{ tipo: 'material'; registro: Material } | { tipo: 'remessa'; registro: Remessa } | null>(null);
   const gerir = permissoes.materiais;
@@ -142,7 +144,7 @@ export const MateriaisCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
             if (excluir.tipo === 'material') await campanhaApi.excluirMaterial(excluir.registro.id);
             else await campanhaApi.excluirRemessa(excluir.registro.id);
             alterou();
-          } catch (e) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
+          } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
         }} />
     </div>
   );
@@ -154,6 +156,7 @@ const MaterialModal: React.FC<{ registro: Material | 'novo' | null; podeLancarDe
   const [form, setForm] = useState(VAZIO_MATERIAL);
   const [atual, setAtual] = useState<Material | 'novo' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (registro !== atual) {
     setAtual(registro);
@@ -167,8 +170,9 @@ const MaterialModal: React.FC<{ registro: Material | 'novo' | null; podeLancarDe
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Nome / identificação', form.nome], ['Quantidade', form.quantidade]])) return;
     const valor = form.valor.trim() === '' ? 0 : paraCentavos(form.valor);
-    if (valor === null) { setErro('Informe o valor do lote em reais (ex.: 1.500,00).'); return; }
+    if (valor === null) { invalidar([['validação', 'Informe o valor do lote em reais (ex.: 1.500,00).']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -179,7 +183,7 @@ const MaterialModal: React.FC<{ registro: Material | 'novo' | null; podeLancarDe
       });
       onSalvo(salvo);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -188,14 +192,15 @@ const MaterialModal: React.FC<{ registro: Material | 'novo' | null; podeLancarDe
   return (
     <Modal open={registro !== null} onClose={onFechar} title={registro === 'novo' ? 'Cadastrar material' : 'Editar material'} icon={<Package className="h-5 w-5" />} size="lg"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-material" isLoading={salvando}>Salvar</Button></>}>
-      <form id="form-material" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-material" onSubmit={salvar} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
           <Select label="Tipo *" value={form.tipo} onChange={(v) => setForm((f) => ({ ...f, tipo: String(v) }))} options={Object.entries(TIPOS_MATERIAL).map(([value, label]) => ({ value, label }))} />
-          <Input label="Nome / identificação *" value={form.nome} onChange={texto('nome')} required maxLength={200} placeholder="Ex.: Santinho 7x10 frente e verso" />
+          <Input label="Nome / identificação *" value={form.nome} onChange={texto('nome')} maxLength={200} placeholder="Ex.: Santinho 7x10 frente e verso" />
         </div>
         <div className="grid gap-3 sm:grid-cols-4">
           <Input label="Fornecedor / gráfica" value={form.fornecedor} onChange={texto('fornecedor')} maxLength={200} className="sm:col-span-2" />
-          <Input label="Quantidade *" type="number" min={0} value={form.quantidade} onChange={texto('quantidade')} required className="font-mono tabular-nums" />
+          <Input label="Quantidade *" type="number" min={0} value={form.quantidade} onChange={texto('quantidade')} className="font-mono tabular-nums" />
           <Select label="Unidade" value={form.unidade} onChange={(v) => setForm((f) => ({ ...f, unidade: String(v) }))} options={UNIDADES.map((u) => ({ value: u, label: u }))} />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -224,6 +229,7 @@ const RemessaModal: React.FC<{
   const [foto, setFoto] = useState<File | null>(null);
   const [atual, setAtual] = useState<Remessa | 'nova' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (registro !== atual) {
     setAtual(registro);
@@ -240,7 +246,8 @@ const RemessaModal: React.FC<{
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (form.material_id === null || form.codigo_ibge === null) { setErro('Escolha o material e o município de destino.'); return; }
+    if (!validar([['Data de envio', form.enviada_em], ['Quantidade', form.quantidade]])) return;
+    if (form.material_id === null || form.codigo_ibge === null) { invalidar([['validação', 'Escolha o material e o município de destino.']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -250,11 +257,11 @@ const RemessaModal: React.FC<{
         previsao_entrega: form.previsao_entrega || null, entregue_em: form.entregue_em || null, recebido_por: vazioParaNulo(form.recebido_por), observacoes: vazioParaNulo(form.observacoes),
       });
       if (foto) {
-        try { await campanhaApi.enviarFotoRemessa(salva.id, foto); } catch (e) { avisar({ type: 'error', title: 'Remessa salva, mas a foto não foi enviada', message: erroApi(e).mensagem }); }
+        try { await campanhaApi.enviarFotoRemessa(salva.id, foto); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Remessa salva, mas a foto não foi enviada', message: erroApi(e).mensagem }); }
       }
       onSalva();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -263,7 +270,8 @@ const RemessaModal: React.FC<{
   return (
     <Modal open={registro !== null} onClose={onFechar} title={registro === 'nova' ? 'Registrar remessa' : 'Remessa e entrega'} icon={<Truck className="h-5 w-5" />} size="lg"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-remessa" isLoading={salvando}>Salvar</Button></>}>
-      <form id="form-remessa" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-remessa" onSubmit={salvar} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Select label="Material *" value={form.material_id} placeholder="Escolha" onChange={(v) => setForm((f) => ({ ...f, material_id: Number(v) }))}
             options={materiais.map((m) => ({ value: m.id, label: `${m.nome} (estoque ${formatarNumero(m.estoque)})` }))} />
@@ -272,8 +280,8 @@ const RemessaModal: React.FC<{
           <Select label="Cabo eleitoral" value={form.cabo_id ?? 'nenhum'} onChange={(v) => setForm((f) => ({ ...f, cabo_id: v === 'nenhum' ? null : Number(v) }))} options={[{ value: 'nenhum', label: 'Nenhum' }, ...cabos.map((c) => ({ value: c.id, label: c.nome }))]} />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input label={`Quantidade *${escolhido ? ` (${escolhido.unidade})` : ''}`} type="number" min={1} value={form.quantidade} onChange={texto('quantidade')} required className="font-mono tabular-nums" />
-          <Input label="Data de envio *" type="date" value={form.enviada_em} onChange={texto('enviada_em')} required />
+          <Input label={`Quantidade *${escolhido ? ` (${escolhido.unidade})` : ''}`} type="number" min={1} value={form.quantidade} onChange={texto('quantidade')} className="font-mono tabular-nums" />
+          <Input label="Data de envio *" type="date" value={form.enviada_em} onChange={texto('enviada_em')} />
           <Input label="Previsão de entrega" type="date" value={form.previsao_entrega} onChange={texto('previsao_entrega')} />
           <Input label="Transportadora / responsável" value={form.transportadora} onChange={texto('transportadora')} maxLength={200} />
           <Input label="Motorista" value={form.motorista} onChange={texto('motorista')} maxLength={200} />

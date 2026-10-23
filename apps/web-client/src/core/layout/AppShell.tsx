@@ -5,6 +5,7 @@ import { ErrorBoundary } from '@sysgov/ui';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { Footer } from './Footer';
+import { ValidationModalHost } from '@/lib/validationModalHost';
 import { Loader2 } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
@@ -88,6 +89,7 @@ export const AppShell: React.FC = () => {
           >
             <ErrorBoundary resetKey={location.pathname}>
             <Outlet />
+            <ValidationModalHost />
           </ErrorBoundary>
           </Suspense>
         </div>

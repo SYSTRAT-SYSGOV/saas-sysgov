@@ -11,6 +11,7 @@ import { campanhaApi, type FiltrosFinanceiro, type Lancamento, type MunicipioLin
 import { abrirArquivo, formatarData, formatarDocumento, salvarArquivo } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const opcoesDe = (r: Record<string, string>) => Object.entries(r).map(([value, label]) => ({ value, label }));
 
@@ -19,6 +20,7 @@ export const FinanceiroCampanha: React.FC<PropsAba> = ({ campanha, permissoes, a
   const municipios = useMunicipiosDaCampanha(campanha.id);
   const opcoes = useCarga(() => campanhaApi.opcoesFinanceiro(), [campanha.id]);
   const [filtros, setFiltros] = useState<FiltrosFinanceiro>({ pagina: 1 });
+  const { tratarErro } = useFormValidationModal();
   const chave = JSON.stringify(filtros);
   const resumo = useCarga(() => campanhaApi.resumoFinanceiro({ ...filtros, pagina: undefined }), [campanha.id, versao, chave]);
   const lista = useCarga(() => campanhaApi.lancamentos(filtros), [campanha.id, versao, chave]);
@@ -137,7 +139,7 @@ export const FinanceiroCampanha: React.FC<PropsAba> = ({ campanha, permissoes, a
         onFechar={() => setExcluir(null)}
         onConfirmar={async () => {
           if (!excluir) return;
-          try { await campanhaApi.excluirLancamento(excluir.id); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
+          try { await campanhaApi.excluirLancamento(excluir.id); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
         }} />
     </div>
   );
@@ -150,6 +152,7 @@ const LancamentoModal: React.FC<{ registro: Lancamento | 'novo' | null; opcoes: 
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [atual, setAtual] = useState<Lancamento | 'novo' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (registro !== atual) {
     setAtual(registro);
@@ -167,9 +170,10 @@ const LancamentoModal: React.FC<{ registro: Lancamento | 'novo' | null; opcoes: 
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Valor (R$)', form.valor], ['Data', form.data]])) return;
     const valor = paraCentavos(form.valor);
-    if (!valor) { setErro('Informe o valor em reais (ex.: 1.250,00).'); return; }
-    if (!form.categoria) { setErro('Escolha a categoria.'); return; }
+    if (!valor) { invalidar([['validação', 'Informe o valor em reais (ex.: 1.250,00).']]); return; }
+    if (!form.categoria) { invalidar([['validação', 'Escolha a categoria.']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -180,11 +184,11 @@ const LancamentoModal: React.FC<{ registro: Lancamento | 'novo' | null; opcoes: 
         documento_fiscal_numero: receita ? null : vazioParaNulo(form.documento_fiscal_numero), observacoes: vazioParaNulo(form.observacoes),
       });
       if (arquivo) {
-        try { await campanhaApi.enviarComprovante(salvo.id, arquivo); } catch (e) { avisar({ type: 'error', title: 'Lançamento salvo, mas o comprovante não foi enviado', message: erroApi(e).mensagem }); }
+        try { await campanhaApi.enviarComprovante(salvo.id, arquivo); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Lançamento salvo, mas o comprovante não foi enviado', message: erroApi(e).mensagem }); }
       }
       onSalvo();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -193,12 +197,13 @@ const LancamentoModal: React.FC<{ registro: Lancamento | 'novo' | null; opcoes: 
   return (
     <Modal open={registro !== null} onClose={onFechar} title={registro === 'novo' ? 'Lançamento de caixa' : 'Lançamento'} icon={<Wallet className="h-5 w-5" />} size="lg"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>{ro ? 'Fechar' : 'Cancelar'}</Button>{!ro && <Button type="submit" form="form-lancamento" isLoading={salvando}>Salvar</Button>}</>}>
-      <form id="form-lancamento" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-lancamento" onSubmit={salvar} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-4">
           <Select label="Tipo *" value={form.tipo} disabled={ro} onChange={(v) => setForm((f) => ({ ...f, tipo: v as TipoLancamento, categoria: '' }))} options={[{ value: 'despesa', label: 'Despesa (saída)' }, { value: 'receita', label: 'Receita (entrada)' }]} />
           <Select label="Categoria *" value={form.categoria || null} placeholder="Escolha" disabled={ro} onChange={(v) => setForm((f) => ({ ...f, categoria: String(v) }))} options={opcoesDe(opcoes.categorias[form.tipo])} />
-          <Input label="Valor (R$) *" value={form.valor} onChange={texto('valor')} inputMode="decimal" required disabled={ro} className="font-mono tabular-nums" />
-          <Input label="Data *" type="date" value={form.data} onChange={texto('data')} required disabled={ro} />
+          <Input label="Valor (R$) *" value={form.valor} onChange={texto('valor')} inputMode="decimal" disabled={ro} className="font-mono tabular-nums" />
+          <Input label="Data *" type="date" value={form.data} onChange={texto('data')} disabled={ro} />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <Select label="Forma de pagamento *" value={form.forma_pagamento} disabled={ro} onChange={(v) => setForm((f) => ({ ...f, forma_pagamento: String(v) }))} options={opcoesDe(opcoes.formas)} />

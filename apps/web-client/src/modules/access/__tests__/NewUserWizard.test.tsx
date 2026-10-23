@@ -36,16 +36,23 @@ describe('Novo usuário em modal', () => {
     expect(screen.getByText('Acessos por módulo')).toBeInTheDocument();
   });
 
-  it('só avança com nome e e-mail válidos', async () => {
+  it('com nome e e-mail em branco, abre a modal de validação em vez de avançar', async () => {
     await montar();
-    const avancar = screen.getByRole('button', { name: /Avançar/i });
-    expect(avancar).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Avançar/i }));
+
+    expect(screen.getByText('O campo Nome completo é obrigatório.')).toBeInTheDocument();
+    expect(screen.getByText('O campo E-mail é obrigatório.')).toBeInTheDocument();
+    expect(screen.queryByText('Papel no vínculo')).not.toBeInTheDocument();
+  });
+
+  it('avança com nome e e-mail válidos', async () => {
+    await montar();
 
     fireEvent.change(screen.getByPlaceholderText('Ex.: Maria da Silva'), { target: { value: 'Maria da Silva' } });
     fireEvent.change(screen.getByPlaceholderText('email@prefeitura.gov.br'), { target: { value: 'maria@prefeitura.gov.br' } });
+    fireEvent.click(screen.getByRole('button', { name: /Avançar/i }));
 
-    expect(avancar).toBeEnabled();
-    fireEvent.click(avancar);
     expect(screen.getByText('Papel no vínculo')).toBeInTheDocument();
   });
 

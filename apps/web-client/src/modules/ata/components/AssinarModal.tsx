@@ -4,20 +4,22 @@ import { Button, Modal, Select } from '@sysgov/ui';
 import { useCarga } from '../../escola/useCarga';
 import { ataApi, mensagemDeErro } from '../api';
 import { QuadroAssinatura, type QuadroAssinaturaRef } from './QuadroAssinatura';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Assinatura digital desenhada. A seleção lista só quem ainda NÃO assinou (padrão de ata) — vem da API. */
 export const AssinarModal: React.FC<{ ataId: number; aoFechar: () => void; aoAssinar: (nome: string) => Promise<void> }> = ({ ataId, aoFechar, aoAssinar }) => {
   const pendentes = useCarga(() => ataApi.pendentes(ataId), [ataId]);
   const [quem, setQuem] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const quadro = useRef<QuadroAssinaturaRef>(null);
   const lista = pendentes.dados ?? [];
 
   const aplicar = async () => {
     setErro(null);
-    if (!quem) return setErro('Selecione quem está assinando.');
-    if (!quadro.current || quadro.current.vazio()) return setErro('Faça a assinatura no quadro.');
+    if (!quem) return invalidar([['validação', 'Selecione quem está assinando.']]);
+    if (!quadro.current || quadro.current.vazio()) return invalidar([['validação', 'Faça a assinatura no quadro.']]);
     setSalvando(true);
     try {
       await ataApi.assinar(ataId, Number(quem), quadro.current.imagem());
@@ -36,6 +38,7 @@ export const AssinarModal: React.FC<{ ataId: number; aoFechar: () => void; aoAss
   return (
     <Modal open onClose={aoFechar} title="Assinatura digital" size="lg"
       footer={<><Button variant="outline" onClick={aoFechar}>Fechar</Button><Button onClick={() => void aplicar()} isLoading={salvando} disabled={lista.length === 0}>Aplicar assinatura</Button></>}>
+      {modalValidacao}
       {pendentes.dados && lista.length === 0 ? (
         <p className="text-sm">Todas as assinaturas já foram colhidas.</p>
       ) : (

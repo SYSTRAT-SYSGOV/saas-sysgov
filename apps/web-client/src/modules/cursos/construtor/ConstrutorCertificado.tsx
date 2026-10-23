@@ -16,6 +16,7 @@ import { PAGINAS, ROTULO_CAMPO, limitar, novoId, novoTexto, problemas } from './
 import { PaginaCertificado } from './PaginaCertificado';
 import { PropriedadesElemento } from './PropriedadesElemento';
 import { prepararFundo } from './pdfParaImagem';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface ConstrutorProps {
   modelo: ModeloCertificado;
@@ -40,6 +41,7 @@ export const ConstrutorCertificado: React.FC<ConstrutorProps> = ({ modelo, catal
   const [sujo, setSujo] = useState(false);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [confirmarSaida, setConfirmarSaida] = useState(false);
 
   const [largura, altura] = PAGINAS[orientacao];
@@ -87,7 +89,7 @@ export const ConstrutorCertificado: React.FC<ConstrutorProps> = ({ modelo, catal
       if (verso) setVersoFundoUrl(salvo.verso_fundo_url);
       else setFundoUrl(salvo.fundo_url);
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível enviar o fundo.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível enviar o fundo.'));
     } finally {
       setOcupado(null);
     }
@@ -104,7 +106,7 @@ export const ConstrutorCertificado: React.FC<ConstrutorProps> = ({ modelo, catal
       setSujo(false);
       onSalvo(salvo);
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível salvar o leiaute.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível salvar o leiaute.'));
     } finally {
       setOcupado(null);
     }
@@ -140,6 +142,7 @@ export const ConstrutorCertificado: React.FC<ConstrutorProps> = ({ modelo, catal
 
   return (
     <div className="space-y-3">
+      {modalValidacao}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={voltar}><ArrowLeft className="h-4 w-4" /> Modelos</Button>

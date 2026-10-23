@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { getApiErrorMessage } from '@/lib/apiErrors';
 import { Loader2, Save, UserCog, KeyRound, ShieldCheck } from 'lucide-react';
 import { accessApi, AccessUser, AccessModule, OrgUnitNode, Cargo, AccessGroup, ModuleAccessItem, ModuleAccessRole } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
@@ -54,6 +56,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, modules, uni
     })
   );
   const [saving, setSaving] = useState(false);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
 
   const updateEntry = (alias: string, patch: Partial<AccessEntry>) => {
     setEntries((prev) => prev.map((e) => (e.module === alias ? { ...e, ...patch } : e)));
@@ -64,17 +67,14 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, modules, uni
   };
 
   const handleSave = async () => {
-    if (!name.trim() || !email.trim()) {
-      notify({ type: 'warning', title: 'Campos obrigatórios', message: 'Nome e e-mail são obrigatórios.' });
-      return;
-    }
+    if (!validar([['Nome completo', name], ['E-mail', email]])) return;
     if (resetPassword) {
       if (!newPassword || newPassword.length < 8) {
-        notify({ type: 'warning', title: 'Senha fraca', message: 'A senha deve ter pelo menos 8 caracteres.' });
+        invalidar([['Nova senha', 'A senha deve ter pelo menos 8 caracteres.']]);
         return;
       }
       if (newPassword !== newPasswordConfirmation) {
-        notify({ type: 'warning', title: 'Senhas diferentes', message: 'A senha e a confirmação não coincidem.' });
+        invalidar([['Confirmar senha', 'A senha e a confirmação não coincidem.']]);
         return;
       }
     }
@@ -110,7 +110,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, modules, uni
       onSaved(updated);
       onClose();
     } catch (e: any) {
-      notify({ type: 'error', title: 'Falha ao salvar', message: e?.response?.data?.message || e?.message || 'Erro ao salvar.' });
+      if (!tratarErro(e)) notify({ type: 'error', title: 'Falha ao salvar', message: getApiErrorMessage(e, 'Erro ao salvar.') });
     } finally {
       setSaving(false);
     }
@@ -133,6 +133,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, modules, uni
 
   return (
     <Modal open onClose={onClose} title="Editar Usuário" icon={<UserCog className="h-5 w-5 text-primary" />} size="xl" footer={footer}>
+      {modalValidacao}
       <div className="space-y-6">
         {/* Dados pessoais */}
         <section className="space-y-4">

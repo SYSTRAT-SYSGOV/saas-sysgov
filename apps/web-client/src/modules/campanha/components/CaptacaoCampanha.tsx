@@ -9,6 +9,7 @@ import { campanhaApi, type CampanhaAtual, type LinkCaptacao } from '../api';
 import { formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const escapar = (t: string): string => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 const svgComoImagem = (svg: string): string => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -35,6 +36,7 @@ h1{font-size:18px;margin:0;color:#0c326f}p{font-size:12px;margin:6px 0;color:#33
 export const CaptacaoCampanha: React.FC<PropsAba> = ({ campanha, avisar, alterou, versao }) => {
   const dados = useCarga(() => campanhaApi.links(), [campanha.id, versao]);
   const [novo, setNovo] = useState(false);
+  const { tratarErro } = useFormValidationModal();
   const [qr, setQr] = useState<{ link: LinkCaptacao; svg: string } | null>(null);
   const [excluir, setExcluir] = useState<LinkCaptacao | null>(null);
 
@@ -48,7 +50,7 @@ export const CaptacaoCampanha: React.FC<PropsAba> = ({ campanha, avisar, alterou
     try { await navigator.clipboard.writeText(link.url); avisar({ type: 'success', title: 'Link copiado', message: link.responsavel }); } catch { avisar({ type: 'error', title: 'Não foi possível copiar', message: link.url }); }
   };
   const alternar = async (link: LinkCaptacao, ativo: boolean) => {
-    try { await campanhaApi.atualizarLink(link.id, { ativo }); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível alterar o link', message: erroApi(e).mensagem }); }
+    try { await campanhaApi.atualizarLink(link.id, { ativo }); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível alterar o link', message: erroApi(e).mensagem }); }
   };
 
   return (
@@ -94,7 +96,7 @@ export const CaptacaoCampanha: React.FC<PropsAba> = ({ campanha, avisar, alterou
       <ConfirmarModal aberto={excluir !== null} titulo="Excluir link" mensagem={<>Excluir o link de <strong>{excluir?.responsavel}</strong>? Ele deixa de funcionar.</>} rotuloConfirmar="Excluir" perigo onFechar={() => setExcluir(null)}
         onConfirmar={async () => {
           if (!excluir) return;
-          try { await campanhaApi.excluirLink(excluir.id); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
+          try { await campanhaApi.excluirLink(excluir.id); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
         }} />
     </Card>
   );
@@ -106,13 +108,14 @@ const NovoLinkModal: React.FC<{ aberto: boolean; campanhaId: number; onFechar: (
   const [responsavel, setResponsavel] = useState<number | null>(null);
   const [descricao, setDescricao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const [coordenadores, cabos] = equipe.dados ?? [[], []];
   const opcoes = (tipo === 'cabo' ? cabos : coordenadores).map((p) => ({ value: p.id, label: p.nome }));
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (responsavel === null) { setErro('Escolha o responsável.'); return; }
+    if (responsavel === null) { invalidar([['validação', 'Escolha o responsável.']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -121,7 +124,7 @@ const NovoLinkModal: React.FC<{ aberto: boolean; campanhaId: number; onFechar: (
       setDescricao('');
       onSalvo(link);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -130,7 +133,8 @@ const NovoLinkModal: React.FC<{ aberto: boolean; campanhaId: number; onFechar: (
   return (
     <Modal open={aberto} onClose={onFechar} title="Novo link de captação" icon={<Link2 className="h-5 w-5" />}
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-link" isLoading={salvando}>Criar link</Button></>}>
-      <form id="form-link" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-link" onSubmit={salvar} className="space-y-3">
         <Select label="Tipo de responsável" value={tipo} onChange={(v) => { setTipo(v as 'cabo' | 'coordenador'); setResponsavel(null); }} options={[{ value: 'cabo', label: 'Cabo eleitoral' }, { value: 'coordenador', label: 'Coordenador' }]} />
         <Select label="Responsável *" value={responsavel} placeholder={opcoes.length ? 'Escolha' : 'Cadastre a equipe antes'} loading={equipe.dados === null} onChange={(v) => setResponsavel(Number(v))} options={opcoes} />
         <Input label="Descrição (opcional)" placeholder="Ex.: Feira do bairro" value={descricao} onChange={(e) => setDescricao(e.target.value)} maxLength={150} />

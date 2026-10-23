@@ -6,6 +6,7 @@ import { ConfirmDialog, EmptyState, ScreenState, StatusChip } from '@/components
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { DESCRICAO_VARIAVEL, marcador } from '../construtor/leiaute';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const VAZIO: TextoCertificadoInput = { nome: '', tipo_certificado: '', texto_principal: '', texto_complementar: '', observacoes: '' };
 
@@ -22,6 +23,7 @@ export const TextosPage: React.FC = () => {
   const [editando, setEditando] = useState<TextoCertificado | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [excluir, setExcluir] = useState<TextoCertificado | null>(null);
   const [focado, setFocado] = useState<'texto_principal' | 'texto_complementar'>('texto_principal');
   const principal = useRef<HTMLTextAreaElement>(null);
@@ -33,7 +35,7 @@ export const TextosPage: React.FC = () => {
       setTextos(r.textos);
       setCampos(r.campos);
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível carregar os textos.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível carregar os textos.'));
       setTextos([]);
     }
   }, []);
@@ -76,6 +78,7 @@ export const TextosPage: React.FC = () => {
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Nome de identificação', form.nome], ['Texto principal', form.texto_principal]])) return;
     setSalvando(true);
     setErro(null);
     const dados: TextoCertificadoInput = {
@@ -90,7 +93,7 @@ export const TextosPage: React.FC = () => {
       cancelar();
       await carregar();
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar o modelo de texto.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar o modelo de texto.'));
     } finally {
       setSalvando(false);
     }
@@ -101,7 +104,7 @@ export const TextosPage: React.FC = () => {
       await sysgovApi.cursos.atualizarTexto(t.id, { ativo: !t.ativo });
       await carregar();
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível alterar o texto.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível alterar o texto.'));
     }
   };
 
@@ -109,6 +112,7 @@ export const TextosPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {modalValidacao}
       <Card className="p-4">
         <h3 className="mb-3 text-base font-semibold">{editando ? `Editar modelo de texto — ${editando.nome}` : 'Cadastrar novo modelo de texto'}</h3>
         <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
@@ -122,9 +126,9 @@ export const TextosPage: React.FC = () => {
           </div>
           <p className="mt-2 text-xs text-muted-foreground">Clique em uma variável para inseri-la onde está o cursor (no texto principal ou no complementar).</p>
         </div>
-        <form onSubmit={salvar} className="space-y-3">
+        <form noValidate onSubmit={salvar} className="space-y-3">
           <div className="grid gap-3 md:grid-cols-[1fr_20rem]">
-            <Input label="Nome de identificação (ex.: Padrão Conclusão) *" value={form.nome} onChange={(e) => definir('nome', e.target.value)} required maxLength={150} />
+            <Input label="Nome de identificação (ex.: Padrão Conclusão) *" value={form.nome} onChange={(e) => definir('nome', e.target.value)} maxLength={150} />
             <Input label="Tipo de certificado" value={form.tipo_certificado ?? ''} onChange={(e) => definir('tipo_certificado', e.target.value)} maxLength={150} placeholder="Ex.: Certificado de Conclusão" />
           </div>
           <label className="block space-y-1 text-sm font-medium">
@@ -135,7 +139,6 @@ export const TextosPage: React.FC = () => {
               value={form.texto_principal}
               onFocus={() => setFocado('texto_principal')}
               onChange={(e) => definir('texto_principal', e.target.value)}
-              required
               maxLength={5000}
               placeholder="Certificamos que {NOME}, portador(a) do CPF {CPF}, participou do {CURSO} no dia {DATA_CONCLUSAO} com carga horária de {CARGA_HORARIA} horas."
             />

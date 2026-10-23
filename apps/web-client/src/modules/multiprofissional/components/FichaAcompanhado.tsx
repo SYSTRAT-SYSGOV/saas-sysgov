@@ -6,6 +6,7 @@ import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { abrirBlob, dataHora, mensagemDeErro, multiApi, type Acompanhado, type Opcoes } from '../api';
 import { Atendimentos } from './Atendimentos';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Referencia { id: number; papel: string }
 interface CondicaoMarcada { id: number; diagnosticado_em: string }
@@ -59,6 +60,7 @@ export const FichaAcompanhado: React.FC<{ id: number; opcoes: Opcoes; avisar: To
 
 const EdicaoAcompanhado: React.FC<{ a: Acompanhado; opcoes: Opcoes; avisar: Toast; aoSalvar: () => void }> = ({ a, opcoes, avisar, aoSalvar }) => {
   const [referencias, setReferencias] = useState<Referencia[]>([]);
+  const { tratarErro } = useFormValidationModal();
   const [condicoes, setCondicoes] = useState<CondicaoMarcada[]>([]);
   const [observacoes, setObservacoes] = useState('');
   const [ativo, setAtivo] = useState(true);
@@ -87,7 +89,7 @@ const EdicaoAcompanhado: React.FC<{ a: Acompanhado; opcoes: Opcoes; avisar: Toas
       avisar({ type: 'success', title: 'Acompanhamento', message: 'Ficha salva.' });
       aoSalvar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Acompanhamento', message: mensagemDeErro(e) });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Acompanhamento', message: mensagemDeErro(e) });
     } finally {
       setSalvando(false);
     }
@@ -144,6 +146,7 @@ const EdicaoAcompanhado: React.FC<{ a: Acompanhado; opcoes: Opcoes; avisar: Toas
 
 const Laudos: React.FC<{ a: Acompanhado; opcoes: Opcoes; avisar: Toast; aoMudar: () => void }> = ({ a, opcoes, avisar, aoMudar }) => {
   const [form, setForm] = useState<{ descricao: string; emitente: string; emitido_em: string; condicao_id: number }>({ descricao: '', emitente: '', emitido_em: '', condicao_id: 0 });
+  const { tratarErro } = useFormValidationModal();
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [aberto, setAberto] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -166,7 +169,7 @@ const Laudos: React.FC<{ a: Acompanhado; opcoes: Opcoes; avisar: Toast; aoMudar:
       avisar({ type: 'success', title: 'Laudo', message: 'Laudo anexado.' });
       aoMudar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Laudo', message: mensagemDeErro(e) });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Laudo', message: mensagemDeErro(e) });
     } finally {
       setEnviando(false);
     }
@@ -176,7 +179,7 @@ const Laudos: React.FC<{ a: Acompanhado; opcoes: Opcoes; avisar: Toast; aoMudar:
     try {
       abrirBlob(await multiApi.arquivoLaudo(a.id, laudo));
     } catch (e) {
-      avisar({ type: 'error', title: 'Laudo', message: mensagemDeErro(e) });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Laudo', message: mensagemDeErro(e) });
     }
   };
 
@@ -186,7 +189,7 @@ const Laudos: React.FC<{ a: Acompanhado; opcoes: Opcoes; avisar: Toast; aoMudar:
       setRemovendo(null);
       aoMudar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Laudo', message: mensagemDeErro(e) });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Laudo', message: mensagemDeErro(e) });
     }
   };
 

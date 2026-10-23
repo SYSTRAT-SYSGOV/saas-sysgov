@@ -10,6 +10,7 @@ import type { PropsAba } from '../ModuloInservivelMain';
 import { CamposEntidadeForm, FORM_ENTIDADE_VAZIO, paraDadosEntidade, type FormEntidade } from './CamposEntidadeForm';
 import { Paginacao } from './Comuns';
 import { EntidadeFicha } from './EntidadeFicha';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Gestão das entidades sem fins lucrativos (spec: Entidades sem fins lucrativos). */
 export const EntidadesInservivel: React.FC<PropsAba> = ({ avisar, parametro, limparParametro }) => {
@@ -79,6 +80,7 @@ const CadastrarEntidadeModal: React.FC<{ aberto: boolean; onFechar: () => void; 
   const [form, setForm] = useState<FormEntidade>(FORM_ENTIDADE_VAZIO);
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const fechar = () => { setForm(FORM_ENTIDADE_VAZIO); setSenha(''); setErro(null); onFechar(); };
   const salvar = async (ev: React.FormEvent) => {
@@ -88,16 +90,17 @@ const CadastrarEntidadeModal: React.FC<{ aberto: boolean; onFechar: () => void; 
       const e = await inservivelApi.cadastrarEntidade({ ...(paraDadosEntidade(form) as unknown as DadosEntidade), senha });
       setForm(FORM_ENTIDADE_VAZIO); setSenha('');
       onCadastrada(e.id, e.razao_social);
-    } catch (e) { setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
+    } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
   };
   return (
     <Modal open={aberto} onClose={fechar} title="Cadastrar entidade" icon={<Building2 className="h-5 w-5" />} size="2xl"
       footer={<><Button variant="outline" onClick={fechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-entidade" isLoading={salvando}>Cadastrar</Button></>}>
-      <form id="form-entidade" onSubmit={salvar} className="space-y-4">
+      {modalValidacao}
+      <form noValidate id="form-entidade" onSubmit={salvar} className="space-y-4">
         {erro && <AlertCard priority="danger" title="Não foi possível cadastrar" description={erro} />}
         <p className="text-sm text-muted-foreground">A entidade ganha uma conta de acesso ao portal com o e-mail informado e a senha inicial abaixo. Os documentos podem ser enviados depois pelo portal.</p>
         <CamposEntidadeForm form={form} onChange={setForm} />
-        <Input label="Senha inicial da conta *" type="password" autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} required minLength={8} />
+        <Input label="Senha inicial da conta *" type="password" autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} minLength={8} />
       </form>
     </Modal>
   );

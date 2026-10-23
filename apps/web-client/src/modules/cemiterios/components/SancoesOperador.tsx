@@ -3,6 +3,7 @@ import { Button, Field, Input, Modal, Select, Textarea } from '@/components/ui';
 import { AlertOctagon, ShieldAlert } from 'lucide-react';
 import { cemiteriosApi, formatarData, type OperadorPenalidade } from '../api';
 import { ErroBox, Mono, useAcao, useDados } from '../views/comum';
+import { validarObrigatoriosGlobal } from '@/lib/validationModalHost';
 
 interface SancoesOperadorProps {
   operadorId: number;
@@ -35,6 +36,7 @@ export const SancoesOperador: React.FC<SancoesOperadorProps> = ({ operadorId, po
   const [arquivo, setArquivo] = useState<File | null>(null);
 
   const sancionar = async () => {
+    if (!validarObrigatoriosGlobal([['Tipo de Sanção', tipo], ['Início da Vigência', inicio], ...(tipo === 'suspensao' ? [['Fim da Vigência', fim] as [string, unknown]] : []), ['Motivo', motivo]])) return;
     const resultado = await executar(() =>
       cemiteriosApi.sancionarOperador(operadorId, { tipo, inicio, fim: fim || undefined, motivo }, arquivo)
     );
@@ -103,7 +105,7 @@ export const SancoesOperador: React.FC<SancoesOperadorProps> = ({ operadorId, po
         footer={
           <div className="flex justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setModalAberto(false)}>Cancelar</Button>
-            <Button size="sm" onClick={sancionar} disabled={enviando || !inicio || !motivo}>
+            <Button size="sm" onClick={sancionar} disabled={enviando}>
               {enviando ? 'Enviando…' : 'Registrar'}
             </Button>
           </div>

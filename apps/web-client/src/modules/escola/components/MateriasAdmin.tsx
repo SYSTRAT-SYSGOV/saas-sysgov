@@ -4,6 +4,7 @@ import { escolaApi, erroApi, type Materia } from '../api';
 import { useCarga } from '../useCarga';
 import AdminModal, { inputCls, labelCls, btnPrimary, btnSecondary, EstadoCarga, type Toast } from './AdminModal';
 import { ConfirmModal } from './AlunoModals';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 
 type ModalState =
@@ -203,20 +204,21 @@ interface MateriaFormModalProps {
 const MateriaFormModal: React.FC<MateriaFormModalProps> = ({ materia, onClose, onSaved, onToast }) => {
   const [nome, setNome] = useState(materia?.nome || '');
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
 
   const [salvando, setSalvando] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const n = nome.trim();
-    if (!n) return setErro('Informe o nome da matéria.');
+    if (!n) return invalidar([['validação', 'Informe o nome da matéria.']]);
     setSalvando(true);
     try {
       await (materia ? escolaApi.atualizarMateria(materia.id, n) : escolaApi.criarMateria(n));
       onToast({ type: 'success', title: materia ? 'Matéria atualizada' : 'Matéria cadastrada', message: `${n} salva com sucesso.` });
       onSaved();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -234,9 +236,10 @@ const MateriaFormModal: React.FC<MateriaFormModalProps> = ({ materia, onClose, o
         </>
       }
     >
-      <form id="form-materia" onSubmit={handleSubmit}>
+      {modalValidacao}
+      <form noValidate id="form-materia" onSubmit={handleSubmit}>
         <label className={labelCls} htmlFor="materia-nome">Nome</label>
-        <input id="materia-nome" className={inputCls} value={nome} onChange={e => { setNome(e.target.value); setErro(''); }} autoFocus required />
+        <input id="materia-nome" className={inputCls} value={nome} onChange={e => { setNome(e.target.value); setErro(''); }} autoFocus />
         {erro && <p className="mt-2 text-sm font-medium text-red-600">{erro}</p>}
       </form>
     </AdminModal>
@@ -256,6 +259,7 @@ const ImportarMateriasModal: React.FC<ImportarMateriasModalProps> = ({ onClose, 
   const [resultado, setResultado] = useState<{ importadas: number; ignoradas: number } | null>(null);
 
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const handleImport = async () => {
     if (!file) return;
@@ -266,7 +270,7 @@ const ImportarMateriasModal: React.FC<ImportarMateriasModalProps> = ({ onClose, 
       onImported();
       onToast({ type: 'success', title: 'Importação concluída', message: `Foram importadas ${r.importadas} matérias com sucesso!` });
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     }
   };
 
@@ -286,6 +290,7 @@ const ImportarMateriasModal: React.FC<ImportarMateriasModalProps> = ({ onClose, 
         )
       }
     >
+      {modalValidacao}
       {resultado ? (
         <div className="space-y-1 text-sm">
           <p className="font-semibold text-slate-800 dark:text-slate-200">{resultado.importadas} matérias importadas.</p>

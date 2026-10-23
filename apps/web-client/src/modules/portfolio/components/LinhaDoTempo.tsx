@@ -8,6 +8,7 @@ import { portfolioApi, type ImagemTrabalho, type MateriaPortfolio, type Periodo,
 import { CardTrabalho } from './CardTrabalho';
 import { ImagemAutenticada } from './ImagemAutenticada';
 import { TrabalhoFormModal } from './TrabalhoFormModal';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   alunoId: number;
@@ -22,6 +23,7 @@ interface Props {
 export const LinhaDoTempo: React.FC<Props> = ({ alunoId, turmaId, periodo, avisar, aoAlterar, podeLancar }) => {
   const navigate = useNavigate();
   const [trabalhos, setTrabalhos] = useState<Trabalho[] | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [materias, setMaterias] = useState<MateriaPortfolio[]>([]);
   const [semVinculos, setSemVinculos] = useState(false);
   const [materiasCarregadas, setMateriasCarregadas] = useState(false);
@@ -67,7 +69,7 @@ export const LinhaDoTempo: React.FC<Props> = ({ alunoId, turmaId, periodo, avisa
       void carregar();
       aoAlterar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Portfólio', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Portfólio', message: erroApi(e).mensagem });
     }
   };
 
@@ -78,7 +80,7 @@ export const LinhaDoTempo: React.FC<Props> = ({ alunoId, turmaId, periodo, avisa
       setImagem(null);
       void carregar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Portfólio', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Portfólio', message: erroApi(e).mensagem });
     }
   };
 

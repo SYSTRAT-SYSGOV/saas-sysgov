@@ -10,6 +10,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 type Tab = 'matrix' | 'byModule' | 'expiring' | 'pending' | 'cargos' | 'groups' | 'roles';
 
@@ -25,6 +26,7 @@ interface AdminAccessPanelProps {
  */
 export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, units, notify }) => {
   const [tab, setTab] = useState<Tab>('matrix');
+  const { tratarErro } = useFormValidationModal();
   const [matrix, setMatrix] = useState<AccessMatrixRow[]>([]);
   const [byModule, setByModule] = useState<AccessModuleGroup[]>([]);
   const [expiring, setExpiring] = useState<ExpiringAccess[]>([]);
@@ -53,7 +55,7 @@ export const AdminAccessPanel: React.FC<AdminAccessPanelProps> = ({ modules, uni
       notify({ type: 'success', title: 'Acesso revogado', message: 'O acesso foi revogado (histórico preservado).' });
       load();
     } catch (e: any) {
-      notify({ type: 'error', title: 'Falha', message: e?.response?.data?.message || e?.message || 'Erro ao revogar.' });
+      if (!tratarErro(e)) notify({ type: 'error', title: 'Falha', message: e?.response?.data?.message || e?.message || 'Erro ao revogar.' });
     }
   };
 

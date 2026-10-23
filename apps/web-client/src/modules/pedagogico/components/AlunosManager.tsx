@@ -34,6 +34,7 @@ import { AlunoPedagogico, TurmaPedagogica, OcorrenciaPedagogica, Materia } from 
 import { pedagogicoService } from '../services/pedagogicoService';
 import { erroApi } from '../../escola/api';
 import { isAxiosError } from 'axios';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface AlunosManagerProps {
   alunos: AlunoPedagogico[];
@@ -56,6 +57,7 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
 }) => {
   // Navigation steps: 'turnos' -> 'turmas' -> 'alunos' -> 'ficha' -> 'relatorio'
   const [step, setStep] = useState<'turnos' | 'turmas' | 'alunos' | 'ficha' | 'relatorio'>('turnos');
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [selectedTurnoNome, setSelectedTurnoNome] = useState<'Manhã' | 'Tarde' | 'Noite' | null>(null);
   const [selectedTurmaId, setSelectedTurmaId] = useState<number | null>(null);
 
@@ -231,6 +233,7 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
   // Handle Search Submit
   /** Mostra o erro da API (ou da validação do serviço) e devolve undefined para o chamador parar. */
   const avisarFalha = (e: unknown): undefined => {
+    if (tratarErro(e)) return undefined;
     onToast({ type: 'error', title: 'Não foi possível salvar', message: e instanceof Error && !isAxiosError(e) ? e.message : erroApi(e).mensagem });
     return undefined;
   };
@@ -656,6 +659,7 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
 
   return (
     <div className="space-y-6">
+      {modalValidacao}
       {/* Top Header Section (Hidden when printing) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
@@ -780,7 +784,7 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
       {/* SEARCH BAR CONTAINER (PERSISTENT AT TOP OF turnos, turmas, AND alunos STEPS) */}
       {step !== 'ficha' && step !== 'relatorio' && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <form onSubmit={handleExecuteSearch} className="flex flex-col sm:flex-row gap-3 items-center">
+          <form noValidate onSubmit={handleExecuteSearch} className="flex flex-col sm:flex-row gap-3 items-center">
             {/* Select Dropdown for Turmas */}
             <select
               value={selectedTurmaId || 'todas'}
@@ -1204,7 +1208,7 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
                   </p>
                 </div>
 
-                <form onSubmit={handleSaveFichaOcorrencia} className="space-y-4">
+                <form noValidate onSubmit={handleSaveFichaOcorrencia} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -1216,7 +1220,6 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
                         onChange={e => setOcData(e.target.value)}
                         placeholder="25/09/2026"
                         className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                        required
                       />
                     </div>
 
@@ -1230,7 +1233,6 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
                         onChange={e => setOcPedagogia(e.target.value)}
                         placeholder="Direção"
                         className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                        required
                       />
                     </div>
                   </div>
@@ -1243,7 +1245,6 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
                       value={ocCategoria}
                       onChange={e => setOcCategoria(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                      required
                     >
                       <option value="">Selecione...</option>
                       <option value="Falta">Falta</option>
@@ -1266,7 +1267,6 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
                       rows={3}
                       placeholder="Descreva os detalhes da ocorrência..."
                       className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                      required
                     />
                   </div>
 
@@ -1681,7 +1681,7 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveForm} className="space-y-4">
+            <form noValidate onSubmit={handleSaveForm} className="space-y-4">
               {/* Nome Completo & CGM */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                 <div className="sm:col-span-8">
@@ -1694,7 +1694,6 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
                     onChange={e => setFormNome(e.target.value)}
                     placeholder="Nome completo do estudante"
                     className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    required
                   />
                 </div>
 
@@ -1754,7 +1753,6 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
                     value={formTurmaDestinoId}
                     onChange={e => setFormTurmaDestinoId(Number(e.target.value))}
                     className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-                    required
                   >
                     {turmas.map(t => (
                       <option key={t.id} value={t.id}>
@@ -1929,7 +1927,7 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
               </h2>
             </div>
 
-            <form onSubmit={handleConfirmGenerateReport} className="space-y-4">
+            <form noValidate onSubmit={handleConfirmGenerateReport} className="space-y-4">
               {/* Responsável para Assinar */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1961,7 +1959,6 @@ export const AlunosManager: React.FC<AlunosManagerProps> = ({
                   onChange={e => setReportQuemGerou(e.target.value)}
                   placeholder="Direção"
                   className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  required
                 />
               </div>
 

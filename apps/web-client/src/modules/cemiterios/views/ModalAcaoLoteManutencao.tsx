@@ -3,6 +3,7 @@ import { Modal, Button, Textarea, Badge } from '@sysgov/ui';
 import { AlertTriangle, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { cemiteriosApi, type Jazigo } from '../api';
 import { Mono } from './comum';
+import { validarObrigatoriosGlobal } from '@/lib/validationModalHost';
 
 export interface ModalAcaoLoteManutencaoProps {
   aberto: boolean;
@@ -26,7 +27,8 @@ export const ModalAcaoLoteManutencao: React.FC<ModalAcaoLoteManutencaoProps> = (
   const total = jazigos.length;
 
   const executarEmLote = async () => {
-    if (!motivo.trim() || total === 0) return;
+    if (total === 0) return;
+    if (!validarObrigatoriosGlobal([['Motivo', motivo]])) return;
 
     setExecutando(true);
     setFinalizado(false);
@@ -175,7 +177,7 @@ export const ModalAcaoLoteManutencao: React.FC<ModalAcaoLoteManutencaoProps> = (
           {!finalizado && (
             <Button
               size="sm"
-              disabled={executando || !motivo.trim()}
+              disabled={executando}
               onClick={executarEmLote}
               variant={tipoAcao === 'manutencao' ? 'destructive' : 'default'}
               className="gap-1.5 font-medium"

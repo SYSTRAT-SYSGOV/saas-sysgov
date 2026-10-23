@@ -3,6 +3,7 @@ import { Check, Pencil, Trash2, UserPlus, X } from 'lucide-react';
 import { escolaApi, erroApi, type CargoEquipe, type MembroEquipe, type PessoaResumo } from '../api';
 import { inputCls, btnPrimary, btnSecondary, type Toast } from './AdminModal';
 import { ConfirmModal } from './AlunoModals';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface EquipeCargoProps {
   titulo: string;
@@ -17,6 +18,7 @@ interface EquipeCargoProps {
 /** Lista de nomes de um cargo da equipe gestora (D17): adicionar, renomear e excluir. */
 export const EquipeCargo: React.FC<EquipeCargoProps> = ({ titulo, cargo, unico = false, membros, onToast, onAlterado }) => {
   const [novo, setNovo] = useState('');
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [editando, setEditando] = useState<{ id: number; nome: string } | null>(null);
   const [excluir, setExcluir] = useState<MembroEquipe | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -47,7 +49,7 @@ export const EquipeCargo: React.FC<EquipeCargoProps> = ({ titulo, cargo, unico =
       setSugestoes([]);
       await onAlterado();
     } catch (e) {
-      onToast({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) onToast({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
     } finally {
       setSalvando(false);
     }
@@ -62,7 +64,7 @@ export const EquipeCargo: React.FC<EquipeCargoProps> = ({ titulo, cargo, unico =
       setEditando(null);
       await onAlterado();
     } catch (e) {
-      onToast({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) onToast({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
     } finally {
       setSalvando(false);
     }
@@ -81,6 +83,7 @@ export const EquipeCargo: React.FC<EquipeCargoProps> = ({ titulo, cargo, unico =
 
   return (
     <section className="space-y-3">
+      {modalValidacao}
       <h3 className="text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{titulo}</h3>
       {membros.length === 0 && <p className="text-sm text-slate-500">Nenhum nome cadastrado.</p>}
       <ul className="space-y-2">

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Select, Switch, Textarea } from '@sysgov/ui';
 import { paraCentavos } from '@/lib/formatacao';
 import { erroApi, formaturaApi, type FormaPagamento, type TipoCalculo } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 import { centavosParaTexto, chavesPixDeTexto, FORMAS, ROTULO_FORMA } from '../formato';
 import type { PropsAba } from '../ModuloFormaturaMain';
 
@@ -16,7 +17,7 @@ export const ConfiguracaoFormatura: React.FC<PropsAba> = ({ ano, dados, recarreg
   const [chaves, setChaves] = useState((c?.chaves_pix ?? []).join('\n'));
   const [turmas, setTurmas] = useState<number[]>(c?.turmas_ids ?? []);
   const [salvando, setSalvando] = useState(false);
-  const [erros, setErros] = useState<Record<string, string>>({});
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const somenteLeitura = !permissoes.configurar;
 
   const alternar = <T,>(lista: T[], item: T, ligado: boolean): T[] => (ligado ? [...lista, item] : lista.filter((x) => x !== item));
@@ -29,8 +30,10 @@ export const ConfiguracaoFormatura: React.FC<PropsAba> = ({ ano, dados, recarreg
     if (base === null) novosErros.valor_base = 'Informe o valor em reais, ex.: 150,00';
     if (extra === null) novosErros.valor_extra = 'Informe o valor em reais, ex.: 80,00';
     if (formas.length === 0) novosErros.formas = 'Escolha ao menos uma forma de pagamento';
-    setErros(novosErros);
-    if (Object.keys(novosErros).length > 0 || base === null || extra === null) return;
+    if (Object.keys(novosErros).length > 0 || base === null || extra === null) {
+      invalidar(Object.entries(novosErros).map(([campo, mensagem]) => [campo, mensagem]));
+      return;
+    }
 
     setSalvando(true);
     try {
@@ -42,7 +45,7 @@ export const ConfiguracaoFormatura: React.FC<PropsAba> = ({ ano, dados, recarreg
       avisar({ type: 'success', title: 'Configuração salva', message: `Formatura de ${ano} atualizada.` });
       await recarregar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
     } finally {
       setSalvando(false);
     }
@@ -50,6 +53,7 @@ export const ConfiguracaoFormatura: React.FC<PropsAba> = ({ ano, dados, recarreg
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      {modalValidacao}
       <Card>
         <CardHeader><CardTitle>Valores e pagamento — {ano}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -66,11 +70,11 @@ export const ConfiguracaoFormatura: React.FC<PropsAba> = ({ ano, dados, recarreg
           />
           <div className="grid gap-4 sm:grid-cols-2">
             {tipo === 'por_pessoa' ? (
-              <Input label="Valor por pessoa (R$)" helperText="Formando e cada convidado pagam este valor." value={valorBase} onChange={(e) => setValorBase(e.target.value)} error={erros.valor_base} disabled={somenteLeitura} className="font-mono tabular-nums" inputMode="decimal" />
+              <Input label="Valor por pessoa (R$)" helperText="Formando e cada convidado pagam este valor." value={valorBase} onChange={(e) => setValorBase(e.target.value)} disabled={somenteLeitura} className="font-mono tabular-nums" inputMode="decimal" />
             ) : (
               <>
-                <Input label="Valor fixo (R$)" helperText="Valor do formando." value={valorBase} onChange={(e) => setValorBase(e.target.value)} error={erros.valor_base} disabled={somenteLeitura} className="font-mono tabular-nums" inputMode="decimal" />
-                <Input label="Valor por convidado (R$)" value={valorExtra} onChange={(e) => setValorExtra(e.target.value)} error={erros.valor_extra} disabled={somenteLeitura} className="font-mono tabular-nums" inputMode="decimal" />
+                <Input label="Valor fixo (R$)" helperText="Valor do formando." value={valorBase} onChange={(e) => setValorBase(e.target.value)} disabled={somenteLeitura} className="font-mono tabular-nums" inputMode="decimal" />
+                <Input label="Valor por convidado (R$)" value={valorExtra} onChange={(e) => setValorExtra(e.target.value)} disabled={somenteLeitura} className="font-mono tabular-nums" inputMode="decimal" />
               </>
             )}
             <Input label="Máximo de parcelas" type="number" min={1} max={24} value={parcelas} onChange={(e) => setParcelas(e.target.value)} disabled={somenteLeitura} className="font-mono tabular-nums" />
@@ -83,7 +87,6 @@ export const ConfiguracaoFormatura: React.FC<PropsAba> = ({ ano, dados, recarreg
                 <Switch checked={formas.includes(f)} onCheckedChange={(v) => setFormas(alternar(formas, f, v))} disabled={somenteLeitura} label={ROTULO_FORMA[f]} />
               </label>
             ))}
-            {erros.formas && <p className="text-xs text-destructive">{erros.formas}</p>}
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Chaves Pix (uma por linha, até 5)</p>

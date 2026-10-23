@@ -7,6 +7,7 @@ import { useCarga } from '../../escola/useCarga';
 import { mensagemDeErro, multiApi, type Aluno, type Opcoes } from '../api';
 import { BuscaAluno } from './Selecao';
 import { FichaAcompanhado } from './FichaAcompanhado';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Estudantes acompanhados. Coluna de condições só aparece para quem acompanha (D7). */
 export const Acompanhados: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avisar }) => {
@@ -19,6 +20,7 @@ export const Acompanhados: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opco
   const [novo, setNovo] = useState(false);
   const [escolhido, setEscolhido] = useState<Aluno | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const clinico = opcoes.permissoes.acompanhar;
 
   const criar = async () => {
@@ -31,7 +33,7 @@ export const Acompanhados: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opco
       await carga.recarregar();
       setFicha(id);
     } catch (e) {
-      setErro(mensagemDeErro(e));
+      if (!tratarErro(e)) setErro(mensagemDeErro(e));
     }
   };
 

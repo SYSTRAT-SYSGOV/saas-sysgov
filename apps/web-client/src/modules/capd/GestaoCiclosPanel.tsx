@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 import type { ApiCiclo } from '@sysgov/sdk';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -80,6 +81,7 @@ export const GestaoCiclosPanel: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [ciclos, setCiclos] = useState<ApiCiclo[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [sucesso, setSucesso] = useState<string | null>(null);
 
   // Sub-abas do Painel
@@ -211,7 +213,7 @@ export const GestaoCiclosPanel: React.FC = () => {
       setSucesso(`Novo ciclo de 12 meses (${formAno} - Etapa ${formEtapa}) aberto com sucesso!`);
       await fetchCiclos();
     } catch (err: any) {
-      setErro(err.message || 'Falha ao abrir novo ciclo de avaliação.');
+      if (!tratarErro(err)) setErro(err.message || 'Falha ao abrir novo ciclo de avaliação.');
     } finally {
       setSaving(false);
     }
@@ -256,7 +258,7 @@ export const GestaoCiclosPanel: React.FC = () => {
       setSucesso(`Ciclo "${editNome}" atualizado e parametrizado com sucesso!`);
       await fetchCiclos();
     } catch (err: any) {
-      setErro(err.message || 'Falha ao atualizar parâmetros do ciclo.');
+      if (!tratarErro(err)) setErro(err.message || 'Falha ao atualizar parâmetros do ciclo.');
     } finally {
       setSalvandoEdicao(false);
     }
@@ -277,7 +279,7 @@ export const GestaoCiclosPanel: React.FC = () => {
       setEncerramentoModal({ open: false, ciclo: null, abrirProximo: false });
       await fetchCiclos();
     } catch (err: any) {
-      setErro(err.message || 'Não foi possível encerrar o ciclo.');
+      if (!tratarErro(err)) setErro(err.message || 'Não foi possível encerrar o ciclo.');
     } finally {
       setEncerrando(false);
     }

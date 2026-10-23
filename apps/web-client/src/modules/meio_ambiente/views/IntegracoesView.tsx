@@ -4,6 +4,7 @@ import { KeyRound, PlugZap } from 'lucide-react';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { meioAmbienteApi, erroApi, type IntegracaoOrgaoControle, type OrgaoControle } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const ORGAOS: { value: OrgaoControle; label: string }[] = [
   { value: 'ibama', label: 'IBAMA' },
@@ -23,6 +24,7 @@ export const IntegracoesView: React.FC = () => {
   const [integracoes, setIntegracoes] = useState<IntegracaoOrgaoControle[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
 
   const [nome, setNome] = useState('');
   const [orgao, setOrgao] = useState<OrgaoControle>('ibama');
@@ -63,7 +65,7 @@ export const IntegracoesView: React.FC = () => {
       setEnvioToken('');
       await carregar();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }

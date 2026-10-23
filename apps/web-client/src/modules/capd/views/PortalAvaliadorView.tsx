@@ -69,6 +69,7 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -1470,6 +1471,7 @@ const AMOSTRA_RECURSOS_PADRAO: any[] = [
 ];
 
 export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portalSelector }) => {
+  const { modal: modalValidacao, validar } = useFormValidationModal();
   const [activeTab, setActiveTab] = useState<AvaliadorSubTab>('avaliacoes');
   const [loading, setLoading] = useState<boolean>(true);
   const [avaliacoes, setAvaliacoes] = useState<ApiAvaliacao[]>([]);
@@ -1644,6 +1646,7 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
 
   const handleSalvarCit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Data da Ocorrência do Fato', citDataOcorrencia], ['Descrição da conduta observável', citDescricao]])) return;
     if (!citServidorId || !citFatorId) return;
 
     if (citDescricao.trim().length < 30) {
@@ -1714,6 +1717,7 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
 
   const handleSalvarDevolutiva = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Data da Reunião de Feedback Presencial', dataDevolutiva], ['Resumo da Entrevista Presencial e Feedback', resumoEntrevista]])) return;
     if (!selectedAvaliacaoId) return;
     setSalvandoDevolutiva(true);
     try {
@@ -1762,6 +1766,7 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
 
   const handleSalvarContrarrazao = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Fundamentação Técnica Detalhada das Contrarrazões', textoContrarrazao]])) return;
     if (!selectedRecursoId) return;
     setSalvandoContrarrazao(true);
     try {
@@ -3142,6 +3147,7 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
 
   return (
     <div className="space-y-5">
+      {modalValidacao}
       {!editandoAvaliacao && (
         <>
           {/* ── Topo do Portal do Avaliador (Header Dinâmico Conforme a Aba) ── */}
@@ -4364,7 +4370,7 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
         title="Novo Apontamento no Diário de Bordo Digital (CIT)"
         size="xl"
       >
-        <form onSubmit={handleSalvarCit} className="space-y-4 py-2 text-xs">
+        <form noValidate onSubmit={handleSalvarCit} className="space-y-4 py-2 text-xs">
           {/* Campo de Pesquisa e Seleção do Servidor Avaliado */}
           <div className="space-y-2 p-3 rounded-xl bg-muted/20 border border-border/70">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
@@ -4507,7 +4513,6 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
               max={new Date().toISOString().split('T')[0]}
               value={citDataOcorrencia}
               onChange={(e) => setCitDataOcorrencia(e.target.value)}
-              required
             />
           </div>
 
@@ -4525,7 +4530,6 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
               value={citDescricao}
               onChange={(e) => setCitDescricao(e.target.value)}
               placeholder="Descreva minuciosamente a conduta observável do servidor, o contexto funcional da ocorrência e o impacto concreto nas rotinas e entregas do setor público..."
-              required
               minLength={30}
               className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-primary focus:outline-hidden leading-relaxed"
             />
@@ -4910,7 +4914,7 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
         title="Registro de Entrevista de Devolutiva Presencial (Art. 27)"
         size="xl"
       >
-        <form onSubmit={handleSalvarDevolutiva} className="space-y-4 py-2 text-xs">
+        <form noValidate onSubmit={handleSalvarDevolutiva} className="space-y-4 py-2 text-xs">
           {/* Card do Servidor Avaliado */}
           {(() => {
             const avSelecionada = listaDevolutivasExibicao.find((d) => d.id === selectedAvaliacaoId);
@@ -4977,7 +4981,6 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
               type="date"
               value={dataDevolutiva}
               onChange={(e) => setDataDevolutiva(e.target.value)}
-              required
               className="w-full sm:w-60 font-mono"
             />
           </div>
@@ -4989,7 +4992,6 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
               value={resumoEntrevista}
               onChange={(e) => setResumoEntrevista(e.target.value)}
               placeholder="Descreva detalhadamente os principais pontos debatidos na reunião com o servidor, destacando as forças observadas e oportunidades de melhoria funcional..."
-              required
               className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus:ring-2 focus:ring-primary focus:outline-hidden leading-relaxed"
             />
           </div>
@@ -5202,7 +5204,7 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
           const iniciais = partes.length >= 2 ? `${partes[0][0]}${partes[partes.length - 1][0]}`.toUpperCase() : nomeRec.slice(0, 2).toUpperCase();
 
           return (
-            <form onSubmit={handleSalvarContrarrazao} className="space-y-4 py-2 text-xs">
+            <form noValidate onSubmit={handleSalvarContrarrazao} className="space-y-4 py-2 text-xs">
               {/* Card Resumo do Recurso e Partes */}
               {recEmFoco && (
                 <div className="rounded-xl border border-border bg-card p-3.5 space-y-3">
@@ -5327,7 +5329,6 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
                       value={novoGrauProposto}
                       onChange={(e) => setNovoGrauProposto(Number(e.target.value))}
                       className="font-mono w-24 h-8 text-xs text-center"
-                      required
                     />
                     <span className="text-[11px] text-muted-foreground">
                       (Será submetido à homologação da Comissão CAD)
@@ -5346,7 +5347,6 @@ export const PortalAvaliadorView: React.FC<PortalAvaliadorViewProps> = ({ portal
                   value={textoContrarrazao}
                   onChange={(e) => setTextoContrarrazao(e.target.value)}
                   placeholder="Descreva pormenorizadamente os motivos de fato e de direito pelos quais a pontuação inicial deve ser mantida (citando evidências do Diário de Bordo) ou as razões fáticas da reconsideração proposta..."
-                  required
                   className="w-full rounded-md border border-input bg-background p-3 text-xs leading-relaxed focus:ring-2 focus:ring-primary focus:outline-hidden"
                 />
               </div>

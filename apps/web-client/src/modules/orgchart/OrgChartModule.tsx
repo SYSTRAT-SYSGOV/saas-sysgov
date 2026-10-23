@@ -55,6 +55,7 @@ import {
 import { useTenant } from '@/core/tenant/useTenant';
 import { useCan } from '@/core/rbac/useCan';
 import { apiClient } from '@/core/api/client';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 type ViewMode = 'tree' | 'table' | 'cards';
 
@@ -74,6 +75,7 @@ function flattenUnits(nodes: OrgUnitTreeNode[]): OrgUnit[] {
 }
 
 export const OrgChartModule: React.FC = () => {
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const { tenant } = useTenant();
   const { can } = useCan();
 
@@ -573,10 +575,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
   // Handlers de Submissão com Atualização Imediata e Persistência
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!createForm.name.trim() || !createForm.code.trim()) {
-      setErrorMessage('Preencha os campos obrigatórios (Nome e Código Técnico).');
-      return;
-    }
+    if (!validar([['Nome', createForm.name], ['Código Técnico', createForm.code]])) return;
 
     try {
       await sysgovApi.createOrgUnit({
@@ -667,39 +666,42 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUnit) return;
+    if (!validar([['Nome', editForm.name], ['Código Técnico', editForm.code]])) return;
     try {
       await sysgovApi.updateOrgUnit(selectedUnit.id, editForm);
       setSuccessMessage(`Unidade '${editForm.name}' atualizada com sucesso.`);
       setIsEditModalOpen(false);
       await loadOrgChart(true);
     } catch (err: unknown) {
-      setErrorMessage((err as Error).message || 'Erro ao atualizar unidade.');
+      if (!tratarErro(err)) setErrorMessage((err as Error).message || 'Erro ao atualizar unidade.');
     }
   };
 
   const handleMoveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUnit) return;
+    if (!validar([['Nova unidade superior', moveForm.new_parent_id]])) return;
     try {
       await sysgovApi.moveOrgUnit(selectedUnit.id, moveForm);
       setSuccessMessage(`Hierarquia remanejada com sucesso.`);
       setIsMoveModalOpen(false);
       await loadOrgChart(true);
     } catch (err: unknown) {
-      setErrorMessage((err as Error).message || 'Erro ao mover unidade.');
+      if (!tratarErro(err)) setErrorMessage((err as Error).message || 'Erro ao mover unidade.');
     }
   };
 
   const handleInactivateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUnit) return;
+    if (!validar([['Justificativa', inactivationReason]])) return;
     try {
       await sysgovApi.deleteOrgUnit(selectedUnit.id, inactivationReason);
       setSuccessMessage(`Unidade processada com sucesso.`);
       setIsInactivateModalOpen(false);
       await loadOrgChart(true);
     } catch (err: unknown) {
-      setErrorMessage((err as Error).message || 'Erro ao inativar unidade.');
+      if (!tratarErro(err)) setErrorMessage((err as Error).message || 'Erro ao inativar unidade.');
     }
   };
 
@@ -711,7 +713,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
       setSuccessMessage('Servidor vinculado com sucesso.');
       await loadOrgChart(true);
     } catch (err: unknown) {
-      setErrorMessage((err as Error).message || 'Erro ao vincular servidor.');
+      if (!tratarErro(err)) setErrorMessage((err as Error).message || 'Erro ao vincular servidor.');
     }
   };
 
@@ -907,6 +909,7 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
 
   return (
     <div className="space-y-6 pb-20">
+      {modalValidacao}
       {/* 1. Header do Módulo Premium */}
       <Card className="p-6 md:p-7">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -1436,11 +1439,10 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
           </>
         }
       >
-            <form id="org-create-form" onSubmit={handleCreateSubmit} className="space-y-4">
+            <form noValidate id="org-create-form" onSubmit={handleCreateSubmit} className="space-y-4">
               <Field label="Nome da Unidade" required>
                 <input
                   type="text"
-                  required
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                   placeholder="Ex: Secretaria Municipal de Educação"
@@ -1452,7 +1454,6 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
                 <Field label="Código Técnico" required>
                   <input
                     type="text"
-                    required
                     value={createForm.code}
                     onChange={(e) => setCreateForm({ ...createForm, code: e.target.value.toUpperCase() })}
                     placeholder="Ex: SMED-01"
@@ -1507,11 +1508,10 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
           </>
         }
       >
-            <form id="org-edit-form" onSubmit={handleEditSubmit} className="space-y-4">
+            <form noValidate id="org-edit-form" onSubmit={handleEditSubmit} className="space-y-4">
               <Field label="Nome da Unidade" required>
                 <input
                   type="text"
-                  required
                   value={editForm.name || ''}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-ring focus:outline-none"
@@ -1522,7 +1522,6 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
                 <Field label="Código Técnico" required>
                   <input
                     type="text"
-                    required
                     value={editForm.code || ''}
                     onChange={(e) => setEditForm({ ...editForm, code: e.target.value.toUpperCase() })}
                     className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm font-mono uppercase focus:ring-2 focus:ring-ring focus:outline-none"
@@ -1646,10 +1645,9 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
               </p>
             </div>
 
-            <form id="org-move-form" onSubmit={handleMoveSubmit} className="space-y-4 mt-4">
+            <form noValidate id="org-move-form" onSubmit={handleMoveSubmit} className="space-y-4 mt-4">
               <Field label="Selecione o Novo Órgão / Secretaria Pai" required>
                 <select
-                  required
                   value={moveForm.new_parent_id || ''}
                   onChange={(e) => setMoveForm({ new_parent_id: e.target.value ? Number(e.target.value) : null })}
                   className="w-full px-4 py-3 rounded-lg border border-input bg-background text-sm font-semibold text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
@@ -1817,10 +1815,9 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
               Você está inativando a unidade <strong className="text-foreground">{selectedUnit?.name}</strong> ({selectedUnit?.code}). Conforme as normas de governança (RN-ORG-004), informe a justificativa legal ou ato normativo.
             </p>
 
-            <form id="org-inactivate-form" onSubmit={handleInactivateSubmit} className="space-y-4 mt-4">
+            <form noValidate id="org-inactivate-form" onSubmit={handleInactivateSubmit} className="space-y-4 mt-4">
               <Field label="Justificativa Legal / Motivo Administrativo" required>
                 <textarea
-                  required
                   rows={3}
                   value={inactivationReason}
                   onChange={(e) => setInactivationReason(e.target.value)}

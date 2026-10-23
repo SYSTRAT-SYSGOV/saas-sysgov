@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
@@ -14,19 +14,6 @@ import {
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 
-interface LoginTenant {
-  id: number;
-  name: string;
-  slug: string;
-  type: string;
-}
-
-// Fallback quando o backend está indisponível (modo demonstração).
-const FALLBACK_TENANTS: LoginTenant[] = [
-  { id: 131, name: 'MUNICIPIO DE ARAUCARIA', slug: 'araucaria-pr', type: 'prefeitura' },
-  { id: 1, name: 'SYSTRAT (Sistema)', slug: 'systrat', type: 'interno' },
-];
-
 /**
  * Destino depois do login (?voltar=/caminho). Só aceita caminho relativo do
  * próprio app — "//outro-site" ou URL absoluta viraria redirecionamento aberto.
@@ -41,10 +28,8 @@ export const LoginPage: React.FC = () => {
   const { login, loginWithSSO } = useAuth();
   const { isStandardBranding } = useTenant();
 
-  const [tenants, setTenants] = useState<LoginTenant[]>(FALLBACK_TENANTS);
   const [email, setEmail] = useState('admin@araucaria.pr.gov.br');
   const [password, setPassword] = useState('');
-  const [selectedTenantSlug, setSelectedTenantSlug] = useState('araucaria-pr');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // MFA: 'code' = pede o código TOTP; 'setup' = usuário sem MFA em papel obrigatório (mostra QR).
@@ -53,26 +38,6 @@ export const LoginPage: React.FC = () => {
   const [setupToken, setSetupToken] = useState<string | null>(null);
   const [setupQr, setSetupQr] = useState<string | null>(null);
   const [setupSecret, setSetupSecret] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiClient
-      .get<{ data: LoginTenant[] }>('/auth/tenants', { timeout: 4000 })
-      .then((res) => {
-        if (cancelled || !Array.isArray(res.data.data) || res.data.data.length === 0) return;
-        setTenants(res.data.data);
-        setSelectedTenantSlug((current) => {
-          if (res.data.data.some((t) => t.slug === current)) return current;
-          return res.data.data[0].slug;
-        });
-      })
-      .catch(() => {
-        // Backend indisponível: mantém o fallback de demonstração.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const startMfaSetup = async (token: string) => {
     const res = await apiClient.post<{ secret?: string; qr_code_url?: string | null }>('/auth/mfa-setup/start', {
@@ -99,7 +64,6 @@ export const LoginPage: React.FC = () => {
       await login({
         email,
         password,
-        tenantSlug: selectedTenantSlug,
         ...(mfaStep !== 'none' ? { mfa_code: mfaCode.trim() } : {}),
       });
       navigate(destinoPosLogin(searchParams.get('voltar')));
@@ -179,32 +143,6 @@ export const LoginPage: React.FC = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Tenant Selection */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="tenant-select"
-                className="block font-mono text-[10px] font-bold uppercase tracking-wider text-gov-text-secondary"
-              >
-                Município / Órgão Vinculado
-              </label>
-<select
-                id="tenant-select"
-                value={selectedTenantSlug}
-                onChange={(e) => setSelectedTenantSlug(e.target.value)}
-                className="w-full px-3 py-2 bg-gov-surface border border-gov-border rounded-md text-xs text-gov-text-primary focus:outline-none focus:border-gov-primary focus:ring-2 focus:ring-gov-primary/20 transition"
-              >
-                {tenants.length === 0 ? (
-                  <option value="">Nenhum município disponível</option>
-                ) : (
-                  tenants.map((t) => (
-                    <option key={t.id} value={t.slug}>
-                      {t.name} ({t.type})
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-
             {/* Email Field */}
             <Input
               label="E-mail Institucional"
