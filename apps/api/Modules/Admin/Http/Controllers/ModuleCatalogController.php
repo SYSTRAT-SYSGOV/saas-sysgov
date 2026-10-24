@@ -22,14 +22,17 @@ final class ModuleCatalogController
 {
     use AuthorizesRequests;
 
-    public function index(): JsonResponse
+    /** per_page opcional (padrão 50, máx. 500): o catálogo é pequeno e a grade do admin carrega tudo de uma vez. */
+    public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Module::class);
+        $perPage = min(500, max(1, $request->integer('per_page', 50)));
+
         return response()->json(
             Module::query()
                 ->whereNotIn('alias', ['admin', 'client', 'rh', 'cemiterio', 'users', 'dashboard', 'procurement'])
                 ->orderBy('name')
-                ->paginate(50)
+                ->paginate($perPage)
         );
     }
 

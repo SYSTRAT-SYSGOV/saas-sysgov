@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Field } from '@/components/ui/Field';
 import { ApiRequestError } from '@/api/errors';
@@ -75,6 +75,10 @@ export function ModuleCatalogPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchModules();
+  }, []);
 
   const openCreateDialog = () => {
     setEditingModule(null);
