@@ -55,28 +55,28 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onAction }) => 
   const isSuccess = toast.type === 'success';
 
   const borderClass = isDanger
-    ? 'border-rose-500/80 shadow-[0_8px_30px_rgb(244,63,94,0.2)]'
+    ? 'border-status-danger-border'
     : isWarning
-    ? 'border-amber-500/80 shadow-[0_8px_30px_rgb(245,158,11,0.2)]'
+    ? 'border-status-warning-border'
     : isSuccess
-    ? 'border-emerald-500/80 shadow-[0_8px_30px_rgb(16,185,129,0.2)]'
-    : 'border-blue-500/80 shadow-[0_8px_30px_rgb(59,130,246,0.2)]';
+    ? 'border-status-success-border'
+    : 'border-status-info-border';
 
   const iconColor = isDanger
-    ? 'text-rose-400 bg-rose-950/80 border-rose-500/40'
+    ? 'text-status-danger bg-status-danger-bg border-status-danger-border'
     : isWarning
-    ? 'text-amber-400 bg-amber-950/80 border-amber-500/40'
+    ? 'text-status-warning bg-status-warning-bg border-status-warning-border'
     : isSuccess
-    ? 'text-emerald-400 bg-emerald-950/80 border-emerald-500/40'
-    : 'text-blue-400 bg-blue-950/80 border-blue-500/40';
+    ? 'text-status-success bg-status-success-bg border-status-success-border'
+    : 'text-status-info bg-status-info-bg border-status-info-border';
 
   const progressBarColor = isDanger
-    ? 'bg-rose-500'
+    ? 'bg-destructive'
     : isWarning
-    ? 'bg-amber-500'
+    ? 'bg-status-warning'
     : isSuccess
-    ? 'bg-emerald-500'
-    : 'bg-blue-500';
+    ? 'bg-primary'
+    : 'bg-primary';
 
   const IconComponent = isDanger
     ? AlertOctagon
@@ -96,7 +96,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onAction }) => 
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       id={`toast-notification-${toast.id}`}
-      className={`pointer-events-auto w-full bg-slate-900 text-white rounded-sm border ${borderClass} overflow-hidden shadow-2xl relative`}
+      className={`pointer-events-auto w-full bg-card text-foreground rounded-md border ${borderClass} overflow-hidden shadow-lg relative`}
       role="alert"
       aria-live="assertive"
     >
@@ -109,17 +109,17 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onAction }) => 
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-100">
+                <span className="text-xs font-bold font-mono uppercase tracking-wider text-muted-foreground">
                   {toast.title}
                 </span>
                 {toast.ano && (
-                  <span className="px-1.5 py-0.2 rounded-sm text-[9px] font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                  <span className="px-1.5 py-0.2 rounded-sm text-[9px] font-mono font-bold bg-muted text-foreground border border-border">
                     EXERCÍCIO {toast.ano}
                   </span>
                 )}
               </div>
               {toast.limitName && (
-                <div className="text-[11px] font-bold text-amber-400 dark:text-amber-300 mt-0.5">
+                <div className="text-[11px] font-bold text-status-warning mt-0.5">
                   {toast.limitName}
                 </div>
               )}
@@ -129,7 +129,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onAction }) => 
           <button
             type="button"
             onClick={() => onDismiss(toast.id)}
-            className="p-1 rounded-sm text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0"
+            className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition shrink-0"
             aria-label="Fechar notificação"
             title="Fechar"
           >
@@ -138,7 +138,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onAction }) => 
         </div>
 
         {/* Message Body */}
-        <p className="text-xs text-slate-300 mt-2 leading-relaxed font-sans">
+        <p className="text-xs text-muted-foreground mt-2 leading-relaxed font-sans">
           {toast.message}
         </p>
 
@@ -146,13 +146,13 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onAction }) => 
         {(toast.metricValue || toast.threshold) && (
           <div className="mt-2.5 flex items-center gap-2 flex-wrap text-[10px] font-mono">
             {toast.metricValue && (
-              <span className="px-2 py-0.5 rounded-sm bg-slate-800 text-white font-bold border border-slate-700">
-                Realizado: <span className="text-amber-300">{toast.metricValue}</span>
+              <span className="px-2 py-0.5 rounded-sm bg-muted text-foreground font-bold border border-border">
+                Realizado: <span className="text-status-warning">{toast.metricValue}</span>
               </span>
             )}
             {toast.threshold && (
-              <span className="px-2 py-0.5 rounded-sm bg-slate-800/80 text-slate-300 border border-slate-700">
-                Referência: <span className="text-slate-200">{toast.threshold}</span>
+              <span className="px-2 py-0.5 rounded-sm bg-muted text-foreground border border-border">
+                Referência: <span className="text-muted-foreground">{toast.threshold}</span>
               </span>
             )}
           </div>
@@ -160,8 +160,8 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onAction }) => 
 
         {/* Action Button */}
         {toast.actionTabId && (
-          <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
-            <span className="text-[10px] text-slate-400 font-mono">Lei de Responsabilidade Fiscal</span>
+          <div className="mt-3 pt-2.5 border-t border-border flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground font-mono">Lei de Responsabilidade Fiscal</span>
             <button
               type="button"
               onClick={() => {
@@ -170,7 +170,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onAction }) => 
                 }
                 onDismiss(toast.id);
               }}
-              className="inline-flex items-center gap-1 text-xs font-mono font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300 hover:underline transition cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs font-mono font-bold uppercase tracking-wider text-primary hover:text-primary hover:underline transition cursor-pointer"
             >
               <span>{toast.actionLabel || 'Ver no Módulo LRF'}</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -180,7 +180,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onAction }) => 
       </div>
 
       {/* Progress Bar timer */}
-      <div className="h-1 w-full bg-slate-800 overflow-hidden">
+      <div className="h-1 w-full bg-muted overflow-hidden">
         <div
           className={`h-full transition-all duration-75 ${progressBarColor}`}
           style={{ width: `${progress}%` }}
@@ -208,7 +208,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({
           <button
             type="button"
             onClick={onClearAll}
-            className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white rounded-sm border border-slate-700 shadow-md transition"
+            className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider bg-card hover:bg-accent text-foreground rounded-sm border border-border shadow-md transition"
           >
             Limpar todas ({toasts.length})
           </button>

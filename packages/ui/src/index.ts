@@ -91,3 +91,23 @@ export * from './components/PessoaCard';
 export * from './components/PessoaFormModal';
 export * from './components/PessoaPicker';
 
+// ============================================================
+// Padrões compartilhados (portal e admin): grade, campos, cabeçalho de página, estados de tela, confirmação e validação em modal
+// ============================================================
+export { DataTable } from './components/DataTable';
+export type { DataTableProps } from './components/DataTable';
+export { Field } from './components/Field';
+export type { FieldProps } from './components/Field';
+export { PageHeader } from './components/PageHeader';
+export type { PageHeaderProps } from './components/PageHeader';
+export { ScreenState } from './components/ScreenState';
+export type { ScreenStateType, ScreenStateProps } from './components/ScreenState';
+export { ConfirmDialog } from './components/ConfirmDialog';
+export type { ConfirmDialogProps } from './components/ConfirmDialog';
+export { ValidationErrorModal } from './components/ValidationErrorModal';
+export type { ValidationErrorModalProps } from './components/ValidationErrorModal';
+export { getApiValidationErrors, getApiErrorMessage } from './lib/apiErrors';
+export type { ApiFieldError } from './lib/apiErrors';
+export { camposObrigatoriosVazios, useFormValidationModal } from './lib/useFormValidationModal';
+export type { CampoObrigatorio } from './lib/useFormValidationModal';
+export { tratarErroValidacaoGlobal, invalidarGlobal, validarObrigatoriosGlobal, ValidationModalHost } from './lib/validationModalHost';

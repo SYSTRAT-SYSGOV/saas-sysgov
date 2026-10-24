@@ -1,0 +1,154 @@
+/* Estilos globais Gov.br (tipografia, títulos, foco, barras de rolagem). Importar depois de govbr-theme.css. */
+@layer base {
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--gov-font-family-base, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    font-size: 27px;
+    line-height: 36px;
+    font-weight: 700;
+    font-style: normal;
+    background-color: var(--gov-bg-page);
+    color: var(--gov-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Tailwind v4 não define mais um border-color padrão via preflight
+     (diferente do v3) — sem isso, qualquer classe "border"/"border-b"/
+     "border-t" sem cor explícita herda `currentColor` (a cor do texto
+     do elemento) em vez do token --color-border, deixando bordas
+     "genéricas" (como as do Dialog/Modal de @sysgov/ui) bem mais
+     claras/contrastadas do que deveriam. Regra padrão do setup
+     shadcn/Tailwind v4. */
+  *, ::before, ::after {
+    border-color: var(--color-border, currentColor);
+    outline-color: var(--color-ring, currentColor);
+  }
+
+  /* ==========================================================================
+     Títulos do Sistema: Cor Oficial #0c326f e BOLD (700) Obrigatório
+     ========================================================================== */
+  h1, h2, h3, h4, h5, h6,
+  .br-h1, .br-h2, .br-h3, .br-h4, .br-h5,
+  .text-page-title,
+  .font-heading,
+  .card-title,
+  .section-title {
+    font-family: var(--gov-font-family-base);
+    color: #0c326f !important;
+    font-weight: 700 !important;
+  }
+
+  h1, .br-h1, .text-page-title {
+    font-size: var(--font-size-scale-up-05, 2.25rem); /* 36px */
+    line-height: var(--font-line-height-scale-up-05, 2.5rem); /* 40px */
+    letter-spacing: -0.02em;
+  }
+
+  h2, .br-h2 {
+    font-size: var(--font-size-scale-up-04, 1.75rem); /* 28px */
+    line-height: var(--font-line-height-scale-up-04, 2.25rem); /* 36px */
+    letter-spacing: -0.015em;
+  }
+
+  h3, .br-h3 {
+    font-size: var(--font-size-scale-up-03, 1.5rem); /* 24px */
+    line-height: var(--font-line-height-scale-up-03, 2rem); /* 32px */
+    letter-spacing: -0.01em;
+  }
+
+  h4, .br-h4 {
+    font-size: var(--font-size-scale-up-02, 1.25rem); /* 20px */
+    line-height: var(--font-line-height-scale-up-02, 1.75rem); /* 28px */
+  }
+
+  h5, .br-h5 {
+    font-size: var(--font-size-scale-up-01, 1.125rem); /* 18px */
+    line-height: var(--font-line-height-scale-up-01, 1.625rem); /* 26px */
+  }
+
+  /* Menus e Navegação: BOLD (700) e #0c326f */
+  nav, .br-menu, .font-menu-title {
+    font-family: var(--gov-font-family-base);
+    font-weight: 700;
+  }
+
+  /* Elementos de Botão */
+  button, .br-button {
+    font-family: var(--gov-font-family-base);
+    font-weight: 700;
+  }
+
+  /* Dados Técnicos também em Inter */
+  code, kbd, samp, pre, .font-mono, .tabular-nums {
+    font-family: var(--gov-font-family-mono) !important;
+  }
+
+  /* Anel de foco visível em todos os elementos interativos conforme eMAG / WCAG 2.1 AA */
+  *:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--gov-primary), 0 0 0 4px #FFFFFF;
+  }
+}
+
+/* Scrollbars suaves & modernas (WebKit + Firefox) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.55);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+/* Custom Scrollbar Utility para Dialog/Modal e painéis com rolagem */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+

@@ -1,14 +1,12 @@
 import { SystemBrandingConfig } from '../types/admin';
-import { DEFAULT_ADMIN_THEME_ID } from './adminThemes';
 
 export const DEFAULT_ADMIN_CONFIG: SystemBrandingConfig = {
   appName: 'SysGov / Admin Suite',
   appSubtitle: 'Plataforma Administrativa & Gestão Executiva',
   companyName: 'SysGov Technologies',
   logoUrl: '',
-  primaryColor: '#10b981', // Emerald Oficial do Design System
+  primaryColor: '#1351B4', // Azul Governo Federal (Design System Gov.br)
   secondaryColor: '#0c326f', // Navy / Governamental
-  themeId: DEFAULT_ADMIN_THEME_ID,
   enableDarkMode: true,
   showPoweredBy: true,
   supportEmail: 'suporte@sysgov.online',

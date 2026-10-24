@@ -37,9 +37,9 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { adminApi } from '../../modules/admin/api';
 import { Tenant, SaasModule, CnpjLookupResult, BatchProvisionResult, User, Paginated } from '../../modules/admin/types';
 import { StatusChip, Card, Modal, Button, Input, Select } from '@sysgov/ui';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field } from '../../components/ui/Field';
-import { DataTable } from '../ui/DataTable';
+import { DataTable } from '@sysgov/ui';
+import { useFormValidationModal } from '@sysgov/ui';
 
 interface Props {
   onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -128,7 +128,7 @@ function TenantActions({
         type="button"
         onClick={() => onOnboarding(t)}
         title="Administradores do tenant"
-        className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer"
+        className="p-1.5 rounded-lg text-status-warning hover:bg-status-warning-bg border border-status-warning-border  transition-colors cursor-pointer"
       >
         <UserPlus className="w-3.5 h-3.5" />
       </button>
@@ -136,7 +136,7 @@ function TenantActions({
         type="button"
         onClick={() => onDiagnostic(t)}
         title="Diagnóstico de Organograma"
-        className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 transition-colors cursor-pointer"
+        className="p-1.5 rounded-lg text-primary hover:bg-accent border border-primary  transition-colors cursor-pointer"
       >
         <Network className="w-3.5 h-3.5" />
       </button>
@@ -144,7 +144,7 @@ function TenantActions({
         type="button"
         onClick={() => onEdit(t)}
         title="Editar Organização"
-        className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 transition-colors cursor-pointer"
+        className="p-1.5 rounded-lg text-primary hover:bg-accent border border-primary/30  transition-colors cursor-pointer"
       >
         <Edit2 className="w-3.5 h-3.5" />
       </button>
@@ -152,7 +152,7 @@ function TenantActions({
         type="button"
         onClick={() => onDelete(t.id)}
         title="Excluir Organização"
-        className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 transition-colors cursor-pointer"
+        className="p-1.5 rounded-lg text-status-danger hover:bg-status-danger-bg border border-status-danger-border  transition-colors cursor-pointer"
       >
         <Trash2 className="w-3.5 h-3.5" />
       </button>
@@ -184,7 +184,7 @@ function TenantCard({
   const userUsagePercent = Math.min(100, Math.round(((t.user_count ?? 0) / (t.max_users || 1)) * 100));
 
   return (
-    <div key={t.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+    <div key={t.id} className="bg-card border border-border  rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
       {/* Selection checkbox */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -192,21 +192,21 @@ function TenantCard({
             type="checkbox"
             checked={selectedTenantIds.includes(t.id)}
             onChange={(e) => handleTenantSelectionChange(t.id, e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+            className="w-4 h-4 rounded border-border text-status-warning focus:ring-ring cursor-pointer"
             aria-label={`Selecionar ${t.name}`}
           />
-          <span className="text-xs text-slate-500 dark:text-slate-400">Selecionar para ações em lote</span>
+          <span className="text-xs text-muted-foreground ">Selecionar para ações em lote</span>
         </div>
         {getStatusBadge(t.status)}
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t.name}</h3>
-        <span className="text-[11px] text-slate-400 font-mono block mt-0.5">id: {t.slug} {t.cnpj ? `• ${t.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')}` : ''}</span>
+        <h3 className="text-sm font-bold text-foreground ">{t.name}</h3>
+        <span className="text-[11px] text-muted-foreground font-mono block mt-0.5">id: {t.slug} {t.cnpj ? `• ${t.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')}` : ''}</span>
       </div>
 
       {t.domain && (
-        <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-md mb-4 border border-indigo-200 dark:border-indigo-900/50">
+        <div className="flex items-center gap-1.5 text-xs text-primary bg-accent  px-2.5 py-1 rounded-md mb-4 border border-primary/30 ">
           <Globe className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate font-mono text-[11px]">{t.domain}</span>
         </div>
@@ -215,40 +215,40 @@ function TenantCard({
       <div className="space-y-3 pt-2">
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Assentos de Usuário</span>
-            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{(t.user_count ?? 0)} / {t.max_users} ({userUsagePercent}%)</span>
+            <span className="text-muted-foreground flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Assentos de Usuário</span>
+            <span className="font-mono font-semibold text-foreground ">{(t.user_count ?? 0)} / {t.max_users} ({userUsagePercent}%)</span>
           </div>
-          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full ${userUsagePercent > 85 ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${userUsagePercent}%` }} />
-          </div>
-        </div>
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><HardDrive className="w-3.5 h-3.5" /> Armazenamento</span>
-            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">0 GB / {(t.storage_limit_mb / 1024).toFixed(0)} GB</span>
-          </div>
-          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '10%' }} />
+          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+            <div className={`h-full rounded-full ${userUsagePercent > 85 ? 'bg-destructive' : 'bg-primary'}`} style={{ width: `${userUsagePercent}%` }} />
           </div>
         </div>
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><Link2 className="w-3.5 h-3.5" /> Módulos Ativos</span>
-            <span className="font-mono text-slate-500">{t.modules?.filter((m) => m.pivot?.enabled && !EXCLUDED_MODULE_ALIASES.includes(m.alias)).length ?? 0}</span>
+            <span className="text-muted-foreground flex items-center gap-1"><HardDrive className="w-3.5 h-3.5" /> Armazenamento</span>
+            <span className="font-mono font-semibold text-foreground ">0 GB / {(t.storage_limit_mb / 1024).toFixed(0)} GB</span>
+          </div>
+          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full" style={{ width: '10%' }} />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-muted-foreground flex items-center gap-1"><Link2 className="w-3.5 h-3.5" /> Módulos Ativos</span>
+            <span className="font-mono text-muted-foreground">{t.modules?.filter((m) => m.pivot?.enabled && !EXCLUDED_MODULE_ALIASES.includes(m.alias)).length ?? 0}</span>
           </div>
           <div className="flex flex-wrap gap-1">
             {(t.modules ?? []).filter((m) => m.pivot?.enabled && !EXCLUDED_MODULE_ALIASES.includes(m.alias)).map((m) => (
-              <span key={m.id} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{m.alias}</span>
+              <span key={m.id} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-muted text-muted-foreground ">{m.alias}</span>
             ))}
           </div>
         </div>
       </div>
 
       {/* Footer inside the card */}
-      <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div className="mt-5 pt-3 border-t border-border flex items-center justify-between">
         <div>
-          <span className="block font-mono text-xs font-bold text-slate-900 dark:text-white">R$ {formatCents(t.mrr_cents ?? 0)}/mês</span>
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider">{t.plan}</span>
+          <span className="block font-mono text-xs font-bold text-foreground ">R$ {formatCents(t.mrr_cents ?? 0)}/mês</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{t.plan}</span>
         </div>
         <TenantActions t={t} onEdit={onEdit} onDelete={onDelete} onDiagnostic={onDiagnostic} onOnboarding={onOnboarding} />
       </div>
@@ -257,6 +257,7 @@ function TenantCard({
 }
 
 export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }) => {
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [modules, setModules] = useState<SaasModule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -418,10 +419,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
 
   const handleSaveTenant = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.slug.trim()) {
-      onAddToast({ type: 'error', title: 'Campos Obrigatórios', message: 'Preencha nome e identificador (slug).' });
-      return;
-    }
+    if (!validar([['Nome da Organização / Cliente', formData.name], ['Identificador (Slug)', formData.slug]])) return;
     setSaving(true);
     try {
       const payload = {
@@ -457,7 +455,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       setIsModalOpen(false);
       load();
     } catch (error: any) {
-      onAddToast({ type: 'error', title: 'Falha ao salvar', message: error.message || 'Não foi possível salvar o tenant.' });
+      if (!tratarErro(error)) onAddToast({ type: 'error', title: 'Falha ao salvar', message: error.message || 'Não foi possível salvar o tenant.' });
     } finally {
       setSaving(false);
     }
@@ -471,7 +469,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       setDeleteConfirmId(null);
       load();
     } catch (error: any) {
-      onAddToast({ type: 'error', title: 'Falha ao excluir', message: error.message || 'Não foi possível excluir o tenant.' });
+      if (!tratarErro(error)) onAddToast({ type: 'error', title: 'Falha ao excluir', message: error.message || 'Não foi possível excluir o tenant.' });
     }
   };
 
@@ -530,12 +528,9 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
 
   const handleBatchProvision = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!batchModule) {
-      onAddToast({ type: 'warning', title: 'Módulo Obrigatório', message: 'Selecione um módulo para provisionar.' });
-      return;
-    }
+    if (!validar([['Módulo', batchModule]])) return;
     if (selectedTenantIds.length === 0) {
-      onAddToast({ type: 'warning', title: 'Nenhum Tenant Selecionado', message: 'Selecione ao menos um tenant na tabela.' });
+      invalidar([['Tenants', 'Selecione ao menos um tenant na tabela.']]);
       return;
     }
 
@@ -566,7 +561,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         load();
       }
     } catch (error: any) {
-      onAddToast({ type: 'error', title: 'Falha no Provisionamento em Lote', message: error.message || 'Não foi possível provisionar o módulo em lote.' });
+      if (!tratarErro(error)) onAddToast({ type: 'error', title: 'Falha no Provisionamento em Lote', message: error.message || 'Não foi possível provisionar o módulo em lote.' });
     } finally {
       setBatchSaving(false);
     }
@@ -649,15 +644,12 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
     if (!onboardingTenant) return;
 
     if (onboardingForm.password && onboardingForm.password !== onboardingForm.password_confirmation) {
-      onAddToast({ type: 'error', title: 'Senhas diferentes', message: 'A confirmação de senha não confere.' });
+      invalidar([['Confirmação de senha', 'A confirmação de senha não confere.']]);
       return;
     }
 
     if (editingAdmin) {
-      if (!onboardingForm.name.trim()) {
-        onAddToast({ type: 'error', title: 'Campo Obrigatório', message: 'Informe o nome do administrador.' });
-        return;
-      }
+      if (!validar([['Nome do administrador', onboardingForm.name]])) return;
       setOnboardingSaving(true);
       try {
         await adminApi.updateTenantAdmin(onboardingTenant.id, editingAdmin.id, {
@@ -669,7 +661,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         setOnboardingForm(emptyAdminForm);
         await loadTenantAdmins(onboardingTenant);
       } catch (error: any) {
-        onAddToast({ type: 'error', title: 'Falha ao atualizar', message: error.message || 'Não foi possível atualizar o administrador.' });
+        if (!tratarErro(error)) onAddToast({ type: 'error', title: 'Falha ao atualizar', message: error.message || 'Não foi possível atualizar o administrador.' });
       } finally {
         setOnboardingSaving(false);
       }
@@ -678,10 +670,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
 
     // Novo administrador. Se o e-mail já for de um usuário existente, o backend o reaproveita
     // e mantém o nome e a senha atuais; por isso nome/senha só são exigidos aqui para e-mail novo (validado no backend).
-    if (!onboardingForm.email.trim()) {
-      onAddToast({ type: 'error', title: 'Campo Obrigatório', message: 'Informe o e-mail do administrador.' });
-      return;
-    }
+    if (!validar([['E-mail do administrador', onboardingForm.email]])) return;
     setOnboardingSaving(true);
     try {
       await adminApi.createTenantAdmin(onboardingTenant.id, {
@@ -697,7 +686,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       setOnboardingForm(emptyAdminForm);
       await loadTenantAdmins(onboardingTenant);
     } catch (error: any) {
-      onAddToast({ type: 'error', title: 'Falha ao cadastrar', message: error.message || 'Não foi possível cadastrar o administrador.' });
+      if (!tratarErro(error)) onAddToast({ type: 'error', title: 'Falha ao cadastrar', message: error.message || 'Não foi possível cadastrar o administrador.' });
     } finally {
       setOnboardingSaving(false);
     }
@@ -706,8 +695,9 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
   const handleDeactivateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!onboardingTenant || !deactivatingAdmin) return;
+    if (!validar([['Motivo da desativação', deactivateReason]])) return;
     if (deactivateReason.trim().length < 10) {
-      onAddToast({ type: 'error', title: 'Motivo obrigatório', message: 'Informe o motivo da desativação (mínimo de 10 caracteres).' });
+      invalidar([['Motivo da desativação', 'Informe o motivo da desativação (mínimo de 10 caracteres).']]);
       return;
     }
     setOnboardingSaving(true);
@@ -718,7 +708,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       setDeactivateReason('');
       await loadTenantAdmins(onboardingTenant);
     } catch (error: any) {
-      onAddToast({ type: 'error', title: 'Falha ao desativar', message: error.message || 'Não foi possível desativar o administrador.' });
+      if (!tratarErro(error)) onAddToast({ type: 'error', title: 'Falha ao desativar', message: error.message || 'Não foi possível desativar o administrador.' });
     } finally {
       setOnboardingSaving(false);
     }
@@ -751,7 +741,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           type="checkbox"
           checked={allPageSelected}
           onChange={(e) => handleSelectAllTenants(e.target.checked)}
-          className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+          className="w-4 h-4 rounded border-border text-status-warning focus:ring-ring cursor-pointer"
           aria-label="Selecionar todos desta página"
         />
       ),
@@ -760,7 +750,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           type="checkbox"
           checked={selectedTenantIds.includes(row.original.id)}
           onChange={(e) => handleTenantSelectionChange(row.original.id, e.target.checked)}
-          className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+          className="w-4 h-4 rounded border-border text-status-warning focus:ring-ring cursor-pointer"
           aria-label={`Selecionar ${row.original.name}`}
         />
       ),
@@ -770,8 +760,8 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       header: 'Organização',
       cell: ({ row }) => (
         <div className="text-left">
-          <span className="block text-sm font-semibold text-slate-900 dark:text-white">{row.original.name}</span>
-          <span className="block text-[11px] font-mono text-slate-400">{row.original.slug}</span>
+          <span className="block text-sm font-semibold text-foreground ">{row.original.name}</span>
+          <span className="block text-[11px] font-mono text-muted-foreground">{row.original.slug}</span>
         </div>
       ),
     },
@@ -790,7 +780,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       enableSorting: false,
       header: 'Usuários',
       cell: ({ row }) => (
-        <span className="font-mono text-xs">{row.original.user_count ?? 0}<span className="text-slate-400"> / {row.original.max_users}</span></span>
+        <span className="font-mono text-xs">{row.original.user_count ?? 0}<span className="text-muted-foreground"> / {row.original.max_users}</span></span>
       ),
     },
     {
@@ -820,20 +810,21 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
   if (loading && tenants.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-status-warning" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      {modalValidacao}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card p-6 rounded-2xl border border-border  shadow-sm">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-amber-500" />
+          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-status-warning" />
             Gestão Multi-Tenant & Organizações Clientes
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Instâncias isoladas, limites de usuários, cotas de armazenamento, módulos com preço e faturamento recorrente.
           </p>
         </div>
@@ -847,57 +838,57 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
+        <div className="bg-card border border-border  rounded-xl p-4 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Tenants em Operação</span>
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums">{activeCount} <span className="text-xs font-normal text-slate-400">/ {totalTenants} total</span></span>
+            <span className="text-xs text-muted-foreground font-medium block">Tenants em Operação</span>
+            <span className="text-2xl font-extrabold text-foreground font-mono tabular-nums">{activeCount} <span className="text-xs font-normal text-muted-foreground">/ {totalTenants} total</span></span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center"><Building2 className="w-5 h-5" /></div>
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Building2 className="w-5 h-5" /></div>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
+        <div className="bg-card border border-border  rounded-xl p-4 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">MRR Total (Módulos + Domínio)</span>
-            <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">R$ {formatCents(totalMRR)}</span>
+            <span className="text-xs text-muted-foreground font-medium block">MRR Total (Módulos + Domínio)</span>
+            <span className="text-2xl font-extrabold text-primary font-mono tabular-nums">R$ {formatCents(totalMRR)}</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center"><DollarSign className="w-5 h-5" /></div>
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><DollarSign className="w-5 h-5" /></div>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
+        <div className="bg-card border border-border  rounded-xl p-4 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Usuários Conectados</span>
-            <span className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 font-mono tabular-nums">{totalUsers}</span>
+            <span className="text-xs text-muted-foreground font-medium block">Usuários Conectados</span>
+            <span className="text-2xl font-extrabold text-primary font-mono tabular-nums">{totalUsers}</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center"><Users className="w-5 h-5" /></div>
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Users className="w-5 h-5" /></div>
         </div>
       </div>
 
       <Card className="p-4 flex-col md:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Buscar por nome, slug, CNPJ ou domínio..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full pl-10 pr-4 py-2 text-xs rounded-lg bg-muted border border-border  text-foreground  placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
         <select
           value={selectedStatus}
           onChange={(e) => handleStatusChange(e.target.value)}
-          className="px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 w-full md:w-auto"
+          className="px-3 py-2 text-xs rounded-lg bg-muted border border-border  text-foreground  focus:outline-none focus:ring-2 focus:ring-ring w-full md:w-auto"
         >
           <option value="ALL">Todos os Status</option>
           <option value="active">Ativos</option>
           <option value="trial">Trial</option>
           <option value="suspended">Suspensos</option>
         </select>
-        <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0" role="group" aria-label="Modo de visualização">
+        <div className="inline-flex rounded-lg border border-border overflow-hidden shrink-0" role="group" aria-label="Modo de visualização">
           <button
             type="button"
             onClick={() => handleViewModeChange('cards')}
             aria-pressed={viewMode === 'cards'}
             title="Visualizar em cards"
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${viewMode === 'cards' ? 'bg-amber-500 text-slate-950' : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${viewMode === 'cards' ? 'bg-status-warning text-foreground' : 'bg-muted  text-muted-foreground  hover:bg-accent '}`}
           >
             <LayoutGrid className="w-3.5 h-3.5" /> Cards
           </button>
@@ -906,7 +897,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
             onClick={() => handleViewModeChange('table')}
             aria-pressed={viewMode === 'table'}
             title="Visualizar em tabela"
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${viewMode === 'table' ? 'bg-amber-500 text-slate-950' : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${viewMode === 'table' ? 'bg-status-warning text-foreground' : 'bg-muted  text-muted-foreground  hover:bg-accent '}`}
           >
             <List className="w-3.5 h-3.5" /> Tabela
           </button>
@@ -915,13 +906,13 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
 
       {/* Batch Actions Bar */}
       {selectedTenantIds.length > 0 && (
-        <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 animate-slide-down">
+        <div className="bg-status-warning-bg/70 border border-status-warning-border  rounded-xl p-4 animate-slide-down">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <CheckSquare className="w-5 h-5 text-amber-600" />
+              <CheckSquare className="w-5 h-5 text-status-warning" />
               <div>
-                <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">{selectedTenantIds.length} tenant(s) selecionado(s)</span>
-                <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">Ações em lote disponíveis</span>
+                <span className="text-sm font-semibold text-status-warning ">{selectedTenantIds.length} tenant(s) selecionado(s)</span>
+                <span className="text-xs text-status-warning ml-2">Ações em lote disponíveis</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -934,7 +925,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               </button>
               <button
                 onClick={() => setSelectedTenantIds([])}
-                className="px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/30 rounded-lg transition-colors"
+                className="px-3 py-2 text-xs font-semibold text-status-warning hover:bg-status-warning-bg  rounded-lg transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
                 Limpar Seleção
@@ -962,7 +953,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           sorting={{ state: sorting, onChange: handleSortingChange }}
         />
       ) : tenants.length === 0 ? (
-        <div className="col-span-full py-16 text-center text-slate-500 dark:text-slate-400">
+        <div className="col-span-full py-16 text-center text-muted-foreground ">
           Nenhum tenant encontrado. Clique em "Provisionar Novo Tenant".
         </div>
       ) : (
@@ -983,7 +974,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               />
             ))}
           </div>
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400" data-testid="cards-pagination">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground " data-testid="cards-pagination">
             <span>
               {totalTenants} tenant(s) • Página {meta?.current_page ?? page} de {lastPage}
             </span>
@@ -994,7 +985,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
                   value={perPage}
                   onChange={(e) => handlePerPageChange(Number(e.target.value))}
                   aria-label="Tenants por página"
-                  className="px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                  className="px-2 py-1 rounded-md bg-muted border border-border  text-foreground "
                 >
                   {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
@@ -1011,7 +1002,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingTenantId ? 'Editar Organização' : 'Provisionar Novo Tenant'}
-        icon={<Building2 className="w-4 h-4 text-amber-500" />}
+        icon={<Building2 className="w-4 h-4 text-status-warning" />}
         size="xl"
         footer={
           <>
@@ -1022,12 +1013,12 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           </>
         }
       >
-            <form id="tenant-form" onSubmit={handleSaveTenant} className="space-y-4">
+            <form noValidate id="tenant-form" onSubmit={handleSaveTenant} className="space-y-4">
               {/* CNPJ lookup */}
               {!editingTenantId && (
-                <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                    <FileSearch className="w-3.5 h-3.5 text-blue-600" /> Consultar pelo CNPJ (autopreenchimento)
+                <div className="p-3.5 rounded-xl bg-accent/70 border border-primary/30 ">
+                  <label className="block text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
+                    <FileSearch className="w-3.5 h-3.5 text-primary" /> Consultar pelo CNPJ (autopreenchimento)
                   </label>
                   <div className="flex gap-2">
                     <Input
@@ -1047,7 +1038,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
                     </Button>
                   </div>
                   {cnpjLookup && (
-                    <div className="mt-2 text-[11px] font-mono text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/50 rounded-md px-2.5 py-1.5">
+                    <div className="mt-2 text-[11px] font-mono text-primary bg-accent  rounded-md px-2.5 py-1.5">
                       {cnpjLookup.razao_social} — {cnpjLookup.municipio}/{cnpjLookup.uf} {cnpjLookup.cnae_fiscal_descricao ? `• ${cnpjLookup.cnae_fiscal_descricao}` : ''}
                     </div>
                   )}
@@ -1056,7 +1047,6 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
 
               <Input
                 label="Nome da Organização / Cliente *"
-                required
                 value={formData.name}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -1068,7 +1058,6 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Identificador (Slug) *"
-                  required
                   value={formData.slug}
                   onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                   placeholder="cascavel-pr"
@@ -1093,25 +1082,25 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
 
               {/* Módulos com preço */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Módulos Liberados (cada um com mensalidade própria)</label>
+                <label className="block text-xs font-semibold text-foreground mb-2">Módulos Liberados (cada um com mensalidade própria)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                   {modules.filter((m) => !EXCLUDED_MODULE_ALIASES.includes(m.alias)).map((m) => {
                     const checked = formData.modules.includes(m.alias);
                     return (
-                      <label key={m.id} className={`flex items-start justify-between gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-primary bg-amber-50 dark:bg-amber-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-amber-300'}`}>
+                      <label key={m.id} className={`flex items-start justify-between gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-primary bg-status-warning-bg ' : 'border-border  hover:border-status-warning-border'}`}>
                         <span className="flex items-start gap-2">
                           <input type="checkbox" checked={checked} onChange={(e) => {
                             const next = e.target.checked
                               ? [...formData.modules, m.alias]
                               : formData.modules.filter((a) => a !== m.alias);
                             setFormData({ ...formData, modules: next });
-                          }} className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500" />
+                          }} className="mt-0.5 w-4 h-4 rounded text-status-warning focus:ring-ring" />
                           <span>
-                            <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200">{m.name}</span>
-                            <span className="block text-[10px] text-slate-400">{m.description}</span>
+                            <span className="block text-xs font-semibold text-foreground ">{m.name}</span>
+                            <span className="block text-[10px] text-muted-foreground">{m.description}</span>
                           </span>
                         </span>
-                        <span className="font-mono text-xs font-bold text-amber-600 dark:text-amber-400">R$ {formatCents(m.monthly_fee_cents)}</span>
+                        <span className="font-mono text-xs font-bold text-status-warning ">R$ {formatCents(m.monthly_fee_cents)}</span>
                       </label>
                     );
                   })}
@@ -1158,12 +1147,12 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               </div>
 
               {/* Domínio customizado */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="p-3.5 rounded-xl border border-border space-y-3">
                 <label className="flex items-start gap-2 cursor-pointer">
-                  <input type="checkbox" checked={formData.customDomainEnabled} onChange={(e) => setFormData({ ...formData, customDomainEnabled: e.target.checked })} className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500" />
+                  <input type="checkbox" checked={formData.customDomainEnabled} onChange={(e) => setFormData({ ...formData, customDomainEnabled: e.target.checked })} className="mt-0.5 w-4 h-4 rounded text-status-warning focus:ring-ring" />
                   <span>
-                    <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-amber-500" /> Domínio customizado (subdomínio ou domínio da prefeitura) — opcional</span>
-                    <span className="block text-[10px] text-slate-500">Acesso pelo próprio domínio do cliente. Taxa mensal adicional.</span>
+                    <span className="block text-xs font-semibold text-foreground flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-status-warning" /> Domínio customizado (subdomínio ou domínio da prefeitura) — opcional</span>
+                    <span className="block text-[10px] text-muted-foreground">Acesso pelo próprio domínio do cliente. Taxa mensal adicional.</span>
                   </span>
                 </label>
                 {formData.customDomainEnabled && (
@@ -1179,9 +1168,9 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               </div>
 
               {/* Resumo MRR */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-                <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5"><DollarSign className="w-4 h-4" /> Receita mensal recorrente estimada</span>
-                <span className="font-mono text-sm font-extrabold text-emerald-700 dark:text-emerald-300">R$ {formatCents(previewMrrCents)}/mês</span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-status-success-bg/70 border border-status-success-border ">
+                <span className="text-xs font-semibold text-primary flex items-center gap-1.5"><DollarSign className="w-4 h-4" /> Receita mensal recorrente estimada</span>
+                <span className="font-mono text-sm font-extrabold text-primary ">R$ {formatCents(previewMrrCents)}/mês</span>
               </div>
 
             </form>
@@ -1192,7 +1181,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         open={!!diagnosticTenant}
         onClose={() => setDiagnosticTenant(null)}
         title="Diagnóstico de Organograma (Read-Only)"
-        icon={<Network className="w-5 h-5 text-emerald-600" />}
+        icon={<Network className="w-5 h-5 text-primary" />}
         size="xl"
         footer={<Button variant="outline" onClick={() => setDiagnosticTenant(null)}>Fechar</Button>}
       >
@@ -1200,29 +1189,29 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           <div className="flex flex-col">
             <span className="text-xs font-mono font-bold text-muted-foreground -mt-2 mb-2">{diagnosticTenant.name} ({diagnosticTenant.slug})</span>
 
-            <div className="mb-4 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" /><span><strong>Escopo SYSTRAT:</strong> Visualização read-only. O CRUD é exclusivo do município.</span></div>
+            <div className="mb-4 p-3.5 rounded-xl bg-status-warning-bg border border-status-warning-border  text-status-warning  text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-status-warning shrink-0" /><span><strong>Escopo SYSTRAT:</strong> Visualização read-only. O CRUD é exclusivo do município.</span></div>
               <button type="button" onClick={() => handleSeedTenantOrgChart(diagnosticTenant.id)} disabled={isSeedingOrgChart} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all shrink-0 disabled:opacity-50">
                 <RefreshCw className={`w-3.5 h-3.5 ${isSeedingOrgChart ? 'animate-spin' : ''}`} />
                 {isSeedingOrgChart ? 'Semeando...' : 'Inicializar / Semear Organograma'}
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 min-h-[260px]">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 rounded-2xl bg-muted border border-border  min-h-[260px]">
               {isLoadingOrgChart ? (
-                <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-500"><RefreshCw className="w-7 h-7 animate-spin text-emerald-600" /><span className="text-xs font-mono">Consultando árvore hierárquica...</span></div>
+                <div className="py-16 flex flex-col items-center justify-center gap-2 text-muted-foreground"><RefreshCw className="w-7 h-7 animate-spin text-primary" /><span className="text-xs font-mono">Consultando árvore hierárquica...</span></div>
               ) : orgChartTree && orgChartTree.length > 0 ? (
                 <div className="space-y-3 font-mono text-xs">
                   {orgChartTree.map(function renderNode(node: any, depth = 0): React.ReactNode {
                     return (
                       <div key={node.id} className="space-y-2">
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs" style={{ marginLeft: `${depth * 20}px` }}>
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border  shadow-2xs" style={{ marginLeft: `${depth * 20}px` }}>
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="font-bold text-[#0c326f] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 tabular-nums">{node.code}</span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate font-sans">{node.name}</span>
-                            <span className="text-[11px] uppercase font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{node.type}</span>
+                            <span className="font-bold text-primary bg-accent  px-2 py-0.5 rounded border border-primary/30  tabular-nums">{node.code}</span>
+                            <span className="font-bold text-foreground truncate font-sans">{node.name}</span>
+                            <span className="text-[11px] uppercase font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">{node.type}</span>
                           </div>
-                          <div className="flex items-center gap-3 text-[11px] text-slate-500 tabular-nums"><span>Nível {node.level}</span><span>Path: {node.path}</span></div>
+                          <div className="flex items-center gap-3 text-[11px] text-muted-foreground tabular-nums"><span>Nível {node.level}</span><span>Path: {node.path}</span></div>
                         </div>
                         {node.children && node.children.length > 0 && (
                           <div className="space-y-2">{node.children.map((c: any) => renderNode(c, depth + 1))}</div>
@@ -1233,8 +1222,8 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
                 </div>
               ) : (
                 <div className="py-16 text-center space-y-3">
-                  <Landmark className="w-10 h-10 text-slate-400 mx-auto" />
-                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-300">Nenhuma unidade cadastrada.</span>
+                  <Landmark className="w-10 h-10 text-muted-foreground mx-auto" />
+                  <span className="block text-xs font-bold text-foreground ">Nenhuma unidade cadastrada.</span>
                   <button type="button" onClick={() => handleSeedTenantOrgChart(diagnosticTenant.id)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all"><Plus className="w-4 h-4" />Inicializar Organograma Padrão</button>
                 </div>
               )}
@@ -1259,8 +1248,8 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           </>
         }
       >
-            <form id="batch-provision-form" onSubmit={handleBatchProvision} className="space-y-4">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+            <form noValidate id="batch-provision-form" onSubmit={handleBatchProvision} className="space-y-4">
+              <p className="text-xs text-muted-foreground ">
                 Provisionar o módulo selecionado em <strong>{selectedTenantIds.length}</strong> tenant(s).
                 Ação de super admin SYSTRAT — auditable e irreversível sem intervenção manual.
               </p>
@@ -1306,21 +1295,21 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               </div>
 
               {batchResult && (
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">Resultado do Último Provisionamento</h4>
+                <div className="p-3 rounded-xl bg-muted border border-border  space-y-2">
+                  <h4 className="text-xs font-semibold text-foreground ">Resultado do Último Provisionamento</h4>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="text-emerald-600 dark:text-emerald-400 font-mono">
+                    <div className="text-primary font-mono">
                       Sucessos: {batchResult.results.filter(r => r.success).length}
                     </div>
-                    <div className="text-rose-600 dark:text-rose-400 font-mono">
+                    <div className="text-status-danger font-mono">
                       Falhas: {batchResult.results.filter(r => !r.success).length}
                     </div>
                   </div>
                   <details className="mt-2">
-                    <summary className="text-xs text-slate-500 cursor-pointer">Ver detalhes</summary>
+                    <summary className="text-xs text-muted-foreground cursor-pointer">Ver detalhes</summary>
                     <div className="mt-1 max-h-32 overflow-y-auto custom-scrollbar text-[10px] font-mono space-y-1">
                       {batchResult.results.map((r, i) => (
-                        <div key={i} className={r.success ? 'text-emerald-600' : 'text-rose-600'}>
+                        <div key={i} className={r.success ? 'text-primary' : 'text-status-danger'}>
                           {r.success ? '✓' : '✗'} Tenant #{r.tenant_id} — {r.module_alias} {r.error ? `(${r.error})` : ''}
                         </div>
                       ))}
@@ -1337,7 +1326,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         open={!!onboardingTenant}
         onClose={closeAdminsModal}
         title={onboardingTenant ? `Administradores — ${onboardingTenant.name}` : 'Administradores'}
-        icon={<KeyRound className="w-4 h-4 text-amber-500" />}
+        icon={<KeyRound className="w-4 h-4 text-status-warning" />}
         size="2xl"
         footer={
           <>
@@ -1367,7 +1356,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
             </p>
 
             {tenantAdmins.length > 0 && (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl">
+              <ul className="divide-y divide-border border border-border  rounded-xl">
                 {tenantAdmins.map((admin) => {
                   const active = isActiveTenantAdmin(admin);
                   return (
@@ -1391,14 +1380,13 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
             )}
 
             {deactivatingAdmin && (
-              <form id="deactivate-admin-form" onSubmit={handleDeactivateAdmin} className="space-y-3 border border-rose-200 dark:border-rose-900/50 rounded-xl p-3">
+              <form noValidate id="deactivate-admin-form" onSubmit={handleDeactivateAdmin} className="space-y-3 border border-status-danger-border rounded-xl p-3">
                 <p className="text-xs text-muted-foreground">
                   Desativar <strong>{deactivatingAdmin.email}</strong> como administrador. A ação fica registrada na auditoria.
                   Se for o último administrador ativo, a desativação é tratada como <strong>emergência</strong> e o tenant ficará sem administrador até que outro seja cadastrado.
                 </p>
                 <Input
                   label="Motivo *"
-                  required
                   minLength={10}
                   value={deactivateReason}
                   onChange={(e) => setDeactivateReason(e.target.value)}
@@ -1413,7 +1401,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
             )}
 
             {adminFormOpen && !deactivatingAdmin && (
-              <form id="onboarding-form" onSubmit={handleOnboarding} className="space-y-4">
+              <form noValidate id="onboarding-form" onSubmit={handleOnboarding} className="space-y-4">
                 <p className="text-xs font-semibold">{editingAdmin ? `Editar ${editingAdmin.email}` : 'Novo administrador'}</p>
                 <Input
                   label={editingAdmin ? 'Nome *' : 'Nome'}
@@ -1466,7 +1454,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         open={!!deleteConfirmId}
         onClose={() => setDeleteConfirmId(null)}
         title="Excluir Organização"
-        icon={<AlertTriangle className="w-5 h-5 text-rose-500" />}
+        icon={<AlertTriangle className="w-5 h-5 text-status-danger" />}
         size="sm"
         footer={
           <>
