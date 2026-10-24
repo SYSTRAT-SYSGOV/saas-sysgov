@@ -32,6 +32,7 @@ final class ModuleCatalogController
             Module::query()
                 ->whereNotIn('alias', ['admin', 'client', 'rh', 'cemiterio', 'users', 'dashboard', 'procurement'])
                 ->orderBy('name')
+                ->with(['menuGroup', 'permissions'])
                 ->paginate($perPage)
         );
     }

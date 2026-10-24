@@ -100,7 +100,7 @@ export function ModuleCatalogPage() {
       description: module.description || '',
       enabled: module.enabled,
       monthly_fee_cents: module.monthly_fee_cents || 0,
-      default_permissions: module.permissions.map(p => p.slug).join(', '),
+      default_permissions: (module.permissions ?? []).map(p => p.slug).join(', '),
       menu: module.menu_group ? {
         label: module.menu_group.name,
         icon: module.menu_group.icon,
