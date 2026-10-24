@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Field } from '@/components/ui/Field';
-import { ApiRequestError } from '@/api/errors';
+import { api } from '@/api/client';
 import { Plus, Edit, Trash2, ToggleRight, ToggleLeft, Search, Loader2, Shield, Key, LayoutDashboard, ChevronDown, X, Save, ArrowLeft } from 'lucide-react';
 import { Modal, Button, DataTable, ConfirmDialog, PageHeader, ActionsMenu, Switch } from '@sysgov/ui';
 import { useFormValidationModal } from '@sysgov/ui';
@@ -65,10 +65,8 @@ export function ModuleCatalogPage() {
     setLoading(true);
     try {
       // O catálogo é pequeno: carrega tudo e deixa a grade padrão (busca, paginação, exportação) trabalhar no cliente.
-      const res = await fetch('/api/admin/module-catalog?per_page=500');
-      if (!res.ok) throw new Error('Falha ao carregar módulos');
-      const data = await res.json();
-      setModules(data.data);
+      const res = await api.get<{ data: Module[] }>('/api/admin/module-catalog?per_page=500');
+      setModules(res.data);
     } catch (error) {
       console.error('Erro ao buscar módulos:', error);
     } finally {
@@ -130,20 +128,10 @@ export function ModuleCatalogPage() {
         menu: formData.menu.label ? formData.menu : undefined,
       };
 
-      const url = editingModule
-        ? `/api/admin/module-catalog/${editingModule.id}`
-        : '/api/admin/module-catalog';
-      const method = editingModule ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new ApiRequestError(err.message || 'Erro ao salvar módulo', res.status, err);
+      if (editingModule) {
+        await api.put(`/api/admin/module-catalog/${editingModule.id}`, payload);
+      } else {
+        await api.post('/api/admin/module-catalog', payload);
       }
 
       setDialogOpen(false);
@@ -164,10 +152,7 @@ export function ModuleCatalogPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      const res = await fetch(`/api/admin/module-catalog/${deleteTarget.id}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Falha ao excluir módulo');
+      await api.delete(`/api/admin/module-catalog/${deleteTarget.id}`);
       setDeleteDialogOpen(false);
       fetchModules();
     } catch (error) {
@@ -178,10 +163,7 @@ export function ModuleCatalogPage() {
 
   const handleToggle = async (module: Module) => {
     try {
-      const res = await fetch(`/api/admin/module-catalog/${module.id}/toggle`, {
-        method: 'PATCH',
-      });
-      if (!res.ok) throw new Error('Falha ao alternar status');
+      await api.patch(`/api/admin/module-catalog/${module.id}/toggle`);
       fetchModules();
     } catch (error) {
       console.error('Erro ao alternar:', error);
