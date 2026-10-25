@@ -68,6 +68,14 @@ final class EducaSchoolClass extends Model
     }
 
     /**
+     * @return BelongsTo<EducaSchool, self>
+     */
+    public function school(): BelongsTo
+    {
+        return $this->escola();
+    }
+
+    /**
      * @return BelongsTo<EducaAcademicYear, self>
      */
     public function anoLetivo(): BelongsTo
@@ -98,4 +106,32 @@ final class EducaSchoolClass extends Model
     {
         return $this->belongsTo(EducaCurriculumMatrix::class, 'matrix_id');
     }
+
+    public function timetables(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EducaTimetable::class, 'school_class_id');
+    }
+
+    public function activeTimetable(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(EducaTimetable::class, 'school_class_id')->where('ativo', true);
+    }
+
+    /**
+     * @return HasMany<EducaConselhoPreConselho>
+     */
+    public function preConselhos(): HasMany
+    {
+        return $this->hasMany(EducaConselhoPreConselho::class, 'school_class_id');
+    }
+
+    /**
+     * @return HasMany<EducaConselhoAta>
+     */
+    public function conselhoAtas(): HasMany
+    {
+        return $this->hasMany(EducaConselhoAta::class, 'school_class_id');
+    }
 }
+
+

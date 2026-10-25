@@ -45,4 +45,9 @@ final class EducaCurriculumComponent extends Model
     {
         return $this->belongsTo(EducaKnowledgeArea::class, 'knowledge_area_id');
     }
+
+    public function timetableLessons(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EducaTimetableLesson::class, 'curriculum_component_id');
+    }
 }

@@ -100,6 +100,15 @@ Route::prefix('core')->group(function (): void {
     Route::put('/turmas/{turmaId}', [\Modules\Educa\Http\Controllers\SchoolClassController::class, 'update'])->name('educa.core.turmas.update');
     Route::delete('/turmas/{turmaId}', [\Modules\Educa\Http\Controllers\SchoolClassController::class, 'destroy'])->name('educa.core.turmas.destroy');
     Route::get('/turmas/{turmaId}/calendario', [\Modules\Educa\Http\Controllers\CalendarEventController::class, 'calendarioTurma'])->name('educa.core.turmas.calendario');
+
+    // ── Quadro de Horários e Grade Semanal da Turma ───────────────────────────
+    Route::get('/turmas/{turmaId}/quadro-horario', [\Modules\Educa\Http\Controllers\TimetableController::class, 'obterQuadro'])->name('educa.core.turmas.quadro.show');
+    Route::post('/turmas/{turmaId}/quadro-horario', [\Modules\Educa\Http\Controllers\TimetableController::class, 'salvarQuadro'])->name('educa.core.turmas.quadro.store');
+    Route::put('/turmas/{turmaId}/quadro-horario/slots', [\Modules\Educa\Http\Controllers\TimetableController::class, 'sincronizarSlots'])->name('educa.core.turmas.quadro.slots');
+    Route::post('/turmas/{turmaId}/quadro-horario/aulas', [\Modules\Educa\Http\Controllers\TimetableController::class, 'alocarAula'])->name('educa.core.turmas.quadro.aulas.store');
+    Route::delete('/turmas/{turmaId}/quadro-horario/aulas/{aulaId}', [\Modules\Educa\Http\Controllers\TimetableController::class, 'removerAula'])->name('educa.core.turmas.quadro.aulas.destroy');
+    Route::post('/turmas/{turmaId}/quadro-horario/aulas/{aulaId}/substituto', [\Modules\Educa\Http\Controllers\TimetableController::class, 'registrarSubstituto'])->name('educa.core.turmas.quadro.aulas.substituto');
+    Route::get('/docentes/{servidorId}/grade-semanal', [\Modules\Educa\Http\Controllers\TimetableController::class, 'gradeDocente'])->name('educa.core.docentes.grade');
 });
 
 // ── Submódulo Secretaria: Matrículas, Enturmações e Ficha do Aluno ─────────
@@ -123,6 +132,10 @@ Route::prefix('secretaria')->middleware('module-access:educa-secretaria')->group
 Route::prefix('pedagogico')->middleware('module-access:educa-pedagogico')->group(function (): void {
     // Diário de Classe
     Route::get('/diarios', [\Modules\Educa\Http\Controllers\ClassDiaryController::class, 'index'])->name('educa.pedagogico.diarios.index');
+    Route::get('/turmas/{turmaId}/diarios/sugestoes-dia', function (\Illuminate\Http\Request $request, string $turmaId, \Modules\Educa\Services\ClassDiaryService $diaryService): \Illuminate\Http\JsonResponse {
+        $dataAula = (string) $request->query('data_aula', date('Y-m-d'));
+        return response()->json(['data' => $diaryService->obterSugestoesAulasDoDia($turmaId, $dataAula)]);
+    })->name('educa.pedagogico.diarios.sugestoes');
     Route::post('/diarios', [\Modules\Educa\Http\Controllers\ClassDiaryController::class, 'store'])->name('educa.pedagogico.diarios.store');
     Route::get('/diarios/{diarioId}', [\Modules\Educa\Http\Controllers\ClassDiaryController::class, 'show'])->name('educa.pedagogico.diarios.show');
 
@@ -230,4 +243,120 @@ Route::prefix('comunicacao')->middleware('module-access:educa-comunicacao')->gro
 
     // Mensageria e Notificações Outbox
     Route::post('/notificacoes/infrequencia', [\Modules\Educa\Http\Controllers\NotificationController::class, 'dispararInfrequencia'])->name('educa.comunicacao.notificacoes.infrequencia');
+});
+
+// ── Submódulo Alimentação Escolar (PNAE): Cardápios, Restrições e Refeições ──
+Route::prefix('merenda')->middleware('module-access:educa-merenda')->group(function (): void {
+    // Cardápios e Itens Nutricionais
+    Route::get('/cardapios', [\Modules\Educa\Http\Controllers\MenuController::class, 'index'])->name('educa.merenda.cardapios.index');
+    Route::post('/cardapios', [\Modules\Educa\Http\Controllers\MenuController::class, 'store'])->name('educa.merenda.cardapios.store');
+    Route::get('/cardapios/{menuId}', [\Modules\Educa\Http\Controllers\MenuController::class, 'show'])->name('educa.merenda.cardapios.show');
+    Route::put('/cardapios/{menuId}', [\Modules\Educa\Http\Controllers\MenuController::class, 'update'])->name('educa.merenda.cardapios.update');
+    Route::post('/cardapios/{menuId}/itens', [\Modules\Educa\Http\Controllers\MenuController::class, 'storeItem'])->name('educa.merenda.cardapios.itens.store');
+    Route::delete('/cardapios/itens/{itemId}', [\Modules\Educa\Http\Controllers\MenuController::class, 'destroyItem'])->name('educa.merenda.cardapios.itens.destroy');
+    Route::post('/cardapios/{menuId}/homologar', [\Modules\Educa\Http\Controllers\MenuController::class, 'homologar'])->name('educa.merenda.cardapios.homologar');
+    Route::post('/cardapios/{menuId}/revogar', [\Modules\Educa\Http\Controllers\MenuController::class, 'revogar'])->name('educa.merenda.cardapios.revogar');
+    Route::get('/cardapios/{menuId}/conformidade', [\Modules\Educa\Http\Controllers\MenuController::class, 'conformidade'])->name('educa.merenda.cardapios.conformidade');
+
+    // Restrições Alimentares e Laudos Médicos
+    Route::get('/restricoes', [\Modules\Educa\Http\Controllers\DietaryRestrictionController::class, 'index'])->name('educa.merenda.restricoes.index');
+    Route::post('/restricoes', [\Modules\Educa\Http\Controllers\DietaryRestrictionController::class, 'store'])->name('educa.merenda.restricoes.store');
+    Route::get('/restricoes/{restricaoId}', [\Modules\Educa\Http\Controllers\DietaryRestrictionController::class, 'show'])->name('educa.merenda.restricoes.show');
+    Route::put('/restricoes/{restricaoId}', [\Modules\Educa\Http\Controllers\DietaryRestrictionController::class, 'update'])->name('educa.merenda.restricoes.update');
+    Route::post('/restricoes/{restricaoId}/inativar', [\Modules\Educa\Http\Controllers\DietaryRestrictionController::class, 'inativar'])->name('educa.merenda.restricoes.inativar');
+    Route::get('/restricoes/alertas/escola/{schoolId}', [\Modules\Educa\Http\Controllers\DietaryRestrictionController::class, 'alertasEscola'])->name('educa.merenda.restricoes.alertas.escola');
+
+    // Refeições Diárias e Desperdício
+    Route::get('/refeicoes', [\Modules\Educa\Http\Controllers\MealLogController::class, 'index'])->name('educa.merenda.refeicoes.index');
+    Route::post('/refeicoes', [\Modules\Educa\Http\Controllers\MealLogController::class, 'store'])->name('educa.merenda.refeicoes.store');
+    Route::get('/refeicoes/{refeicaoId}', [\Modules\Educa\Http\Controllers\MealLogController::class, 'show'])->name('educa.merenda.refeicoes.show');
+    Route::put('/refeicoes/{refeicaoId}', [\Modules\Educa\Http\Controllers\MealLogController::class, 'update'])->name('educa.merenda.refeicoes.update');
+    Route::delete('/refeicoes/{refeicaoId}', [\Modules\Educa\Http\Controllers\MealLogController::class, 'destroy'])->name('educa.merenda.refeicoes.destroy');
+    Route::get('/refeicoes/relatorios/desperdicio', [\Modules\Educa\Http\Controllers\MealLogController::class, 'relatorioDesperdicio'])->name('educa.merenda.refeicoes.relatorios.desperdicio');
+});
+
+// ── Submódulo Gestão de Vagas e Fila de Espera Unificada ───────────────────
+Route::prefix('vagas')->group(function (): void {
+    // Consulta pública transparente (Lei 14.685/2023)
+    Route::get('/fila-espera/consulta-publica', [\Modules\Educa\Http\Controllers\WaitlistController::class, 'consultaPublica'])
+        ->name('educa.vagas.fila.consulta-publica');
+
+    // Capacidade da Rede
+    Route::get('/capacidades', [\Modules\Educa\Http\Controllers\SchoolCapacityController::class, 'index'])->name('educa.vagas.capacidades.index');
+
+    Route::post('/capacidades', [\Modules\Educa\Http\Controllers\SchoolCapacityController::class, 'store'])->name('educa.vagas.capacidades.store');
+    Route::get('/capacidades/{capacidadeId}', [\Modules\Educa\Http\Controllers\SchoolCapacityController::class, 'show'])->name('educa.vagas.capacidades.show');
+    Route::put('/capacidades/{capacidadeId}', [\Modules\Educa\Http\Controllers\SchoolCapacityController::class, 'update'])->name('educa.vagas.capacidades.update');
+
+    // Inscrições de Pré-Matrícula e Triagem
+    Route::get('/inscricoes', [\Modules\Educa\Http\Controllers\EnrollmentApplicationController::class, 'index'])->name('educa.vagas.inscricoes.index');
+    Route::post('/inscricoes', [\Modules\Educa\Http\Controllers\EnrollmentApplicationController::class, 'store'])->name('educa.vagas.inscricoes.store');
+    Route::get('/inscricoes/{inscricaoId}', [\Modules\Educa\Http\Controllers\EnrollmentApplicationController::class, 'show'])->name('educa.vagas.inscricoes.show');
+    Route::post('/inscricoes/{inscricaoId}/analisar', [\Modules\Educa\Http\Controllers\EnrollmentApplicationController::class, 'analisar'])->name('educa.vagas.inscricoes.analisar');
+
+    // Fila de Espera e Convocação Nominal
+    Route::get('/fila-espera', [\Modules\Educa\Http\Controllers\WaitlistController::class, 'index'])->name('educa.vagas.fila.index');
+    Route::post('/fila-espera/reclassificar', [\Modules\Educa\Http\Controllers\WaitlistController::class, 'reclassificar'])->name('educa.vagas.fila.reclassificar');
+    Route::post('/fila-espera/{waitlistId}/convocar', [\Modules\Educa\Http\Controllers\WaitlistController::class, 'convocar'])->name('educa.vagas.fila.convocar');
+    Route::post('/fila-espera/{waitlistId}/converter-matricula', [\Modules\Educa\Http\Controllers\WaitlistController::class, 'converterMatricula'])->name('educa.vagas.fila.converter-matricula');
+    Route::post('/fila-espera/{waitlistId}/desistencia', [\Modules\Educa\Http\Controllers\WaitlistController::class, 'desistencia'])->name('educa.vagas.fila.desistencia');
+});
+
+// ── Submódulo Educação Especial e Atendimento Educacional Especializado (AEE) ──
+Route::prefix('aee')->group(function (): void {
+    // Prontuários PAEE e Laudos Médicos
+    Route::get('/perfis', [\Modules\Educa\Http\Controllers\AeeStudentProfileController::class, 'index'])->name('educa.aee.perfis.index');
+    Route::post('/perfis', [\Modules\Educa\Http\Controllers\AeeStudentProfileController::class, 'store'])->name('educa.aee.perfis.store');
+    Route::get('/perfis/{perfilId}', [\Modules\Educa\Http\Controllers\AeeStudentProfileController::class, 'show'])->name('educa.aee.perfis.show');
+    Route::put('/perfis/{perfilId}', [\Modules\Educa\Http\Controllers\AeeStudentProfileController::class, 'update'])->name('educa.aee.perfis.update');
+    Route::post('/perfis/{perfilId}/laudos', [\Modules\Educa\Http\Controllers\AeeStudentProfileController::class, 'anexarLaudo'])->name('educa.aee.perfis.laudos.store');
+    Route::delete('/perfis/{perfilId}', [\Modules\Educa\Http\Controllers\AeeStudentProfileController::class, 'destroy'])->name('educa.aee.perfis.destroy');
+
+    // Plano Educacional Individualizado (PEI) e Metas
+    Route::get('/peis', [\Modules\Educa\Http\Controllers\AeePeiController::class, 'index'])->name('educa.aee.peis.index');
+    Route::post('/peis', [\Modules\Educa\Http\Controllers\AeePeiController::class, 'store'])->name('educa.aee.peis.store');
+    Route::get('/peis/{peiId}', [\Modules\Educa\Http\Controllers\AeePeiController::class, 'show'])->name('educa.aee.peis.show');
+    Route::put('/peis/{peiId}', [\Modules\Educa\Http\Controllers\AeePeiController::class, 'update'])->name('educa.aee.peis.update');
+    Route::post('/peis/{peiId}/metas', [\Modules\Educa\Http\Controllers\AeePeiController::class, 'salvarMeta'])->name('educa.aee.peis.metas.store');
+    Route::post('/peis/{peiId}/parecer', [\Modules\Educa\Http\Controllers\AeePeiController::class, 'registrarParecer'])->name('educa.aee.peis.parecer.store');
+
+    // Salas de Recursos Multifuncionais (SRM) e Matrícula de Dupla Entrada
+    Route::get('/salas-recursos', [\Modules\Educa\Http\Controllers\AeeResourceRoomController::class, 'index'])->name('educa.aee.salas.index');
+    Route::post('/salas-recursos', [\Modules\Educa\Http\Controllers\AeeResourceRoomController::class, 'store'])->name('educa.aee.salas.store');
+    Route::get('/salas-recursos/{salaId}', [\Modules\Educa\Http\Controllers\AeeResourceRoomController::class, 'show'])->name('educa.aee.salas.show');
+    Route::put('/salas-recursos/{salaId}', [\Modules\Educa\Http\Controllers\AeeResourceRoomController::class, 'update'])->name('educa.aee.salas.update');
+    Route::post('/salas-recursos/{salaId}/matriculas', [\Modules\Educa\Http\Controllers\AeeResourceRoomController::class, 'enturmar'])->name('educa.aee.salas.matriculas.store');
+    Route::delete('/salas-recursos/matriculas/{matriculaId}', [\Modules\Educa\Http\Controllers\AeeResourceRoomController::class, 'encerrarMatricula'])->name('educa.aee.salas.matriculas.destroy');
+
+    // Alocação de Profissionais de Apoio (Cuidadores e Intérpretes)
+    Route::get('/profissionais-apoio/alocacoes', [\Modules\Educa\Http\Controllers\AeeSupportAllocationController::class, 'index'])->name('educa.aee.apoio.alocacoes.index');
+    Route::post('/profissionais-apoio/alocacoes', [\Modules\Educa\Http\Controllers\AeeSupportAllocationController::class, 'store'])->name('educa.aee.apoio.alocacoes.store');
+    Route::delete('/profissionais-apoio/alocacoes/{alocacaoId}', [\Modules\Educa\Http\Controllers\AeeSupportAllocationController::class, 'destroy'])->name('educa.aee.apoio.alocacoes.destroy');
+});
+
+// ── Submódulo Conselho de Classe e Pré-Conselho ──────────────────────────────
+Route::prefix('conselho')->group(function (): void {
+    // Cronogramas
+    Route::get('/cronogramas', [\Modules\Educa\Http\Controllers\ConselhoCronogramaController::class, 'index'])->name('educa.conselho.cronogramas.index');
+    Route::post('/cronogramas', [\Modules\Educa\Http\Controllers\ConselhoCronogramaController::class, 'store'])->name('educa.conselho.cronogramas.store');
+    Route::get('/cronogramas/{cronogramaId}', [\Modules\Educa\Http\Controllers\ConselhoCronogramaController::class, 'show'])->name('educa.conselho.cronogramas.show');
+    Route::put('/cronogramas/{cronogramaId}', [\Modules\Educa\Http\Controllers\ConselhoCronogramaController::class, 'update'])->name('educa.conselho.cronogramas.update');
+    Route::delete('/cronogramas/{cronogramaId}', [\Modules\Educa\Http\Controllers\ConselhoCronogramaController::class, 'destroy'])->name('educa.conselho.cronogramas.destroy');
+
+    // Pré-Conselho e Fichas Diagnósticas
+    Route::get('/pre-conselhos', [\Modules\Educa\Http\Controllers\PreConselhoController::class, 'index'])->name('educa.conselho.pre_conselhos.index');
+    Route::post('/pre-conselhos', [\Modules\Educa\Http\Controllers\PreConselhoController::class, 'store'])->name('educa.conselho.pre_conselhos.store');
+    Route::get('/pre-conselhos/{preConselhoId}', [\Modules\Educa\Http\Controllers\PreConselhoController::class, 'show'])->name('educa.conselho.pre_conselhos.show');
+    Route::post('/pre-conselhos/{preConselhoId}/alunos', [\Modules\Educa\Http\Controllers\PreConselhoController::class, 'salvarAluno'])->name('educa.conselho.pre_conselhos.alunos.store');
+    Route::delete('/pre-conselhos/alunos/{alunoId}', [\Modules\Educa\Http\Controllers\PreConselhoController::class, 'removerAluno'])->name('educa.conselho.pre_conselhos.alunos.destroy');
+
+    // Atas Deliberativas e Membros
+    Route::get('/atas', [\Modules\Educa\Http\Controllers\ConselhoAtaController::class, 'index'])->name('educa.conselho.atas.index');
+    Route::post('/atas', [\Modules\Educa\Http\Controllers\ConselhoAtaController::class, 'store'])->name('educa.conselho.atas.store');
+    Route::get('/atas/{ataId}', [\Modules\Educa\Http\Controllers\ConselhoAtaController::class, 'show'])->name('educa.conselho.atas.show');
+    Route::put('/atas/{ataId}', [\Modules\Educa\Http\Controllers\ConselhoAtaController::class, 'update'])->name('educa.conselho.atas.update');
+    Route::post('/atas/{ataId}/deliberacoes', [\Modules\Educa\Http\Controllers\ConselhoAtaController::class, 'registrarDeliberacaoAluno'])->name('educa.conselho.atas.deliberacoes.store');
+    Route::post('/atas/{ataId}/membros', [\Modules\Educa\Http\Controllers\ConselhoAtaController::class, 'registrarMembros'])->name('educa.conselho.atas.membros.store');
+    Route::post('/atas/{ataId}/finalizar', [\Modules\Educa\Http\Controllers\ConselhoAtaController::class, 'finalizar'])->name('educa.conselho.atas.finalizar');
+    Route::post('/atas/{ataId}/homologar', [\Modules\Educa\Http\Controllers\ConselhoAtaController::class, 'homologar'])->name('educa.conselho.atas.homologar');
 });

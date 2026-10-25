@@ -1,0 +1,810 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa - Gestão de Vagas, Fila de Espera Unificada e Pré-Matrícula API
+  version: 1.0.0
+  description: >-
+    Especificação formal da API para parametrização da capacidade de vagas escolares,
+    inscrições de pré-matrícula municipal, motor determinístico de classificação e
+    transparência ativa da fila de espera em conformidade com a Lei Federal nº 14.685/2023.
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: https://api.sysgov.local
+    description: Servidor Local de Desenvolvimento
+
+security:
+  - sanctum: []
+
+paths:
+  /api/educa/vagas/capacidades:
+    get:
+      summary: Lista capacidades de oferta de vagas por escola, etapa e turno
+      operationId: listarCapacidades
+      tags:
+        - Capacidade de Vagas
+      parameters:
+        - name: school_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: academic_year_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: etapa_ensino
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: turno
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de capacidades escolares
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SchoolCapacity'
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      summary: Cadastra nova oferta/capacidade de vagas para uma unidade escolar
+      operationId: criarCapacidade
+      tags:
+        - Capacidade de Vagas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolCapacityInput'
+      responses:
+        '201':
+          description: Capacidade cadastrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SchoolCapacity'
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/educa/vagas/capacidades/{id}:
+    get:
+      summary: Obtém os detalhes de capacidade de uma etapa/turno
+      operationId: obterCapacidade
+      tags:
+        - Capacidade de Vagas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da capacidade
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SchoolCapacity'
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      summary: Atualiza a capacidade máxima ou salas ofertadas
+      operationId: atualizarCapacidade
+      tags:
+        - Capacidade de Vagas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantidade_salas:
+                  type: integer
+                  minimum: 1
+                capacidade_maxima_alunos:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Capacidade atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SchoolCapacity'
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/educa/vagas/inscricoes:
+    get:
+      summary: Lista inscrições de pré-matrícula escolar
+      operationId: listarInscricoes
+      tags:
+        - Inscrições e Pré-Matrícula
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [inscrito, em_analise, classificado, convocado, matriculado, indeferido, desistente]
+        - name: etapa_ensino
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: school_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: candidato_pessoa_id
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de solicitações de vaga
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EnrollmentApplication'
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      summary: Registra nova solicitação de vaga / pré-matrícula
+      operationId: criarInscricao
+      tags:
+        - Inscrições e Pré-Matrícula
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentApplicationInput'
+      responses:
+        '201':
+          description: Solicitação registrada com protocolo gerado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/EnrollmentApplication'
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/educa/vagas/inscricoes/{id}:
+    get:
+      summary: Consulta detalhes da solicitação de pré-matrícula
+      operationId: obterInscricao
+      tags:
+        - Inscrições e Pré-Matrícula
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da inscrição
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/EnrollmentApplication'
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /api/educa/vagas/inscricoes/{id}/analisar:
+    post:
+      summary: Realiza análise documental e validação dos critérios socioeconômicos
+      operationId: analisarInscricao
+      tags:
+        - Inscrições e Pré-Matrícula
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [classificado, indeferido]
+                criterio_pcd_validado:
+                  type: boolean
+                criterio_bolsa_familia_validado:
+                  type: boolean
+                criterio_mae_trabalhadora_validado:
+                  type: boolean
+                criterio_irmao_escola_validado:
+                  type: boolean
+                criterio_zoneamento_validado:
+                  type: boolean
+                observacoes_analise:
+                  type: string
+              required:
+                - status
+      responses:
+        '200':
+          description: Inscrição analisada e pontuação recalculada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/EnrollmentApplication'
+                  message:
+                    type: string
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/educa/vagas/fila:
+    get:
+      summary: Consulta a fila de espera ordenada por pontuação e prioridade legal
+      operationId: listarFilaEspera
+      tags:
+        - Fila de Espera Transparente
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: etapa_ensino
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [aguardando, convocado, matriculado, recusou_vaga, cancelado]
+      responses:
+        '200':
+          description: Fila de espera classificada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WaitlistItem'
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/educa/vagas/fila/reclassificar:
+    post:
+      summary: Reclassifica a ordem e posições da fila de espera
+      operationId: reclassificarFila
+      tags:
+        - Fila de Espera Transparente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                school_id:
+                  type: string
+                  format: uuid
+                etapa_ensino:
+                  type: string
+              required:
+                - school_id
+                - etapa_ensino
+      responses:
+        '200':
+          description: Fila reclassificada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_reclassificados:
+                    type: integer
+                  message:
+                    type: string
+                required:
+                  - total_reclassificados
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/educa/vagas/fila/{waitlistId}/convocar:
+    post:
+      summary: Convoca candidato da fila para apresentar matrícula
+      operationId: convocarCandidato
+      tags:
+        - Fila de Espera Transparente
+      parameters:
+        - name: waitlistId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dias_uteis_prazo:
+                  type: integer
+                  default: 5
+                  minimum: 1
+      responses:
+        '200':
+          description: Candidato convocado com SLA estabelecido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/WaitlistItem'
+                  message:
+                    type: string
+                required:
+                  - data
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/educa/vagas/fila/{waitlistId}/converter-matricula:
+    post:
+      summary: Converte convocação deferida em matrícula regular ativa
+      operationId: converterMatricula
+      tags:
+        - Fila de Espera Transparente
+      parameters:
+        - name: waitlistId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                course_id:
+                  type: string
+                  format: uuid
+                grade_id:
+                  type: string
+                  format: uuid
+                school_class_id:
+                  type: string
+                  format: uuid
+              required:
+                - course_id
+                - grade_id
+      responses:
+        '201':
+          description: Matrícula gerada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enrollment_id:
+                    type: string
+                    format: uuid
+                  codigo_matricula:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - enrollment_id
+                  - codigo_matricula
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/educa/vagas/consulta-publica/{protocolo}:
+    get:
+      summary: Consulta pública transparente da posição na fila (Lei 14.685/2023)
+      operationId: consultaPublicaFila
+      tags:
+        - Transparência Pública
+      security: []
+      parameters:
+        - name: protocolo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Informação anonimizada de posicionamento e status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWaitlistStatus'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+components:
+  schemas:
+    SchoolCapacity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        school_id:
+          type: string
+          format: uuid
+        academic_year_id:
+          type: string
+          format: uuid
+        etapa_ensino:
+          type: string
+        turno:
+          type: string
+        quantidade_salas:
+          type: integer
+        capacidade_maxima_alunos:
+          type: integer
+        vagas_ocupadas:
+          type: integer
+        vagas_reservadas:
+          type: integer
+        vagas_remanescentes:
+          type: integer
+        taxa_ocupacao_percentual:
+          type: number
+      required:
+        - id
+        - tenant_id
+        - school_id
+        - etapa_ensino
+        - turno
+        - capacidade_maxima_alunos
+
+    SchoolCapacityInput:
+      type: object
+      properties:
+        school_id:
+          type: string
+          format: uuid
+        academic_year_id:
+          type: string
+          format: uuid
+        etapa_ensino:
+          type: string
+        turno:
+          type: string
+        quantidade_salas:
+          type: integer
+          default: 1
+        capacidade_maxima_alunos:
+          type: integer
+          minimum: 1
+      required:
+        - school_id
+        - academic_year_id
+        - etapa_ensino
+        - turno
+        - capacidade_maxima_alunos
+
+    EnrollmentApplication:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        academic_year_id:
+          type: string
+          format: uuid
+        numero_protocolo:
+          type: string
+        candidato_pessoa_id:
+          type: integer
+        responsavel_pessoa_id:
+          type: integer
+        etapa_ensino:
+          type: string
+        turno_preferencial:
+          type: string
+        escola_preferencia_1_id:
+          type: string
+          format: uuid
+        escola_preferencia_2_id:
+          type: string
+          format: uuid
+        escola_preferencia_3_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        criterio_pcd:
+          type: boolean
+        criterio_bolsa_familia:
+          type: boolean
+        criterio_mae_trabalhadora:
+          type: boolean
+        criterio_irmao_escola:
+          type: boolean
+        criterio_zoneamento:
+          type: boolean
+        pontuacao_total:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - tenant_id
+        - numero_protocolo
+        - candidato_pessoa_id
+        - responsavel_pessoa_id
+        - etapa_ensino
+        - status
+        - pontuacao_total
+
+    EnrollmentApplicationInput:
+      type: object
+      properties:
+        academic_year_id:
+          type: string
+          format: uuid
+        candidato_pessoa_id:
+          type: integer
+        responsavel_pessoa_id:
+          type: integer
+        etapa_ensino:
+          type: string
+        turno_preferencial:
+          type: string
+        escola_preferencia_1_id:
+          type: string
+          format: uuid
+        escola_preferencia_2_id:
+          type: string
+          format: uuid
+        escola_preferencia_3_id:
+          type: string
+          format: uuid
+        criterio_pcd:
+          type: boolean
+        criterio_bolsa_familia:
+          type: boolean
+        criterio_mae_trabalhadora:
+          type: boolean
+        criterio_irmao_escola:
+          type: boolean
+        criterio_zoneamento:
+          type: boolean
+      required:
+        - academic_year_id
+        - candidato_pessoa_id
+        - responsavel_pessoa_id
+        - etapa_ensino
+        - escola_preferencia_1_id
+
+    WaitlistItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        application_id:
+          type: string
+          format: uuid
+        school_id:
+          type: string
+          format: uuid
+        etapa_ensino:
+          type: string
+        turno:
+          type: string
+        posicao:
+          type: integer
+        prioridade_legal:
+          type: boolean
+        pontuacao:
+          type: integer
+        status:
+          type: string
+        convocado_em:
+          type: string
+          format: date-time
+        limite_comparecimento:
+          type: string
+          format: date-time
+      required:
+        - id
+        - tenant_id
+        - application_id
+        - school_id
+        - posicao
+        - status
+
+    PublicWaitlistStatus:
+      type: object
+      properties:
+        numero_protocolo:
+          type: string
+        candidato_nome_mascarado:
+          type: string
+          example: G****** S******
+        escola_nome:
+          type: string
+        etapa_ensino:
+          type: string
+        posicao_atual:
+          type: integer
+        total_inscritos_etapa:
+          type: integer
+        status:
+          type: string
+        data_inscricao:
+          type: string
+          format: date-time
+        prazo_limite_convocacao:
+          type: string
+          format: date-time
+      required:
+        - numero_protocolo
+        - candidato_nome_mascarado
+        - escola_nome
+        - etapa_ensino
+        - posicao_atual
+        - status
+
+  responses:
+    ValidationError:
+      description: Erro de validação de dados
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+            required:
+              - message
+
+    UnauthorizedError:
+      description: Requer autenticação
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+            required:
+              - message
+
+    NotFoundError:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+            required:
+              - message
+
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer

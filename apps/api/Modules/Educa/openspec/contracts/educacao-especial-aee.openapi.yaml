@@ -1,0 +1,1144 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa - Educação Especial e Atendimento Educacional Especializado (AEE) API
+  version: 1.0.0
+  description: >-
+    Especificação OpenAPI para gestão de estudantes público-alvo da educação especial (PAEE),
+    laudos médicos periciais com CID-10/CID-11, Plano Educacional Individualizado (PEI),
+    Salas de Recursos Multifuncionais (SRM) no contraturno e alocação de profissionais de apoio.
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: https://api.sysgov.local
+    description: Servidor Local de Desenvolvimento
+
+security:
+  - sanctum: []
+
+paths:
+  /api/educa/aee/perfis:
+    get:
+      summary: Lista perfis de estudantes da educação especial (PAEE)
+      operationId: listarPerfisAee
+      tags:
+        - Perfis PAEE
+      parameters:
+        - name: school_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ativo, em_avaliacao, inativo]
+        - name: tipo_condicao
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de perfis PAEE cadastrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AeeStudentProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Cadastra um novo perfil de estudante na educação especial
+      operationId: criarPerfilAee
+      tags:
+        - Perfis PAEE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeeStudentProfileCreateInput'
+      responses:
+        '201':
+          description: Perfil PAEE criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeeStudentProfile'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/aee/perfis/{id}:
+    get:
+      summary: Obtém detalhes do prontuário PAEE do estudante
+      operationId: obterPerfilAee
+      tags:
+        - Perfis PAEE
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prontuário PAEE do estudante
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeeStudentProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Atualiza prontuário PAEE
+      operationId: atualizarPerfilAee
+      tags:
+        - Perfis PAEE
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeeStudentProfileUpdateInput'
+      responses:
+        '200':
+          description: Prontuário atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeeStudentProfile'
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/educa/aee/perfis/{id}/laudos:
+    post:
+      summary: Registra laudo médico pericial com CID e anexo restrito (LGPD Art. 11)
+      operationId: anexarLaudoMedico
+      tags:
+        - Perfis PAEE
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeeLaudoCreateInput'
+      responses:
+        '201':
+          description: Laudo pericial registrado com auditoria LGPD
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeeStudentProfile'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/educa/aee/peis:
+    get:
+      summary: Lista Planos Educacionais Individualizados (PEI)
+      operationId: listarPeis
+      tags:
+        - Plano Educacional Individualizado (PEI)
+      parameters:
+        - name: student_profile_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: academic_year_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [rascunho, ativo, revisado, concluido]
+      responses:
+        '200':
+          description: Lista de PEIs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AeePei'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Cria um novo Plano Educacional Individualizado para o estudante
+      operationId: criarPei
+      tags:
+        - Plano Educacional Individualizado (PEI)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeePeiCreateInput'
+      responses:
+        '201':
+          description: PEI criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeePei'
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/educa/aee/peis/{id}:
+    get:
+      summary: Exibe o PEI e suas metas pedagógicas
+      operationId: obterPei
+      tags:
+        - Plano Educacional Individualizado (PEI)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes do PEI com metas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeePei'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      summary: Atualiza dados gerais do PEI
+      operationId: atualizarPei
+      tags:
+        - Plano Educacional Individualizado (PEI)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeePeiUpdateInput'
+      responses:
+        '200':
+          description: PEI atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeePei'
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/educa/aee/peis/{id}/metas:
+    post:
+      summary: Adiciona ou atualiza meta pedagógica adaptada no PEI
+      operationId: salvarMetaPei
+      tags:
+        - Plano Educacional Individualizado (PEI)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeePeiGoalInput'
+      responses:
+        '201':
+          description: Meta cadastrada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeePeiGoal'
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/educa/aee/peis/{id}/parecer:
+    post:
+      summary: Registra parecer descritivo semestral de evolução pedagógica
+      operationId: registrarParecerPei
+      tags:
+        - Plano Educacional Individualizado (PEI)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeeParecerInput'
+      responses:
+        '200':
+          description: Parecer registrado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeePei'
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/educa/aee/salas-recursos:
+    get:
+      summary: Lista Salas de Recursos Multifuncionais (SRM) e polos de atendimento
+      operationId: listarSalasRecursos
+      tags:
+        - Salas de Recursos Multifuncionais (SRM)
+      parameters:
+        - name: school_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de salas de recursos ativas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AeeResourceRoom'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Cadastra uma Sala de Recursos Multifuncionais (SRM)
+      operationId: criarSalaRecursos
+      tags:
+        - Salas de Recursos Multifuncionais (SRM)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeeResourceRoomCreateInput'
+      responses:
+        '201':
+          description: Sala de recursos cadastrada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeeResourceRoom'
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/educa/aee/salas-recursos/{id}:
+    get:
+      summary: Obtém detalhes da sala de recursos e matriculados no contraturno
+      operationId: obterSalaRecursos
+      tags:
+        - Salas de Recursos Multifuncionais (SRM)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da SRM
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeeResourceRoom'
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/educa/aee/salas-recursos/{id}/matriculas:
+    post:
+      summary: Realiza enturmação de dupla entrada no contraturno escolar
+      operationId: enturmarContraturnoAee
+      tags:
+        - Salas de Recursos Multifuncionais (SRM)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeeEnrollmentInput'
+      responses:
+        '201':
+          description: Aluno enturmado na SRM com validação de contraturno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeeEnrollment'
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/educa/aee/profissionais-apoio/alocacoes:
+    get:
+      summary: Lista alocações ativas de profissionais de apoio (cuidadores e intérpretes)
+      operationId: listarAlocacoesApoio
+      tags:
+        - Profissionais de Apoio e Cuidadores
+      parameters:
+        - name: school_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: caregiver_employee_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de alocações ativas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AeeSupportAllocation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Aloca profissional de apoio a estudante com validação de sobrecarga
+      operationId: alocarProfissionalApoio
+      tags:
+        - Profissionais de Apoio e Cuidadores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AeeSupportAllocationInput'
+      responses:
+        '201':
+          description: Profissional alocado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AeeSupportAllocation'
+        '422':
+          description: Limite de sobrecarga de alunos por profissional atingido
+
+  /api/educa/aee/profissionais-apoio/alocacoes/{id}:
+    delete:
+      summary: Encerra ou desativa alocação de profissional de apoio
+      operationId: encerrarAlocacaoApoio
+      tags:
+        - Profissionais de Apoio e Cuidadores
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Alocação encerrada com sucesso
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Não autenticado no sistema
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Acesso negado por falta de permissão RBAC
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Registro não encontrado no tenant ativo
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    UnprocessableEntity:
+      description: Falha de validação dos dados de entrada
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+    '401':
+      $ref: '#/components/responses/Unauthorized'
+  schemas:
+    ApiError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        error_code:
+          type: string
+
+    ValidationError:
+      type: object
+      required:
+        - message
+        - errors
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    AeeStudentProfile:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - enrollment_id
+        - pessoa_id
+        - tipo_condicao
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        enrollment_id:
+          type: string
+          format: uuid
+        pessoa_id:
+          type: integer
+        school_id:
+          type: string
+          format: uuid
+        tipo_condicao:
+          type: string
+          enum: [deficiencia_fisica, deficiencia_auditiva, deficiencia_visual, deficiencia_intelectual, deficiencia_multipla, surdocegueira, tea, altas_habilidades_superdotacao, investigacao]
+        cid10_codigo:
+          type: [string, "null"]
+        cid11_codigo:
+          type: [string, "null"]
+        diagnostico_descricao:
+          type: [string, "null"]
+        laudo_medico_url:
+          type: [string, "null"]
+        laudo_medico_emitido_em:
+          type: string
+          format: date
+        laudo_medico_expira_em:
+          type: string
+          format: date
+        profissional_emissor:
+          type: [string, "null"]
+        registro_profissional:
+          type: [string, "null"]
+        precisa_cuidador:
+          type: boolean
+        precisa_interprete_libras:
+          type: boolean
+        precisa_guia_interprete:
+          type: boolean
+        precisa_transporte_adaptado:
+          type: boolean
+        barreiras_identificadas:
+          type: array
+          items:
+            type: string
+        recursos_acessibilidade:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [ativo, em_avaliacao, inativo]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AeeStudentProfileCreateInput:
+      type: object
+      required:
+        - enrollment_id
+        - pessoa_id
+        - tipo_condicao
+      properties:
+        enrollment_id:
+          type: string
+          format: uuid
+        pessoa_id:
+          type: integer
+        school_id:
+          type: string
+          format: uuid
+        tipo_condicao:
+          type: string
+          enum: [deficiencia_fisica, deficiencia_auditiva, deficiencia_visual, deficiencia_intelectual, deficiencia_multipla, surdocegueira, tea, altas_habilidades_superdotacao, investigacao]
+        cid10_codigo:
+          type: string
+        cid11_codigo:
+          type: string
+        diagnostico_descricao:
+          type: string
+        laudo_medico_url:
+          type: string
+        laudo_medico_emitido_em:
+          type: string
+          format: date
+        laudo_medico_expira_em:
+          type: string
+          format: date
+        profissional_emissor:
+          type: string
+        registro_profissional:
+          type: string
+        precisa_cuidador:
+          type: boolean
+          default: false
+        precisa_interprete_libras:
+          type: boolean
+          default: false
+        precisa_guia_interprete:
+          type: boolean
+          default: false
+        precisa_transporte_adaptado:
+          type: boolean
+          default: false
+        barreiras_identificadas:
+          type: array
+          items:
+            type: string
+        recursos_acessibilidade:
+          type: array
+          items:
+            type: string
+
+    AeeStudentProfileUpdateInput:
+      type: object
+      properties:
+        tipo_condicao:
+          type: string
+        cid10_codigo:
+          type: string
+        cid11_codigo:
+          type: string
+        diagnostico_descricao:
+          type: string
+        precisa_cuidador:
+          type: boolean
+        precisa_interprete_libras:
+          type: boolean
+        precisa_guia_interprete:
+          type: boolean
+        precisa_transporte_adaptado:
+          type: boolean
+        barreiras_identificadas:
+          type: array
+          items:
+            type: string
+        recursos_acessibilidade:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [ativo, em_avaliacao, inativo]
+
+    AeeLaudoCreateInput:
+      type: object
+      required:
+        - cid10_codigo
+        - emitido_em
+        - profissional_emissor
+        - registro_profissional
+      properties:
+        cid10_codigo:
+          type: string
+        cid11_codigo:
+          type: string
+        diagnostico_descricao:
+          type: string
+        laudo_medico_url:
+          type: string
+        emitido_em:
+          type: string
+          format: date
+        expira_em:
+          type: string
+          format: date
+        profissional_emissor:
+          type: string
+        registro_profissional:
+          type: string
+
+    AeePei:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - student_profile_id
+        - academic_year_id
+        - ano_letivo
+        - semestre
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        student_profile_id:
+          type: string
+          format: uuid
+        academic_year_id:
+          type: string
+          format: uuid
+        ano_letivo:
+          type: integer
+        semestre:
+          type: integer
+        habilidades_atuais:
+          type: [string, "null"]
+        necessidades_especificas:
+          type: [string, "null"]
+        adequacoes_curriculares:
+          type: [string, "null"]
+        adaptacoes_avaliativas:
+          type: [string, "null"]
+        metodologias_especificas:
+          type: [string, "null"]
+        parecer_descritivo:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [rascunho, ativo, revisado, concluido]
+        elaborado_por_user_id:
+          type: [integer, "null"]
+        aprovado_por_user_id:
+          type: [integer, "null"]
+        goals:
+          type: array
+          items:
+            $ref: '#/components/schemas/AeePeiGoal'
+
+    AeePeiCreateInput:
+      type: object
+      required:
+        - student_profile_id
+        - academic_year_id
+        - ano_letivo
+        - semestre
+      properties:
+        student_profile_id:
+          type: string
+          format: uuid
+        academic_year_id:
+          type: string
+          format: uuid
+        ano_letivo:
+          type: integer
+        semestre:
+          type: integer
+          enum: [1, 2]
+        habilidades_atuais:
+          type: string
+        necessidades_especificas:
+          type: string
+        adequacoes_curriculares:
+          type: string
+        adaptacoes_avaliativas:
+          type: string
+        metodologias_especificas:
+          type: string
+
+    AeePeiUpdateInput:
+      type: object
+      properties:
+        habilidades_atuais:
+          type: string
+        necessidades_especificas:
+          type: string
+        adequacoes_curriculares:
+          type: string
+        adaptacoes_avaliativas:
+          type: string
+        metodologias_especificas:
+          type: string
+        status:
+          type: string
+          enum: [rascunho, ativo, revisado, concluido]
+
+    AeePeiGoal:
+      type: object
+      required:
+        - id
+        - pei_id
+        - area_desenvolvimento
+        - objetivo
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        pei_id:
+          type: string
+          format: uuid
+        area_desenvolvimento:
+          type: string
+          enum: [cognitiva, comunicacao_linguagem, socioemocional, psicomotora, autonomia_vida_diaria]
+        objetivo:
+          type: string
+        estrategias:
+          type: [string, "null"]
+        recursos:
+          type: [string, "null"]
+        indicadores_sucesso:
+          type: [string, "null"]
+        prazo_previsto:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [em_andamento, atingido, parcialmente_atingido, cancelado]
+        avaliacao_resultado:
+          type: [string, "null"]
+
+    AeePeiGoalInput:
+      type: object
+      required:
+        - area_desenvolvimento
+        - objetivo
+      properties:
+        goal_id:
+          type: string
+          format: uuid
+        area_desenvolvimento:
+          type: string
+          enum: [cognitiva, comunicacao_linguagem, socioemocional, psicomotora, autonomia_vida_diaria]
+        objetivo:
+          type: string
+        estrategias:
+          type: string
+        recursos:
+          type: string
+        indicadores_sucesso:
+          type: string
+        prazo_previsto:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [em_andamento, atingido, parcialmente_atingido, cancelado]
+          default: em_andamento
+        avaliacao_resultado:
+          type: string
+
+    AeeParecerInput:
+      type: object
+      required:
+        - parecer_descritivo
+      properties:
+        parecer_descritivo:
+          type: string
+        status:
+          type: string
+          enum: [revisado, concluido]
+
+    AeeResourceRoom:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - school_id
+        - nome
+        - tipo_sala
+        - capacidade_atendimento
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        school_id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+        tipo_sala:
+          type: string
+          enum: [tipo_1_generica, tipo_2_surdez_cegueira, polo_municipal]
+        capacidade_atendimento:
+          type: integer
+        equipamentos_disponiveis:
+          type: array
+          items:
+            type: string
+        horarios_disponiveis:
+          type: array
+          items:
+            type: string
+        is_polo:
+          type: boolean
+        is_active:
+          type: boolean
+
+    AeeResourceRoomCreateInput:
+      type: object
+      required:
+        - school_id
+        - nome
+        - tipo_sala
+        - capacidade_atendimento
+      properties:
+        school_id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+        tipo_sala:
+          type: string
+          enum: [tipo_1_generica, tipo_2_surdez_cegueira, polo_municipal]
+        capacidade_atendimento:
+          type: integer
+        equipamentos_disponiveis:
+          type: array
+          items:
+            type: string
+        horarios_disponiveis:
+          type: array
+          items:
+            type: string
+        is_polo:
+          type: boolean
+          default: false
+
+    AeeEnrollment:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - student_profile_id
+        - resource_room_id
+        - regular_enrollment_id
+        - turno_atendimento
+        - frequencia_semanal
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        student_profile_id:
+          type: string
+          format: uuid
+        resource_room_id:
+          type: string
+          format: uuid
+        regular_enrollment_id:
+          type: string
+          format: uuid
+        turno_atendimento:
+          type: string
+          enum: [manha, tarde, noite]
+        dias_semana:
+          type: array
+          items:
+            type: string
+        horario_inicio:
+          type: string
+        horario_fim:
+          type: string
+        frequencia_semanal:
+          type: integer
+        status:
+          type: string
+          enum: [ativo, transferido, cancelado]
+
+    AeeEnrollmentInput:
+      type: object
+      required:
+        - student_profile_id
+        - regular_enrollment_id
+        - turno_atendimento
+        - frequencia_semanal
+      properties:
+        student_profile_id:
+          type: string
+          format: uuid
+        regular_enrollment_id:
+          type: string
+          format: uuid
+        turno_atendimento:
+          type: string
+          enum: [manha, tarde, noite]
+        dias_semana:
+          type: array
+          items:
+            type: string
+        horario_inicio:
+          type: string
+        horario_fim:
+          type: string
+        frequencia_semanal:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    AeeSupportAllocation:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - student_profile_id
+        - school_id
+        - caregiver_employee_id
+        - tipo_apoio
+        - turno
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        student_profile_id:
+          type: string
+          format: uuid
+        school_id:
+          type: string
+          format: uuid
+        caregiver_employee_id:
+          type: string
+          format: uuid
+        tipo_apoio:
+          type: string
+          enum: [cuidador_alimentacao_higiene, interprete_libras, guia_interprete, mediador_pedagogico]
+        turno:
+          type: string
+          enum: [manha, tarde, integral]
+        carga_horaria_semanal:
+          type: integer
+        data_inicio:
+          type: string
+          format: date
+        data_fim:
+          type: string
+          format: date
+        observacoes:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [ativo, suspenso, finalizado]
+
+    AeeSupportAllocationInput:
+      type: object
+      required:
+        - student_profile_id
+        - school_id
+        - caregiver_employee_id
+        - tipo_apoio
+        - turno
+        - data_inicio
+      properties:
+        student_profile_id:
+          type: string
+          format: uuid
+        school_id:
+          type: string
+          format: uuid
+        caregiver_employee_id:
+          type: string
+          format: uuid
+        tipo_apoio:
+          type: string
+          enum: [cuidador_alimentacao_higiene, interprete_libras, guia_interprete, mediador_pedagogico]
+        turno:
+          type: string
+          enum: [manha, tarde, integral]
+        carga_horaria_semanal:
+          type: integer
+          default: 20
+        data_inicio:
+          type: string
+          format: date
+        data_fim:
+          type: string
+          format: date
+        observacoes:
+          type: string

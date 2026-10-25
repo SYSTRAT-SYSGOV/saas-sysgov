@@ -9,7 +9,12 @@ import {
   ShieldCheck,
   Bus,
   MessageSquare,
+  Clock,
+  UtensilsCrossed,
   Loader2,
+  UserPlus,
+  Accessibility,
+  ClipboardList,
 } from 'lucide-react';
 import { useCan } from '@/core/rbac/useCan';
 import { EducaProvider } from './context/EducaContext';
@@ -21,6 +26,15 @@ const CoreView = React.lazy(() =>
 );
 const SecretariaView = React.lazy(() =>
   import('./views/SecretariaView').then((m) => ({ default: m.SecretariaView }))
+);
+const GestaoVagasView = React.lazy(() =>
+  import('./views/GestaoVagasView').then((m) => ({ default: m.GestaoVagasView }))
+);
+const EducacaoEspecialAeeView = React.lazy(() =>
+  import('./views/EducacaoEspecialAeeView').then((m) => ({ default: m.EducacaoEspecialAeeView }))
+);
+const ConselhoClasseView = React.lazy(() =>
+  import('./views/ConselhoClasseView').then((m) => ({ default: m.ConselhoClasseView }))
 );
 const PedagogicoView = React.lazy(() =>
   import('./views/PedagogicoView').then((m) => ({ default: m.PedagogicoView }))
@@ -37,6 +51,13 @@ const TransporteView = React.lazy(() =>
 const ComunicacaoView = React.lazy(() =>
   import('./views/ComunicacaoView').then((m) => ({ default: m.ComunicacaoView }))
 );
+const QuadroHorarioView = React.lazy(() =>
+  import('./views/QuadroHorarioView').then((m) => ({ default: m.QuadroHorarioView }))
+);
+const AlimentacaoEscolarView = React.lazy(() =>
+  import('./views/AlimentacaoEscolarView').then((m) => ({ default: m.AlimentacaoEscolarView }))
+);
+
 
 const TabLoadingFallback: React.FC = () => (
   <div className="flex flex-col items-center justify-center p-12 text-center">
@@ -56,6 +77,7 @@ export const EducaModuleContent: React.FC = () => {
   const temEducacenso = hasModule('educa-educacenso');
   const temTransporte = hasModule('educa-transporte');
   const temComunicacao = hasModule('educa-comunicacao');
+  const temMerenda = hasModule('educa-merenda');
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -74,6 +96,14 @@ export const EducaModuleContent: React.FC = () => {
               Gestão Acadêmica
             </TabsTrigger>
 
+            <TabsTrigger
+              value="quadro"
+              className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-800 data-[state=active]:border-b-2 data-[state=active]:border-blue-700 text-xs py-2.5 px-3 rounded-none font-medium flex items-center gap-1.5"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              Quadro de Horários
+            </TabsTrigger>
+
             {temSecretaria && (
               <TabsTrigger
                 value="secretaria"
@@ -84,6 +114,24 @@ export const EducaModuleContent: React.FC = () => {
               </TabsTrigger>
             )}
 
+            {temSecretaria && (
+              <TabsTrigger
+                value="vagas"
+                className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-800 data-[state=active]:border-b-2 data-[state=active]:border-blue-700 text-xs py-2.5 px-3 rounded-none font-medium flex items-center gap-1.5"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Gestão de Vagas
+              </TabsTrigger>
+            )}
+
+            <TabsTrigger
+              value="aee"
+              className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-800 data-[state=active]:border-b-2 data-[state=active]:border-blue-700 text-xs py-2.5 px-3 rounded-none font-medium flex items-center gap-1.5"
+            >
+              <Accessibility className="w-3.5 h-3.5" />
+              Educação Especial (AEE)
+            </TabsTrigger>
+
             {temPedagogico && (
               <TabsTrigger
                 value="pedagogico"
@@ -93,6 +141,14 @@ export const EducaModuleContent: React.FC = () => {
                 Pedagógico & Diário
               </TabsTrigger>
             )}
+
+            <TabsTrigger
+              value="conselho"
+              className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-800 data-[state=active]:border-b-2 data-[state=active]:border-blue-700 text-xs py-2.5 px-3 rounded-none font-medium flex items-center gap-1.5"
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              Conselho de Classe
+            </TabsTrigger>
 
             {temServidores && (
               <TabsTrigger
@@ -133,6 +189,16 @@ export const EducaModuleContent: React.FC = () => {
                 Comunicação
               </TabsTrigger>
             )}
+
+            {temMerenda && (
+              <TabsTrigger
+                value="merenda"
+                className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-800 data-[state=active]:border-b-2 data-[state=active]:border-blue-700 text-xs py-2.5 px-3 rounded-none font-medium flex items-center gap-1.5"
+              >
+                <UtensilsCrossed className="w-3.5 h-3.5" />
+                Alimentação Escolar (PNAE)
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -140,6 +206,12 @@ export const EducaModuleContent: React.FC = () => {
         <TabsContent value="core" className="mt-0 focus-visible:outline-hidden">
           <Suspense fallback={<TabLoadingFallback />}>
             <CoreView />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="quadro" className="mt-0 focus-visible:outline-hidden">
+          <Suspense fallback={<TabLoadingFallback />}>
+            <QuadroHorarioView />
           </Suspense>
         </TabsContent>
 
@@ -151,6 +223,20 @@ export const EducaModuleContent: React.FC = () => {
           </TabsContent>
         )}
 
+        {temSecretaria && (
+          <TabsContent value="vagas" className="mt-0 focus-visible:outline-hidden">
+            <Suspense fallback={<TabLoadingFallback />}>
+              <GestaoVagasView />
+            </Suspense>
+          </TabsContent>
+        )}
+
+        <TabsContent value="aee" className="mt-0 focus-visible:outline-hidden">
+          <Suspense fallback={<TabLoadingFallback />}>
+            <EducacaoEspecialAeeView />
+          </Suspense>
+        </TabsContent>
+
         {temPedagogico && (
           <TabsContent value="pedagogico" className="mt-0 focus-visible:outline-hidden">
             <Suspense fallback={<TabLoadingFallback />}>
@@ -158,6 +244,12 @@ export const EducaModuleContent: React.FC = () => {
             </Suspense>
           </TabsContent>
         )}
+
+        <TabsContent value="conselho" className="mt-0 focus-visible:outline-hidden">
+          <Suspense fallback={<TabLoadingFallback />}>
+            <ConselhoClasseView />
+          </Suspense>
+        </TabsContent>
 
         {temServidores && (
           <TabsContent value="servidores" className="mt-0 focus-visible:outline-hidden">
@@ -187,6 +279,14 @@ export const EducaModuleContent: React.FC = () => {
           <TabsContent value="comunicacao" className="mt-0 focus-visible:outline-hidden">
             <Suspense fallback={<TabLoadingFallback />}>
               <ComunicacaoView />
+            </Suspense>
+          </TabsContent>
+        )}
+
+        {temMerenda && (
+          <TabsContent value="merenda" className="mt-0 focus-visible:outline-hidden">
+            <Suspense fallback={<TabLoadingFallback />}>
+              <AlimentacaoEscolarView />
             </Suspense>
           </TabsContent>
         )}

@@ -229,4 +229,28 @@ final class Pessoa extends Model
     {
         return $this->hasOne(PessoaUsuario::class);
     }
+
+    /** @return HasMany<\Modules\Educa\Models\EducaDietaryRestriction, $this> */
+    public function dietaryRestrictions(): HasMany
+    {
+        return $this->hasMany(\Modules\Educa\Models\EducaDietaryRestriction::class, 'pessoa_id');
+    }
+
+    /** @return HasMany<\Modules\Educa\Models\EducaEnrollmentApplication, $this> */
+    public function enrollmentApplicationsComoCandidato(): HasMany
+    {
+        return $this->hasMany(\Modules\Educa\Models\EducaEnrollmentApplication::class, 'candidato_pessoa_id');
+    }
+
+    /** @return HasMany<\Modules\Educa\Models\EducaEnrollmentApplication, $this> */
+    public function enrollmentApplicationsComoResponsavel(): HasMany
+    {
+        return $this->hasMany(\Modules\Educa\Models\EducaEnrollmentApplication::class, 'responsavel_pessoa_id');
+    }
+
+    /** @return HasMany<\Modules\Educa\Models\EducaAeeStudentProfile, $this> */
+    public function aeeStudentProfiles(): HasMany
+    {
+        return $this->hasMany(\Modules\Educa\Models\EducaAeeStudentProfile::class, 'pessoa_id');
+    }
 }

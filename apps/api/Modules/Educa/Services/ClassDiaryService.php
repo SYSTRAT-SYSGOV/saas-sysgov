@@ -38,6 +38,7 @@ final class ClassDiaryService
             'tenant_id' => $turma->tenant_id,
             'school_class_id' => $turma->id,
             'curriculum_component_id' => $dados['curriculum_component_id'],
+            'timetable_lesson_id' => $dados['timetable_lesson_id'] ?? null,
             'data_aula' => $dados['data_aula'],
             'quantidade_aulas' => $dados['quantidade_aulas'] ?? 1,
             'conteudo' => $dados['conteudo'],
@@ -48,6 +49,63 @@ final class ClassDiaryService
         $this->audit->record('educa', 'class_diary.created', "EducaClassDiary #{$diario->id}", null, $diario->toArray());
 
         return $diario;
+    }
+
+    /**
+     * Retorna as aulas sugeridas do quadro de horários da turma para uma data específica.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function obterSugestoesAulasDoDia(string $turmaId, string $dataAula): array
+    {
+        $turma = EducaSchoolClass::query()->where('id', $turmaId)->firstOrFail();
+        $timestamp = strtotime($dataAula);
+        $diaSemana = (int) date('w', $timestamp) + 1;
+
+        $quadro = \Modules\Educa\Models\EducaTimetable::query()
+            ->where('tenant_id', $turma->tenant_id)
+            ->where('school_class_id', $turma->id)
+            ->where('ativo', true)
+            ->first();
+
+        if ($quadro === null) {
+            return [];
+        }
+
+        $aulas = \Modules\Educa\Models\EducaTimetableLesson::query()
+            ->select('educa_timetable_lessons.*')
+            ->join('educa_timetable_slots', 'educa_timetable_slots.id', '=', 'educa_timetable_lessons.timetable_slot_id')
+            ->where('educa_timetable_slots.timetable_id', $quadro->id)
+            ->where('educa_timetable_lessons.dia_semana', $diaSemana)
+            ->with(['curriculumComponent', 'teacher.pessoa', 'substitute.pessoa', 'slot'])
+            ->orderBy('educa_timetable_slots.numero_tempo')
+            ->get();
+
+        return $aulas->map(function (\Modules\Educa\Models\EducaTimetableLesson $aula) use ($dataAula): array {
+            $slot = $aula->slot;
+            $emSubstituicao = false;
+
+            if ($aula->substitute_employee_id !== null && $aula->substituicao_inicio !== null && $aula->substituicao_fim !== null) {
+                $inicio = (string) $aula->substituicao_inicio;
+                $fim = (string) $aula->substituicao_fim;
+                $emSubstituicao = ($dataAula >= $inicio && $dataAula <= $fim);
+            }
+
+            $docenteEfetivo = $emSubstituicao && $aula->substitute
+                ? $aula->substitute->pessoa->nome . ' (Substituto)'
+                : ($aula->teacher?->pessoa?->nome ?? 'Titular');
+
+            return [
+                'timetable_lesson_id' => $aula->id,
+                'numero_tempo' => $slot->numero_tempo,
+                'hora_inicio' => (string) $slot->hora_inicio,
+                'hora_fim' => (string) $slot->hora_fim,
+                'curriculum_component_id' => $aula->curriculum_component_id,
+                'componente_nome' => $aula->curriculumComponent->nome,
+                'docente_nome' => $docenteEfetivo,
+                'em_substituicao' => $emSubstituicao,
+            ];
+        })->toArray();
     }
 
     /**

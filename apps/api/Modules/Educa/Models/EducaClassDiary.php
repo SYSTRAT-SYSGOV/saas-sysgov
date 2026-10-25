@@ -29,6 +29,7 @@ final class EducaClassDiary extends Model
         'tenant_id',
         'school_class_id',
         'curriculum_component_id',
+        'timetable_lesson_id',
         'data_aula',
         'quantidade_aulas',
         'conteudo',
@@ -56,6 +57,11 @@ final class EducaClassDiary extends Model
     public function componente(): BelongsTo
     {
         return $this->belongsTo(EducaCurriculumComponent::class, 'curriculum_component_id');
+    }
+
+    public function timetableLesson(): BelongsTo
+    {
+        return $this->belongsTo(EducaTimetableLesson::class, 'timetable_lesson_id');
     }
 
     /**

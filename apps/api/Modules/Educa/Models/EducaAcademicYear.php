@@ -134,4 +134,20 @@ final class EducaAcademicYear extends Model
     {
         $this->attributes['observacao'] = $value;
     }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<EducaSchoolCapacity>
+     */
+    public function capacities(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EducaSchoolCapacity::class, 'academic_year_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<EducaEnrollmentApplication>
+     */
+    public function applications(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EducaEnrollmentApplication::class, 'academic_year_id');
+    }
 }

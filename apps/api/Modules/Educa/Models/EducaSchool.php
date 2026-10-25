@@ -88,4 +88,70 @@ final class EducaSchool extends Model
     {
         return $this->hasMany(EducaSchoolClass::class, 'school_id');
     }
+
+    /**
+     * @return HasMany<EducaMealLog>
+     */
+    public function mealLogs(): HasMany
+    {
+        return $this->hasMany(EducaMealLog::class, 'school_id');
+    }
+
+    /**
+     * @return HasMany<EducaSchoolCapacity>
+     */
+    public function capacities(): HasMany
+    {
+        return $this->hasMany(EducaSchoolCapacity::class, 'school_id');
+    }
+
+    /**
+     * @return HasMany<EducaWaitlist>
+     */
+    public function waitlistEntries(): HasMany
+    {
+        return $this->hasMany(EducaWaitlist::class, 'school_id');
+    }
+
+    /**
+     * @return HasMany<EducaAeeStudentProfile>
+     */
+    public function aeeStudentProfiles(): HasMany
+    {
+        return $this->hasMany(EducaAeeStudentProfile::class, 'school_id');
+    }
+
+    /**
+     * @return HasMany<EducaAeeResourceRoom>
+     */
+    public function aeeResourceRooms(): HasMany
+    {
+        return $this->hasMany(EducaAeeResourceRoom::class, 'school_id');
+    }
+
+    /**
+     * @return HasMany<EducaAeeSupportAllocation>
+     */
+    public function aeeSupportAllocations(): HasMany
+    {
+        return $this->hasMany(EducaAeeSupportAllocation::class, 'school_id');
+    }
+
+    /**
+     * @return HasMany<EducaConselhoCronograma>
+     */
+    public function conselhoCronogramas(): HasMany
+    {
+        return $this->hasMany(EducaConselhoCronograma::class, 'school_id');
+    }
+
+    /**
+     * @return HasMany<EducaConselhoAta>
+     */
+    public function conselhoAtas(): HasMany
+    {
+        return $this->hasMany(EducaConselhoAta::class, 'school_id');
+    }
 }
+
+

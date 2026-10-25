@@ -10,3 +10,9 @@ export * from './views/ServidoresView';
 export * from './views/EducacensoView';
 export * from './views/TransporteView';
 export * from './views/ComunicacaoView';
+export * from './views/QuadroHorarioView';
+export * from './views/AlimentacaoEscolarView';
+export * from './views/GestaoVagasView';
+export * from './views/EducacaoEspecialAeeView';
+export * from './views/ConselhoClasseView';
+

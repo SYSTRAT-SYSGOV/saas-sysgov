@@ -1,0 +1,416 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa — Submódulo Quadro de Horários e Grade Semanal
+  version: 0.1.0
+  description: |
+    Contrato da API do submódulo `quadro-horario` do módulo Educa (SYSGOV).
+    Escopo: **Matriz de Tempos de Aula**, **Turnos**, **Alocação de Componentes e Professores**,
+    **Trava Anti-Choque de Horários**, **Substituição Docente** e **Integração com Diário de Classe**.
+
+    Convenções SYSGOV:
+    - Multi-tenant estrito via `tenant_id` e header `X-Tenant-Slug`.
+    - Chaves primárias UUID `CHAR(36)`.
+    - Toda mutação gravada em `AuditLogger` (module `educa`).
+    - Horários técnicos e identificadores em JetBrains Mono.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/educa/core
+    description: Prefixo do core e gestão acadêmica
+
+security:
+  - sanctum: []
+
+tags:
+  - name: Quadro de Horários
+    description: Gestão do cabeçalho do quadro e grade horária da turma
+  - name: Matriz de Tempos
+    description: Definição de horários de início, término e intervalos de recreio
+  - name: Alocação de Aulas
+    description: Distribuição de componentes curriculares e docentes nos tempos
+  - name: Grade Docente
+    description: Visão consolidada de aulas do professor em toda a rede
+
+paths:
+  /turmas/{turmaId}/quadro-horario:
+    get:
+      tags: [Quadro de Horários]
+      operationId: obterQuadroHorarioTurma
+      summary: Retorna o quadro de horários ativo da turma com seus slots e aulas
+      x-permission: educa.quadro_horario.view
+      parameters:
+        - name: turmaId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+      responses:
+        "200":
+          description: Quadro de horários da turma
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/QuadroHorarioDetalhado" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+    post:
+      tags: [Quadro de Horários]
+      operationId: salvarQuadroHorarioTurma
+      summary: Cria ou atualiza o quadro de horários da turma
+      x-permission: educa.quadro_horario.manage
+      parameters:
+        - name: turmaId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuadroHorarioCreateRequest" }
+      responses:
+        "201":
+          description: Quadro de horários criado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/QuadroHorario" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/ErroValidacao" }
+
+  /turmas/{turmaId}/quadro-horario/slots:
+    put:
+      tags: [Matriz de Tempos]
+      operationId: sincronizarSlotsQuadro
+      summary: Configura a matriz de tempos de aula e intervalos do quadro
+      x-permission: educa.quadro_horario.manage
+      parameters:
+        - name: turmaId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slots]
+              properties:
+                slots:
+                  type: array
+                  items: { $ref: "#/components/schemas/SlotTempoRequest" }
+      responses:
+        "200":
+          description: Matriz de tempos atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/SlotTempo" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/ErroValidacao" }
+
+  /turmas/{turmaId}/quadro-horario/aulas:
+    post:
+      tags: [Alocação de Aulas]
+      operationId: alocarAulaSlot
+      summary: Aloca componente curricular e docente em um slot com validação anti-choque
+      x-permission: educa.quadro_horario.manage
+      parameters:
+        - name: turmaId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AlocarAulaRequest" }
+      responses:
+        "201":
+          description: Aula alocada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AulaAlocada" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/ErroValidacao" }
+
+  /turmas/{turmaId}/quadro-horario/aulas/{aulaId}:
+    delete:
+      tags: [Alocação de Aulas]
+      operationId: removerAulaSlot
+      summary: Desaloca a aula de um slot da grade
+      x-permission: educa.quadro_horario.manage
+      parameters:
+        - name: turmaId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+        - name: aulaId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+      responses:
+        "204":
+          description: Aula removida com sucesso
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /turmas/{turmaId}/quadro-horario/aulas/{aulaId}/substituto:
+    post:
+      tags: [Alocação de Aulas]
+      operationId: registrarDocenteSubstituto
+      summary: Vincula professor substituto com período de vigência para a aula
+      x-permission: educa.quadro_horario.manage
+      parameters:
+        - name: turmaId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+        - name: aulaId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubstitutoRequest" }
+      responses:
+        "200":
+          description: Substituto registrado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AulaAlocada" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/ErroValidacao" }
+
+  /docentes/{servidorId}/grade-semanal:
+    get:
+      tags: [Grade Docente]
+      operationId: obterGradeSemanalDocente
+      summary: Retorna a grade completa de aulas do professor em todas as turmas e escolas do tenant
+      x-permission: educa.quadro_horario.view
+      parameters:
+        - name: servidorId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+      responses:
+        "200":
+          description: Grade semanal do professor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AulaDocenteVisao" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+
+    QuadroHorario:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        tenant_id: { type: integer, example: 1 }
+        school_class_id: { $ref: "#/components/schemas/Uuid" }
+        academic_year_id: { $ref: "#/components/schemas/Uuid" }
+        nome: { type: string, example: "Grade Matutina 2026" }
+        turno: { type: string, enum: [matutino, vespertino, noturno, integral] }
+        ativo: { type: boolean, example: true }
+        data_inicio_vigencia: { type: string, format: date, example: "2026-02-05" }
+        data_fim_vigencia:
+          type: [string, "null"]
+          format: date
+
+    QuadroHorarioCreateRequest:
+      type: object
+      required: [nome, turno, data_inicio_vigencia]
+      properties:
+        nome: { type: string, example: "Grade Matutina 2026" }
+        turno: { type: string, enum: [matutino, vespertino, noturno, integral] }
+        data_inicio_vigencia: { type: string, format: date, example: "2026-02-05" }
+        data_fim_vigencia:
+          type: [string, "null"]
+          format: date
+
+    SlotTempo:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        timetable_id: { $ref: "#/components/schemas/Uuid" }
+        numero_tempo: { type: integer, example: 1 }
+        hora_inicio: { type: string, example: "07:30" }
+        hora_fim: { type: string, example: "08:20" }
+        tipo: { type: string, enum: [aula, intervalo, almoco, estudo_dirigido] }
+        descricao:
+          type: [string, "null"]
+          example: "1º Tempo"
+
+    SlotTempoRequest:
+      type: object
+      required: [numero_tempo, hora_inicio, hora_fim, tipo]
+      properties:
+        numero_tempo: { type: integer, example: 1 }
+        hora_inicio: { type: string, example: "07:30" }
+        hora_fim: { type: string, example: "08:20" }
+        tipo: { type: string, enum: [aula, intervalo, almoco, estudo_dirigido] }
+        descricao:
+          type: [string, "null"]
+          example: "1º Tempo"
+
+    AulaAlocada:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        timetable_slot_id: { $ref: "#/components/schemas/Uuid" }
+        dia_semana: { type: integer, minimum: 1, maximum: 7, example: 2 }
+        curriculum_component_id: { $ref: "#/components/schemas/Uuid" }
+        componente_nome: { type: string, example: "Matemática" }
+        teacher_employee_id: { $ref: "#/components/schemas/Uuid" }
+        professor_titular_nome: { type: string, example: "Prof. Carlos Silva" }
+        substitute_employee_id:
+          type: [string, "null"]
+          format: uuid
+        professor_substituto_nome:
+          type: [string, "null"]
+          example: "Prof. Ana Souza"
+        substituicao_inicio:
+          type: [string, "null"]
+          format: date
+        substituicao_fim:
+          type: [string, "null"]
+          format: date
+        substituicao_motivo:
+          type: [string, "null"]
+
+    AlocarAulaRequest:
+      type: object
+      required: [timetable_slot_id, dia_semana, curriculum_component_id, teacher_employee_id]
+      properties:
+        timetable_slot_id: { $ref: "#/components/schemas/Uuid" }
+        dia_semana: { type: integer, minimum: 1, maximum: 7, example: 2 }
+        curriculum_component_id: { $ref: "#/components/schemas/Uuid" }
+        teacher_employee_id: { $ref: "#/components/schemas/Uuid" }
+        substitute_employee_id:
+          type: [string, "null"]
+          format: uuid
+
+    SubstitutoRequest:
+      type: object
+      required: [substitute_employee_id, substituicao_inicio, substituicao_fim]
+      properties:
+        substitute_employee_id: { $ref: "#/components/schemas/Uuid" }
+        substituicao_inicio: { type: string, format: date, example: "2026-03-01" }
+        substituicao_fim: { type: string, format: date, example: "2026-03-15" }
+        substituicao_motivo:
+          type: [string, "null"]
+          example: "Licença médica do titular"
+
+    QuadroHorarioDetalhado:
+      allOf:
+        - $ref: "#/components/schemas/QuadroHorario"
+        - type: object
+          properties:
+            slots:
+              type: array
+              items: { $ref: "#/components/schemas/SlotTempo" }
+            aulas:
+              type: array
+              items: { $ref: "#/components/schemas/AulaAlocada" }
+
+    AulaDocenteVisao:
+      type: object
+      properties:
+        aula_id: { $ref: "#/components/schemas/Uuid" }
+        escola_nome: { type: string, example: "E.M. Santos Dumont" }
+        turma_nome: { type: string, example: "6º Ano A" }
+        componente_nome: { type: string, example: "Matemática" }
+        dia_semana: { type: integer, example: 2 }
+        numero_tempo: { type: integer, example: 1 }
+        hora_inicio: { type: string, example: "07:30" }
+        hora_fim: { type: string, example: "08:20" }
+        papel: { type: string, enum: [titular, substituto] }
+
+  responses:
+    NaoAutenticado:
+      description: Requisição sem token de autenticação válido
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Unauthenticated." }
+
+    Proibido:
+      description: Usuário autenticado sem a permissão RBAC necessária
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Ação não autorizada pelo controle de acesso." }
+
+    NaoEncontrado:
+      description: Registro não localizado no tenant ativo
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Recurso não encontrado." }
+
+    ErroValidacao:
+      description: Dados inválidos ou choque de horários detectado
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Conflito de horários: o professor já possui aula alocada neste mesmo horário." }
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items: { type: string }

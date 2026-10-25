@@ -173,4 +173,37 @@ final class EducaEnrollment extends Model
             ->where('status', 'ativa')
             ->latestOfMany();
     }
+
+    /**
+     * @return HasOne<EducaAeeStudentProfile>
+     */
+    public function aeeProfile(): HasOne
+    {
+        return $this->hasOne(EducaAeeStudentProfile::class, 'enrollment_id');
+    }
+
+    /**
+     * @return HasMany<EducaAeeEnrollment>
+     */
+    public function aeeEnrollments(): HasMany
+    {
+        return $this->hasMany(EducaAeeEnrollment::class, 'regular_enrollment_id');
+    }
+
+    /**
+     * @return HasMany<EducaConselhoPreConselhoAluno>
+     */
+    public function preConselhoSinalizacoes(): HasMany
+    {
+        return $this->hasMany(EducaConselhoPreConselhoAluno::class, 'enrollment_id');
+    }
+
+    /**
+     * @return HasMany<EducaConselhoDeliberacaoAluno>
+     */
+    public function deliberacoesConselho(): HasMany
+    {
+        return $this->hasMany(EducaConselhoDeliberacaoAluno::class, 'enrollment_id');
+    }
 }
+

@@ -1,0 +1,960 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa - Conselho de Classe e Pré-Conselho API
+  version: 1.0.0
+  description: >-
+    Especificação OpenAPI para gestão de cronogramas avaliativos, fichas diagnósticas de pré-conselho por
+    componente curricular e atas deliberativas colegiadas com registro de progressão/retenção e assinaturas.
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: https://api.sysgov.local
+    description: Servidor Local de Desenvolvimento
+
+security:
+  - sanctum: []
+
+paths:
+  /api/educa/conselho/cronogramas:
+    get:
+      summary: Lista cronogramas de reuniões de conselho de classe
+      operationId: listarCronogramas
+      tags:
+        - Cronogramas
+      parameters:
+        - name: school_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: academic_year_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [agendado, em_andamento, concluido, cancelado]
+      responses:
+        '200':
+          description: Lista de cronogramas cadastrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConselhoCronograma'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Cadastra um novo cronograma de conselho de classe
+      operationId: criarCronograma
+      tags:
+        - Cronogramas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConselhoCronogramaInput'
+      responses:
+        '201':
+          description: Cronograma criado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConselhoCronograma'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/conselho/cronogramas/{cronogramaId}:
+    get:
+      summary: Obtém detalhes de um cronograma
+      operationId: obterCronograma
+      tags:
+        - Cronogramas
+      parameters:
+        - name: cronogramaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes do cronograma
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConselhoCronograma'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Atualiza um cronograma
+      operationId: atualizarCronograma
+      tags:
+        - Cronogramas
+      parameters:
+        - name: cronogramaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConselhoCronogramaInput'
+      responses:
+        '200':
+          description: Cronograma atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConselhoCronograma'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      summary: Remove um cronograma agendado
+      operationId: excluirCronograma
+      tags:
+        - Cronogramas
+      parameters:
+        - name: cronogramaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Cronograma excluído
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/conselho/pre-conselhos:
+    get:
+      summary: Lista fichas de pré-conselho por turma e componente
+      operationId: listarPreConselhos
+      tags:
+        - Pré-Conselho
+      parameters:
+        - name: school_class_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: cronograma_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Fichas de pré-conselho encontradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PreConselho'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Cria ou atualiza ficha diagnóstica de pré-conselho
+      operationId: salvarPreConselho
+      tags:
+        - Pré-Conselho
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreConselhoInput'
+      responses:
+        '201':
+          description: Ficha de pré-conselho registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PreConselho'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/conselho/pre-conselhos/{preConselhoId}:
+    get:
+      summary: Obtém detalhes de uma ficha de pré-conselho com alunos sinalizados
+      operationId: obterPreConselho
+      tags:
+        - Pré-Conselho
+      parameters:
+        - name: preConselhoId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da ficha de pré-conselho
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PreConselho'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/educa/conselho/pre-conselhos/{preConselhoId}/alunos:
+    post:
+      summary: Registra ou atualiza sinalização individual de aluno na ficha
+      operationId: salvarAlunoPreConselho
+      tags:
+        - Pré-Conselho
+      parameters:
+        - name: preConselhoId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreConselhoAlunoInput'
+      responses:
+        '201':
+          description: Aluno sinalizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PreConselhoAluno'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/conselho/atas:
+    get:
+      summary: Lista atas deliberativas de conselho de classe
+      operationId: listarAtas
+      tags:
+        - Atas Deliberativas
+      parameters:
+        - name: school_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: school_class_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [rascunho, em_revisao, finalizada, homologada]
+      responses:
+        '200':
+          description: Lista de atas registradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConselhoAta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Abre uma nova ata deliberativa para a turma
+      operationId: criarAta
+      tags:
+        - Atas Deliberativas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConselhoAtaInput'
+      responses:
+        '201':
+          description: Ata deliberativa iniciada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConselhoAta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/conselho/atas/{ataId}:
+    get:
+      summary: Obtém detalhes completos da ata, membros e deliberações de alunos
+      operationId: obterAta
+      tags:
+        - Atas Deliberativas
+      parameters:
+        - name: ataId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da ata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConselhoAta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Atualiza cabeçalho e deliberações gerais da ata em rascunho
+      operationId: atualizarAta
+      tags:
+        - Atas Deliberativas
+      parameters:
+        - name: ataId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConselhoAtaInput'
+      responses:
+        '200':
+          description: Ata atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConselhoAta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/conselho/atas/{ataId}/deliberacoes:
+    post:
+      summary: Registra deliberação individual de estudante na ata
+      operationId: registrarDeliberacaoAluno
+      tags:
+        - Atas Deliberativas
+      parameters:
+        - name: ataId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConselhoDeliberacaoAlunoInput'
+      responses:
+        '201':
+          description: Deliberação registrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConselhoDeliberacaoAluno'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/conselho/atas/{ataId}/membros:
+    post:
+      summary: Registra membros presentes e funções na reunião do conselho
+      operationId: registrarMembrosAta
+      tags:
+        - Atas Deliberativas
+      parameters:
+        - name: ataId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - membros
+              properties:
+                membros:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ConselhoMembroInput'
+      responses:
+        '200':
+          description: Membros registrados na ata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/conselho/atas/{ataId}/finalizar:
+    post:
+      summary: Finaliza a ata colegiada e aplica trava de imutabilidade
+      operationId: finalizarAta
+      tags:
+        - Atas Deliberativas
+      parameters:
+        - name: ataId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ata finalizada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConselhoAta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/educa/conselho/atas/{ataId}/homologar:
+    post:
+      summary: Homologa a ata pela Direção Escolar / Secretaria de Educação
+      operationId: homologarAta
+      tags:
+        - Atas Deliberativas
+      parameters:
+        - name: ataId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ata homologada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ConselhoAta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Não autenticado ou token inválido
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Unauthenticated.
+    Forbidden:
+      description: Acesso negado por falta de permissão RBAC
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: This action is unauthorized.
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Registro não encontrado.
+    UnprocessableEntity:
+      description: Erro de validação ou regra de negócio
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              error_code:
+                type: string
+              errors:
+                type: object
+
+  schemas:
+    ConselhoCronograma:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        school_id:
+          type: string
+          format: uuid
+        academic_year_id:
+          type: string
+          format: uuid
+        ano_letivo:
+          type: integer
+        periodo:
+          type: string
+          example: 1_bimestre
+        data_inicio_pre_conselho:
+          type: string
+          format: date
+        data_fim_pre_conselho:
+          type: string
+          format: date
+        data_reuniao_conselho:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [agendado, em_andamento, concluido, cancelado]
+        observacoes:
+          type: [string, "null"]
+
+    ConselhoCronogramaInput:
+      type: object
+      required:
+        - school_id
+        - academic_year_id
+        - ano_letivo
+        - periodo
+        - data_inicio_pre_conselho
+        - data_fim_pre_conselho
+        - data_reuniao_conselho
+      properties:
+        school_id:
+          type: string
+          format: uuid
+        academic_year_id:
+          type: string
+          format: uuid
+        ano_letivo:
+          type: integer
+        periodo:
+          type: string
+        data_inicio_pre_conselho:
+          type: string
+          format: date
+        data_fim_pre_conselho:
+          type: string
+          format: date
+        data_reuniao_conselho:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [agendado, em_andamento, concluido, cancelado]
+          default: agendado
+        observacoes:
+          type: string
+
+    PreConselho:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        cronograma_id:
+          type: string
+          format: uuid
+        school_class_id:
+          type: string
+          format: uuid
+        curriculum_component_id:
+          type: string
+          format: uuid
+        professor_user_id:
+          type: integer
+        periodo:
+          type: string
+        desempenho_geral_turma:
+          type: string
+          enum: [excelente, bom, regular, insatisfatorio]
+        objetivos_atingidos_percentual:
+          type: integer
+          example: 85
+        metodologias_utilizadas:
+          type: array
+          items:
+            type: string
+        dificuldades_detectadas:
+          type: [string, "null"]
+        acoes_intervencao_sugeridas:
+          type: [string, "null"]
+        alunos_sinalizados:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreConselhoAluno'
+
+    PreConselhoInput:
+      type: object
+      required:
+        - cronograma_id
+        - school_class_id
+        - curriculum_component_id
+        - periodo
+        - desempenho_geral_turma
+      properties:
+        cronograma_id:
+          type: string
+          format: uuid
+        school_class_id:
+          type: string
+          format: uuid
+        curriculum_component_id:
+          type: string
+          format: uuid
+        periodo:
+          type: string
+        desempenho_geral_turma:
+          type: string
+          enum: [excelente, bom, regular, insatisfatorio]
+        objetivos_atingidos_percentual:
+          type: integer
+        metodologias_utilizadas:
+          type: array
+          items:
+            type: string
+        dificuldades_detectadas:
+          type: string
+        acoes_intervencao_sugeridas:
+          type: string
+
+    PreConselhoAluno:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pre_conselho_id:
+          type: string
+          format: uuid
+        enrollment_id:
+          type: string
+          format: uuid
+        nivel_atencao:
+          type: string
+          enum: [baixo, medio, alto, critico]
+        motivo_atencao:
+          type: string
+          enum: [rendimento_baixo, faltas_excessivas, comportamento, socioemocional, outro]
+        detalhes:
+          type: [string, "null"]
+        encaminhamentos:
+          type: [string, "null"]
+
+    PreConselhoAlunoInput:
+      type: object
+      required:
+        - enrollment_id
+        - nivel_atencao
+        - motivo_atencao
+      properties:
+        enrollment_id:
+          type: string
+          format: uuid
+        nivel_atencao:
+          type: string
+          enum: [baixo, medio, alto, critico]
+        motivo_atencao:
+          type: string
+          enum: [rendimento_baixo, faltas_excessivas, comportamento, socioemocional, outro]
+        detalhes:
+          type: string
+        encaminhamentos:
+          type: string
+
+    ConselhoAta:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        school_id:
+          type: string
+          format: uuid
+        school_class_id:
+          type: string
+          format: uuid
+        cronograma_id:
+          type: string
+          format: uuid
+        numero_ata:
+          type: string
+          example: "ATA-01/2026-3B"
+        periodo:
+          type: string
+        data_reuniao:
+          type: string
+          format: date
+        horario_inicio:
+          type: string
+          example: "08:00"
+        horario_fim:
+          type: string
+          example: "10:30"
+        resumo_geral:
+          type: [string, "null"]
+        deliberacoes_coletivas:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [rascunho, em_revisao, finalizada, homologada]
+        deliberacoes_alunos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConselhoDeliberacaoAluno'
+        membros:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConselhoMembro'
+
+    ConselhoAtaInput:
+      type: object
+      required:
+        - school_id
+        - school_class_id
+        - cronograma_id
+        - periodo
+        - data_reuniao
+      properties:
+        school_id:
+          type: string
+          format: uuid
+        school_class_id:
+          type: string
+          format: uuid
+        cronograma_id:
+          type: string
+          format: uuid
+        periodo:
+          type: string
+        data_reuniao:
+          type: string
+          format: date
+        horario_inicio:
+          type: string
+        horario_fim:
+          type: string
+        resumo_geral:
+          type: string
+        deliberacoes_coletivas:
+          type: string
+
+    ConselhoDeliberacaoAluno:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ata_id:
+          type: string
+          format: uuid
+        enrollment_id:
+          type: string
+          format: uuid
+        resultado_deliberacao:
+          type: string
+          enum: [progressao_plena, progressao_dependencia, recuperacao_intensiva, retencao]
+        parecer_descritivo:
+          type: [string, "null"]
+        disciplinas_dependencia:
+          type: array
+          items:
+            type: string
+        encaminhamento_pedagogico:
+          type: [string, "null"]
+
+    ConselhoDeliberacaoAlunoInput:
+      type: object
+      required:
+        - enrollment_id
+        - resultado_deliberacao
+      properties:
+        enrollment_id:
+          type: string
+          format: uuid
+        resultado_deliberacao:
+          type: string
+          enum: [progressao_plena, progressao_dependencia, recuperacao_intensiva, retencao]
+        parecer_descritivo:
+          type: string
+        disciplinas_dependencia:
+          type: array
+          items:
+            type: string
+        encaminhamento_pedagogico:
+          type: string
+
+    ConselhoMembro:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ata_id:
+          type: string
+          format: uuid
+        user_id:
+          type: integer
+        nome:
+          type: string
+        cargo_funcao:
+          type: string
+          example: Coordenador Pedagógico
+        presente:
+          type: boolean
+        assinou_em:
+          type: [string, "null"]
+          format: date-time
+
+    ConselhoMembroInput:
+      type: object
+      required:
+        - user_id
+        - cargo_funcao
+        - presente
+      properties:
+        user_id:
+          type: integer
+        cargo_funcao:
+          type: string
+        presente:
+          type: boolean

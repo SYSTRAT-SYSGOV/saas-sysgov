@@ -1,0 +1,713 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa - Alimentação Escolar e Nutrição (PNAE) API
+  version: 1.0.0
+  description: >
+    Contrato oficial para gestão de cardápios escolares por etapa e turno,
+    cálculo nutricional em conformidade com o FNDE/PNAE, prontuário de restrições
+    alimentares e laudos de saúde, e registro diário de refeições com prestação de contas ao CAE.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: /api/educa/merenda
+    description: Servidor de Produção / Ambiente Multi-Tenant
+security:
+  - sanctum: []
+
+paths:
+  /cardapios:
+    get:
+      summary: Listar cardápios escolares
+      operationId: listarCardapios
+      tags:
+        - Cardapios
+      security:
+        - sanctum: []
+      parameters:
+        - name: ano_letivo_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: etapa_ensino
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [rascunho, homologado, inativo]
+      responses:
+        '200':
+          description: Lista de cardápios cadastrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Cardapio'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/AcessoNegado'
+
+    post:
+      summary: Cadastrar novo cardápio escolar
+      operationId: criarCardapio
+      tags:
+        - Cardapios
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardapioCreatePayload'
+      responses:
+        '201':
+          description: Cardápio criado com sucesso em status de rascunho
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Cardapio'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/AcessoNegado'
+        '422':
+          $ref: '#/components/responses/ErroValidacao'
+
+  /cardapios/{cardapioId}:
+    get:
+      summary: Detalhar cardápio escolar com itens e preparações
+      operationId: obterCardapio
+      tags:
+        - Cardapios
+      security:
+        - sanctum: []
+      parameters:
+        - name: cardapioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dados detalhados do cardápio e lista de preparações
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CardapioDetalhado'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/AcessoNegado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+
+  /cardapios/{cardapioId}/homologar:
+    post:
+      summary: Homologar cardápio pelo nutricionista responsável técnico (CRN)
+      operationId: homologarCardapio
+      tags:
+        - Cardapios
+      security:
+        - sanctum: []
+      parameters:
+        - name: cardapioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nutritionist_employee_id
+                - crn_registro
+              properties:
+                nutritionist_employee_id:
+                  type: string
+                  format: uuid
+                crn_registro:
+                  type: string
+                  example: "CRN-3 12345"
+      responses:
+        '200':
+          description: Cardápio homologado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Cardapio'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/AcessoNegado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '422':
+          $ref: '#/components/responses/ErroValidacao'
+
+  /cardapios/{cardapioId}/itens:
+    post:
+      summary: Adicionar preparação ao cardápio com cálculo nutricional
+      operationId: adicionarItemCardapio
+      tags:
+        - Cardapios
+      security:
+        - sanctum: []
+      parameters:
+        - name: cardapioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCardapioCreatePayload'
+      responses:
+        '201':
+          description: Item adicionado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ItemCardapio'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/AcessoNegado'
+        '422':
+          $ref: '#/components/responses/ErroValidacao'
+
+  /restricoes:
+    get:
+      summary: Listar prontuário de restrições alimentares de estudantes
+      operationId: listarRestricoes
+      tags:
+        - Restricoes
+      security:
+        - sanctum: []
+      parameters:
+        - name: tipo_restricao
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: gravidade
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [leve, moderada, severa_anafilatica]
+        - name: ativo
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Lista de restrições registradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RestricaoAlimentar'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/AcessoNegado'
+
+    post:
+      summary: Cadastrar laudo de restrição alimentar para aluno
+      operationId: cadastrarRestricao
+      tags:
+        - Restricoes
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestricaoAlimentarCreatePayload'
+      responses:
+        '201':
+          description: Restrição alimentar cadastrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RestricaoAlimentar'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/AcessoNegado'
+        '422':
+          $ref: '#/components/responses/ErroValidacao'
+
+  /refeicoes-diarias:
+    get:
+      summary: Consultar registros diários de refeições servidas por escola
+      operationId: listarRefeicoesDiarias
+      tags:
+        - Refeicoes
+      security:
+        - sanctum: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: data_inicio
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: data_fim
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Histórico de refeições diárias e indicadores de consumo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RegistroRefeicaoDiaria'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/AcessoNegado'
+
+    post:
+      summary: Registrar refeição servida no dia com quantitativo e sobras/restos
+      operationId: registrarRefeicaoDiaria
+      tags:
+        - Refeicoes
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistroRefeicaoCreatePayload'
+      responses:
+        '201':
+          description: Refeição diária registrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RegistroRefeicaoDiaria'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/AcessoNegado'
+        '422':
+          $ref: '#/components/responses/ErroValidacao'
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+
+  responses:
+    NaoAutenticado:
+      description: Não autenticado no sistema
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroApi'
+    AcessoNegado:
+      description: Permissão insuficiente (RBAC)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroApi'
+    NaoEncontrado:
+      description: Recurso não localizado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroApi'
+    ErroValidacao:
+      description: Dados inválidos ou inconsistência de regras nutricionais
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+
+  schemas:
+    ErroApi:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        code:
+          type: [string, "null"]
+
+    Cardapio:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - academic_year_id
+        - nome
+        - etapa_ensino
+        - turno
+        - mes_vigencia
+        - ano_vigencia
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        academic_year_id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+        etapa_ensino:
+          type: string
+        turno:
+          type: string
+          enum: [matutino, vespertino, noturno, integral]
+        mes_vigencia:
+          type: integer
+        ano_vigencia:
+          type: integer
+        status:
+          type: string
+          enum: [rascunho, homologado, inativo]
+        nutritionist_employee_id:
+          type: [string, "null"]
+          format: uuid
+        crn_registro:
+          type: [string, "null"]
+        homologado_em:
+          type: [string, "null"]
+          format: date-time
+
+    CardapioDetalhado:
+      allOf:
+        - $ref: '#/components/schemas/Cardapio'
+        - type: object
+          properties:
+            itens:
+              type: array
+              items:
+                $ref: '#/components/schemas/ItemCardapio'
+
+    CardapioCreatePayload:
+      type: object
+      required:
+        - academic_year_id
+        - nome
+        - etapa_ensino
+        - turno
+        - mes_vigencia
+        - ano_vigencia
+      properties:
+        academic_year_id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+          maxLength: 120
+        etapa_ensino:
+          type: string
+        turno:
+          type: string
+          enum: [matutino, vespertino, noturno, integral]
+        mes_vigencia:
+          type: integer
+          minimum: 1
+          maximum: 12
+        ano_vigencia:
+          type: integer
+          minimum: 2020
+
+    ItemCardapio:
+      type: object
+      required:
+        - id
+        - menu_id
+        - dia_semana
+        - tipo_refeicao
+        - preparacao_nome
+        - calorias_kcal
+      properties:
+        id:
+          type: string
+          format: uuid
+        menu_id:
+          type: string
+          format: uuid
+        dia_semana:
+          type: integer
+          minimum: 1
+          maximum: 7
+        tipo_refeicao:
+          type: string
+          enum: [desjejum, colacao, almoco, lanche_tarde]
+        preparacao_nome:
+          type: string
+        ingredientes_descricao:
+          type: [string, "null"]
+        calorias_kcal:
+          type: number
+        carboidratos_g:
+          type: [number, "null"]
+        proteinas_g:
+          type: [number, "null"]
+        lipidios_g:
+          type: [number, "null"]
+        fibras_g:
+          type: [number, "null"]
+
+    ItemCardapioCreatePayload:
+      type: object
+      required:
+        - dia_semana
+        - tipo_refeicao
+        - preparacao_nome
+        - calorias_kcal
+      properties:
+        dia_semana:
+          type: integer
+          minimum: 1
+          maximum: 7
+        tipo_refeicao:
+          type: string
+          enum: [desjejum, colacao, almoco, lanche_tarde]
+        preparacao_nome:
+          type: string
+          maxLength: 120
+        ingredientes_descricao:
+          type: string
+        calorias_kcal:
+          type: number
+          minimum: 0
+        carboidratos_g:
+          type: number
+          minimum: 0
+        proteinas_g:
+          type: number
+          minimum: 0
+        lipidios_g:
+          type: number
+          minimum: 0
+        fibras_g:
+          type: number
+          minimum: 0
+
+    RestricaoAlimentar:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - pessoa_id
+        - tipo_restricao
+        - gravidade
+        - ativo
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        pessoa_id:
+          type: integer
+        aluno_nome:
+          type: [string, "null"]
+        tipo_restricao:
+          type: string
+          enum: [lactose, gluten, diabetes, alergia_ovo, alergia_amendoim, fenilcetonuria, outra]
+        descricao_detalhada:
+          type: [string, "null"]
+        gravidade:
+          type: string
+          enum: [leve, moderada, severa_anafilatica]
+        data_laudo:
+          type: [string, "null"]
+          format: date
+        validade_laudo:
+          type: [string, "null"]
+          format: date
+        medico_crm:
+          type: [string, "null"]
+        preparacao_adaptada_sugerida:
+          type: [string, "null"]
+        ativo:
+          type: boolean
+
+    RestricaoAlimentarCreatePayload:
+      type: object
+      required:
+        - pessoa_id
+        - tipo_restricao
+        - gravidade
+      properties:
+        pessoa_id:
+          type: integer
+        tipo_restricao:
+          type: string
+          enum: [lactose, gluten, diabetes, alergia_ovo, alergia_amendoim, fenilcetonuria, outra]
+        descricao_detalhada:
+          type: string
+        gravidade:
+          type: string
+          enum: [leve, moderada, severa_anafilatica]
+        data_laudo:
+          type: string
+          format: date
+        validade_laudo:
+          type: string
+          format: date
+        medico_crm:
+          type: string
+        preparacao_adaptada_sugerida:
+          type: string
+
+    RegistroRefeicaoDiaria:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - school_id
+        - menu_id
+        - data_refeicao
+        - tipo_refeicao
+        - quantidade_refeicoes_servidas
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: integer
+        school_id:
+          type: string
+          format: uuid
+        menu_id:
+          type: string
+          format: uuid
+        data_refeicao:
+          type: string
+          format: date
+        tipo_refeicao:
+          type: string
+          enum: [desjejum, colacao, almoco, lanche_tarde]
+        quantidade_alunos_presentes:
+          type: integer
+        quantidade_refeicoes_servidas:
+          type: integer
+        sobra_limpa_kg:
+          type: [number, "null"]
+        resto_ingesta_kg:
+          type: [number, "null"]
+        taxa_adesao_percentual:
+          type: [number, "null"]
+        observacoes:
+          type: [string, "null"]
+
+    RegistroRefeicaoCreatePayload:
+      type: object
+      required:
+        - school_id
+        - menu_id
+        - data_refeicao
+        - tipo_refeicao
+        - quantidade_refeicoes_servidas
+      properties:
+        school_id:
+          type: string
+          format: uuid
+        menu_id:
+          type: string
+          format: uuid
+        data_refeicao:
+          type: string
+          format: date
+        tipo_refeicao:
+          type: string
+          enum: [desjejum, colacao, almoco, lanche_tarde]
+        quantidade_alunos_presentes:
+          type: integer
+          minimum: 0
+        quantidade_refeicoes_servidas:
+          type: integer
+          minimum: 0
+        sobra_limpa_kg:
+          type: number
+          minimum: 0
+        resto_ingesta_kg:
+          type: number
+          minimum: 0
+        observacoes:
+          type: string

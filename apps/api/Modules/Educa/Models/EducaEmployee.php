@@ -91,4 +91,14 @@ final class EducaEmployee extends Model
     {
         return $this->funcoes()->where('is_docente', true)->exists();
     }
+
+    public function timetableLessons(): HasMany
+    {
+        return $this->hasMany(EducaTimetableLesson::class, 'teacher_employee_id');
+    }
+
+    public function substituteLessons(): HasMany
+    {
+        return $this->hasMany(EducaTimetableLesson::class, 'substitute_employee_id');
+    }
 }
