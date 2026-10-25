@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCard, Button, Field, Input, Modal, Select, Switch, Textarea } from '@/components/ui';
 import { erroApi, type ErroApi } from '../api';
+import { tratarErroValidacaoGlobal } from '@/lib/validationModalHost';
 
 /** Carrega dados de um serviço e expõe estado de carga/erro/recarga. */
 export function useDados<T>(carregar: () => Promise<T>, deps: React.DependencyList = []) {
@@ -38,7 +39,7 @@ export function useAcao() {
     try {
       return await acao();
     } catch (e) {
-      setErro(erroApi(e));
+      if (!tratarErroValidacaoGlobal(e)) setErro(erroApi(e));
       return null;
     } finally {
       setEnviando(false);

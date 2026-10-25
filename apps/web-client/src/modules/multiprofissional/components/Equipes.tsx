@@ -6,11 +6,13 @@ import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { mensagemDeErro, multiApi, type Equipe, type Opcoes } from '../api';
 import { SelecaoMultipla } from './Selecao';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Equipes multiprofissionais: profissionais e escolas atendidas. Equipe com atendimento é desativada ao excluir. */
 export const Equipes: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () => void }> = ({ opcoes, avisar, aoMudar }) => {
   const carga = useCarga(() => multiApi.equipes(), []);
   const [editando, setEditando] = useState<Equipe | 'nova' | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const gerenciar = opcoes.permissoes.gerenciar;
   const turno = (v: string | null) => opcoes.turnos.find((t) => t.valor === v)?.rotulo ?? '—';
 
@@ -21,7 +23,7 @@ export const Equipes: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () => v
       await carga.recarregar();
       aoMudar();
     } catch (err) {
-      avisar({ type: 'error', title: 'Equipe', message: mensagemDeErro(err) });
+      if (!tratarErro(err)) avisar({ type: 'error', title: 'Equipe', message: mensagemDeErro(err) });
     }
   };
 
@@ -70,17 +72,18 @@ const EquipeModal: React.FC<{ opcoes: Opcoes; equipe: Equipe | null; aoFechar: (
   const [profissionais, setProfissionais] = useState<number[]>(equipe?.profissionais.map((p) => p.id) ?? []);
   const [escolas, setEscolas] = useState<number[]>(equipe?.escolas.map((e) => e.id) ?? []);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
 
   const salvar = async () => {
-    if (!nome.trim()) return setErro('Informe o nome da equipe.');
+    if (!nome.trim()) return invalidar([['validação', 'Informe o nome da equipe.']]);
     setSalvando(true);
     setErro(null);
     try {
       await multiApi.salvarEquipe(equipe?.id ?? null, { nome: nome.trim(), turno, ativo, profissionais, escolas });
       aoSalvar();
     } catch (e) {
-      setErro(mensagemDeErro(e));
+      if (!tratarErro(e)) setErro(mensagemDeErro(e));
     } finally {
       setSalvando(false);
     }
@@ -89,6 +92,7 @@ const EquipeModal: React.FC<{ opcoes: Opcoes; equipe: Equipe | null; aoFechar: (
   return (
     <Modal open onClose={aoFechar} title={equipe ? 'Editar equipe' : 'Nova equipe'} size="lg"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label="Nome *" value={nome} maxLength={200} onChange={(e) => setNome(e.target.value)} />

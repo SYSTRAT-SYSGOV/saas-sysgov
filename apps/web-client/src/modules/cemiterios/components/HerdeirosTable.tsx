@@ -10,6 +10,7 @@ import { Mono } from '../views/comum';
 import { PessoaPicker } from '@sysgov/ui';
 import { usePessoaPicker } from '@/modules/pessoas/hooks';
 import { pessoasApi } from '@/modules/pessoas/api';
+import { validarObrigatoriosGlobal } from '@/lib/validationModalHost';
 
 interface HerdeirosTableProps {
   sucessaoId: number;
@@ -76,7 +77,7 @@ export const HerdeirosTable: React.FC<HerdeirosTableProps> = ({ sucessaoId, read
   };
 
   const salvarHerdeiro = useCallback(async () => {
-    if (!form.nome || !form.parentesco) return;
+    if (!validarObrigatoriosGlobal([['Nome Completo', form.nome], ['Parentesco', form.parentesco]]) || !form.nome || !form.parentesco) return;
 
     let todos: HerdeiroInput[];
     if (editando) {
@@ -249,7 +250,7 @@ export const HerdeirosTable: React.FC<HerdeirosTableProps> = ({ sucessaoId, read
               <Button size="sm" variant="outline" onClick={fecharModal}>
                 <X className="h-3.5 w-3.5 mr-1" /> Cancelar
               </Button>
-              <Button size="sm" onClick={salvarHerdeiro} disabled={!form.nome || !form.parentesco}>
+              <Button size="sm" onClick={salvarHerdeiro}>
                 <Save className="h-3.5 w-3.5 mr-1" /> Salvar
               </Button>
             </div>

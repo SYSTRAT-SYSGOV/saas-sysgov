@@ -48,6 +48,7 @@ import {
 } from 'lucide-react';
 import { SysgovApi } from '@sysgov/sdk';
 import type { ApiModeloFormulario, ApiEscalaGrafica, ApiEscalaNivel } from '@sysgov/sdk';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -258,6 +259,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
   const [loadingModelos, setLoadingModelos] = useState(false);
   const [expandida, setExpandida] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [sucesso, setSucesso] = useState<string | null>(null);
 
   // Modo de visualização da Régua Contínua: Gráfico vs Tabela
@@ -483,12 +485,10 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
   // Salvar (Criação ou Edição)
   const salvar = async () => {
     if (!selectedModeloId) {
-      setErro('Selecione um modelo de formulário válido.');
-      return;
+      invalidar([['validação', 'Selecione um modelo de formulário válido.']]); return;
     }
     if (!nome.trim()) {
-      setErro('Informe o nome identificador da escala.');
-      return;
+      invalidar([['validação', 'Informe o nome identificador da escala.']]); return;
     }
 
     const erroValidacao = validarContinuidadedaEscala(niveis);
@@ -521,7 +521,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
       setModalOpen(false);
       carregarEscalas(selectedModeloId);
     } catch (e: any) {
-      setErro(e?.response?.data?.message ?? 'Erro ao salvar escala gráfica.');
+      if (!tratarErro(e)) setErro(e?.response?.data?.message ?? 'Erro ao salvar escala gráfica.');
     } finally {
       setSaving(false);
     }
@@ -537,7 +537,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
       setSucesso(`Escala "${escala.nome}" ativada como a vigente do modelo!`);
       carregarEscalas(selectedModeloId);
     } catch (e: any) {
-      setErro(e?.response?.data?.message ?? 'Não foi possível ativar esta escala.');
+      if (!tratarErro(e)) setErro(e?.response?.data?.message ?? 'Não foi possível ativar esta escala.');
     } finally {
       setAtivandoId(null);
     }
@@ -560,7 +560,7 @@ export const EscalaGraficaPanel: React.FC<Props> = ({ modeloId: propModeloId }) 
       setEscalaParaExcluir(null);
       carregarEscalas(selectedModeloId);
     } catch (e: any) {
-      setErro(e?.response?.data?.message ?? 'Erro ao excluir escala gráfica.');
+      if (!tratarErro(e)) setErro(e?.response?.data?.message ?? 'Erro ao excluir escala gráfica.');
     } finally {
       setExcluindo(false);
     }
@@ -604,6 +604,7 @@ Cobertura: 0.00 a 100.00 pontos contínuos. Cadastrado para fins de fé pública
 
   return (
     <div className="space-y-6">
+      {modalValidacao}
       {/* ── HEADER PRINCIPAL DA ABA ────────────────────────────────────── */}
       <PageHeader
         icon={<Scale className="h-6 w-6 text-primary" />}
@@ -1415,7 +1416,6 @@ Cobertura: 0.00 a 100.00 pontos contínuos. Cadastrado para fins de fé pública
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Ex: Escala Padrão Chiavenato (5 Graus)"
-                required
                 className="h-9 text-xs"
               />
             </div>

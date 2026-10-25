@@ -180,7 +180,7 @@ export const ModalNovaExumacao: React.FC<ModalNovaExumacaoProps> = ({
           )}
         </div>
 
-        <form id={formId} onSubmit={handleSubmit} className="space-y-5">
+        <form noValidate id={formId} onSubmit={handleSubmit} className="space-y-5">
           {/* ── 1. Seleção da Inumação ── */}
           <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3.5">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b pb-2">
@@ -213,7 +213,6 @@ export const ModalNovaExumacao: React.FC<ModalNovaExumacaoProps> = ({
                     className="font-mono tabular-nums"
                     value={burialId}
                     onChange={(e) => setBurialId(e.target.value)}
-                    required
                   />
                 )}
               </Field>
@@ -303,7 +302,6 @@ export const ModalNovaExumacao: React.FC<ModalNovaExumacaoProps> = ({
                     className="font-mono tabular-nums"
                     value={processo}
                     onChange={(e) => setProcesso(e.target.value)}
-                    required
                   />
                 </Field>
 
@@ -316,7 +314,6 @@ export const ModalNovaExumacao: React.FC<ModalNovaExumacaoProps> = ({
                     placeholder="Ex.: 1ª Vara Cível da Comarca..."
                     value={juizo}
                     onChange={(e) => setJuizo(e.target.value)}
-                    required
                   />
                 </Field>
 
@@ -330,7 +327,6 @@ export const ModalNovaExumacao: React.FC<ModalNovaExumacaoProps> = ({
                     className="font-mono tabular-nums"
                     value={dataDecisao}
                     onChange={(e) => setDataDecisao(e.target.value)}
-                    required
                   />
                 </Field>
 

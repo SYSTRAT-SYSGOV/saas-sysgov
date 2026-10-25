@@ -9,6 +9,7 @@ import { campanhaApi, type CategoriaDemanda, type Demanda, type MunicipioLinha, 
 import { ROTULO_CATEGORIA, ROTULO_PRIORIDADE, ROTULO_STATUS_DEMANDA, VARIANTE_PRIORIDADE, VARIANTE_STATUS_DEMANDA, formatarData, formatarDataHora } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const opcoes = <T extends string>(rotulos: Record<T, string>) => (Object.entries(rotulos) as [T, string][]).map(([value, label]) => ({ value, label }));
 
@@ -19,6 +20,7 @@ export const DemandasCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avi
   const municipios = useMunicipiosDaCampanha(campanha.id);
   const responsaveis = useCarga(() => campanhaApi.responsaveisDemanda(), [campanha.id]);
   const [filtros, setFiltros] = useState<Filtros>({});
+  const { tratarErro } = useFormValidationModal();
   const lista = useCarga(() => campanhaApi.demandas(filtros), [campanha.id, versao, JSON.stringify(filtros)]);
   const [editando, setEditando] = useState<Demanda | 'nova' | null>(null);
   const [excluir, setExcluir] = useState<Demanda | null>(null);
@@ -66,7 +68,7 @@ export const DemandasCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avi
       <ConfirmarModal aberto={excluir !== null} titulo="Excluir demanda" mensagem={<>Excluir a demanda de <strong>{excluir?.solicitante}</strong>?</>} rotuloConfirmar="Excluir" perigo onFechar={() => setExcluir(null)}
         onConfirmar={async () => {
           if (!excluir) return;
-          try { await campanhaApi.excluirDemanda(excluir.id); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
+          try { await campanhaApi.excluirDemanda(excluir.id); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
         }} />
     </Card>
   );
@@ -78,6 +80,7 @@ const DemandaModal: React.FC<{ registro: Demanda | 'nova' | null; municipios: Mu
   const [form, setForm] = useState(VAZIO);
   const [atual, setAtual] = useState<Demanda | 'nova' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (registro !== atual) {
     setAtual(registro);
@@ -88,7 +91,8 @@ const DemandaModal: React.FC<{ registro: Demanda | 'nova' | null; municipios: Mu
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (form.codigo_ibge === null) { setErro('Escolha o município.'); return; }
+    if (!validar([['Solicitante', form.solicitante], ['Descrição', form.descricao]])) return;
+    if (form.codigo_ibge === null) { invalidar([['validação', 'Escolha o município.']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -98,7 +102,7 @@ const DemandaModal: React.FC<{ registro: Demanda | 'nova' | null; municipios: Mu
       });
       onSalva(salva);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -109,17 +113,18 @@ const DemandaModal: React.FC<{ registro: Demanda | 'nova' | null; municipios: Mu
   return (
     <Modal open={registro !== null} onClose={onFechar} title={registro === 'nova' ? 'Nova demanda' : 'Demanda'} icon={<ClipboardList className="h-5 w-5" />} size="lg"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>{ro ? 'Fechar' : 'Cancelar'}</Button>{!ro && <Button type="submit" form="form-demanda" isLoading={salvando}>Salvar</Button>}</>}>
-      <form id="form-demanda" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-demanda" onSubmit={salvar} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <SelectMunicipio label="Município *" municipios={municipios} value={form.codigo_ibge} onChange={(v) => setForm((f) => ({ ...f, codigo_ibge: v }))} disabled={ro} />
-          <Input label="Solicitante *" value={form.solicitante} onChange={(e) => setForm((f) => ({ ...f, solicitante: e.target.value }))} required maxLength={200} disabled={ro} />
+          <Input label="Solicitante *" value={form.solicitante} onChange={(e) => setForm((f) => ({ ...f, solicitante: e.target.value }))} maxLength={200} disabled={ro} />
           <Select label="Categoria" value={form.categoria} onChange={(v) => setForm((f) => ({ ...f, categoria: v as CategoriaDemanda }))} options={opcoes(ROTULO_CATEGORIA)} disabled={ro} />
           <Select label="Prioridade" value={form.prioridade} onChange={(v) => setForm((f) => ({ ...f, prioridade: v as Prioridade }))} options={opcoes(ROTULO_PRIORIDADE)} disabled={ro} />
           <Select label="Responsável" value={form.responsavel_id ?? 'nenhum'} onChange={(v) => setForm((f) => ({ ...f, responsavel_id: v === 'nenhum' ? null : Number(v) }))} options={[{ value: 'nenhum', label: 'Sem responsável' }, ...responsaveis.map((u) => ({ value: u.id, label: u.name }))]} disabled={ro} />
           <Input label="Prazo" type="date" value={form.prazo} onChange={(e) => setForm((f) => ({ ...f, prazo: e.target.value }))} disabled={ro} />
           <Select label="Situação" value={form.status} onChange={(v) => setForm((f) => ({ ...f, status: v as StatusDemanda }))} options={opcoes(ROTULO_STATUS_DEMANDA)} disabled={ro} />
         </div>
-        <label className="block space-y-1 text-sm font-medium">Descrição *<Textarea rows={3} value={form.descricao} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} required maxLength={5000} disabled={ro} /></label>
+        <label className="block space-y-1 text-sm font-medium">Descrição *<Textarea rows={3} value={form.descricao} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} maxLength={5000} disabled={ro} /></label>
         {registro !== 'nova' && !ro && <label className="block space-y-1 text-sm font-medium">Acrescentar ao histórico<Textarea rows={2} value={form.comentario} onChange={(e) => setForm((f) => ({ ...f, comentario: e.target.value }))} maxLength={2000} placeholder="Ex.: ofício enviado à secretaria" /></label>}
         {historico.length > 0 && (
           <div className="space-y-1 rounded-md border border-border bg-muted/40 p-3 text-sm">

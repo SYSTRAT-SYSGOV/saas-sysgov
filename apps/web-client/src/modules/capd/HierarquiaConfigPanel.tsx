@@ -44,6 +44,7 @@ import {
   type NivelHierarquiaItem,
   type CenarioSimulacao,
 } from './HierarquiaConfigPanel.simulador';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const api = new SysgovApi();
 
@@ -82,6 +83,7 @@ export const HierarquiaConfigPanel: React.FC = () => {
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(ESTADO_INICIAL);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   // Estados de navegação e filtros
   const [modoVisualizacao, setModoVisualizacao] = useState<ModoVisualizacao>('tabela');
@@ -220,7 +222,7 @@ export const HierarquiaConfigPanel: React.FC = () => {
       setDialogExclusao({ aberto: false, nivelId: null, nome: '' });
       await carregar();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Falha ao desativar o nível.');
+      if (!tratarErro(e)) alert(e instanceof Error ? e.message : 'Falha ao desativar o nível.');
     }
   };
 
@@ -332,6 +334,7 @@ export const HierarquiaConfigPanel: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {modalValidacao}
       {/* CABEÇALHO DO PAINEL */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

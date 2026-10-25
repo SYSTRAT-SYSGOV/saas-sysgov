@@ -18,6 +18,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const DASHBOARD_CACHE_KEY = 'sysgov:access:dashboard:v1';
 
@@ -42,6 +43,7 @@ interface Toast {
 export const AccessManagement: React.FC = () => {
   const navigate = useNavigate();
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const { tratarErro } = useFormValidationModal();
   const notify = (t: Toast) => {
     setToasts((prev) => [...prev, t]);
     window.setTimeout(() => setToasts((prev) => prev.filter((x) => x !== t)), 5000);
@@ -80,7 +82,7 @@ export const AccessManagement: React.FC = () => {
       sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(d));
       applyDashboardData(d, setters);
     } catch (error: any) {
-      notify({ type: 'error', title: 'Falha ao carregar', message: error.message || 'Não foi possível carregar os acessos.' });
+      if (!tratarErro(error)) notify({ type: 'error', title: 'Falha ao carregar', message: error.message || 'Não foi possível carregar os acessos.' });
     } finally {
       setLoading(false);
     }
@@ -269,11 +271,11 @@ export const AccessManagement: React.FC = () => {
         />
       )}
 
-      {viewMode === 'painel' && !wizardOpen && (
+      {viewMode === 'painel' && (
         <AdminAccessPanel modules={modules} units={units} notify={notify} />
       )}
 
-      {viewMode === 'lista' && !wizardOpen && (<>
+      {viewMode === 'lista' && (<>
       <AdvancedFilters
         modules={modules}
         units={units}

@@ -25,6 +25,7 @@ import {
 import { ErroBox, sanitizarTextoLegado, useAcao } from './comum';
 import { usePessoaPicker } from '@/modules/pessoas/hooks';
 import { pessoasApi } from '@/modules/pessoas/api';
+import { invalidarGlobal } from '@/lib/validationModalHost';
 
 export interface ModalEditarConcessionarioProps {
   concessionario: Concessionario | null;
@@ -206,21 +207,13 @@ export const ModalEditarConcessionario: React.FC<ModalEditarConcessionarioProps>
 
     const nomeLimpo = nome.trim();
     if (!nomeLimpo) {
-      setErro({
-        status: 422,
-        mensagem: 'O nome completo do concessionário / titular é obrigatório.',
-        campos: { nome: ['Informe o nome completo do titular para salvar.'] },
-      });
+      invalidarGlobal([['Nome', 'Informe o nome completo do titular para salvar.']]);
       return;
     }
 
     const emailLimpo = email.trim();
     if (emailLimpo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpo)) {
-      setErro({
-        status: 422,
-        mensagem: 'O formato do e-mail informado é inválido.',
-        campos: { email: ['Informe um e-mail válido (ex.: nome@dominio.com).'] },
-      });
+      invalidarGlobal([['E-mail', 'Informe um e-mail válido (ex.: nome@dominio.com).']]);
       return;
     }
 
@@ -356,7 +349,6 @@ export const ModalEditarConcessionario: React.FC<ModalEditarConcessionarioProps>
               <Input
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                required
                 placeholder="Informe o nome completo do concessionário / titular"
               />
             </Field>

@@ -26,7 +26,7 @@ export interface AdminModuleDefinition {
   requiredPermission?: string;
   icon?: LucideIcon;
   badge?: string;
-  badgeColor?: 'emerald' | 'indigo' | 'amber' | 'rose' | 'blue' | 'slate';
+  badgeColor?: 'success' | 'indigo' | 'amber' | 'rose' | 'blue' | 'neutral';
   description?: string;
   allowedRoles?: string[];
 }
@@ -44,7 +44,7 @@ export const ADMIN_MODULE_REGISTRY: Record<string, AdminModuleDefinition> = {
     requiredPermission: 'admin.dashboard.view',
     icon: LayoutDashboard,
     badge: 'Ao Vivo',
-    badgeColor: 'emerald',
+    badgeColor: 'success',
     description: 'Métricas executivas consolidadas, receita e atividade do sistema',
     allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'ANALYST'],
   },
@@ -92,7 +92,7 @@ export const ADMIN_MODULE_REGISTRY: Record<string, AdminModuleDefinition> = {
     requiredPermission: 'admin.menus.manage',
     icon: Layers,
     badge: 'Novo',
-    badgeColor: 'emerald',
+    badgeColor: 'success',
     description: 'Configuração dinâmica de grupos e itens do menu lateral',
     allowedRoles: ['SUPER_ADMIN', 'ADMIN'],
   },
@@ -104,7 +104,7 @@ export const ADMIN_MODULE_REGISTRY: Record<string, AdminModuleDefinition> = {
     requiredPermission: 'admin.billing.view',
     icon: CreditCard,
     badge: 'MRR',
-    badgeColor: 'emerald',
+    badgeColor: 'success',
     description: 'Demonstrativo financeiro, histórico de faturas e planos',
     allowedRoles: ['SUPER_ADMIN', 'ADMIN'],
   },
@@ -140,7 +140,7 @@ export const ADMIN_MODULE_REGISTRY: Record<string, AdminModuleDefinition> = {
     requiredPermission: 'admin.settings.manage',
     icon: Settings,
     badge: 'Custom',
-    badgeColor: 'slate',
+    badgeColor: 'neutral',
     description: 'Personalização visual, logotipo, parâmetros e segurança',
     allowedRoles: ['SUPER_ADMIN'],
   },

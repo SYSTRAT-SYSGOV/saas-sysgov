@@ -14,6 +14,7 @@ import {
   abrirArquivo, formatarCentavos, formatarCnpj, formatarData, formatarDataHora, ROTULO_DOCUMENTO, ROTULO_TERMO, textoValidade, VARIANTE_DOCUMENTO,
   VARIANTE_STATUS_ENTIDADE, VARIANTE_STATUS_LOTE,
 } from '../formato';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Portal da entidade (spec: Portal da entidade; Validade dos documentos; D7, D14). */
 export const PortalEntidade: React.FC<{ avisar: Toast }> = ({ avisar }) => {
@@ -190,16 +191,18 @@ const DocumentosPortal: React.FC<{ entidade: Entidade; avisar: Toast; onReenviar
 const CadastroPortal: React.FC<{ entidade: Entidade; avisar: Toast; onSalvo: (e: Entidade) => void }> = ({ entidade, avisar, onSalvo }) => {
   const [form, setForm] = useState<FormEntidade>(entidadeParaForm(entidade));
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setSalvando(true); setErro(null);
-    try { onSalvo(await portalApi.atualizar(dadosEdicao(form, false))); avisar({ type: 'success', title: 'Cadastro atualizado', message: entidade.razao_social }); } catch (e) { setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
+    try { onSalvo(await portalApi.atualizar(dadosEdicao(form, false))); avisar({ type: 'success', title: 'Cadastro atualizado', message: entidade.razao_social }); } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
   };
   return (
     <Card>
+      {modalValidacao}
       <CardContent className="py-4">
-        <form onSubmit={salvar} className="space-y-4">
+        <form noValidate onSubmit={salvar} className="space-y-4">
           <p className="text-xs text-muted-foreground">CNPJ e e-mail de acesso não mudam por aqui; fale com o Patrimônio se precisar. O CPF atual é {entidade.cpf_representante_mascarado}; preencha só para trocar.</p>
           <CamposEntidadeForm form={form} onChange={setForm} bloquear={['cnpj', 'email']} cpfOpcional />
           {erro && <AlertCard priority="danger" title="Não foi possível salvar" description={erro} />}
@@ -214,16 +217,18 @@ const EnviarDocumentoModal: React.FC<{ documento: DocumentoExigido | null; onFec
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [validade, setValidade] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [enviando, setEnviando] = useState(false);
   const fechar = () => { setArquivo(null); setValidade(''); setErro(null); onFechar(); };
   const enviar = async () => {
     if (!documento || !arquivo) return;
     setEnviando(true); setErro(null);
-    try { onEnviado(await portalApi.enviarDocumento(documento.chave, arquivo, validade || null)); setArquivo(null); setValidade(''); } catch (e) { setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
+    try { onEnviado(await portalApi.enviarDocumento(documento.chave, arquivo, validade || null)); setArquivo(null); setValidade(''); } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
   };
   return (
     <Modal open={documento !== null} onClose={fechar} title={`Enviar: ${documento?.nome ?? ''}`} size="md"
       footer={<><Button variant="outline" onClick={fechar} disabled={enviando}>Cancelar</Button><Button onClick={() => void enviar()} isLoading={enviando} disabled={!arquivo}>Enviar</Button></>}>
+      {modalValidacao}
       <div className="space-y-3">
         <label className="block space-y-1 text-sm font-medium">Arquivo (PDF, JPEG ou PNG, até 5 MB)
           <input type="file" accept="application/pdf,image/jpeg,image/png" className="block w-full text-sm font-normal" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />

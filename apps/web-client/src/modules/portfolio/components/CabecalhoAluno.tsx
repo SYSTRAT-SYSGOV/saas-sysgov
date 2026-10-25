@@ -5,6 +5,7 @@ import { erroApi } from '../../escola/api';
 import type { Toast } from '../../escola/components/AdminModal';
 import { portfolioApi, type AlunoPortfolio, type Periodo } from '../api';
 import { formatarAvaliacao, rotuloPeriodo } from '../formato';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props { aluno: AlunoPortfolio; turma: string; periodo: Periodo; avisar: Toast }
 
@@ -15,6 +16,7 @@ function nomeArquivo(aluno: AlunoPortfolio, p: Periodo): string {
 
 export const CabecalhoAluno: React.FC<Props> = ({ aluno, turma, periodo, avisar }) => {
   const [gerando, setGerando] = useState(false);
+  const { tratarErro } = useFormValidationModal();
 
   const exportar = async () => {
     setGerando(true);
@@ -28,7 +30,7 @@ export const CabecalhoAluno: React.FC<Props> = ({ aluno, turma, periodo, avisar 
       // Revogar na hora cancela o download em alguns navegadores (Firefox/Safari).
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (e) {
-      avisar({ type: 'error', title: 'Relatório', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Relatório', message: erroApi(e).mensagem });
     } finally {
       setGerando(false);
     }

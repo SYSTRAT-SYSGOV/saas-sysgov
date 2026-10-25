@@ -6,6 +6,7 @@ import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { useArquivoAutenticado } from '@/hooks/useArquivoAutenticado';
 import { ataApi, mensagemDeErro, type SecretariaOpcao } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Secretarias do Organograma (D1): aqui só se configuram a sigla e o papel timbrado usado como fundo do PDF. */
 export const SecretariasAta: React.FC<{ avisar: Toast }> = ({ avisar }) => {
@@ -50,6 +51,7 @@ const ConfigurarSecretaria: React.FC<{ secretaria: SecretariaOpcao; aoFechar: ()
   const [remover, setRemover] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const atual = useArquivoAutenticado(secretaria.tem_timbrado ? `/ata/secretarias/${secretaria.id}/timbrado` : null);
 
   const salvar = async () => {
@@ -63,7 +65,7 @@ const ConfigurarSecretaria: React.FC<{ secretaria: SecretariaOpcao; aoFechar: ()
       await ataApi.salvarSecretaria(secretaria.id, corpo);
       await aoSalvar();
     } catch (e) {
-      setErro(mensagemDeErro(e));
+      if (!tratarErro(e)) setErro(mensagemDeErro(e));
     } finally {
       setSalvando(false);
     }
@@ -72,6 +74,7 @@ const ConfigurarSecretaria: React.FC<{ secretaria: SecretariaOpcao; aoFechar: ()
   return (
     <Modal open onClose={aoFechar} title={secretaria.nome} size="lg"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-4">
         <Input label="Sigla na ata" value={sigla} onChange={(e) => setSigla(e.target.value)} maxLength={30} />
         <div className="space-y-2">

@@ -19,6 +19,7 @@ import {
   type Porte,
   type TipoRegistroProfissional,
 } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const PORTES: { value: Porte; label: string }[] = [
   { value: 'pequeno', label: 'Pequeno' },
@@ -198,6 +199,7 @@ const NovoEmpreendimentoModal: React.FC<{ onClose: () => void; onCriado: () => v
   const [dados, setDados] = useState<Partial<NovoEmpreendimentoInput>>({ porte: 'medio' });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -216,7 +218,7 @@ const NovoEmpreendimentoModal: React.FC<{ onClose: () => void; onCriado: () => v
       });
       onCriado();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -229,6 +231,7 @@ const NovoEmpreendimentoModal: React.FC<{ onClose: () => void; onCriado: () => v
         <Button onClick={salvar} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</Button>
       </>
     }>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
 
@@ -279,6 +282,7 @@ const ResponsavelTecnicoModal: React.FC<{ empreendimento: Empreendimento; onClos
   });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
 
   const salvar = async () => {
     setSalvando(true);
@@ -287,7 +291,7 @@ const ResponsavelTecnicoModal: React.FC<{ empreendimento: Empreendimento; onClos
       await meioAmbienteApi.vincularResponsavelTecnico(empreendimento.id, dados);
       onVinculado();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -300,6 +304,7 @@ const ResponsavelTecnicoModal: React.FC<{ empreendimento: Empreendimento; onClos
         <Button onClick={salvar} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</Button>
       </>
     }>
+      {modalValidacao}
       <div className="space-y-4">
         {erro && <div className="rounded-md bg-rose-950/60 p-3 text-sm text-rose-400">{erro}</div>}
         <Input label="Nome" value={dados.nome} onChange={(e) => setDados((d) => ({ ...d, nome: e.target.value }))} />

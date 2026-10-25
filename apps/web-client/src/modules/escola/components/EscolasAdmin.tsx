@@ -4,6 +4,7 @@ import { Button, Card, Input, Modal, Select, Switch } from '@sysgov/ui';
 import { ScreenState } from '@/components/ui';
 import { erroApi, escolaApi, type Escola } from '../api';
 import type { Toast } from './AdminModal';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Unidade {
   id: number;
@@ -131,6 +132,7 @@ interface EscolaFormProps {
 
 const EscolaForm: React.FC<EscolaFormProps> = ({ escola, unidades, onClose, onSalvo, onToast }) => {
   const [nome, setNome] = useState(escola?.nome ?? '');
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [inep, setInep] = useState(escola?.inep ?? '');
   const [orgUnitId, setOrgUnitId] = useState<number | null>(escola?.org_unit_id ?? null);
   const [logo, setLogo] = useState<File | null>(null);
@@ -148,7 +150,7 @@ const EscolaForm: React.FC<EscolaFormProps> = ({ escola, unidades, onClose, onSa
       if (logo) await escolaApi.enviarLogoEscola(salva.id, logo);
       await onSalvo();
     } catch (e) {
-      onToast({ type: 'error', title: 'Escola não salva', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) onToast({ type: 'error', title: 'Escola não salva', message: erroApi(e).mensagem });
     } finally {
       setSalvando(false);
     }
@@ -167,6 +169,7 @@ const EscolaForm: React.FC<EscolaFormProps> = ({ escola, unidades, onClose, onSa
         </>
       }
     >
+      {modalValidacao}
       <div className="space-y-4">
         <label className="block space-y-1">
           <span className="text-xs font-semibold text-muted-foreground">Nome da escola *</span>

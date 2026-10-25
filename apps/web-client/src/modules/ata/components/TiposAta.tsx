@@ -5,11 +5,13 @@ import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { ataApi, mensagemDeErro, type TipoAta } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Tipos de ata do tenant. Tipo já usado em ata é desativado em vez de excluído (o servidor decide). */
 export const TiposAta: React.FC<{ avisar: Toast; aoMudar: () => void }> = ({ avisar, aoMudar }) => {
   const carga = useCarga(() => ataApi.tipos(), []);
   const [novo, setNovo] = useState('');
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
 
   const salvar = async (tipo: { id?: number; nome: string; ativo: boolean }) => {
     try {
@@ -17,7 +19,7 @@ export const TiposAta: React.FC<{ avisar: Toast; aoMudar: () => void }> = ({ avi
       await carga.recarregar();
       aoMudar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Tipo de ata', message: mensagemDeErro(e) });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Tipo de ata', message: mensagemDeErro(e) });
     }
   };
 
@@ -34,10 +36,11 @@ export const TiposAta: React.FC<{ avisar: Toast; aoMudar: () => void }> = ({ avi
 
   return (
     <Card>
+      {modalValidacao}
       <CardContent className="space-y-4 p-4">
         <div className="flex items-end gap-2">
           <div className="flex-1"><Input label="Novo tipo de ata" value={novo} onChange={(e) => setNovo(e.target.value)} maxLength={150} /></div>
-          <Button disabled={!novo.trim()} onClick={() => void salvar({ nome: novo.trim(), ativo: true }).then(() => setNovo(''))}><Plus className="mr-1 h-4 w-4" />Adicionar</Button>
+          <Button onClick={() => { if (validar([['Nome do tipo', novo]])) void salvar({ nome: novo.trim(), ativo: true }).then(() => setNovo('')); }}><Plus className="mr-1 h-4 w-4" />Adicionar</Button>
         </div>
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && (

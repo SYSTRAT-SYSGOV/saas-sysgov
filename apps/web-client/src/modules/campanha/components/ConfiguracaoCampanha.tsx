@@ -9,6 +9,7 @@ import { useCarga } from '../../escola/useCarga';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { CampanhaFormModal } from './CampanhaForm';
 import { vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Dados da campanha, candidato, membros e cores/faixas do mapa (spec: Campanhas e candidato, Configuração). */
 export const ConfiguracaoCampanha: React.FC<PropsAba> = (props) => {
@@ -66,11 +67,13 @@ const CandidatoCard: React.FC<PropsAba> = ({ campanha, permissoes, avisar, recar
   const [form, setForm] = useState(inicial);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const campo = (k: CampoCandidato | 'cpf' | 'votos') => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const ro = !permissoes.gestao;
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([...(c ? [] : [['CPF', form.cpf] as [string, unknown]]), ['Nome de urna', form.nome_urna]])) return;
     setSalvando(true);
     setErro(null);
     try {
@@ -83,7 +86,7 @@ const CandidatoCard: React.FC<PropsAba> = ({ campanha, permissoes, avisar, recar
       setForm((f) => ({ ...f, cpf: '' }));
       await Promise.all([recarregarCampanha(), contexto.recarregarCampanhas()]);
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -91,13 +94,14 @@ const CandidatoCard: React.FC<PropsAba> = ({ campanha, permissoes, avisar, recar
 
   return (
     <Card>
+      {modalValidacao}
       <CardHeader><CardTitle className="flex items-center gap-2"><UserRound className="h-5 w-5 text-primary" />Candidato</CardTitle></CardHeader>
       <CardContent>
-        <form onSubmit={salvar} className="space-y-3">
+        <form noValidate onSubmit={salvar} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-4">
-            <Input label={c?.cpf_mascarado ? `CPF (atual ${c.cpf_mascarado})` : 'CPF *'} value={form.cpf} onChange={campo('cpf')} maxLength={14} required={!c} disabled={ro} className="font-mono tabular-nums" />
+            <Input label={c?.cpf_mascarado ? `CPF (atual ${c.cpf_mascarado})` : 'CPF *'} value={form.cpf} onChange={campo('cpf')} maxLength={14} disabled={ro} className="font-mono tabular-nums" />
             <Input label="Nome completo" value={form.nome_completo} onChange={campo('nome_completo')} maxLength={255} disabled={ro || !!c} />
-            <Input label="Nome de urna *" value={form.nome_urna} onChange={campo('nome_urna')} required maxLength={200} disabled={ro} />
+            <Input label="Nome de urna *" value={form.nome_urna} onChange={campo('nome_urna')} maxLength={200} disabled={ro} />
             <div className="grid grid-cols-2 gap-2">
               <Input label="Partido" value={form.partido} onChange={campo('partido')} maxLength={50} disabled={ro} />
               <Input label="Número" value={form.numero} onChange={campo('numero')} maxLength={15} disabled={ro} className="font-mono tabular-nums" />
@@ -131,6 +135,7 @@ const CandidatoCard: React.FC<PropsAba> = ({ campanha, permissoes, avisar, recar
 
 const MembrosCard: React.FC<PropsAba> = ({ campanha, avisar }) => {
   const [usuarios, setUsuarios] = useState<{ id: number; nome: string; email: string }[] | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   const [salvando, setSalvando] = useState(false);
 
@@ -148,7 +153,7 @@ const MembrosCard: React.FC<PropsAba> = ({ campanha, avisar }) => {
       const membros = await campanhaApi.definirMembros(campanha.id, [...marcados]);
       avisar({ type: 'success', title: 'Membros atualizados', message: `${membros.length} membro(s) na campanha.` });
     } catch (e) {
-      avisar({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível salvar', message: erroApi(e).mensagem });
     } finally {
       setSalvando(false);
     }
@@ -237,6 +242,7 @@ const LgpdCard: React.FC<PropsAba> = ({ campanha, permissoes, avisar }) => {
   const [form, setForm] = useState<{ termo: string; nome: string; contato: string; dias: string } | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const d = dados.dados;
   if (d && form === null) setForm({ termo: d.lgpd_termo ?? '', nome: d.lgpd_encarregado_nome ?? '', contato: d.lgpd_encarregado_contato ?? '', dias: String(d.lgpd_retencao_dias) });
   const ro = !permissoes.gestao;
@@ -252,7 +258,7 @@ const LgpdCard: React.FC<PropsAba> = ({ campanha, permissoes, avisar }) => {
       setForm(null);
       await dados.recarregar();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -260,10 +266,11 @@ const LgpdCard: React.FC<PropsAba> = ({ campanha, permissoes, avisar }) => {
 
   return (
     <Card>
+      {modalValidacao}
       <CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" />Privacidade dos eleitores (LGPD)</CardTitle></CardHeader>
       <CardContent>
         {dados.erro ? <p className="text-sm text-destructive">{dados.erro}</p> : !d || !form ? <Skeleton className="h-40 w-full" /> : (
-          <form onSubmit={salvar} className="space-y-3">
+          <form noValidate onSubmit={salvar} className="space-y-3">
             <div className="grid gap-3 text-sm sm:grid-cols-3">
               <p><span className="block text-xs text-muted-foreground">Versão do termo</span><span className="font-mono tabular-nums">{d.lgpd_termo_versao}</span></p>
               <p><span className="block text-xs text-muted-foreground">Encerrada em</span><span className="font-mono tabular-nums">{formatarData(d.encerrada_em)}</span></p>

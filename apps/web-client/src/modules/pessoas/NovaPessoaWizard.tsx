@@ -15,6 +15,7 @@ import { cn } from '@sysgov/ui';
 import { pessoasApi, TIPOS_VINCULO, type TipoVinculo, type TipoPessoa } from './api';
 import { useCep } from './hooks/useCep';
 import { ErroBox, useAcao } from './views/comum';
+import { invalidarGlobal } from '@/lib/validationModalHost';
 
 function validarCpf(cpfLimpo: string): boolean {
   if (cpfLimpo.length !== 11 || /^(\d)\1{10}$/.test(cpfLimpo)) return false;
@@ -284,7 +285,7 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
 
     if (tipo === 'juridica') {
       if (!juridica.razao_social.trim()) {
-        setErro({ status: 422, mensagem: 'Informe a razão social da pessoa jurídica.' });
+        invalidarGlobal([['validação', 'Informe a razão social da pessoa jurídica.']]);
         return;
       }
 
@@ -308,11 +309,11 @@ export const NovaPessoaWizard: React.FC<NovaPessoaWizardProps> = ({ onFechar, on
 
     if (civil.falecido) {
       if (!civil.data_falecimento) {
-        setErro({ status: 422, mensagem: 'Informe a data de falecimento da pessoa.' });
+        invalidarGlobal([['validação', 'Informe a data de falecimento da pessoa.']]);
         return;
       }
       if (civil.data_nascimento && civil.data_falecimento < civil.data_nascimento) {
-        setErro({ status: 422, mensagem: 'A data de falecimento não pode ser anterior à data de nascimento.' });
+        invalidarGlobal([['validação', 'A data de falecimento não pode ser anterior à data de nascimento.']]);
         return;
       }
     }

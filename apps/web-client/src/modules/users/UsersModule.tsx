@@ -25,6 +25,8 @@ import {
   useReactivateUser,
 } from '@/hooks/useUsers';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { getApiErrorMessage } from '@/lib/apiErrors';
 
 const TENANT_ROLES = [
   'admin_tenant',
@@ -52,6 +54,7 @@ interface FormState {
 const EMPTY_FORM: FormState = { name: '', email: '', password: '', password_confirmation: '', role_slug: '' };
 
 export const UsersModule: React.FC = () => {
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const { tenant } = useTenant();
   const { can } = useCan();
   const [search, setSearch] = useState('');
@@ -77,6 +80,11 @@ export const UsersModule: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Nome', form.name], ['E-mail', form.email], ['Role', form.role_slug], ...(editingUser ? [] : [['Senha', form.password] as [string, unknown], ['Confirmar senha', form.password_confirmation] as [string, unknown]])])) return;
+    if (!editingUser && form.password !== form.password_confirmation) {
+      invalidar([['Confirmar senha', 'A senha e a confirmação não coincidem.']]);
+      return;
+    }
     try {
       if (editingUser) {
         await updateUser.mutateAsync({
@@ -94,13 +102,15 @@ export const UsersModule: React.FC = () => {
       setEditingUser(null);
       setForm(EMPTY_FORM);
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Erro ao salvar usuário.');
+      if (!tratarErro(error)) alert(getApiErrorMessage(error, 'Erro ao salvar usuário.'));
     }
   };
 
   const handleDeactivate = async () => {
-    if (!deactivating || !reason.trim() || reason.trim().length < 10) {
-      alert('Informe o motivo da desativação (mínimo 10 caracteres).');
+    if (!deactivating) return;
+    if (!validar([['Motivo da desativação', reason]])) return;
+    if (reason.trim().length < 10) {
+      invalidar([['Motivo da desativação', 'O motivo deve ter no mínimo 10 caracteres.']]);
       return;
     }
     try {
@@ -108,7 +118,7 @@ export const UsersModule: React.FC = () => {
       setDeactivating(null);
       setReason('');
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Erro ao desativar usuário.');
+      if (!tratarErro(error)) alert(getApiErrorMessage(error, 'Erro ao desativar usuário.'));
     }
   };
 
@@ -147,6 +157,7 @@ export const UsersModule: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {modalValidacao}
       <Card className="!p-5 sm:!p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -295,16 +306,15 @@ export const UsersModule: React.FC = () => {
               </h2>
               <button onClick={() => setModalOpen(false)} className="text-gov-text-muted hover:text-gov-text-primary">✕</button>
             </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              <Input label="Nome *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <Input label="E-mail *" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <form onSubmit={handleSave} noValidate className="p-6 space-y-4">
+              <Input label="Nome *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input label="E-mail *" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label={editingUser ? 'Nova senha' : 'Senha *'}
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  required={!editingUser}
                   helperText="Mín. 8 chars, maiúscula, minúscula, número e símbolo."
                 />
                 <Input
@@ -312,7 +322,6 @@ export const UsersModule: React.FC = () => {
                   type="password"
                   value={form.password_confirmation}
                   onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
-                  required={!editingUser}
                 />
               </div>
               <div>
@@ -320,7 +329,6 @@ export const UsersModule: React.FC = () => {
                   Role *
                 </label>
                 <select
-                  required
                   value={form.role_slug}
                   onChange={(e) => setForm({ ...form, role_slug: e.target.value })}
                   className="w-full h-12 px-4 rounded-lg border border-gov-border bg-gov-surface text-gov-text-primary font-mono text-sm focus:outline-none focus:border-gov-primary focus:ring-2 focus:ring-gov-primary/20"

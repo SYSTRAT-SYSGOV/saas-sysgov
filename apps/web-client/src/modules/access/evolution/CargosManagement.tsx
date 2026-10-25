@@ -5,10 +5,13 @@ import { Modal, Badge, Card, ActionsMenu } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { getApiErrorMessage } from '@/lib/apiErrors';
 
 const inputCls = 'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring';
 
 export const CargosManagement: React.FC<{ notify: (t: any) => void }> = ({ notify }) => {
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [cargos, setCargos] = useState<Cargo[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ edit?: Cargo } | null>(null);
@@ -28,7 +31,7 @@ export const CargosManagement: React.FC<{ notify: (t: any) => void }> = ({ notif
   const openEdit = (c: Cargo) => { setName(c.name); setDescription(c.description ?? ''); setModal({ edit: c }); };
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!validar([['Nome', name]])) return;
     try {
       if (modal?.edit) {
         await accessApi.updateCargo(modal.edit.id, { name: name.trim(), description: description.trim() || null });
@@ -38,7 +41,7 @@ export const CargosManagement: React.FC<{ notify: (t: any) => void }> = ({ notif
         notify({ type: 'success', title: 'Criado', message: 'Cargo criado.' });
       }
       setModal(null); load();
-    } catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || e?.message }); }
+    } catch (e: any) { if (!tratarErro(e)) notify({ type: 'error', title: 'Erro', message: getApiErrorMessage(e) }); }
   };
 
   const handleDelete = async (c: Cargo) => {
@@ -65,6 +68,7 @@ export const CargosManagement: React.FC<{ notify: (t: any) => void }> = ({ notif
 
   return (
     <Card className="gap-0 py-0 overflow-hidden">
+      {modalValidacao}
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
           <Briefcase className="h-4 w-4 text-primary" /> Cargos

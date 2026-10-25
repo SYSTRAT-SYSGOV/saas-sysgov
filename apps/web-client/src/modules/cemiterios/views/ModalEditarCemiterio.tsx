@@ -16,6 +16,7 @@ import {
 import { Button, Card, Input, Modal, Select } from '@/components/ui';
 import { cemiteriosApi, erroApi, type ErroApi, type Parque } from '../api';
 import { useCemiteriosContext } from '../CemiteriosContext';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface ModalEditarCemiterioProps {
   aberto: boolean;
@@ -60,6 +61,7 @@ export const ModalEditarCemiterio: React.FC<ModalEditarCemiterioProps> = ({
   const [capturandoGps, setCapturandoGps] = useState<'centro' | 'portaria' | null>(null);
   const [msgSucesso, setMsgSucesso] = useState<string | null>(null);
   const [erro, setErro] = useState<ErroApi | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     if (parque) {
@@ -179,10 +181,7 @@ export const ModalEditarCemiterio: React.FC<ModalEditarCemiterioProps> = ({
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome.trim() || !codigo.trim()) {
-      setErro({ status: 422, mensagem: 'Nome e código são obrigatórios.' });
-      return;
-    }
+    if (!validar([['Nome', nome], ['Código', codigo]])) return;
 
     try {
       setSalvando(true);
@@ -210,7 +209,7 @@ export const ModalEditarCemiterio: React.FC<ModalEditarCemiterioProps> = ({
         onFechar();
       }, 1200);
     } catch (err) {
-      setErro(erroApi(err));
+      if (!tratarErro(err)) setErro(erroApi(err));
     } finally {
       setSalvando(false);
     }
@@ -275,7 +274,8 @@ export const ModalEditarCemiterio: React.FC<ModalEditarCemiterioProps> = ({
         </div>
       }
     >
-      <form id="form-editar-cemiterio" onSubmit={salvar} className="space-y-6">
+      {modalValidacao}
+      <form noValidate id="form-editar-cemiterio" onSubmit={salvar} className="space-y-6">
         {msgSucesso && (
           <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3.5 text-xs text-emerald-700 dark:text-emerald-300 font-medium animate-in fade-in-50">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -309,7 +309,6 @@ export const ModalEditarCemiterio: React.FC<ModalEditarCemiterioProps> = ({
                   onChange={(e) => setCodigo(e.target.value)}
                   placeholder="ex: CEM-01"
                   className="font-mono text-xs font-semibold uppercase tracking-wider"
-                  required
                 />
               </div>
 
@@ -337,7 +336,6 @@ export const ModalEditarCemiterio: React.FC<ModalEditarCemiterioProps> = ({
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="ex: Cemitério Municipal Central"
                 className="text-xs font-medium"
-                required
               />
             </div>
 

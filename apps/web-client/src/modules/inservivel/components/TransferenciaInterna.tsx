@@ -9,10 +9,12 @@ import { inservivelApi, type BemResumo, type Transferencia } from '../api';
 import { abrirArquivo, formatarCentavos, formatarDataHora, rotuloUnidade, vazioParaNulo, VARIANTE_TRANSFERENCIA } from '../formato';
 import type { PropsAba } from '../ModuloInservivelMain';
 import { CampoTexto, ChipSituacao, FotoBem } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Transferência interna (spec: Transferência interna entre secretarias): vitrine, minhas e anúncio. */
 export const TransferenciaInterna: React.FC<PropsAba> = ({ permissoes, avisar }) => {
   const [escopo, setEscopo] = useState<'vitrine' | 'minhas'>('vitrine');
+  const { tratarErro } = useFormValidationModal();
   const [versao, setVersao] = useState(0);
   const [anunciar, setAnunciar] = useState(false);
   const [confirmar, setConfirmar] = useState<{ acao: 'solicitar' | 'cancelar'; t: Transferencia } | null>(null);
@@ -77,7 +79,7 @@ export const TransferenciaInterna: React.FC<PropsAba> = ({ permissoes, avisar })
             if (confirmar.acao === 'solicitar') await inservivelApi.solicitar(confirmar.t.id); else await inservivelApi.cancelar(confirmar.t.id);
             avisar({ type: 'success', title: confirmar.acao === 'solicitar' ? 'Solicitação enviada' : 'Anúncio cancelado', message: confirmar.t.bem.numero_patrimonial });
             setVersao((v) => v + 1);
-          } catch (e) { avisar({ type: 'error', title: 'Não foi possível concluir', message: erroApi(e).mensagem }); }
+          } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível concluir', message: erroApi(e).mensagem }); }
         }} />
     </Card>
   );

@@ -4,6 +4,7 @@ import { escolaApi, erroApi, type Trimestre as PeriodoTrimestre, type SituacaoPe
 import { useCarga } from '../useCarga';
 import AdminModal, { inputCls, labelCls, btnPrimary, btnSecondary, EstadoCarga, type Toast } from './AdminModal';
 import { ConfirmModal } from './AlunoModals';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 
 type ModalState =
@@ -152,15 +153,16 @@ const TrimestreFormModal: React.FC<TrimestreFormModalProps> = ({ trimestre, onCl
   const [inicio, setInicio] = useState(trimestre?.data_inicio || '');
   const [fim, setFim] = useState(trimestre?.data_fim || '');
   const [erro, setErro] = useState('');
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
 
   const [salvando, setSalvando] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const anoNum = parseInt(ano, 10);
-    if (Number.isNaN(anoNum) || anoNum < 2020 || anoNum > 2100) return setErro('Informe um ano letivo entre 2020 e 2100.');
-    if (!inicio || !fim) return setErro('Informe as datas de início e fim.');
-    if (fim < inicio) return setErro('A data de fim deve ser igual ou posterior à data de início.');
+    if (Number.isNaN(anoNum) || anoNum < 2020 || anoNum > 2100) return invalidar([['validação', 'Informe um ano letivo entre 2020 e 2100.']]);
+    if (!inicio || !fim) return invalidar([['validação', 'Informe as datas de início e fim.']]);
+    if (fim < inicio) return invalidar([['validação', 'A data de fim deve ser igual ou posterior à data de início.']]);
     setSalvando(true);
     try {
       await escolaApi.salvarTrimestre({ ano_letivo: anoNum, numero, data_inicio: inicio, data_fim: fim }, trimestre?.id);
@@ -171,7 +173,7 @@ const TrimestreFormModal: React.FC<TrimestreFormModalProps> = ({ trimestre, onCl
       });
       onSaved();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -191,10 +193,11 @@ const TrimestreFormModal: React.FC<TrimestreFormModalProps> = ({ trimestre, onCl
         </>
       }
     >
-      <form id="form-trimestre" onSubmit={handleSubmit} className="space-y-4">
+      {modalValidacao}
+      <form noValidate id="form-trimestre" onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className={labelCls} htmlFor="tri-ano">Ano Letivo</label>
-          <input id="tri-ano" type="number" min={2020} max={2100} className={`${inputCls} font-mono`} value={ano} onChange={e => { setAno(e.target.value); setErro(''); }} required />
+          <input id="tri-ano" type="number" min={2020} max={2100} className={`${inputCls} font-mono`} value={ano} onChange={e => { setAno(e.target.value); setErro(''); }} />
         </div>
         <div>
           <label className={labelCls} htmlFor="tri-num">Trimestre</label>
@@ -207,11 +210,11 @@ const TrimestreFormModal: React.FC<TrimestreFormModalProps> = ({ trimestre, onCl
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelCls} htmlFor="tri-inicio">Data de Início</label>
-            <input id="tri-inicio" type="date" className={inputCls} value={inicio} onChange={e => { setInicio(e.target.value); setErro(''); }} required />
+            <input id="tri-inicio" type="date" className={inputCls} value={inicio} onChange={e => { setInicio(e.target.value); setErro(''); }} />
           </div>
           <div>
             <label className={labelCls} htmlFor="tri-fim">Data de Fim</label>
-            <input id="tri-fim" type="date" min={inicio || undefined} className={inputCls} value={fim} onChange={e => { setFim(e.target.value); setErro(''); }} required />
+            <input id="tri-fim" type="date" min={inicio || undefined} className={inputCls} value={fim} onChange={e => { setFim(e.target.value); setErro(''); }} />
           </div>
         </div>
         {erro && <p className="text-sm font-medium text-red-600">{erro}</p>}

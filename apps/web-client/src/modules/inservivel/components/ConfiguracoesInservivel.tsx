@@ -6,6 +6,7 @@ import { useCarga } from '../../escola/useCarga';
 import { inservivelApi, type Configuracao, type DocumentoExigido, type ResultadoImportacao } from '../api';
 import { vazioParaNulo } from '../formato';
 import type { PropsAba } from '../ModuloInservivelMain';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Configurações (spec: Configurações e importação; D10, D13). */
 export const ConfiguracoesInservivel: React.FC<PropsAba> = ({ avisar }) => {
@@ -45,6 +46,7 @@ const FormConfiguracao: React.FC<{ inicial: Configuracao; avisar: PropsAba['avis
   const [legislacao, setLegislacao] = useState<string[]>(inicial.legislacao.length > 0 ? inicial.legislacao : ['']);
   const [documentos, setDocumentos] = useState<DocumentoExigido[]>(inicial.documentos_exigidos);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const texto = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [campo]: e.target.value }));
 
@@ -60,11 +62,12 @@ const FormConfiguracao: React.FC<{ inicial: Configuracao; avisar: PropsAba['avis
       onSalvo(c);
       setDocumentos(c.documentos_exigidos);
       avisar({ type: 'success', title: 'Configurações salvas', message: 'Os próximos termos usam os novos dados.' });
-    } catch (e) { setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
+    } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
   };
 
   return (
-    <form onSubmit={salvar} className="space-y-4">
+    <form noValidate onSubmit={salvar} className="space-y-4">
+      {modalValidacao}
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Landmark className="h-5 w-5 text-primary" />Doador (aparece nos termos)</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -106,7 +109,7 @@ const FormConfiguracao: React.FC<{ inicial: Configuracao; avisar: PropsAba['avis
             <TableBody>
               {documentos.map((d, i) => (
                 <TableRow key={d.chave || `novo-${i}`}>
-                  <TableCell><Input aria-label={`Nome do documento ${i + 1}`} value={d.nome} onChange={(e) => setDocumentos((l) => l.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)))} required /></TableCell>
+                  <TableCell><Input aria-label={`Nome do documento ${i + 1}`} value={d.nome} onChange={(e) => setDocumentos((l) => l.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)))} /></TableCell>
                   <TableCell><Switch checked={d.obrigatorio} onCheckedChange={(v) => setDocumentos((l) => l.map((x, j) => (j === i ? { ...x, obrigatorio: v } : x)))} aria-label={`${d.nome} obrigatório`} /></TableCell>
                   <TableCell><Button type="button" variant="ghost" size="icon-sm" aria-label={`Remover ${d.nome}`} onClick={() => setDocumentos((l) => l.filter((_, j) => j !== i))} disabled={documentos.length <= 1}><Trash2 /></Button></TableCell>
                 </TableRow>
@@ -127,14 +130,16 @@ const Importacao: React.FC<{ avisar: PropsAba['avisar'] }> = ({ avisar }) => {
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [resultado, setResultado] = useState<ResultadoImportacao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [enviando, setEnviando] = useState(false);
   const enviar = async () => {
     if (!arquivo) return;
     setEnviando(true); setErro(null); setResultado(null);
-    try { const r = await inservivelApi.importar(arquivo); setResultado(r); avisar({ type: 'success', title: 'Importação concluída', message: `${r.criados} criado(s), ${r.atualizados} atualizado(s)` }); } catch (e) { setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
+    try { const r = await inservivelApi.importar(arquivo); setResultado(r); avisar({ type: 'success', title: 'Importação concluída', message: `${r.criados} criado(s), ${r.atualizados} atualizado(s)` }); } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
   };
   return (
     <Card>
+      {modalValidacao}
       <CardHeader><CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5 text-primary" />Importar planilha patrimonial (CSV)</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">Aceita o relatório do sistema patrimonial em CSV (separado por vírgula ou ponto e vírgula). O bem é criado ou completado pelo nº patrimonial; o centro de custo precisa existir no Organograma. Bens novos entram como Inservível.</p>

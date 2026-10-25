@@ -30,7 +30,7 @@ export function Field(props: BaseFieldProps & { value: string | number | boolean
           name={name}
           checked={value as boolean}
           onChange={onChange}
-          required={required}
+          aria-required={required || undefined}
           className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
           {...rest as React.InputHTMLAttributes<HTMLInputElement>}
         />
@@ -47,7 +47,7 @@ export function Field(props: BaseFieldProps & { value: string | number | boolean
       <div className={cn('space-y-1.5', className)}>
         {label && (
           <label htmlFor={id} className="block text-sm font-medium text-foreground">
-            {label} {required && <span className="text-rose-500 ml-1">*</span>}
+            {label} {required && <span className="text-status-danger ml-1">*</span>}
           </label>
         )}
         <textarea
@@ -55,17 +55,17 @@ export function Field(props: BaseFieldProps & { value: string | number | boolean
           name={name}
           value={String(value)}
           onChange={onChange as (e: React.ChangeEvent<HTMLTextAreaElement>) => void}
-          required={required}
+          aria-required={required || undefined}
           placeholder={placeholder}
           rows={rows}
           className={cn(
             'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors',
             'focus:outline-none focus:ring-2 focus:ring-ring',
-            error && 'border-rose-500 focus:ring-rose-500'
+            error && 'border-status-danger-border focus:ring-ring'
           )}
           {...rest as React.TextareaHTMLAttributes<HTMLTextAreaElement>}
         />
-        {error && <p className="text-xs text-rose-500" role="alert">{error}</p>}
+        {error && <p className="text-xs text-status-danger" role="alert">{error}</p>}
         {help && !error && <p className="text-xs text-muted-foreground">{help}</p>}
       </div>
     );
@@ -77,7 +77,7 @@ if (as === 'select') {
       <div className={cn('space-y-1.5', className)}>
         {label && (
           <label htmlFor={id} className="block text-sm font-medium text-foreground">
-            {label} {required && <span className="text-rose-500 ml-1">*</span>}
+            {label} {required && <span className="text-status-danger ml-1">*</span>}
           </label>
         )}
         <select
@@ -85,11 +85,11 @@ if (as === 'select') {
           name={name}
           value={String(value)}
           onChange={onChange as (e: React.ChangeEvent<HTMLSelectElement>) => void}
-          required={required}
+          aria-required={required || undefined}
           className={cn(
             'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors',
             'focus:outline-none focus:ring-2 focus:ring-ring',
-            error && 'border-rose-500 focus:ring-rose-500'
+            error && 'border-status-danger-border focus:ring-ring'
           )}
           {...selectRest}
         >
@@ -97,7 +97,7 @@ if (as === 'select') {
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        {error && <p className="text-xs text-rose-500" role="alert">{error}</p>}
+        {error && <p className="text-xs text-status-danger" role="alert">{error}</p>}
         {help && !error && <p className="text-xs text-muted-foreground">{help}</p>}
       </div>
     );
@@ -108,7 +108,7 @@ if (as === 'select') {
     <div className={cn('space-y-1.5', className)}>
       {label && (
         <label htmlFor={id} className="block text-sm font-medium text-foreground">
-          {label} {required && <span className="text-rose-500 ml-1">*</span>}
+          {label} {required && <span className="text-status-danger ml-1">*</span>}
         </label>
       )}
       <input
@@ -116,7 +116,7 @@ if (as === 'select') {
         name={name}
         value={String(value)}
         onChange={onChange as (e: React.ChangeEvent<HTMLInputElement>) => void}
-        required={required}
+        aria-required={required || undefined}
         placeholder={placeholder}
         type={type}
         min={min}
@@ -124,11 +124,11 @@ if (as === 'select') {
         className={cn(
           'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors',
           'focus:outline-none focus:ring-2 focus:ring-ring',
-          error && 'border-rose-500 focus:ring-rose-500'
+          error && 'border-status-danger-border focus:ring-ring'
         )}
         {...rest as React.InputHTMLAttributes<HTMLInputElement>}
       />
-      {error && <p className="text-xs text-rose-500" role="alert">{error}</p>}
+      {error && <p className="text-xs text-status-danger" role="alert">{error}</p>}
       {help && !error && <p className="text-xs text-muted-foreground">{help}</p>}
     </div>
   );

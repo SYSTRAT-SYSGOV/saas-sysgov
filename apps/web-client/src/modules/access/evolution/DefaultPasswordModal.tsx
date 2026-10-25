@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, Save, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { accessApi } from '../AccessApi';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { getApiErrorMessage } from '@/lib/apiErrors';
 
 interface DefaultPasswordModalProps {
   onClose: () => void;
@@ -8,6 +10,7 @@ interface DefaultPasswordModalProps {
 }
 
 export const DefaultPasswordModal: React.FC<DefaultPasswordModalProps> = ({ onClose, notify }) => {
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [loading, setLoading] = useState(true);
@@ -30,11 +33,11 @@ export const DefaultPasswordModal: React.FC<DefaultPasswordModalProps> = ({ onCl
 
   const handleSave = async () => {
     if (!password || password.length < 8) {
-      notify({ type: 'warning', title: 'Senha fraca', message: 'A senha deve ter pelo menos 8 caracteres.' });
+      invalidar([['Senha padrão', 'A senha deve ter pelo menos 8 caracteres.']]);
       return;
     }
     if (password !== passwordConfirmation) {
-      notify({ type: 'warning', title: 'Senhas diferentes', message: 'A senha e a confirmação não coincidem.' });
+      invalidar([['Confirmar senha', 'A senha e a confirmação não coincidem.']]);
       return;
     }
     setSaving(true);
@@ -47,7 +50,7 @@ export const DefaultPasswordModal: React.FC<DefaultPasswordModalProps> = ({ onCl
       notify({ type: 'success', title: 'Senha padrão salva', message: 'A senha padrão do sistema foi atualizada.' });
       onClose();
     } catch (e: any) {
-      notify({ type: 'error', title: 'Falha ao salvar', message: e?.response?.data?.message || e?.message || 'Erro ao salvar.' });
+      if (!tratarErro(e)) notify({ type: 'error', title: 'Falha ao salvar', message: getApiErrorMessage(e, 'Erro ao salvar.') });
     } finally {
       setSaving(false);
     }
@@ -55,6 +58,7 @@ export const DefaultPasswordModal: React.FC<DefaultPasswordModalProps> = ({ onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      {modalValidacao}
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gov-border">
           <h2 className="text-lg font-bold text-primary dark:text-white flex items-center gap-2">

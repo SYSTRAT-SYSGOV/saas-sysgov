@@ -1,3 +1,4 @@
+import { ApiRequestError } from '../../api/errors';
 import { Invitation, MenuGroup, User, Role, Permission, Paginated, Tenant, SaasModule, CnpjLookupResult, Analyst, AnalystTenantLink, BatchProvisionResult, AiSettings, AiSettingsUpdatePayload, AiTestConnectionResult } from './types';
 import { withApiBase } from '../../config/env';
 
@@ -37,7 +38,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     console.error(`[AdminAPI] Falha em ${path}:`, err);
-    throw new Error(err.message ?? err.error ?? `HTTP ${res.status}`);
+    throw new ApiRequestError(err.message ?? err.error ?? `HTTP ${res.status}`, res.status, err);
   }
   if (res.status === 204) return undefined as unknown as T;
   return res.json();
@@ -78,12 +79,13 @@ export const adminApi = {
   },
 
   // Users (SYSTRAT)
-  async getUsers(params?: { search?: string; role?: string; status?: string; page?: number }): Promise<Paginated<User>> {
+  async getUsers(params?: { search?: string; role?: string; status?: string; page?: number; per_page?: number }): Promise<Paginated<User>> {
     const qs = new URLSearchParams();
     if (params?.search) qs.set('search', params.search);
     if (params?.role) qs.set('role', params.role);
     if (params?.status) qs.set('status', params.status);
     if (params?.page) qs.set('page', String(params.page));
+    if (params?.per_page) qs.set('per_page', String(params.per_page));
     const q = qs.toString();
     return request<Paginated<User>>(`/users${q ? `?${q}` : ''}`);
   },

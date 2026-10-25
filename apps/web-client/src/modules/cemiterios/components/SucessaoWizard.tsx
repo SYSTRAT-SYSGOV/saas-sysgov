@@ -14,6 +14,7 @@ import type {
 import { VIA_LABELS } from './sucessao.utils';
 import { StatusChip } from '@/components/ui';
 import { Mono } from '../views/comum';
+import { validarObrigatoriosGlobal } from '@/lib/validationModalHost';
 
 interface SucessaoWizardProps {
   concessionId?: number;
@@ -91,7 +92,8 @@ export const SucessaoWizard: React.FC<SucessaoWizardProps> = ({
   }, [searchTerm, parkId]);
 
   const avancar = () => {
-    if (passo === 0 && !concessaoSelecionada) return;
+    if (passo === 0 && !validarObrigatoriosGlobal([['Concessão', concessaoSelecionada]])) return;
+    if (passo === 1 && !validarObrigatoriosGlobal([['Via de Sucessão', viaSelecionada]])) return;
     if (passo < PASSOS.length - 1) setPasso(passo + 1);
   };
 
@@ -100,7 +102,7 @@ export const SucessaoWizard: React.FC<SucessaoWizardProps> = ({
   };
 
   const confirmar = useCallback(async () => {
-    if (!concessaoSelecionada) return;
+    if (!validarObrigatoriosGlobal([['Concessão', concessaoSelecionada], ['Via de Sucessão', viaSelecionada]]) || !concessaoSelecionada) return;
     const dados: AbrirSucessaoInput = {
       concession_id: concessaoSelecionada.id,
       park_id: concessaoSelecionada.jazigo?.park_id ?? parkId ?? null,
@@ -117,8 +119,6 @@ export const SucessaoWizard: React.FC<SucessaoWizardProps> = ({
       onFechar();
     });
   }, [concessaoSelecionada, viaSelecionada, processoReferencia, dataFalecimento, executar, onSucesso, resetar, onFechar, parkId]);
-
-  const podeAvancar = passo === 0 ? !!concessaoSelecionada : passo === 1 ? !!viaSelecionada : true;
 
   return (
     <Modal
@@ -152,11 +152,11 @@ export const SucessaoWizard: React.FC<SucessaoWizardProps> = ({
               </Button>
             )}
             {passo < PASSOS.length - 1 ? (
-              <Button size="sm" onClick={avancar} disabled={!podeAvancar}>
+              <Button size="sm" onClick={avancar}>
                 Próximo <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             ) : (
-              <Button size="sm" onClick={confirmar} disabled={enviando || !podeAvancar}>
+              <Button size="sm" onClick={confirmar} disabled={enviando}>
                 {enviando ? 'Criando…' : 'Criar Processo'}
               </Button>
             )}

@@ -10,6 +10,7 @@ import {
   ESTADO_BADGE_VARIANT,
 } from '../hooks/useSucessaoTransicoes';
 import { StatusChip } from '@/components/ui';
+import { validarObrigatoriosGlobal } from '@/lib/validationModalHost';
 
 interface SucessaoActionsProps {
   sucessao: Sucessao;
@@ -26,7 +27,8 @@ export const SucessaoActions: React.FC<SucessaoActionsProps> = ({ sucessao, onAc
   const transicoes = transicoesValidas(sucessao.estado);
 
   const handleTransicao = useCallback(async () => {
-    if (!modalTransicao || !motivo.trim()) return;
+    if (!modalTransicao) return;
+    if (!validarObrigatoriosGlobal([['Motivo / Fundamentalização', motivo]])) return;
     await executar(async () =>
       cemiteriosApi.transicionarSucessao(sucessao.id, {
         para: modalTransicao.para,
@@ -98,7 +100,7 @@ export const SucessaoActions: React.FC<SucessaoActionsProps> = ({ sucessao, onAc
             >
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleTransicao} disabled={enviando || !motivo.trim()}>
+            <Button size="sm" onClick={handleTransicao} disabled={enviando}>
               {enviando ? 'Processando…' : 'Confirmar'}
             </Button>
           </div>

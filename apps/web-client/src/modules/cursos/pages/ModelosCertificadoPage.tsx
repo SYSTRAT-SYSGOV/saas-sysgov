@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '@/lib/apiErrors';
 import { CampoTexto } from '../components/CampoTexto';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { DESCRICAO_VARIAVEL, marcador as marcadorVariavel } from '../construtor/leiaute';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const CORPO_SUGERIDO =
   'Certificamos que {NOME}, portador(a) do CPF {CPF}, concluiu {CURSO}, com carga horária de {CARGA_HORARIA} horas, em {DATA_CONCLUSAO}.\n\n{DATA}.';
@@ -159,6 +160,7 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
   const [imagens, setImagens] = useState<Record<number, File>>({});
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const inputCorpo = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -188,6 +190,7 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Nome do modelo', nome], ['Título impresso', titulo], ['Texto do certificado', corpo]])) return;
     setSalvando(true);
     setErro(null);
     try {
@@ -201,7 +204,7 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
       }
       onSalvo(salvo, !modelo && tipo === 'visual');
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar o modelo.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar o modelo.'));
     } finally {
       setSalvando(false);
     }
@@ -209,11 +212,12 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
 
   return (
     <Modal open={aberto} onClose={onClose} title={modelo ? 'Editar modelo de certificado' : 'Novo modelo de certificado'} icon={<FileBadge className="h-5 w-5" />} size="xl">
-      <form onSubmit={salvar} className="space-y-4">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4">
         <ErroFormulario mensagem={erro} />
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Nome do modelo" value={nome} onChange={(e) => setNome(e.target.value)} required maxLength={150} />
-          <Input label="Título impresso" value={titulo} onChange={(e) => setTitulo(e.target.value)} required maxLength={150} />
+          <Input label="Nome do modelo" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={150} />
+          <Input label="Título impresso" value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={150} />
         </div>
         <Select
           label="Tipo de modelo"
@@ -265,8 +269,8 @@ export const ModeloFormModal: React.FC<{ modelo: ModeloCertificado | null | unde
           </div>
           {assinaturas.map((a, i) => (
             <div key={i} className="grid items-end gap-2 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
-              <Input label="Nome" value={a.nome} onChange={(e) => setAssinaturas((l) => l.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)))} required />
-              <Input label="Cargo" value={a.cargo} onChange={(e) => setAssinaturas((l) => l.map((x, j) => (j === i ? { ...x, cargo: e.target.value } : x)))} required />
+              <Input label="Nome" value={a.nome} onChange={(e) => setAssinaturas((l) => l.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)))} />
+              <Input label="Cargo" value={a.cargo} onChange={(e) => setAssinaturas((l) => l.map((x, j) => (j === i ? { ...x, cargo: e.target.value } : x)))} />
               <Button type="button" size="icon-sm" variant="ghost" aria-label={`Remover assinatura ${i + 1}`} onClick={() => setAssinaturas((l) => l.filter((_, j) => j !== i))}>
                 <Trash2 />
               </Button>

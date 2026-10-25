@@ -8,6 +8,7 @@ import { CampoTexto } from '../components/CampoTexto';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { ModeloCertificadoSelect } from '../components/ModeloCertificadoSelect';
 import { formatarCargaHoraria } from '../utils/formatos';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Formações (trilhas): cursos ordenados, obrigatórios ou optativos. */
 export const FormacoesPage: React.FC = () => {
@@ -119,6 +120,7 @@ export const FormacaoFormModal: React.FC<{ formacao: Formacao | null | undefined
   const [escolhido, setEscolhido] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
 
   useEffect(() => {
     if (!aberto) return;
@@ -150,9 +152,9 @@ export const FormacaoFormModal: React.FC<{ formacao: Formacao | null | undefined
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validar([['Título', titulo]])) return;
     if (!itens.some((i) => i.obrigatorio)) {
-      setErro('Marque ao menos um curso como obrigatório.');
-      return;
+      invalidar([['validação', 'Marque ao menos um curso como obrigatório.']]); return;
     }
     setSalvando(true);
     setErro(null);
@@ -167,7 +169,7 @@ export const FormacaoFormModal: React.FC<{ formacao: Formacao | null | undefined
       else await sysgovApi.cursos.criarFormacao(dados);
       onSalvo();
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar a formação.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar a formação.'));
     } finally {
       setSalvando(false);
     }
@@ -175,9 +177,10 @@ export const FormacaoFormModal: React.FC<{ formacao: Formacao | null | undefined
 
   return (
     <Modal open={aberto} onClose={onClose} title={formacao ? 'Editar formação' : 'Nova formação'} icon={<Layers className="h-5 w-5" />} size="xl">
-      <form onSubmit={salvar} className="space-y-4">
+      {modalValidacao}
+      <form noValidate onSubmit={salvar} className="space-y-4">
         <ErroFormulario mensagem={erro} />
-        <Input label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} required maxLength={255} />
+        <Input label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={255} />
         <CampoTexto label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={2} />
         <ModeloCertificadoSelect value={modeloId} onChange={setModeloId} />
         <div className="space-y-2">

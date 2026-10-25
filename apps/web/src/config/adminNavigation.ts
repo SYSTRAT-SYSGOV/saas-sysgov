@@ -8,7 +8,7 @@ export interface AdminNavItem {
   shortLabel: string;
   icon: React.ElementType;
   badge?: string;
-  badgeColor?: 'emerald' | 'indigo' | 'amber' | 'rose' | 'blue' | 'slate';
+  badgeColor?: 'success' | 'indigo' | 'amber' | 'rose' | 'blue' | 'neutral';
   description: string;
   allowedRoles?: AdminRole[];
   path?: string;

@@ -5,6 +5,8 @@ import { Modal, Badge, Card, ActionsMenu } from '@sysgov/ui';
 import { Field } from '@/components/ui/Field';
 import { DataTable } from '@/components/ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { getApiErrorMessage } from '@/lib/apiErrors';
 
 const inputCls = 'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring';
 
@@ -13,6 +15,7 @@ interface RolesManagementProps {
 }
 
 export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [roles, setRoles] = useState<TenantRole[]>([]);
   const [permissions, setPermissions] = useState<TenantPermission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +48,7 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
   const togglePerm = (id: number) => setSelectedPerms((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const handleSave = async () => {
-    if (!name.trim() || !slug.trim()) { notify({ type: 'warning', title: 'Campos obrigatórios', message: 'Nome e slug são obrigatórios.' }); return; }
+    if (!validar([['Nome', name], ['Slug', slug]])) return;
     try {
       if (modal?.edit) {
         await accessApi.updateTenantRole(modal.edit.id, { name: name.trim(), description: description.trim() || null, permission_ids: selectedPerms });
@@ -55,7 +58,7 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
         notify({ type: 'success', title: 'Criada', message: 'Role criada.' });
       }
       setModal(null); load();
-    } catch (e: any) { notify({ type: 'error', title: 'Erro', message: e?.response?.data?.message || e?.message || 'Erro ao salvar.' }); }
+    } catch (e: any) { if (!tratarErro(e)) notify({ type: 'error', title: 'Erro', message: getApiErrorMessage(e, 'Erro ao salvar.') }); }
   };
 
   const handleDelete = async (role: TenantRole) => {
@@ -104,6 +107,7 @@ export const RolesManagement: React.FC<RolesManagementProps> = ({ notify }) => {
 
   return (
     <Card className="gap-0 py-0 overflow-hidden">
+      {modalValidacao}
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
           <ShieldCheck className="h-4 w-4 text-primary" /> Roles & Permissões

@@ -6,6 +6,7 @@ import { sysgovApi, type AulaAgendamento, type ItemChamada } from '@sysgov/sdk';
 import { getApiErrorMessage } from '@/lib/apiErrors';
 import { formatarDataHora } from '../utils/formatos';
 import { ErroFormulario } from './ErroFormulario';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   agendamento: AulaAgendamento | null;
@@ -19,6 +20,7 @@ export const ChamadaModal: React.FC<Props> = ({ agendamento, somenteLeitura = fa
   const [marcacao, setMarcacao] = useState<Record<number, boolean>>({});
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const [salvo, setSalvo] = useState(false);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export const ChamadaModal: React.FC<Props> = ({ agendamento, somenteLeitura = fa
       setItens(r.chamada);
       setSalvo(true);
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível salvar a chamada.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível salvar a chamada.'));
     } finally {
       setSalvando(false);
     }

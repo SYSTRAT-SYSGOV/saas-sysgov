@@ -7,6 +7,7 @@ import { getApiErrorMessage } from '@/lib/apiErrors';
 import { STATUS_TENTATIVA, formatarDataHora, formatarNota } from '../utils/formatos';
 import { ErroFormulario } from './ErroFormulario';
 import { TextoSeguro } from './TextoSeguro';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   avaliacao: ConteudoAvaliacao;
@@ -19,6 +20,7 @@ export const AvaliacaoParticipante: React.FC<Props> = ({ avaliacao, inscricaoId,
   const [confirmando, setConfirmando] = useState(false);
   const [iniciando, setIniciando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
 
   const iniciar = async () => {
     setConfirmando(false);
@@ -27,7 +29,7 @@ export const AvaliacaoParticipante: React.FC<Props> = ({ avaliacao, inscricaoId,
     try {
       onAbrirTentativa((await sysgovApi.cursos.iniciarTentativa(avaliacao.id, inscricaoId)).id);
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível iniciar a avaliação.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível iniciar a avaliação.'));
     } finally {
       setIniciando(false);
     }

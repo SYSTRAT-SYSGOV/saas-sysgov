@@ -1,9 +1,51 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { School } from 'lucide-react';
 import { Button, Card, Select } from '@sysgov/ui';
 import { ScreenState } from '@/components/ui';
 import { definirEscolaAtiva, obterEscolaAtiva } from '@/core/escola/escolaAtiva';
 import { escolaApi, type Escola, type ModuloEducacao } from '../api';
+
+interface EscolaTrabalho {
+  escolas: Escola[];
+  escolaAtual: Escola;
+  escolher: (id: number) => void;
+}
+
+const EscolaTrabalhoContext = createContext<EscolaTrabalho | null>(null);
+
+/**
+ * Seletor da escola de trabalho (só aparece com mais de uma escola) e aviso de escola inativa. Cada módulo o coloca
+ * logo abaixo do próprio título — o título é do módulo, e o seletor não pode vir antes dele. Fora de um `ComEscola`,
+ * não mostra nada.
+ */
+export const SeletorEscola: React.FC = () => {
+  const contexto = useContext(EscolaTrabalhoContext);
+  if (contexto === null) return null;
+  const { escolas, escolaAtual, escolher } = contexto;
+
+  return (
+    <>
+      {escolas.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 print:hidden">
+          <School className="h-4 w-4 text-primary" />
+          <span className="text-xs font-medium text-muted-foreground">Escola de trabalho</span>
+          <div className="min-w-[16rem]">
+            <Select
+              value={escolaAtual.id}
+              onChange={(v) => escolher(Number(v))}
+              options={escolas.map((e) => ({ value: e.id, label: e.ativa ? e.nome : `${e.nome} (inativa)` }))}
+            />
+          </div>
+        </div>
+      )}
+      {!escolaAtual.ativa && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300 print:hidden">
+          Esta escola está inativa: os dados podem ser consultados, mas não aceita novos cadastros ou lançamentos.
+        </p>
+      )}
+    </>
+  );
+};
 
 interface ComEscolaProps {
   modulo: ModuloEducacao;
@@ -18,7 +60,8 @@ interface ComEscolaProps {
 /**
  * Envolve um módulo de educação com a escola de trabalho: carrega as escolas que o usuário acessa
  * no módulo, escolhe sozinho quando há uma só, pede a escolha quando há várias e remonta o
- * conteúdo ao trocar de escola (cada escola é um conjunto de dados à parte).
+ * conteúdo ao trocar de escola (cada escola é um conjunto de dados à parte). O seletor não é desenhado aqui: o módulo
+ * o posiciona com `<SeletorEscola />`, abaixo do próprio título.
  */
 export const ComEscola: React.FC<ComEscolaProps> = ({ modulo, children, semEscolas }) => {
   const [escolas, setEscolas] = useState<Escola[] | null>(null);
@@ -93,28 +136,12 @@ export const ComEscola: React.FC<ComEscolaProps> = ({ modulo, children, semEscol
     );
   }
 
+  const contexto: EscolaTrabalho = { escolas, escolaAtual, escolher };
+
   return (
-    <div className="space-y-3">
-      {escolas.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
-          <School className="h-4 w-4 text-primary" />
-          <span className="text-xs font-medium text-muted-foreground">Escola de trabalho</span>
-          <div className="min-w-[16rem]">
-            <Select
-              value={escolaAtual.id}
-              onChange={(v) => escolher(Number(v))}
-              options={escolas.map((e) => ({ value: e.id, label: e.ativa ? e.nome : `${e.nome} (inativa)` }))}
-            />
-          </div>
-        </div>
-      )}
-      {!escolaAtual.ativa && (
-        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-          Esta escola está inativa: os dados podem ser consultados, mas não aceita novos cadastros ou lançamentos.
-        </p>
-      )}
+    <EscolaTrabalhoContext.Provider value={contexto}>
       <React.Fragment key={escolaAtual.id}>{children}</React.Fragment>
-    </div>
+    </EscolaTrabalhoContext.Provider>
   );
 };
 

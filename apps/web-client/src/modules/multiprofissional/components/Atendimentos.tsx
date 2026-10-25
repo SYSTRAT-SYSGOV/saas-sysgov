@@ -6,6 +6,7 @@ import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { dataHora, mensagemDeErro, multiApi, type Atendimento, type FiltrosAtendimento, type Opcoes, type Ref } from '../api';
 import { AtendimentoModal } from './AtendimentoModal';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Relato com quebra de linha preservada; sigiloso sem acesso aparece mascarado (D6). */
 export const Relato: React.FC<{ a: Atendimento }> = ({ a }) =>
@@ -20,6 +21,7 @@ export const Relato: React.FC<{ a: Atendimento }> = ({ a }) =>
  */
 export const Atendimentos: React.FC<{ opcoes: Opcoes; avisar: Toast; aluno?: Ref; aoMudar?: () => void }> = ({ opcoes, avisar, aluno, aoMudar }) => {
   const [filtros, setFiltros] = useState<FiltrosAtendimento>({ aluno_id: aluno?.id, page: 1 });
+  const { tratarErro } = useFormValidationModal();
   const carga = useCarga(() => multiApi.atendimentos(filtros), [JSON.stringify(filtros)]);
   const [editando, setEditando] = useState<Atendimento | 'novo' | null>(null);
   const [aberto, setAberto] = useState<Atendimento | null>(null);
@@ -40,7 +42,7 @@ export const Atendimentos: React.FC<{ opcoes: Opcoes; avisar: Toast; aluno?: Ref
       await multiApi.excluirAtendimento(a.id);
       await depoisDeSalvar('Atendimento excluído.');
     } catch (e) {
-      avisar({ type: 'error', title: 'Atendimento', message: mensagemDeErro(e) });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Atendimento', message: mensagemDeErro(e) });
     }
   };
 

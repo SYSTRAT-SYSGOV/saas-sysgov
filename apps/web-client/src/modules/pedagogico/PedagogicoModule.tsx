@@ -15,7 +15,7 @@ import OcorrenciasManager from './components/OcorrenciasManager';
 import ProfessoresManager from './components/ProfessoresManager';
 import AlunosManager from './components/AlunosManager';
 import AdminPainel from '../escola/components/AdminPainel';
-import ComEscola from '../escola/components/ComEscola';
+import ComEscola, { SeletorEscola } from '../escola/components/ComEscola';
 import { erroApi } from '../escola/api';
 import type { ResultadoImportacaoNotas } from './api';
 
@@ -188,6 +188,8 @@ const PedagogicoConteudo: React.FC = () => {
           subtitle={`${tenant?.name || 'Rede Municipal'} — Conselho de classe, diagnósticos, lançamento de notas e atas`}
         />
       </div>
+
+      <SeletorEscola />
 
       {/* Navigation Subtabs */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-2 shadow-sm print:hidden">

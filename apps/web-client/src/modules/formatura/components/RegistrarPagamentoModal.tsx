@@ -4,6 +4,7 @@ import { paraCentavos } from '@/lib/formatacao';
 import type { Toast } from '../../escola/components/AdminModal';
 import { erroApi, formaturaApi, type Configuracao, type FormaPagamento, type Formando } from '../api';
 import { hojeIso, proximaParcela, ROTULO_FORMA } from '../formato';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Registro de pagamento: valor digitado em reais e enviado em centavos inteiros. */
 export const RegistrarPagamentoModal: React.FC<{
@@ -18,6 +19,7 @@ export const RegistrarPagamentoModal: React.FC<{
 }> = ({ aberto, ano, configuracao, formandos, alunoIdInicial, avisar, onFechar, onRegistrado }) => {
   const participantes = formandos.filter((f) => f.participa && f.situacao_aluno !== 'transferido');
   const [alunoId, setAlunoId] = useState<number | null>(alunoIdInicial ?? null);
+  const { tratarErro } = useFormValidationModal();
   const [parcela, setParcela] = useState('1');
   const [data, setData] = useState(hojeIso());
   const [valor, setValor] = useState('');
@@ -54,7 +56,7 @@ export const RegistrarPagamentoModal: React.FC<{
       await onRegistrado();
       onFechar();
     } catch (e) {
-      avisar({ type: 'error', title: 'Pagamento não registrado', message: erroApi(e).mensagem });
+      if (!tratarErro(e)) avisar({ type: 'error', title: 'Pagamento não registrado', message: erroApi(e).mensagem });
     } finally {
       setEnviando(false);
     }

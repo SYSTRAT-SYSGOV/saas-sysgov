@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SucessaoWizard } from '../../components/SucessaoWizard';
 import { cemiteriosApi } from '../../api';
+import { ValidationModalHost } from '@/lib/validationModalHost';
 import type { Concessao, Paginado, Sucessao } from '../../api';
 
 const concessaoBase: Concessao = {
@@ -28,7 +29,7 @@ describe('SucessaoWizard', () => {
     const onFechar = vi.fn();
     const onSucesso = vi.fn();
 
-    render(<SucessaoWizard aberto onFechar={onFechar} onSucesso={onSucesso} />);
+    render(<><SucessaoWizard aberto onFechar={onFechar} onSucesso={onSucesso} /><ValidationModalHost /></>);
 
     fireEvent.change(screen.getByPlaceholderText(/Ex: CON-2024-001/i), { target: { value: 'CON-2024-001' } });
     fireEvent.click(screen.getByRole('button', { name: '' })); // botão de busca (ícone)
@@ -60,8 +61,9 @@ describe('SucessaoWizard', () => {
   it('não avança do passo 1 sem selecionar uma concessão', async () => {
     await abrirEBuscar();
 
-    const botaoProximo = screen.getByRole('button', { name: /Próximo/i });
-    expect(botaoProximo).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Próximo/i }));
+
+    expect(await screen.findByText('O campo Concessão é obrigatório.')).toBeInTheDocument();
   });
 
   it('permite selecionar a via e avança para a confirmação', async () => {

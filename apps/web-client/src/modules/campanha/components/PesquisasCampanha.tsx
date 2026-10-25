@@ -10,6 +10,7 @@ import { campanhaApi, type MunicipioLinha, type Pesquisa } from '../api';
 import { formatarData, formatarDecimos, paraDecimos } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
 import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Linha editável de resultado (percentual como texto até salvar). */
 interface LinhaResultado { nome: string; partido: string; percentual: string; da_campanha: boolean }
@@ -33,6 +34,7 @@ export function conferirResultados(linhas: LinhaResultado[]): { soma: number; er
 export const PesquisasCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisar, alterou, versao }) => {
   const municipios = useMunicipiosDaCampanha(campanha.id);
   const [abrangencia, setAbrangencia] = useState<number | null>(null);
+  const { tratarErro } = useFormValidationModal();
   const lista = useCarga(() => campanhaApi.pesquisas(), [campanha.id, versao]);
   const evolucao = useCarga(() => campanhaApi.evolucaoPesquisas(abrangencia ?? undefined), [campanha.id, versao, abrangencia]);
   const [editando, setEditando] = useState<Pesquisa | 'nova' | null>(null);
@@ -97,7 +99,7 @@ export const PesquisasCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
       <ConfirmarModal aberto={excluir !== null} titulo="Excluir pesquisa" perigo rotuloConfirmar="Excluir" mensagem={<>Excluir a pesquisa de <strong>{excluir?.instituto}</strong>?</>} onFechar={() => setExcluir(null)}
         onConfirmar={async () => {
           if (!excluir) return;
-          try { await campanhaApi.excluirPesquisa(excluir.id); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
+          try { await campanhaApi.excluirPesquisa(excluir.id); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível excluir', message: erroApi(e).mensagem }); }
         }} />
     </div>
   );
@@ -109,6 +111,7 @@ const PesquisaModal: React.FC<{ registro: Pesquisa | 'nova' | null; municipios: 
   const [linhas, setLinhas] = useState<LinhaResultado[]>([]);
   const [atual, setAtual] = useState<Pesquisa | 'nova' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if (registro !== atual) {
     setAtual(registro);
@@ -125,9 +128,10 @@ const PesquisaModal: React.FC<{ registro: Pesquisa | 'nova' | null; municipios: 
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Instituto', form.instituto], ['Divulgação', form.divulgada_em]])) return;
     if (conferido.erro) { setErro(conferido.erro); return; }
     const margem = form.margem.trim() === '' ? 0 : paraDecimos(form.margem);
-    if (margem === null) { setErro('Margem de erro inválida (ex.: 2,5).'); return; }
+    if (margem === null) { invalidar([['validação', 'Margem de erro inválida (ex.: 2,5).']]); return; }
     setSalvando(true);
     setErro(null);
     try {
@@ -138,7 +142,7 @@ const PesquisaModal: React.FC<{ registro: Pesquisa | 'nova' | null; municipios: 
       });
       onSalva();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -147,11 +151,12 @@ const PesquisaModal: React.FC<{ registro: Pesquisa | 'nova' | null; municipios: 
   return (
     <Modal open={registro !== null} onClose={onFechar} title={registro === 'nova' ? 'Cadastrar pesquisa' : 'Pesquisa eleitoral'} icon={<BarChart3 className="h-5 w-5" />} size="xl"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>{ro ? 'Fechar' : 'Cancelar'}</Button>{!ro && <Button type="submit" form="form-pesquisa" isLoading={salvando}>Salvar</Button>}</>}>
-      <form id="form-pesquisa" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-pesquisa" onSubmit={salvar} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-4">
           <Select label="Tipo *" value={form.tipo} disabled={ro} onChange={(v) => setForm((f) => ({ ...f, tipo: String(v) }))} options={[{ value: 'externa', label: 'Externa (instituto)' }, { value: 'interna', label: 'Interna' }]} />
-          <Input label="Instituto *" value={form.instituto} onChange={(e) => setForm((f) => ({ ...f, instituto: e.target.value }))} required maxLength={200} disabled={ro} className="sm:col-span-2" />
-          <Input label="Divulgação *" type="date" value={form.divulgada_em} onChange={(e) => setForm((f) => ({ ...f, divulgada_em: e.target.value }))} required disabled={ro} />
+          <Input label="Instituto *" value={form.instituto} onChange={(e) => setForm((f) => ({ ...f, instituto: e.target.value }))} maxLength={200} disabled={ro} className="sm:col-span-2" />
+          <Input label="Divulgação *" type="date" value={form.divulgada_em} onChange={(e) => setForm((f) => ({ ...f, divulgada_em: e.target.value }))} disabled={ro} />
         </div>
         <div className="grid gap-3 sm:grid-cols-4">
           <SelectMunicipio label="Abrangência" rotuloVazio="Estadual" municipios={municipios} value={form.codigo_ibge} onChange={(v) => setForm((f) => ({ ...f, codigo_ibge: v }))} opcional disabled={ro} />

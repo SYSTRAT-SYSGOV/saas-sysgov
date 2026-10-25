@@ -13,6 +13,7 @@ import {
 } from '../formato';
 import { CampoTexto, ChipSituacao, FotoBem } from './Comuns';
 import { SeletorBens } from './SeletorBens';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const SORTEADOS: StatusLote[] = ['sorteado', 'entregue', 'baixado'];
 
@@ -107,7 +108,7 @@ export const LoteDetalhe: React.FC<{ loteId: number; avisar: Toast; onVoltar: ()
           <CardTitle>Bens do lote</CardTitle>
           {podeEditarBens && (
             <div className="flex flex-wrap gap-2">
-              <form className="flex gap-2" onSubmit={adicionarPatrimonio}>
+              <form noValidate className="flex gap-2" onSubmit={adicionarPatrimonio}>
                 <Input aria-label="Nº patrimonial para adicionar" placeholder="Nº patrimonial" value={patrimonio} onChange={(e) => setPatrimonio(e.target.value)} className="w-40 font-mono" />
                 <Button type="submit" variant="outline" isLoading={adicionando}>Adicionar</Button>
               </form>
@@ -204,20 +205,22 @@ export const LoteDetalhe: React.FC<{ loteId: number; avisar: Toast; onVoltar: ()
 export const ExcluirLoteModal: React.FC<{ lote: LoteCard | null; onFechar: () => void; onExcluido: () => void }> = ({ lote, onFechar, onExcluido }) => {
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [enviando, setEnviando] = useState(false);
   const fechar = () => { setSenha(''); setErro(null); onFechar(); };
   const confirmar = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!lote) return;
     setEnviando(true); setErro(null);
-    try { await inservivelApi.excluirLote(lote.id, senha); setSenha(''); onExcluido(); } catch (e) { setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
+    try { await inservivelApi.excluirLote(lote.id, senha); setSenha(''); onExcluido(); } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setEnviando(false); }
   };
   return (
     <Modal open={lote !== null} onClose={fechar} title="Excluir lote" size="md"
       footer={<><Button variant="outline" onClick={fechar} disabled={enviando}>Cancelar</Button><Button variant="destructive" type="submit" form="form-excluir-lote" isLoading={enviando} disabled={!senha}>Excluir</Button></>}>
-      <form id="form-excluir-lote" onSubmit={confirmar} className="space-y-3 text-sm">
+      {modalValidacao}
+      <form noValidate id="form-excluir-lote" onSubmit={confirmar} className="space-y-3 text-sm">
         <p>Excluir o lote <strong className="font-mono">{lote?.numero}</strong>? Os bens voltam à situação Inservível e as inscrições são removidas.</p>
-        <Input label="Confirme com a sua senha" type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} required />
+        <Input label="Confirme com a sua senha" type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
         {erro && <AlertCard priority="danger" title="Não foi possível excluir" description={erro} />}
       </form>
     </Modal>
@@ -241,6 +244,7 @@ const EditarLoteModal: React.FC<{ lote: Lote | null; onFechar: () => void; onSal
   const [form, setForm] = useState({ numero: '', descricao: '', data_criacao: '', responsavel: '', data_sorteio_prevista: '', observacoes: '' });
   const [atual, setAtual] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, validar, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   if ((lote?.id ?? null) !== atual) {
     setAtual(lote?.id ?? null);
@@ -250,24 +254,26 @@ const EditarLoteModal: React.FC<{ lote: Lote | null; onFechar: () => void; onSal
   const texto = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((f) => ({ ...f, [campo]: e.target.value }));
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    if (!validar([['Descrição', form.descricao], ['Número', form.numero], ['Data de criação', form.data_criacao], ['Responsável', form.responsavel]])) return;
     if (!lote) return;
     setSalvando(true); setErro(null);
     try {
       await inservivelApi.atualizarLote(lote.id, { ...form, data_sorteio_prevista: vazioParaNulo(form.data_sorteio_prevista), observacoes: vazioParaNulo(form.observacoes) });
       onSalvo();
-    } catch (e) { setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
+    } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
   };
   return (
     <Modal open={lote !== null} onClose={onFechar} title="Editar lote" size="xl"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-editar-lote" isLoading={salvando}>Salvar</Button></>}>
-      <form id="form-editar-lote" onSubmit={salvar} className="space-y-3">
+      {modalValidacao}
+      <form noValidate id="form-editar-lote" onSubmit={salvar} className="space-y-3">
         {erro && <AlertCard priority="danger" title="Não foi possível salvar" description={erro} />}
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="Número *" value={form.numero} onChange={texto('numero')} required className="font-mono" />
-          <Input label="Data de criação *" type="date" value={form.data_criacao} onChange={texto('data_criacao')} required className="font-mono" />
+          <Input label="Número *" value={form.numero} onChange={texto('numero')} className="font-mono" />
+          <Input label="Data de criação *" type="date" value={form.data_criacao} onChange={texto('data_criacao')} className="font-mono" />
           <Input label="Sorteio previsto" type="datetime-local" value={form.data_sorteio_prevista} onChange={texto('data_sorteio_prevista')} className="font-mono" />
         </div>
-        <Input label="Responsável *" value={form.responsavel} onChange={texto('responsavel')} required />
+        <Input label="Responsável *" value={form.responsavel} onChange={texto('responsavel')} />
         <CampoTexto rotulo="Descrição *" value={form.descricao} onChange={texto('descricao')} required rows={2} />
         <CampoTexto rotulo="Observações" value={form.observacoes} onChange={texto('observacoes')} rows={2} />
       </form>

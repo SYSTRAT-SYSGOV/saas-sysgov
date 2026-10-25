@@ -28,6 +28,7 @@ import {
 } from '../construtor/leiauteCurso';
 import { PaginaCertificado } from '../construtor/PaginaCertificado';
 import { PropriedadesElemento } from '../construtor/PropriedadesElemento';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /**
  * Construtor visual por curso (D8), no formato do sistema de referência: 1) curso alvo, fundo e
@@ -51,6 +52,7 @@ export const ConstrutorCursoPage: React.FC = () => {
   const [sujo, setSujo] = useState(false);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [aviso, setAviso] = useState<string | null>(null);
   const [trocarPara, setTrocarPara] = useState<number | null>(null);
 
@@ -149,7 +151,7 @@ export const ConstrutorCursoPage: React.FC = () => {
       setSujo(false);
       setAviso('Leiaute salvo: os certificados deste curso passam a sair com ele.');
     } catch (e) {
-      setErro(getApiErrorMessage(e, 'Não foi possível salvar o leiaute.'));
+      if (!tratarErro(e)) setErro(getApiErrorMessage(e, 'Não foi possível salvar o leiaute.'));
     } finally {
       setOcupado(null);
     }
@@ -183,6 +185,7 @@ export const ConstrutorCursoPage: React.FC = () => {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
+      {modalValidacao}
       <Card className="h-fit space-y-5 p-4">
         <section className="space-y-3">
           <h3 className="text-base font-semibold">1. Selecionar vínculos</h3>

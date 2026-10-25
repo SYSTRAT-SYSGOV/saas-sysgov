@@ -9,6 +9,7 @@ import {
   type DestinoCompensacao,
   type Empreendimento,
 } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const DESTINOS: { value: DestinoCompensacao; label: string }[] = [
   { value: 'fundo_municipal', label: 'Fundo Municipal de Meio Ambiente' },
@@ -113,6 +114,7 @@ const CompensacaoAcaoModal: React.FC<{ compensacao: CompensacaoAmbiental; onClos
   const [valorDestinacao, setValorDestinacao] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { tratarErro } = useFormValidationModal();
 
   const pagar = async () => {
     setSalvando(true);
@@ -122,7 +124,7 @@ const CompensacaoAcaoModal: React.FC<{ compensacao: CompensacaoAmbiental; onClos
       setValorPagamento('');
       onAtualizado();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }
@@ -136,7 +138,7 @@ const CompensacaoAcaoModal: React.FC<{ compensacao: CompensacaoAmbiental; onClos
       setValorDestinacao('');
       onAtualizado();
     } catch (e) {
-      setErro(erroApi(e).mensagem);
+      if (!tratarErro(e)) setErro(erroApi(e).mensagem);
     } finally {
       setSalvando(false);
     }

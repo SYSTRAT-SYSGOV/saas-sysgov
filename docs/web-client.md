@@ -297,6 +297,32 @@ Toda grade de dados do portal segue o padrão da tela do Licita:
 
 ---
 
+### 7.2 Validação de formulários (`useFormValidationModal`)
+
+Erro de campo (obrigatório vazio ou 422 do backend) aparece sempre na `ValidationErrorModal`, um item por campo — o mesmo padrão do Licita. Nada de balão nativo (`required` HTML), `alert()` nem mensagem crua do Laravel.
+
+```tsx
+const { modal, validar, invalidar, tratarErro } = useFormValidationModal();
+
+const salvar = async () => {
+  if (!validar([['Nome', nome], ['E-mail', email]])) return; // abre a modal com os vazios
+  if (senha !== confirmacao) { invalidar([['Confirmar senha', 'A senha e a confirmação não coincidem.']]); return; }
+  try { await api.salvar(...); }
+  catch (err) { if (!tratarErro(err)) notify(getApiErrorMessage(err)); } // 422 → modal; outros → mensagem única
+};
+return <>{modal}…</>;
+```
+
+- Em `<form>`, usar `noValidate` e não usar `required` nos inputs (o `*` no rótulo continua).
+- Botão "Avançar"/"Salvar" não fica `disabled` por campo faltando: o clique abre a modal.
+- Hooks compartilhados que não renderizam JSX (ex.: `useAcao` de Cemitérios e Pessoas) usam a modal global: `tratarErroValidacaoGlobal(err)`, `validarObrigatoriosGlobal(campos)` e `invalidarGlobal(problemas)`, de `@/lib/validationModalHost`. O `ValidationModalHost` é montado uma vez no `AppShell`.
+- Quando um teste abre a modal, ela deixa o resto da tela inacessível (`aria-hidden`): feche com o botão "Entendi" antes de interagir de novo.
+- Spec: `openspec/changes/padronizar-validacao-formularios-modal`.
+
+### 7.3 Painel admin e pacote compartilhado
+
+O painel admin (`apps/web`) usa o mesmo Design System Gov.br do portal. Tokens, tema do Tailwind e estilos globais ficam em `packages/ui/src/styles/` (`govbr-tokens.css`, `govbr-theme.css`, `govbr-base.css`) e os dois `index.css` só os importam. Não definir cores, fontes nem raios nos apps. Componentes compartilhados (`DataTable`, `Field`, `PageHeader`, `ScreenState`, `ConfirmDialog`, `ValidationErrorModal`, `useFormValidationModal`) vêm de `@sysgov/ui`. No admin não há tema escuro nem presets de cor.
+
 ## 📝 8. Rotas Registradas
 
 | Rota | Módulo | Guard |

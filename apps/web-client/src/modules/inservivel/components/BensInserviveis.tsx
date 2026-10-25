@@ -10,6 +10,7 @@ import type { PropsAba } from '../ModuloInservivelMain';
 import { ChipSituacao, FotoBem, Paginacao, useOpcoes } from './Comuns';
 import { BemDetalheModal } from './BemDetalheModal';
 import { BemFormModal } from './BemFormModal';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const FILTROS_VAZIOS = { q: '', situacao_id: '', estado_conservacao_id: '', secretaria_unit_id: '', setor_unit_id: '' };
 
@@ -112,6 +113,7 @@ export const BensInserviveis: React.FC<PropsAba> = ({ permissoes, avisar, parame
 const MudarSituacaoModal: React.FC<{ bem: BemResumo | null; opcoes: Opcoes; onFechar: () => void; onSalvo: (nome: string) => void }> = ({ bem, opcoes, onFechar, onSalvo }) => {
   const [situacao, setSituacao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, tratarErro } = useFormValidationModal();
   const [salvando, setSalvando] = useState(false);
   const permitidas = opcoes.situacoes.filter((s) => s.papel !== 'em_lote' && s.papel !== 'em_transferencia');
   const salvar = async () => {
@@ -121,11 +123,12 @@ const MudarSituacaoModal: React.FC<{ bem: BemResumo | null; opcoes: Opcoes; onFe
       await inservivelApi.salvarBem(bem.id, { situacao_id: Number(situacao) });
       onSalvo(`${bem.numero_patrimonial}: ${permitidas.find((s) => String(s.id) === situacao)?.nome ?? ''}`);
       setSituacao('');
-    } catch (e) { setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
+    } catch (e) { if (!tratarErro(e)) setErro(erroApi(e).mensagem); } finally { setSalvando(false); }
   };
   return (
     <Modal open={bem !== null} onClose={() => { setSituacao(''); setErro(null); onFechar(); }} title="Mudar situação do bem" size="md"
       footer={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando} disabled={!situacao}>Salvar</Button></>}>
+      {modalValidacao}
       <div className="space-y-3 text-sm">
         <p className="text-muted-foreground">Bens não são excluídos do sistema. Para tirar o bem de circulação, altere a situação (por exemplo, para <strong>Baixado</strong>).</p>
         {bem && <p>Bem <span className="font-mono tabular-nums">{bem.numero_patrimonial}</span> — situação atual: <strong>{bem.situacao.nome}</strong></p>}

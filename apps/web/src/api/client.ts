@@ -2,6 +2,7 @@
  * Cliente HTTP tipado com injeção automática de token JWT e tenantId.
  */
 
+import { ApiRequestError } from './errors';
 import { withApiBase } from '../config/env';
 
 export interface RequestOptions extends RequestInit {
@@ -57,11 +58,13 @@ class ApiClient {
 
     if (!res.ok) {
       let errorMsg = `Erro na requisição (${res.status} ${res.statusText})`;
+      let errorJson: unknown = null;
       try {
-        const errorJson = await res.json();
-        errorMsg = errorJson.message || errorJson.error || errorMsg;
+        errorJson = await res.json();
+        const e = errorJson as { message?: string; error?: string };
+        errorMsg = e.message || e.error || errorMsg;
       } catch {}
-      throw new Error(errorMsg);
+      throw new ApiRequestError(errorMsg, res.status, errorJson);
     }
 
     return res.json();

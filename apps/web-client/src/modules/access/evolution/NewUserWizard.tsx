@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, UserPlus, Send, Loader2, Landmark } from 'lucide-react';
+import { UserPlus, Send, Loader2, Landmark, User, Link2, ShieldCheck, CheckCircle, Power } from 'lucide-react';
+import { Button, Modal, Select, Switch, Input, Field } from '@/components/ui';
 import { accessApi, AccessModule, AccessUser, AccessGroup, Cargo, OrgUnitNode, ModuleAccessItem } from '../AccessApi';
 import { ModuleAccessPicker } from './ModuleAccessPicker';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { getApiErrorMessage } from '@/lib/apiErrors';
 
 interface NewUserWizardProps {
   modules: AccessModule[];
@@ -25,7 +28,24 @@ interface Step3Entry {
   valid_to?: string;
 }
 
-const STEPS = ['Dados pessoais', 'Vínculo', 'Acessos por módulo', 'Ativação'];
+const STEPS = [
+  { rotulo: 'Dados pessoais', icon: User },
+  { rotulo: 'Vínculo', icon: Link2 },
+  { rotulo: 'Acessos por módulo', icon: ShieldCheck },
+  { rotulo: 'Ativação', icon: Power },
+];
+
+const PAPEIS = [
+  { value: 'membro', label: 'Membro' },
+  { value: 'gestor', label: 'Gestor' },
+  { value: 'fiscal', label: 'Fiscal' },
+  { value: 'admin_tenant', label: 'Administrador do tenant' },
+  { value: 'membro_capd', label: 'Comissão de Avaliação (CAPD)' },
+  { value: 'gestor_rh', label: 'RH — Gestão de Desempenho (CAPD)' },
+  { value: 'avaliador', label: 'Chefia Imediata / Avaliador (CAPD)' },
+  { value: 'servidor', label: 'Servidor Avaliado (CAPD)' },
+  { value: 'auditoria_capd', label: 'Auditoria e Controle Interno (CAPD)' },
+];
 
 function flattenUnits(nodes: OrgUnitNode[], depth = 0): { node: OrgUnitNode; depth: number }[] {
   const out: { node: OrgUnitNode; depth: number }[] = [];
@@ -48,7 +68,7 @@ function findUnit(nodes: OrgUnitNode[], id: number): OrgUnitNode | null {
 }
 
 /**
- * Wizard "Novo Usuário" (4 etapas): dados, vínculo, acessos por módulo e ativação.
+ * Modal "Novo Usuário" (4 etapas, mesmo padrão do cadastro de pessoa): dados, vínculo, acessos por módulo e ativação.
  * Admin de módulo vê apenas a Etapa 3 filtrada para os módulos que administra (RN-ACC-002).
  */
 export const NewUserWizard: React.FC<NewUserWizardProps> = ({
@@ -62,6 +82,7 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
 }) => {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
 
   // Listas auxiliares (cargos e grupos de acesso)
   const [cargos, setCargos] = useState<Cargo[]>([]);
@@ -109,10 +130,15 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
     }
   };
 
-  const canNext = () => {
-    if (step === 0) return name.trim().length >= 3 && /\S+@\S+\.\S+/.test(email);
-    if (step === 1) return role.trim().length > 0;
-    if (step === 2) return true;
+  /** Confere a etapa atual; campos faltando ou inválidos abrem a modal padrão em vez de travar o botão. */
+  const etapaValida = (): boolean => {
+    if (step === 0) {
+      if (!validar([['Nome completo', name], ['E-mail', email]])) return false;
+      if (name.trim().length < 3) { invalidar([['Nome completo', 'O nome deve ter pelo menos 3 caracteres.']]); return false; }
+      if (!/\S+@\S+\.\S+/.test(email)) { invalidar([['E-mail', 'Informe um e-mail válido.']]); return false; }
+      return true;
+    }
+    if (step === 1) return validar([['Papel no vínculo', role]]);
     return true;
   };
 
@@ -147,115 +173,154 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
       onCreated(user);
       onClose();
     } catch (e: any) {
-      notify({ type: 'error', title: 'Falha ao criar usuário', message: e?.response?.data?.message || e?.message || 'Erro ao salvar.' });
+      if (!tratarErro(e)) notify({ type: 'error', title: 'Falha ao criar usuário', message: getApiErrorMessage(e, 'Erro ao salvar.') });
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gov-border shadow-sm overflow-hidden">
-      {/* Header + stepper */}
-      <div className="px-5 pt-5 pb-3 border-b border-gov-border">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gov-text-primary flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-gov-primary" />
-            Novo Usuário
-          </h3>
-          <button onClick={onClose} className="text-xs text-gov-text-muted hover:text-gov-text-primary">Fechar</button>
-        </div>
-        <div className="flex items-center gap-1 mt-4">
-          {STEPS.map((label, i) => (
-            <div key={label} className="flex-1">
-              <div className={`h-1.5 rounded-full ${i <= step ? 'bg-gov-primary' : 'bg-gov-border'}`} />
-              <p className={`text-[10px] mt-1 ${i === step ? 'text-gov-primary font-semibold' : 'text-gov-text-muted'}`}>{label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      <div className="p-5 space-y-4">
+  const ultimo = step === STEPS.length - 1;
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Novo Usuário"
+      icon={<UserPlus className="h-5 w-5 text-primary" />}
+      description="Cadastre o usuário, vincule-o a uma secretaria e defina os acessos por módulo."
+      size="2xl"
+      footer={
+        <div className="flex w-full items-center justify-between gap-2">
+          <div>
+            {step > 0 && (
+              <Button variant="outline" type="button" disabled={submitting} onClick={() => setStep((s) => Math.max(0, s - 1))}>
+                ← Voltar
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </Button>
+            {ultimo ? (
+              <Button type="button" onClick={handleSubmit} disabled={submitting || entries.length === 0}>
+                {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                {sendInvite ? 'Enviar convite' : 'Criar usuário'}
+              </Button>
+            ) : (
+              <Button type="button" onClick={() => etapaValida() && setStep((s) => s + 1)}>
+                Avançar →
+              </Button>
+            )}
+          </div>
+        </div>
+      }
+    >
+      {modalValidacao}
+      <div className="space-y-6">
+        {/* Stepper */}
+        <div className="grid grid-cols-2 gap-2 border-b border-border pb-4 sm:grid-cols-4">
+          {STEPS.map((item, i) => {
+            const ativo = i === step;
+            const completado = i < step;
+            return (
+              <div
+                key={item.rotulo}
+                className={`flex items-center gap-2 rounded-lg border p-2.5 transition-colors ${
+                  ativo
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : completado
+                    ? 'border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400'
+                    : 'border-border/60 bg-muted/20 text-muted-foreground'
+                }`}
+              >
+                <div
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    ativo ? 'bg-primary text-primary-foreground' : completado ? 'bg-emerald-600 text-white' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {completado ? <CheckCircle className="h-4 w-4" /> : i + 1}
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-semibold">{item.rotulo}</div>
+                  <div className="text-[10px] text-muted-foreground">{i === 0 ? 'Obrigatório' : i === 2 ? 'Defina os módulos' : 'Revise'}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         {step === 0 && (
-          <>
-            <Field label="Nome completo *">
-              <input value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm" placeholder="Ex.: Maria da Silva" />
+          <div className="space-y-4">
+            <Field label="Nome completo" required>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Maria da Silva" />
             </Field>
-            <Field label="E-mail *">
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm" placeholder="email@prefeitura.gov.br" />
+            <Field label="E-mail" required>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@prefeitura.gov.br" />
             </Field>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Matrícula do servidor (opcional)">
-                <input value={matricula} onChange={(e) => setMatricula(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm font-mono" placeholder="000000" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Matrícula do servidor" hint="Opcional">
+                <Input className="font-mono tabular-nums" value={matricula} onChange={(e) => setMatricula(e.target.value)} placeholder="000000" />
               </Field>
-              <Field label="Cargo (opcional)">
-                <select value={cargoId} onChange={(e) => setCargoId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm">
-                  <option value="">Nenhum cargo</option>
-                  {cargos.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+              <Field label="Cargo" hint="Opcional">
+                <Select
+                  value={cargoId === '' ? null : cargoId}
+                  onChange={(v) => setCargoId(Number(v) === 0 ? '' : Number(v))}
+                  options={[{ value: 0, label: 'Nenhum cargo' }, ...cargos.map((c) => ({ value: c.id, label: c.name }))]}
+                  placeholder="Nenhum cargo"
+                />
               </Field>
             </div>
-            <Field label="Telefone (opcional)">
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm" placeholder="(41) 99999-9999" />
+            <Field label="Telefone" hint="Opcional">
+              <Input className="tabular-nums" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(41) 99999-9999" />
             </Field>
-          </>
+          </div>
         )}
 
         {step === 1 && (
-          <>
-            <Field label="Papel no vínculo">
-              <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm">
-                <option value="membro">Membro</option>
-                <option value="gestor">Gestor</option>
-                <option value="fiscal">Fiscal</option>
-                <option value="admin_tenant">Administrador do tenant</option>
-                <option value="membro_capd">Comissão de Avaliação (CAPD)</option>
-                <option value="gestor_rh">RH — Gestão de Desempenho (CAPD)</option>
-                <option value="avaliador">Chefia Imediata / Avaliador (CAPD)</option>
-                <option value="servidor">Servidor Avaliado (CAPD)</option>
-                <option value="auditoria_capd">Auditoria e Controle Interno (CAPD)</option>
-              </select>
-              <p className="text-[11px] text-gov-text-muted mt-1">O papel define a autoridade global; os acessos por módulo são definidos na próxima etapa.</p>
+          <div className="space-y-4">
+            <Field label="Papel no vínculo" hint="O papel define a autoridade global; os acessos por módulo são definidos na próxima etapa.">
+              <Select value={role} onChange={(v) => setRole(v)} options={PAPEIS} />
             </Field>
-            <Field label="Secretaria/órgão de vínculo (onde o usuário pertence)">
-              <select value={primaryOrgUnitId} onChange={(e) => setPrimaryOrgUnitId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-gov-border rounded-lg text-sm">
-                <option value="">Nenhuma (sem vínculo de secretaria)</option>
-                {flattenUnits(units).map(({ node, depth }) => (
-                  <option key={node.id} value={node.id}>
-                    {'\u00A0'.repeat(depth * 2)}{node.name} ({node.code})
-                  </option>
-                ))}
-              </select>
-              <p className="text-[11px] text-gov-text-muted mt-1">
-                O vínculo indica a secretaria principal do usuário. Na próxima etapa você define o acesso a módulos de qualquer secretaria (cross-secretaria).
-              </p>
+            <Field
+              label="Secretaria/órgão de vínculo"
+              hint="Indica a secretaria principal do usuário. Na próxima etapa você define o acesso a módulos de qualquer secretaria (cross-secretaria)."
+            >
+              <Select
+                value={primaryOrgUnitId === '' ? null : primaryOrgUnitId}
+                onChange={(v) => setPrimaryOrgUnitId(Number(v) === 0 ? '' : Number(v))}
+                options={[{ value: 0, label: 'Nenhuma (sem vínculo de secretaria)' }, ...flattenUnits(units).map(({ node, depth }) => ({
+                  value: node.id,
+                  label: `${'\u00A0'.repeat(depth * 2)}${node.name} (${node.code})`,
+                }))]}
+                placeholder="Nenhuma (sem vínculo de secretaria)"
+              />
             </Field>
-            <Field label="Grupos de acesso (herdar permissões)">
-              <div className="max-h-44 overflow-y-auto border border-gov-border rounded-lg p-2 space-y-1 bg-slate-50/50 dark:bg-slate-800/50">
-                {groups.length === 0 && <p className="text-xs text-gov-text-muted p-1">Nenhum grupo cadastrado. Crie grupos na aba "Grupos & Categorias".</p>}
+            <Field label="Grupos de acesso" hint="Usuários de um grupo herdam os acessos definidos nele, além dos acessos diretos.">
+              <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-border bg-muted/20 p-2">
+                {groups.length === 0 && <p className="p-1 text-xs text-muted-foreground">Nenhum grupo cadastrado. Crie grupos na aba "Grupos & Categorias".</p>}
                 {groups.map((g) => (
-                  <label key={g.id} className="flex items-center gap-2 py-1 px-1 text-xs cursor-pointer hover:bg-gov-primary/5 rounded">
+                  <label key={g.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs hover:bg-primary/5">
                     <input
                       type="checkbox"
                       checked={selectedGroupIds.includes(g.id)}
                       onChange={(e) => setSelectedGroupIds((prev) => (e.target.checked ? [...prev, g.id] : prev.filter((x) => x !== g.id)))}
                       className="accent-gov-primary"
                     />
-                    <span className="text-gov-text-primary font-medium">{g.name}</span>
-                    <span className="text-[10px] text-gov-text-muted font-mono">
+                    <span className="font-medium text-foreground">{g.name}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
                       {g.category?.name ?? 'sem categoria'} · {g.accesses?.length ?? 0} módulos
                     </span>
                   </label>
                 ))}
               </div>
-              <p className="text-[11px] text-gov-text-muted mt-1">Usuários de um grupo herdam os acessos definidos nele, além dos acessos diretos.</p>
             </Field>
-          </>
+          </div>
         )}
 
         {step === 2 && (
-          <div className="space-y-5 max-h-[50vh] overflow-y-auto pr-1">
+          <div className="space-y-5">
             {visibleModules.length === 0 && (
               <p className="text-xs text-gov-text-muted">Você não administra nenhum módulo neste tenant.</p>
             )}
@@ -346,10 +411,11 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
                 </li>
               ))}
             </ul>
-            <label className="flex items-center gap-2 text-xs cursor-pointer">
-              <input type="checkbox" checked={sendInvite} onChange={(e) => setSendInvite(e.target.checked)} className="accent-gov-primary" />
-              Enviar convite por e-mail (em vez de ativar imediatamente)
-            </label>
+            <Switch
+              label="Enviar convite por e-mail (em vez de ativar imediatamente)"
+              checked={sendInvite}
+              onCheckedChange={setSendInvite}
+            />
             {sendInvite && (
               <p className="text-[11px] text-amber-600 dark:text-amber-400">
                 O convite expira em 72h. A senha provisória não será definida.
@@ -358,39 +424,6 @@ export const NewUserWizard: React.FC<NewUserWizardProps> = ({
           </div>
         )}
       </div>
-
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-gov-border flex items-center justify-between">
-        <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="inline-flex items-center gap-1 text-xs font-semibold text-gov-text-secondary hover:text-gov-text-primary disabled:opacity-40">
-          <ChevronLeft className="w-4 h-4" /> Voltar
-        </button>
-
-        {step < 3 ? (
-          <button
-            onClick={() => canNext() && setStep((s) => s + 1)}
-            disabled={!canNext()}
-            className="inline-flex items-center gap-1 bg-gov-primary hover:bg-gov-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
-          >
-            Avançar <ChevronRight className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || entries.length === 0}
-            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
-          >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            {sendInvite ? 'Enviar convite' : 'Criar usuário'}
-          </button>
-        )}
-      </div>
-    </div>
+    </Modal>
   );
 };
-
-const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div>
-    <label className="block text-xs font-semibold text-gov-text-secondary mb-1">{label}</label>
-    {children}
-  </div>
-);

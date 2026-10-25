@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ModalAcaoLoteManutencao } from '../ModalAcaoLoteManutencao';
 import { cemiteriosApi, type Jazigo } from '../../api';
+import { ValidationModalHost } from '@/lib/validationModalHost';
 
 vi.mock('../../api', () => ({
   cemiteriosApi: {
@@ -47,12 +48,15 @@ describe('ModalAcaoLoteManutencao Component', () => {
   it('renderiza o modal com as unidades selecionadas e valida justificativa', async () => {
     const onConcluido = vi.fn();
     render(
-      <ModalAcaoLoteManutencao
-        aberto={true}
-        jazigos={mockJazigos}
-        onFechar={vi.fn()}
-        onConcluido={onConcluido}
-      />
+      <>
+        <ModalAcaoLoteManutencao
+          aberto={true}
+          jazigos={mockJazigos}
+          onFechar={vi.fn()}
+          onConcluido={onConcluido}
+        />
+        <ValidationModalHost />
+      </>
     );
 
     expect(screen.getByText(/Operação Coletiva de Manutenção/i)).toBeInTheDocument();
@@ -60,13 +64,16 @@ describe('ModalAcaoLoteManutencao Component', () => {
     expect(screen.getByText('JAZ-002')).toBeInTheDocument();
 
     const btnConfirmar = screen.getByRole('button', { name: /confirmar operação em lote/i });
-    expect(btnConfirmar).toBeDisabled();
+    // Sem justificativa, a modal padrão de validação explica o que falta e nada é enviado
+    fireEvent.click(btnConfirmar);
+    expect(await screen.findByText('O campo Motivo é obrigatório.')).toBeInTheDocument();
+    expect(cemiteriosApi.alterarEstado).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Entendi' }));
 
     // Preenche justificativa
     const textarea = screen.getByPlaceholderText(/Ex: Vistoria preventiva/i);
     fireEvent.change(textarea, { target: { value: 'Obras de saneamento e drenagem do setor' } });
 
-    expect(btnConfirmar).not.toBeDisabled();
     fireEvent.click(btnConfirmar);
 
     await waitFor(() => {

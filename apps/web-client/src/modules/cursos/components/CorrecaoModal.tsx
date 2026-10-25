@@ -9,6 +9,7 @@ import { paraNumero } from '../utils/validacoes';
 import { CampoTexto } from './CampoTexto';
 import { ErroFormulario } from './ErroFormulario';
 import { TextoPuro, TextoSeguro } from './TextoSeguro';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 interface Props {
   tentativaId: number | null;
@@ -92,20 +93,20 @@ const QuestaoCorrecao: React.FC<{
   const [comentario, setComentario] = useState(questao.correcao.comentario ?? '');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const { modal: modalValidacao, invalidar, tratarErro } = useFormValidationModal();
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     const valor = paraNumero(pontos);
     if (valor === null || Number.isNaN(valor) || valor < 0 || valor > questao.pontuacao) {
-      setErro(`Os pontos devem ficar entre 0 e ${questao.pontuacao.toLocaleString('pt-BR')}.`);
-      return;
+      invalidar([['validação', `Os pontos devem ficar entre 0 e ${questao.pontuacao.toLocaleString('pt-BR')}.`]]); return;
     }
     setSalvando(true);
     setErro(null);
     try {
       onCorrigida(await sysgovApi.cursos.corrigirResposta(tentativaId, questao.questao_id, { pontos: valor, comentario: comentario.trim() || null }));
     } catch (err) {
-      setErro(getApiErrorMessage(err, 'Não foi possível salvar a correção.'));
+      if (!tratarErro(err)) setErro(getApiErrorMessage(err, 'Não foi possível salvar a correção.'));
     } finally {
       setSalvando(false);
     }
@@ -115,6 +116,7 @@ const QuestaoCorrecao: React.FC<{
 
   return (
     <section className="space-y-3 rounded-lg border border-border p-4">
+      {modalValidacao}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="mb-1 text-xs font-medium text-muted-foreground">
@@ -137,7 +139,7 @@ const QuestaoCorrecao: React.FC<{
               <TextoSeguro html={questao.orientacao_correcao} />
             </div>
           )}
-          <form onSubmit={salvar} noValidate className="space-y-2">
+          <form noValidate onSubmit={salvar} className="space-y-2">
             <ErroFormulario mensagem={erro} />
             <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
               <Input label={`Pontos (0 a ${questao.pontuacao})`} type="number" step="0.25" value={pontos} onChange={(e) => setPontos(e.target.value)} disabled={!editavel} className="font-mono tabular-nums" />

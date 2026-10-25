@@ -5,6 +5,7 @@ import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { mensagemDeErro, multiApi, type ItemCadastro, type TipoCadastro } from '../api';
+import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const TITULOS: Record<TipoCadastro, string> = { cargos: 'Cargos', condicoes: 'Condições (CID)', 'tipos-atendimento': 'Tipos de atendimento' };
 
@@ -36,6 +37,7 @@ export const Cadastros: React.FC<{ avisar: Toast; aoMudar: () => void }> = ({ av
 const ListaCadastro: React.FC<{ tipo: TipoCadastro; avisar: Toast; aoMudar: () => void }> = ({ tipo, avisar, aoMudar }) => {
   const carga = useCarga(() => multiApi.cadastro(tipo), [tipo]);
   const [nome, setNome] = useState('');
+  const { tratarErro } = useFormValidationModal();
   const [extra, setExtra] = useState('');
   const campoExtra = tipo === 'cargos' ? 'objetivos' : tipo === 'condicoes' ? 'cid' : null;
 
@@ -46,7 +48,7 @@ const ListaCadastro: React.FC<{ tipo: TipoCadastro; avisar: Toast; aoMudar: () =
       aoMudar();
       return true;
     } catch (e) {
-      avisar({ type: 'error', title: TITULOS[tipo], message: mensagemDeErro(e) });
+      if (!tratarErro(e)) avisar({ type: 'error', title: TITULOS[tipo], message: mensagemDeErro(e) });
       return false;
     }
   };
@@ -63,7 +65,7 @@ const ListaCadastro: React.FC<{ tipo: TipoCadastro; avisar: Toast; aoMudar: () =
       await carga.recarregar();
       aoMudar();
     } catch (e) {
-      avisar({ type: 'error', title: TITULOS[tipo], message: mensagemDeErro(e) });
+      if (!tratarErro(e)) avisar({ type: 'error', title: TITULOS[tipo], message: mensagemDeErro(e) });
     }
   };
 

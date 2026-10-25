@@ -11,8 +11,9 @@ import {
 } from 'lucide-react';
 import { InvoiceItem } from '../../types/admin';
 import { ScreenState, ScreenStateType } from '../ui/ScreenState';
+import type { ColumnDef } from '@tanstack/react-table';
 import api from '../../api/client';
-import { StatusChip } from '@sysgov/ui';
+import { StatusChip, DataTable, ActionsMenu } from '@sysgov/ui';
 
 interface AdminFinancialBillingProps {
   onAddToast?: (toast: { type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }) => void;
@@ -152,22 +153,44 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
 
   const fmtBRL = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  const columns: ColumnDef<InvoiceItem>[] = [
+    {
+      id: 'acoes', header: '', enableSorting: false, meta: { exportIgnore: true },
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu triggerLabel="Ações da fatura" items={[
+            ...(row.original.status !== 'paid'
+              ? [{ key: 'liquidar', label: 'Liquidar', icon: <CheckCircle2 className="h-3.5 w-3.5" />, loading: liquidatingId === row.original.id, onSelect: () => handleMarkAsPaid(row.original.id) }]
+              : []),
+          ]} />
+        </div>
+      ),
+    },
+    { id: 'numero', header: 'Número da fatura', accessorFn: (i) => i.invoiceNumber, cell: ({ row }) => <span className="font-mono tabular-nums font-bold text-foreground">{row.original.invoiceNumber}</span> },
+    { id: 'cliente', header: 'Organização cliente', accessorFn: (i) => i.tenantName, cell: ({ row }) => <span className="font-semibold text-foreground">{row.original.tenantName}</span> },
+    { id: 'plano', header: 'Plano contratado', accessorFn: (i) => i.plan },
+    { id: 'status', header: 'Status', accessorFn: (i) => i.status, cell: ({ row }) => getStatusBadge(row.original.status) },
+    { id: 'emissao', header: 'Emissão', accessorFn: (i) => i.issuedAt, cell: ({ row }) => <span className="font-mono tabular-nums text-[11px] text-muted-foreground">{row.original.issuedAt}</span> },
+    { id: 'vencimento', header: 'Vencimento', accessorFn: (i) => i.dueDate, cell: ({ row }) => <span className="font-mono tabular-nums text-[11px] text-muted-foreground">{row.original.dueDate}</span> },
+    { id: 'valor', header: 'Valor', accessorFn: (i) => i.amount, cell: ({ row }) => <span className="font-mono tabular-nums font-bold text-foreground whitespace-nowrap">R$ {fmtBRL(row.original.amount)}</span> },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="mod-card p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold mod-text-primary flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-emerald-500" />
+          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-primary" />
             Faturamento, Assinaturas & Invoices
           </h1>
-          <p className="text-xs mod-text-secondary mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Controle de receita recorrente mensal (MRR), projeção anual (ARR), emissão de faturas e conciliação.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={fetchInvoices}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-muted hover:bg-accent text-foreground  transition-colors"
             title="Atualizar faturas"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -182,39 +205,39 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
           {
             label: 'Receita Recorrente Mensal (MRR)',
             value: totalMRR,
-            color: 'text-emerald-600 dark:text-emerald-400',
+            color: 'text-primary ',
             trend: '+14.8% vs mês anterior',
           },
           {
             label: 'Projeção Anual (ARR)',
             value: totalARR,
-            color: 'text-indigo-600 dark:text-indigo-400',
+            color: 'text-primary ',
             trend: 'Base consolidada 12 meses',
           },
           {
             label: 'Ticket Médio por Organização',
             value: averageTicket,
-            color: 'text-slate-900 dark:text-white',
+            color: 'text-foreground ',
             trend: `${invoices.length} faturas ativas`,
             integer: false,
           },
           {
             label: 'Taxa de Liquidação de Faturas',
             value: invoices.length ? (paidCount / invoices.length) * 100 : 0,
-            color: 'text-emerald-600 dark:text-emerald-400',
+            color: 'text-primary ',
             trend: `${paidCount} pagas / ${overdueCount} em atraso`,
             suffix: '%',
             integer: false,
           },
         ].map((k, i) => (
-          <div key={i} className="mod-card p-5">
-            <span className="text-xs font-medium mod-text-secondary block mb-1">{k.label}</span>
+          <div key={i} className="bg-card border border-border rounded-xl p-5">
+            <span className="text-xs font-medium text-muted-foreground block mb-1">{k.label}</span>
             <span className={`text-2xl lg:text-3xl font-extrabold ${k.color} font-mono tabular-nums`}>
               {k.suffix === '%' ? (k.value as number).toFixed(1) : ''}
               {k.suffix === '%' ? '%' : 'R$ '}
               {k.suffix !== '%' ? fmtBRL(k.value as number) : ''}
             </span>
-            <div className="flex items-center gap-1 text-xs mod-text-secondary mt-2 font-mono tabular-nums">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2 font-mono tabular-nums">
               {i === 0 && <TrendingUp className="w-3.5 h-3.5" />}
               <span>{k.trend}</span>
             </div>
@@ -229,21 +252,21 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
         errorAction={{ label: 'Tentar novamente', onClick: fetchInvoices }}
         emptyMessage="Nenhuma fatura registrada no sistema."
       >
-        <div className="mod-card p-4 flex flex-col md:flex-row items-center gap-3">
+        <div className="bg-card border border-border rounded-xl p-4 flex flex-col md:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 mod-text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-muted-foreground/70 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Buscar fatura por número, cliente ou plano..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="mod-input w-full pl-10"
+              className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 w-full pl-10"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="mod-input md:w-auto"
+            className="bg-card border border-input text-foreground placeholder:text-muted-foreground rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 md:w-auto"
           >
             <option value="ALL">Todos os Status</option>
             <option value="paid">Pagas</option>
@@ -253,75 +276,15 @@ export const AdminFinancialBilling: React.FC<AdminFinancialBillingProps> = ({ on
           </select>
         </div>
 
-        <div className="mod-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="mod-header border-b mod-border text-[11px] font-semibold mod-text-secondary uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Número da Fatura</th>
-                  <th className="py-3.5 px-4">Organização Cliente</th>
-                  <th className="py-3.5 px-4">Plano Contratado</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4">Emissão</th>
-                  <th className="py-3.5 px-4">Vencimento</th>
-                  <th className="py-3.5 px-4 text-right">Valor</th>
-                  <th className="py-3.5 px-4 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y mod-border text-xs">
-                {filteredInvoices.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center mod-text-secondary">
-                      Nenhuma fatura localizada para os filtros selecionados.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredInvoices.map((inv) => (
-                    <tr key={inv.id} className="mod-row-hover transition-colors">
-                      <td className="py-3.5 px-4 font-mono tabular-nums font-bold mod-text-primary">
-                        {inv.invoiceNumber}
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold mod-text-primary">{inv.tenantName}</td>
-                      <td className="py-3.5 px-4 mod-text-secondary text-[11px]">{inv.plan}</td>
-                      <td className="py-3.5 px-4">{getStatusBadge(inv.status)}</td>
-                      <td className="py-3.5 px-4 font-mono tabular-nums text-[11px] mod-text-secondary">
-                        {inv.issuedAt}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono tabular-nums text-[11px] mod-text-secondary">
-                        {inv.dueDate}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold mod-text-primary whitespace-nowrap">
-                        R$ {fmtBRL(inv.amount)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {inv.status !== 'paid' && (
-                            <button
-                              onClick={() => handleMarkAsPaid(inv.id)}
-                              disabled={liquidatingId === inv.id}
-                              title="Marcar como Pago"
-                              className="px-2 py-1 rounded sgf-badge-oficial text-[11px] font-semibold inline-flex items-center gap-1 disabled:opacity-50"
-                            >
-                              {liquidatingId === inv.id && <Loader2 className="w-3 h-3 animate-spin" />}
-                              <span>Liquidar</span>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="p-4 mod-header border-t mod-border flex items-center justify-between text-xs mod-text-secondary">
-            <span>
-              Exibindo <strong className="mod-text-primary font-mono tabular-nums">{filteredInvoices.length}</strong> faturas
-            </span>
-            <span className="text-[11px] font-mono">billing-engine-v2</span>
-          </div>
-        </div>
+        <DataTable<InvoiceItem, unknown>
+          columns={columns}
+          data={filteredInvoices}
+          emptyText="Nenhuma fatura localizada para os filtros selecionados."
+          pageSizeSelector
+          exportable
+          exportFileName="faturas"
+          exportTitle="Faturas da plataforma"
+        />
       </ScreenState>
     </div>
   );
