@@ -200,9 +200,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
                 <span className="text-xs font-bold font-mono tracking-tight text-sidebar-foreground uppercase truncate">
                   {config.appName || 'SYSGOV ADMIN'}
                 </span>
-                <span className="text-[11px] text-primary font-mono font-medium truncate">
-                  {config.appSubtitle || 'Painel de Controle'}
-                </span>
               </div>
             )}
           </div>
