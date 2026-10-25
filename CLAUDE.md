@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 SYSGOV — SaaS multi-tenant de governança e gestão pública da SYSTRAT (fiscal/orçamentário, licitações,
 organograma, integrações PNCP/Siconfi/TCE). Monorepo npm workspaces:
 
-- `apps/api` — Laravel 13 (PHP 8.4) monólito modular via `nwidart/laravel-modules`, porta 8000.
+- `apps/api` — Laravel 13 (PHP 8.4) monólito modular via `nwidart/laravel-modules`, porta 8001 (configurável por `API_PORT`).
 - `apps/web` — Painel Admin SYSTRAT, React 19 + TS + Tailwind v4, porta 5173 (dark navy palette).
 - `apps/web-client` — Painel do Cliente/Órgão Público, React 19 + TS + Tailwind v4, porta 5174 (paleta GOV.BR azul).
 - `packages/ui` (`@sysgov/ui`) — design system compartilhado (shadcn/ui + Radix + CVA).
@@ -135,4 +135,3 @@ When modifying or adding features to the CAPD module (`apps/api/Modules/Capd`, `
 All documents generated, maintained, or updated via OpenSpec (`openspec/changes/*`, `openspec/specs/*`, `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `archive`, etc.) **MUST be written in Brazilian Portuguese (pt-BR)**.
 - Structural keywords recognized by the OpenSpec parser (`## ADDED Requirements`, `### Requirement: ...`, `#### Scenario: ...`, `- **WHEN**`, `- **THEN**`) are kept, but all requirement names, descriptions, scenarios, design decisions, and tasks must be in Brazilian Portuguese.
 - NEVER write OpenSpec artifacts or tasks in English.
-

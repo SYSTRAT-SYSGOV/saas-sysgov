@@ -9,7 +9,7 @@ Plataforma SaaS de governança e gestão pública da SYSTRAT, organizada como mo
 ```text
 sysgov/
 ├── apps/
-│   ├── api/          # Backend Laravel Modular (MySQL 8.4, Redis 7) - Porta 8000
+│   ├── api/          # Backend Laravel Modular (MySQL 8.4, Redis 7) - Porta 8001
 │   ├── web/          # Painel Administrativo SYSTRAT (React 19) - Porta 5173
 │   └── web-client/   # Painel do Cliente / Órgão Público (React 19) - Porta 5174
 ├── packages/
@@ -31,8 +31,19 @@ npm install
 ### 2. Backend Laravel:
 ```bash
 cd apps/api
-php artisan serve --port=8000
+php artisan serve --port=8001
 ```
+
+Para usar outra porta local, defina `API_PORT` antes de iniciar. No PowerShell:
+
+```powershell
+$env:API_PORT=8010
+npm run dev
+```
+
+No Docker Compose, defina `API_PORT` antes de `docker compose up`; ele configura
+a porta publicada no host. A API continua escutando na porta `8000` dentro do
+container.
 
 ### 3. Frontends:
 ```bash

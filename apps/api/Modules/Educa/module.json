@@ -1,0 +1,46 @@
+{
+    "name": "Educa",
+    "alias": "educa",
+    "description": "SYS-Educa — Gestão Escolar e Educação Pública Municipal: Calendário, Anos Letivos, Escolas, Matriz Curricular BNCC e Submódulos Setoriais",
+    "priority": 22,
+    "providers": [
+        "Modules\\Educa\\Providers\\EducaServiceProvider",
+        "Modules\\Educa\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Access",
+        "Pessoas",
+        "OrgChart",
+        "Client"
+    ],
+    "menu": {
+        "group": "GESTÃO SETORIAL",
+        "label": "Educação (SYS-Educa)",
+        "icon": "GraduationCap",
+        "order": 32,
+        "permission": "educa.view",
+        "children": [
+            { "label": "Anos Letivos", "route": "educa.anos-letivos", "permission": "educa.core.anos_letivos.view", "icon": "CalendarCheck" },
+            { "label": "Calendário Escolar", "route": "educa.calendarios", "permission": "educa.core.calendarios.view", "icon": "CalendarDays" },
+            { "label": "Motivos de Calendário", "route": "educa.motivos-dia", "permission": "educa.core.motivos_dia.view", "icon": "Tags" }
+        ]
+    },
+    "permissions": {
+        "educa.view": "Acessar o módulo SYS-Educa",
+        "educa.core.anos_letivos.view": "Consultar anos letivos, etapas e conformidade LDB",
+        "educa.core.anos_letivos.create": "Criar ano letivo",
+        "educa.core.anos_letivos.update": "Editar ano letivo, etapas e iniciar fase de avaliação",
+        "educa.core.anos_letivos.delete": "Remover ano letivo em planejamento",
+        "educa.core.anos_letivos.open": "Iniciar o ano letivo",
+        "educa.core.anos_letivos.freeze": "Congelar e retomar o ano letivo",
+        "educa.core.anos_letivos.close": "Encerrar o ano letivo (torna imutável)",
+        "educa.core.anos_letivos.batch": "Operar anos letivos em lote",
+        "educa.core.calendarios.view": "Consultar calendários e dias",
+        "educa.core.calendarios.manage": "Criar, editar e importar calendários e marcar dias",
+        "educa.core.calendarios.publish": "Publicar calendário escolar",
+        "educa.core.calendarios.delete": "Remover calendário em rascunho",
+        "educa.core.motivos_dia.view": "Consultar motivos de dia",
+        "educa.core.motivos_dia.manage": "Gerenciar motivos de dia"
+    }
+}

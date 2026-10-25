@@ -5,7 +5,7 @@ Guia Canônico de Padrões de Arquitetura, Engenharia e Escrita de Código
 1. Visão Geral
 O SYSGOV é uma plataforma SaaS multi-tenant desenvolvida pela SYSTRAT, voltada à governança, transparência e gestão da administração pública municipal e estadual. O ecossistema contempla planejamento orçamentário e fiscal, execução financeira, compras governamentais, gestão patrimonial e cemiterial, recursos humanos e organograma institucional, operando integrações diretas com sistemas estruturantes como o Portal Nacional de Contratações Públicas (PNCP), a Secretaria do Tesouro Nacional (Siconfi) e os Tribunais de Contas dos Estados (TCEs).
 O repositório é unificado sob uma arquitetura de monorepo utilizando npm workspaces, estruturado nos seguintes pacotes e aplicações:
-apps/api: Monólito modular em Laravel 13 e PHP 8.4 gerenciado via nwidart/laravel-modules, exposto por padrão na porta 8000.
+apps/api: Monólito modular em Laravel 13 e PHP 8.4 gerenciado via nwidart/laravel-modules, exposto por padrão na porta 8001 (configurável por `API_PORT`).
 apps/web: Painel Administrativo Corporativo SYSTRAT, implementado em React 19, TypeScript e Tailwind CSS v4, na porta 5173 (identidade visual ancorada na paleta navy escura).
 apps/web-client: Painel Operacional do Ente Federativo/Cliente Público, desenvolvido em React 19, TypeScript e Tailwind CSS v4, na porta 5174 (identidade visual pautada no Padrão Digital de Governo GOV.BR azul).
 packages/ui (@sysgov/ui): Biblioteca compartilhada de componentes de interface construída sobre Tailwind CSS v4, Radix UI primitivos e Class Variance Authority (CVA), derivada do ecossistema shadcn/ui.

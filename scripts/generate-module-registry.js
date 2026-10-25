@@ -144,6 +144,15 @@ const CORE_MODULE_MAP = {
     requiredPermission: 'protocolo.processos.view',
     icon: 'FolderOpen',
   },
+  educa: {
+    id: 'educa',
+    name: 'Educação (SYS-Educa)',
+    componentPath: '@/modules/educa/EducaModule',
+    routePath: 'educa',
+    routes: ['educa', 'educa/*'],
+    requiredPermission: 'educa.view',
+    icon: 'GraduationCap',
+  },
 };
 
 function capitalizeFirst(str) {

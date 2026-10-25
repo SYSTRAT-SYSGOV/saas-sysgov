@@ -66,13 +66,13 @@ export default defineConfig({
       // (ex.: http://api:8000), já que 'localhost' dentro do container
       // se refere ao próprio container, não ao host nem a outros serviços.
       '/api': {
-        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         headers: { Connection: 'close' },
       },
       '/sanctum': {
-        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         headers: { Connection: 'close' },

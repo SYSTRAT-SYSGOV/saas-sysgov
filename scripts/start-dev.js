@@ -11,7 +11,8 @@ const http = require('node:http');
 const path = require('node:path');
 
 const API_DIR = path.resolve(__dirname, '..', 'apps', 'api');
-const BACKEND_URL = 'http://localhost:8000/api/health';
+const API_PORT = Number(process.env.API_PORT || 8001);
+const BACKEND_URL = `http://localhost:${API_PORT}/api/health`;
 const MAX_RETRIES = 30;
 const POLL_INTERVAL = 1500;
 
@@ -73,7 +74,7 @@ async function waitForBackend(retries, isExited) {
         req.on('error', reject);
         req.setTimeout(3000, () => { req.destroy(); reject(new Error('timeout')); });
       });
-      console.log('[dev]  Backend pronto (localhost:8000)');
+      console.log(`[dev]  Backend pronto (localhost:${API_PORT})`);
       return true;
     } catch {
       process.stdout.write('.');
@@ -85,15 +86,22 @@ async function waitForBackend(retries, isExited) {
 }
 
 async function startDev() {
+  if (!Number.isInteger(API_PORT) || API_PORT < 1 || API_PORT > 65535) {
+    console.error('[dev]  API_PORT deve ser um número inteiro entre 1 e 65535.');
+    process.exit(1);
+  }
+
   const phpBin = resolvePhpBinary();
   const phpDir = path.isAbsolute(phpBin) ? path.dirname(phpBin) : null;
   const env = {
     ...process.env,
+    APP_URL: process.env.APP_URL || `http://localhost:${API_PORT}`,
+    VITE_API_PROXY_TARGET: process.env.VITE_API_PROXY_TARGET || `http://localhost:${API_PORT}`,
     ...(phpDir ? { PATH: `${phpDir}${path.delimiter}${process.env.PATH || ''}` } : {}),
   };
 
-  console.log('[dev]  Iniciando backend Laravel (apps/api)...');
-  const backend = spawn(phpBin, ['artisan', 'serve', '--host=localhost', '--port=8000'], {
+  console.log(`[dev]  Iniciando backend Laravel (apps/api) na porta ${API_PORT}...`);
+  const backend = spawn(phpBin, ['artisan', 'serve', '--host=localhost', `--port=${API_PORT}`], {
     cwd: API_DIR,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],

@@ -74,7 +74,7 @@ apps/web-client/
 ## 🚀 2. Como Rodar Localmente
 
 ### Portas Oficiais do Monorepo:
-- **Backend Laravel (`apps/api`)**: `http://localhost:8000`
+- **Backend Laravel (`apps/api`)**: `http://localhost:8001`
 - **Painel Admin (`apps/web`)**: `http://localhost:5173`
 - **Painel Cliente (`apps/web-client`)**: `http://localhost:5174`
 
@@ -83,7 +83,7 @@ apps/web-client/
 1. **Terminal 1 — Backend Laravel**:
    ```bash
    cd apps/api
-   php artisan serve --port=8000
+   php artisan serve --port=8001
    ```
 
 2. **Terminal 2 — Frontend**:
@@ -94,7 +94,8 @@ apps/web-client/
 
 3. **Acesso no Navegador**:
    - Acesse [http://localhost:5174](http://localhost:5174)
-   - O proxy reverso no `vite.config.ts` encaminha `/api` e `/sanctum` para `http://localhost:8000`
+   - O proxy reverso no `vite.config.ts` encaminha `/api` e `/sanctum` para `http://localhost:8001`
+   - Para executar API e frontends juntos em outra porta, defina `API_PORT` antes de `npm run dev`; ao iniciar os frontends separadamente, configure `VITE_API_PROXY_TARGET` com a URL da API.
 
 ---
 

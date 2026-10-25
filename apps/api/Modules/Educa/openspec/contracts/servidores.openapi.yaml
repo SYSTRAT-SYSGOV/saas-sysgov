@@ -1,0 +1,505 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa — Submódulo Servidores da Educação (Lotação Docente e Lei do Piso 11.738/2008)
+  version: 0.1.0
+  description: |
+    Contrato da API do submódulo `servidores` do módulo Educa (SYSGOV).
+    Escopo: **Cadastro Funcional de Servidores (MDM Pessoas)**, **Funções e Matrículas**,
+    **Lotação Escolar Semanal com Validação da Lei do Piso (1/3 de hora-atividade - Lei 11.738/2008)**,
+    **Habilitações Curriculares**, **Afastamentos/Licenças com Suspensão** e **Faltas/Atrasos**.
+
+    Convenções SYSGOV:
+    - Tenant resolvido pelo middleware `ResolveTenant` via cabeçalho `X-Tenant-Slug`.
+    - Dados técnicos em JetBrains Mono (código INEP, matrículas, horas e percentuais).
+    - Toda mutação gravada em `AuditLogger` (module `educa`).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/educa/servidores
+    description: Prefixo do submódulo de servidores da educação
+
+security:
+  - sanctum: []
+
+tags:
+  - name: Servidores
+    description: Cadastro e vida funcional do servidor escolar vinculado a Pessoa
+  - name: Funções e Matrículas
+    description: Atribuição de papéis profissionais e matrículas funcionais
+  - name: Lotação e Jornada
+    description: Alocação em escolas com validação obrigatória da Lei do Piso 11.738/2008
+  - name: Habilitações
+    description: Componentes curriculares que o docente está habilitado a lecionar
+  - name: Afastamentos e Faltas
+    description: Licenças com suspensão temporária de alocações e faltas funcionais
+
+paths:
+  /servidores:
+    get:
+      tags: [Servidores]
+      operationId: listarServidores
+      summary: Lista servidores escolares com filtros por escola, busca textual e situação
+      x-permission: educa.servidores.view
+      parameters:
+        - { name: busca, in: query, schema: { type: string } }
+        - { name: school_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: ativo, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Lista de servidores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Employee" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Servidores]
+      operationId: criarServidor
+      summary: Cadastra extensão funcional de servidor vinculado obrigatoriamente a pessoa física
+      x-permission: educa.servidores.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeCreate" }
+      responses:
+        "201":
+          description: Servidor cadastrado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Employee" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "409": { description: Servidor já cadastrado para esta pessoa }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /servidores/{servidorId}:
+    get:
+      tags: [Servidores]
+      operationId: detalharServidor
+      summary: Retorna a ficha funcional completa do servidor incluindo funções, alocações e afastamentos
+      x-permission: educa.servidores.view
+      parameters:
+        - { name: servidorId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Ficha funcional do servidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/EmployeeDetail" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+    put:
+      tags: [Servidores]
+      operationId: atualizarServidor
+      summary: Atualiza dados cadastrais e funcionais do servidor
+      x-permission: educa.servidores.manage
+      parameters:
+        - { name: servidorId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeUpdate" }
+      responses:
+        "200":
+          description: Dados atualizados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Employee" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /servidores/{servidorId}/funcoes:
+    post:
+      tags: [Funções e Matrículas]
+      operationId: adicionarFuncao
+      summary: Atribui nova função profissional com matrícula funcional específica
+      x-permission: educa.servidores.manage
+      parameters:
+        - { name: servidorId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeRoleCreate" }
+      responses:
+        "201":
+          description: Função profissional atribuída
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/EmployeeRole" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "409": { description: Matrícula funcional já em uso no tenant }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /alocacoes:
+    get:
+      tags: [Lotação e Jornada]
+      operationId: listarAlocacoes
+      summary: Lista alocações semanais em unidades escolares
+      x-permission: educa.servidores.view
+      parameters:
+        - { name: school_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: employee_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: academic_year_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Lista de alocações
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/EmployeeAllocation" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Lotação e Jornada]
+      operationId: criarAlocacao
+      summary: Registra alocação escolar semanal validando a Lei do Piso (1/3 hora-atividade) e teto contratual
+      x-permission: educa.servidores.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeAllocationCreate" }
+      responses:
+        "201":
+          description: Alocação registrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/EmployeeAllocation" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "422":
+          description: Violação da Lei do Piso ou carga contratual excedida
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErroValidacao" }
+
+  /alocacoes/{alocacaoId}:
+    delete:
+      tags: [Lotação e Jornada]
+      operationId: removerAlocacao
+      summary: Cancela ou desativa alocação semanal
+      x-permission: educa.servidores.manage
+      parameters:
+        - { name: alocacaoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "204": { description: Alocação desativada }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /servidores/{servidorId}/habilitacoes:
+    post:
+      tags: [Habilitações]
+      operationId: sincronizarHabilitacoes
+      summary: Define os componentes curriculares que o docente está legalmente habilitado a lecionar
+      x-permission: educa.servidores.manage
+      parameters:
+        - { name: servidorId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [component_ids]
+              properties:
+                component_ids:
+                  type: array
+                  items: { $ref: "#/components/schemas/Uuid" }
+      responses:
+        "200":
+          description: Habilitações atualizadas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/TeacherQualification" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /servidores/{servidorId}/afastamentos:
+    post:
+      tags: [Afastamentos e Faltas]
+      operationId: registrarAfastamento
+      summary: Registra licença temporária com suspensão automática de alocações ativas
+      x-permission: educa.servidores.manage
+      parameters:
+        - { name: servidorId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeWithdrawalCreate" }
+      responses:
+        "201":
+          description: Afastamento registrado e alocações suspensas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/EmployeeWithdrawal" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /servidores/{servidorId}/faltas:
+    post:
+      tags: [Afastamentos e Faltas]
+      operationId: registrarFalta
+      summary: Lança ocorrência de falta ou atraso funcional
+      x-permission: educa.servidores.manage
+      parameters:
+        - { name: servidorId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeAbsenceCreate" }
+      responses:
+        "201":
+          description: Falta ou atraso registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/EmployeeAbsence" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      example: 0192e21b-8f3a-7140-9831-abc123456789
+
+    Employee:
+      type: object
+      required: [id, pessoa_id, carga_horaria_semanal, ativo]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        pessoa_id: { type: integer, example: 42 }
+        carga_horaria_semanal: { type: number, format: float, example: 40.0 }
+        escolaridade: { type: string, example: "superior_completo" }
+        codigo_inep_docente: { type: string, example: "123456789012" }
+        ativo: { type: boolean, example: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    EmployeeDetail:
+      allOf:
+        - $ref: "#/components/schemas/Employee"
+        - type: object
+          properties:
+            funcoes:
+              type: array
+              items: { $ref: "#/components/schemas/EmployeeRole" }
+            alocacoes:
+              type: array
+              items: { $ref: "#/components/schemas/EmployeeAllocation" }
+            afastamentos:
+              type: array
+              items: { $ref: "#/components/schemas/EmployeeWithdrawal" }
+            habilitacoes:
+              type: array
+              items: { $ref: "#/components/schemas/TeacherQualification" }
+
+    EmployeeCreate:
+      type: object
+      required: [pessoa_id, carga_horaria_semanal]
+      properties:
+        pessoa_id: { type: integer, example: 42 }
+        carga_horaria_semanal: { type: number, minimum: 1, maximum: 60, example: 40.0 }
+        escolaridade: { type: string, example: "superior_completo" }
+        codigo_inep_docente: { type: string, maxLength: 20 }
+
+    EmployeeUpdate:
+      type: object
+      properties:
+        carga_horaria_semanal: { type: number, minimum: 1, maximum: 60 }
+        escolaridade: { type: string }
+        codigo_inep_docente: { type: string }
+        ativo: { type: boolean }
+
+    EmployeeRole:
+      type: object
+      required: [id, employee_id, nome_funcao, matricula, is_docente]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        employee_id: { $ref: "#/components/schemas/Uuid" }
+        nome_funcao: { type: string, example: "Professor de Educação Básica" }
+        matricula: { type: string, example: "MAT-2026-001" }
+        is_docente: { type: boolean, example: true }
+        created_at: { type: string, format: date-time }
+
+    EmployeeRoleCreate:
+      type: object
+      required: [nome_funcao, matricula, is_docente]
+      properties:
+        nome_funcao: { type: string, example: "Professor" }
+        matricula: { type: string, example: "MAT-2026-001" }
+        is_docente: { type: boolean, example: true }
+
+    EmployeeAllocation:
+      type: object
+      required: [id, employee_id, school_id, academic_year_id, horas_regencia, horas_atividade, status]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        employee_id: { $ref: "#/components/schemas/Uuid" }
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        academic_year_id: { $ref: "#/components/schemas/Uuid" }
+        turno: { type: string, enum: [manha, tarde, noite, integral], example: "manha" }
+        dia_semana: { type: integer, minimum: 1, maximum: 7, example: 2 }
+        horas_regencia: { type: number, example: 20.0 }
+        horas_atividade: { type: number, example: 10.0 }
+        horas_excedentes: { type: number, example: 0.0 }
+        status: { type: string, enum: [ativa, suspensa, cancelada], example: "ativa" }
+        created_at: { type: string, format: date-time }
+
+    EmployeeAllocationCreate:
+      type: object
+      required: [employee_id, school_id, academic_year_id, turno, horas_regencia, horas_atividade]
+      properties:
+        employee_id: { $ref: "#/components/schemas/Uuid" }
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        academic_year_id: { $ref: "#/components/schemas/Uuid" }
+        turno: { type: string, enum: [manha, tarde, noite, integral] }
+        dia_semana: { type: integer, minimum: 1, maximum: 7 }
+        horas_regencia: { type: number, minimum: 0 }
+        horas_atividade: { type: number, minimum: 0 }
+        horas_excedentes: { type: number, default: 0 }
+
+    TeacherQualification:
+      type: object
+      required: [id, employee_id, curriculum_component_id]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        employee_id: { $ref: "#/components/schemas/Uuid" }
+        curriculum_component_id: { $ref: "#/components/schemas/Uuid" }
+
+    EmployeeWithdrawal:
+      type: object
+      required: [id, employee_id, tipo_afastamento, data_inicio]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        employee_id: { $ref: "#/components/schemas/Uuid" }
+        tipo_afastamento: { type: string, example: "licenca_medica" }
+        data_inicio: { type: string, format: date }
+        data_fim: { type: [string, "null"] }
+        motivo: { type: string }
+
+    EmployeeWithdrawalCreate:
+      type: object
+      required: [tipo_afastamento, data_inicio]
+      properties:
+        tipo_afastamento: { type: string, example: "licenca_medica" }
+        data_inicio: { type: string, format: date }
+        data_fim: { type: string, format: date }
+        motivo: { type: string }
+
+    EmployeeAbsence:
+      type: object
+      required: [id, employee_id, school_id, data_falta, tipo, justificada]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        employee_id: { $ref: "#/components/schemas/Uuid" }
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        data_falta: { type: string, format: date }
+        tipo: { type: string, enum: [falta, atraso] }
+        minutos: { type: integer, example: 50 }
+        justificada: { type: boolean, example: false }
+        motivo_justificativa: { type: [string, "null"] }
+
+    EmployeeAbsenceCreate:
+      type: object
+      required: [school_id, data_falta, tipo, minutos, justificada]
+      properties:
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        data_falta: { type: string, format: date }
+        tipo: { type: string, enum: [falta, atraso] }
+        minutos: { type: integer, minimum: 1 }
+        justificada: { type: boolean }
+        motivo_justificativa: { type: string }
+
+    ErroValidacao:
+      type: object
+      required: [message, code]
+      properties:
+        message: { type: string }
+        code: { type: string, example: "LEI_DO_PISO_VIOLATION" }
+        detalhes: { type: object }
+
+    Erro:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+        code: { type: string }
+
+  responses:
+    NaoAutenticado:
+      description: Não autenticado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Proibido:
+      description: Sem permissão RBAC
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    NaoEncontrado:
+      description: Recurso não localizado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Validacao:
+      description: Dados inválidos submetidos na requisição
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErroValidacao" }

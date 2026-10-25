@@ -1,0 +1,25 @@
+# SchoolClass (i-Educar legado), Perguntas em Aberto
+
+> Lacunas 🔴 que dependem de validação humana antes da reimplementação da unit de turmas.
+
+---
+
+| # | Pergunta | Origem | Impacto | Dono | Prazo |
+|---|-----------|--------|---------|------|-------|
+| Q-01 | A listagem de turmas por escola interpola a lista de escolas e o turno no SQL. A carga histórica desses valores é confiável e qual é a estratégia de parametrização no modelo novo? | `ieducar/modules/Api/Views/TurmaController.php:221` e `:268` | Alto | Arquitetura e Segurança | Antes da implementação |
+| Q-02 | A API de recurso de turma dispensa a autorização na indexação. Qual nível de acesso deve ser exigido para a listagem de turmas da rede? | `app/Http/Controllers/Api/SchoolClassController.php:20-24` | Alto | Segurança | Antes da implementação |
+| Q-03 | A verificação de vagas em aberto percorre as turmas do turno e conta as matrículas de cada uma. O modelo novo adota consulta agregada, capacidade declarada na escola ou contador persistido? | `app/Rules/CanCreateSchoolClass.php:48-57` | Alto | Arquitetura | Antes da implementação |
+| Q-04 | O cache de estudantes parciais tem cinco minutos de validade, o que permite a alteração do turno de uma turma que passou a ter estudantes parciais. Como deve ser a invalidação? | `app/Services/SchoolClass/SchoolClassService.php:153` | Alto | Arquitetura | Antes da implementação |
+| Q-05 | A exclusão lógica da turma não registra o motivo nem o usuário responsável. O que é retido e por quanto tempo? | `app/Services/SchoolClass/SchoolClassService.php:126-129` | Alto | Jurídico e Compliance | Antes da implementação |
+| Q-06 | A regra de exclusão de série compara a contagem do array com zero, e não a presença de itens. O comportamento correto quando a busca devolve chaves nulas é o esperado? | `app/Rules/ExistsEnrollmentsInSchoolClassGrades.php` | Médio | Arquitetura | Antes da implementação |
+| Q-07 | Não há verificação de que a série ou o curso estão habilitados na escola, na criação da turma. A verificação é impeditiva ou informativa? | `app/Services/SchoolClass/SchoolClassService.php:135-149` | Alto | Produto | Antes da implementação |
+| Q-08 | A carga horária em horas é a diferença bruta entre o horário de início e o de fim, sem descontar o intervalo nem as horas noturnas. Qual é o cálculo correto, consumido pelo diário e pela exportação? | `app/Models/LegacySchoolClass.php:552-561` | Alto | Pedagogo | Antes da implementação |
+| Q-09 | O turno é um código numérico sem entidade própria na aplicação, e a tabela `pmieducar.turma_turno` não foi localizada no código lido. Qual é a sua origem e quais os turnos cadastrados em uso? | `src/Modules/SchoolClass/Period.php:8-11` | Alto | Arquitetura | Antes da migração |
+| Q-10 | As regras de incompatibilidade de tipo de ausência, de parecer descritivo e de tipo de recuperação acoplam a turma ao modelo de avaliação e não foram lidas nesta extração. Onde elas estão e qual é a regra correta de bulletin por série? | `app/Services/SchoolClass/MultiGradesService.php:26-30` | Alto | Pedagogo | Antes da implementação |
+| Q-11 | A turma tem mais de sessenta campos, dos quais grande parte é marcação do Censo Escolar. Qual é a estratégia de separação entre o dado operacional da turma e o dado de exportação? | `app/Models/LegacySchoolClass.php:86-163` | Alto | Arquitetura | Antes da implementação |
+| Q-12 | Não há trilha de auditoria das alterações de turma. O que é retido, por quem e por quanto tempo? | `app/Services/SchoolClass/SchoolClassService.php:106-113` | Alto | Jurídico e Compliance | Antes da implementação |
+| Q-13 | A turma tem o mesmo nome livre em séries diferentes, e o nome no recurso inclui o ano entre parênteses. A unicidade por escola, curso, série e ano é a regra que a rede espera, ou a unicidade deveria ser por escola e turno? | `app/Rules/CheckSchoolClassExistsByName.php:21-40` | Médio | Produto | Antes da implementação |
+| Q-14 | Não há verificação de compatibilidade entre a lotação máxima e a sala, nem com o tipo de atendimento. A lotação é livre ou deve ser validada contra a infraestrutura da escola? | `app/Models/LegacySchoolClass.php:552-561` | Médio | Pedagogo | Antes da implementação |
+| Q-15 | O nome do recurso de turma exclui o ano da série, mas o nome exibição inclui o ano entre parênteses. A busca por nome deve ignorar o ano, e a ordenação deve usar o nome bruto ou o nome de exibição? | `app/Models/LegacySchoolClass.php:172-183` | Baixo | Produto | Antes da implementação |
+| Q-16 | A regra de alteração do turno de turma integral depende de códigos INEP de turno parcial informados, e não apenas da existência de estudantes parciais. A regra correta é a dependência do código, do estudante ou das duas? | `app/Http/Controllers/SchoolClassController.php:51-55` | Médio | Jurídico | Antes da implementação |
+| Q-17 | A carga horária integralizada depende da organização curricular e da etapa do Censo Escolar da turma. O modelo novo mantém a dependência da etapa do INEP, que muda por portaria? | `app/Models/LegacySchoolClass.php:686-693` | Médio | Jurídico | Antes da implementação |

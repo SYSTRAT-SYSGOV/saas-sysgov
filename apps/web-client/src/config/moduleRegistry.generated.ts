@@ -18,6 +18,7 @@ const PermissionMatrixComponent = lazy(() => import('@/modules/access/Permission
 const CapdComponent = lazy(() => import('@/modules/capd/CapdModule'));
 const PessoasComponent = lazy(() => import('@/modules/pessoas/PessoasModule'));
 const ProtocoloComponent = lazy(() => import('@/modules/protocolo/ProtocoloModule'));
+const EducaComponent = lazy(() => import('@/modules/educa/EducaModule'));
 const AtaComponent = lazy(() => import('@/modules/ata/AtaModule'));
 const CampanhaComponent = lazy(() => import('@/modules/campanha/CampanhaModule'));
 const ClientComponent = lazy(async () => ({ default: () => React.createElement(ModulePlaceholder, { name: "Client", alias: "client", description: "Funcionalidades do cliente/tenant do SYSGOV" }) }));
@@ -182,6 +183,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ["protocolo","protocolo/*"],
     requiredPermission: 'protocolo.processos.view',
     icon: 'FolderOpen',
+  },
+  educa: {
+    id: 'educa',
+    name: "Educação (SYS-Educa)",
+    component: EducaComponent,
+    routePath: 'educa',
+    routes: ["educa","educa/*"],
+    requiredPermission: 'educa.view',
+    icon: 'GraduationCap',
   },
   ata: {
     id: 'ata',

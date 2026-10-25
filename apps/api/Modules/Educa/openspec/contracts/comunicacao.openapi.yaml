@@ -1,0 +1,483 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa — Submódulo Comunicação Escolar, Avisos e Ocorrências
+  version: 0.1.0
+  description: |
+    Contrato da API do submódulo `comunicacao` do módulo Educa (SYSGOV).
+    Escopo: **Mural de Avisos e Circulares Segmentadas**, **Confirmação de Ciência/Leitura**,
+    **Ocorrências Disciplinares e Pedagógicas**, **Despacho de Providências** e **Mensageria via Outbox Pattern**.
+
+    Convenções SYSGOV:
+    - Tenant resolvido pelo middleware `ResolveTenant` via cabeçalho `X-Tenant-Slug`.
+    - Isolamento de dados multi-tenant estrito via `tenant_id`.
+    - Mensageria externa baseada no Outbox Pattern (`outbox_events`).
+    - Toda mutação gravada em `AuditLogger` (module `educa`).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/educa/comunicacao
+    description: Prefixo do submódulo comunicação escolar
+
+security:
+  - sanctum: []
+
+tags:
+  - name: Avisos e Circulares
+    description: Publicação e segmentação de comunicados escolares oficiais
+  - name: Ocorrências e Providências
+    description: Gestão de ocorrências pedagógicas, conduta e ciência dos responsáveis
+  - name: Mensageria e Notificações
+    description: Alertas de infrequência e despachos via Outbox Pattern
+
+paths:
+  /avisos:
+    get:
+      tags: [Avisos e Circulares]
+      operationId: listarAvisos
+      summary: Lista avisos e comunicados oficiais com filtros de público e vigência
+      x-permission: educa.comunicacao.avisos.view
+      parameters:
+        - { name: escola_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: turma_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: urgencia, in: query, schema: { type: string, enum: [baixa, media, alta, urgente] } }
+        - { name: status, in: query, schema: { type: string, enum: [rascunho, publicado, arquivado] } }
+      responses:
+        "200":
+          description: Lista de comunicados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AvisoEscolar" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Avisos e Circulares]
+      operationId: publicarAviso
+      summary: Publica novo comunicado oficial com segmentação de público-alvo
+      x-permission: educa.comunicacao.avisos.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AvisoCreate" }
+      responses:
+        "201":
+          description: Comunicado publicado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AvisoEscolar" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /avisos/{avisoId}:
+    get:
+      tags: [Avisos e Circulares]
+      operationId: obterAviso
+      summary: Obtém detalhes do comunicado e confirmações de leitura
+      x-permission: educa.comunicacao.avisos.view
+      parameters:
+        - { name: avisoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Detalhes do comunicado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AvisoEscolar" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    put:
+      tags: [Avisos e Circulares]
+      operationId: atualizarAviso
+      summary: Atualiza conteúdo, vigência ou urgência do comunicado
+      x-permission: educa.comunicacao.avisos.manage
+      parameters:
+        - { name: avisoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AvisoUpdate" }
+      responses:
+        "200":
+          description: Comunicado atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AvisoEscolar" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    delete:
+      tags: [Avisos e Circulares]
+      operationId: arquivarAviso
+      summary: Arquiva o comunicado retirando do mural público
+      x-permission: educa.comunicacao.avisos.manage
+      parameters:
+        - { name: avisoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Comunicado arquivado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /avisos/{avisoId}/leituras:
+    post:
+      tags: [Avisos e Circulares]
+      operationId: registrarLeituraAviso
+      summary: Registra confirmação de leitura ou ciência do responsável
+      x-permission: educa.comunicacao.avisos.view
+      parameters:
+        - { name: avisoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pessoa_id: { type: integer, description: "ID do responsável que confirmou leitura" }
+      responses:
+        "200":
+          description: Leitura confirmada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /ocorrencias:
+    get:
+      tags: [Ocorrências e Providências]
+      operationId: listarOcorrencias
+      summary: Lista ocorrências disciplinares e pedagógicas
+      x-permission: educa.comunicacao.ocorrencias.view
+      parameters:
+        - { name: enrollment_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: tipo, in: query, schema: { type: string, enum: [disciplinar, pedagogica, saude, elogio] } }
+        - { name: gravidade, in: query, schema: { type: string, enum: [baixa, media, alta, gravissima] } }
+        - { name: status, in: query, schema: { type: string, enum: [aberta, em_analise, concluida, cientificada] } }
+      responses:
+        "200":
+          description: Lista de ocorrências
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/OcorrenciaEscolar" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Ocorrências e Providências]
+      operationId: registrarOcorrencia
+      summary: Registra ocorrência disciplinar ou pedagógica de estudante
+      x-permission: educa.comunicacao.ocorrencias.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OcorrenciaCreate" }
+      responses:
+        "201":
+          description: Ocorrência cadastrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/OcorrenciaEscolar" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /ocorrencias/{ocorrenciaId}:
+    get:
+      tags: [Ocorrências e Providências]
+      operationId: obterOcorrencia
+      summary: Obtém detalhes da ocorrência, providências e histórico de ciência
+      x-permission: educa.comunicacao.ocorrencias.view
+      parameters:
+        - { name: ocorrenciaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Detalhes da ocorrência
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/OcorrenciaEscolar" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /ocorrencias/{ocorrenciaId}/acoes:
+    post:
+      tags: [Ocorrências e Providências]
+      operationId: adicionarAcaoOcorrencia
+      summary: Registra providência pedagógica ou convocação presencial de responsáveis
+      x-permission: educa.comunicacao.ocorrencias.manage
+      parameters:
+        - { name: ocorrenciaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcaoOcorrenciaCreate" }
+      responses:
+        "201":
+          description: Ação registrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AcaoOcorrencia" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /ocorrencias/{ocorrenciaId}/ciencia:
+    post:
+      tags: [Ocorrências e Providências]
+      operationId: registrarCienciaOcorrencia
+      summary: Registra ciência formal do responsável legal presencial ou digitalmente
+      x-permission: educa.comunicacao.ocorrencias.manage
+      parameters:
+        - { name: ocorrenciaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [responsavel_pessoa_id]
+              properties:
+                responsavel_pessoa_id: { type: integer }
+                observacao: { type: string }
+      responses:
+        "200":
+          description: Ciência registrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/OcorrenciaEscolar" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /notificacoes/infrequencia:
+    post:
+      tags: [Mensageria e Notificações]
+      operationId: dispararAlertaInfrequencia
+      summary: Publica evento de infrequência no Outbox para notificação dos responsáveis
+      x-permission: educa.comunicacao.notificacoes.send
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enrollment_id, total_faltas]
+              properties:
+                enrollment_id: { $ref: "#/components/schemas/Uuid" }
+                total_faltas: { type: integer, minimum: 1 }
+                canal: { type: string, enum: [whatsapp, sms, email, todos], default: todos }
+      responses:
+        "202":
+          description: Alerta de infrequência publicado no Outbox
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  event_id: { $ref: "#/components/schemas/Uuid" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+
+    AvisoEscolar:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        titulo: { type: string }
+        conteudo: { type: string }
+        urgencia: { type: string, enum: [baixa, media, alta, urgente] }
+        data_publicacao: { type: string, format: date }
+        data_expiracao: { type: [string, "null"], format: date }
+        status: { type: string, enum: [rascunho, publicado, arquivado] }
+        total_leituras: { type: integer }
+        publicos_alvo:
+          type: array
+          items: { $ref: "#/components/schemas/AvisoPublicoAlvo" }
+
+    AvisoPublicoAlvo:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        tipo_alvo: { type: string, enum: [rede, escola, curso, turma] }
+        target_id: { type: [string, "null"] }
+
+    AvisoCreate:
+      type: object
+      required: [titulo, conteudo, urgencia, publicos_alvo]
+      properties:
+        titulo: { type: string, maxLength: 150 }
+        conteudo: { type: string }
+        urgencia: { type: string, enum: [baixa, media, alta, urgente] }
+        data_publicacao: { type: string, format: date }
+        data_expiracao: { type: string, format: date }
+        publicos_alvo:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [tipo_alvo]
+            properties:
+              tipo_alvo: { type: string, enum: [rede, escola, curso, turma] }
+              target_id: { type: string }
+
+    AvisoUpdate:
+      type: object
+      properties:
+        titulo: { type: string, maxLength: 150 }
+        conteudo: { type: string }
+        urgencia: { type: string, enum: [baixa, media, alta, urgente] }
+        data_expiracao: { type: string, format: date }
+        status: { type: string, enum: [rascunho, publicado, arquivado] }
+
+    OcorrenciaEscolar:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        numero_sequencial: { type: string }
+        enrollment_id: { $ref: "#/components/schemas/Uuid" }
+        aluno_pessoa_id: { type: integer }
+        tipo: { type: string, enum: [disciplinar, pedagogica, saude, elogio] }
+        gravidade: { type: string, enum: [baixa, media, alta, gravissima] }
+        relato: { type: string }
+        data_ocorrencia: { type: string, format: date }
+        status: { type: string, enum: [aberta, em_analise, concluida, cientificada] }
+        acoes:
+          type: array
+          items: { $ref: "#/components/schemas/AcaoOcorrencia" }
+
+    OcorrenciaCreate:
+      type: object
+      required: [enrollment_id, tipo, gravidade, relato, data_ocorrencia]
+      properties:
+        enrollment_id: { $ref: "#/components/schemas/Uuid" }
+        tipo: { type: string, enum: [disciplinar, pedagogica, saude, elogio] }
+        gravidade: { type: string, enum: [baixa, media, alta, gravissima] }
+        relato: { type: string }
+        data_ocorrencia: { type: string, format: date }
+
+    AcaoOcorrencia:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        incident_id: { $ref: "#/components/schemas/Uuid" }
+        tipo_acao: { type: string }
+        descricao: { type: string }
+        exige_comparecimento: { type: boolean }
+        data_acao: { type: string, format: date }
+
+    AcaoOcorrenciaCreate:
+      type: object
+      required: [tipo_acao, descricao]
+      properties:
+        tipo_acao: { type: string, maxLength: 100 }
+        descricao: { type: string }
+        exige_comparecimento: { type: boolean, default: false }
+
+    ErroValidacao:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+  responses:
+    DadosInvalidos:
+      description: Erro de validação de dados
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErroValidacao" }
+
+    NaoAutenticado:
+      description: Requisição não autenticada (token ausente ou inválido)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Unauthenticated." }
+
+    Proibido:
+      description: Acesso proibido por permissões RBAC insuficientes
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "This action is unauthorized." }
+
+    NaoEncontrado:
+      description: Registro não localizado no tenant atual
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Not Found" }

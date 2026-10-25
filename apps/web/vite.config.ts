@@ -25,7 +25,7 @@ export default defineConfig(() => {
         // código do navegador (config/env.ts) e um valor como
         // 'http://api:8000' não resolve fora da rede Docker.
         '/api': {
-          target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
+          target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8001',
           changeOrigin: true,
           headers: { Connection: 'close' },
         },

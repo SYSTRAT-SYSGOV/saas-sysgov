@@ -1,0 +1,26 @@
+# Stages (i-Educar legado), Perguntas em Aberto
+
+> Lacunas 🔴 que dependem de validação humana antes da reimplementação da unit de estrutura acadêmica.
+
+---
+
+| # | Pergunta | Origem | Impacto | Dono | Prazo |
+|---|-----------|--------|---------|------|-------|
+| Q-01 | O termo "etapa" designa três conceitos distintos no legado: a série dentro do curso, a etapa de calendário letivo e a etapa oficial do Censo Escolar. Qual é a taxonomia do modelo novo? | `app/Models/LegacyGrade.php:51`, `app/Models/LegacyStageType.php:18` e `app/Models/LegacyEducacensoStages.php:9` | Alto | Arquitetura | Antes da implementação |
+| Q-02 | A listagem de séries interpola a escola, o curso, o ano e o indicador de atividade no SQL. A carga histórica desses valores é confiável e qual é a estratégia de parametrização? | `ieducar/modules/Api/Views/SerieController.php:62` e `:66` e `:70` e `:74` | Alto | Arquitetura e Segurança | Antes da implementação |
+| Q-03 | A API de recurso de curso e a de série dispensam a autorização na indexação. Qual nível de acesso deve ser exigido para a listagem da estrutura acadêmica da rede? | `app/Http/Controllers/Api/CourseController.php:20-24` e `GradeController.php:20-24` | Alto | Segurança | Antes da implementação |
+| Q-04 | A gravação das etapas da turma apaga as anteriores e reinsere sem atomicidade por etapa. Qual é o comportamento desejado em caso de falha intermediária? | `app/Services/SchoolClassStageService.php:16-26` | Alto | Arquitetura | Antes da implementação |
+| Q-05 | A promoção é disparada por uma requisição sintética contra a API legada, com a exceção silenciada. A promoção passa a ser um processo explícito, com registro de falha e reprocessamento? | `app/Services/PromotionService.php:22-51` | Alto | Arquitetura e Produto | Antes da implementação |
+| Q-06 | A sequência de séries é apenas um par origem e destino. Quais são os tipos de transição, quando há exigência de parecer do conselho e como a retenção é tratada? | `app/Models/LegacyGradeSequence.php:14-30` | Alto | Pedagogo e Jurídico | Antes da implementação |
+| Q-07 | Não há validação da carga horária e dos dias letivos do curso contra o mínimo da LDB. A validação é impeditiva e qual é o regime aplicável aos cursos seriados, modulares e de EJA? | `app/Models/LegacyCourse.php:54-70` | Alto | Jurídico | Antes da implementação |
+| Q-08 | A regra de avaliação está em duas fontes: a coluna da série e a tabela de ligação por ano letivo. Qual é a fonte de verdade e como se processa a convergência? | `app/Models/LegacyGrade.php:59-60` e `:88-122` | Alto | Arquitetura | Antes da migração |
+| Q-09 | A faixa etária usa a data base de matrícula da instituição como data de corte. A série passa a ter data de corte própria, como prevê o modelo novo? | `ieducar/intranet/include/pmieducar/clsPmieducarSerie.inc.php` | Alto | Pedagogo | Antes da implementação |
+| Q-10 | O de/para entre curso e etapa do Censo Escolar é chaveado apenas por curso, sem vínculo por série. O vínculo por série e por etapa agregada passa a ser modelado? | `app/Models/LegacyCourseEducacensoStage.php:11-21` | Médio | Produto | Antes da implementação |
+| Q-11 | Não há ato de autorização do conselho municipal vinculado à oferta do curso. O número e a data do ato passam a ser obrigatórios na oferta? | `app/Models/LegacySchoolCourse.php:16-28` | Alto | Jurídico | Antes da implementação |
+| Q-12 | A listagem de séries agrupadas por curso não filtra por atividade nem restringe por instituição no legado. Qual é o comportamento correto do modelo novo? | `ieducar/modules/Api/Views/SerieController.php:229-246` | Médio | Produto | Antes da implementação |
+| Q-13 | Não há trilha de auditoria das alterações de curso, de série e de sequência. O que é retido, por quem e por quanto tempo? | `app/Models/LegacyGrade.php:46-70` | Alto | Jurídico e Compliance | Antes da implementação |
+| Q-14 | A série tem a marcação `exigir_inep` e `importar_serie_pre_matricula`, sem regra de validação localizada no código lido. Onde essas marcas são aplicadas e quem é afetado? | `app/Models/LegacyGrade.php:66-67` | Médio | Produto | Antes da implementação |
+| Q-15 | A série tem `intervalo` e `observacao_historico`, sem regra de aplicação localizada. O que essas colunas controlam na operação da rede? | `app/Models/LegacyGrade.php:56` e `:60` | Baixo | Produto | Antes da implementação |
+| Q-16 | O curso tem `modalidade_curso` e `ref_cod_tipo_regime`, com catálogos separados. O regime e a modalidade são o mesmo conceito no modelo novo, e qual é o catálogo oficial do INEP para a modalidade? | `app/Models/LegacyCourse.php:56` e `:67` | Médio | Jurídico | Antes da implementação |
+| Q-17 | A estrutura de progressão orientada a ciclos, com progressão continuada, é o objetivo do modelo novo, mas o legado não tem qualquer suporte a ela. Qual é a regra de progressão do primeiro ao último ano em uma rede que adota ciclos? | `_reversa_sdd/Stages/legacy-mapping.md`, seção 1 | Alto | Pedagogo | Antes da implementação |
+| Q-18 | A verificação de faixa etária é liberada quando a instituição não tem data base de matrícula. É aceitável que uma rede sem data base permita matrícula de qualquer idade na série? | `ieducar/intranet/include/pmieducar/clsPmieducarSerie.inc.php` | Médio | Jurídico | Antes da implementação |

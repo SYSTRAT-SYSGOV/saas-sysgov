@@ -1,0 +1,12 @@
+export { EducaModule, default } from './EducaModule';
+export * from './context/EducaContext';
+export * from './components/EducaHeader';
+export * from './components/LdbComplianceBadge';
+export * from './components/PisoDocenteMeter';
+export * from './views/CoreView';
+export * from './views/SecretariaView';
+export * from './views/PedagogicoView';
+export * from './views/ServidoresView';
+export * from './views/EducacensoView';
+export * from './views/TransporteView';
+export * from './views/ComunicacaoView';

@@ -1,0 +1,724 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa — Submódulo core (Escolas, Matriz Curricular BNCC e Turmas)
+  version: 0.1.0
+  description: |
+    Contrato complementar do submódulo `core` do módulo Educa (SYSGOV).
+    Escopo: **Escolas** (extensão educacional da OrgUnit), **Cursos**, **Séries**,
+    **Áreas e Componentes Curriculares BNCC**, **Matrizes Curriculares** e **Turmas**.
+
+    Convenções SYSGOV:
+    - Tenant resolvido pelo middleware `ResolveTenant` via cabeçalho `X-Tenant-Slug`.
+    - Dados técnicos em JetBrains Mono (`inep_code`, carga horária, percentuais).
+    - Toda mutação gravada em `AuditLogger` (module `educa`).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/educa/core
+    description: Prefixo do submódulo core
+
+security:
+  - sanctum: []
+
+tags:
+  - name: Escolas
+    description: Extensão educacional das Unidades Organizacionais do OrgChart
+  - name: Cursos e Séries
+    description: Estrutura pedagógica de oferta da rede municipal
+  - name: Matriz Curricular BNCC
+    description: Áreas de conhecimento, componentes curriculares e matrizes de oferta
+  - name: Turmas
+    description: Agrupamentos pedagógicos com controle de vagas e turnos
+
+paths:
+  /escolas:
+    get:
+      tags: [Escolas]
+      operationId: listarEscolas
+      summary: Lista escolas educacionais da rede
+      x-permission: educa.core.escolas.view
+      parameters:
+        - { name: busca, in: query, schema: { type: string } }
+        - { name: zona, in: query, schema: { type: string, enum: [urbana, rural] } }
+        - { name: situacao, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Lista de escolas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Escola" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Escolas]
+      operationId: criarEscola
+      summary: Cria extensão educacional para uma OrgUnit existente
+      x-permission: educa.core.escolas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EscolaCreate" }
+      responses:
+        "201":
+          description: Escola criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EscolaResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /escolas/{escolaId}:
+    parameters:
+      - { name: escolaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    get:
+      tags: [Escolas]
+      operationId: obterEscola
+      summary: Detalha escola e parâmetros de atendimento
+      x-permission: educa.core.escolas.view
+      responses:
+        "200":
+          description: Escola detalhada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EscolaResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+    put:
+      tags: [Escolas]
+      operationId: atualizarEscola
+      summary: Atualiza parâmetros educacionais da escola
+      x-permission: educa.core.escolas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EscolaUpdate" }
+      responses:
+        "200":
+          description: Escola atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EscolaResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /escolas/{escolaId}/capacidade-turno:
+    parameters:
+      - { name: escolaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      - { name: ano, in: query, required: true, schema: { type: integer } }
+    get:
+      tags: [Escolas]
+      operationId: obterCapacidadePorTurno
+      summary: Calcula a capacidade total de atendimento somando a lotação das turmas ativas por turno
+      x-permission: educa.core.escolas.view
+      responses:
+        "200":
+          description: Capacidade por turno
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ano: { type: integer }
+                  turnos:
+                    type: object
+                    properties:
+                      matutino: { type: integer }
+                      vespertino: { type: integer }
+                      noturno: { type: integer }
+                      integral: { type: integer }
+                      total_rede: { type: integer }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /cursos:
+    get:
+      tags: [Cursos e Séries]
+      operationId: listarCursos
+      summary: Lista cursos da rede de ensino
+      x-permission: educa.core.escolas.view
+      responses:
+        "200":
+          description: Lista de cursos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Curso" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+    post:
+      tags: [Cursos e Séries]
+      operationId: criarCurso
+      summary: Cadastra curso da rede municipal
+      x-permission: educa.core.escolas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CursoCreate" }
+      responses:
+        "201":
+          description: Curso criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Curso" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /cursos/{cursoId}/series:
+    parameters:
+      - { name: cursoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    get:
+      tags: [Cursos e Séries]
+      operationId: listarSeriesDoCurso
+      summary: Lista séries vinculadas ao curso ordenadas por sequencial
+      x-permission: educa.core.escolas.view
+      responses:
+        "200":
+          description: Lista de séries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Serie" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+    post:
+      tags: [Cursos e Séries]
+      operationId: criarSerie
+      summary: Cadastra série para o curso
+      x-permission: educa.core.escolas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SerieCreate" }
+      responses:
+        "201":
+          description: Série criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Serie" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /areas-conhecimento:
+    get:
+      tags: [Matriz Curricular BNCC]
+      operationId: listarAreasConhecimento
+      summary: Lista áreas de conhecimento da BNCC
+      x-permission: educa.core.escolas.view
+      responses:
+        "200":
+          description: Lista de áreas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AreaConhecimento" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+    post:
+      tags: [Matriz Curricular BNCC]
+      operationId: criarAreaConhecimento
+      summary: Cadastra área de conhecimento
+      x-permission: educa.core.escolas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AreaConhecimentoCreate" }
+      responses:
+        "201":
+          description: Área criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AreaConhecimento" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /componentes-curriculares:
+    get:
+      tags: [Matriz Curricular BNCC]
+      operationId: listarComponentesCurriculares
+      summary: Lista componentes curriculares (disciplinas)
+      x-permission: educa.core.escolas.view
+      responses:
+        "200":
+          description: Lista de componentes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/ComponenteCurricular" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+    post:
+      tags: [Matriz Curricular BNCC]
+      operationId: criarComponenteCurricular
+      summary: Cadastra componente curricular com classificação BNCC e código INEP
+      x-permission: educa.core.escolas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ComponenteCurricularCreate" }
+      responses:
+        "201":
+          description: Componente criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComponenteCurricular" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /matrizes-curriculares:
+    get:
+      tags: [Matriz Curricular BNCC]
+      operationId: listarMatrizesCurriculares
+      summary: Lista matrizes curriculares da rede
+      x-permission: educa.core.escolas.view
+      parameters:
+        - { name: curso_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: serie_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Lista de matrizes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/MatrizCurricular" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+    post:
+      tags: [Matriz Curricular BNCC]
+      operationId: criarMatrizCurricular
+      summary: Cria nova matriz curricular para uma série
+      x-permission: educa.core.escolas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MatrizCurricularCreate" }
+      responses:
+        "201":
+          description: Matriz criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatrizCurricular" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /matrizes-curriculares/{matrizId}/componentes:
+    parameters:
+      - { name: matrizId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    put:
+      tags: [Matriz Curricular BNCC]
+      operationId: configurarComponentesMatriz
+      summary: Configura os componentes e cargas horárias semanais/anuais da matriz
+      x-permission: educa.core.escolas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [componentes]
+              properties:
+                componentes:
+                  type: array
+                  items: { $ref: "#/components/schemas/MatrizComponenteInput" }
+      responses:
+        "200":
+          description: Matriz atualizada com cálculo de carga horária total
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatrizCurricular" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /turmas:
+    get:
+      tags: [Turmas]
+      operationId: listarTurmas
+      summary: Lista turmas da rede ou da escola
+      x-permission: educa.core.turmas.view
+      parameters:
+        - { name: school_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: academic_year_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: turno, in: query, schema: { type: string, enum: [matutino, vespertino, noturno, integral] } }
+      responses:
+        "200":
+          description: Lista de turmas com vagas e lotação calculada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Turma" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+    post:
+      tags: [Turmas]
+      operationId: criarTurma
+      summary: Cadastra turma com controle de vagas e trava anti-ociosidade
+      x-permission: educa.core.turmas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TurmaCreate" }
+      responses:
+        "201":
+          description: Turma criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TurmaResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /turmas/{turmaId}:
+    parameters:
+      - { name: turmaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    get:
+      tags: [Turmas]
+      operationId: obterTurma
+      summary: Detalha turma com componentes e cálculo de vagas disponíveis
+      x-permission: educa.core.turmas.view
+      responses:
+        "200":
+          description: Turma detalhada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TurmaResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+    put:
+      tags: [Turmas]
+      operationId: atualizarTurma
+      summary: Atualiza turma
+      x-permission: educa.core.turmas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TurmaUpdate" }
+      responses:
+        "200":
+          description: Turma atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TurmaResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+    delete:
+      tags: [Turmas]
+      operationId: removerTurma
+      summary: Remove turma (soft delete se não possuir alunos enturmados)
+      x-permission: educa.core.turmas.manage
+      responses:
+        "204": { description: Turma removida }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "409": { $ref: "#/components/responses/Conflito" }
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      description: Laravel Sanctum
+
+  responses:
+    NaoAutenticado:
+      description: Não autenticado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Proibido:
+      description: Sem permissão RBAC
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    NaoEncontrado:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Conflito:
+      description: Conflito de unicidade ou integridade
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Validacao:
+      description: Erro de validação de dados
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+
+  schemas:
+    Erro:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+        code: { type: string }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+
+    Uuid:
+      type: string
+      format: uuid
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      minLength: 36
+      maxLength: 36
+
+    Escola:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        org_unit_id: { type: integer, description: "ID da Unidade no Módulo OrgChart" }
+        nome: { type: string }
+        sigla: { type: string }
+        codigo_inep: { type: [string, "null"], maxLength: 8 }
+        situacao_funcionamento: { type: string, enum: [em_atividade, paralisada, extinta] }
+        dependencia_administrativa: { type: string, enum: [municipal, estadual, federal, privada] }
+        zona: { type: string, enum: [urbana, rural] }
+        regulamentada: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    EscolaResponse:
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/Escola" }
+
+    EscolaCreate:
+      type: object
+      required: [org_unit_id, sigla, situacao_funcionamento, dependencia_administrativa, zona]
+      properties:
+        org_unit_id: { type: integer }
+        codigo_inep: { type: string, maxLength: 8 }
+        sigla: { type: string, maxLength: 20 }
+        situacao_funcionamento: { type: string, enum: [em_atividade, paralisada, extinta] }
+        dependencia_administrativa: { type: string, enum: [municipal, estadual, federal, privada] }
+        zona: { type: string, enum: [urbana, rural] }
+        regulamentada: { type: boolean, default: true }
+
+    EscolaUpdate:
+      type: object
+      properties:
+        codigo_inep: { type: [string, "null"], maxLength: 8 }
+        sigla: { type: string, maxLength: 20 }
+        situacao_funcionamento: { type: string, enum: [em_atividade, paralisada, extinta] }
+        zona: { type: string, enum: [urbana, rural] }
+        regulamentada: { type: boolean }
+
+    Curso:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        codigo: { type: string }
+        nome: { type: string }
+        nivel: { type: string }
+        modalidade: { type: string }
+
+    CursoCreate:
+      type: object
+      required: [codigo, nome, nivel, modalidade]
+      properties:
+        codigo: { type: string, maxLength: 30 }
+        nome: { type: string, maxLength: 100 }
+        nivel: { type: string, enum: [infantil, fundamental_iniciais, fundamental_finais, medio, eja] }
+        modalidade: { type: string, enum: [regular, especial, eja] }
+
+    Serie:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        course_id: { $ref: "#/components/schemas/Uuid" }
+        sequencial: { type: integer }
+        codigo: { type: string }
+        nome: { type: string }
+        carga_horaria_minima_anual: { type: integer }
+        dias_letivos_minimos: { type: integer }
+
+    SerieCreate:
+      type: object
+      required: [sequencial, codigo, nome, carga_horaria_minima_anual, dias_letivos_minimos]
+      properties:
+        sequencial: { type: integer, minimum: 1 }
+        codigo: { type: string, maxLength: 20 }
+        nome: { type: string, maxLength: 50 }
+        carga_horaria_minima_anual: { type: integer, minimum: 1 }
+        dias_letivos_minimos: { type: integer, minimum: 1 }
+
+    AreaConhecimento:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        codigo: { type: string }
+        nome: { type: string }
+        secao: { type: [string, "null"] }
+        ordem: { type: integer }
+
+    AreaConhecimentoCreate:
+      type: object
+      required: [codigo, nome]
+      properties:
+        codigo: { type: string, maxLength: 30 }
+        nome: { type: string, maxLength: 60 }
+        secao: { type: string, maxLength: 50 }
+        ordem: { type: integer, default: 0 }
+
+    ComponenteCurricular:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        knowledge_area_id: { $ref: "#/components/schemas/Uuid" }
+        codigo: { type: string }
+        codigo_educacenso_inep: { type: [string, "null"] }
+        nome: { type: string }
+        sigla: { type: string }
+        base_curricular: { type: string, enum: [nacional_comum, diversificada, profissional, ensino_religioso] }
+        desconsiderar_progressao: { type: boolean }
+        color_hex: { type: string }
+
+    ComponenteCurricularCreate:
+      type: object
+      required: [knowledge_area_id, codigo, nome, sigla, base_curricular]
+      properties:
+        knowledge_area_id: { $ref: "#/components/schemas/Uuid" }
+        codigo: { type: string, maxLength: 30 }
+        codigo_educacenso_inep: { type: string, maxLength: 10 }
+        nome: { type: string, maxLength: 100 }
+        sigla: { type: string, maxLength: 10 }
+        base_curricular: { type: string, enum: [nacional_comum, diversificada, profissional, ensino_religioso] }
+        desconsiderar_progressao: { type: boolean, default: false }
+        color_hex: { type: string, pattern: "^#[0-9A-Fa-f]{6}$", default: "#2563EB" }
+
+    MatrizCurricular:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        course_id: { $ref: "#/components/schemas/Uuid" }
+        grade_id: { $ref: "#/components/schemas/Uuid" }
+        nome: { type: string }
+        ano_vigencia: { type: integer }
+        total_horas_anuais: { type: integer }
+        componentes:
+          type: array
+          items: { $ref: "#/components/schemas/MatrizComponenteItem" }
+
+    MatrizCurricularCreate:
+      type: object
+      required: [course_id, grade_id, nome, ano_vigencia]
+      properties:
+        course_id: { $ref: "#/components/schemas/Uuid" }
+        grade_id: { $ref: "#/components/schemas/Uuid" }
+        nome: { type: string, maxLength: 150 }
+        ano_vigencia: { type: integer }
+
+    MatrizComponenteItem:
+      type: object
+      properties:
+        component_id: { $ref: "#/components/schemas/Uuid" }
+        componente_nome: { type: string }
+        horas_semanais: { type: integer }
+        horas_anuais: { type: integer }
+        tipo_nota: { type: string, enum: [numerica, conceitual, parecer] }
+
+    MatrizComponenteInput:
+      type: object
+      required: [component_id, horas_semanais, horas_anuais, tipo_nota]
+      properties:
+        component_id: { $ref: "#/components/schemas/Uuid" }
+        horas_semanais: { type: integer, minimum: 1 }
+        horas_anuais: { type: integer, minimum: 1 }
+        tipo_nota: { type: string, enum: [numerica, conceitual, parecer] }
+
+    Turma:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        academic_year_id: { $ref: "#/components/schemas/Uuid" }
+        course_id: { $ref: "#/components/schemas/Uuid" }
+        grade_id: { $ref: "#/components/schemas/Uuid" }
+        matrix_id: { $ref: "#/components/schemas/Uuid" }
+        nome: { type: string }
+        sigla: { type: string }
+        turno: { type: string, enum: [matutino, vespertino, noturno, integral] }
+        sala: { type: [string, "null"] }
+        lotacao_maxima: { type: integer }
+        lotacao_efetiva: { type: integer }
+        vagas_disponiveis: { type: integer }
+        tipo_atendimento: { type: string, enum: [regular, complementar, aee] }
+        is_multiseriada: { type: boolean }
+        status: { type: string, enum: [ativa, inativa] }
+
+    TurmaResponse:
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/Turma" }
+
+    TurmaCreate:
+      type: object
+      required: [school_id, academic_year_id, course_id, grade_id, matrix_id, nome, turno, lotacao_maxima]
+      properties:
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        academic_year_id: { $ref: "#/components/schemas/Uuid" }
+        course_id: { $ref: "#/components/schemas/Uuid" }
+        grade_id: { $ref: "#/components/schemas/Uuid" }
+        matrix_id: { $ref: "#/components/schemas/Uuid" }
+        nome: { type: string, maxLength: 80 }
+        sigla: { type: string, maxLength: 20 }
+        turno: { type: string, enum: [matutino, vespertino, noturno, integral] }
+        sala: { type: string, maxLength: 50 }
+        lotacao_maxima: { type: integer, minimum: 1, maximum: 100 }
+        tipo_atendimento: { type: string, enum: [regular, complementar, aee], default: regular }
+        is_multiseriada: { type: boolean, default: false }
+
+    TurmaUpdate:
+      type: object
+      properties:
+        nome: { type: string, maxLength: 80 }
+        sigla: { type: string, maxLength: 20 }
+        sala: { type: string, maxLength: 50 }
+        lotacao_maxima: { type: integer, minimum: 1, maximum: 100 }
+        status: { type: string, enum: [ativa, inativa] }

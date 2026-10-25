@@ -1,0 +1,29 @@
+# RegraAvaliacao (i-Educar legado), Perguntas
+
+> Perguntas em aberto que dependem de validação humana, derivadas das lacunas desta unit. Insumo da fase de revisão (`revisao`).
+> Confiança: 🟢 CONFIRMADO no código, 🟡 INFERIDO, 🔴 LACUNA.
+
+| # | Pergunta | Origem | Impacto | Dono | Prazo |
+|---|----------|--------|---------|------|-------|
+| Q-01 | A fórmula de média é executada com `eval` sobre texto configurável; qual é o plano de erradicação e quem audita as fórmulas hoje cadastradas na base? | `ieducar/modules/FormulaMedia/Model/Formula.php:122-128` | Alto — execução de código arbitrário por quem configura a fórmula | Arquitetura e Segurança | Antes da migração |
+| Q-02 | Há fórmulas cadastradas na base de produção com conteúdo fora do conjunto de tokens aceitos, e como foram executadas até hoje? | `Formula.php:19-30` | Alto — indica uso da brecha ou de fórmulas quebradas | Dados | Antes da migração |
+| Q-03 | Na cópia da regra, as recuperações são recriadas também para o identificador da regra de origem; há acumulação de recuperações duplicadas na base de produção? | `ieducar/modules/RegraAvaliacao/Views/EditController.php:1094-1104` | Alto — integridade das regras de recuperação | Dados | Antes da migração |
+| Q-04 | Quem, na rede, tem a permissão do processo 947 em produção, e de que nível de acesso? | `EditController.php` (`_processoAp = 947`) | Médio — governança de quem configura a rede | Arquitetura | Antes do piloto |
+| Q-05 | O regime de pontos (`pontos`) com lista separada por vírgula tem qual semântica pedagógica e onde é consumido? | `Regra.php:31` e `EditController.php:1154-1156` | Alto — regra de cálculo sem consumo localizado | Pedagogo | Antes do piloto |
+| Q-06 | Quais são os consumidores confirmados dos campos `faltaMaximaGeral`, `faltaMinimaGeral` e `qtdMatriculasDependencia`? | `Regra.php:23-24` e `:32` | Médio — campos podem ser obsoletos no modelo novo | Arquitetura | Antes do piloto |
+| Q-07 | Como é o consumo de `disciplinasAglutinadas` e qual o formato esperado da lista de componentes agrupados? | `Regra.php:30` | Alto — apuração por componentes agrupados | Pedagogo | Antes do piloto |
+| Q-08 | A verificação de compatibilidade de presença da regra inclusiva confere somente o tipo de presença; há exigência de conferência de outros parâmetros da regra diferenciada (médias, tipo de nota)? | `EditController.php:1136-1149` | Médio — regras inclusivas com configuração divergente além da presença | Pedagogo | Antes do piloto |
+| Q-09 | Pode uma regra ser diferenciada de si própria (enlace circular `regraDiferenciada`) ou de uma regra de outra instituição? | `Regra.php:110-115` e `:197-200` | Médio — integridade do enlace | Arquitetura | Antes da migração |
+| Q-10 | A mesma regra pode ser considerada padrão de uma série e diferenciada de outra no mesmo ano, e isso é desejável no modelo novo? | `SerieAno.php` e `EditController.php:197-200` | Médio — modelagem do vínculo por série | Arquitetura | Antes da migração |
+| Q-11 | Como é a exclusão de regra no legado (existe caminho de exclusão) e o que acontece com o vínculo de série e ano quando a regra sai? | `RegraDataMapper.php` | Alto — exclusão que perfura a configuração das séries | Arquitetura e Dados | Antes da migração |
+| Q-12 | O cache de cinco minutos da leitura da regra no boletim é invalidado quando a regra é editada? | `ieducar/modules/Avaliacao/Service/Boletim.php:3377-3386` | Alto — mudança de regra sem efeito imediato na apuração | Arquitetura | Antes do piloto |
+| Q-13 | A média de recuperação até 14 no regime continuada é intencional e é mais larga que a nota máxima geral? | `Regra.php:233-239` | Médio — coerência dos intervalos entre regimes no modelo novo | Pedagogo | Antes do piloto |
+| Q-14 | As tabelas de arredondamento, numérica e conceitual, aceitam qualquer tabela da instituição sem filtro de tipo na validação; é correto filtrar pelo tipo de nota da regra no modelo novo? | `RegraDataMapper.php:161-168` e `Regra.php:207-216` | Médio — coerência da régua com o sistema de nota | Arquitetura | Antes da migração |
+| Q-15 | Quantos tokens de etapa o modelo novo suporta (o legado aceita E1 a E10, RSP1 a RSP10); séries com mais de 10 etapas existem na rede? | `Formula.php:19-30` | Baixo — limite de etapas na fórmula | Pedagogo | Antes do piloto |
+| Q-16 | A regra de recuperação por etapas específicas separa as etapas por `;` sem ordenação nem validação de interseção entre grupos; grupos conflitantes devem ser validados? | `RegraRecuperacao.php` e `app/Models/LegacyRemedialRule.php:31-34` | Médio — sobreposição de grupos de recuperação | Arquitetura | Antes da migração |
+| Q-17 | O campo `mediaRecuperacaoParalela` é string de 1 a 10 caracteres; qual é o formato e o consumo desse valor? | `Regra.php:243-245` | Alto — corte de convocação da recuperação paralela | Pedagogo | Antes do piloto |
+| Q-18 | A semântica da aprovação pela frequência após exame exige fórmula de recuperação; qual é a regra pedagógica e em quais redes está em uso? | `_reversa_sdd/Avaliacao/requirements.md` e `Regra.php` | Alto — regime de aprovação | Pedagogo e Jurídico | Antes do piloto |
+| Q-19 | A escolha da tabela de arredondamento não filtra o tipo da tabela na lista, apenas valida contra o catálogo com a mensagem; o modelo novo deve normalizar a escolha por tipo de nota? | `Regra.php:207-216` | Médio — usabilidade e integridade do cadastro | Arquitetura | Antes da migração |
+| Q-20 | Qual é o plano de conversão das fórmulas existentes para o avaliador seguro, e como as fórmulas quebradas serão reajustadas? | `_reversa_sdd/RegraAvaliacao/legacy-mapping.md`, seção 4 | Alto — migração de dados das fórmulas | Dados e Arquitetura | Antes da migração |
+
+> Total: 20 perguntas. Acumulado do plano: 187 perguntas em 10 units (167 de 9 units anteriores).

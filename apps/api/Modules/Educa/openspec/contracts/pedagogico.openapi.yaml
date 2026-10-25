@@ -1,0 +1,338 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa — Submódulo Pedagógico (Diário de Classe, Frequência e Avaliação sem eval)
+  version: 0.1.0
+  description: |
+    Contrato da API do submódulo `pedagogico` do módulo Educa (SYSGOV).
+    Escopo: **Diário de Classe**, **Registro de Frequência e Abono**, **Regras de Avaliação**,
+    **Motor Declarativo de Cálculo de Médias (sem eval - ADR 002)** e **Arredondamento Oficial**.
+
+    Convenções SYSGOV:
+    - Tenant resolvido pelo middleware `ResolveTenant` via cabeçalho `X-Tenant-Slug`.
+    - Dados técnicos em JetBrains Mono (código de turma, percentuais e notas).
+    - Toda mutação gravada em `AuditLogger` (module `educa`).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/educa/pedagogico
+    description: Prefixo do submódulo pedagógico
+
+security:
+  - sanctum: []
+
+tags:
+  - name: Diário de Classe
+    description: Registro diário de aulas ministradas, conteúdos e habilidades BNCC
+  - name: Frequência
+    description: Apuração de presenças e faltas por aula com abono legal
+  - name: Avaliação e Médias
+    description: Regras de avaliação, notas por etapa e cálculo declarativo de médias sem eval
+
+paths:
+  /diarios:
+    get:
+      tags: [Diário de Classe]
+      operationId: listarDiarios
+      summary: Lista registros de aulas com filtros por turma, componente e período
+      x-permission: educa.pedagogico.diario.view
+      parameters:
+        - { name: school_class_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: component_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: data_inicio, in: query, schema: { type: string, format: date } }
+        - { name: data_fim, in: query, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Lista de aulas registradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/DiarioClasse" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Diário de Classe]
+      operationId: criarDiario
+      summary: Registra aula ministrada com validação de dia letivo oficial
+      x-permission: educa.pedagogico.diario.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DiarioClasseCreate" }
+      responses:
+        "201":
+          description: Registro de aula criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DiarioClasseResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /diarios/{diarioId}:
+    parameters:
+      - { name: diarioId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    get:
+      tags: [Diário de Classe]
+      operationId: obterDiario
+      summary: Consulta detalhes da aula e lista de presenças apuradas
+      x-permission: educa.pedagogico.diario.view
+      responses:
+        "200":
+          description: Detalhes do diário de classe
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DiarioClasseResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /diarios/{diarioId}/frequencia:
+    parameters:
+      - { name: diarioId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    post:
+      tags: [Frequência]
+      operationId: salvarFrequencia
+      summary: Lança a chamada da turma para a aula (presenças, faltas e justificativas)
+      x-permission: educa.pedagogico.frequencia.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [registros]
+              properties:
+                registros:
+                  type: array
+                  items:
+                    type: object
+                    required: [class_enrollment_id, status]
+                    properties:
+                      class_enrollment_id: { $ref: "#/components/schemas/Uuid" }
+                      status: { type: string, enum: [presente, falta, falta_justificada] }
+                      justificativa: { type: string, maxLength: 255 }
+      responses:
+        "200":
+          description: Frequência gravada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  total_computados: { type: integer }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /regras-avaliacao:
+    get:
+      tags: [Avaliação e Médias]
+      operationId: listarRegrasAvaliacao
+      summary: Lista regras de avaliação cadastradas na rede
+      x-permission: educa.pedagogico.avaliacao.view
+      responses:
+        "200":
+          description: Lista de regras
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/RegraAvaliacao" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Avaliação e Médias]
+      operationId: criarRegraAvaliacao
+      summary: Cadastra regra de avaliação com fórmula matemática declarativa sem eval
+      x-permission: educa.pedagogico.avaliacao.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegraAvaliacaoCreate" }
+      responses:
+        "201":
+          description: Regra criada com fórmula validada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RegraAvaliacaoResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /turmas/{turmaId}/componentes/{componentId}/notas:
+    parameters:
+      - { name: turmaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      - { name: componentId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    get:
+      tags: [Avaliação e Médias]
+      operationId: obterMapaNotas
+      summary: Obtém mapa de notas de todos os alunos da turma no componente
+      x-permission: educa.pedagogico.avaliacao.view
+      responses:
+        "200":
+          description: Mapa de notas e médias da turma
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AlunoBoletim" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Avaliação e Médias]
+      operationId: salvarNotas
+      summary: Lança notas por etapa (bimestre/trimestre) e notas de recuperação
+      x-permission: educa.pedagogico.avaliacao.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [etapa_sequencial, notas]
+              properties:
+                etapa_sequencial: { type: integer, minimum: 1, maximum: 6 }
+                notas:
+                  type: array
+                  items:
+                    type: object
+                    required: [enrollment_id, nota]
+                    properties:
+                      enrollment_id: { $ref: "#/components/schemas/Uuid" }
+                      nota: { type: number, minimum: 0, maximum: 10 }
+                      nota_recuperacao: { type: [number, "null"], minimum: 0, maximum: 10 }
+      responses:
+        "200":
+          description: Notas gravadas com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+
+  responses:
+    NaoAutenticado:
+      description: Não autenticado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Proibido:
+      description: Sem permissão RBAC
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    NaoEncontrado:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Validacao:
+      description: Erro de validação de dados
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+
+  schemas:
+    Erro:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+        code: { type: string }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+
+    Uuid:
+      type: string
+      format: uuid
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      minLength: 36
+      maxLength: 36
+
+    DiarioClasse:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        school_class_id: { $ref: "#/components/schemas/Uuid" }
+        curriculum_component_id: { $ref: "#/components/schemas/Uuid" }
+        data_aula: { type: string, format: date }
+        quantidade_aulas: { type: integer, minimum: 1, maximum: 10 }
+        conteudo: { type: string }
+        habilidades_bncc: { type: [string, "null"] }
+        status: { type: string, enum: [rascunho, publicado] }
+
+    DiarioClasseResponse:
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/DiarioClasse" }
+
+    DiarioClasseCreate:
+      type: object
+      required: [school_class_id, curriculum_component_id, data_aula, quantidade_aulas, conteudo]
+      properties:
+        school_class_id: { $ref: "#/components/schemas/Uuid" }
+        curriculum_component_id: { $ref: "#/components/schemas/Uuid" }
+        data_aula: { type: string, format: date }
+        quantidade_aulas: { type: integer, minimum: 1, maximum: 10, default: 1 }
+        conteudo: { type: string, maxLength: 2000 }
+        habilidades_bncc: { type: string, maxLength: 500 }
+
+    RegraAvaliacao:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        nome: { type: string }
+        tipo_nota: { type: string, enum: [numerica, conceitual, parecer] }
+        nota_maxima: { type: number, default: 10.0 }
+        nota_minima_aprovacao: { type: number, default: 6.0 }
+        formula_media_anual: { type: string, example: "(E1 + E2 + E3 + E4) / 4" }
+        formula_recuperacao: { type: [string, "null"], example: "max(E, REC)" }
+
+    RegraAvaliacaoResponse:
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/RegraAvaliacao" }
+
+    RegraAvaliacaoCreate:
+      type: object
+      required: [nome, tipo_nota, formula_media_anual]
+      properties:
+        nome: { type: string, maxLength: 100 }
+        tipo_nota: { type: string, enum: [numerica, conceitual, parecer], default: numerica }
+        nota_maxima: { type: number, default: 10.0 }
+        nota_minima_aprovacao: { type: number, default: 6.0 }
+        formula_media_anual: { type: string, maxLength: 255 }
+        formula_recuperacao: { type: string, maxLength: 255 }
+
+    AlunoBoletim:
+      type: object
+      properties:
+        enrollment_id: { $ref: "#/components/schemas/Uuid" }
+        aluno_nome: { type: string }
+        numero_ordem: { type: integer }
+        notas_etapas:
+          type: object
+          additionalProperties: { type: number }
+        media_anual: { type: [number, "null"] }
+        percentual_frequencia: { type: number }
+        situacao: { type: string, enum: [em_andamento, aprovado, retido_nota, retido_frequencia] }

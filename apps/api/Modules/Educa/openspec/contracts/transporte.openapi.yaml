@@ -1,0 +1,578 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa — Submódulo Transporte Escolar (Rotas, Veículos, Condutores e Alocações)
+  version: 0.1.0
+  description: |
+    Contrato da API do submódulo `transporte` do módulo Educa (SYSGOV).
+    Escopo: **Rotas e Itinerários**, **Pontos de Parada Ordenados**, **Frota de Veículos e Vistorias DETRAN**,
+    **Credenciamento de Motoristas e Monitores (MDM Pessoas)** e **Alocação Nominal de Estudantes com Controle de Lotação**.
+
+    Convenções SYSGOV:
+    - Tenant resolvido pelo middleware `ResolveTenant` via cabeçalho `X-Tenant-Slug`.
+    - Isolamento de dados multi-tenant estrito via `tenant_id`.
+    - Dados técnicos em JetBrains Mono (placa, CNH, CPF, código da rota).
+    - Toda mutação gravada em `AuditLogger` (module `educa`).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/educa/transporte
+    description: Prefixo do submódulo transporte
+
+security:
+  - sanctum: []
+
+tags:
+  - name: Rotas e Paradas
+    description: Linhas de itinerário escolar, turnos e pontos de embarque/desembarque
+  - name: Veículos e Vistorias
+    description: Frota própria e terceirizada, capacidade de assentos e laudos semestrais do DETRAN
+  - name: Condutores e Monitores
+    description: Credenciamento funcional de motoristas e monitores vinculados a Pessoas MDM
+  - name: Alocações
+    description: Vinculação de estudantes a rotas e veículos com trava atômica de vagas
+
+paths:
+  /rotas:
+    get:
+      tags: [Rotas e Paradas]
+      operationId: listarRotas
+      summary: Lista rotas de transporte escolar com filtros
+      x-permission: educa.transporte.rotas.view
+      parameters:
+        - { name: turno, in: query, schema: { type: string, enum: [matutino, vespertino, noturno, integral] } }
+        - { name: tipo_rota, in: query, schema: { type: string, enum: [urbana, rural, mista] } }
+        - { name: ativo, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Lista de rotas cadastradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/RotaTransporte" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Rotas e Paradas]
+      operationId: criarRota
+      summary: Cadastra uma nova rota de transporte escolar
+      x-permission: educa.transporte.rotas.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RotaCreate" }
+      responses:
+        "201":
+          description: Rota criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/RotaTransporte" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /rotas/{rotaId}:
+    get:
+      tags: [Rotas e Paradas]
+      operationId: obterRota
+      summary: Obtém detalhes da rota, paradas e escolas atendidas
+      x-permission: educa.transporte.rotas.view
+      parameters:
+        - { name: rotaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Detalhes da rota
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/RotaTransporte" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    put:
+      tags: [Rotas e Paradas]
+      operationId: atualizarRota
+      summary: Atualiza dados da rota de transporte
+      x-permission: educa.transporte.rotas.manage
+      parameters:
+        - { name: rotaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RotaUpdate" }
+      responses:
+        "200":
+          description: Rota atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/RotaTransporte" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /rotas/{rotaId}/paradas:
+    post:
+      tags: [Rotas e Paradas]
+      operationId: adicionarParada
+      summary: Adiciona ponto de parada sequencial à rota
+      x-permission: educa.transporte.rotas.manage
+      parameters:
+        - { name: rotaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ParadaCreate" }
+      responses:
+        "201":
+          description: Parada adicionada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ParadaTransporte" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /rotas/{rotaId}/escolas:
+    post:
+      tags: [Rotas e Paradas]
+      operationId: vincularEscolasRota
+      summary: Associa unidades escolares atendidas pela rota
+      x-permission: educa.transporte.rotas.manage
+      parameters:
+        - { name: rotaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [school_ids]
+              properties:
+                school_ids: { type: array, items: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Escolas vinculadas à rota
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /veiculos:
+    get:
+      tags: [Veículos e Vistorias]
+      operationId: listarVeiculos
+      summary: Lista veículos da frota escolar
+      x-permission: educa.transporte.veiculos.view
+      parameters:
+        - { name: tipologia, in: query, schema: { type: string, enum: [onibus, microonibus, van, embarcacao, outros] } }
+        - { name: tipo_propriedade, in: query, schema: { type: string, enum: [proprio, terceirizado] } }
+        - { name: status, in: query, schema: { type: string, enum: [regular, em_manutencao, interditado] } }
+      responses:
+        "200":
+          description: Lista de veículos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/VeiculoTransporte" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Veículos e Vistorias]
+      operationId: cadastrarVeiculo
+      summary: Cadastra veículo na frota com capacidade oficial
+      x-permission: educa.transporte.veiculos.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VeiculoCreate" }
+      responses:
+        "201":
+          description: Veículo cadastrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/VeiculoTransporte" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /veiculos/{veiculoId}/vistorias:
+    post:
+      tags: [Veículos e Vistorias]
+      operationId: registrarVistoria
+      summary: Registra laudo de vistoria semestral do DETRAN
+      x-permission: educa.transporte.veiculos.manage
+      parameters:
+        - { name: veiculoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VistoriaCreate" }
+      responses:
+        "201":
+          description: Vistoria registrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/VistoriaTransporte" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /condutores:
+    get:
+      tags: [Condutores e Monitores]
+      operationId: listarCondutores
+      summary: Lista motoristas e monitores credenciados
+      x-permission: educa.transporte.condutores.view
+      parameters:
+        - { name: tipo_funcao, in: query, schema: { type: string, enum: [motorista, monitor] } }
+        - { name: ativo, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Lista de condutores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/CondutorTransporte" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Condutores e Monitores]
+      operationId: cadastrarCondutor
+      summary: Credencia condutor ou monitor vinculado ao cadastro de Pessoa
+      x-permission: educa.transporte.condutores.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CondutorCreate" }
+      responses:
+        "201":
+          description: Condutor credenciado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CondutorTransporte" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /alocacoes:
+    get:
+      tags: [Alocações]
+      operationId: listarAlocacoes
+      summary: Lista alocações de estudantes no transporte
+      x-permission: educa.transporte.alocacoes.view
+      parameters:
+        - { name: route_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: vehicle_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: status, in: query, schema: { type: string, enum: [ativa, encerrada] } }
+      responses:
+        "200":
+          description: Lista de alocações
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AlocacaoEstudante" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Alocações]
+      operationId: alocarEstudante
+      summary: Aloca estudante no transporte com trava de capacidade de assentos
+      x-permission: educa.transporte.alocacoes.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AlocacaoCreate" }
+      responses:
+        "201":
+          description: Estudante alocado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AlocacaoEstudante" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /alocacoes/{alocacaoId}/encerrar:
+    post:
+      tags: [Alocações]
+      operationId: encerrarAlocacao
+      summary: Encerra a alocação do estudante liberando o assento no veículo
+      x-permission: educa.transporte.alocacoes.manage
+      parameters:
+        - { name: alocacaoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Alocação encerrada e vaga liberada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AlocacaoEstudante" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+
+    RotaTransporte:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        codigo: { type: string }
+        nome: { type: string }
+        turno: { type: string, enum: [matutino, vespertino, noturno, integral] }
+        tipo_rota: { type: string, enum: [urbana, rural, mista] }
+        quilometragem_estimada: { type: number, format: float }
+        horario_saida: { type: [string, "null"], format: time }
+        horario_chegada: { type: [string, "null"], format: time }
+        ativo: { type: boolean }
+        paradas: { type: array, items: { $ref: "#/components/schemas/ParadaTransporte" } }
+
+    RotaCreate:
+      type: object
+      required: [codigo, nome, turno, tipo_rota]
+      properties:
+        codigo: { type: string, maxLength: 30 }
+        nome: { type: string, maxLength: 100 }
+        turno: { type: string, enum: [matutino, vespertino, noturno, integral] }
+        tipo_rota: { type: string, enum: [urbana, rural, mista] }
+        quilometragem_estimada: { type: number, minimum: 0 }
+        horario_saida: { type: string }
+        horario_chegada: { type: string }
+
+    RotaUpdate:
+      type: object
+      properties:
+        nome: { type: string, maxLength: 100 }
+        turno: { type: string, enum: [matutino, vespertino, noturno, integral] }
+        tipo_rota: { type: string, enum: [urbana, rural, mista] }
+        quilometragem_estimada: { type: number, minimum: 0 }
+        horario_saida: { type: string }
+        horario_chegada: { type: string }
+        ativo: { type: boolean }
+
+    ParadaTransporte:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        route_id: { $ref: "#/components/schemas/Uuid" }
+        ordem: { type: integer }
+        nome: { type: string }
+        referencia: { type: [string, "null"] }
+        latitude: { type: [number, "null"] }
+        longitude: { type: [number, "null"] }
+        horario_previsto: { type: [string, "null"] }
+
+    ParadaCreate:
+      type: object
+      required: [ordem, nome]
+      properties:
+        ordem: { type: integer, minimum: 1 }
+        nome: { type: string, maxLength: 100 }
+        referencia: { type: string, maxLength: 255 }
+        latitude: { type: number }
+        longitude: { type: number }
+        horario_previsto: { type: string }
+
+    VeiculoTransporte:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        placa: { type: string }
+        modelo: { type: string }
+        ano_fabricacao: { type: integer }
+        tipologia: { type: string, enum: [onibus, microonibus, van, embarcacao, outros] }
+        tipo_propriedade: { type: string, enum: [proprio, terceirizado] }
+        capacidade_passageiros: { type: integer }
+        ocupacao_efetiva: { type: integer }
+        vagas_disponiveis: { type: integer }
+        status: { type: string, enum: [regular, em_manutencao, interditado] }
+
+    VeiculoCreate:
+      type: object
+      required: [placa, modelo, ano_fabricacao, tipologia, tipo_propriedade, capacidade_passageiros]
+      properties:
+        placa: { type: string, maxLength: 10 }
+        modelo: { type: string, maxLength: 100 }
+        ano_fabricacao: { type: integer, minimum: 1980 }
+        tipologia: { type: string, enum: [onibus, microonibus, van, embarcacao, outros] }
+        tipo_propriedade: { type: string, enum: [proprio, terceirizado] }
+        capacidade_passageiros: { type: integer, minimum: 1 }
+
+    VistoriaTransporte:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        vehicle_id: { $ref: "#/components/schemas/Uuid" }
+        termo_vistoria: { type: string }
+        data_vistoria: { type: string, format: date }
+        data_validade: { type: string, format: date }
+        resultado: { type: string, enum: [aprovado, reprovado] }
+        observacoes: { type: [string, "null"] }
+
+    VistoriaCreate:
+      type: object
+      required: [termo_vistoria, data_vistoria, data_validade, resultado]
+      properties:
+        termo_vistoria: { type: string, maxLength: 50 }
+        data_vistoria: { type: string, format: date }
+        data_validade: { type: string, format: date }
+        resultado: { type: string, enum: [aprovado, reprovado] }
+        observacoes: { type: string }
+
+    CondutorTransporte:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        pessoa_id: { type: integer }
+        nome: { type: string }
+        cpf: { type: string }
+        tipo_funcao: { type: string, enum: [motorista, monitor] }
+        cnh_numero: { type: [string, "null"] }
+        cnh_categoria: { type: [string, "null"] }
+        cnh_validade: { type: [string, "null"], format: date }
+        curso_transporte_escolar: { type: boolean }
+        certidao_antecedentes_valida: { type: boolean }
+        ativo: { type: boolean }
+
+    CondutorCreate:
+      type: object
+      required: [pessoa_id, tipo_funcao]
+      properties:
+        pessoa_id: { type: integer }
+        tipo_funcao: { type: string, enum: [motorista, monitor] }
+        cnh_numero: { type: string, maxLength: 20 }
+        cnh_categoria: { type: string, enum: [D, E] }
+        cnh_validade: { type: string, format: date }
+        curso_transporte_escolar: { type: boolean }
+        certidao_antecedentes_valida: { type: boolean }
+
+    AlocacaoEstudante:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        route_id: { $ref: "#/components/schemas/Uuid" }
+        vehicle_id: { $ref: "#/components/schemas/Uuid" }
+        stop_id: { $ref: "#/components/schemas/Uuid" }
+        enrollment_id: { $ref: "#/components/schemas/Uuid" }
+        aluno_pessoa_id: { type: integer }
+        data_inicio: { type: string, format: date }
+        data_fim: { type: [string, "null"], format: date }
+        status: { type: string, enum: [ativa, encerrada] }
+
+    AlocacaoCreate:
+      type: object
+      required: [route_id, vehicle_id, stop_id, enrollment_id, data_inicio]
+      properties:
+        route_id: { $ref: "#/components/schemas/Uuid" }
+        vehicle_id: { $ref: "#/components/schemas/Uuid" }
+        stop_id: { $ref: "#/components/schemas/Uuid" }
+        enrollment_id: { $ref: "#/components/schemas/Uuid" }
+        data_inicio: { type: string, format: date }
+
+    ErroValidacao:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+  responses:
+    DadosInvalidos:
+      description: Erro de validação de dados
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErroValidacao" }
+
+    NaoAutenticado:
+      description: Requisição não autenticada (token ausente ou inválido)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Unauthenticated." }
+
+    Proibido:
+      description: Acesso proibido por permissões RBAC insuficientes
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "This action is unauthorized." }
+
+    NaoEncontrado:
+      description: Registro não localizado no tenant atual
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Not Found" }

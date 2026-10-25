@@ -1,0 +1,345 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa — Submódulo Educacenso (Auditoria, Exportação INEP e Conciliação)
+  version: 0.1.0
+  description: |
+    Contrato da API do submódulo `educacenso` do módulo Educa (SYSGOV).
+    Escopo: **Auditoria Prévia de Consistência Cadastral**, **Geração Assíncrona do Arquivo do Censo (MEC/INEP)**,
+    **Rastreabilidade e Download com Checksum** e **Importação e Conciliação de Arquivo de Retorno do INEP**.
+
+    Convenções SYSGOV:
+    - Tenant resolvido pelo middleware `ResolveTenant` via cabeçalho `X-Tenant-Slug`.
+    - Isolamento de dados multi-tenant estrito via `tenant_id`.
+    - Dados técnicos em JetBrains Mono (códigos INEP, hash SHA-256, checksum).
+    - Toda mutação gravada em `AuditLogger` (module `educa`).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/educa/educacenso
+    description: Prefixo do submódulo educacenso
+
+security:
+  - sanctum: []
+
+tags:
+  - name: Auditoria
+    description: Verificação de conformidade e inconsistências cadastrais com regras do INEP
+  - name: Exportação
+    description: Geração em lote assíncrona do arquivo do Censo Escolar delimitado por pipe
+  - name: Retorno INEP
+    description: Processamento e conciliação de códigos oficiais retornados pelo INEP
+
+paths:
+  /auditoria:
+    get:
+      tags: [Auditoria]
+      operationId: listarValidacoesAuditoria
+      summary: Lista diagnósticos de auditoria cadastral com filtros por gravidade e tipo de registro
+      x-permission: educa.educacenso.auditoria.view
+      parameters:
+        - { name: school_id, in: query, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: academic_year_id, in: query, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: gravidade, in: query, schema: { type: string, enum: [impeditivo, aviso] } }
+        - { name: tipo_registro, in: query, schema: { type: string, enum: ["00", "10", "20", "30", "40", "50", "60"] } }
+      responses:
+        "200":
+          description: Lista de pendências e avisos de auditoria
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_erros: { type: integer }
+                  total_avisos: { type: integer }
+                  data: { type: array, items: { $ref: "#/components/schemas/ValidacaoCenso" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Auditoria]
+      operationId: executarAuditoria
+      summary: Executa auditoria completa de consistência cadastral para uma escola e ano letivo
+      x-permission: educa.educacenso.auditoria.execute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [school_id, academic_year_id]
+              properties:
+                school_id: { $ref: "#/components/schemas/Uuid" }
+                academic_year_id: { $ref: "#/components/schemas/Uuid" }
+                data_referencia: { type: string, format: date }
+      responses:
+        "200":
+          description: Resultado detalhado da auditoria cadastral
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      school_id: { $ref: "#/components/schemas/Uuid" }
+                      academic_year_id: { $ref: "#/components/schemas/Uuid" }
+                      data_referencia: { type: string, format: date }
+                      total_erros: { type: integer }
+                      total_avisos: { type: integer }
+                      aprovado_para_exportacao: { type: boolean }
+                      validacoes: { type: array, items: { $ref: "#/components/schemas/ValidacaoCenso" } }
+        "422":
+          description: Erro de validação ou data de referência ausente
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErroValidacao" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /exportacoes:
+    get:
+      tags: [Exportação]
+      operationId: listarExportacoes
+      summary: Lista exportações do Censo com filtros por escola, ano e status
+      x-permission: educa.educacenso.exportacao.view
+      parameters:
+        - { name: school_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: academic_year_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: status, in: query, schema: { type: string, enum: [solicitada, processando, concluida, falhou] } }
+      responses:
+        "200":
+          description: Histórico de arquivos exportados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/ExportacaoCenso" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+    post:
+      tags: [Exportação]
+      operationId: solicitarExportacao
+      summary: Enfileira a geração assíncrona do arquivo oficial do Censo
+      x-permission: educa.educacenso.exportacao.execute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [school_id, academic_year_id]
+              properties:
+                school_id: { $ref: "#/components/schemas/Uuid" }
+                academic_year_id: { $ref: "#/components/schemas/Uuid" }
+                etapa_censo: { type: string, enum: [matricula_inicial, situacao_aluno], default: matricula_inicial }
+      responses:
+        "202":
+          description: Exportação enfileirada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  data: { $ref: "#/components/schemas/ExportacaoCenso" }
+        "422":
+          description: Bloqueio por inconsistências impeditivas não sanadas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErroValidacao" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+  /exportacoes/{exportId}:
+    get:
+      tags: [Exportação]
+      operationId: obterExportacao
+      summary: Obtém status detalhado e métricas de uma exportação específica
+      x-permission: educa.educacenso.exportacao.view
+      parameters:
+        - { name: exportId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Detalhes da exportação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ExportacaoCenso" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /exportacoes/{exportId}/download:
+    get:
+      tags: [Exportação]
+      operationId: downloadExportacao
+      summary: Realiza o download do arquivo posicional oficial em ISO-8859-1
+      x-permission: educa.educacenso.exportacao.download
+      parameters:
+        - { name: exportId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Arquivo do Censo Escolar delimitado por pipe
+          content:
+            text/plain:
+              schema: { type: string, format: binary }
+        "400":
+          description: Arquivo ainda não finalizado ou processamento falhou
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /retorno:
+    post:
+      tags: [Retorno INEP]
+      operationId: processarRetornoInep
+      summary: Recebe e concilia o arquivo oficial de retorno emitido pelo INEP
+      x-permission: educa.educacenso.retorno.execute
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [school_id, academic_year_id, arquivo]
+              properties:
+                school_id: { $ref: "#/components/schemas/Uuid" }
+                academic_year_id: { $ref: "#/components/schemas/Uuid" }
+                arquivo: { type: string, format: binary }
+      responses:
+        "200":
+          description: Relatório de conciliação atômica dos códigos INEP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      total_processados: { type: integer }
+                      total_conciliados: { type: integer }
+                      total_divergencias: { type: integer }
+                      detalhes: { type: array, items: { $ref: "#/components/schemas/LogConciliacaoInep" } }
+        "422":
+          description: Arquivo inválido ou incompatível
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErroValidacao" }
+
+  /retorno/logs:
+    get:
+      tags: [Retorno INEP]
+      operationId: listarLogsRetorno
+      summary: Lista histórico de conciliação e divergências do arquivo de retorno
+      x-permission: educa.educacenso.retorno.view
+      parameters:
+        - { name: school_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: academic_year_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+      responses:
+        "200":
+          description: Lista de logs de conciliação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/LogConciliacaoInep" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+
+    ValidacaoCenso:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        tipo_registro: { type: string, enum: ["00", "10", "20", "30", "40", "50", "60"] }
+        gravidade: { type: string, enum: [impeditivo, aviso] }
+        codigo_regra: { type: string }
+        mensagem: { type: string }
+        entidade_tipo: { type: string }
+        entidade_id: { type: string }
+        rota_correcao: { type: [string, "null"] }
+
+    ExportacaoCenso:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        academic_year_id: { $ref: "#/components/schemas/Uuid" }
+        ano: { type: integer }
+        etapa_censo: { type: string, enum: [matricula_inicial, situacao_aluno] }
+        status: { type: string, enum: [solicitada, processando, concluida, falhou] }
+        total_linhas: { type: integer }
+        total_erros: { type: integer }
+        total_avisos: { type: integer }
+        checksum_sha256: { type: [string, "null"] }
+        arquivo_path: { type: [string, "null"] }
+        erro_detalhe: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    LogConciliacaoInep:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        academic_year_id: { $ref: "#/components/schemas/Uuid" }
+        tipo_registro: { type: string }
+        entidade_tipo: { type: string }
+        entidade_id: { type: string }
+        codigo_inep: { type: string }
+        status: { type: string, enum: [conciliado, divergente, ignorado] }
+        mensagem: { type: [string, "null"] }
+
+    ErroValidacao:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+  responses:
+    NaoAutenticado:
+      description: Requisição não autenticada (token ausente ou inválido)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Unauthenticated." }
+
+    Proibido:
+      description: Acesso proibido por permissões RBAC insuficientes
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "This action is unauthorized." }
+
+    NaoEncontrado:
+      description: Registro não encontrado no tenant atual
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Not Found" }

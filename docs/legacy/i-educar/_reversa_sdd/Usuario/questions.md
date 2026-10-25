@@ -1,0 +1,26 @@
+# Usuario (i-Educar legado), Perguntas em Aberto
+
+> Lacunas 🔴 que dependem de validação humana antes da reimplementação da unit de usuários, perfis e permissões.
+
+---
+
+| # | Pergunta | Origem | Impacto | Dono | Prazo |
+|---|-----------|--------|---------|------|-------|
+| Q-01 | A autorização está acoplada ao identificador numérico da tela de menu. Qual é o de/para entre os processos catalogados em `app/Process.php` e os slugs atômicos de permissão, e o que se faz com os processos sem tela correspondente? | `app/Process.php:11-71` e `app/Models/LegacyMenuUserType.php:13-19` | Alto | Arquitetura | Antes da implementação |
+| Q-02 | O gate de visualização é liberado pela existência de um item de menu de raiz com o mesmo processo, o que amplia a exposição além do declarado na matriz. Essa liberação é intencional? | `app/Policies/ProcessPolicy.php:16-22` | Alto | Segurança | Antes da implementação |
+| Q-03 | O cache de usuário de doze horas mantém em sessão a conta bloqueada. Qual é a janela de revogação aceitável e o mecanismo de invalidação? | `app/Helpers/UserCache.php:11-13` | Alto | Segurança | Antes da implementação |
+| Q-04 | Não há proteção contra força bruta. Qual é o número de tentativas, a janela de bloqueio e o comportamento do administrador diante de uma conta legítima bloqueada? | `app/Extensions/LegacyUserProvider.php:61-73` | Alto | Segurança | Antes da implementação |
+| Q-05 | O perfil é único para toda a rede. Como o modelo novo comporta o caso mais comum da prática, que é o servidor com papel diferente em cada escola? | `app/Models/LegacyUserSchool.php:9-15` | Alto | Produto | Antes da implementação |
+| Q-06 | A negação de autorização vira redirecionamento, e não resposta 403, e não produz registro de acesso. Qual é o contrato de erro e o que é auditado? | `app/Http/Middleware/Authorize.php:24-27` | Alto | Segurança e Produto | Antes da implementação |
+| Q-07 | Não há segundo fator nem identidade federada no legado. Qual é o processo de adoção do Gov.br e o plano de migração das contas existentes? | `app/Providers/AuthServiceProvider.php:17-20` | Alto | Arquitetura e Jurídico | Antes da implementação |
+| Q-08 | A expiração de senha e de conta tem campos no legado, mas a aplicação na entrada não foi localizada. A expiração é aplicada em outro ponto do código? | `database/migrations/legacy/2020_01_01_110000_create_portal_funcionario_table.php` | Alto | Arquitetura | Antes da implementação |
+| Q-09 | O nome, o e-mail e a senha do usuário são atributos derivados por acessoors, e a credencial vive em outro esquema do banco. Qual é a consolidate no modelo novo e o plano de rehasheagem das senhas? | `app/User.php:37-58` | Alto | Arquitetura e Segurança | Antes da migração |
+| Q-10 | O histórico de acesso cresce de forma contínua e é consultado a cada cálculo de tempo sem acesso. Qual é a retenção e a arquivagem? | `app/Models/LegacyAccess.php:14-31` | Médio | Jurídico e Compliance | Antes da migração |
+| Q-11 | A matriz de permissões tem chave primária apenas pelo tipo de usuário. Qual é a chave da nova tabela e o impacto sobre as consultas por item de menu? | `app/Models/LegacyMenuUserType.php:16` | Médio | Arquitetura | Antes da migração |
+| Q-12 | Não há auditoria de concessão e de revogação de permissão, nem de escalonamento de privilégio. O que é retido e por quanto tempo? | `app/Models/LegacyUserType.php:56-65` | Alto | Jurídico e Compliance | Antes da implementação |
+| Q-13 | O login é pela matrícula do funcionário e o e-mail é secundário. O identificador de entrada do modelo novo é o CPF, e a matrícula continua válida como login alternativo? | `app/Extensions/LegacyUserProvider.php:53-58` e `_reversa_sdd/Usuario/legacy-mapping.md`, seção 3 | Alto | Produto e Jurídico | Antes da implementação |
+| Q-14 | A lista de usuários ativos exclui o administrador, e a listagem de usuários de não administradores faz junção com o portal. A listagem de usuários do modelo novo inclui os administradores e a distinção por perfil ativo? | `app/User.php:187-194` | Baixo | Produto | Antes da implementação |
+| Q-15 | A função do servidor e o cargo de gestor escolar são catálogos independentes, e o cargo de gestor referencia a função por identificador. No modelo novo, o cargo de gestor é um papel do RBAC ou permanece um catálogo à parte? | `app/Models/ManagerRole.php:16-19` e `app/Models/LegacyRole.php:30-33` | Médio | Arquitetura | Antes da implementação |
+| Q-16 | Os identificadores de processo são valores absolutos espalhados pelo código, e não uma tabela. A migração ao RBAC exige um inventário desses valores, e o processo de manutenção do de/para precisa ser definido. | `app/Process.php:11-71` | Alto | Arquitetura | Antes da implementação |
+| Q-17 | O usuário tem preferência legada de menu, com `tipo_menu` e `opcao_menu`, que não são lidas pelo modelo atual. Devem ser migradas ou descartadas? | `database/migrations/legacy/2020_01_01_110000_create_portal_funcionario_table.php` | Baixo | Produto | Antes da migração |
+| Q-18 | A listagem de usuários ativos exclui o administrador porque a rotina de segurança o trata em separado. Existe no modelo novo uma rotina de segurança que exija essa distinção? | `app/User.php:187-194` | Baixo | Produto | Antes da implementação |

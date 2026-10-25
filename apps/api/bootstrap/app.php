@@ -20,6 +20,7 @@ use Modules\Cemiterios\Providers\CemiteriosServiceProvider;
 use Modules\Contracts\Providers\ContractsServiceProvider;
 use Modules\Cursos\Providers\CursosServiceProvider;
 use Modules\Escola\Providers\EscolaServiceProvider;
+use Modules\Educa\Providers\EducaServiceProvider;
 use Modules\Pedagogico\Providers\PedagogicoServiceProvider;
 use Modules\Formatura\Providers\FormaturaServiceProvider;
 use Modules\Passeio\Providers\PasseioServiceProvider;
@@ -54,6 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ContractsServiceProvider::class,
         CursosServiceProvider::class,
         EscolaServiceProvider::class,
+        EducaServiceProvider::class,
         PedagogicoServiceProvider::class,
         FormaturaServiceProvider::class,
         PasseioServiceProvider::class,

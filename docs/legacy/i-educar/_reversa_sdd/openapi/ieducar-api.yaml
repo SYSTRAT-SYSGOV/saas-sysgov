@@ -1,0 +1,415 @@
+openapi: 3.1.0
+info:
+  title: i-Educar Core & SYS-Educa REST API
+  description: >
+    Especificação formal OpenAPI 3.1.0 consolidando os endpoints REST modernos
+    e legacy controllers HTTP da API do i-Educar e sua modernização canônica no SYSGOV.
+  version: 2.9.0
+  contact:
+    name: Equipe de Arquitetura e Engenharia Reversa SYSGOV
+servers:
+  - url: https://educacao.municipio.gov.br/api
+    description: Servidor de Produção Municipal
+  - url: https://homolog-educacao.municipio.gov.br/api
+    description: Ambiente de Homologação e Testes
+  - url: http://localhost:8000/api
+    description: Ambiente de Desenvolvimento Local
+
+tags:
+  - name: Auth & Version
+    description: Autenticação via Sanctum e versionamento da API
+  - name: Addressing & Geography
+    description: Países, estados, municípios, distritos e busca por CEP
+  - name: Core Institutional
+    description: Instituições mantenedoras, escolas e anos letivos
+  - name: People & Students
+    description: Cidadãos, pessoas físicas, foto, deficiências e alunos
+  - name: Employees & Teachers
+    description: Servidores, corpo docente, alocações e afastamentos
+  - name: Classes & Enrollments
+    description: Turmas escolares, turnos, matrículas e enturmações
+  - name: Curriculum & Evaluation
+    description: Cursos, séries, componentes curriculares, regras de avaliação e notas
+  - name: Messages & Notifications
+    description: Avisos institucionais, busca ativa e notificações in-app
+
+paths:
+  /version:
+    get:
+      tags:
+        - Auth & Version
+      summary: Versão do Sistema
+      description: Retorna a versão corrente do i-Educar/SYS-Educa e o status da API.
+      responses:
+        '200':
+          description: Versão retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    example: "2.9.0"
+
+  /postal-code/{postalCode}:
+    get:
+      tags:
+        - Addressing & Geography
+      summary: Busca de Endereço por CEP
+      parameters:
+        - name: postalCode
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{8}$'
+            example: "88010000"
+      responses:
+        '200':
+          description: Logradouro localizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressLookup'
+        '404':
+          description: CEP não localizado
+
+  /institution:
+    get:
+      tags:
+        - Core Institutional
+      summary: Listar Instituições Mantenedoras
+      security:
+        - SanctumAuth: []
+      responses:
+        '200':
+          description: Lista de instituições municipais
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Institution'
+
+  /school:
+    get:
+      tags:
+        - Core Institutional
+      summary: Listar Unidades Escolares
+      security:
+        - SanctumAuth: []
+      parameters:
+        - name: institution_id
+          in: query
+          schema:
+            type: integer
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de escolas municipais
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/School'
+
+  /students/{student}/rotate-picture:
+    post:
+      tags:
+        - People & Students
+      summary: Rotacionar Foto do Aluno
+      parameters:
+        - name: student
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1042
+      responses:
+        '200':
+          description: Foto rotacionada com sucesso
+
+  /students/{student}/update-state-registration:
+    put:
+      tags:
+        - People & Students
+      summary: Atualizar Registro Estadual do Aluno
+      parameters:
+        - name: student
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - state_registration
+              properties:
+                state_registration:
+                  type: string
+                  example: "SP12345678"
+      responses:
+        '200':
+          description: Registro atualizado
+
+  /school-class:
+    get:
+      tags:
+        - Classes & Enrollments
+      summary: Listar Turmas Escolares
+      security:
+        - SanctumAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          schema:
+            type: integer
+        - name: academic_year
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Turmas encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SchoolClass'
+
+  /registration:
+    get:
+      tags:
+        - Classes & Enrollments
+      summary: Consultar Matrículas
+      security:
+        - SanctumAuth: []
+      parameters:
+        - name: student_id
+          in: query
+          schema:
+            type: integer
+        - name: school_class_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Matrículas encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Registration'
+
+  /employee-withdrawal/{id}:
+    delete:
+      tags:
+        - Employees & Teachers
+      summary: Remover Afastamento de Servidor
+      security:
+        - SanctumAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Afastamento removido com sucesso
+
+  /course:
+    get:
+      tags:
+        - Curriculum & Evaluation
+      summary: Listar Cursos
+      security:
+        - SanctumAuth: []
+      responses:
+        '200':
+          description: Cursos cadastrados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Course'
+
+  /grade:
+    get:
+      tags:
+        - Curriculum & Evaluation
+      summary: Listar Séries / Anos Escolares
+      security:
+        - SanctumAuth: []
+      parameters:
+        - name: course_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Séries vinculadas ao curso
+
+  /discipline:
+    get:
+      tags:
+        - Curriculum & Evaluation
+      summary: Listar Componentes Curriculares
+      security:
+        - SanctumAuth: []
+      responses:
+        '200':
+          description: Disciplinas curriculares
+
+  /messages:
+    get:
+      tags:
+        - Messages & Notifications
+      summary: Listar Mensagens Contextuais
+      security:
+        - SanctumAuth: []
+      responses:
+        '200':
+          description: Mensagens contextuais do usuário
+    post:
+      tags:
+        - Messages & Notifications
+      summary: Enviar Nova Mensagem Contextual
+      security:
+        - SanctumAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageInput'
+      responses:
+        '201':
+          description: Mensagem persistida
+
+components:
+  securitySchemes:
+    SanctumAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de autenticação Bearer emitido pelo Laravel Sanctum.
+
+  schemas:
+    AddressLookup:
+      type: object
+      properties:
+        postal_code:
+          type: string
+          example: "88010-000"
+        street:
+          type: string
+          example: "Rua Felipe Schmidt"
+        neighborhood:
+          type: string
+          example: "Centro"
+        city:
+          type: string
+          example: "Florianópolis"
+        state:
+          type: string
+          example: "SC"
+
+    Institution:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Secretaria Municipal de Educação"
+
+    School:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        name:
+          type: string
+          example: "Escola Básica Municipal Antonieta de Barros"
+        inep_code:
+          type: string
+          example: "42012345"
+
+    SchoolClass:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 501
+        name:
+          type: string
+          example: "5º Ano A"
+        academic_year:
+          type: integer
+          example: 2026
+        school_id:
+          type: integer
+          example: 12
+        capacity:
+          type: integer
+          example: 30
+
+    Registration:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1205
+        student_id:
+          type: integer
+          example: 1042
+        school_class_id:
+          type: integer
+          example: 501
+        status:
+          type: string
+          enum: [ENROLLED, TRANSFERRED, DROPPED_OUT, APPROVED, REPROVED]
+          example: "ENROLLED"
+
+    Course:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        name:
+          type: string
+          example: "Ensino Fundamental - Anos Iniciais"
+
+    MessageInput:
+      type: object
+      required:
+        - text
+        - messageable_type
+        - messageable_id
+      properties:
+        text:
+          type: string
+          example: "Aluno compareceu sem uniforme escolar."
+        messageable_type:
+          type: string
+          example: "App\\Models\\Student"
+        messageable_id:
+          type: integer
+          example: 1042

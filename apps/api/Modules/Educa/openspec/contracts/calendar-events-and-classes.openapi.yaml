@@ -1,0 +1,299 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa — Eventos do Calendário Escolar e Calendário por Turma
+  version: 0.1.0
+  description: |
+    Contrato complementar do submódulo `core` do módulo Educa (SYSGOV).
+    Escopo: **Eventos do Calendário** (Feiras, Reuniões, Conselhos, Atividades Pedagógicas)
+    e **Vínculos de Dias por Turma** (marcação de turmas específicas para dias extras/reposição).
+
+    Convenções SYSGOV:
+    - Tenant resolvido pelo middleware `ResolveTenant` via cabeçalho `X-Tenant-Slug`.
+    - Toda mutação gravada em `AuditLogger` (module `educa`).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/educa/core
+    description: Prefixo do submódulo core
+
+security:
+  - sanctum: []
+
+tags:
+  - name: Eventos do Calendário
+    description: Eventos e anotações pedagógicas por data
+  - name: Calendário por Turma
+    description: Variação de dias letivos e reposição por turma
+
+paths:
+  /calendarios/{calendarioId}/eventos:
+    parameters:
+      - { name: calendarioId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    get:
+      tags: [Eventos do Calendário]
+      operationId: listarEventosCalendario
+      summary: Lista eventos agendados para o calendário escolar
+      x-permission: educa.core.calendarios.view
+      parameters:
+        - { name: mes, in: query, schema: { type: integer, minimum: 1, maximum: 12 } }
+        - { name: data, in: query, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Lista de eventos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/EventoCalendario" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+    post:
+      tags: [Eventos do Calendário]
+      operationId: criarEventoCalendario
+      summary: Cadastra evento pedagógico ou institucional no calendário
+      x-permission: educa.core.calendarios.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventoCalendarioCreate" }
+      responses:
+        "201":
+          description: Evento criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventoCalendarioResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /calendarios/{calendarioId}/eventos/{eventoId}:
+    parameters:
+      - { name: calendarioId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      - { name: eventoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    get:
+      tags: [Eventos do Calendário]
+      operationId: obterEventoCalendario
+      summary: Detalha evento do calendário
+      x-permission: educa.core.calendarios.view
+      responses:
+        "200":
+          description: Evento detalhado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventoCalendarioResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+    put:
+      tags: [Eventos do Calendário]
+      operationId: atualizarEventoCalendario
+      summary: Atualiza evento do calendário
+      x-permission: educa.core.calendarios.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventoCalendarioUpdate" }
+      responses:
+        "200":
+          description: Evento atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventoCalendarioResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+    delete:
+      tags: [Eventos do Calendário]
+      operationId: excluirEventoCalendario
+      summary: Remove evento do calendário
+      x-permission: educa.core.calendarios.manage
+      responses:
+        "204": { description: Evento removido }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /calendarios/{calendarioId}/dias/{diaId}/turmas:
+    parameters:
+      - { name: calendarioId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+      - { name: diaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    get:
+      tags: [Calendário por Turma]
+      operationId: listarTurmasDoDia
+      summary: Lista turmas especificamente associadas a este dia (reposição/extra)
+      x-permission: educa.core.calendarios.view
+      responses:
+        "200":
+          description: IDs das turmas vinculadas ao dia
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  calendar_day_id: { $ref: "#/components/schemas/Uuid" }
+                  turma_ids:
+                    type: array
+                    items: { $ref: "#/components/schemas/Uuid" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+    put:
+      tags: [Calendário por Turma]
+      operationId: sincronizarTurmasDoDia
+      summary: Define quais turmas participam deste dia (se vazio, aplica-se a todas as turmas)
+      x-permission: educa.core.calendarios.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [turma_ids]
+              properties:
+                turma_ids:
+                  type: array
+                  items: { $ref: "#/components/schemas/Uuid" }
+      responses:
+        "200":
+          description: Turmas sincronizadas com o dia
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  calendar_day_id: { $ref: "#/components/schemas/Uuid" }
+                  turma_ids:
+                    type: array
+                    items: { $ref: "#/components/schemas/Uuid" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /turmas/{turmaId}/calendario:
+    parameters:
+      - { name: turmaId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    get:
+      tags: [Calendário por Turma]
+      operationId: obterCalendarioTurma
+      summary: Consulta a visão do calendário para a turma específica com os dias regulares e de reposição
+      x-permission: educa.core.turmas.view
+      parameters:
+        - { name: mes, in: query, schema: { type: integer, minimum: 1, maximum: 12 } }
+      responses:
+        "200":
+          description: Visão do calendário para a turma
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  turma_id: { $ref: "#/components/schemas/Uuid" }
+                  calendario_id: { $ref: "#/components/schemas/Uuid" }
+                  ano: { type: integer }
+                  total_dias_letivos: { type: integer }
+                  dias:
+                    type: array
+                    items: { $ref: "#/components/schemas/DiaCalendarioTurma" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+
+  responses:
+    NaoAutenticado:
+      description: Não autenticado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Proibido:
+      description: Sem permissão RBAC
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    NaoEncontrado:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Validacao:
+      description: Erro de validação de dados
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+
+  schemas:
+    Erro:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+        code: { type: string }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+
+    Uuid:
+      type: string
+      format: uuid
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      minLength: 36
+      maxLength: 36
+
+    EventoCalendario:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        calendario_id: { $ref: "#/components/schemas/Uuid" }
+        calendar_day_id: { type: [string, "null"], format: uuid }
+        data: { type: string, format: date }
+        titulo: { type: string }
+        descricao: { type: [string, "null"] }
+        tipo_evento: { type: string, enum: [pedagogico, administrativo, comemorativo, reuniao, avaliacao] }
+        horario_inicio: { type: [string, "null"], example: "08:00" }
+        horario_fim: { type: [string, "null"], example: "12:00" }
+
+    EventoCalendarioResponse:
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/EventoCalendario" }
+
+    EventoCalendarioCreate:
+      type: object
+      required: [data, titulo, tipo_evento]
+      properties:
+        data: { type: string, format: date }
+        titulo: { type: string, maxLength: 120 }
+        descricao: { type: string, maxLength: 1000 }
+        tipo_evento: { type: string, enum: [pedagogico, administrativo, comemorativo, reuniao, avaliacao] }
+        horario_inicio: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+        horario_fim: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+
+    EventoCalendarioUpdate:
+      type: object
+      properties:
+        titulo: { type: string, maxLength: 120 }
+        descricao: { type: string, maxLength: 1000 }
+        tipo_evento: { type: string, enum: [pedagogico, administrativo, comemorativo, reuniao, avaliacao] }
+        horario_inicio: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+        horario_fim: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+
+    DiaCalendarioTurma:
+      type: object
+      properties:
+        data: { type: string, format: date }
+        dia_da_semana: { type: integer }
+        is_school_day: { type: boolean }
+        motivo_tipo: { type: [string, "null"] }
+        descricao: { type: [string, "null"] }
+        especifico_da_turma: { type: boolean }

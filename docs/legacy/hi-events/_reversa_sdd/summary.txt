@@ -1,0 +1,9 @@
+Files generated:
+- _reversa_sdd/inventory.md
+- _reversa_sdd/dependencies.md
+- .reversa/context/surface.json
+
+Summary:
+- Linguagens: PHP, JavaScript/TypeScript, HTML/CSS
+- Framework principal: Laravel (backend), React (frontend)
+- Módulos identificados: backend, frontend, orders, payments (exemplo)

@@ -1,0 +1,835 @@
+openapi: 3.1.0
+info:
+  title: SYS-Educa — Submódulo core (Anos Letivos e Calendário)
+  version: 0.1.0
+  description: |
+    Contrato inicial do submódulo `core` do módulo Educa (SYSGOV).
+    Escopo desta versão: **Anos Letivos**, **Etapas**, **Calendário Escolar** e **Motivos de Dia**.
+    Escolas, Turmas e Matriz Curricular entram em versão posterior deste contrato.
+
+    Origem das regras: `docs/legacy/i-educar/_reversa_sdd` (AcademicYear, Calendario,
+    state-machines.md) + LDB (Lei 9.394/1996, art. 24, I): mínimo de **200 dias** e **800 horas**.
+
+    Convenções SYSGOV:
+    - Tenant resolvido pelo middleware `ResolveTenant` via cabeçalho `X-Tenant-Slug`; **nunca** enviado no corpo.
+    - `tenant_id` aparece apenas em respostas (somente leitura).
+    - Toda mutação grava trilha em `AuditLogger` (module `educa`).
+    - Registro de outro tenant responde `404` (binding TenantAware).
+    - Datas em `YYYY-MM-DD`; na interface são exibidas em JetBrains Mono (`font-mono tabular-nums`).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/educa/core
+    description: Prefixo do submódulo (middlewares auth:sanctum, tenant, module-access:educa)
+
+security:
+  - sanctum: []
+
+tags:
+  - name: Anos Letivos
+    description: Ciclo de vida do ano letivo por escola
+  - name: Etapas
+    description: Bimestres, trimestres e semestres do ano letivo
+  - name: Conformidade LDB
+    description: Verificação de 200 dias e 800 horas
+  - name: Calendários
+    description: Calendário da escola e padrão da rede
+  - name: Dias do Calendário
+    description: Marcação de dias letivos e não letivos
+  - name: Motivos de Dia
+    description: Catálogo de motivos (feriado, recesso, sábado letivo)
+
+paths:
+  /anos-letivos:
+    get:
+      tags: [Anos Letivos]
+      operationId: listarAnosLetivos
+      summary: Lista anos letivos
+      x-permission: educa.core.anos_letivos.view
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - { name: ano, in: query, schema: { type: integer, minimum: 1900, maximum: 2200 } }
+        - { name: school_id, in: query, schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/AnoLetivoStatus" } }
+      responses:
+        "200":
+          description: Página de anos letivos
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Paginacao"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/AnoLetivo" } }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+    post:
+      tags: [Anos Letivos]
+      operationId: criarAnoLetivo
+      summary: Cria ano letivo (status inicial `planning`)
+      description: |
+        Unicidade `(tenant_id, school_id, ano)`. Com `copiar_do_ano_anterior` copia turmas, vínculos e etapas
+        (datas ajustadas ao novo ano; 29/02 → 28/02 em ano não bissexto — legado AY-04).
+      x-permission: educa.core.anos_letivos.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnoLetivoCreate" }
+      responses:
+        "201":
+          description: Criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnoLetivoResponse" }
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /anos-letivos/{anoLetivoId}:
+    parameters:
+      - $ref: "#/components/parameters/AnoLetivoId"
+    get:
+      tags: [Anos Letivos]
+      operationId: obterAnoLetivo
+      summary: Detalha ano letivo
+      x-permission: educa.core.anos_letivos.view
+      responses:
+        "200":
+          description: Ano letivo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnoLetivoResponse" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+    put:
+      tags: [Anos Letivos]
+      operationId: atualizarAnoLetivo
+      summary: Atualiza metadados do ano letivo
+      description: Proibido quando `status = closed` (somente leitura definitiva, `is_immutable = true`).
+      x-permission: educa.core.anos_letivos.update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnoLetivoUpdate" }
+      responses:
+        "200":
+          description: Atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnoLetivoResponse" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+    delete:
+      tags: [Anos Letivos]
+      operationId: removerAnoLetivo
+      summary: Remove (soft delete) ano letivo
+      description: Apenas em `planning` e sem matrículas, turmas com diário ou lançamentos.
+      x-permission: educa.core.anos_letivos.delete
+      responses:
+        "204": { description: Removido }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "409": { $ref: "#/components/responses/Conflito" }
+
+  /anos-letivos/{anoLetivoId}/transicoes:
+    parameters:
+      - $ref: "#/components/parameters/AnoLetivoId"
+    post:
+      tags: [Anos Letivos]
+      operationId: transicionarAnoLetivo
+      summary: Executa transição de estado do ano letivo
+      description: |
+        Máquina de estados (state-machines.md §3):
+        `planning → active → frozen ⇄ active → evaluation_phase → closed`.
+
+        Invariantes:
+        - `start` (`planning→active`): ≥ 1 etapa com datas, calendário `published` e turmas com matriz ativa.
+        - `begin_evaluation`: calendário com ≥ 200 dias letivos e ≥ 800 h efetivamente cumpridos/homologados.
+        - `close`: sem diários pendentes, sem notas sem justificativa, sem matrícula em andamento
+          (exceto atividade complementar). Torna o ano imutável.
+        Transição inválida → `409` com `code=INVALID_TRANSITION`.
+      x-permission-por-evento:
+        start: educa.core.anos_letivos.open
+        freeze: educa.core.anos_letivos.freeze
+        resume: educa.core.anos_letivos.freeze
+        begin_evaluation: educa.core.anos_letivos.update
+        close: educa.core.anos_letivos.close
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransicaoRequest" }
+      responses:
+        "200":
+          description: Transição aplicada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnoLetivoResponse" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /anos-letivos/lote:
+    post:
+      tags: [Anos Letivos]
+      operationId: processarAnosLetivosEmLote
+      summary: Cria, abre ou encerra anos letivos de várias escolas (legado AY-06)
+      description: |
+        Validação prévia de todas as escolas. Em `create`, se qualquer escola falhar na validação,
+        **nada** é gravado. A execução ocorre em transação única; resposta detalha por escola.
+      x-permission: educa.core.anos_letivos.batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoteRequest" }
+      responses:
+        "200":
+          description: Relatório por escola
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoteResponse" }
+        "403": { $ref: "#/components/responses/Proibido" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /anos-letivos/{anoLetivoId}/etapas:
+    parameters:
+      - $ref: "#/components/parameters/AnoLetivoId"
+    get:
+      tags: [Etapas]
+      operationId: listarEtapas
+      summary: Lista etapas (bimestres, trimestres, semestres)
+      x-permission: educa.core.anos_letivos.view
+      responses:
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "200":
+          description: Etapas ordenadas por `sequencial`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Etapa" } }
+    put:
+      tags: [Etapas]
+      operationId: substituirEtapas
+      summary: Substitui o conjunto de etapas do ano letivo
+      description: |
+        Regras (legado AY-01/02/03/08):
+        - datas não podem cair dentro do período de **outro** ano letivo da mesma escola;
+        - `etapas` deve ter exatamente `tipo_etapa.num_etapas` itens;
+        - reduzir etapas é bloqueado se houver nota/falta lançada nas etapas removidas;
+        - `data_fim >= data_inicio` e etapas sem sobreposição entre si.
+      x-permission: educa.core.anos_letivos.update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tipo_etapa_id, etapas]
+              properties:
+                tipo_etapa_id: { $ref: "#/components/schemas/Uuid" }
+                etapas:
+                  type: array
+                  minItems: 1
+                  items: { $ref: "#/components/schemas/EtapaInput" }
+      responses:
+        "200":
+          description: Etapas gravadas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Etapa" } }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /anos-letivos/{anoLetivoId}/conformidade-ldb:
+    parameters:
+      - $ref: "#/components/parameters/AnoLetivoId"
+    get:
+      tags: [Conformidade LDB]
+      operationId: obterConformidadeLdb
+      summary: Diagnóstico de conformidade com 200 dias e 800 horas
+      x-permission: educa.core.anos_letivos.view
+      responses:
+        "200":
+          description: Diagnóstico
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConformidadeLdb" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+
+  /calendarios:
+    get:
+      tags: [Calendários]
+      operationId: listarCalendarios
+      summary: Lista calendários (escola e padrão da rede)
+      x-permission: educa.core.calendarios.view
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - { name: ano, in: query, schema: { type: integer } }
+        - { name: school_id, in: query, description: "Omitir para todos; `null` literal não é aceito — use `escopo=rede`", schema: { $ref: "#/components/schemas/Uuid" } }
+        - { name: escopo, in: query, schema: { type: string, enum: [rede, escola] } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/CalendarioStatus" } }
+      responses:
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "200":
+          description: Página de calendários
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Paginacao"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/Calendario" } }
+    post:
+      tags: [Calendários]
+      operationId: criarCalendario
+      summary: Cria calendário (rascunho)
+      description: |
+        `school_id` ausente cria o **calendário padrão da rede** (SME). Para escola, exige ano letivo existente
+        com etapas datadas — senão `422` (legado RC-01). Unicidade `(tenant_id, ano, school_id)`.
+      x-permission: educa.core.calendarios.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CalendarioCreate" }
+      responses:
+        "201":
+          description: Criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarioResponse" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /calendarios/{calendarioId}:
+    parameters:
+      - $ref: "#/components/parameters/CalendarioId"
+    get:
+      tags: [Calendários]
+      operationId: obterCalendario
+      summary: Detalha calendário com totais
+      x-permission: educa.core.calendarios.view
+      responses:
+        "200":
+          description: Calendário
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarioResponse" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+    put:
+      tags: [Calendários]
+      operationId: atualizarCalendario
+      summary: Atualiza cabeçalho do calendário
+      description: Bloqueado em `locked`. Alterar calendário `published` volta o status para `draft` somente com `forcar_republicacao=true` e permissão de publicação.
+      x-permission: educa.core.calendarios.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CalendarioUpdate" }
+      responses:
+        "200":
+          description: Atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarioResponse" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+    delete:
+      tags: [Calendários]
+      operationId: removerCalendario
+      summary: Remove (soft delete) calendário em rascunho
+      x-permission: educa.core.calendarios.delete
+      responses:
+        "204": { description: Removido }
+        "409": { $ref: "#/components/responses/Conflito" }
+
+  /calendarios/{calendarioId}/publicar:
+    parameters:
+      - $ref: "#/components/parameters/CalendarioId"
+    post:
+      tags: [Calendários]
+      operationId: publicarCalendario
+      summary: Publica o calendário (`draft → published`)
+      description: |
+        Recusa com `422` e `code=LDB_MINIMUM_NOT_MET` se `total_school_days < 200` ou
+        `total_school_hours < 800`, devolvendo o diagnóstico (dias/horas faltantes e sugestões).
+      x-permission: educa.core.calendarios.publish
+      responses:
+        "200":
+          description: Publicado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarioResponse" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422":
+          description: Mínimos da LDB não atendidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErroLdb" }
+
+  /calendarios/{calendarioId}/importar-rede:
+    parameters:
+      - $ref: "#/components/parameters/CalendarioId"
+    post:
+      tags: [Calendários]
+      operationId: importarCalendarioDaRede
+      summary: Importa dias e feriados do calendário padrão da rede (cópia atômica)
+      description: Destino precisa ser calendário de escola em `draft`. A escola pode acrescentar dias próprios depois; datas centrais ficam marcadas `origem=rede`.
+      x-permission: educa.core.calendarios.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [calendario_rede_id]
+              properties:
+                calendario_rede_id: { $ref: "#/components/schemas/Uuid" }
+                substituir_existentes: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Importado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarioResponse" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /calendarios/{calendarioId}/dias:
+    parameters:
+      - $ref: "#/components/parameters/CalendarioId"
+    get:
+      tags: [Dias do Calendário]
+      operationId: listarDias
+      summary: Lista dias do calendário (grade mensal)
+      x-permission: educa.core.calendarios.view
+      parameters:
+        - { name: de, in: query, schema: { type: string, format: date } }
+        - { name: ate, in: query, schema: { type: string, format: date } }
+        - { name: apenas_letivos, in: query, schema: { type: boolean } }
+      responses:
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "200":
+          description: Dias
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/DiaCalendario" } }
+    put:
+      tags: [Dias do Calendário]
+      operationId: salvarDias
+      summary: Upsert em lote de marcações de dia
+      description: |
+        Chave natural `(calendario_id, data)` (substitui o triplo mês/dia/ano do legado, RC-14).
+        Datas fora do período do ano letivo → `422`. `is_school_day` é derivado do motivo; sem motivo,
+        segunda a sexta dentro do período são letivos. Totais do calendário são recalculados na mesma transação.
+      x-permission: educa.core.calendarios.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dias]
+              properties:
+                dias:
+                  type: array
+                  minItems: 1
+                  maxItems: 400
+                  items: { $ref: "#/components/schemas/DiaInput" }
+      responses:
+        "200":
+          description: Dias gravados e totais recalculados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/DiaCalendario" } }
+                  totais: { $ref: "#/components/schemas/TotaisCalendario" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /motivos-dia:
+    get:
+      tags: [Motivos de Dia]
+      operationId: listarMotivosDia
+      summary: Lista motivos de dia
+      x-permission: educa.core.motivos_dia.view
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "401": { $ref: "#/components/responses/NaoAutenticado" }
+        "200":
+          description: Motivos
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Paginacao"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/MotivoDia" } }
+    post:
+      tags: [Motivos de Dia]
+      operationId: criarMotivoDia
+      summary: Cria motivo de dia
+      x-permission: educa.core.motivos_dia.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MotivoDiaInput" }
+      responses:
+        "201":
+          description: Criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MotivoDia" }
+        "409": { $ref: "#/components/responses/Conflito" }
+        "422": { $ref: "#/components/responses/Validacao" }
+
+  /motivos-dia/{motivoId}:
+    parameters:
+      - { name: motivoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    put:
+      tags: [Motivos de Dia]
+      operationId: atualizarMotivoDia
+      summary: Atualiza motivo de dia
+      x-permission: educa.core.motivos_dia.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MotivoDiaInput" }
+      responses:
+        "200":
+          description: Atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MotivoDia" }
+        "404": { $ref: "#/components/responses/NaoEncontrado" }
+        "422": { $ref: "#/components/responses/Validacao" }
+    delete:
+      tags: [Motivos de Dia]
+      operationId: removerMotivoDia
+      summary: Remove motivo (bloqueado se em uso)
+      x-permission: educa.core.motivos_dia.manage
+      responses:
+        "204": { description: Removido }
+        "409": { $ref: "#/components/responses/Conflito" }
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      description: Laravel Sanctum
+
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PerPage: { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+    AnoLetivoId: { name: anoLetivoId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+    CalendarioId: { name: calendarioId, in: path, required: true, schema: { $ref: "#/components/schemas/Uuid" } }
+
+  schemas:
+    Uuid: { type: string, format: uuid, pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", minLength: 36, maxLength: 36 }
+
+    AnoLetivoStatus:
+      type: string
+      description: planning=Em planejamento, active=Em andamento, frozen=Congelado (recesso/auditoria), evaluation_phase=Fase de avaliação, closed=Encerrado
+      enum: [planning, active, frozen, evaluation_phase, closed]
+
+    CalendarioStatus:
+      type: string
+      enum: [draft, published, locked]
+
+    AnoLetivo:
+      type: object
+      required: [id, tenant_id, school_id, ano, status, is_immutable]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        tenant_id: { type: integer, description: "tenants.id (bigint no repositório atual; ver design D-07)" }
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        ano: { type: integer, minimum: 1900, maximum: 2200, examples: [2026] }
+        status: { $ref: "#/components/schemas/AnoLetivoStatus" }
+        is_immutable: { type: boolean, description: "true quando status = closed" }
+        data_inicio: { type: [string, "null"], format: date, description: "Menor data_inicio das etapas" }
+        data_fim: { type: [string, "null"], format: date, description: "Maior data_fim das etapas" }
+        copiou_turmas: { type: boolean }
+        copiou_dados_professor: { type: boolean }
+        copiou_dados_demais_servidores: { type: boolean }
+        etapas_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AnoLetivoResponse:
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/AnoLetivo" }
+
+    AnoLetivoCreate:
+      type: object
+      required: [school_id, ano]
+      properties:
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        ano: { type: integer, minimum: 1900, maximum: 2200 }
+        tipo_etapa_id: { $ref: "#/components/schemas/Uuid" }
+        etapas:
+          type: array
+          items: { $ref: "#/components/schemas/EtapaInput" }
+        copiar_do_ano_anterior:
+          type: object
+          properties:
+            turmas: { type: boolean, default: false }
+            alocacoes_e_vinculos_professores: { type: boolean, default: false, description: "Exige copiar turmas" }
+            alocacoes_demais_servidores: { type: boolean, default: false }
+
+    AnoLetivoUpdate:
+      type: object
+      properties:
+        tipo_etapa_id: { $ref: "#/components/schemas/Uuid" }
+        observacao: { type: string, maxLength: 1000 }
+
+    TransicaoRequest:
+      type: object
+      required: [evento]
+      properties:
+        evento: { type: string, enum: [start, freeze, resume, begin_evaluation, close] }
+        justificativa: { type: string, maxLength: 1000, description: "Obrigatória em freeze e close forçado por decreto" }
+
+    LoteRequest:
+      type: object
+      required: [ano, escolas, acao]
+      properties:
+        ano: { type: integer }
+        acao: { type: string, enum: [create, open, close] }
+        escolas: { type: array, minItems: 1, items: { $ref: "#/components/schemas/Uuid" } }
+        etapas:
+          type: array
+          description: Obrigatório em `create`
+          items: { $ref: "#/components/schemas/EtapaInput" }
+        copiar_turmas: { type: boolean }
+        copiar_alocacoes_e_vinculos_professores: { type: boolean }
+        copiar_alocacoes_demais_servidores: { type: boolean }
+
+    LoteResponse:
+      type: object
+      properties:
+        ano: { type: integer }
+        processed:
+          type: array
+          items:
+            type: object
+            properties:
+              school_id: { $ref: "#/components/schemas/Uuid" }
+              school_name: { type: string }
+              contadores: { type: object, additionalProperties: { type: integer } }
+        skipped:
+          type: array
+          items: { $ref: "#/components/schemas/LoteItemErro" }
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/LoteItemErro" }
+
+    LoteItemErro:
+      type: object
+      properties:
+        school_id: { $ref: "#/components/schemas/Uuid" }
+        school_name: { type: string }
+        code: { type: string, examples: [ENROLLMENTS_IN_PROGRESS, ALREADY_OPEN] }
+        message: { type: string }
+
+    Etapa:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        sequencial: { type: integer, minimum: 1 }
+        data_inicio: { type: string, format: date }
+        data_fim: { type: string, format: date }
+        dias_letivos: { type: [integer, "null"], minimum: 0 }
+
+    EtapaInput:
+      type: object
+      required: [sequencial, data_inicio, data_fim]
+      properties:
+        sequencial: { type: integer, minimum: 1 }
+        data_inicio: { type: string, format: date }
+        data_fim: { type: string, format: date }
+        dias_letivos: { type: [integer, "null"], minimum: 0 }
+
+    ConformidadeLdb:
+      type: object
+      properties:
+        ano_letivo_id: { $ref: "#/components/schemas/Uuid" }
+        dias_letivos_minimo: { type: integer, const: 200 }
+        horas_minimo: { type: integer, const: 800 }
+        dias_letivos_planejados: { type: integer }
+        horas_planejadas: { type: number, description: "Horas (2 casas)" }
+        dias_letivos_cumpridos: { type: integer }
+        horas_cumpridas: { type: number }
+        conforme_planejamento: { type: boolean }
+        conforme_execucao: { type: boolean }
+        faltam_dias: { type: integer, minimum: 0 }
+        faltam_horas: { type: number, minimum: 0 }
+        sugestoes: { type: array, items: { type: string } }
+
+    Calendario:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        tenant_id: { type: integer, description: "tenants.id (bigint no repositório atual; ver design D-07)" }
+        school_id: { oneOf: [{ $ref: "#/components/schemas/Uuid" }, { type: "null" }], description: "null = calendário padrão da rede (SME)" }
+        ano: { type: integer }
+        nome: { type: string, maxLength: 150 }
+        status: { $ref: "#/components/schemas/CalendarioStatus" }
+        carga_horaria_diaria_minutos: { type: integer, minimum: 1, maximum: 720, examples: [240] }
+        totais: { $ref: "#/components/schemas/TotaisCalendario" }
+        published_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CalendarioResponse:
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/Calendario" }
+
+    CalendarioCreate:
+      type: object
+      required: [ano, nome, carga_horaria_diaria_minutos]
+      properties:
+        school_id: { oneOf: [{ $ref: "#/components/schemas/Uuid" }, { type: "null" }] }
+        ano: { type: integer }
+        nome: { type: string, maxLength: 150 }
+        carga_horaria_diaria_minutos: { type: integer, minimum: 1, maximum: 720 }
+
+    CalendarioUpdate:
+      type: object
+      properties:
+        nome: { type: string, maxLength: 150 }
+        carga_horaria_diaria_minutos: { type: integer, minimum: 1, maximum: 720 }
+        forcar_republicacao: { type: boolean, default: false }
+
+    TotaisCalendario:
+      type: object
+      properties:
+        total_school_days: { type: integer, description: "Dias letivos (segunda a sexta sem motivo não letivo + extras/sábados letivos)" }
+        total_school_hours: { type: number }
+        atende_ldb: { type: boolean }
+
+    DiaCalendario:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        data: { type: string, format: date }
+        dia_da_semana: { type: integer, minimum: 1, maximum: 7, description: "1=domingo … 7=sábado" }
+        motivo_id: { oneOf: [{ $ref: "#/components/schemas/Uuid" }, { type: "null" }] }
+        is_school_day: { type: boolean }
+        origem: { type: string, enum: [escola, rede] }
+        descricao: { type: [string, "null"], maxLength: 255 }
+        carga_horaria_minutos: { type: [integer, "null"], minimum: 0, description: "Sobrescreve a carga diária do calendário" }
+
+    DiaInput:
+      type: object
+      required: [data]
+      properties:
+        data: { type: string, format: date }
+        motivo_id: { oneOf: [{ $ref: "#/components/schemas/Uuid" }, { type: "null" }] }
+        descricao: { type: [string, "null"], maxLength: 255, description: "Obrigatória quando houver marcação sem motivo (legado)" }
+        carga_horaria_minutos: { type: [integer, "null"], minimum: 0 }
+
+    MotivoDia:
+      type: object
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        school_id: { oneOf: [{ $ref: "#/components/schemas/Uuid" }, { type: "null" }] }
+        codigo: { type: string, maxLength: 20, examples: [FERIADO_NACIONAL, SABADO_LETIVO] }
+        nome: { type: string, maxLength: 100 }
+        tipo: { type: string, enum: [regular_school_day, extra_school_day, holiday, recess, pedagogical_planning] }
+        is_school_day: { type: boolean }
+        color_hex: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
+
+    MotivoDiaInput:
+      type: object
+      required: [codigo, nome, tipo, is_school_day, color_hex]
+      properties:
+        school_id: { oneOf: [{ $ref: "#/components/schemas/Uuid" }, { type: "null" }] }
+        codigo: { type: string, maxLength: 20 }
+        nome: { type: string, maxLength: 100 }
+        tipo: { type: string, enum: [regular_school_day, extra_school_day, holiday, recess, pedagogical_planning] }
+        is_school_day: { type: boolean }
+        color_hex: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
+
+    Paginacao:
+      type: object
+      properties:
+        links: { type: object, additionalProperties: { type: [string, "null"] } }
+        meta:
+          type: object
+          properties:
+            current_page: { type: integer }
+            per_page: { type: integer }
+            total: { type: integer }
+            last_page: { type: integer }
+
+    Erro:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+        code: { type: string, examples: [INVALID_TRANSITION, MODULE_ACCESS_DENIED, ACADEMIC_YEAR_IMMUTABLE] }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+
+    ErroLdb:
+      allOf:
+        - $ref: "#/components/schemas/Erro"
+        - type: object
+          properties:
+            diagnostico: { $ref: "#/components/schemas/ConformidadeLdb" }
+
+  responses:
+    NaoAutenticado: { description: Não autenticado, content: { application/json: { schema: { $ref: "#/components/schemas/Erro" } } } }
+    Proibido: { description: Sem permissão RBAC ou submódulo não licenciado, content: { application/json: { schema: { $ref: "#/components/schemas/Erro" } } } }
+    NaoEncontrado: { description: Não encontrado (inclui registro de outro tenant), content: { application/json: { schema: { $ref: "#/components/schemas/Erro" } } } }
+    Conflito: { description: Conflito de estado ou unicidade, content: { application/json: { schema: { $ref: "#/components/schemas/Erro" } } } }
+    Validacao: { description: Falha de validação, content: { application/json: { schema: { $ref: "#/components/schemas/Erro" } } } }
+
+x-permissoes:
+  descricao: Catálogo RBAC do submódulo core (padrão educa.{submodulo}.{recurso}.{acao})
+  catalogo:
+    educa.core.anos_letivos.view: Consultar anos letivos, etapas e conformidade LDB
+    educa.core.anos_letivos.create: Criar ano letivo
+    educa.core.anos_letivos.update: Editar ano letivo, etapas e iniciar fase de avaliação
+    educa.core.anos_letivos.delete: Remover ano letivo em planejamento
+    educa.core.anos_letivos.open: Iniciar o ano letivo
+    educa.core.anos_letivos.freeze: Congelar e retomar o ano letivo
+    educa.core.anos_letivos.close: Encerrar o ano letivo (torna imutável)
+    educa.core.anos_letivos.batch: Operar anos letivos em lote
+    educa.core.calendarios.view: Consultar calendários e dias
+    educa.core.calendarios.manage: Criar, editar e importar calendários e marcar dias
+    educa.core.calendarios.publish: Publicar calendário
+    educa.core.calendarios.delete: Remover calendário em rascunho
+    educa.core.motivos_dia.view: Consultar motivos de dia
+    educa.core.motivos_dia.manage: Gerenciar motivos de dia
+x-escopo-adiado:
+  - Eventos/anotações do calendário (legado calendario_anotacao) — depende do contrato de comunicação
+  - Calendário por turma (legado modules.calendario_turma) — depende do contrato de Turmas
+  - Aplicação da janela de lançamento no diário — responsabilidade do submódulo pedagogico (legado AY-11)

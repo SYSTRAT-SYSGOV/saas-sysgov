@@ -1,0 +1,196 @@
+# SYS-Educa — Manifesto OpenSpec (Spec-First)
+# Fonte das regras do legado: docs/legacy/i-educar/_reversa_sdd
+# Idioma: pt-BR (AGENTS.md §7). Itens marcados com "PROPOSTA" aguardam aprovação.
+
+openspec: "1.0"
+
+modulo:
+  nome: Educa
+  alias: educa
+  titulo: SYS-Educa — Gestão Escolar e Educação Pública Municipal
+  caminho: apps/api/Modules/Educa
+  versao: 0.1.0
+  status: especificacao   # nenhum código executável antes da aprovação das specs
+  rbac_prefixo: "educa.{submodulo}.{recurso}.{acao}"
+  rota_api_prefixo: /api/educa/{submodulo}
+  frontend:
+    app: apps/web-client
+    caminho: apps/web-client/src/modules/educa
+    paleta: govbr-azul           # exceção documentada no AGENTS.md §4
+    componentes: "@sysgov/ui"    # obrigatório; nunca reimplementar localmente
+    tipografia_tecnica: "JetBrains Mono (font-mono tabular-nums): datas, códigos INEP, CPF, carga horária, percentuais"
+
+# ---------------------------------------------------------------------------
+# Integração obrigatória com os 5 pilares fundacionais (AGENTS.md §1.1)
+# ---------------------------------------------------------------------------
+pilares:
+  access:
+    modulo: Modules/Access
+    uso: "Permissões educa.* validadas por Gates/Policies; toda mutação via AuditLogger::log()"
+  pessoas:
+    modulo: Modules/Pessoas
+    modelo: Modules\Pessoas\Models\Pessoa
+    uso: "Aluno, responsável, docente e condutor referenciam pessoa_id. Proibido duplicar cadastro."
+    nota: "O prompt original citava App\\Models\\Person; o padrão canônico do repositório é o módulo Pessoas."
+  orgchart:
+    modulo: Modules/OrgChart
+    modelo: Modules\OrgChart\Models\OrgUnit
+    uso: "Escola = OrgUnit sob a SME; educa_schools guarda só o específico educacional (INEP etc.). Escopo via OrgScope."
+    nota: "O prompt original citava 'Organograma'; corresponde a Modules/OrgChart."
+  client:
+    modulo: Modules/Client
+    uso: "Registro em client_menu_items e navegação via ClientNavigationService, filtrada pelos módulos licenciados (module-access)."
+  protocolo:
+    modulo: Modules/Protocolo
+    contrato: Modules\Protocolo\Contracts\EntidadeVinculavel
+    uso: "Matrícula, transferência e atos formais implementam EntidadeVinculavel (tabela protocolo_vinculos)."
+
+# ---------------------------------------------------------------------------
+# Convenções transversais
+# ---------------------------------------------------------------------------
+convencoes:
+  tenant:
+    coluna: "tenant_id foreignId (bigint) -> tenants.id, índice composto (tenant_id, ...)"   # Decisão D-07 aprovada: tenants.id é bigint no código; o pedido original citava CHAR(36)
+    model_trait: App\Models\Concerns\TenantAware
+    resolucao: "middleware ResolveTenant (cabeçalho X-Tenant-Slug); nunca confiar no corpo da requisição"
+  chaves_primarias: "UUID (CHAR(36)) nas tabelas educa_*"   # Decisão D-07 aprovada
+  exclusao: SoftDeletes
+  auditoria: "AuditLogger::log(module: 'educa', ...) em toda mutação"
+  integracoes_externas: "somente via OutboxPublisher (outbox_events); nunca síncronas em controllers"
+  monetario: "App\\Support\\Money com centavos inteiros; nunca float"
+
+# ---------------------------------------------------------------------------
+# Planos / Feature Toggles (Tenant Entitlements)
+# ---------------------------------------------------------------------------
+# Nomes de planos aprovados como propostos (D-02). Plano é configuração comercial do catálogo;
+# a disponibilidade técnica é dada pelo catálogo de módulos (Modules\Admin\Models\Module).
+planos:
+  - id: basico
+    rotulo: Básico
+  - id: intermediario
+    rotulo: Intermediário
+  - id: completo
+    rotulo: Completo
+  - id: addon
+    rotulo: Add-on avulso (contratado à parte, qualquer plano)
+
+# Decisão D-02 aprovada (opção A): cada submódulo é um Module do catálogo existente,
+# protegido pelo middleware module-access:{alias} (EnsureModuleAccess -> Gate 'module').
+licenciamento:
+  mecanismo: "module-access:{alias_modulo} (App\\Http\\Middleware\\EnsureModuleAccess)"
+  catalogo: "Modules\\Admin\\Models\\Module (coluna alias) + tenant_module.enabled"
+  aliases: "educa (core), educa-secretaria, educa-pedagogico, educa-servidores, educa-educacenso, educa-transporte, educa-comunicacao"
+  comportamento_desativado:
+    api: "403 com code=MODULE_ACCESS_DENIED e module={alias} (padrão existente)"
+    menu: "item omitido por ClientNavigationService"
+    jobs_e_eventos: "listeners do submódulo não são registrados para o tenant"
+
+# ---------------------------------------------------------------------------
+# Submódulos
+# ---------------------------------------------------------------------------
+submodulos:
+  core:
+    titulo: Núcleo Acadêmico
+    descricao: "Calendário, Anos Letivos, Escolas, Turmas, Matriz Curricular (BNCC)"
+    obrigatorio: true
+    plano_minimo: basico
+    depende_de: []
+    alias_modulo: educa
+    contrato: contracts/core.openapi.yaml
+    cenarios:
+      - scenarios/core-academic-year.feature
+    legado:
+      - AcademicYear
+      - Calendario
+      - School
+      - SchoolClass
+      - Stages
+      - ComponenteCurricular
+    recursos:
+      - anos_letivos
+      - etapas
+      - calendarios
+      - motivos_dia
+      - escolas
+      - turmas
+      - matriz_curricular
+    contrato_status:
+      anos_letivos_calendario: especificado
+      escolas_turmas_matriz: pendente
+
+  secretaria:
+    titulo: Secretaria Escolar
+    descricao: "Matrículas, Histórico Escolar oficial, Transferências"
+    obrigatorio: false
+    plano_minimo: basico
+    depende_de: [core]
+    alias_modulo: educa-secretaria
+    legado: [Enrollments, HistoricoEscolar, Unification, Cadastro, People]
+    protocolo: "Matrícula e transferência implementam EntidadeVinculavel"
+
+  pedagogico:
+    titulo: Pedagógico
+    descricao: "Diário de Classe, Frequência, Motor de Avaliação declarativo (sem eval)"
+    obrigatorio: false
+    plano_minimo: intermediario
+    depende_de: [core, secretaria]
+    alias_modulo: educa-pedagogico
+    legado: [DiarioClasse, Avaliacao, FormulaMedia, RegraAvaliacao, TabelaArredondamento, EvaluationRules, QuadroHorario]
+    restricao: "Fórmulas de média interpretadas por parser/AST próprio; proibido eval() (ADR 002)"
+    consome_de_core: "calendar_days.is_school_day e janela de lançamento do ano letivo"
+    sobreposicao_existente: "Modules/Pedagogico (módulo legado SYSGOV) — ver design.md, risco R-01"
+
+  servidores:
+    titulo: Servidores da Educação
+    descricao: "Lotação docente e jornada com 1/3 de hora-atividade (Lei do Piso, Lei 11.738/2008)"
+    obrigatorio: false
+    plano_minimo: intermediario
+    depende_de: [core]
+    alias_modulo: educa-servidores
+    legado: [Servidores]
+    pilares: [pessoas, orgchart]
+
+  educacenso:
+    titulo: Educacenso (INEP/MEC)
+    descricao: "Auditoria de consistência cadastral e exportação de layouts INEP"
+    obrigatorio: false
+    plano_minimo: intermediario
+    depende_de: [core, secretaria, servidores]
+    depende_opcional: [pedagogico]     # etapa de rendimento/situação final
+    alias_modulo: educa-educacenso
+    legado: [Educacenso]
+    execucao: "Jobs assíncronos + OutboxPublisher (ADR 005)"
+
+  transporte:
+    titulo: Transporte Escolar
+    descricao: "Rotas, Veículos, Condutores, Alunos"
+    tipo: addon
+    obrigatorio: false
+    plano_minimo: addon
+    depende_de: [core, secretaria]
+    alias_modulo: educa-transporte
+    legado: [Transport, Addressing]
+    pilares: [pessoas]               # condutor = Pessoa
+    valores_monetarios: "Money (centavos)"
+
+  comunicacao:
+    titulo: Comunicação com Famílias
+    descricao: "Notificações a pais e alunos (e-mail, SMS, WhatsApp)"
+    tipo: addon
+    obrigatorio: false
+    plano_minimo: addon
+    depende_de: [core]
+    depende_opcional: [secretaria, pedagogico]
+    alias_modulo: educa-comunicacao
+    legado: [Notifications]
+    execucao: "Somente via outbox_events (ADR 007)"
+
+# ---------------------------------------------------------------------------
+# Regras de validação do próprio manifesto
+# ---------------------------------------------------------------------------
+validacoes:
+  - "core é obrigatório e não pode ser desativado para o tenant"
+  - "grafo depende_de é acíclico"
+  - "submódulo ativo exige todos os depende_de ativos e licenciados no tenant"
+  - "plano_minimo de cada dependência <= plano_minimo do dependente, exceto addon"
+  - "toda permissão segue educa.{submodulo}.{recurso}.{acao}"
