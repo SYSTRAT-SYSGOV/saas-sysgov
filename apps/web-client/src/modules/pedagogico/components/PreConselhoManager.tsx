@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ActionsMenu, DataTable, StatusChip } from '@sysgov/ui';
 import {
   FileSearch,
   Plus,
@@ -28,6 +30,8 @@ import {
   NivelAtencao,
   DesempenhoGeral
 } from '../types/pedagogico';
+
+const VARIANTE_DESEMPENHO: Record<string, 'success' | 'info' | 'warning' | 'danger'> = { Excelente: 'success', Bom: 'info', Regular: 'warning', 'Insatisfatório': 'danger' };
 
 interface PreConselhoManagerProps {
   preConselhos: PreConselho[];
@@ -344,6 +348,46 @@ export const PreConselhoManager: React.FC<PreConselhoManagerProps> = ({
     return matchesPeriodo && matchesTurma && matchesMateria;
   });
 
+  // Colunas estáveis; o handler atual de edição vem por ref.
+  const editarRef = useRef(handleEditFicha);
+  editarRef.current = handleEditFicha;
+  const colunasFichas = useMemo<ColumnDef<PreConselho, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel="Ações da ficha"
+            items={[{ key: 'editar', label: 'Editar ficha', icon: <Edit className="h-3.5 w-3.5" />, onSelect: () => editarRef.current(row.original) }]}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'data',
+      header: 'Data',
+      accessorKey: 'data_registro',
+      cell: ({ row }) => <span className="font-bold whitespace-nowrap">{row.original.data_registro}</span>,
+      meta: { exportHeader: 'Data', exportValue: (r) => r.data_registro },
+    },
+    {
+      id: 'observacao',
+      header: 'Observação / tipo',
+      accessorFn: (r) => `${r.periodo} — ${r.materia_nome || 'Geral'}`,
+      meta: { exportHeader: 'Observação / tipo', exportValue: (r) => `${r.periodo} — ${r.materia_nome || 'Geral'}` },
+    },
+    {
+      id: 'desempenho',
+      header: 'Desempenho',
+      accessorKey: 'desempenho_geral',
+      cell: ({ row }) => <StatusChip label={row.original.desempenho_geral} variant={VARIANTE_DESEMPENHO[row.original.desempenho_geral] ?? 'danger'} />,
+      meta: { exportHeader: 'Desempenho', exportValue: (r) => r.desempenho_geral },
+    },
+  ], []);
+
   return (
     <div className="space-y-6 font-sans">
       {/* Top Header Bar */}
@@ -553,65 +597,14 @@ export const PreConselhoManager: React.FC<PreConselhoManagerProps> = ({
       {selectedMateriaId !== null && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase font-bold text-[11px] border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th className="p-4">DATA</th>
-                    <th className="p-4">OBSERVAÇÃO / TIPO</th>
-                    <th className="p-4">PEDAGOGIA / RESPONSÁVEL</th>
-                    <th className="p-4 text-center">DESEMPENHO</th>
-                    <th className="p-4 text-center">AÇÕES</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {currentFichas.length > 0 ? (
-                    currentFichas.map((reg) => (
-                      <tr key={reg.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                          {reg.data_registro}
-                        </td>
-                        <td className="p-4 font-medium">
-                          {reg.periodo} — {reg.materia_nome || 'Geral'}
-                        </td>
-                        <td className="p-4 text-slate-500">
-                          Prof. Carlos Silva / Equipe Pedagógica
-                        </td>
-                        <td className="p-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                            reg.desempenho_geral === 'Excelente' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
-                            reg.desempenho_geral === 'Bom' ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300' :
-                            reg.desempenho_geral === 'Regular' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
-                            'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                          }`}>
-                            {reg.desempenho_geral}
-                          </span>
-                        </td>
-                        <td className="p-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditFicha(reg)}
-                              className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-400 transition"
-                              title="Editar Ficha"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="p-12 text-center text-slate-400">
-                        <FileText className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                        <p className="font-semibold text-sm">Nenhum registro encontrado para esta matéria nesta turma.</p>
-                        <p className="text-xs mt-1 text-slate-500">Clique em "+ Nova Ficha" acima para criar a primeira ficha do pré-conselho.</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={colunasFichas}
+              data={currentFichas}
+              emptyText='Nenhum registro encontrado para esta matéria nesta turma. Clique em "+ Nova Ficha" acima para criar a primeira ficha do pré-conselho.'
+              exportable
+              exportFileName="pre-conselho-fichas"
+              exportTitle="Pré-Conselho — Fichas"
+            />
           </div>
         </div>
       )}
