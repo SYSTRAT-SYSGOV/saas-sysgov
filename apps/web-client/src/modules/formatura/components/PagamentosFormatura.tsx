@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
-import { Button, Card, CardContent, Input, Skeleton, StatusChip, Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { ActionsMenu, Button, Card, CardContent, DataTable, Input, Skeleton, StatusChip } from '@sysgov/ui';
 import { formatarCentavos, formatarData } from '@/lib/formatacao';
 import { useCarga } from '../../escola/useCarga';
 import { erroApi, formaturaApi, type PagamentoDoAno, type Periodo } from '../api';
@@ -23,6 +24,66 @@ export const PagamentosFormatura: React.FC<PropsAba> = ({ ano, dados, recarregar
   const total = recebidoDosParticipantes(lista.dados ?? []);
   const invalido = periodoInvalido(inicio, fim);
 
+  // Colunas estáveis; a permissão atual vem por ref.
+  const podePagarRef = useRef(permissoes.pagar);
+  podePagarRef.current = permissoes.pagar;
+  const colunas = useMemo<ColumnDef<PagamentoDoAno, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel="Ações do pagamento"
+            items={podePagarRef.current ? [{ key: 'estornar', label: 'Estornar', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setEstornar(row.original) }] : []}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'data',
+      header: 'Data',
+      accessorKey: 'data_pagamento',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{formatarData(row.original.data_pagamento)}</span>,
+      meta: { exportHeader: 'Data', exportValue: (p) => formatarData(p.data_pagamento) },
+    },
+    {
+      id: 'formando',
+      header: 'Formando',
+      accessorKey: 'aluno_nome',
+      cell: ({ row }) => (
+        <span className="font-medium">
+          {row.original.aluno_nome}
+          {!row.original.participa && <StatusChip label="Não participa — fora do recebido" variant="neutral" className="ml-2" />}
+        </span>
+      ),
+      meta: { exportHeader: 'Formando', exportValue: (p) => p.aluno_nome },
+    },
+    { id: 'turma', header: 'Turma', accessorFn: (p) => p.turma ?? '', meta: { exportHeader: 'Turma', exportValue: (p) => p.turma ?? '' } },
+    {
+      id: 'parcela',
+      header: 'Parcela',
+      accessorKey: 'numero_parcela',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.numero_parcela}</span>,
+      meta: { exportHeader: 'Parcela', exportValue: (p) => p.numero_parcela },
+    },
+    {
+      id: 'forma',
+      header: 'Forma',
+      accessorFn: (p) => ROTULO_FORMA[p.forma_pagamento],
+      meta: { exportHeader: 'Forma', exportValue: (p) => ROTULO_FORMA[p.forma_pagamento] },
+    },
+    {
+      id: 'valor',
+      header: 'Valor',
+      accessorKey: 'valor_centavos',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarCentavos(row.original.valor_centavos)}</span>,
+      meta: { exportHeader: 'Valor', exportValue: (p) => formatarCentavos(p.valor_centavos) },
+    },
+  ], []);
+
   return (
     <div className="space-y-4">
       <Card>
@@ -44,42 +105,20 @@ export const PagamentosFormatura: React.FC<PropsAba> = ({ ano, dados, recarregar
           ) : !lista.dados ? (
             <Skeleton className="h-40 w-full" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead><TableHead>Formando</TableHead><TableHead>Turma</TableHead><TableHead>Parcela</TableHead>
-                  <TableHead>Forma</TableHead><TableHead className="text-right">Valor</TableHead><TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lista.dados.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Nenhum pagamento no período.</TableCell></TableRow>
-                )}
-                {lista.dados.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-mono tabular-nums">{formatarData(p.data_pagamento)}</TableCell>
-                    <TableCell className="font-medium">
-                      {p.aluno_nome}
-                      {!p.participa && <StatusChip label="Não participa — fora do recebido" variant="neutral" className="ml-2" />}
-                    </TableCell>
-                    <TableCell>{p.turma ?? '—'}</TableCell>
-                    <TableCell className="font-mono tabular-nums">{p.numero_parcela}</TableCell>
-                    <TableCell>{ROTULO_FORMA[p.forma_pagamento]}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{formatarCentavos(p.valor_centavos)}</TableCell>
-                    <TableCell className="text-right">
-                      {permissoes.pagar && <Button size="xs" variant="ghost" aria-label="Estornar pagamento" onClick={() => setEstornar(p)}><Trash2 /></Button>}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              <TableFooter>
-                <TableRow>
-                  <TableCell colSpan={5}>Recebido ({lista.dados.filter((p) => p.participa).length} lançamentos de participantes)</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatarCentavos(total)}</TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableFooter>
-            </Table>
+            <>
+              <DataTable
+                columns={colunas}
+                data={lista.dados}
+                emptyText="Nenhum pagamento no período."
+                exportable
+                exportFileName="formatura-pagamentos"
+                exportTitle="Formatura e Eventos — Pagamentos"
+              />
+              <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm font-medium text-foreground">
+                <span>Recebido ({lista.dados.filter((p) => p.participa).length} lançamentos de participantes)</span>
+                <span className="font-mono tabular-nums">{formatarCentavos(total)}</span>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
