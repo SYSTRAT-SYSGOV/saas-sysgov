@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Plus, Trash2 } from 'lucide-react';
-import { Button, Card, CardContent, Input, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { ActionsMenu, Button, Card, CardContent, DataTable, Input, Switch } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
@@ -34,6 +35,32 @@ export const TiposAta: React.FC<{ avisar: Toast; aoMudar: () => void }> = ({ avi
     }
   };
 
+  // As ações dependem de salvar/excluir (recriadas a cada render), então as colunas não são memoizadas.
+  const colunas: ColumnDef<TipoAta, unknown>[] = [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel="Ações do tipo de ata"
+            items={[{ key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => void excluir(row.original) }]}
+          />
+        </div>
+      ),
+    },
+    { id: 'nome', header: 'Nome', accessorKey: 'nome', meta: { exportHeader: 'Nome', exportValue: (t) => t.nome } },
+    {
+      id: 'ativo',
+      header: 'Ativo',
+      accessorFn: (t) => (t.ativo ? 'Sim' : 'Não'),
+      cell: ({ row }) => <Switch checked={row.original.ativo} onCheckedChange={(v) => void salvar({ ...row.original, ativo: v })} aria-label={`Ativar ${row.original.nome}`} />,
+      meta: { exportHeader: 'Ativo', exportValue: (t) => (t.ativo ? 'Sim' : 'Não') },
+    },
+  ];
+
   return (
     <Card>
       {modalValidacao}
@@ -44,18 +71,14 @@ export const TiposAta: React.FC<{ avisar: Toast; aoMudar: () => void }> = ({ avi
         </div>
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && (
-          <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead className="w-28">Ativo</TableHead><TableHead className="w-16" /></TableRow></TableHeader>
-            <TableBody>
-              {carga.dados.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>{t.nome}</TableCell>
-                  <TableCell><Switch checked={t.ativo} onCheckedChange={(v) => void salvar({ ...t, ativo: v })} aria-label={`Ativar ${t.nome}`} /></TableCell>
-                  <TableCell><Button variant="ghost" size="sm" aria-label={`Excluir ${t.nome}`} onClick={() => void excluir(t)}><Trash2 className="h-4 w-4" /></Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={carga.dados}
+            emptyText="Nenhum tipo de ata cadastrado."
+            exportable
+            exportFileName="ata-tipos"
+            exportTitle="Atas — Tipos de ata"
+          />
         )}
       </CardContent>
     </Card>
