@@ -190,7 +190,7 @@ function AdminLayout() {
                 <span>Powered by {config.companyName}</span>
               )}
               <span className="text-status-success font-bold bg-status-success-bg  border border-status-success-border  px-2 py-0.5 rounded">
-                v2.5.0-universal
+                v{__APP_VERSION__}
               </span>
             </div>
           </div>

@@ -183,7 +183,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ onAddToast }) => {
                   {form.appSubtitle || 'Subtítulo do sistema'}
                 </p>
                 <div className="pt-2 border-t border-border flex justify-between text-[10px] text-muted-foreground font-mono">
-                  <span>Versão: {form.version}</span>
+                  <span>Versão: {__APP_VERSION__}</span>
                   <span>{form.companyName}</span>
                 </div>
               </div>
