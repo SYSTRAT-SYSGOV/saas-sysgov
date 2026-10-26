@@ -75,7 +75,13 @@ final class InventarioTest extends CemiteriosTestCase
             ->postJson('/api/cemiterios/jazigos', ['sector_id' => $setor, 'codigo' => 'J2', 'tipo' => 'jazigo', 'capacidade' => 2])
             ->assertCreated();
 
-        $listar = fn () => collect($this->como($admin, $t)->getJson('/api/cemiterios/parques')->assertOk()->json())->keyBy('id');
+        /** @return array<int, array<string, mixed>> lista de cemitérios indexada pelo id */
+        $listar = function () use ($admin, $t): array {
+            /** @var list<array<string, mixed>> $lista */
+            $lista = $this->como($admin, $t)->getJson('/api/cemiterios/parques')->assertOk()->json();
+
+            return array_column($lista, null, 'id');
+        };
 
         $antes = $listar();
         $this->assertSame(6, $antes[$parque]['capacidade_total']);
