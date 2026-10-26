@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import {
   ArrowLeft,
   Building2,
@@ -14,23 +15,10 @@ import {
   Calendar,
   Layers,
 } from 'lucide-react';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Badge,
-  Button,
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from '@sysgov/ui';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, Button, Table, TableHeader, TableBody, TableHead, TableRow, TableCell, DataTable } from '@sysgov/ui';
 import { useCemiteriosContext } from '../CemiteriosContext';
-import type { Parque } from '../api';
+import { taxaOcupacao, type Parque } from '../api';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 
 export interface AdministracaoGeralViewProps {
   onVoltar?: () => void;
@@ -81,6 +69,28 @@ export const AdministracaoGeralView: React.FC<AdministracaoGeralViewProps> = ({
   const sepultamentosMes = Math.max(12, Math.round(totalJazigos * 0.015));
   const exumacoesPrevistas = Math.max(4, Math.round(totalJazigos * 0.005));
   const taxaOcupacaoMedia = 78.4;
+
+  // Colunas estáveis; o handler atual vem por ref.
+  const ctxNecropoles = useRef({ irParaCemiterio: handleIrParaCemiterio });
+  ctxNecropoles.current = { irParaCemiterio: handleIrParaCemiterio };
+  const colunasNecropoles = useMemo<ColumnDef<Parque, unknown>[]>(() => {
+    const setoresDe = (p: Parque) => p.setores_count ?? (p.setores ? p.setores.length : 0);
+    const textoOcupacao = (p: Parque) => { const t = taxaOcupacao(p); return t === null ? '—' : `${t.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`; };
+    return [
+      colunaAcoes<Parque>((p) => `Ações de ${p.nome}`, (p) => [{ key: 'gestao', label: 'Acessar Gestão', icon: <ExternalLink className="h-3.5 w-3.5" />, onSelect: () => ctxNecropoles.current.irParaCemiterio(p.id) }]),
+      { id: 'codigo', header: 'Código', accessorKey: 'codigo', cell: ({ row }) => <span className="font-mono tabular-nums font-semibold text-xs">{row.original.codigo}</span>, meta: { exportHeader: 'Código', exportValue: (p) => p.codigo } },
+      { id: 'nome', header: 'Nome do Cemitério', accessorKey: 'nome', cell: ({ row }) => <span className="font-medium text-foreground">{row.original.nome}</span>, meta: { exportHeader: 'Nome do Cemitério', exportValue: (p) => p.nome } },
+      { id: 'endereco', header: 'Endereço / Bairro', accessorFn: (p) => p.endereco ?? '', cell: ({ row }) => <span className="text-muted-foreground text-sm">{row.original.endereco || '—'}</span>, meta: { exportHeader: 'Endereço / Bairro', exportValue: (p) => p.endereco ?? '' } },
+      { id: 'setores', header: 'Setores', accessorFn: setoresDe, cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{setoresDe(row.original)}</span>, meta: { exportHeader: 'Setores', exportValue: setoresDe } },
+      { id: 'jazigos', header: 'Jazigos', accessorFn: (p) => p.jazigos_count ?? 0, cell: ({ row }) => <span className="block text-right font-mono tabular-nums font-semibold">{(row.original.jazigos_count ?? 0).toLocaleString('pt-BR')}</span>, meta: { exportHeader: 'Jazigos', exportValue: (p) => p.jazigos_count ?? 0 } },
+      { id: 'ocupacao', header: 'Ocupação', accessorFn: (p) => taxaOcupacao(p) ?? -1, cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{textoOcupacao(row.original)}</span>, meta: { exportHeader: 'Ocupação', exportValue: textoOcupacao } },
+      {
+        id: 'situacao', header: 'Status', accessorKey: 'situacao',
+        cell: ({ row }) => <Badge variant={row.original.situacao === 'ativo' ? 'default' : 'secondary'} className="capitalize text-xs">{row.original.situacao === 'ativo' ? 'Ativo' : row.original.situacao}</Badge>,
+        meta: { exportHeader: 'Status', exportValue: (p) => p.situacao },
+      },
+    ];
+  }, []);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto py-2">
@@ -218,62 +228,14 @@ export const AdministracaoGeralView: React.FC<AdministracaoGeralViewProps> = ({
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-24">Código</TableHead>
-                  <TableHead>Nome do Cemitério</TableHead>
-                  <TableHead>Endereço / Bairro</TableHead>
-                  <TableHead className="text-right">Setores</TableHead>
-                  <TableHead className="text-right">Jazigos</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cemiteriosDisponiveis.map((parque) => {
-                  const setores = parque.setores_count ?? (parque.setores ? parque.setores.length : 0);
-                  const jazigos = parque.jazigos_count ?? 0;
-                  const isAtivo = parque.situacao === 'ativo';
-
-                  return (
-                    <TableRow key={parque.id} className="hover:bg-muted/50">
-                      <TableCell className="font-mono tabular-nums font-semibold text-xs">
-                        {parque.codigo}
-                      </TableCell>
-                      <TableCell className="font-medium text-foreground">
-                        {parque.nome}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {parque.endereco || '—'}
-                      </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">
-                        {setores}
-                      </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums font-semibold">
-                        {jazigos.toLocaleString('pt-BR')}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant={isAtivo ? 'default' : 'secondary'} className="capitalize text-xs">
-                          {isAtivo ? 'Ativo' : parque.situacao}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleIrParaCemiterio(parque.id)}
-                          className="gap-1.5 h-8 text-xs"
-                        >
-                          Acessar Gestão
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={colunasNecropoles}
+              data={cemiteriosDisponiveis}
+              emptyText="Nenhuma necrópole disponível."
+              exportable
+              exportFileName="cemiterios-quadro-geral"
+              exportTitle="Cemitérios — Quadro geral de necrópoles"
+            />
           </CardContent>
         </Card>
       )}

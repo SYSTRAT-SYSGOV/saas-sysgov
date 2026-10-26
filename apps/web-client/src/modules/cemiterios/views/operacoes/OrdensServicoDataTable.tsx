@@ -154,6 +154,8 @@ export const OrdensServicoDataTable: React.FC<OrdensServicoDataTableProps> = ({
       pageSizeSelector={true}
       fixedLayout
       onRowClick={onSelecionarOrdem}
+      exportFileName="cemiterios-ordens-servico"
+      exportTitle="Cemitérios — Ordens de serviço"
       emptyText="Nenhuma ordem de serviço encontrada para os filtros aplicados."
     />
   );

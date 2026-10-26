@@ -97,6 +97,8 @@ export const TrasladacoesDataTable: React.FC<TrasladacoesDataTableProps> = ({
       pageSizeOptions={[10, 25, 50]}
       pageSizeSelector={true}
       emptyText="Nenhuma trasladação registrada."
+      exportFileName="cemiterios-trasladacoes"
+      exportTitle="Cemitérios — Trasladações"
     />
   );
 };

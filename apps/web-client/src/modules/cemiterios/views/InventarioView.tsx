@@ -730,6 +730,8 @@ export const InventarioView: React.FC = () => {
         pageSizeSelector={true}
         onRowClick={setSelecionado}
         emptyText="Nenhum jazigo encontrado para os filtros selecionados."
+        exportFileName="cemiterios-inventario-jazigos"
+        exportTitle="Cemitérios — Inventário de jazigos"
       />
 
       {/* ── 5. Modal de Detalhes Completo da Unidade com Sub-Abas e Financeiro ── */}
