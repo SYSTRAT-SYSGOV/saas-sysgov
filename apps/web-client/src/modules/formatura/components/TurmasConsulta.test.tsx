@@ -29,8 +29,20 @@ describe('TurmasConsulta', () => {
   it('mostra os participantes da turma ao expandir', () => {
     render(<MemoryRouter><TurmasConsulta {...props} /></MemoryRouter>);
     expect(screen.queryByText('ALICIA')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Ver participantes do 3º A/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver participantes' }));
+    expect(screen.getByText('Participantes — 3º A')).toBeInTheDocument();
     expect(screen.getByText('ALICIA')).toBeInTheDocument();
     expect(screen.queryByText('BRUNO')).not.toBeInTheDocument();
+
+    // O mesmo botão oculta a lista de novo.
+    fireEvent.click(screen.getByRole('button', { name: 'Ocultar participantes' }));
+    expect(screen.queryByText('ALICIA')).not.toBeInTheDocument();
+  });
+
+  it('lista as turmas com totais e oferece exportação', () => {
+    render(<MemoryRouter><TurmasConsulta {...props} /></MemoryRouter>);
+    expect(screen.getByText('3º A')).toBeInTheDocument();
+    expect(screen.getByText('R$ 150,00')).toBeInTheDocument(); // só quem participa entra no arrecadado
+    expect(screen.getByRole('button', { name: /exportar/i })).toBeInTheDocument();
   });
 });

@@ -36,6 +36,13 @@ describe('AlunosConsulta', () => {
 
   it('tem o seletor de turma', () => {
     render(<MemoryRouter><AlunosConsulta {...props([aluno({})])} /></MemoryRouter>);
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    // O DataTable traz o seletor de linhas por página, também um combobox: o da turma se identifica pelo valor.
+    expect(screen.getByText('Todas as turmas formandas')).toBeInTheDocument();
+  });
+
+  it('a grade exporta e tem o seletor de linhas por página', () => {
+    render(<MemoryRouter><AlunosConsulta {...props([aluno({})])} /></MemoryRouter>);
+    expect(screen.getByRole('button', { name: /exportar/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('combobox').length).toBeGreaterThanOrEqual(2);
   });
 });

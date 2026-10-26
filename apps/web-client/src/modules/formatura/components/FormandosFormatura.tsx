@@ -1,11 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
-import { Button, Card, CardContent, Input, Select, StatusChip, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
-import { formatarCentavos } from '@/lib/formatacao';
-import { erroApi, formaturaApi } from '../api';
-import { situacaoDoFormando } from '../formato';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { FileText, Search } from 'lucide-react';
+import { ActionsMenu, Button, Card, CardContent, DataTable, Input, Select, Switch } from '@sysgov/ui';
+import { erroApi, formaturaApi, type Formando } from '../api';
 import type { PropsAba } from '../ModuloFormaturaMain';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
+import { colMoeda, colNome, colNumero, colSituacao, colTurma } from './colunasFormando';
 import { useParticipacao } from './useParticipacao';
 
 type Lote = { turmaId: number; turma: string; participa: boolean };
@@ -31,6 +31,47 @@ export const FormandosFormatura: React.FC<PropsAba> = (props) => {
   }, [dados.formandos, turmaId, busca, soParticipantes]);
 
   const turmaEscolhida = turmasFormandas.find((t) => String(t.id) === turmaId);
+
+  // As colunas ficam estáveis (a célula do interruptor não remonta ao gravar); o estado atual vem por ref.
+  const participacaoRef = useRef(participacao);
+  participacaoRef.current = participacao;
+  const colunas = useMemo<ColumnDef<Formando, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel="Ações do formando"
+            items={[{ key: 'ficha', label: 'Ficha', icon: <FileText className="h-3.5 w-3.5" />, onSelect: () => participacaoRef.current.abrirFicha(row.original) }]}
+          />
+        </div>
+      ),
+    },
+    colNumero,
+    colNome,
+    colTurma,
+    {
+      id: 'participa',
+      header: 'Participa',
+      accessorFn: (f) => (f.participa ? 'Sim' : 'Não'),
+      cell: ({ row }) => participacaoRef.current.interruptor(row.original),
+      meta: { exportHeader: 'Participa', exportValue: (f) => (f.participa ? 'Sim' : 'Não') },
+    },
+    {
+      id: 'convidados',
+      header: 'Convidados',
+      accessorFn: (f) => (f.participa ? f.convidados : -1),
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{row.original.participa ? row.original.convidados : '—'}</span>,
+      meta: { exportHeader: 'Convidados', exportValue: (f) => (f.participa ? f.convidados : '') },
+    },
+    colMoeda('devido', 'Devido', 'valor_devido_centavos'),
+    colMoeda('pago', 'Pago', 'total_pago_centavos'),
+    colMoeda('saldo', 'Saldo', 'saldo_devedor_centavos'),
+    colSituacao,
+  ], []);
 
   return (
     <div className="space-y-4">
@@ -58,44 +99,14 @@ export const FormandosFormatura: React.FC<PropsAba> = (props) => {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nº</TableHead><TableHead>Nome</TableHead><TableHead>Turma</TableHead><TableHead>Participa</TableHead>
-                <TableHead className="text-right">Convidados</TableHead><TableHead className="text-right">Devido</TableHead>
-                <TableHead className="text-right">Pago</TableHead><TableHead className="text-right">Saldo</TableHead>
-                <TableHead>Situação</TableHead><TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lista.length === 0 && (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">Nenhum aluno encontrado.</TableCell></TableRow>
-              )}
-              {lista.map((f) => {
-                const s = situacaoDoFormando(f);
-                return (
-                  <TableRow key={f.aluno_id}>
-                    <TableCell className="font-mono tabular-nums">{f.numero ?? '—'}</TableCell>
-                    <TableCell className="font-medium">
-                      {f.nome}
-                      {f.situacao_aluno === 'transferido' && <StatusChip label="Transferido" variant="danger" className="ml-2" />}
-                      {f.situacao_aluno === 'remanejado' && <StatusChip label="Remanejado" variant="info" className="ml-2" />}
-                    </TableCell>
-                    <TableCell>{f.turma}</TableCell>
-                    <TableCell>
-                      {participacao.interruptor(f)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{f.participa ? f.convidados : '—'}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{formatarCentavos(f.valor_devido_centavos)}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{formatarCentavos(f.total_pago_centavos)}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{formatarCentavos(f.saldo_devedor_centavos)}</TableCell>
-                    <TableCell><StatusChip label={s.rotulo} variant={s.variante} /></TableCell>
-                    <TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => participacao.abrirFicha(f)}>Ficha</Button></TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={lista}
+            emptyText="Nenhum aluno encontrado."
+            exportable
+            exportFileName="formatura-formandos"
+            exportTitle="Formatura e Eventos — Formandos"
+          />
         </CardContent>
       </Card>
 
