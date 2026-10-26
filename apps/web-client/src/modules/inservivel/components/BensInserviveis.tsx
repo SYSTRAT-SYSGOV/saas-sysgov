@@ -1,16 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Eye, Package, Pencil, Plus, RefreshCcw, Search } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Select, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Select, Skeleton, DataTable } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { useCarga } from '../../escola/useCarga';
 import { inservivelApi, type BemResumo, type FiltrosBens, type Opcoes } from '../api';
 import { formatarCentavos, rotuloUnidade, secretarias, setoresDe } from '../formato';
 import type { PropsAba } from '../ModuloInservivelMain';
-import { ChipSituacao, FotoBem, Paginacao, useOpcoes } from './Comuns';
+import { ChipSituacao, FotoBem, useOpcoes } from './Comuns';
 import { BemDetalheModal } from './BemDetalheModal';
 import { BemFormModal } from './BemFormModal';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 
 const FILTROS_VAZIOS = { q: '', situacao_id: '', estado_conservacao_id: '', secretaria_unit_id: '', setor_unit_id: '' };
 
@@ -24,6 +26,7 @@ export const BensInserviveis: React.FC<PropsAba> = ({ permissoes, avisar, parame
   const [ver, setVer] = useState<number | null>(null);
   const [editar, setEditar] = useState<number | 'novo' | null>(null);
   const [mudarSituacao, setMudarSituacao] = useState<BemResumo | null>(null);
+  const [porPagina, setPorPagina] = useState(15);
 
   useEffect(() => {
     const bem = parametro('bem');
@@ -34,6 +37,7 @@ export const BensInserviveis: React.FC<PropsAba> = ({ permissoes, avisar, parame
 
   const consulta: FiltrosBens = {
     page: pagina,
+    per_page: porPagina,
     q: aplicados.q || undefined,
     situacao_id: aplicados.situacao_id ? Number(aplicados.situacao_id) : undefined,
     estado_conservacao_id: aplicados.estado_conservacao_id ? Number(aplicados.estado_conservacao_id) : undefined,
@@ -42,6 +46,45 @@ export const BensInserviveis: React.FC<PropsAba> = ({ permissoes, avisar, parame
   };
   const lista = useCarga(() => inservivelApi.bens(consulta), [JSON.stringify(consulta), versao]);
   const alterou = () => setVersao((v) => v + 1);
+
+  // Colunas estáveis (a foto não recarrega a cada render); a permissão atual vem por ref.
+  const ctx = useRef({ permissoes });
+  ctx.current = { permissoes };
+  const colunas = useMemo<ColumnDef<BemResumo, unknown>[]>(() => [
+    colunaAcoes<BemResumo>((b) => `Ações do bem ${b.numero_patrimonial}`, (b) => [
+      { key: 'ver', label: 'Visualizar', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => setVer(b.id) },
+      ...(ctx.current.permissoes.bens ? [
+        { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditar(b.id) },
+        { key: 'situacao', label: 'Mudar situação', icon: <RefreshCcw className="h-3.5 w-3.5" />, onSelect: () => setMudarSituacao(b) },
+      ] : []),
+    ]),
+    {
+      id: 'foto', header: 'Foto', enableSorting: false,
+      cell: ({ row }) => <FotoBem chave={row.original.foto_principal_id ? `${row.original.id}-${row.original.foto_principal_id}` : null} carregar={() => inservivelApi.foto(row.original.id, row.original.foto_principal_id ?? 0)} alt={`Foto do bem ${row.original.numero_patrimonial}`} className="h-10 w-10" />,
+      meta: { exportIgnore: true },
+    },
+    {
+      id: 'patrimonio', header: 'Nº patrimonial', accessorKey: 'numero_patrimonial',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.numero_patrimonial}{row.original.plaqueta_antiga && <p className="text-xs text-muted-foreground">Plaqueta {row.original.plaqueta_antiga}</p>}</span>,
+      meta: { exportHeader: 'Nº patrimonial', exportValue: (b) => b.numero_patrimonial },
+    },
+    {
+      id: 'descricao', header: 'Descrição', accessorKey: 'descricao',
+      cell: ({ row }) => <div className="max-w-xs"><p className="truncate">{row.original.descricao}</p><p className="text-xs text-muted-foreground">{[row.original.categoria?.nome, row.original.estado_conservacao?.nome].filter(Boolean).join(' · ')}</p></div>,
+      meta: { exportHeader: 'Descrição', exportValue: (b) => b.descricao },
+    },
+    { id: 'setor', header: 'Secretaria / setor', accessorFn: (b) => rotuloUnidade(b.secretaria, b.setor), meta: { exportHeader: 'Secretaria / setor', exportValue: (b) => rotuloUnidade(b.secretaria, b.setor) } },
+    {
+      id: 'situacao', header: 'Situação', accessorFn: (b) => b.situacao.nome,
+      cell: ({ row }) => <ChipSituacao situacao={row.original.situacao} />,
+      meta: { exportHeader: 'Situação', exportValue: (b) => b.situacao.nome },
+    },
+    {
+      id: 'valor', header: 'Valor avaliado', accessorKey: 'valor_avaliado_cents',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarCentavos(row.original.valor_avaliado_cents)}</span>,
+      meta: { exportHeader: 'Valor avaliado', exportValue: (b) => formatarCentavos(b.valor_avaliado_cents) },
+    },
+  ], []);
 
   return (
     <div className="space-y-4">
@@ -71,32 +114,20 @@ export const BensInserviveis: React.FC<PropsAba> = ({ permissoes, avisar, parame
           {erroOpcoes && <AlertCard priority="warning" title="Listas indisponíveis" description={erroOpcoes} />}
           {!lista.dados && !lista.erro && <Skeleton className="h-64 w-full" />}
           {lista.dados && (lista.dados.data.length === 0 ? <EmptyState icon={<Package className="h-8 w-8" />} title="Nenhum bem encontrado" description="Ajuste os filtros ou cadastre um bem." /> : (
-            <>
-              <Table>
-                <TableHeader><TableRow>
-                  <TableHead className="w-14">Foto</TableHead><TableHead>Nº patrimonial</TableHead><TableHead>Descrição</TableHead><TableHead>Secretaria / setor</TableHead>
-                  <TableHead>Situação</TableHead><TableHead className="text-right">Valor avaliado</TableHead><TableHead className="text-right">Ações</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>
-                  {lista.dados.data.map((b) => (
-                    <TableRow key={b.id}>
-                      <TableCell><FotoBem chave={b.foto_principal_id ? `${b.id}-${b.foto_principal_id}` : null} carregar={() => inservivelApi.foto(b.id, b.foto_principal_id ?? 0)} alt={`Foto do bem ${b.numero_patrimonial}`} className="h-10 w-10" /></TableCell>
-                      <TableCell className="font-mono tabular-nums">{b.numero_patrimonial}{b.plaqueta_antiga && <p className="text-xs text-muted-foreground">Plaqueta {b.plaqueta_antiga}</p>}</TableCell>
-                      <TableCell className="max-w-xs"><p className="truncate">{b.descricao}</p><p className="text-xs text-muted-foreground">{[b.categoria?.nome, b.estado_conservacao?.nome].filter(Boolean).join(' · ')}</p></TableCell>
-                      <TableCell className="text-sm">{rotuloUnidade(b.secretaria, b.setor)}</TableCell>
-                      <TableCell><ChipSituacao situacao={b.situacao} /></TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{formatarCentavos(b.valor_avaliado_cents)}</TableCell>
-                      <TableCell className="whitespace-nowrap text-right">
-                        <Button size="icon-sm" variant="ghost" aria-label={`Visualizar ${b.numero_patrimonial}`} onClick={() => setVer(b.id)}><Eye /></Button>
-                        {permissoes.bens && <Button size="icon-sm" variant="ghost" aria-label={`Editar ${b.numero_patrimonial}`} onClick={() => setEditar(b.id)}><Pencil /></Button>}
-                        {permissoes.bens && <Button size="icon-sm" variant="ghost" aria-label={`Mudar situação de ${b.numero_patrimonial}`} title="Bens não são excluídos: mude a situação" onClick={() => setMudarSituacao(b)}><RefreshCcw /></Button>}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <Paginacao pagina={lista.dados.meta.current_page} ultima={lista.dados.meta.last_page} total={lista.dados.meta.total} onMudar={setPagina} />
-            </>
+            <DataTable
+              columns={colunas}
+              data={lista.dados.data}
+              emptyText="Nenhum bem encontrado."
+              pageSizeOptions={[15, 30, 50, 100]}
+              paginationState={{
+                currentPage: lista.dados.meta.current_page,
+                totalPages: lista.dados.meta.last_page,
+                onPageChange: setPagina,
+                total: lista.dados.meta.total,
+                perPage: porPagina,
+                onPerPageChange: (n) => { setPorPagina(n); setPagina(1); },
+              }}
+            />
           ))}
         </CardContent>
       </Card>

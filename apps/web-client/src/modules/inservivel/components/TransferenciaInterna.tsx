@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ArrowLeftRight, Megaphone, Search } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Skeleton, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger } from '@sysgov/ui';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ArrowLeftRight, Ban, FileText, Handshake, Megaphone, Search } from 'lucide-react';
+import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Skeleton, StatusChip, Tabs, TabsContent, TabsList, TabsTrigger, DataTable } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -10,6 +11,7 @@ import { abrirArquivo, formatarCentavos, formatarDataHora, rotuloUnidade, vazioP
 import type { PropsAba } from '../ModuloInservivelMain';
 import { CampoTexto, ChipSituacao, FotoBem } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 
 /** Transferência interna (spec: Transferência interna entre secretarias): vitrine, minhas e anúncio. */
 export const TransferenciaInterna: React.FC<PropsAba> = ({ permissoes, avisar }) => {
@@ -20,6 +22,39 @@ export const TransferenciaInterna: React.FC<PropsAba> = ({ permissoes, avisar })
   const [confirmar, setConfirmar] = useState<{ acao: 'solicitar' | 'cancelar'; t: Transferencia } | null>(null);
   const lista = useCarga(() => inservivelApi.transferencias(escopo), [escopo, versao]);
 
+  // Colunas estáveis (a foto não recarrega a cada render); avisar vem por ref.
+  const ctx = useRef({ avisar });
+  ctx.current = { avisar };
+  const colunas = useMemo<ColumnDef<Transferencia, unknown>[]>(() => [
+    colunaAcoes<Transferencia>((t) => `Ações da transferência de ${t.bem.numero_patrimonial}`, (t) => [
+      ...(t.pode_solicitar ? [{ key: 'solicitar', label: 'Solicitar', icon: <Handshake className="h-3.5 w-3.5" />, onSelect: () => setConfirmar({ acao: 'solicitar', t }) }] : []),
+      ...(t.pode_cancelar ? [{ key: 'cancelar', label: 'Cancelar anúncio', icon: <Ban className="h-3.5 w-3.5" />, onSelect: () => setConfirmar({ acao: 'cancelar', t }) }] : []),
+      ...(t.status === 'aceito' ? [{ key: 'termo', label: 'Termo', icon: <FileText className="h-3.5 w-3.5" />, onSelect: () => void inservivelApi.termoTransferencia(t.id).then(abrirArquivo).catch((e) => ctx.current.avisar({ type: 'error', title: 'Não foi possível abrir o termo', message: erroApi(e).mensagem })) }] : []),
+    ]),
+    {
+      id: 'foto', header: 'Foto', enableSorting: false,
+      cell: ({ row }) => <FotoBem chave={row.original.bem.foto_principal_id ? `${row.original.bem.id}-${row.original.bem.foto_principal_id}` : null} carregar={() => inservivelApi.foto(row.original.bem.id, row.original.bem.foto_principal_id ?? 0)} alt={`Foto do bem ${row.original.bem.numero_patrimonial}`} className="h-10 w-10" />,
+      meta: { exportIgnore: true },
+    },
+    {
+      id: 'bem', header: 'Bem', accessorFn: (t) => t.bem.numero_patrimonial,
+      cell: ({ row }) => <span><span className="font-mono tabular-nums">{row.original.bem.numero_patrimonial}</span><p className="max-w-xs truncate text-sm">{row.original.bem.descricao}</p>{row.original.observacao && <p className="text-xs text-muted-foreground">{row.original.observacao}</p>}</span>,
+      meta: { exportHeader: 'Bem', exportValue: (t) => `${t.bem.numero_patrimonial} — ${t.bem.descricao}` },
+    },
+    { id: 'origem', header: 'Origem', accessorFn: (t) => rotuloUnidade(t.origem), meta: { exportHeader: 'Origem', exportValue: (t) => rotuloUnidade(t.origem) } },
+    { id: 'destino', header: 'Destino', accessorFn: (t) => rotuloUnidade(t.destino), meta: { exportHeader: 'Destino', exportValue: (t) => rotuloUnidade(t.destino) } },
+    {
+      id: 'status', header: 'Status', accessorKey: 'status_rotulo',
+      cell: ({ row }) => <span><StatusChip label={row.original.status_rotulo} variant={VARIANTE_TRANSFERENCIA[row.original.status]} />{row.original.motivo_recusa && <p className="text-xs text-muted-foreground">Motivo: {row.original.motivo_recusa}</p>}</span>,
+      meta: { exportHeader: 'Status', exportValue: (t) => t.status_rotulo },
+    },
+    {
+      id: 'anunciado', header: 'Anunciado', accessorKey: 'data_anuncio',
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{formatarDataHora(row.original.data_anuncio)}<p className="font-sans text-xs text-muted-foreground">{row.original.anunciado_por}</p></span>,
+      meta: { exportHeader: 'Anunciado', exportValue: (t) => formatarDataHora(t.data_anuncio) },
+    },
+  ], []);
+
   const corpo = () => {
     if (lista.erro) return <AlertCard priority="danger" title="Não foi possível carregar" description={lista.erro} actionLabel="Tentar novamente" onAction={() => void lista.recarregar()} />;
     if (!lista.dados) return <Skeleton className="h-64 w-full" />;
@@ -28,26 +63,14 @@ export const TransferenciaInterna: React.FC<PropsAba> = ({ permissoes, avisar })
       return <EmptyState icon={<ArrowLeftRight className="h-8 w-8" />} title={escopo === 'vitrine' ? 'Nenhum bem anunciado' : 'Nenhuma transferência sua'} description={escopo === 'vitrine' ? 'Os bens que as secretarias disponibilizam aparecem aqui.' : undefined} />;
     }
     return (
-      <Table>
-        <TableHeader><TableRow><TableHead className="w-14">Foto</TableHead><TableHead>Bem</TableHead><TableHead>Origem</TableHead><TableHead>Destino</TableHead><TableHead>Status</TableHead><TableHead>Anunciado</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-        <TableBody>
-          {itens.map((t) => (
-            <TableRow key={t.id}>
-              <TableCell><FotoBem chave={t.bem.foto_principal_id ? `${t.bem.id}-${t.bem.foto_principal_id}` : null} carregar={() => inservivelApi.foto(t.bem.id, t.bem.foto_principal_id ?? 0)} alt={`Foto do bem ${t.bem.numero_patrimonial}`} className="h-10 w-10" /></TableCell>
-              <TableCell><span className="font-mono tabular-nums">{t.bem.numero_patrimonial}</span><p className="max-w-xs truncate text-sm">{t.bem.descricao}</p>{t.observacao && <p className="text-xs text-muted-foreground">{t.observacao}</p>}</TableCell>
-              <TableCell className="text-sm">{rotuloUnidade(t.origem)}</TableCell>
-              <TableCell className="text-sm">{rotuloUnidade(t.destino)}</TableCell>
-              <TableCell><StatusChip label={t.status_rotulo} variant={VARIANTE_TRANSFERENCIA[t.status]} />{t.motivo_recusa && <p className="text-xs text-muted-foreground">Motivo: {t.motivo_recusa}</p>}</TableCell>
-              <TableCell className="font-mono text-sm tabular-nums">{formatarDataHora(t.data_anuncio)}<p className="font-sans text-xs text-muted-foreground">{t.anunciado_por}</p></TableCell>
-              <TableCell className="whitespace-nowrap text-right">
-                {t.pode_solicitar && <Button size="sm" onClick={() => setConfirmar({ acao: 'solicitar', t })}>Solicitar</Button>}
-                {t.pode_cancelar && <Button size="sm" variant="ghost" onClick={() => setConfirmar({ acao: 'cancelar', t })}>Cancelar anúncio</Button>}
-                {t.status === 'aceito' && <Button size="sm" variant="outline" onClick={() => void inservivelApi.termoTransferencia(t.id).then(abrirArquivo).catch((e) => avisar({ type: 'error', title: 'Não foi possível abrir o termo', message: erroApi(e).mensagem }))}>Termo</Button>}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={colunas}
+        data={itens}
+        emptyText="Nenhuma transferência."
+        exportable
+        exportFileName={`inservivel-transferencia-${escopo}`}
+        exportTitle="Bens inservíveis — Transferência interna"
+      />
     );
   };
 

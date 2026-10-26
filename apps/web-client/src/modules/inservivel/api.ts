@@ -292,7 +292,7 @@ export const inservivelApi = {
   termoLote: (id: number, tipo: TipoTermo) => baixar(`/lotes/${id}/termos/${tipo}`),
 
   // Entidades
-  entidades: (filtros: { q?: string; status?: StatusEntidade; page?: number }) => get<Paginado<EntidadeResumo>>('/entidades', filtros),
+  entidades: (filtros: { q?: string; status?: StatusEntidade; page?: number; per_page?: number }) => get<Paginado<EntidadeResumo>>('/entidades', filtros),
   entidade: (id: number) => get<Entidade>(`/entidades/${id}`),
   cadastrarEntidade: (dados: DadosEntidade & { senha: string }) => post<Entidade>('/entidades', dados),
   atualizarEntidade: (id: number, dados: Partial<CamposEntidade> & { cpf_representante?: string }) => put<Entidade>(`/entidades/${id}`, dados),
