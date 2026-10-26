@@ -379,7 +379,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
             <div className="flex items-center justify-between text-[11px] font-mono text-sidebar-foreground/60 px-1">
               <span>{config.appName}</span>
               <span className="text-primary bg-primary/10 border border-primary/30 px-1.5 py-0.5 rounded font-bold">
-                v2.5.0
+                v{__APP_VERSION__}
               </span>
             </div>
           )}

@@ -10,7 +10,7 @@ export const DEFAULT_ADMIN_CONFIG: SystemBrandingConfig = {
   enableDarkMode: true,
   showPoweredBy: true,
   supportEmail: 'suporte@sysgov.online',
-  version: '2.5.0-universal',
+  version: __APP_VERSION__,
 };
 
 export const ADMIN_PERMISSIONS = [
