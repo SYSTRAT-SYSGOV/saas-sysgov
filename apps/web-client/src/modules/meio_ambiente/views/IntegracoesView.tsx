@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Badge, Button, Card, Input, Modal, Select } from '@sysgov/ui';
-import { KeyRound, PlugZap } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Badge, Button, Card, Input, Modal, Select, DataTable } from '@sysgov/ui';
+import { Ban, KeyRound, PlugZap } from 'lucide-react';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { meioAmbienteApi, erroApi, type IntegracaoOrgaoControle, type OrgaoControle } from '../api';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 
 const ORGAOS: { value: OrgaoControle; label: string }[] = [
   { value: 'ibama', label: 'IBAMA' },
@@ -86,6 +88,29 @@ export const IntegracoesView: React.FC = () => {
     }
   };
 
+  // Colunas estáveis: a única ação (revogar) usa o setter de estado.
+  const colunas = useMemo<ColumnDef<IntegracaoOrgaoControle, unknown>[]>(() => [
+    colunaAcoes<IntegracaoOrgaoControle>((i) => `Ações de ${i.nome}`, (i) => (i.is_active ? [{ key: 'revogar', label: 'Revogar', icon: <Ban className="h-3.5 w-3.5" />, onSelect: () => setARevogar(i) }] : [])),
+    { id: 'nome', header: 'Nome', accessorKey: 'nome', meta: { exportHeader: 'Nome', exportValue: (i) => i.nome } },
+    { id: 'orgao', header: 'Órgão', accessorFn: (i) => ROTULO_ORGAO[i.orgao], meta: { exportHeader: 'Órgão', exportValue: (i) => ROTULO_ORGAO[i.orgao] } },
+    {
+      id: 'chave', header: 'Chave', accessorKey: 'api_key_prefixo',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.api_key_prefixo}…</span>,
+      meta: { exportHeader: 'Chave (prefixo)', exportValue: (i) => `${i.api_key_prefixo}…` },
+    },
+    { id: 'envio', header: 'Envio ativo', accessorFn: (i) => (i.envio_ativo ? 'Sim' : 'Não'), meta: { exportHeader: 'Envio ativo', exportValue: (i) => (i.envio_ativo ? 'Sim' : 'Não') } },
+    {
+      id: 'ultimo', header: 'Último uso', accessorKey: 'ultimo_uso_em',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.ultimo_uso_em ? new Date(row.original.ultimo_uso_em).toLocaleString('pt-BR') : '—'}</span>,
+      meta: { exportHeader: 'Último uso', exportValue: (i) => (i.ultimo_uso_em ? new Date(i.ultimo_uso_em).toLocaleString('pt-BR') : '') },
+    },
+    {
+      id: 'situacao', header: 'Situação', accessorFn: (i) => (i.is_active ? 'Ativa' : 'Revogada'),
+      cell: ({ row }) => (row.original.is_active ? <Badge variant="success">Ativa</Badge> : <Badge variant="neutral">Revogada</Badge>),
+      meta: { exportHeader: 'Situação', exportValue: (i) => (i.is_active ? 'Ativa' : 'Revogada') },
+    },
+  ], []);
+
   if (carregando) {
     return <ScreenState type="loading" />;
   }
@@ -121,36 +146,14 @@ export const IntegracoesView: React.FC = () => {
         {integracoes.length === 0 ? (
           <EmptyState icon={<KeyRound className="h-8 w-8" />} title="Nenhuma credencial de integração cadastrada" />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-muted-foreground">
-                <th className="py-2">Nome</th>
-                <th>Órgão</th>
-                <th>Chave</th>
-                <th>Envio ativo</th>
-                <th>Último uso</th>
-                <th>Situação</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {integracoes.map((i) => (
-                <tr key={i.id} className="border-t">
-                  <td className="py-2">{i.nome}</td>
-                  <td>{ROTULO_ORGAO[i.orgao]}</td>
-                  <td className="font-mono tabular-nums">{i.api_key_prefixo}…</td>
-                  <td>{i.envio_ativo ? 'Sim' : 'Não'}</td>
-                  <td className="font-mono tabular-nums">{i.ultimo_uso_em ? new Date(i.ultimo_uso_em).toLocaleString('pt-BR') : '—'}</td>
-                  <td>{i.is_active ? <Badge variant="success">Ativa</Badge> : <Badge variant="neutral">Revogada</Badge>}</td>
-                  <td className="text-right">
-                    {i.is_active && (
-                      <Button size="sm" variant="outline" onClick={() => setARevogar(i)}>Revogar</Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={colunas}
+            data={integracoes}
+            emptyText="Nenhuma credencial."
+            exportable
+            exportFileName="meio-ambiente-integracoes"
+            exportTitle="Meio Ambiente — Credenciais de integração"
+          />
         )}
       </Card>
 

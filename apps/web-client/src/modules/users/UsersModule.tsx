@@ -1,18 +1,8 @@
-import React, { useState } from 'react';
-import {
-  Card,
-  Button,
-  StatusChip,
-  StatusVariant,
-  Table,
-  TableHeader,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
-} from '@/components/ui';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Card, Button, StatusChip, StatusVariant, Input, DataTable } from '@/components/ui';
 import { PessoaCard } from '@sysgov/ui';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 import { Users, UserPlus, Search, Pencil, Power, RotateCcw, Loader2, ShieldCheck } from 'lucide-react';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useCan } from '@/core/rbac/useCan';
@@ -155,6 +145,53 @@ export const UsersModule: React.FC = () => {
   const isSaving = createUser.isPending || updateUser.isPending;
   const isProcessing = deactivateUser.isPending || reactivateUser.isPending;
 
+  // Colunas estáveis; o estado atual (permissão, handlers) vem por ref.
+  const ctx = useRef({ canManage, openEdit, handleReactivate });
+  ctx.current = { canManage, openEdit, handleReactivate };
+  const colunas = useMemo<ColumnDef<TenantUser, unknown>[]>(() => [
+    ...(canManage ? [colunaAcoes<TenantUser>((u) => `Ações de ${u.name}`, (u) => [
+      { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => ctx.current.openEdit(u) },
+      u.is_active
+        ? { key: 'desativar', label: 'Desativar', icon: <Power className="h-3.5 w-3.5" />, onSelect: () => { setDeactivating(u); setReason(''); } }
+        : { key: 'reativar', label: 'Reativar', icon: <RotateCcw className="h-3.5 w-3.5" />, onSelect: () => void ctx.current.handleReactivate(u) },
+    ])] : []),
+    {
+      id: 'nome', header: 'Nome', accessorKey: 'name',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-gov-text-primary">{row.original.name}</span>
+          {row.original.pessoa && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium" title={`Pessoa: ${row.original.pessoa.cpf_mascarado}`}>Civil</span>
+          )}
+        </div>
+      ),
+      meta: { exportHeader: 'Nome', exportValue: (u) => u.name },
+    },
+    {
+      id: 'email', header: 'E-mail', accessorKey: 'email',
+      cell: ({ row }) => <span className="font-mono tabular-nums font-semibold text-muted-foreground">{row.original.email}</span>,
+      meta: { exportHeader: 'E-mail', exportValue: (u) => u.email },
+    },
+    {
+      id: 'role', header: 'Role', accessorFn: (u) => u.role_slug || u.roles?.[0]?.slug || '',
+      cell: ({ row }) => roleBadge(row.original),
+      meta: { exportHeader: 'Role', exportValue: (u) => u.role_slug || u.roles?.[0]?.slug || '' },
+    },
+    {
+      id: 'mfa', header: 'MFA', accessorFn: (u) => (u.mfa_enabled ? 'Ativado' : '—'),
+      cell: ({ row }) => (row.original.mfa_enabled ? (
+        <span className="inline-flex items-center gap-1 text-status-success font-mono text-[11px]"><ShieldCheck className="w-3.5 h-3.5" /> Ativado</span>
+      ) : <span className="text-gov-text-muted font-mono text-[11px]">—</span>),
+      meta: { exportHeader: 'MFA', exportValue: (u) => (u.mfa_enabled ? 'Ativado' : 'Não') },
+    },
+    {
+      id: 'status', header: 'Status', accessorFn: (u) => statusChip(u).label,
+      cell: ({ row }) => <StatusChip label={statusChip(row.original).label} variant={statusChip(row.original).variant} />,
+      meta: { exportHeader: 'Status', exportValue: (u) => statusChip(u).label },
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [canManage]);
+
   return (
     <div className="space-y-6">
       {modalValidacao}
@@ -220,80 +257,14 @@ export const UsersModule: React.FC = () => {
             Nenhum usuário encontrado neste município.
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>MFA</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                {canManage && <TableHead className="text-right">Ações</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-gov-text-primary">{u.name}</span>
-                      {u.pessoa && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gov-primary/10 text-gov-primary font-medium" title={`Pessoa: ${u.pessoa.cpf_mascarado}`}>
-                          Civil
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono tabular-nums font-semibold text-muted-foreground">
-                    {u.email}
-                  </TableCell>
-                  <TableCell>{roleBadge(u)}</TableCell>
-                  <TableCell className="font-mono tabular-nums font-semibold">
-                    {u.mfa_enabled ? (
-                      <span className="inline-flex items-center gap-1 text-status-success font-mono text-[11px]">
-                        <ShieldCheck className="w-3.5 h-3.5" /> Ativado
-                      </span>
-                    ) : (
-                      <span className="text-gov-text-muted font-mono text-[11px]">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <StatusChip label={statusChip(u).label} variant={statusChip(u).variant} />
-                  </TableCell>
-                  {canManage && (
-                    <TableCell className="text-right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          onClick={() => openEdit(u)}
-                          title="Editar"
-                          className="p-2 rounded-lg text-gov-primary hover:bg-gov-primary-light transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        {u.is_active ? (
-                          <button
-                            onClick={() => { setDeactivating(u); setReason(''); }}
-                            title="Desativar"
-                            className="p-2 rounded-lg text-status-danger hover:bg-status-danger-bg transition-colors"
-                          >
-                            <Power className="w-4 h-4" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleReactivate(u)}
-                            title="Reativar"
-                            className="p-2 rounded-lg text-status-success hover:bg-status-success-bg transition-colors"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={users}
+            emptyText="Nenhum usuário encontrado neste município."
+            exportable
+            exportFileName="usuarios"
+            exportTitle="Usuários do Município"
+          />
         )}
       </Card>
 

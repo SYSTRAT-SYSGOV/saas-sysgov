@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { FileText, Pencil, Save, Trash2, X } from 'lucide-react';
-import { Button, Card, Input, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { Button, Card, Input, Switch, Textarea, DataTable } from '@sysgov/ui';
 import { sysgovApi, type TextoCertificado, type TextoCertificadoInput } from '@sysgov/sdk';
 import { ConfirmDialog, EmptyState, ScreenState, StatusChip } from '@/components/ui';
 import { getApiErrorMessage } from '@/lib/apiErrors';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { DESCRICAO_VARIAVEL, marcador } from '../construtor/leiaute';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
@@ -108,6 +110,33 @@ export const TextosPage: React.FC = () => {
     }
   };
 
+  // Colunas estáveis (o switch não remonta ao gravar); os handlers atuais vêm por ref.
+  const ctxTextos = useRef({ editar, alternarAtivo });
+  ctxTextos.current = { editar, alternarAtivo };
+  const colunas = useMemo<ColumnDef<TextoCertificado, unknown>[]>(() => [
+    colunaAcoes<TextoCertificado>((t) => `Ações de ${t.nome}`, (t) => [
+      { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => ctxTextos.current.editar(t) },
+      { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(t) },
+    ]),
+    { id: 'nome', header: 'Nome do modelo', accessorKey: 'nome', cell: ({ row }) => <span className="font-medium">{row.original.nome}</span>, meta: { exportHeader: 'Nome do modelo', exportValue: (t) => t.nome } },
+    { id: 'tipo', header: 'Tipo', accessorFn: (t) => t.tipo_certificado ?? '', cell: ({ row }) => <span className="text-sm">{row.original.tipo_certificado || '—'}</span>, meta: { exportHeader: 'Tipo', exportValue: (t) => t.tipo_certificado ?? '' } },
+    {
+      id: 'texto', header: 'Texto principal', accessorKey: 'texto_principal',
+      cell: ({ row }) => <span className="block max-w-md truncate text-sm text-muted-foreground" title={row.original.texto_principal}>{row.original.texto_principal}</span>,
+      meta: { exportHeader: 'Texto principal', exportValue: (t) => t.texto_principal },
+    },
+    {
+      id: 'status', header: 'Status', accessorFn: (t) => (t.ativo ? 'Ativo' : 'Inativo'),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Switch checked={row.original.ativo} onCheckedChange={() => void ctxTextos.current.alternarAtivo(row.original)} label={`Ativar ${row.original.nome}`} />
+          <StatusChip label={row.original.ativo ? 'Ativo' : 'Inativo'} variant={row.original.ativo ? 'success' : 'neutral'} />
+        </div>
+      ),
+      meta: { exportHeader: 'Status', exportValue: (t) => (t.ativo ? 'Ativo' : 'Inativo') },
+    },
+  ], []);
+
   if (textos === null) return <ScreenState type="loading" title="Carregando textos..." />;
 
   return (
@@ -168,36 +197,14 @@ export const TextosPage: React.FC = () => {
         {textos.length === 0 ? (
           <EmptyState icon={<FileText className="h-8 w-8" />} title="Nenhum modelo de texto" description="Cadastre o texto do certificado para usá-lo no construtor visual." />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome do modelo</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Texto principal</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {textos.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="font-medium">{t.nome}</TableCell>
-                  <TableCell className="text-sm">{t.tipo_certificado || '—'}</TableCell>
-                  <TableCell className="max-w-md truncate text-sm text-muted-foreground" title={t.texto_principal}>{t.texto_principal}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={t.ativo} onCheckedChange={() => void alternarAtivo(t)} label={`Ativar ${t.nome}`} />
-                      <StatusChip label={t.ativo ? 'Ativo' : 'Inativo'} variant={t.ativo ? 'success' : 'neutral'} />
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-right">
-                    <Button size="icon-sm" variant="ghost" aria-label={`Editar ${t.nome}`} onClick={() => editar(t)}><Pencil /></Button>
-                    <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${t.nome}`} onClick={() => setExcluir(t)}><Trash2 /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={textos}
+            emptyText="Nenhum modelo de texto."
+            exportable
+            exportFileName="cursos-modelos-texto"
+            exportTitle="Cursos — Modelos de texto do certificado"
+          />
         )}
       </Card>
 

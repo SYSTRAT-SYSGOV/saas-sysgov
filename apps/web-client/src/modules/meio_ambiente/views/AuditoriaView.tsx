@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Badge, Button, Card, Input, Select } from '@sysgov/ui';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Badge, Button, Card, Input, Select, DataTable } from '@sysgov/ui';
 import { History } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { meioAmbienteApi, erroApi, type RegistroAuditoria, type TipoReferenciaAuditoria, type TrilhaAuditoria } from '../api';
@@ -22,6 +23,49 @@ function formatarValor(valor: unknown): string {
   if (valor === null || valor === undefined) return '—';
   return typeof valor === 'object' ? JSON.stringify(valor) : String(valor);
 }
+
+const textoAlteracoes = (r: RegistroAuditoria) => {
+  const a = camposAlterados(r);
+  return a.length === 0 ? '' : a.map((x) => `${x.campo}: ${formatarValor(x.de)} → ${formatarValor(x.para)}`).join('; ');
+};
+
+const colunasTrilha: ColumnDef<RegistroAuditoria, unknown>[] = [
+  {
+    id: 'data', header: 'Data/hora', accessorKey: 'registrado_em',
+    cell: ({ row }) => <span className="font-mono tabular-nums">{new Date(row.original.registrado_em).toLocaleString('pt-BR')}</span>,
+    meta: { exportHeader: 'Data/hora', exportValue: (r) => new Date(r.registrado_em).toLocaleString('pt-BR') },
+  },
+  { id: 'usuario', header: 'Usuário', accessorFn: (r) => r.usuario?.nome ?? 'Sistema', meta: { exportHeader: 'Usuário', exportValue: (r) => r.usuario?.nome ?? 'Sistema' } },
+  {
+    id: 'acao', header: 'Ação', accessorKey: 'acao',
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2">
+        {row.original.modulo === 'vistoria' && <Badge variant="info">Vistoria</Badge>}
+        <span className="font-mono text-xs">{row.original.acao}</span>
+      </div>
+    ),
+    meta: { exportHeader: 'Ação', exportValue: (r) => r.acao },
+  },
+  {
+    id: 'recurso', header: 'Recurso', accessorKey: 'recurso',
+    cell: ({ row }) => <span className="font-mono text-xs">{row.original.recurso}</span>,
+    meta: { exportHeader: 'Recurso', exportValue: (r) => r.recurso },
+  },
+  {
+    id: 'alteracoes', header: 'Alterações', enableSorting: false,
+    cell: ({ row }) => {
+      const alterados = camposAlterados(row.original);
+      return alterados.length === 0 ? '—' : (
+        <span className="text-xs">
+          {alterados.map((a) => (
+            <div key={a.campo}><span className="font-semibold">{a.campo}</span>: <span className="font-mono">{formatarValor(a.de)}</span> → <span className="font-mono">{formatarValor(a.para)}</span></div>
+          ))}
+        </span>
+      );
+    },
+    meta: { exportHeader: 'Alterações', exportValue: textoAlteracoes },
+  },
+];
 
 /**
  * Trilha de auditoria consolidada de um processo de licenciamento ou de um auto de
@@ -75,44 +119,14 @@ export const AuditoriaView: React.FC = () => {
           {trilha.auditoria.length === 0 ? (
             <EmptyState icon={<History className="h-8 w-8" />} title="Nenhum registro de auditoria" />
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th className="py-2">Data/hora</th>
-                  <th>Usuário</th>
-                  <th>Ação</th>
-                  <th>Recurso</th>
-                  <th>Alterações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trilha.auditoria.map((registro) => {
-                  const alterados = camposAlterados(registro);
-                  return (
-                    <tr key={registro.id} className="border-t align-top">
-                      <td className="py-2 font-mono tabular-nums">{new Date(registro.registrado_em).toLocaleString('pt-BR')}</td>
-                      <td>{registro.usuario?.nome ?? 'Sistema'}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          {registro.modulo === 'vistoria' && <Badge variant="info">Vistoria</Badge>}
-                          <span className="font-mono text-xs">{registro.acao}</span>
-                        </div>
-                      </td>
-                      <td className="font-mono text-xs">{registro.recurso}</td>
-                      <td className="text-xs">
-                        {alterados.length === 0
-                          ? '—'
-                          : alterados.map((a) => (
-                              <div key={a.campo}>
-                                <span className="font-semibold">{a.campo}</span>: <span className="font-mono">{formatarValor(a.de)}</span> → <span className="font-mono">{formatarValor(a.para)}</span>
-                              </div>
-                            ))}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <DataTable
+              columns={colunasTrilha}
+              data={trilha.auditoria}
+              emptyText="Nenhum registro de auditoria."
+              exportable
+              exportFileName={`auditoria-${tipo}-${trilha.referencia.numero}`}
+              exportTitle={`Meio Ambiente — Trilha de auditoria ${trilha.referencia.numero}`}
+            />
           )}
         </Card>
       )}

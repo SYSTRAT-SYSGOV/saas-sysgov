@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Lock, Pencil, Plus, Replace, SlidersHorizontal, Trash2 } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Select, Skeleton, StatusChip, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger } from '@sysgov/ui';
+import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Select, Skeleton, StatusChip, Switch, Tabs, TabsContent, TabsList, TabsTrigger, DataTable } from '@sysgov/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
 import { useCarga } from '../../escola/useCarga';
 import { inservivelApi, type ItemParametro, type TipoParametro } from '../api';
 import type { PropsAba } from '../ModuloInservivelMain';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 
 const TIPOS: { id: TipoParametro; rotulo: string; singular: string }[] = [
   { id: 'situacoes', rotulo: 'Situações', singular: 'situação' },
@@ -26,6 +28,29 @@ export const ParametrosInservivel: React.FC<PropsAba> = ({ avisar }) => {
   const atual = TIPOS.find((t) => t.id === tipo) ?? TIPOS[0];
   const alterou = () => setVersao((v) => v + 1);
 
+  // Colunas estáveis: as ações usam só setters de estado.
+  const colunas = useMemo<ColumnDef<ItemParametro, unknown>[]>(() => [
+    colunaAcoes<ItemParametro>((i) => `Ações de ${i.nome}`, (i) => [
+      { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditar(i) },
+      ...(!i.papel ? [{ key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(i) }] : []),
+    ]),
+    {
+      id: 'nome', header: 'Nome', accessorKey: 'nome',
+      cell: ({ row }) => <span className="flex items-center gap-2">{row.original.papel && <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label="Situação de sistema" />}{row.original.nome}</span>,
+      meta: { exportHeader: 'Nome', exportValue: (i) => i.nome },
+    },
+    {
+      id: 'bens', header: 'Bens', accessorKey: 'bens',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{row.original.bens}</span>,
+      meta: { exportHeader: 'Bens', exportValue: (i) => i.bens },
+    },
+    {
+      id: 'ativo', header: 'Ativo', accessorFn: (i) => (i.ativo ? 'Ativo' : 'Inativo'),
+      cell: ({ row }) => <StatusChip label={row.original.ativo ? 'Ativo' : 'Inativo'} variant={row.original.ativo ? 'success' : 'neutral'} />,
+      meta: { exportHeader: 'Ativo', exportValue: (i) => (i.ativo ? 'Sim' : 'Não') },
+    },
+  ], []);
+
   return (
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
@@ -43,22 +68,14 @@ export const ParametrosInservivel: React.FC<PropsAba> = ({ avisar }) => {
               {t.id !== tipo ? null : lista.erro ? <AlertCard priority="danger" title="Não foi possível carregar" description={lista.erro} /> : !lista.dados ? <Skeleton className="h-48 w-full" /> : (
                 <>
                   {tipo === 'situacoes' && <p className="mb-2 text-xs text-muted-foreground">Situações com cadeado são do sistema: podem ser renomeadas, mas não excluídas nem desativadas. As regras de lote, doação e transferência usam essas situações.</p>}
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead className="text-right">Bens</TableHead><TableHead>Ativo</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {lista.dados.itens.map((i) => (
-                        <TableRow key={i.id}>
-                          <TableCell className="flex items-center gap-2">{i.papel && <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label="Situação de sistema" />}{i.nome}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums">{i.bens}</TableCell>
-                          <TableCell><StatusChip label={i.ativo ? 'Ativo' : 'Inativo'} variant={i.ativo ? 'success' : 'neutral'} /></TableCell>
-                          <TableCell className="whitespace-nowrap text-right">
-                            <Button size="icon-sm" variant="ghost" aria-label={`Editar ${i.nome}`} onClick={() => setEditar(i)}><Pencil /></Button>
-                            {!i.papel && <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${i.nome}`} onClick={() => setExcluir(i)}><Trash2 /></Button>}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <DataTable
+                    columns={colunas}
+                    data={lista.dados.itens}
+                    emptyText="Nenhum item cadastrado."
+                    exportable
+                    exportFileName={`inservivel-${tipo}`}
+                    exportTitle={`Bens inservíveis — ${atual.rotulo}`}
+                  />
                 </>
               )}
             </TabsContent>

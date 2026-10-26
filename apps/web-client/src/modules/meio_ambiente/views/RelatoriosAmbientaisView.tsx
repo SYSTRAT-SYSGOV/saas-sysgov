@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Badge, Button, Card, Input, Select } from '@sysgov/ui';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Badge, Button, Card, Input, Select, DataTable } from '@sysgov/ui';
 import { Download, FileBarChart } from 'lucide-react';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -11,6 +12,7 @@ import {
   type TipoRelatorioAmbiental,
 } from '../api';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 
 const TIPOS_RELATORIO: { value: TipoRelatorioAmbiental; label: string }[] = [
   { value: 'rars', label: 'Relatório Anual de Resíduos Sólidos (RARS)' },
@@ -76,6 +78,31 @@ export const RelatoriosAmbientaisView: React.FC = () => {
     }
   };
 
+  // Colunas estáveis; o handler atual de exportação vem por ref.
+  const ctx = useRef({ exportar });
+  ctx.current = { exportar };
+  const colunas = useMemo<ColumnDef<RelatorioAmbientalResumo, unknown>[]>(() => [
+    colunaAcoes<RelatorioAmbientalResumo>((r) => `Ações do ${ROTULO_TIPO[r.tipo]} ${r.exercicio}`, (r) => FORMATOS.map((formato) => ({
+      key: formato, label: `Exportar ${formato.toUpperCase()}`, icon: <Download className="h-3.5 w-3.5" />, onSelect: () => void ctx.current.exportar(r, formato),
+    }))),
+    {
+      id: 'relatorio', header: 'Relatório', accessorFn: (r) => ROTULO_TIPO[r.tipo],
+      cell: ({ row }) => <Badge variant="outline">{ROTULO_TIPO[row.original.tipo]}</Badge>,
+      meta: { exportHeader: 'Relatório', exportValue: (r) => ROTULO_TIPO[r.tipo] },
+    },
+    {
+      id: 'exercicio', header: 'Exercício', accessorKey: 'exercicio',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.exercicio}</span>,
+      meta: { exportHeader: 'Exercício', exportValue: (r) => r.exercicio },
+    },
+    {
+      id: 'gerado', header: 'Gerado em', accessorKey: 'gerado_em',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{new Date(row.original.gerado_em).toLocaleString('pt-BR')}</span>,
+      meta: { exportHeader: 'Gerado em', exportValue: (r) => new Date(r.gerado_em).toLocaleString('pt-BR') },
+    },
+    { id: 'por', header: 'Por', accessorFn: (r) => r.gerado_por ?? '—', meta: { exportHeader: 'Por', exportValue: (r) => r.gerado_por ?? '' } },
+  ], []);
+
   if (carregando) {
     return <ScreenState type="loading" />;
   }
@@ -108,37 +135,14 @@ export const RelatoriosAmbientaisView: React.FC = () => {
         {relatorios.length === 0 ? (
           <EmptyState icon={<FileBarChart className="h-8 w-8" />} title="Nenhum relatório gerado ainda" />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-muted-foreground">
-                <th className="py-2">Relatório</th>
-                <th>Exercício</th>
-                <th>Gerado em</th>
-                <th>Por</th>
-                <th className="text-right">Exportar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {relatorios.map((r) => (
-                <tr key={r.id} className="border-t">
-                  <td className="py-2"><Badge variant="outline">{ROTULO_TIPO[r.tipo]}</Badge></td>
-                  <td className="font-mono tabular-nums">{r.exercicio}</td>
-                  <td className="font-mono tabular-nums">{new Date(r.gerado_em).toLocaleString('pt-BR')}</td>
-                  <td>{r.gerado_por ?? '—'}</td>
-                  <td>
-                    <div className="flex justify-end gap-2">
-                      {FORMATOS.map((formato) => (
-                        <Button key={formato} size="sm" variant="outline" onClick={() => exportar(r, formato)} aria-label={`Exportar ${ROTULO_TIPO[r.tipo]} ${r.exercicio} em ${formato.toUpperCase()}`}>
-                          <Download className="mr-1 h-3 w-3" />
-                          {formato.toUpperCase()}
-                        </Button>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={colunas}
+            data={relatorios}
+            emptyText="Nenhum relatório gerado."
+            exportable
+            exportFileName="meio-ambiente-relatorios-gerados"
+            exportTitle="Meio Ambiente — Relatórios gerados"
+          />
         )}
       </Card>
     </div>

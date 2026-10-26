@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import {
   Network,
   Plus,
@@ -27,20 +28,7 @@ import {
   Download,
   Filter,
 } from 'lucide-react';
-import {
-  KpiCard,
-  Button,
-  AlertCard,
-  OrgTreeNodeCard,
-  OrgScopeIndicator,
-  OrgTypeBadge,
-  StatusChip,
-  Dialog,
-  Field,
-  Card,
-  Badge,
-  Accordion,
-} from '@/components/ui';
+import { KpiCard, Button, AlertCard, OrgTreeNodeCard, OrgScopeIndicator, OrgTypeBadge, StatusChip, Dialog, Field, Card, Badge, Accordion, DataTable } from '@/components/ui';
 import {
   sysgovApi,
   type OrgUnitTreeNode,
@@ -56,6 +44,7 @@ import { useTenant } from '@/core/tenant/useTenant';
 import { useCan } from '@/core/rbac/useCan';
 import { apiClient } from '@/core/api/client';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 
 type ViewMode = 'tree' | 'table' | 'cards';
 
@@ -907,6 +896,68 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
     );
   };
 
+  // Colunas estáveis da visão em tabela; os handlers atuais vêm por ref.
+  const ctx = useRef({ handleOpenEditModal, handleOpenMoveModal, handleOpenUsersModal });
+  ctx.current = { handleOpenEditModal, handleOpenMoveModal, handleOpenUsersModal };
+  const colunasUnidades = useMemo<ColumnDef<OrgUnitTreeNode, unknown>[]>(() => [
+    colunaAcoes<OrgUnitTreeNode>((u) => `Ações de ${u.name}`, (u) => [
+      { key: 'editar', label: 'Editar', icon: <Edit3 className="h-3.5 w-3.5" />, onSelect: () => ctx.current.handleOpenEditModal(u) },
+      ...(u.level > 1 ? [{ key: 'mover', label: 'Mover', icon: <Move className="h-3.5 w-3.5" />, onSelect: () => ctx.current.handleOpenMoveModal(u) }] : []),
+      { key: 'servidores', label: 'Servidores', icon: <UserPlus className="h-3.5 w-3.5" />, onSelect: () => ctx.current.handleOpenUsersModal(u) },
+    ]),
+    {
+      id: 'codigo', header: 'Código', accessorKey: 'code',
+      cell: ({ row }) => <span className="font-mono text-xs font-bold text-primary tabular-nums">{row.original.code}</span>,
+      meta: { exportHeader: 'Código', exportValue: (u) => u.code },
+    },
+    {
+      id: 'unidade', header: 'Unidade / Nome Oficial', accessorKey: 'name',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-muted-foreground" style={{ paddingLeft: `${(row.original.level - 1) * 16}px` }}>{row.original.level > 1 ? '↳' : '•'}</span>
+          <span className="font-bold text-foreground">{row.original.name}</span>
+          {row.original.acronym && <span className="font-mono text-xs text-muted-foreground bg-accent px-1.5 py-0.5 rounded">{row.original.acronym}</span>}
+        </div>
+      ),
+      meta: { exportHeader: 'Unidade', exportValue: (u) => (u.acronym ? `${u.name} (${u.acronym})` : u.name) },
+    },
+    {
+      id: 'tipo', header: 'Tipo', accessorKey: 'type',
+      cell: ({ row }) => <OrgTypeBadge type={row.original.type} />,
+      meta: { exportHeader: 'Tipo', exportValue: (u) => u.type },
+    },
+    {
+      id: 'nivel', header: 'Nível', accessorKey: 'level',
+      cell: ({ row }) => <span className="font-mono text-xs font-bold text-muted-foreground tabular-nums">Nível {row.original.level}</span>,
+      meta: { exportHeader: 'Nível', exportValue: (u) => u.level },
+    },
+    {
+      id: 'path', header: 'Path', accessorKey: 'path',
+      cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground tabular-nums">{row.original.path}</span>,
+      meta: { exportHeader: 'Path', exportValue: (u) => u.path },
+    },
+    {
+      id: 'gestor', header: 'Gestor Responsável', accessorFn: (u) => u.responsibles?.[0]?.name ?? 'Não vinculado',
+      cell: ({ row }) => {
+        const gestor = row.original.responsibles?.[0];
+        return gestor ? (
+          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-success"><span className="w-2 h-2 rounded-full bg-success" /><span>{gestor.name}</span></div>
+        ) : <span className="text-xs text-muted-foreground italic">Não vinculado</span>;
+      },
+      meta: { exportHeader: 'Gestor Responsável', exportValue: (u) => u.responsibles?.[0]?.name ?? '' },
+    },
+    {
+      id: 'servidores', header: 'Servidores', accessorFn: (u) => u.users_count || 0,
+      cell: ({ row }) => <span className="font-mono text-xs font-bold text-muted-foreground tabular-nums">{row.original.users_count || 0}</span>,
+      meta: { exportHeader: 'Servidores', exportValue: (u) => u.users_count || 0 },
+    },
+    {
+      id: 'status', header: 'Status', accessorFn: (u) => (u.is_active ? 'Ativo' : 'Inativo'),
+      cell: ({ row }) => <StatusChip label={row.original.is_active ? 'Ativo' : 'Inativo'} variant={row.original.is_active ? 'success' : 'neutral'} />,
+      meta: { exportHeader: 'Status', exportValue: (u) => (u.is_active ? 'Ativo' : 'Inativo') },
+    },
+  ], []);
+
   return (
     <div className="space-y-6 pb-20">
       {modalValidacao}
@@ -1229,109 +1280,14 @@ const gestorTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null
       {/* VISÃO 2: TABELA ESTRUTURADA ANALÍTICA */}
       {viewMode === 'table' && (
         <Card className="gap-0 py-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-muted/40 border-b border-border text-muted-foreground text-xs font-mono font-bold uppercase tracking-wider">
-                  <th className="py-4 px-5 text-center">Código</th>
-                  <th className="py-4 px-5 text-center">Unidade / Nome Oficial</th>
-                  <th className="py-4 px-5 text-center">Tipo</th>
-                  <th className="py-4 px-5 text-center">Nível</th>
-                  <th className="py-4 px-5 text-center">Path</th>
-                  <th className="py-4 px-5 text-center">Gestor Responsável</th>
-                  <th className="py-4 px-5 text-center">Servidores</th>
-                  <th className="py-4 px-5 text-center">Status</th>
-                  <th className="py-4 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredFlatUnits.map((u) => {
-                  const gestor = u.responsibles?.[0];
-                  return (
-                    <tr key={u.id} className="hover:bg-accent/40 transition-colors">
-                      <td className="py-3.5 px-5 font-mono text-xs font-bold text-primary tabular-nums text-center">
-                        {u.code}
-                      </td>
-                      <td className="py-3.5 px-5 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <span
-                            className="text-xs font-mono text-muted-foreground"
-                            style={{ paddingLeft: `${(u.level - 1) * 16}px` }}
-                          >
-                            {u.level > 1 ? '↳' : '•'}
-                          </span>
-                          <span className="font-bold text-foreground">{u.name}</span>
-                          {u.acronym && (
-                            <span className="font-mono text-xs text-muted-foreground bg-accent px-1.5 py-0.5 rounded">
-                              {u.acronym}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-5 text-center">
-                        <OrgTypeBadge type={u.type} />
-                      </td>
-                      <td className="py-3.5 px-5 font-mono text-xs font-bold text-muted-foreground tabular-nums text-center">
-                        Nível {u.level}
-                      </td>
-                      <td className="py-3.5 px-5 font-mono text-xs text-muted-foreground tabular-nums text-center">
-                        {u.path}
-                      </td>
-                      <td className="py-3.5 px-5 text-center">
-                        {gestor ? (
-                          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-success">
-                            <span className="w-2 h-2 rounded-full bg-success" />
-                            <span>{gestor.name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">Não vinculado</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-5 text-center font-mono text-xs font-bold text-muted-foreground tabular-nums">
-                        {u.users_count || 0}
-                      </td>
-                      <td className="py-3.5 px-5 text-center">
-                        <StatusChip
-                          label={u.is_active ? 'Ativo' : 'Inativo'}
-                          variant={u.is_active ? 'success' : 'neutral'}
-                        />
-                      </td>
-                      <td className="py-3.5 px-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(u)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-warning hover:bg-warning/10"
-                            title="Editar"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          {u.level > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenMoveModal(u)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
-                              title="Mover"
-                            >
-                              <Move className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenUsersModal(u)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
-                            title="Servidores"
-                          >
-                            <UserPlus className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={colunasUnidades}
+            data={filteredFlatUnits}
+            emptyText="Nenhuma unidade encontrada."
+            exportable
+            exportFileName="organograma-unidades"
+            exportTitle="Organograma — Unidades"
+          />
         </Card>
       )}
 

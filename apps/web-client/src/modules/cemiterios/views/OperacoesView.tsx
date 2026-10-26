@@ -567,6 +567,8 @@ const InumacoesView: React.FC<InumacoesViewProps> = ({
         pageSizeOptions={[10, 25, 50, 100]}
         pageSizeSelector={true}
         emptyText="Nenhuma inumação encontrada."
+        exportFileName="cemiterios-inumacoes"
+        exportTitle="Cemitérios — Inumações"
       />
 
       <ConfirmDialog
@@ -668,6 +670,8 @@ const ExumacoesView: React.FC = () => {
         pageSizeOptions={[10, 25, 50]}
         pageSizeSelector={true}
         emptyText="Nenhuma exumação registrada."
+        exportFileName="cemiterios-exumacoes"
+        exportTitle="Cemitérios — Exumações"
       />
     </div>
   );

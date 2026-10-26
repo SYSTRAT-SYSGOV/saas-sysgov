@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, Building2, Eye, Plus, Search } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Select, Skeleton, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Select, Skeleton, StatusChip, DataTable } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { useCarga } from '../../escola/useCarga';
-import { inservivelApi, type DadosEntidade, type StatusEntidade } from '../api';
+import { inservivelApi, type DadosEntidade, type EntidadeResumo, type StatusEntidade } from '../api';
 import { formatarCnpj, formatarData, ROTULO_STATUS_ENTIDADE, VARIANTE_STATUS_ENTIDADE } from '../formato';
 import type { PropsAba } from '../ModuloInservivelMain';
 import { CamposEntidadeForm, FORM_ENTIDADE_VAZIO, paraDadosEntidade, type FormEntidade } from './CamposEntidadeForm';
-import { Paginacao } from './Comuns';
 import { EntidadeFicha } from './EntidadeFicha';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 
 /** Gestão das entidades sem fins lucrativos (spec: Entidades sem fins lucrativos). */
 export const EntidadesInservivel: React.FC<PropsAba> = ({ avisar, parametro, limparParametro }) => {
@@ -21,13 +22,51 @@ export const EntidadesInservivel: React.FC<PropsAba> = ({ avisar, parametro, lim
   const [versao, setVersao] = useState(0);
   const [ficha, setFicha] = useState<number | null>(null);
   const [cadastrar, setCadastrar] = useState(false);
-  const lista = useCarga(() => inservivelApi.entidades({ q: aplicada || undefined, status: (status || undefined) as StatusEntidade | undefined, page: pagina }), [aplicada, status, pagina, versao]);
+  const [porPagina, setPorPagina] = useState(15);
+  const lista = useCarga(() => inservivelApi.entidades({ q: aplicada || undefined, status: (status || undefined) as StatusEntidade | undefined, page: pagina, per_page: porPagina }), [aplicada, status, pagina, porPagina, versao]);
 
   useEffect(() => {
     const id = parametro('entidade');
     if (id) { setFicha(Number(id)); limparParametro('entidade'); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Colunas estáveis: a única ação (abrir a ficha) usa o setter de estado.
+  const colunas = useMemo<ColumnDef<EntidadeResumo, unknown>[]>(() => [
+    colunaAcoes<EntidadeResumo>((e) => `Ações de ${e.razao_social}`, (e) => [{ key: 'ficha', label: 'Abrir ficha', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => setFicha(e.id) }]),
+    {
+      id: 'entidade', header: 'Entidade', accessorKey: 'razao_social',
+      cell: ({ row }) => (
+        <div>
+          <p className="font-medium">{row.original.razao_social}</p><p className="text-xs text-muted-foreground">{row.original.nome_fantasia}</p>
+          {row.original.bloqueada_por_documento && <p className="flex items-center gap-1 text-xs text-destructive"><AlertTriangle className="h-3.5 w-3.5" />Documento vencido</p>}
+        </div>
+      ),
+      meta: { exportHeader: 'Entidade', exportValue: (e) => e.razao_social },
+    },
+    {
+      id: 'cnpj', header: 'CNPJ', accessorKey: 'cnpj',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{formatarCnpj(row.original.cnpj)}</span>,
+      meta: { exportHeader: 'CNPJ', exportValue: (e) => formatarCnpj(e.cnpj) },
+    },
+    { id: 'representante', header: 'Representante', accessorKey: 'representante_legal', meta: { exportHeader: 'Representante', exportValue: (e) => e.representante_legal } },
+    { id: 'cidade', header: 'Cidade', accessorFn: (e) => `${e.cidade}/${e.uf}`, meta: { exportHeader: 'Cidade', exportValue: (e) => `${e.cidade}/${e.uf}` } },
+    {
+      id: 'status', header: 'Status', accessorKey: 'status_rotulo',
+      cell: ({ row }) => <StatusChip label={row.original.status_rotulo} variant={VARIANTE_STATUS_ENTIDADE[row.original.status]} />,
+      meta: { exportHeader: 'Status', exportValue: (e) => e.status_rotulo },
+    },
+    {
+      id: 'lotes', header: 'Lotes', accessorKey: 'lotes_ganhos',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{row.original.lotes_ganhos}</span>,
+      meta: { exportHeader: 'Lotes', exportValue: (e) => e.lotes_ganhos },
+    },
+    {
+      id: 'cadastro', header: 'Cadastro', accessorKey: 'created_at',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{formatarData(row.original.created_at)}</span>,
+      meta: { exportHeader: 'Cadastro', exportValue: (e) => formatarData(e.created_at) },
+    },
+  ], []);
 
   if (ficha !== null) return <EntidadeFicha entidadeId={ficha} avisar={avisar} onVoltar={() => { setFicha(null); setVersao((v) => v + 1); }} />;
 
@@ -47,27 +86,20 @@ export const EntidadesInservivel: React.FC<PropsAba> = ({ avisar, parametro, lim
         {lista.erro && <AlertCard priority="danger" title="Não foi possível carregar as entidades" description={lista.erro} actionLabel="Tentar novamente" onAction={() => void lista.recarregar()} />}
         {!lista.dados && !lista.erro && <Skeleton className="h-64 w-full" />}
         {lista.dados && (lista.dados.data.length === 0 ? <EmptyState icon={<Building2 className="h-8 w-8" />} title="Nenhuma entidade" description="As entidades se cadastram pela página pública (link em Configurações) ou são cadastradas aqui." /> : (
-          <>
-            <Table>
-              <TableHeader><TableRow><TableHead>Entidade</TableHead><TableHead>CNPJ</TableHead><TableHead>Representante</TableHead><TableHead>Cidade</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Lotes</TableHead><TableHead>Cadastro</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {lista.dados.data.map((e) => (
-                  <TableRow key={e.id}>
-                    <TableCell><p className="font-medium">{e.razao_social}</p><p className="text-xs text-muted-foreground">{e.nome_fantasia}</p>
-                      {e.bloqueada_por_documento && <p className="flex items-center gap-1 text-xs text-destructive"><AlertTriangle className="h-3.5 w-3.5" />Documento vencido</p>}</TableCell>
-                    <TableCell className="font-mono tabular-nums">{formatarCnpj(e.cnpj)}</TableCell>
-                    <TableCell className="text-sm">{e.representante_legal}</TableCell>
-                    <TableCell className="text-sm">{e.cidade}/{e.uf}</TableCell>
-                    <TableCell><StatusChip label={e.status_rotulo} variant={VARIANTE_STATUS_ENTIDADE[e.status]} /></TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{e.lotes_ganhos}</TableCell>
-                    <TableCell className="font-mono tabular-nums">{formatarData(e.created_at)}</TableCell>
-                    <TableCell className="text-right"><Button size="icon-sm" variant="ghost" aria-label={`Abrir ficha de ${e.razao_social}`} onClick={() => setFicha(e.id)}><Eye /></Button></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <Paginacao pagina={lista.dados.meta.current_page} ultima={lista.dados.meta.last_page} total={lista.dados.meta.total} onMudar={setPagina} />
-          </>
+          <DataTable
+            columns={colunas}
+            data={lista.dados.data}
+            emptyText="Nenhuma entidade."
+            pageSizeOptions={[15, 30, 50, 100]}
+            paginationState={{
+              currentPage: lista.dados.meta.current_page,
+              totalPages: lista.dados.meta.last_page,
+              onPageChange: setPagina,
+              total: lista.dados.meta.total,
+              perPage: porPagina,
+              onPerPageChange: (n) => { setPorPagina(n); setPagina(1); },
+            }}
+          />
         ))}
       </CardContent>
       <CadastrarEntidadeModal aberto={cadastrar} onFechar={() => setCadastrar(false)}

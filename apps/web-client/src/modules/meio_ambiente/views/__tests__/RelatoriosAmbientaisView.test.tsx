@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { acionarMenu } from '@/test-utils/acoesMenu';
 import { RelatoriosAmbientaisView } from '../RelatoriosAmbientaisView';
 import { meioAmbienteApi, type RelatorioAmbientalResumo } from '../../api';
 
@@ -25,7 +26,7 @@ describe('RelatoriosAmbientaisView', () => {
 
     await waitFor(() => expect(screen.getByText('Inventário GEE')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Exportar Inventário GEE 2025 em PDF' }));
+    await acionarMenu(/Ações do Inventário GEE 2025/, 'Exportar PDF');
 
     await waitFor(() => expect(meioAmbienteApi.exportarRelatorioAmbiental).toHaveBeenCalledWith(relatorioGee, 'pdf'));
   });

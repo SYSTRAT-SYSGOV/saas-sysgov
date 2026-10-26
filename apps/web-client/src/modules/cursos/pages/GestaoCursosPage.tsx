@@ -110,6 +110,7 @@ export const GestaoCursosPage: React.FC<Props> = ({ onAbrirCurso }) => {
                 onRowClick={(c) => onAbrirCurso(c.id)}
                 exportable
                 exportFileName="cursos"
+                exportTitle="Cursos"
               />
             </>
           )}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Check, ClipboardCheck, FileText, X } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Modal, Skeleton, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger } from '@sysgov/ui';
+import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Modal, Skeleton, StatusChip, Tabs, TabsContent, TabsList, TabsTrigger, DataTable } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -10,6 +11,7 @@ import { abrirArquivo, formatarDataHora, rotuloUnidade, VARIANTE_TRANSFERENCIA }
 import type { PropsAba } from '../ModuloInservivelMain';
 import { CampoTexto } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 
 /** Solicitações de transferência — só o Patrimônio vê e decide (spec: Transferência interna entre secretarias). */
 export const SolicitacoesTransferencia: React.FC<PropsAba> = ({ avisar }) => {
@@ -22,33 +24,58 @@ export const SolicitacoesTransferencia: React.FC<PropsAba> = ({ avisar }) => {
 
   const termo = (t: Transferencia) => void inservivelApi.termoTransferencia(t.id).then(abrirArquivo).catch((e) => avisar({ type: 'error', title: 'Não foi possível abrir o termo', message: erroApi(e).mensagem }));
 
+  // Colunas estáveis; o handler do termo vem por ref.
+  const ctx = useRef({ termo });
+  ctx.current = { termo };
+  const colunas = useMemo<ColumnDef<Transferencia, unknown>[]>(() => [
+    colunaAcoes<Transferencia>((t) => `Ações da transferência de ${t.bem.numero_patrimonial}`, (t) => [
+      ...(t.pode_decidir ? [
+        { key: 'aprovar', label: 'Aprovar', icon: <Check className="h-3.5 w-3.5" />, onSelect: () => setAprovar(t) },
+        { key: 'recusar', label: 'Recusar', icon: <X className="h-3.5 w-3.5" />, onSelect: () => setRecusar(t) },
+      ] : []),
+      ...(t.status === 'aceito' ? [{ key: 'termo', label: 'Termo', icon: <FileText className="h-3.5 w-3.5" />, onSelect: () => ctx.current.termo(t) }] : []),
+    ]),
+    {
+      id: 'bem', header: 'Bem', accessorFn: (t) => t.bem.numero_patrimonial,
+      cell: ({ row }) => <span><span className="font-mono tabular-nums">{row.original.bem.numero_patrimonial}</span><p className="max-w-xs truncate text-sm">{row.original.bem.descricao}</p></span>,
+      meta: { exportHeader: 'Bem', exportValue: (t) => `${t.bem.numero_patrimonial} — ${t.bem.descricao}` },
+    },
+    {
+      id: 'de', header: 'De', accessorFn: (t) => rotuloUnidade(t.origem),
+      cell: ({ row }) => <span className="text-sm">{rotuloUnidade(row.original.origem)}<p className="text-xs text-muted-foreground">{row.original.anunciado_por}</p></span>,
+      meta: { exportHeader: 'De', exportValue: (t) => rotuloUnidade(t.origem) },
+    },
+    {
+      id: 'para', header: 'Para', accessorFn: (t) => rotuloUnidade(t.destino),
+      cell: ({ row }) => <span className="text-sm">{rotuloUnidade(row.original.destino)}<p className="text-xs text-muted-foreground">{row.original.solicitado_por}</p></span>,
+      meta: { exportHeader: 'Para', exportValue: (t) => rotuloUnidade(t.destino) },
+    },
+    {
+      id: 'solicitado', header: 'Solicitado', accessorKey: 'data_solicitacao',
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{formatarDataHora(row.original.data_solicitacao)}</span>,
+      meta: { exportHeader: 'Solicitado', exportValue: (t) => formatarDataHora(t.data_solicitacao) },
+    },
+    {
+      id: 'status', header: 'Status', accessorKey: 'status_rotulo',
+      cell: ({ row }) => <span><StatusChip label={row.original.status_rotulo} variant={VARIANTE_TRANSFERENCIA[row.original.status]} />{row.original.decidido_por && <p className="text-xs text-muted-foreground">por {row.original.decidido_por}</p>}</span>,
+      meta: { exportHeader: 'Status', exportValue: (t) => t.status_rotulo },
+    },
+  ], []);
+
   const corpo = () => {
     if (lista.erro) return <AlertCard priority="danger" title="Não foi possível carregar" description={lista.erro} actionLabel="Tentar novamente" onAction={() => void lista.recarregar()} />;
     if (!lista.dados) return <Skeleton className="h-64 w-full" />;
     const itens = lista.dados.transferencias;
     if (itens.length === 0) return <EmptyState icon={<ClipboardCheck className="h-8 w-8" />} title={escopo === 'solicitacoes' ? 'Nenhuma solicitação pendente' : 'Nenhuma transferência'} />;
     return (
-      <Table>
-        <TableHeader><TableRow><TableHead>Bem</TableHead><TableHead>De</TableHead><TableHead>Para</TableHead><TableHead>Solicitado</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-        <TableBody>
-          {itens.map((t) => (
-            <TableRow key={t.id}>
-              <TableCell><span className="font-mono tabular-nums">{t.bem.numero_patrimonial}</span><p className="max-w-xs truncate text-sm">{t.bem.descricao}</p></TableCell>
-              <TableCell className="text-sm">{rotuloUnidade(t.origem)}<p className="text-xs text-muted-foreground">{t.anunciado_por}</p></TableCell>
-              <TableCell className="text-sm">{rotuloUnidade(t.destino)}<p className="text-xs text-muted-foreground">{t.solicitado_por}</p></TableCell>
-              <TableCell className="font-mono text-sm tabular-nums">{formatarDataHora(t.data_solicitacao)}</TableCell>
-              <TableCell><StatusChip label={t.status_rotulo} variant={VARIANTE_TRANSFERENCIA[t.status]} />{t.decidido_por && <p className="text-xs text-muted-foreground">por {t.decidido_por}</p>}</TableCell>
-              <TableCell className="whitespace-nowrap text-right">
-                {t.pode_decidir && (<>
-                  <Button size="sm" leftIcon={<Check className="h-4 w-4" />} onClick={() => setAprovar(t)}>Aprovar</Button>
-                  <Button size="sm" variant="outline" leftIcon={<X className="h-4 w-4" />} onClick={() => setRecusar(t)} className="ml-1">Recusar</Button>
-                </>)}
-                {t.status === 'aceito' && <Button size="sm" variant="outline" leftIcon={<FileText className="h-4 w-4" />} onClick={() => termo(t)}>Termo</Button>}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={colunas}
+        data={itens}
+        emptyText="Nenhuma transferência."
+        exportable
+        exportFileName={`inservivel-transferencias-${escopo}`}
+        exportTitle="Bens inservíveis — Solicitações de transferência"
+      />
     );
   };
 
