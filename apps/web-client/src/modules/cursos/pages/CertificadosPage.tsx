@@ -78,7 +78,7 @@ export const CertificadosPage: React.FC = () => {
       {carregando && certificados.length === 0 ? (
         <ScreenState type="loading" title="Carregando certificados..." />
       ) : (
-        <DataTable columns={colunas} data={certificados} emptyText="Nenhum certificado emitido." exportable exportFileName="certificados" />
+        <DataTable columns={colunas} data={certificados} emptyText="Nenhum certificado emitido." exportable exportFileName="certificados" exportTitle="Cursos — Certificados emitidos" />
       )}
       <ConfirmDialog
         open={revogando !== null}

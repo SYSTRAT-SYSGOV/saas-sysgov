@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Eye, FileImage, Trash2, Upload } from 'lucide-react';
-import { Button, Card, Input, Select, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { Button, Card, Input, Select, Switch, DataTable } from '@sysgov/ui';
 import { sysgovApi, type FundoCertificado } from '@sysgov/sdk';
 import { ConfirmDialog, EmptyState, ScreenState, StatusChip } from '@/components/ui';
 import { getApiErrorMessage } from '@/lib/apiErrors';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { prepararFundo } from '../construtor/pdfParaImagem';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
@@ -71,6 +73,37 @@ export const FundosPage: React.FC = () => {
     }
   };
 
+  // Colunas estáveis (o switch não remonta ao gravar); o handler atual vem por ref.
+  const ctx = useRef({ alternarAtivo });
+  ctx.current = { alternarAtivo };
+  const colunas = useMemo<ColumnDef<FundoCertificado, unknown>[]>(() => [
+    colunaAcoes<FundoCertificado>((f) => `Ações de ${f.nome}`, (f) => [
+      { key: 'ver', label: 'Visualizar', icon: <Eye className="h-3.5 w-3.5" />, onSelect: () => window.open(f.imagem_url, '_blank') },
+      { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(f) },
+    ]),
+    {
+      id: 'nome', header: 'Nome', accessorKey: 'nome',
+      cell: ({ row }) => <div><div className="font-medium">{row.original.nome}</div>{row.original.descricao && <div className="text-xs text-muted-foreground">{row.original.descricao}</div>}</div>,
+      meta: { exportHeader: 'Nome', exportValue: (f) => f.nome },
+    },
+    { id: 'pagina', header: 'Página', accessorFn: (f) => (f.orientacao === 'paisagem' ? 'Horizontal' : 'Vertical'), meta: { exportHeader: 'Página', exportValue: (f) => (f.orientacao === 'paisagem' ? 'Horizontal' : 'Vertical') } },
+    {
+      id: 'status', header: 'Status', accessorFn: (f) => (f.ativo ? 'Ativo' : 'Inativo'),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Switch checked={row.original.ativo} onCheckedChange={() => void ctx.current.alternarAtivo(row.original)} label={`Ativar ${row.original.nome}`} />
+          <StatusChip label={row.original.ativo ? 'Ativo' : 'Inativo'} variant={row.original.ativo ? 'success' : 'neutral'} />
+        </div>
+      ),
+      meta: { exportHeader: 'Status', exportValue: (f) => (f.ativo ? 'Ativo' : 'Inativo') },
+    },
+    {
+      id: 'data', header: 'Data', accessorKey: 'created_at',
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.created_at ? new Date(row.original.created_at).toLocaleDateString('pt-BR') : '—'}</span>,
+      meta: { exportHeader: 'Data', exportValue: (f) => (f.created_at ? new Date(f.created_at).toLocaleDateString('pt-BR') : '') },
+    },
+  ], []);
+
   if (fundos === null) return <ScreenState type="loading" title="Carregando fundos..." />;
 
   return (
@@ -98,39 +131,14 @@ export const FundosPage: React.FC = () => {
         {fundos.length === 0 ? (
           <EmptyState icon={<FileImage className="h-8 w-8" />} title="Nenhum fundo cadastrado" description="Cadastre a arte do certificado para usá-la no construtor visual." />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Página</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fundos.map((f) => (
-                <TableRow key={f.id}>
-                  <TableCell>
-                    <div className="font-medium">{f.nome}</div>
-                    {f.descricao && <div className="text-xs text-muted-foreground">{f.descricao}</div>}
-                  </TableCell>
-                  <TableCell className="text-sm">{f.orientacao === 'paisagem' ? 'Horizontal' : 'Vertical'}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={f.ativo} onCheckedChange={() => void alternarAtivo(f)} label={`Ativar ${f.nome}`} />
-                      <StatusChip label={f.ativo ? 'Ativo' : 'Inativo'} variant={f.ativo ? 'success' : 'neutral'} />
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm tabular-nums">{f.created_at ? new Date(f.created_at).toLocaleDateString('pt-BR') : '—'}</TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="outline" onClick={() => window.open(f.imagem_url, '_blank')}><Eye className="h-4 w-4" /> Visualizar</Button>{' '}
-                    <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${f.nome}`} onClick={() => setExcluir(f)}><Trash2 /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={fundos}
+            emptyText="Nenhum fundo."
+            exportable
+            exportFileName="cursos-fundos"
+            exportTitle="Cursos — Fundos de certificado"
+          />
         )}
       </Card>
 

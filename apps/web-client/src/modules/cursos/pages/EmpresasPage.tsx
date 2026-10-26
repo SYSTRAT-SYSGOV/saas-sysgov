@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Building2, Pencil, Save, Trash2, X } from 'lucide-react';
-import { Button, Card, Input, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { Button, Card, Input, Switch, DataTable } from '@sysgov/ui';
 import { sysgovApi, type EmpresaCursos, type EmpresaCursosInput } from '@sysgov/sdk';
 import { ConfirmDialog, EmptyState, ScreenState, StatusChip } from '@/components/ui';
 import { getApiErrorMessage } from '@/lib/apiErrors';
+import { colunaAcoes } from '@/lib/colunaAcoes';
 import { ErroFormulario } from '../components/ErroFormulario';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
@@ -95,6 +97,29 @@ export const EmpresasPage: React.FC = () => {
     }
   };
 
+  // Colunas estáveis (o switch não remonta ao gravar); os handlers atuais vêm por ref.
+  const ctx = useRef({ editar, alternarAtiva });
+  ctx.current = { editar, alternarAtiva };
+  const colunas = useMemo<ColumnDef<EmpresaCursos, unknown>[]>(() => [
+    colunaAcoes<EmpresaCursos>((e) => `Ações de ${e.razao_social}`, (e) => [
+      { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => ctx.current.editar(e) },
+      { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(e) },
+    ]),
+    { id: 'razao', header: 'Razão social', accessorKey: 'razao_social', cell: ({ row }) => <span className="font-medium">{row.original.razao_social}</span>, meta: { exportHeader: 'Razão social', exportValue: (e) => e.razao_social } },
+    { id: 'fantasia', header: 'Nome fantasia', accessorFn: (e) => e.nome_fantasia ?? '', cell: ({ row }) => <span className="text-sm">{row.original.nome_fantasia || '—'}</span>, meta: { exportHeader: 'Nome fantasia', exportValue: (e) => e.nome_fantasia ?? '' } },
+    { id: 'cnpj', header: 'CNPJ', accessorFn: (e) => formatarCnpj(e.cnpj), cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{formatarCnpj(row.original.cnpj) || '—'}</span>, meta: { exportHeader: 'CNPJ', exportValue: (e) => formatarCnpj(e.cnpj) } },
+    {
+      id: 'status', header: 'Status', accessorFn: (e) => (e.ativa ? 'Ativa' : 'Inativa'),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Switch checked={row.original.ativa} onCheckedChange={() => void ctx.current.alternarAtiva(row.original)} label={`Ativar ${row.original.razao_social}`} />
+          <StatusChip label={row.original.ativa ? 'Ativa' : 'Inativa'} variant={row.original.ativa ? 'success' : 'neutral'} />
+        </div>
+      ),
+      meta: { exportHeader: 'Status', exportValue: (e) => (e.ativa ? 'Ativa' : 'Inativa') },
+    },
+  ], []);
+
   if (empresas === null) return <ScreenState type="loading" title="Carregando empresas..." />;
 
   return (
@@ -127,36 +152,14 @@ export const EmpresasPage: React.FC = () => {
         {empresas.length === 0 ? (
           <EmptyState icon={<Building2 className="h-8 w-8" />} title="Nenhuma empresa" description="Cadastre as empresas que enviam participantes; elas saem em {EMPRESA} e {CNPJ} no certificado." />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Razão social</TableHead>
-                <TableHead>Nome fantasia</TableHead>
-                <TableHead>CNPJ</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {empresas.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell className="font-medium">{e.razao_social}</TableCell>
-                  <TableCell className="text-sm">{e.nome_fantasia || '—'}</TableCell>
-                  <TableCell className="font-mono text-sm tabular-nums">{formatarCnpj(e.cnpj) || '—'}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={e.ativa} onCheckedChange={() => void alternarAtiva(e)} label={`Ativar ${e.razao_social}`} />
-                      <StatusChip label={e.ativa ? 'Ativa' : 'Inativa'} variant={e.ativa ? 'success' : 'neutral'} />
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-right">
-                    <Button size="icon-sm" variant="ghost" aria-label={`Editar ${e.razao_social}`} onClick={() => editar(e)}><Pencil /></Button>
-                    <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${e.razao_social}`} onClick={() => setExcluir(e)}><Trash2 /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={empresas}
+            emptyText="Nenhuma empresa."
+            exportable
+            exportFileName="cursos-empresas"
+            exportTitle="Cursos — Empresas"
+          />
         )}
       </Card>
 

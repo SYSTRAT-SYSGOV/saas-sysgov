@@ -160,6 +160,7 @@ export const RelatorioCursosView: React.FC = () => {
               emptyText="Nenhum curso com turma no período."
               exportable
               exportFileName="cursos-periodo-tela"
+              exportTitle="Cursos — Relatório por período"
             />
             <p className="text-xs text-muted-foreground">
               O menu de exportação da tabela exporta só as linhas carregadas; “Exportar CSV” acima traz o resultado completo do período, direto da API.
