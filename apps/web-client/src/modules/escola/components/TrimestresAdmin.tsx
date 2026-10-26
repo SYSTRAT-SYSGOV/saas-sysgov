@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { CalendarPlus, CalendarDays, Pencil, Trash2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { CalendarPlus, Pencil, Trash2 } from 'lucide-react';
+import { ActionsMenu, DataTable, StatusChip } from '@sysgov/ui';
 import { escolaApi, erroApi, type Trimestre as PeriodoTrimestre, type SituacaoPeriodo } from '../api';
 import { useCarga } from '../useCarga';
 import AdminModal, { inputCls, labelCls, btnPrimary, btnSecondary, EstadoCarga, type Toast } from './AdminModal';
@@ -18,11 +20,11 @@ const formatarData = (iso: string) => {
 };
 
 // Situação calculada pela API (mesma regra do sistema original)
-const SITUACAO: Record<SituacaoPeriodo, { label: string; cls: string }> = {
-  arquivo: { label: 'Arquivo', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
-  agendado: { label: 'Agendado', cls: 'bg-blue-50 text-blue-600 border-blue-200' },
-  em_andamento: { label: 'Em Andamento', cls: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
-  encerrado: { label: 'Encerrado', cls: 'bg-red-50 text-red-600 border-red-200' },
+const SITUACAO: Record<SituacaoPeriodo, { label: string; variant: 'neutral' | 'info' | 'success' | 'danger' }> = {
+  arquivo: { label: 'Arquivo', variant: 'neutral' },
+  agendado: { label: 'Agendado', variant: 'info' },
+  em_andamento: { label: 'Em Andamento', variant: 'success' },
+  encerrado: { label: 'Encerrado', variant: 'danger' },
 };
 
 interface TrimestresAdminProps {
@@ -50,6 +52,64 @@ export const TrimestresAdmin: React.FC<TrimestresAdminProps> = ({ onToast }) => 
     }
   };
 
+  const colunas = useMemo<ColumnDef<PeriodoTrimestre, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const rotulo = `${row.original.numero}º Trimestre de ${row.original.ano_letivo}`;
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel={`Ações do ${rotulo}`}
+              items={[
+                { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setModal({ kind: 'form', trimestre: row.original }) },
+                { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setModal({ kind: 'excluir', trimestre: row.original }) },
+              ]}
+            />
+          </div>
+        );
+      },
+    },
+    {
+      id: 'ano',
+      header: 'Ano',
+      accessorKey: 'ano_letivo',
+      cell: ({ row }) => <span className="font-mono font-bold">{row.original.ano_letivo}</span>,
+      meta: { exportHeader: 'Ano', exportValue: (t) => t.ano_letivo },
+    },
+    {
+      id: 'trimestre',
+      header: 'Trimestre',
+      accessorKey: 'numero',
+      cell: ({ row }) => `${row.original.numero}º Trimestre`,
+      meta: { exportHeader: 'Trimestre', exportValue: (t) => `${t.numero}º Trimestre` },
+    },
+    {
+      id: 'inicio',
+      header: 'Início',
+      accessorKey: 'data_inicio',
+      cell: ({ row }) => <span className="font-mono">{formatarData(row.original.data_inicio)}</span>,
+      meta: { exportHeader: 'Início', exportValue: (t) => formatarData(t.data_inicio) },
+    },
+    {
+      id: 'fim',
+      header: 'Fim',
+      accessorKey: 'data_fim',
+      cell: ({ row }) => <span className="font-mono">{formatarData(row.original.data_fim)}</span>,
+      meta: { exportHeader: 'Fim', exportValue: (t) => formatarData(t.data_fim) },
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessorFn: (t) => SITUACAO[t.situacao].label,
+      cell: ({ row }) => <StatusChip label={SITUACAO[row.original.situacao].label} variant={SITUACAO[row.original.situacao].variant} />,
+      meta: { exportHeader: 'Status', exportValue: (t) => SITUACAO[t.situacao].label },
+    },
+  ], []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -62,65 +122,18 @@ export const TrimestresAdmin: React.FC<TrimestresAdminProps> = ({ onToast }) => 
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 border-b border-slate-200 dark:border-slate-800">
-              <th className="px-4 py-3">Ano</th>
-              <th className="px-4 py-3">Trimestre</th>
-              <th className="px-4 py-3">Início</th>
-              <th className="px-4 py-3">Fim</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {carga.carregando || carga.erro ? (
-              <tr><td colSpan={6}><EstadoCarga carregando={carga.carregando} erro={carga.erro} onTentar={carga.recarregar} /></td></tr>
-            ) : trimestres.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
-                  <CalendarDays className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  Nenhum trimestre cadastrado.
-                </td>
-              </tr>
-            ) : trimestres.map(t => {
-              const st = SITUACAO[t.situacao];
-              return (
-                <tr key={t.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-4 font-bold text-base text-slate-900 dark:text-white font-mono">{t.ano_letivo}</td>
-                  <td className="px-4 py-4 text-base text-slate-800 dark:text-slate-200">{t.numero}º Trimestre</td>
-                  <td className="px-4 py-4 text-base text-slate-700 dark:text-slate-300 font-mono">{formatarData(t.data_inicio)}</td>
-                  <td className="px-4 py-4 text-base text-slate-700 dark:text-slate-300 font-mono">{formatarData(t.data_fim)}</td>
-                  <td className="px-4 py-4">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full border text-xs font-semibold ${st.cls}`}>{st.label}</span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={() => setModal({ kind: 'form', trimestre: t })}
-                        title="Editar"
-                        aria-label={`Editar ${t.numero}º Trimestre de ${t.ano_letivo}`}
-                        className="w-11 h-8 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setModal({ kind: 'excluir', trimestre: t })}
-                        title="Excluir"
-                        aria-label={`Excluir ${t.numero}º Trimestre de ${t.ano_letivo}`}
-                        className="w-11 h-8 rounded-lg flex items-center justify-center bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-950/40 dark:text-red-300"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {carga.carregando || carga.erro ? (
+        <EstadoCarga carregando={carga.carregando} erro={carga.erro} onTentar={carga.recarregar} />
+      ) : (
+        <DataTable
+          columns={colunas}
+          data={trimestres}
+          emptyText="Nenhum trimestre cadastrado."
+          exportable
+          exportFileName="escola-trimestres"
+          exportTitle="Cadastro Escolar — Períodos Letivos (Trimestres)"
+        />
+      )}
 
       {modal?.kind === 'form' && (
         <TrimestreFormModal trimestre={modal.trimestre} onClose={() => setModal(null)} onSaved={recarregar} onToast={onToast} />
