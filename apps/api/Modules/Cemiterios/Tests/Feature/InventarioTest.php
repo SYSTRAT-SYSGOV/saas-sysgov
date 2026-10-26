@@ -63,6 +63,34 @@ final class InventarioTest extends CemiteriosTestCase
             ->assertJsonPath('code', 'parque.com_jazigos_ocupados');
     }
 
+    public function test_lista_de_cemiterios_traz_capacidade_e_ocupacao_atuais(): void
+    {
+        [$t, $admin, $setor, $parque] = $this->cenario();
+        $vazio = $this->como($admin, $t)->postJson('/api/cemiterios/parques', ['codigo' => 'C2', 'nome' => 'Sem jazigos'])->json('id');
+
+        $jazigoId = $this->como($admin, $t)
+            ->postJson('/api/cemiterios/jazigos', ['sector_id' => $setor, 'codigo' => 'J1', 'tipo' => 'jazigo', 'capacidade' => 4])
+            ->assertCreated()->json('id');
+        $this->como($admin, $t)
+            ->postJson('/api/cemiterios/jazigos', ['sector_id' => $setor, 'codigo' => 'J2', 'tipo' => 'jazigo', 'capacidade' => 2])
+            ->assertCreated();
+
+        $listar = fn () => collect($this->como($admin, $t)->getJson('/api/cemiterios/parques')->assertOk()->json())->keyBy('id');
+
+        $antes = $listar();
+        $this->assertSame(6, $antes[$parque]['capacidade_total']);
+        $this->assertSame(0, $antes[$parque]['ocupacao_total']);
+        $this->assertSame(0, $antes[$vazio]['capacidade_total']);
+
+        // O sepultamento muda a ocupação sem limpar o cache da lista: a taxa tem de acompanhar na próxima leitura.
+        $this->noTenant($t);
+        app(JazigoEstadoService::class)->alterarOcupacao(Jazigo::findOrFail($jazigoId), 1, 'teste');
+
+        $depois = $listar();
+        $this->assertSame(6, $depois[$parque]['capacidade_total']);
+        $this->assertSame(1, $depois[$parque]['ocupacao_total']);
+    }
+
     /** @return array{0: Tenant, 1: User, 2: int, 3: int} */
     private function cenario(): array
     {

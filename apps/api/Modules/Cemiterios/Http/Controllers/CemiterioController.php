@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Modules\Cemiterios\Http\Controllers\Concerns\AutorizaPermissao;
 use Modules\Cemiterios\Models\Cemiterio;
+use Modules\Cemiterios\Models\Jazigo;
 use Modules\Cemiterios\Models\Setor;
 use Modules\Cemiterios\Support\RegraNegocioException;
 
@@ -40,7 +41,18 @@ final class CemiterioController extends Controller
             ? Cache::tags(["tenant:{$tenantId}", 'cemiterios'])->remember($cacheKey, $ttl, $queryBuilder)
             : Cache::remember($cacheKey, $ttl, $queryBuilder);
 
-        return response()->json($cemiterios);
+        // Capacidade e ocupação mudam a cada sepultamento, mas o cache acima só é limpo ao editar o cemitério:
+        // os totais saem de uma consulta agregada à parte, para a taxa de ocupação refletir o estado atual.
+        $totais = Jazigo::query()
+            ->selectRaw('park_id, SUM(capacidade) as capacidade_total, SUM(ocupacao) as ocupacao_total')
+            ->groupBy('park_id')
+            ->get()
+            ->keyBy('park_id');
+
+        return response()->json($cemiterios->map(fn (Cemiterio $c) => array_merge($c->toArray(), [
+            'capacidade_total' => (int) ($totais[$c->id]->capacidade_total ?? 0),
+            'ocupacao_total' => (int) ($totais[$c->id]->ocupacao_total ?? 0),
+        ])));
     }
 
     public function show(Request $request, int $parque): JsonResponse

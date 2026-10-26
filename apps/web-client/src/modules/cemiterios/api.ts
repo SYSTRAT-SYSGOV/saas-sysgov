@@ -21,8 +21,16 @@ export interface Parque {
   responsavel: string | null; lat: number | null; lng: number | null;
   portaria_lat?: number | null; portaria_lng?: number | null;
   setores?: Setor[]; setores_count?: number; jazigos_count?: number;
+  /** Soma de `capacidade` e de `ocupacao` (sepultados) dos jazigos do cemitério — vêm da lista de parques. */
+  capacidade_total?: number; ocupacao_total?: number;
 }
 export type Cemiterio = Parque;
+/** Taxa de ocupação (0–100) a partir dos jazigos cadastrados; `null` quando não há capacidade informada. */
+export function taxaOcupacao(p: Pick<Parque, 'capacidade_total' | 'ocupacao_total'>): number | null {
+  const capacidade = p.capacidade_total ?? 0;
+  if (capacidade <= 0) return null;
+  return ((p.ocupacao_total ?? 0) / capacidade) * 100;
+}
 export interface Jazigo {
   id: number; park_id: number; sector_id: number; codigo: string; codigo_legado?: string | null; processo_administrativo?: string | null; tipo: string; capacidade: number; ocupacao: number;
   estado: EstadoJazigo; comprimento_m: number | null; largura_m: number | null; lat: number | null; lng: number | null; lock_version: number;
