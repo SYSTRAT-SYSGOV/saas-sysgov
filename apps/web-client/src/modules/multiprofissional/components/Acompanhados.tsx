@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
-import { Badge, Button, Card, CardContent, Checkbox, Input, Modal, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import React, { useMemo, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { FileText, Plus } from 'lucide-react';
+import { ActionsMenu, Badge, Button, Card, CardContent, Checkbox, DataTable, Input, Modal, Select } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
-import { mensagemDeErro, multiApi, type Aluno, type Opcoes } from '../api';
+import { mensagemDeErro, multiApi, type Acompanhado, type Aluno, type Opcoes } from '../api';
 import { BuscaAluno } from './Selecao';
 import { FichaAcompanhado } from './FichaAcompanhado';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
+
+const textoCondicoes = (a: Acompanhado) => (a.condicoes ?? []).map((c) => `${c.cid ?? ''} ${c.nome}`.trim()).join('; ');
+
+/** Só entra na grade para quem tem acesso clínico (D7). */
+const colCondicoes: ColumnDef<Acompanhado, unknown> = {
+  id: 'condicoes',
+  header: 'Condições',
+  accessorFn: textoCondicoes,
+  cell: ({ row }) => (
+    <div className="flex flex-wrap gap-1">{(row.original.condicoes ?? []).map((c) => <Badge key={c.id} variant="outline"><span className="font-mono">{c.cid}</span>{c.cid ? ' ' : ''}{c.nome}</Badge>)}</div>
+  ),
+  meta: { exportHeader: 'Condições', exportValue: textoCondicoes },
+};
 
 /** Estudantes acompanhados. Coluna de condições só aparece para quem acompanha (D7). */
 export const Acompanhados: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avisar }) => {
@@ -37,6 +51,52 @@ export const Acompanhados: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opco
     }
   };
 
+  // `clinico` é fixo na sessão; setFicha é estável.
+  const colunas = useMemo<ColumnDef<Acompanhado, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel={`Ações de ${row.original.aluno?.nome ?? 'estudante'}`}
+            items={[{ key: 'ficha', label: 'Abrir ficha', icon: <FileText className="h-3.5 w-3.5" />, onSelect: () => setFicha(row.original.id) }]}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'estudante',
+      header: 'Estudante',
+      accessorFn: (a) => a.aluno?.nome ?? '',
+      cell: ({ row }) => (
+        <div>
+          <span className="font-medium">{row.original.aluno?.nome}</span>
+          {row.original.aluno?.cgm && <span className="block font-mono text-xs tabular-nums text-muted-foreground">CGM {row.original.aluno.cgm}</span>}
+          {!row.original.ativo && <Badge variant="secondary">Inativo</Badge>}
+        </div>
+      ),
+      meta: { exportHeader: 'Estudante', exportValue: (a) => a.aluno?.nome ?? '' },
+    },
+    {
+      id: 'escola',
+      header: 'Escola / turma',
+      accessorFn: (a) => `${a.aluno?.escola ?? ''} ${a.aluno?.turma ?? ''}`.trim(),
+      cell: ({ row }) => <span className="text-sm">{row.original.aluno?.escola}<span className="block text-xs text-muted-foreground">{row.original.aluno?.turma ?? 'Sem turma'}</span></span>,
+      meta: { exportHeader: 'Escola / turma', exportValue: (a) => `${a.aluno?.escola ?? ''} — ${a.aluno?.turma ?? 'Sem turma'}` },
+    },
+    ...(clinico ? [colCondicoes] : []),
+    {
+      id: 'profissionais',
+      header: 'Profissionais de referência',
+      accessorFn: (a) => a.profissionais.map((p) => p.nome).join(', ') || '—',
+      cell: ({ row }) => <span className="text-sm">{row.original.profissionais.map((p) => p.nome).join(', ') || '—'}</span>,
+      meta: { exportHeader: 'Profissionais de referência', exportValue: (a) => a.profissionais.map((p) => p.nome).join(', ') },
+    },
+  ], [clinico]);
+
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
@@ -53,34 +113,16 @@ export const Acompanhados: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opco
         </div>
 
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
-        {carga.dados && carga.dados.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum estudante acompanhado.</p>}
-        {carga.dados && carga.dados.length > 0 && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Estudante</TableHead>
-                <TableHead>Escola / turma</TableHead>
-                {clinico && <TableHead>Condições</TableHead>}
-                <TableHead>Profissionais de referência</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {carga.dados.map((a) => (
-                <TableRow key={a.id} className="cursor-pointer" onClick={() => setFicha(a.id)}>
-                  <TableCell>
-                    <span className="font-medium">{a.aluno?.nome}</span>
-                    {a.aluno?.cgm && <span className="block font-mono text-xs tabular-nums text-muted-foreground">CGM {a.aluno.cgm}</span>}
-                    {!a.ativo && <Badge variant="secondary">Inativo</Badge>}
-                  </TableCell>
-                  <TableCell className="text-sm">{a.aluno?.escola}<span className="block text-xs text-muted-foreground">{a.aluno?.turma ?? 'Sem turma'}</span></TableCell>
-                  {clinico && (
-                    <TableCell><div className="flex flex-wrap gap-1">{(a.condicoes ?? []).map((c) => <Badge key={c.id} variant="outline"><span className="font-mono">{c.cid}</span>{c.cid ? ' ' : ''}{c.nome}</Badge>)}</div></TableCell>
-                  )}
-                  <TableCell className="text-sm">{a.profissionais.map((p) => p.nome).join(', ') || '—'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {carga.dados && (
+          <DataTable
+            columns={colunas}
+            data={carga.dados}
+            emptyText="Nenhum estudante acompanhado."
+            onRowClick={(a) => setFicha(a.id)}
+            exportable
+            exportFileName="multiprofissional-acompanhados"
+            exportTitle="Multiprofissional — Estudantes acompanhados"
+          />
         )}
       </CardContent>
 

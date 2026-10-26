@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
-import { Badge, Button, Card, CardContent, Input, Modal, Select, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { ActionsMenu, Badge, Button, Card, CardContent, DataTable, Input, Modal, Select, Switch } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
@@ -25,35 +26,72 @@ export const Profissionais: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: (
     }
   };
 
+  // Colunas estáveis; o estado atual (permissão, excluir) vem por ref.
+  const ctx = useRef({ gerenciar, excluir });
+  ctx.current = { gerenciar, excluir };
+  const colunas = useMemo<ColumnDef<Profissional, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel={`Ações de ${row.original.nome}`}
+            items={ctx.current.gerenciar ? [
+              { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(row.original) },
+              { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => void ctx.current.excluir(row.original) },
+            ] : []}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'nome',
+      header: 'Nome',
+      accessorKey: 'nome',
+      cell: ({ row }) => <span className="font-medium">{row.original.nome}{!row.original.ativo && <Badge variant="secondary" className="ml-2">Inativo</Badge>}</span>,
+      meta: { exportHeader: 'Nome', exportValue: (p) => p.nome },
+    },
+    {
+      id: 'cpf',
+      header: 'CPF',
+      accessorKey: 'cpf_mascarado',
+      cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.cpf_mascarado}</span>,
+      meta: { exportHeader: 'CPF', exportValue: (p) => p.cpf_mascarado },
+    },
+    { id: 'cargo', header: 'Cargo', accessorFn: (p) => p.cargo?.nome ?? '—', meta: { exportHeader: 'Cargo', exportValue: (p) => p.cargo?.nome ?? '' } },
+    {
+      id: 'registro',
+      header: 'Registro',
+      accessorFn: (p) => p.registro_profissional ?? '',
+      cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.registro_profissional ?? '—'}</span>,
+      meta: { exportHeader: 'Registro', exportValue: (p) => p.registro_profissional ?? '' },
+    },
+    {
+      id: 'usuario',
+      header: 'Usuário',
+      accessorFn: (p) => p.usuario?.email ?? 'Sem acesso',
+      cell: ({ row }) => <span className="text-sm">{row.original.usuario?.email ?? <span className="text-muted-foreground">Sem acesso</span>}</span>,
+      meta: { exportHeader: 'Usuário', exportValue: (p) => p.usuario?.email ?? 'Sem acesso' },
+    },
+  ], []);
+
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
         {gerenciar && <div className="flex justify-end"><Button onClick={() => setEditando('novo')}><Plus className="mr-1 h-4 w-4" />Novo profissional</Button></div>}
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
-        {carga.dados && carga.dados.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum profissional cadastrado.</p>}
-        {carga.dados && carga.dados.length > 0 && (
-          <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead className="w-36">CPF</TableHead><TableHead>Cargo</TableHead><TableHead>Registro</TableHead><TableHead>Usuário</TableHead>{gerenciar && <TableHead className="w-24" />}</TableRow></TableHeader>
-            <TableBody>
-              {carga.dados.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.nome}{!p.ativo && <Badge variant="secondary" className="ml-2">Inativo</Badge>}</TableCell>
-                  <TableCell className="font-mono text-xs tabular-nums">{p.cpf_mascarado}</TableCell>
-                  <TableCell>{p.cargo?.nome ?? '—'}</TableCell>
-                  <TableCell className="font-mono text-xs tabular-nums">{p.registro_profissional ?? '—'}</TableCell>
-                  <TableCell className="text-sm">{p.usuario?.email ?? <span className="text-muted-foreground">Sem acesso</span>}</TableCell>
-                  {gerenciar && (
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" aria-label={`Editar ${p.nome}`} onClick={() => setEditando(p)}><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="sm" aria-label={`Excluir ${p.nome}`} onClick={() => void excluir(p)}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {carga.dados && (
+          <DataTable
+            columns={colunas}
+            data={carga.dados}
+            emptyText="Nenhum profissional cadastrado."
+            exportable
+            exportFileName="multiprofissional-profissionais"
+            exportTitle="Multiprofissional — Profissionais"
+          />
         )}
       </CardContent>
       {editando && (

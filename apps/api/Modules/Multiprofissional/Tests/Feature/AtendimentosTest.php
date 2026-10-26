@@ -93,4 +93,21 @@ final class AtendimentosTest extends TestCase
         $log = $this->como($gestor, $t)->getJson('/api/multiprofissional/auditoria?acao=atendimento.registrado')->assertOk()->json('data.0');
         self::assertStringNotContainsString('não pode vazar', (string) json_encode($log));
     }
+
+    public function test_listas_respeitam_per_page_e_recusam_valor_acima_do_maximo(): void
+    {
+        $t = $this->criarTenant();
+        $gestor = $this->usuario($t, ['multiprofissional_coordenacao']);
+        $prof = $this->profissional($t, $gestor, '52998224725', 'Carla');
+        $ana = $this->dado($t, 'ana');
+        $bruno = $this->dado($t, 'bruno');
+        $this->registrarAtendimento($gestor, $t, $prof, ['alunos' => [$ana->id]])->assertCreated();
+        $this->registrarAtendimento($gestor, $t, $prof, ['alunos' => [$bruno->id]])->assertCreated();
+
+        foreach (['atendimentos', 'auditoria'] as $rota) {
+            $pagina = $this->como($gestor, $t)->getJson("/api/multiprofissional/{$rota}?per_page=1")->assertOk()->assertJsonCount(1, 'data');
+            $this->assertGreaterThanOrEqual(2, $pagina->json('last_page'));
+            $this->como($gestor, $t)->getJson("/api/multiprofissional/{$rota}?per_page=500")->assertUnprocessable();
+        }
+    }
 }

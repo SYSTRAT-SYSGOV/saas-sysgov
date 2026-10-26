@@ -131,7 +131,7 @@ export interface RegistroAuditoria {
   ip: string | null;
 }
 
-export interface FiltrosAtendimento { de?: string; ate?: string; escola_id?: number; equipe_id?: number; profissional_id?: number; aluno_id?: number; tipo_id?: number; page?: number }
+export interface FiltrosAtendimento { de?: string; ate?: string; escola_id?: number; equipe_id?: number; profissional_id?: number; aluno_id?: number; tipo_id?: number; page?: number; per_page?: number }
 
 /** Mensagem de erro da API ({"error"} das regras de negócio ou {"message"} da validação). */
 export function mensagemDeErro(erro: unknown, padrao = 'Não foi possível concluir a operação.'): string {
@@ -183,7 +183,7 @@ export const multiApi = {
   excluirCadastro: async (tipo: TipoCadastro, id: number) => (await apiClient.delete<{ excluido: boolean }>(`${base}/cadastros/${tipo}/${id}`)).data.excluido,
   carregarPadroes: async () => (await apiClient.post<{ data: { cargos: number; tipos: number } }>(`${base}/cadastros/padroes`)).data.data,
 
-  auditoria: async (params: { acao?: string; page?: number }) =>
+  auditoria: async (params: { acao?: string; page?: number; per_page?: number }) =>
     (await apiClient.get<Pagina<RegistroAuditoria>>(`${base}/auditoria`, { params })).data,
 };
 
