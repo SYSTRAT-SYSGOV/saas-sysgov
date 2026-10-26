@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { School, CalendarDays, Pencil, Trash2, Database, Mail, Send, ImageIcon, Info } from 'lucide-react';
+import { ActionsMenu, DataTable, StatusChip } from '@sysgov/ui';
 
 import { useArquivoAutenticado } from '@/hooks/useArquivoAutenticado';
 
@@ -22,12 +24,14 @@ const formatarData = (iso: string) => {
 };
 
 // Situação calculada pela API (mesma regra do sistema original)
-const SITUACAO: Record<Cronograma['situacao'], { label: string; cls: string }> = {
-  arquivo: { label: 'Arquivo', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
-  agendado: { label: 'Agendado', cls: 'bg-blue-50 text-blue-600 border-blue-200' },
-  ativo: { label: 'Ativo', cls: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
-  encerrado: { label: 'Encerrado', cls: 'bg-red-50 text-red-600 border-red-200' },
+const SITUACAO: Record<Cronograma['situacao'], { label: string; variant: 'neutral' | 'info' | 'success' | 'danger' }> = {
+  arquivo: { label: 'Arquivo', variant: 'neutral' },
+  agendado: { label: 'Agendado', variant: 'info' },
+  ativo: { label: 'Ativo', variant: 'success' },
+  encerrado: { label: 'Encerrado', variant: 'danger' },
 };
+
+const rotuloSituacao = (c: Cronograma) => (c.situacao === 'arquivo' ? `Arquivo (${c.ano_letivo})` : SITUACAO[c.situacao].label);
 
 interface SistemaAdminProps {
   onToast: Toast;
@@ -50,6 +54,61 @@ export const SistemaAdmin: React.FC<SistemaAdminProps> = ({ onToast }) => {
     setModal(null);
     await cronogramas.recarregar();
   };
+
+  const colunasCronograma = useMemo<ColumnDef<Cronograma, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel={`Ações do ${row.original.periodo}º Trimestre de ${row.original.ano_letivo}`}
+            items={[
+              { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setModal({ kind: 'cronograma', item: row.original }) },
+              { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setModal({ kind: 'excluir', item: row.original }) },
+            ]}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'ano',
+      header: 'Ano',
+      accessorKey: 'ano_letivo',
+      cell: ({ row }) => <span className="font-mono">{row.original.ano_letivo}</span>,
+      meta: { exportHeader: 'Ano', exportValue: (c) => c.ano_letivo },
+    },
+    {
+      id: 'periodo',
+      header: 'Período',
+      accessorKey: 'periodo',
+      cell: ({ row }) => <strong>{row.original.periodo}º Trimestre</strong>,
+      meta: { exportHeader: 'Período', exportValue: (c) => `${c.periodo}º Trimestre` },
+    },
+    {
+      id: 'inicio',
+      header: 'Início',
+      accessorKey: 'data_inicio',
+      cell: ({ row }) => <span className="font-mono">{formatarData(row.original.data_inicio)}</span>,
+      meta: { exportHeader: 'Início', exportValue: (c) => formatarData(c.data_inicio) },
+    },
+    {
+      id: 'fim',
+      header: 'Fim',
+      accessorKey: 'data_fim',
+      cell: ({ row }) => <span className="font-mono">{formatarData(row.original.data_fim)}</span>,
+      meta: { exportHeader: 'Fim', exportValue: (c) => formatarData(c.data_fim) },
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessorFn: (c) => rotuloSituacao(c),
+      cell: ({ row }) => <StatusChip label={rotuloSituacao(row.original)} variant={SITUACAO[row.original.situacao].variant} />,
+      meta: { exportHeader: 'Status', exportValue: (c) => rotuloSituacao(c) },
+    },
+  ], []);
 
   return (
     <div className="space-y-6">
@@ -96,53 +155,18 @@ export const SistemaAdmin: React.FC<SistemaAdminProps> = ({ onToast }) => {
             Nova Data / Período
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                <th className="px-3 py-3">Ano</th>
-                <th className="px-3 py-3">Período</th>
-                <th className="px-3 py-3">Início</th>
-                <th className="px-3 py-3">Fim</th>
-                <th className="px-3 py-3">Status</th>
-                <th className="px-3 py-3">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cronogramas.carregando || cronogramas.erro ? (
-                <tr><td colSpan={6}><EstadoCarga carregando={cronogramas.carregando} erro={cronogramas.erro} onTentar={cronogramas.recarregar} /></td></tr>
-              ) : (cronogramas.dados ?? []).length === 0 ? (
-                <tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">Nenhuma data cadastrada.</td></tr>
-              ) : (cronogramas.dados ?? []).map(c => {
-                const st = SITUACAO[c.situacao];
-                const rotulo = `${c.periodo}º Trimestre`;
-                return (
-                  <tr key={c.id} className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="px-3 py-3 font-mono text-slate-700 dark:text-slate-300">{c.ano_letivo}</td>
-                    <td className="px-3 py-3 font-bold text-slate-900 dark:text-white">{rotulo}</td>
-                    <td className="px-3 py-3 font-mono text-slate-700 dark:text-slate-300">{formatarData(c.data_inicio)}</td>
-                    <td className="px-3 py-3 font-mono text-slate-700 dark:text-slate-300">{formatarData(c.data_fim)}</td>
-                    <td className="px-3 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full border text-[11px] font-semibold ${st.cls}`}>
-                        {c.situacao === 'arquivo' ? `Arquivo (${c.ano_letivo})` : st.label}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex gap-1.5">
-                        <button onClick={() => setModal({ kind: 'cronograma', item: c })} title="Editar" aria-label={`Editar ${rotulo} de ${c.ano_letivo}`} className="w-9 h-7 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => setModal({ kind: 'excluir', item: c })} title="Excluir" aria-label={`Excluir ${rotulo} de ${c.ano_letivo}`} className="w-9 h-7 rounded-lg flex items-center justify-center bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-950/40 dark:text-red-300">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {cronogramas.carregando || cronogramas.erro ? (
+          <EstadoCarga carregando={cronogramas.carregando} erro={cronogramas.erro} onTentar={cronogramas.recarregar} />
+        ) : (
+          <DataTable
+            columns={colunasCronograma}
+            data={cronogramas.dados ?? []}
+            emptyText="Nenhuma data cadastrada."
+            exportable
+            exportFileName="escola-datas-pre-conselho"
+            exportTitle="Cadastro Escolar — Datas do Pré-Conselho"
+          />
+        )}
       </section>
 
       {/* Backup */}
