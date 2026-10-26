@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, Loader2, X, Key, Shield } from 'lucide-react';
 import { adminApi } from './api';
 import { Permission } from './types';
-import { useFormValidationModal } from '@sysgov/ui';
+import { Button, useFormValidationModal } from '@sysgov/ui';
 
 export const PermissionManagement: React.FC = () => {
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -223,7 +223,7 @@ const PermissionFormModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 ">
       {modalValidacao}
-      <div className="bg-card rounded-xl shadow-xl max-w-md w-full flex flex-col">
+      <div className="bg-card rounded-xl shadow-xl max-w-2xl w-full flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-border ">
           <h2 className="text-lg font-semibold text-foreground ">{permission ? 'Editar Permissão' : 'Nova Permissão'}</h2>
           <button onClick={onClose} className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent  transition-colors">
@@ -231,7 +231,7 @@ const PermissionFormModal: React.FC<{
           </button>
         </div>
 
-        <form noValidate onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form noValidate onSubmit={handleSubmit} className="p-4 grid gap-4 md:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
             <input
@@ -267,21 +267,11 @@ const PermissionFormModal: React.FC<{
             </select>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-border ">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-foreground border border-border  rounded-lg hover:bg-accent  transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {saving ? 'Salvando...' : (permission ? 'Atualizar' : 'Criar')}
-            </button>
+          <div className="md:col-span-2 flex justify-end gap-3 pt-4 border-t border-border ">
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" isLoading={saving}>
+              {permission ? 'Atualizar' : 'Criar'}
+            </Button>
           </div>
         </form>
       </div>

@@ -48,8 +48,14 @@ const admin = (id: number, email: string, extra: Record<string, unknown> = {}) =
 
 const openAdminsModal = async () => {
   render(<AdminTenantManagement onAddToast={vi.fn()} />);
-  const button = await screen.findByTitle('Administradores do tenant');
-  fireEvent.click(button);
+  await abrirAdmins();
+};
+
+// O menu de ações (Radix) abre com Enter no gatilho; o clique simples não dispara o pointerdown no jsdom.
+const abrirAdmins = async () => {
+  const gatilho = await screen.findByRole('button', { name: /^Ações de / });
+  fireEvent.keyDown(gatilho, { key: 'Enter' });
+  fireEvent.click(await screen.findByRole('menuitem', { name: /Administradores do tenant/ }));
 };
 
 describe('AdminTenantManagement — administradores do tenant', () => {
@@ -114,7 +120,7 @@ describe('AdminTenantManagement — administradores do tenant', () => {
     vi.mocked(adminApi.deactivateTenantAdmin).mockRejectedValue(new Error('O tenant precisa manter ao menos um administrador ativo.'));
 
     render(<AdminTenantManagement onAddToast={onAddToast} />);
-    fireEvent.click(await screen.findByTitle('Administradores do tenant'));
+    await abrirAdmins();
     fireEvent.click(await screen.findByText('Desativar'));
     fireEvent.change(screen.getByPlaceholderText('Ex: Servidor desligado do órgão'), { target: { value: 'Teste da salvaguarda' } });
     fireEvent.click(screen.getByText('Desativar Administrador'));

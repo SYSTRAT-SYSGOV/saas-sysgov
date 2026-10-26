@@ -7,7 +7,6 @@ import {
   HardDrive,
   Users,
   DollarSign,
-  MoreVertical,
   CheckCircle2,
   XCircle,
   Clock,
@@ -28,17 +27,13 @@ import {
   Square,
   Zap,
   Calendar,
-  LayoutGrid,
-  List,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { adminApi } from '../../modules/admin/api';
 import { Tenant, SaasModule, CnpjLookupResult, BatchProvisionResult, User, Paginated } from '../../modules/admin/types';
 import { StatusChip, Card, Modal, Button, Input, Select } from '@sysgov/ui';
 import { Field } from '../../components/ui/Field';
-import { DataTable } from '@sysgov/ui';
+import { DataTable, ActionsMenu } from '@sysgov/ui';
 import { useFormValidationModal } from '@sysgov/ui';
 
 interface Props {
@@ -83,178 +78,13 @@ const DEFAULT_FORM: TenantForm = {
 
 const EXCLUDED_MODULE_ALIASES = ['dashboard', 'admin', 'client', 'users', 'rh', 'cemiterio', 'procurement'];
 
-const VIEW_MODE_KEY = 'sysgov_admin_tenants_view';
-type ViewMode = 'cards' | 'table';
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-
-const readStoredViewMode = (): ViewMode => {
-  try {
-    return window.localStorage.getItem(VIEW_MODE_KEY) === 'table' ? 'table' : 'cards';
-  } catch {
-    return 'cards';
-  }
-};
-
-const storeViewMode = (mode: ViewMode) => {
-  try {
-    window.localStorage.setItem(VIEW_MODE_KEY, mode);
-  } catch {
-    // storage indisponível (modo privado/bloqueado): a preferência só vale na sessão
-  }
-};
 
 const formatCnpj = (cnpj?: string | null) =>
   cnpj ? cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5') : '—';
 
 const formatCents = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-function TenantActions({
-  t,
-  onEdit,
-  onDelete,
-  onDiagnostic,
-  onOnboarding,
-}: {
-  t: Tenant;
-  onEdit: (t: Tenant) => void;
-  onDelete: (id: number) => void;
-  onDiagnostic: (t: Tenant) => void;
-  onOnboarding: (t: Tenant) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => onOnboarding(t)}
-        title="Administradores do tenant"
-        className="p-1.5 rounded-lg text-status-warning hover:bg-status-warning-bg border border-status-warning-border  transition-colors cursor-pointer"
-      >
-        <UserPlus className="w-3.5 h-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onDiagnostic(t)}
-        title="Diagnóstico de Organograma"
-        className="p-1.5 rounded-lg text-primary hover:bg-accent border border-primary  transition-colors cursor-pointer"
-      >
-        <Network className="w-3.5 h-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onEdit(t)}
-        title="Editar Organização"
-        className="p-1.5 rounded-lg text-primary hover:bg-accent border border-primary/30  transition-colors cursor-pointer"
-      >
-        <Edit2 className="w-3.5 h-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onDelete(t.id)}
-        title="Excluir Organização"
-        className="p-1.5 rounded-lg text-status-danger hover:bg-status-danger-bg border border-status-danger-border  transition-colors cursor-pointer"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  );
-}
-
-function TenantCard({
-  t,
-  selectedTenantIds,
-  handleTenantSelectionChange,
-  getStatusBadge,
-  formatCents,
-  onEdit,
-  onDelete,
-  onDiagnostic,
-  onOnboarding,
-}: {
-  t: Tenant;
-  selectedTenantIds: number[];
-  handleTenantSelectionChange: (id: number, checked: boolean) => void;
-  getStatusBadge: (status: string) => React.ReactNode;
-  formatCents: (cents: number) => string;
-  onEdit: (t: Tenant) => void;
-  onDelete: (id: number) => void;
-  onDiagnostic: (t: Tenant) => void;
-  onOnboarding: (t: Tenant) => void;
-}) {
-  const userUsagePercent = Math.min(100, Math.round(((t.user_count ?? 0) / (t.max_users || 1)) * 100));
-
-  return (
-    <div key={t.id} className="bg-card border border-border  rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-      {/* Selection checkbox */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={selectedTenantIds.includes(t.id)}
-            onChange={(e) => handleTenantSelectionChange(t.id, e.target.checked)}
-            className="w-4 h-4 rounded border-border text-status-warning focus:ring-ring cursor-pointer"
-            aria-label={`Selecionar ${t.name}`}
-          />
-          <span className="text-xs text-muted-foreground ">Selecionar para ações em lote</span>
-        </div>
-        {getStatusBadge(t.status)}
-      </div>
-
-      <div>
-        <h3 className="text-sm font-bold text-foreground ">{t.name}</h3>
-        <span className="text-[11px] text-muted-foreground font-mono block mt-0.5">id: {t.slug} {t.cnpj ? `• ${t.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')}` : ''}</span>
-      </div>
-
-      {t.domain && (
-        <div className="flex items-center gap-1.5 text-xs text-primary bg-accent  px-2.5 py-1 rounded-md mb-4 border border-primary/30 ">
-          <Globe className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate font-mono text-[11px]">{t.domain}</span>
-        </div>
-      )}
-
-      <div className="space-y-3 pt-2">
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-muted-foreground flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Assentos de Usuário</span>
-            <span className="font-mono font-semibold text-foreground ">{(t.user_count ?? 0)} / {t.max_users} ({userUsagePercent}%)</span>
-          </div>
-          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-            <div className={`h-full rounded-full ${userUsagePercent > 85 ? 'bg-destructive' : 'bg-primary'}`} style={{ width: `${userUsagePercent}%` }} />
-          </div>
-        </div>
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-muted-foreground flex items-center gap-1"><HardDrive className="w-3.5 h-3.5" /> Armazenamento</span>
-            <span className="font-mono font-semibold text-foreground ">0 GB / {(t.storage_limit_mb / 1024).toFixed(0)} GB</span>
-          </div>
-          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full" style={{ width: '10%' }} />
-          </div>
-        </div>
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-muted-foreground flex items-center gap-1"><Link2 className="w-3.5 h-3.5" /> Módulos Ativos</span>
-            <span className="font-mono text-muted-foreground">{t.modules?.filter((m) => m.pivot?.enabled && !EXCLUDED_MODULE_ALIASES.includes(m.alias)).length ?? 0}</span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {(t.modules ?? []).filter((m) => m.pivot?.enabled && !EXCLUDED_MODULE_ALIASES.includes(m.alias)).map((m) => (
-              <span key={m.id} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-muted text-muted-foreground ">{m.alias}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer inside the card */}
-      <div className="mt-5 pt-3 border-t border-border flex items-center justify-between">
-        <div>
-          <span className="block font-mono text-xs font-bold text-foreground ">R$ {formatCents(t.mrr_cents ?? 0)}/mês</span>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{t.plan}</span>
-        </div>
-        <TenantActions t={t} onEdit={onEdit} onDelete={onDelete} onDiagnostic={onDiagnostic} onOnboarding={onOnboarding} />
-      </div>
-    </div>
-  );
-}
 
 export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }) => {
   const { modal: modalValidacao, validar, invalidar, tratarErro } = useFormValidationModal();
@@ -263,7 +93,6 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
-  const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -495,11 +324,6 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
     setSelectedStatus(value);
     setPage(1);
     setSelectedTenantIds([]);
-  };
-
-  const handleViewModeChange = (mode: ViewMode) => {
-    setViewMode(mode);
-    storeViewMode(mode);
   };
 
   const handlePerPageChange = (size: number) => {
@@ -736,6 +560,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
     {
       id: 'select',
       enableSorting: false,
+      meta: { exportIgnore: true },
       header: () => (
         <input
           type="checkbox"
@@ -756,6 +581,22 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       ),
     },
     {
+      id: 'actions',
+      enableSorting: false,
+      header: 'Ações',
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu triggerLabel={`Ações de ${row.original.name}`} items={[
+            { key: 'admins', label: 'Administradores do tenant', icon: <UserPlus className="h-3.5 w-3.5" />, onSelect: () => handleOpenOnboarding(row.original) },
+            { key: 'diagnostico', label: 'Diagnóstico de organograma', icon: <Network className="h-3.5 w-3.5" />, onSelect: () => handleOpenDiagnosticModal(row.original) },
+            { key: 'editar', label: 'Editar organização', icon: <Edit2 className="h-3.5 w-3.5" />, onSelect: () => handleOpenEditModal(row.original) },
+            { key: 'excluir', label: 'Excluir organização', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setDeleteConfirmId(row.original.id) },
+          ]} />
+        </div>
+      ),
+      meta: { exportIgnore: true },
+    },
+    {
       accessorKey: 'name',
       header: 'Organização',
       cell: ({ row }) => (
@@ -765,7 +606,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         </div>
       ),
     },
-    { id: 'cnpj', enableSorting: false, header: 'CNPJ', cell: ({ row }) => <span className="font-mono text-xs">{formatCnpj(row.original.cnpj)}</span> },
+    { id: 'cnpj', enableSorting: false, header: 'CNPJ', meta: { exportValue: (t: Tenant) => formatCnpj(t.cnpj) }, cell: ({ row }) => <span className="font-mono text-xs">{formatCnpj(row.original.cnpj)}</span> },
     { accessorKey: 'type', header: 'Tipo', cell: ({ row }) => <span className="text-xs">{row.original.type}</span> },
     { accessorKey: 'status', header: 'Status', cell: ({ row }) => getStatusBadge(row.original.status) },
     { accessorKey: 'plan', header: 'Plano', cell: ({ row }) => <span className="text-xs uppercase tracking-wider">{row.original.plan}</span> },
@@ -773,12 +614,14 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       id: 'mrr_cents',
       enableSorting: false,
       header: 'MRR',
+      meta: { exportValue: (t: Tenant) => `R$ ${formatCents(t.mrr_cents ?? 0)}` },
       cell: ({ row }) => <span className="font-mono text-xs">R$ {formatCents(row.original.mrr_cents ?? 0)}</span>,
     },
     {
       id: 'user_count',
       enableSorting: false,
       header: 'Usuários',
+      meta: { exportValue: (t: Tenant) => `${t.user_count ?? 0} / ${t.max_users}` },
       cell: ({ row }) => (
         <span className="font-mono text-xs">{row.original.user_count ?? 0}<span className="text-muted-foreground"> / {row.original.max_users}</span></span>
       ),
@@ -787,22 +630,6 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
       accessorKey: 'created_at',
       header: 'Criado em',
       cell: ({ row }) => <span className="text-xs">{new Date(row.original.created_at).toLocaleDateString('pt-BR')}</span>,
-    },
-    {
-      id: 'actions',
-      enableSorting: false,
-      header: 'Ações',
-      cell: ({ row }) => (
-        <div className="flex justify-end">
-          <TenantActions
-            t={row.original}
-            onEdit={handleOpenEditModal}
-            onDelete={(id) => setDeleteConfirmId(id)}
-            onDiagnostic={handleOpenDiagnosticModal}
-            onOnboarding={handleOpenOnboarding}
-          />
-        </div>
-      ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [tenants, selectedTenantIds, allPageSelected]);
@@ -882,26 +709,6 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           <option value="trial">Trial</option>
           <option value="suspended">Suspensos</option>
         </select>
-        <div className="inline-flex rounded-lg border border-border overflow-hidden shrink-0" role="group" aria-label="Modo de visualização">
-          <button
-            type="button"
-            onClick={() => handleViewModeChange('cards')}
-            aria-pressed={viewMode === 'cards'}
-            title="Visualizar em cards"
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${viewMode === 'cards' ? 'bg-status-warning text-foreground' : 'bg-muted  text-muted-foreground  hover:bg-accent '}`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" /> Cards
-          </button>
-          <button
-            type="button"
-            onClick={() => handleViewModeChange('table')}
-            aria-pressed={viewMode === 'table'}
-            title="Visualizar em tabela"
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${viewMode === 'table' ? 'bg-status-warning text-foreground' : 'bg-muted  text-muted-foreground  hover:bg-accent '}`}
-          >
-            <List className="w-3.5 h-3.5" /> Tabela
-          </button>
-        </div>
       </Card>
 
       {/* Batch Actions Bar */}
@@ -935,8 +742,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
 </div>
       )}
 
-      {viewMode === 'table' ? (
-        <DataTable<Tenant, unknown>
+      <DataTable<Tenant, unknown>
           columns={tableColumns}
           data={tenants}
           loading={loading}
@@ -952,50 +758,6 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
           }}
           sorting={{ state: sorting, onChange: handleSortingChange }}
         />
-      ) : tenants.length === 0 ? (
-        <div className="col-span-full py-16 text-center text-muted-foreground ">
-          Nenhum tenant encontrado. Clique em "Provisionar Novo Tenant".
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {tenants.map((t) => (
-              <TenantCard
-                key={t.id}
-                t={t}
-                selectedTenantIds={selectedTenantIds}
-                handleTenantSelectionChange={handleTenantSelectionChange}
-                getStatusBadge={getStatusBadge}
-                formatCents={formatCents}
-                onEdit={handleOpenEditModal}
-                onDelete={(id) => setDeleteConfirmId(id)}
-                onDiagnostic={handleOpenDiagnosticModal}
-                onOnboarding={handleOpenOnboarding}
-              />
-            ))}
-          </div>
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground " data-testid="cards-pagination">
-            <span>
-              {totalTenants} tenant(s) • Página {meta?.current_page ?? page} de {lastPage}
-            </span>
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1.5">
-                Por página
-                <select
-                  value={perPage}
-                  onChange={(e) => handlePerPageChange(Number(e.target.value))}
-                  aria-label="Tenants por página"
-                  className="px-2 py-1 rounded-md bg-muted border border-border  text-foreground "
-                >
-                  {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </label>
-              <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => setPage(page - 1)} leftIcon={<ChevronLeft className="w-3.5 h-3.5" />}>Anterior</Button>
-              <Button variant="outline" size="sm" disabled={page >= lastPage || loading} onClick={() => setPage(page + 1)} rightIcon={<ChevronRight className="w-3.5 h-3.5" />}>Próxima</Button>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* Modal Provisionar / Editar */}
       <Modal
@@ -1003,7 +765,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
         onClose={() => setIsModalOpen(false)}
         title={editingTenantId ? 'Editar Organização' : 'Provisionar Novo Tenant'}
         icon={<Building2 className="w-4 h-4 text-status-warning" />}
-        size="xl"
+        size="full"
         footer={
           <>
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
@@ -1083,7 +845,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
               {/* Módulos com preço */}
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-2">Módulos Liberados (cada um com mensalidade própria)</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
                   {modules.filter((m) => !EXCLUDED_MODULE_ALIASES.includes(m.alias)).map((m) => {
                     const checked = formData.modules.includes(m.alias);
                     return (
@@ -1107,7 +869,7 @@ export const AdminTenantManagement: React.FC<Props> = ({ onAddToast = () => {} }
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Select
                   label="Status"
                   value={formData.status}

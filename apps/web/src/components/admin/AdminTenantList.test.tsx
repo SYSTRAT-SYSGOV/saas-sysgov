@@ -61,7 +61,7 @@ const useMemoryStorage = () => {
   });
 };
 
-describe('AdminTenantManagement — lista de tenants (cards/tabela, paginação)', () => {
+describe('AdminTenantManagement — lista de tenants (tabela, paginação)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useMemoryStorage();
@@ -69,51 +69,31 @@ describe('AdminTenantManagement — lista de tenants (cards/tabela, paginação)
     mockPages();
   });
 
-  it('abre em cards por padrão e envia página 1 com o tamanho padrão', async () => {
+  it('abre em tabela e envia página 1 com o tamanho padrão', async () => {
     render(<AdminTenantManagement onAddToast={vi.fn()} />);
 
     expect(await screen.findByText('Alfa Prefeitura')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Cards/ }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getByRole('table')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Cards/ })).toBeNull();
     expect(lastCall()).toMatchObject({ page: 1, per_page: 25 });
   });
 
-  it('alterna para a tabela e lembra a preferência', async () => {
-    const { unmount } = render(<AdminTenantManagement onAddToast={vi.fn()} />);
-    await screen.findByText('Alfa Prefeitura');
-
-    fireEvent.click(screen.getByRole('button', { name: /Tabela/ }));
-
-    expect(await screen.findByRole('table')).toBeTruthy();
-    expect(screen.getByText('Organização')).toBeTruthy();
-    expect(store.get('sysgov_admin_tenants_view')).toBe('table');
-
-    unmount();
-    render(<AdminTenantManagement onAddToast={vi.fn()} />);
-    expect(await screen.findByRole('table')).toBeTruthy();
-  });
-
-  it('cai em cards se o localStorage falhar', async () => {
-    vi.mocked(window.localStorage.getItem).mockImplementation(() => {
-      throw new Error('bloqueado');
-    });
-    vi.mocked(window.localStorage.setItem).mockImplementation(() => {
-      throw new Error('bloqueado');
-    });
-    render(<AdminTenantManagement onAddToast={vi.fn()} />);
-    expect(await screen.findByText('Alfa Prefeitura')).toBeTruthy();
-    expect(screen.queryByRole('table')).toBeNull();
-
-    // alternar não pode quebrar mesmo sem storage
-    fireEvent.click(screen.getByRole('button', { name: /Tabela/ }));
-    expect(await screen.findByRole('table')).toBeTruthy();
-  });
-
-  it('navega entre páginas nos cards', async () => {
+  it('oferece as ações da linha em um menu', async () => {
     render(<AdminTenantManagement onAddToast={vi.fn()} />);
     await screen.findByText('Alfa Prefeitura');
 
-    fireEvent.click(screen.getByRole('button', { name: /Próxima/ }));
+    // o Radix abre o menu com Enter no gatilho (o clique simples não dispara o pointerdown no jsdom)
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Ações de Alfa Prefeitura' }), { key: 'Enter' });
+
+    expect(await screen.findByRole('menuitem', { name: /Editar organização/ })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: /Excluir organização/ })).toBeTruthy();
+  });
+
+  it('navega entre páginas', async () => {
+    render(<AdminTenantManagement onAddToast={vi.fn()} />);
+    await screen.findByText('Alfa Prefeitura');
+
+    fireEvent.click(screen.getByRole('button', { name: /Próxima|Next|›|>/ }));
 
     expect(await screen.findByText('Gama Prefeitura')).toBeTruthy();
     expect(lastCall()).toMatchObject({ page: 2 });
@@ -122,16 +102,15 @@ describe('AdminTenantManagement — lista de tenants (cards/tabela, paginação)
   it('troca o tamanho da página e volta para a página 1', async () => {
     render(<AdminTenantManagement onAddToast={vi.fn()} />);
     await screen.findByText('Alfa Prefeitura');
-    fireEvent.click(screen.getByRole('button', { name: /Próxima/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Próxima|Next|›|>/ }));
     await screen.findByText('Gama Prefeitura');
 
-    fireEvent.change(screen.getByLabelText('Tenants por página'), { target: { value: '50' } });
+    fireEvent.change(screen.getByLabelText(/por página/i), { target: { value: '50' } });
 
     await waitFor(() => expect(lastCall()).toMatchObject({ page: 1, per_page: 50 }));
   });
 
   it('ordena pelo servidor ao clicar no cabeçalho da tabela', async () => {
-    store.set('sysgov_admin_tenants_view', 'table');
     render(<AdminTenantManagement onAddToast={vi.fn()} />);
     await screen.findByRole('table');
 
@@ -154,7 +133,6 @@ describe('AdminTenantManagement — lista de tenants (cards/tabela, paginação)
   });
 
   it('mantém a seleção entre páginas e limpa ao mudar a busca', async () => {
-    store.set('sysgov_admin_tenants_view', 'table');
     render(<AdminTenantManagement onAddToast={vi.fn()} />);
     const table = await screen.findByRole('table');
 
