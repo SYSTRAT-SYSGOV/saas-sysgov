@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, ChevronDown, ChevronUp, Shield, Key, Loader2, X } from 'lucide-react';
 import { adminApi } from './api';
 import { Role, Permission } from './types';
-import { useFormValidationModal } from '@sysgov/ui';
+import { Button, useFormValidationModal } from '@sysgov/ui';
 
 export const RoleManagement: React.FC = () => {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -287,7 +287,7 @@ const RoleFormModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       {modalValidacao}
-      <div className="bg-card rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-card rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">{role ? 'Editar Role' : 'Nova Role'}</h2>
           <button onClick={onClose} className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors">
@@ -296,7 +296,7 @@ const RoleFormModal: React.FC<{
         </div>
 
         <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
               <input
@@ -317,7 +317,7 @@ const RoleFormModal: React.FC<{
                
               />
             </div>
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-sm font-medium text-foreground mb-1">Escopo *</label>
               <select
                 value={formData.scope}
@@ -328,12 +328,12 @@ const RoleFormModal: React.FC<{
                 <option value="tenant">Tenant (Cliente)</option>
               </select>
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
               <label className="block text-sm font-medium text-foreground mb-1">Descrição</label>
               <textarea
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
+                rows={2}
                 className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-ring focus:border-ring outline-none"
               />
             </div>
@@ -341,7 +341,7 @@ const RoleFormModal: React.FC<{
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Permissões</label>
-            <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar border border-border rounded-lg p-4">
+            <div className="space-y-3 max-h-[45vh] overflow-y-auto custom-scrollbar border border-border rounded-lg p-4">
               {Object.entries(
                 permissions.reduce((acc, p) => {
                   if (!acc[p.module]) acc[p.module] = [];
@@ -351,17 +351,17 @@ const RoleFormModal: React.FC<{
               ).map(([module, perms]) => (
                 <div key={module} className="space-y-2">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{module}</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {perms.map(p => (
-                      <label key={p.id} className="inline-flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg text-sm cursor-pointer hover:bg-accent transition-colors">
+                      <label key={p.id} className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg text-sm cursor-pointer hover:bg-accent transition-colors min-w-0">
                         <input
                           type="checkbox"
                           checked={formData.permission_ids.includes(p.id)}
                           onChange={e => handlePermissionChange(p.id, e.target.checked)}
                           className="w-4 h-4 text-primary border-border rounded focus:ring-ring"
                         />
-                        <span className="font-mono text-xs text-foreground">{p.slug}</span>
-                        <span className="text-xs text-muted-foreground">{p.name}</span>
+                        <span className="font-mono text-xs text-foreground truncate" title={p.slug}>{p.slug}</span>
+                        <span className="text-xs text-muted-foreground truncate ml-auto" title={p.name}>{p.name}</span>
                       </label>
                     ))}
                   </div>
@@ -371,20 +371,10 @@ const RoleFormModal: React.FC<{
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-foreground border border-border rounded-lg hover:bg-accent transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {saving ? 'Salvando...' : (role ? 'Atualizar' : 'Criar')}
-            </button>
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" isLoading={saving}>
+              {role ? 'Atualizar' : 'Criar'}
+            </Button>
           </div>
         </form>
       </div>
