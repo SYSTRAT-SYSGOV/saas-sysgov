@@ -81,6 +81,14 @@ final class EleitoresTest extends TestCase
         $coord()->getJson('/api/campanha/eleitores')->assertJsonMissingPath('eleitores.0.whatsapp_hash');
     }
 
+    public function test_lista_respeita_por_pagina_entre_1_e_100(): void
+    {
+        $coord = fn () => $this->perfil('campanha_coordenacao');
+        $coord()->getJson('/api/campanha/eleitores?por_pagina=2')->assertOk()->assertJsonCount(2, 'eleitores')->assertJsonPath('total', 3)->assertJsonPath('por_pagina', 2);
+        $coord()->getJson('/api/campanha/eleitores?por_pagina=2&pagina=2')->assertOk()->assertJsonCount(1, 'eleitores');
+        $coord()->getJson('/api/campanha/eleitores?por_pagina=500')->assertOk()->assertJsonPath('por_pagina', 100);
+    }
+
     public function test_exportacao_csv_auditada_com_quantidade(): void
     {
         $resposta = $this->perfil('campanha_coordenacao_geral')->get('/api/campanha/eleitores/exportar?codigo_ibge=4113700')->assertOk();

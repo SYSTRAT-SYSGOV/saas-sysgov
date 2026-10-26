@@ -25,12 +25,13 @@ final class EleitorController extends Controller
         $this->authorize('viewAny', Eleitor::class);
         $lista = $this->eleitores->listar($this->filtros($request));
         $pagina = max(1, (int) $request->query('pagina', '1'));
+        $porPagina = min(100, max(1, (int) $request->query('por_pagina', (string) self::POR_PAGINA)));
 
         return response()->json([
-            'eleitores' => $lista->forPage($pagina, self::POR_PAGINA)->values(),
+            'eleitores' => $lista->forPage($pagina, $porPagina)->values(),
             'total' => $lista->count(),
             'pagina' => $pagina,
-            'por_pagina' => self::POR_PAGINA,
+            'por_pagina' => $porPagina,
         ]);
     }
 

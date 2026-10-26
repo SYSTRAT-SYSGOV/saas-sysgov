@@ -40,9 +40,10 @@ final class FinanceiroController extends Controller
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Lancamento::class);
-        $pagina = $this->financeiro->consulta($this->filtros($request))->paginate(self::POR_PAGINA, ['*'], 'pagina');
+        $porPagina = min(100, max(1, (int) $request->query('por_pagina', (string) self::POR_PAGINA)));
+        $pagina = $this->financeiro->consulta($this->filtros($request))->paginate($porPagina, ['*'], 'pagina');
 
-        return response()->json(['lancamentos' => $pagina->items(), 'total' => $pagina->total(), 'pagina' => $pagina->currentPage(), 'por_pagina' => self::POR_PAGINA]);
+        return response()->json(['lancamentos' => $pagina->items(), 'total' => $pagina->total(), 'pagina' => $pagina->currentPage(), 'por_pagina' => $porPagina]);
     }
 
     public function resumo(Request $request): JsonResponse

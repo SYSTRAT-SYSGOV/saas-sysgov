@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { ArrowDownCircle, ArrowUpCircle, Download, FileText, Paperclip, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, KpiCard, Modal, Select, Skeleton, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, CardHeader, CardTitle, DataTable, Input, KpiCard, Modal, Select, Skeleton, StatusChip, Table, TableBody, TableCell, TableRow, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { formatarCentavos, paraCentavos } from '@/lib/formatacao';
 import { erroApi } from '../../escola/api';
@@ -10,7 +11,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type FiltrosFinanceiro, type Lancamento, type MunicipioLinha, type OpcoesFinanceiro, type TipoLancamento } from '../api';
 import { abrirArquivo, formatarData, formatarDocumento, salvarArquivo } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { colunaAcoes, nomeDoMunicipio, SelectMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const opcoesDe = (r: Record<string, string>) => Object.entries(r).map(([value, label]) => ({ value, label }));
@@ -29,6 +30,47 @@ export const FinanceiroCampanha: React.FC<PropsAba> = ({ campanha, permissoes, a
   const [exportando, setExportando] = useState(false);
   const mudar = (parcial: Partial<FiltrosFinanceiro>) => setFiltros((f) => ({ ...f, ...parcial, pagina: 1 }));
 
+  // Colunas estáveis; o estado atual (opções, município, permissão, comprovante) vem por ref, atribuído antes do return principal.
+  const ctx = useRef({} as {
+    opcoes: OpcoesFinanceiro | undefined;
+    municipios: ReturnType<typeof useMunicipiosDaCampanha>['dados'];
+    permissoes: PropsAba['permissoes'];
+    verComprovante: (l: Lancamento) => Promise<void>;
+  });
+  const colunas = useMemo<ColumnDef<Lancamento, unknown>[]>(() => {
+    const categoria = (l: Lancamento) => ctx.current.opcoes?.categorias[l.tipo]?.[l.categoria] ?? l.categoria;
+    const documento = (l: Lancamento) => (l.tipo === 'receita'
+      ? (l.recibo_eleitoral ?? '—')
+      : [l.documento_fiscal_tipo ? ctx.current.opcoes?.documentos_fiscais[l.documento_fiscal_tipo] : null, l.documento_fiscal_numero].filter(Boolean).join(' ') || '—');
+    const centro = (l: Lancamento) => (l.codigo_ibge ? nomeDoMunicipio(ctx.current.municipios, l.codigo_ibge) : 'Campanha geral');
+    return [
+      colunaAcoes<Lancamento>(() => 'Ações do lançamento', (l) => [
+        { key: 'abrir', label: 'Abrir lançamento', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(l) },
+        ...(l.tem_comprovante ? [{ key: 'comprovante', label: 'Ver comprovante', icon: <FileText className="h-3.5 w-3.5" />, onSelect: () => void ctx.current.verComprovante(l) }] : []),
+        ...(ctx.current.permissoes.financeiroGerir ? [{ key: 'excluir', label: 'Excluir lançamento', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(l) }] : []),
+      ]),
+      { id: 'data', header: 'Data', accessorKey: 'data', cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{formatarData(row.original.data)}</span> },
+      {
+        id: 'tipo', header: 'Tipo', accessorFn: (l) => (l.tipo === 'receita' ? 'Receita' : 'Despesa'),
+        cell: ({ row }) => <StatusChip variant={row.original.tipo === 'receita' ? 'success' : 'danger'} label={row.original.tipo === 'receita' ? 'Receita' : 'Despesa'} />,
+      },
+      {
+        id: 'categoria', header: 'Categoria', accessorFn: categoria,
+        cell: ({ row }) => <span className="text-sm">{categoria(row.original)}{row.original.origem_recurso && <p className="text-xs text-muted-foreground">{ctx.current.opcoes?.origens[row.original.origem_recurso]}</p>}</span>,
+      },
+      {
+        id: 'contraparte', header: 'Doador / fornecedor', accessorFn: (l) => l.contraparte_nome ?? '—',
+        cell: ({ row }) => <span className="text-sm">{row.original.contraparte_nome ?? '—'}{row.original.contraparte_documento && <p className="font-mono text-xs tabular-nums text-muted-foreground">{formatarDocumento(row.original.contraparte_documento)}</p>}</span>,
+      },
+      { id: 'centro', header: 'Centro de custo', accessorFn: centro, cell: ({ row }) => <span className="text-sm">{centro(row.original)}</span> },
+      { id: 'documento', header: 'Documento', accessorFn: documento, cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{documento(row.original)}</span> },
+      {
+        id: 'valor', header: 'Valor', accessorFn: (l) => (l.tipo === 'despesa' ? -l.valor_centavos : l.valor_centavos),
+        cell: ({ row }) => <span className={`block text-right font-mono tabular-nums ${row.original.tipo === 'despesa' ? 'text-destructive' : ''}`}>{row.original.tipo === 'despesa' ? '−' : ''}{formatarCentavos(row.original.valor_centavos)}</span>,
+      },
+    ];
+  }, []);
+
   if (opcoes.erro) return <AlertCard priority="danger" title="Não foi possível abrir o financeiro" description={opcoes.erro} actionLabel="Tentar novamente" onAction={() => void opcoes.recarregar()} />;
   if (!opcoes.dados) return <Skeleton className="h-96 w-full" />;
   const o = opcoes.dados;
@@ -44,6 +86,8 @@ export const FinanceiroCampanha: React.FC<PropsAba> = ({ campanha, permissoes, a
   const r = resumo.dados;
   const pagina = lista.dados?.pagina ?? 1;
   const paginas = lista.dados ? Math.max(1, Math.ceil(lista.dados.total / lista.dados.por_pagina)) : 1;
+
+  ctx.current = { opcoes: opcoes.dados, municipios: municipios.dados, permissoes, verComprovante };
 
   return (
     <div className="space-y-4">
@@ -100,34 +144,20 @@ export const FinanceiroCampanha: React.FC<PropsAba> = ({ campanha, permissoes, a
             : !lista.dados ? <Skeleton className="h-48 w-full" />
               : lista.dados.total === 0 ? <EmptyState icon={<Wallet className="h-8 w-8" />} title="Nenhum lançamento" description="Registre as receitas e despesas da campanha." />
                 : (
-                  <>
-                    <Table>
-                      <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Categoria</TableHead><TableHead>Doador / fornecedor</TableHead><TableHead>Centro de custo</TableHead><TableHead>Documento</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                      <TableBody>
-                        {lista.dados.lancamentos.map((l) => (
-                          <TableRow key={l.id}>
-                            <TableCell className="font-mono text-sm tabular-nums">{formatarData(l.data)}</TableCell>
-                            <TableCell><StatusChip variant={l.tipo === 'receita' ? 'success' : 'danger'} label={l.tipo === 'receita' ? 'Receita' : 'Despesa'} /></TableCell>
-                            <TableCell className="text-sm">{rotuloCategoria(l)}{l.origem_recurso && <p className="text-xs text-muted-foreground">{o.origens[l.origem_recurso]}</p>}</TableCell>
-                            <TableCell className="text-sm">{l.contraparte_nome ?? '—'}{l.contraparte_documento && <p className="font-mono text-xs tabular-nums text-muted-foreground">{formatarDocumento(l.contraparte_documento)}</p>}</TableCell>
-                            <TableCell className="text-sm">{l.codigo_ibge ? nomeDoMunicipio(municipios.dados, l.codigo_ibge) : 'Campanha geral'}</TableCell>
-                            <TableCell className="font-mono text-xs tabular-nums">{l.tipo === 'receita' ? (l.recibo_eleitoral ?? '—') : [l.documento_fiscal_tipo ? o.documentos_fiscais[l.documento_fiscal_tipo] : null, l.documento_fiscal_numero].filter(Boolean).join(' ') || '—'}</TableCell>
-                            <TableCell className={`text-right font-mono tabular-nums ${l.tipo === 'despesa' ? 'text-destructive' : ''}`}>{l.tipo === 'despesa' ? '−' : ''}{formatarCentavos(l.valor_centavos)}</TableCell>
-                            <TableCell className="whitespace-nowrap text-right">
-                              {l.tem_comprovante && <Button size="icon-sm" variant="ghost" aria-label="Ver comprovante" onClick={() => void verComprovante(l)}><FileText /></Button>}
-                              <Button size="icon-sm" variant="ghost" aria-label="Abrir lançamento" onClick={() => setEditando(l)}><Pencil /></Button>
-                              {permissoes.financeiroGerir && <Button size="icon-sm" variant="ghost" aria-label="Excluir lançamento" onClick={() => setExcluir(l)}><Trash2 /></Button>}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground">
-                      <Button size="sm" variant="outline" disabled={pagina <= 1} onClick={() => setFiltros((f) => ({ ...f, pagina: pagina - 1 }))}>Anterior</Button>
-                      <span className="font-mono tabular-nums">{pagina} / {paginas}</span>
-                      <Button size="sm" variant="outline" disabled={pagina >= paginas} onClick={() => setFiltros((f) => ({ ...f, pagina: pagina + 1 }))}>Próxima</Button>
-                    </div>
-                  </>
+                  <DataTable
+                    columns={colunas}
+                    data={lista.dados.lancamentos}
+                    emptyText="Nenhum lançamento."
+                    pageSizeOptions={[25, 50, 100]}
+                    paginationState={{
+                      currentPage: pagina,
+                      totalPages: paginas,
+                      onPageChange: (p) => setFiltros((f) => ({ ...f, pagina: p })),
+                      total: lista.dados.total,
+                      perPage: lista.dados.por_pagina,
+                      onPerPageChange: (n) => setFiltros((f) => ({ ...f, por_pagina: n, pagina: 1 })),
+                    }}
+                  />
                 )}
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { acionarMenu } from '@/test-utils/acoesMenu';
 
 const api = vi.hoisted(() => ({ minhas: vi.fn(), coordenadores: vi.fn(), municipios: vi.fn() }));
 const permissoes = vi.hoisted(() => ({ lista: new Set<string>() }));
@@ -73,12 +74,15 @@ describe('Coordenadores', () => {
     render(<CoordenadoresCampanha {...props(false)} />);
     expect(await screen.findByText('Carla Regional')).toBeInTheDocument();
     expect(screen.getByText('CPF ***.982.247-**')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Novo coordenador|Editar|Excluir/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Novo coordenador|Editar|Excluir|Ações de/ })).not.toBeInTheDocument();
   });
 
-  it('equipe vê os botões', async () => {
+  it('equipe vê os botões e o menu da linha, com Editar e Excluir', async () => {
     render(<CoordenadoresCampanha {...props(true)} />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Novo coordenador' })).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'Editar Carla Regional' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ações de Carla Regional' })).toBeInTheDocument();
+
+    await acionarMenu(/Ações de Carla Regional/, 'Editar');
+    expect(await screen.findByText('Editar coordenador')).toBeInTheDocument();
   });
 });

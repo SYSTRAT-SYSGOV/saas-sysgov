@@ -40,10 +40,11 @@ final class AtendimentoController extends Controller
             'aluno_id' => ['nullable', 'integer'],
             'tipo_id' => ['nullable', 'integer'],
             'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $pagina = $this->filtrar(Atendimento::query(), $filtros)->with(self::RELACOES)
-            ->orderByDesc('data_hora')->orderByDesc('id')->paginate(30);
+            ->orderByDesc('data_hora')->orderByDesc('id')->paginate((int) ($filtros['per_page'] ?? 30));
 
         return response()->json([
             'data' => collect($pagina->items())->map(fn (Atendimento $a): array => $this->formatar($a, $request))->values(),

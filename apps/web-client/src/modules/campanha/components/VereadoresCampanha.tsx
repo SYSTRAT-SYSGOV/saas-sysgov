@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Pencil, Plus, Trash2, Users } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, Input, Modal, Select, Skeleton, StatusChip, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, DataTable, Input, Modal, Select, Skeleton, StatusChip, Switch, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -8,7 +9,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type Vereador, type VereadorEleito } from '../api';
 import { formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { SelectMunicipio, colunaAcoes, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const VAZIO = {
@@ -27,8 +28,41 @@ export const VereadoresCampanha: React.FC<PropsAba> = ({ campanha, permissoes, a
   const [excluir, setExcluir] = useState<Vereador | null>(null);
   const visiveis = useMemo(() => (lista.dados ?? []).filter((v) => (municipio === null || v.codigo_ibge === municipio) && (!soAliados || v.aliado)), [lista.dados, municipio, soAliados]);
 
+  // Colunas estáveis; o estado atual vem por ref (atribuído logo antes do return principal).
+  const ctx = useRef({} as { permissoes: PropsAba['permissoes']; municipios: ReturnType<typeof useMunicipiosDaCampanha>['dados'] });
+  const colunas = useMemo<ColumnDef<Vereador, unknown>[]>(() => [
+    colunaAcoes<Vereador>((v) => `Ações de ${v.nome}`, (v) => (ctx.current.permissoes.equipes ? [
+      { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(v) },
+      { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(v) },
+    ] : [])),
+    {
+      id: 'nome', header: 'Nome', accessorKey: 'nome',
+      cell: ({ row }) => <span className="font-medium">{row.original.nome}{row.original.ref_mandatario_id && <p className="text-xs text-muted-foreground">eleito (TSE)</p>}</span>,
+      meta: { exportHeader: 'Nome', exportValue: (v) => v.nome },
+    },
+    { id: 'municipio', header: 'Município', accessorFn: (v) => nomeDoMunicipio(ctx.current.municipios, v.codigo_ibge), meta: { exportHeader: 'Município', exportValue: (v) => nomeDoMunicipio(ctx.current.municipios, v.codigo_ibge) } },
+    {
+      id: 'partido', header: 'Partido / Nº', accessorFn: (v) => `${v.partido ?? ''} ${v.numero ?? ''}`.trim(),
+      cell: ({ row }) => <span className="text-sm">{row.original.partido ?? '—'}{row.original.numero ? <span className="font-mono tabular-nums"> · {row.original.numero}</span> : null}</span>,
+      meta: { exportHeader: 'Partido / Nº', exportValue: (v) => `${v.partido ?? ''}${v.numero ? ` · ${v.numero}` : ''}` },
+    },
+    {
+      id: 'votos', header: 'Votos est.', accessorKey: 'votos_estimados',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarNumero(row.original.votos_estimados)}</span>,
+      meta: { exportHeader: 'Votos estimados', exportValue: (v) => v.votos_estimados },
+    },
+    { id: 'dobradinha', header: 'Dobradinha', accessorFn: (v) => v.dobradinha ?? '—', meta: { exportHeader: 'Dobradinha', exportValue: (v) => v.dobradinha ?? '' } },
+    {
+      id: 'aliado', header: 'Aliado', accessorFn: (v) => (v.aliado ? 'Aliado' : 'Não'),
+      cell: ({ row }) => (row.original.aliado ? <StatusChip label="Aliado" variant="success" /> : <StatusChip label="Não" variant="neutral" />),
+      meta: { exportHeader: 'Aliado', exportValue: (v) => (v.aliado ? 'Sim' : 'Não') },
+    },
+  ], []);
+
   if (lista.erro) return <AlertCard priority="danger" title="Não foi possível carregar os vereadores" description={lista.erro} actionLabel="Tentar novamente" onAction={() => void lista.recarregar()} />;
   if (!lista.dados) return <Skeleton className="h-64 w-full" />;
+
+  ctx.current = { permissoes, municipios: municipios.dados };
 
   return (
     <Card>
@@ -39,27 +73,14 @@ export const VereadoresCampanha: React.FC<PropsAba> = ({ campanha, permissoes, a
           {permissoes.equipes && <div className="text-right"><Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setEditando('novo')}>Novo vereador</Button></div>}
         </div>
         {visiveis.length === 0 ? <EmptyState icon={<Users className="h-8 w-8" />} title="Nenhum vereador" description={lista.dados.length === 0 ? 'Cadastre os vereadores dos municípios (os eleitos aparecem como sugestão).' : 'Ajuste os filtros.'} /> : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Município</TableHead><TableHead>Partido / Nº</TableHead><TableHead className="text-right">Votos est.</TableHead><TableHead>Dobradinha</TableHead><TableHead>Aliado</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {visiveis.map((v) => (
-                <TableRow key={v.id}>
-                  <TableCell className="font-medium">{v.nome}{v.ref_mandatario_id && <p className="text-xs text-muted-foreground">eleito (TSE)</p>}</TableCell>
-                  <TableCell className="text-sm">{nomeDoMunicipio(municipios.dados, v.codigo_ibge)}</TableCell>
-                  <TableCell className="text-sm">{v.partido ?? '—'}{v.numero ? <span className="font-mono tabular-nums"> · {v.numero}</span> : null}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatarNumero(v.votos_estimados)}</TableCell>
-                  <TableCell className="text-sm">{v.dobradinha ?? '—'}</TableCell>
-                  <TableCell>{v.aliado ? <StatusChip label="Aliado" variant="success" /> : <StatusChip label="Não" variant="neutral" />}</TableCell>
-                  <TableCell className="whitespace-nowrap text-right">
-                    {permissoes.equipes && (<>
-                      <Button size="icon-sm" variant="ghost" aria-label={`Editar ${v.nome}`} onClick={() => setEditando(v)}><Pencil /></Button>
-                      <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${v.nome}`} onClick={() => setExcluir(v)}><Trash2 /></Button>
-                    </>)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={visiveis}
+            emptyText="Nenhum vereador encontrado."
+            exportable
+            exportFileName="campanha-vereadores"
+            exportTitle="Campanha — Vereadores"
+          />
         )}
       </CardContent>
       <VereadorModal registro={editando} municipios={municipios.dados} onFechar={() => setEditando(null)} onSalvo={(nome) => { setEditando(null); avisar({ type: 'success', title: 'Vereador salvo', message: nome }); alterou(); }} />

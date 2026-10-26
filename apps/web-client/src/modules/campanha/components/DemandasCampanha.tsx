@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { ClipboardList, Pencil, Plus, Trash2 } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, Input, Modal, Select, Skeleton, StatusChip, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, DataTable, Input, Modal, Select, Skeleton, StatusChip, Switch, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -8,7 +9,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type CategoriaDemanda, type Demanda, type MunicipioLinha, type Prioridade, type StatusDemanda } from '../api';
 import { ROTULO_CATEGORIA, ROTULO_PRIORIDADE, ROTULO_STATUS_DEMANDA, VARIANTE_PRIORIDADE, VARIANTE_STATUS_DEMANDA, formatarData, formatarDataHora } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { SelectMunicipio, colunaAcoes, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const opcoes = <T extends string>(rotulos: Record<T, string>) => (Object.entries(rotulos) as [T, string][]).map(([value, label]) => ({ value, label }));
@@ -26,6 +27,39 @@ export const DemandasCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avi
   const [excluir, setExcluir] = useState<Demanda | null>(null);
   const todos = (rotulo: string) => [{ value: 'todos', label: rotulo }];
 
+  // Colunas estáveis; o estado atual vem por ref. A linha atrasada segue sinalizada pelo texto "atrasada" no prazo.
+  const ctx = useRef({} as { permissoes: PropsAba['permissoes']; municipios: ReturnType<typeof useMunicipiosDaCampanha>['dados'] });
+  ctx.current = { permissoes, municipios: municipios.dados };
+  const colunas = useMemo<ColumnDef<Demanda, unknown>[]>(() => [
+    colunaAcoes<Demanda>((d) => `Ações da demanda de ${d.solicitante}`, (d) => [
+      { key: 'abrir', label: 'Abrir', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(d) },
+      ...(ctx.current.permissoes.demandas ? [{ key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(d) }] : []),
+    ]),
+    { id: 'municipio', header: 'Município', accessorFn: (d) => nomeDoMunicipio(ctx.current.municipios, d.codigo_ibge), meta: { exportHeader: 'Município', exportValue: (d) => nomeDoMunicipio(ctx.current.municipios, d.codigo_ibge) } },
+    {
+      id: 'solicitante', header: 'Solicitante', accessorKey: 'solicitante',
+      cell: ({ row }) => <span className="font-medium">{row.original.solicitante}<p className="line-clamp-1 text-xs text-muted-foreground">{row.original.descricao}</p></span>,
+      meta: { exportHeader: 'Solicitante', exportValue: (d) => d.solicitante },
+    },
+    { id: 'categoria', header: 'Categoria', accessorFn: (d) => ROTULO_CATEGORIA[d.categoria], meta: { exportHeader: 'Categoria', exportValue: (d) => ROTULO_CATEGORIA[d.categoria] } },
+    {
+      id: 'prioridade', header: 'Prioridade', accessorFn: (d) => ROTULO_PRIORIDADE[d.prioridade],
+      cell: ({ row }) => <StatusChip variant={VARIANTE_PRIORIDADE[row.original.prioridade]} label={ROTULO_PRIORIDADE[row.original.prioridade]} />,
+      meta: { exportHeader: 'Prioridade', exportValue: (d) => ROTULO_PRIORIDADE[d.prioridade] },
+    },
+    { id: 'responsavel', header: 'Responsável', accessorFn: (d) => d.responsavel?.name ?? '—', meta: { exportHeader: 'Responsável', exportValue: (d) => d.responsavel?.name ?? '' } },
+    {
+      id: 'prazo', header: 'Prazo', accessorKey: 'prazo',
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{formatarData(row.original.prazo)}{row.original.atrasada && <span className="ml-1 font-sans text-xs font-semibold text-destructive">atrasada</span>}</span>,
+      meta: { exportHeader: 'Prazo', exportValue: (d) => `${formatarData(d.prazo)}${d.atrasada ? ' (atrasada)' : ''}` },
+    },
+    {
+      id: 'situacao', header: 'Situação', accessorFn: (d) => ROTULO_STATUS_DEMANDA[d.status],
+      cell: ({ row }) => <StatusChip variant={VARIANTE_STATUS_DEMANDA[row.original.status]} label={ROTULO_STATUS_DEMANDA[row.original.status]} />,
+      meta: { exportHeader: 'Situação', exportValue: (d) => ROTULO_STATUS_DEMANDA[d.status] },
+    },
+  ], []);
+
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
@@ -41,26 +75,14 @@ export const DemandasCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avi
           : !lista.dados ? <Skeleton className="h-64 w-full" />
             : lista.dados.length === 0 ? <EmptyState icon={<ClipboardList className="h-8 w-8" />} title="Nenhuma demanda" description="Registre os pedidos dos municípios ou transforme o pedido de um eleitor em demanda." />
               : (
-                <Table>
-                  <TableHeader><TableRow><TableHead>Município</TableHead><TableHead>Solicitante</TableHead><TableHead>Categoria</TableHead><TableHead>Prioridade</TableHead><TableHead>Responsável</TableHead><TableHead>Prazo</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {lista.dados.map((d) => (
-                      <TableRow key={d.id} className={d.atrasada ? 'bg-destructive/5' : undefined}>
-                        <TableCell className="text-sm">{nomeDoMunicipio(municipios.dados, d.codigo_ibge)}</TableCell>
-                        <TableCell className="font-medium">{d.solicitante}<p className="line-clamp-1 text-xs text-muted-foreground">{d.descricao}</p></TableCell>
-                        <TableCell className="text-sm">{ROTULO_CATEGORIA[d.categoria]}</TableCell>
-                        <TableCell><StatusChip variant={VARIANTE_PRIORIDADE[d.prioridade]} label={ROTULO_PRIORIDADE[d.prioridade]} /></TableCell>
-                        <TableCell className="text-sm">{d.responsavel?.name ?? '—'}</TableCell>
-                        <TableCell className="font-mono text-sm tabular-nums">{formatarData(d.prazo)}{d.atrasada && <span className="ml-1 font-sans text-xs font-semibold text-destructive">atrasada</span>}</TableCell>
-                        <TableCell><StatusChip variant={VARIANTE_STATUS_DEMANDA[d.status]} label={ROTULO_STATUS_DEMANDA[d.status]} /></TableCell>
-                        <TableCell className="whitespace-nowrap text-right">
-                          <Button size="icon-sm" variant="ghost" aria-label={`Abrir demanda de ${d.solicitante}`} onClick={() => setEditando(d)}><Pencil /></Button>
-                          {permissoes.demandas && <Button size="icon-sm" variant="ghost" aria-label={`Excluir demanda de ${d.solicitante}`} onClick={() => setExcluir(d)}><Trash2 /></Button>}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={colunas}
+                  data={lista.dados}
+                  emptyText="Nenhuma demanda encontrada."
+                  exportable
+                  exportFileName="campanha-demandas"
+                  exportTitle="Campanha — Demandas"
+                />
               )}
       </CardContent>
       <DemandaModal registro={editando} municipios={municipios.dados} responsaveis={responsaveis.dados ?? []} somenteLeitura={!permissoes.demandas} onFechar={() => setEditando(null)}

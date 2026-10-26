@@ -1,5 +1,6 @@
 import React from 'react';
-import { Select } from '@sysgov/ui';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ActionsMenu, Select, type ActionsMenuItem } from '@sysgov/ui';
 import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type MunicipioLinha } from '../api';
 
@@ -28,3 +29,18 @@ export const SelectMunicipio: React.FC<{ label: string; municipios: MunicipioLin
 
 /** Campo de texto opcional: vazio vira null na API. */
 export const vazioParaNulo = (v: string): string | null => (v.trim() === '' ? null : v.trim());
+
+/** Coluna de ações padrão do DataTable (à esquerda, cabeçalho vazio). Sem itens, a célula fica vazia. */
+export function colunaAcoes<T>(triggerLabel: (linha: T) => string, itens: (linha: T) => ActionsMenuItem[]): ColumnDef<T, unknown> {
+  return {
+    id: 'acoes',
+    header: '',
+    size: 56,
+    enableSorting: false,
+    cell: ({ row }) => (
+      <div className="flex justify-center">
+        <ActionsMenu triggerLabel={triggerLabel(row.original)} items={itens(row.original)} />
+      </div>
+    ),
+  };
+}

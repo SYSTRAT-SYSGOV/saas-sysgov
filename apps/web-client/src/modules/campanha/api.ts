@@ -241,7 +241,7 @@ export interface Eleitor {
   responsavel_tipo: 'coordenador' | 'cabo' | null;
 }
 
-export interface FiltrosEleitores { codigo_ibge?: number; bairro?: string; coordenador_id?: number; cabo_id?: number; link_id?: number; de?: string; ate?: string; busca?: string; pagina?: number }
+export interface FiltrosEleitores { codigo_ibge?: number; bairro?: string; coordenador_id?: number; cabo_id?: number; link_id?: number; de?: string; ate?: string; busca?: string; pagina?: number; por_pagina?: number }
 
 export interface IndicadoresEleitores {
   total: number;
@@ -346,7 +346,7 @@ export interface OpcoesFinanceiro {
   documentos_fiscais: Record<string, string>;
 }
 
-export interface FiltrosFinanceiro { de?: string; ate?: string; tipo?: TipoLancamento; categoria?: string; origem_recurso?: string; codigo_ibge?: number; busca?: string; pagina?: number }
+export interface FiltrosFinanceiro { de?: string; ate?: string; tipo?: TipoLancamento; categoria?: string; origem_recurso?: string; codigo_ibge?: number; busca?: string; pagina?: number; por_pagina?: number }
 
 export interface ResumoFinanceiro {
   receitas_centavos: number;

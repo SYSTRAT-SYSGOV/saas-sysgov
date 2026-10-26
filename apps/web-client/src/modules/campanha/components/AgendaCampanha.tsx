@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, CalendarDays, ClipboardList, Compass, Megaphone, Pencil, Plus, Trash2, Users } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, Input, Modal, Select, Skeleton, StatusChip, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, DataTable, Input, Modal, Select, Skeleton, StatusChip, Switch, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -8,7 +9,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type Evento, type ItemAgenda, type MunicipioLinha, type Reuniao, type TipoAgenda, type Visita } from '../api';
 import { formatarData, formatarDataHora } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { SelectMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { SelectMunicipio, colunaAcoes, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 export const ROTULO_AGENDA: Record<TipoAgenda, string> = { evento: 'Evento', reuniao: 'Reunião', visita: 'Visita' };
@@ -32,6 +33,41 @@ export const AgendaCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisa
   const [aberto, setAberto] = useState<Abertura>(null);
   const [excluir, setExcluir] = useState<ItemAgenda | null>(null);
 
+  // Colunas estáveis; a permissão atual vem por ref.
+  const ctx = useRef({} as { permissoes: PropsAba['permissoes'] });
+  ctx.current = { permissoes };
+  const colunas = useMemo<ColumnDef<ItemAgenda, unknown>[]>(() => [
+    colunaAcoes<ItemAgenda>((i) => `Ações de ${i.titulo}`, (i) => [
+      { key: 'abrir', label: 'Abrir', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setAberto({ tipo: i.tipo, registro: i.registro ?? null }) },
+      ...(ctx.current.permissoes.agenda ? [{ key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(i) }] : []),
+    ]),
+    {
+      id: 'quando', header: 'Quando', accessorKey: 'inicio',
+      cell: ({ row }) => <span className="whitespace-nowrap font-mono text-sm tabular-nums">{row.original.dia_inteiro ? formatarData(row.original.inicio) : formatarDataHora(row.original.inicio)}</span>,
+      meta: { exportHeader: 'Quando', exportValue: (i) => (i.dia_inteiro ? formatarData(i.inicio) : formatarDataHora(i.inicio)) },
+    },
+    {
+      id: 'tipo', header: 'Tipo', accessorFn: (i) => ROTULO_AGENDA[i.tipo],
+      cell: ({ row }) => {
+        const Icone = ICONE_AGENDA[row.original.tipo];
+        return <span className="inline-flex items-center gap-1.5 text-sm"><Icone className="h-4 w-4 text-primary" />{ROTULO_AGENDA[row.original.tipo]}</span>;
+      },
+      meta: { exportHeader: 'Tipo', exportValue: (i) => ROTULO_AGENDA[i.tipo] },
+    },
+    {
+      id: 'compromisso', header: 'Compromisso', accessorKey: 'titulo',
+      cell: ({ row }) => (
+        <span className="font-medium">
+          {row.original.titulo}
+          {row.original.alerta && <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-destructive"><AlertTriangle className="h-3.5 w-3.5" />pendência vencida</span>}
+          {row.original.tipo === 'visita' && (row.original.registro as Visita | undefined)?.demanda_id && <StatusChip variant="info" label="Virou demanda" className="ml-2" />}
+        </span>
+      ),
+      meta: { exportHeader: 'Compromisso', exportValue: (i) => i.titulo },
+    },
+    { id: 'municipio', header: 'Município', accessorKey: 'municipio', meta: { exportHeader: 'Município', exportValue: (i) => i.municipio } },
+  ], []);
+
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
@@ -52,27 +88,14 @@ export const AgendaCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisa
           : !lista.dados ? <Skeleton className="h-64 w-full" />
             : lista.dados.length === 0 ? <EmptyState icon={<CalendarDays className="h-8 w-8" />} title="Nada na agenda" description="Nenhum compromisso no período escolhido." />
               : (
-                <Table>
-                  <TableHeader><TableRow><TableHead>Quando</TableHead><TableHead>Tipo</TableHead><TableHead>Compromisso</TableHead><TableHead>Município</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {lista.dados.map((i) => {
-                      const Icone = ICONE_AGENDA[i.tipo];
-                      return (
-                        <TableRow key={`${i.tipo}-${i.id}`}>
-                          <TableCell className="whitespace-nowrap font-mono text-sm tabular-nums">{i.dia_inteiro ? formatarData(i.inicio) : formatarDataHora(i.inicio)}</TableCell>
-                          <TableCell><span className="inline-flex items-center gap-1.5 text-sm"><Icone className="h-4 w-4 text-primary" />{ROTULO_AGENDA[i.tipo]}</span></TableCell>
-                          <TableCell className="font-medium">{i.titulo}{i.alerta && <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-destructive"><AlertTriangle className="h-3.5 w-3.5" />pendência vencida</span>}
-                            {i.tipo === 'visita' && (i.registro as Visita | undefined)?.demanda_id && <StatusChip variant="info" label="Virou demanda" className="ml-2" />}</TableCell>
-                          <TableCell className="text-sm">{i.municipio}</TableCell>
-                          <TableCell className="whitespace-nowrap text-right">
-                            <Button size="icon-sm" variant="ghost" aria-label={`Abrir ${i.titulo}`} onClick={() => setAberto({ tipo: i.tipo, registro: i.registro ?? null })}><Pencil /></Button>
-                            {permissoes.agenda && <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${i.titulo}`} onClick={() => setExcluir(i)}><Trash2 /></Button>}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={colunas}
+                  data={lista.dados}
+                  emptyText="Nenhum compromisso no período."
+                  exportable
+                  exportFileName="campanha-agenda"
+                  exportTitle="Campanha — Agenda"
+                />
               )}
       </CardContent>
       <CompromissoModal aberto={aberto} municipios={municipios.dados} responsaveis={responsaveis.dados ?? []} somenteLeitura={!permissoes.agenda} podeDemanda={permissoes.agenda && permissoes.demandas}

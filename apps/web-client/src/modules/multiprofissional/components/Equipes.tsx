@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { Badge, Button, Card, CardContent, Input, Modal, Select, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { ActionsMenu, Badge, Button, Card, CardContent, DataTable, Input, Modal, Select, Switch } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
@@ -27,34 +28,65 @@ export const Equipes: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () => v
     }
   };
 
+  // Colunas estáveis; o estado atual (permissão, rótulo de turno, excluir) vem por ref.
+  const ctx = useRef({ gerenciar, turno, excluir });
+  ctx.current = { gerenciar, turno, excluir };
+  const colunas = useMemo<ColumnDef<Equipe, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel={`Ações de ${row.original.nome}`}
+            items={ctx.current.gerenciar ? [
+              { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(row.original) },
+              { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => void ctx.current.excluir(row.original) },
+            ] : []}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'equipe',
+      header: 'Equipe',
+      accessorKey: 'nome',
+      cell: ({ row }) => <span className="font-medium">{row.original.nome}{!row.original.ativo && <Badge variant="secondary" className="ml-2">Inativa</Badge>}</span>,
+      meta: { exportHeader: 'Equipe', exportValue: (e) => e.nome },
+    },
+    { id: 'turno', header: 'Turno', accessorFn: (e) => ctx.current.turno(e.turno), meta: { exportHeader: 'Turno', exportValue: (e) => ctx.current.turno(e.turno) } },
+    {
+      id: 'profissionais',
+      header: 'Profissionais',
+      accessorFn: (e) => e.profissionais.map((p) => p.nome).join(', ') || '—',
+      cell: ({ row }) => <span className="text-sm">{row.original.profissionais.map((p) => p.nome).join(', ') || '—'}</span>,
+      meta: { exportHeader: 'Profissionais', exportValue: (e) => e.profissionais.map((p) => p.nome).join(', ') },
+    },
+    {
+      id: 'escolas',
+      header: 'Escolas',
+      accessorFn: (e) => e.escolas.map((x) => x.nome).join(', ') || '—',
+      cell: ({ row }) => <span className="text-sm">{row.original.escolas.map((x) => x.nome).join(', ') || '—'}</span>,
+      meta: { exportHeader: 'Escolas', exportValue: (e) => e.escolas.map((x) => x.nome).join(', ') },
+    },
+  ], []);
+
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
         {gerenciar && <div className="flex justify-end"><Button onClick={() => setEditando('nova')}><Plus className="mr-1 h-4 w-4" />Nova equipe</Button></div>}
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
-        {carga.dados && carga.dados.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma equipe cadastrada.</p>}
-        {carga.dados && carga.dados.length > 0 && (
-          <Table>
-            <TableHeader><TableRow><TableHead>Equipe</TableHead><TableHead className="w-28">Turno</TableHead><TableHead>Profissionais</TableHead><TableHead>Escolas</TableHead>{gerenciar && <TableHead className="w-24" />}</TableRow></TableHeader>
-            <TableBody>
-              {carga.dados.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell className="font-medium">{e.nome}{!e.ativo && <Badge variant="secondary" className="ml-2">Inativa</Badge>}</TableCell>
-                  <TableCell>{turno(e.turno)}</TableCell>
-                  <TableCell className="text-sm">{e.profissionais.map((p) => p.nome).join(', ') || '—'}</TableCell>
-                  <TableCell className="text-sm">{e.escolas.map((x) => x.nome).join(', ') || '—'}</TableCell>
-                  {gerenciar && (
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" aria-label={`Editar ${e.nome}`} onClick={() => setEditando(e)}><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="sm" aria-label={`Excluir ${e.nome}`} onClick={() => void excluir(e)}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {carga.dados && (
+          <DataTable
+            columns={colunas}
+            data={carga.dados}
+            emptyText="Nenhuma equipe cadastrada."
+            exportable
+            exportFileName="multiprofissional-equipes"
+            exportTitle="Multiprofissional — Equipes"
+          />
         )}
       </CardContent>
       {editando && (

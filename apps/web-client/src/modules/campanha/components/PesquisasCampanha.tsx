@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { BarChart3, Pencil, Plus, Trash2, TrendingUp } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Input, Modal, Select, Skeleton, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Checkbox, DataTable, Input, Modal, Select, Skeleton, StatusChip, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -9,7 +10,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type MunicipioLinha, type Pesquisa } from '../api';
 import { formatarData, formatarDecimos, paraDecimos } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { SelectMunicipio, colunaAcoes, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /** Linha editável de resultado (percentual como texto até salvar). */
@@ -40,6 +41,46 @@ export const PesquisasCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
   const [editando, setEditando] = useState<Pesquisa | 'nova' | null>(null);
   const [excluir, setExcluir] = useState<Pesquisa | null>(null);
   const nosso = (p: Pesquisa) => p.resultados.find((r) => r.da_campanha);
+
+  // Colunas estáveis; o estado atual vem por ref.
+  const ctx = useRef({} as { permissoes: PropsAba['permissoes']; municipios: ReturnType<typeof useMunicipiosDaCampanha>['dados'] });
+  ctx.current = { permissoes, municipios: municipios.dados };
+  const colunas = useMemo<ColumnDef<Pesquisa, unknown>[]>(() => {
+    const alvo = (p: Pesquisa) => (p.codigo_ibge ? nomeDoMunicipio(ctx.current.municipios, p.codigo_ibge) : 'Estadual');
+    const meu = (p: Pesquisa) => p.resultados.find((r) => r.da_campanha);
+    return [
+      colunaAcoes<Pesquisa>((p) => `Ações da pesquisa ${p.instituto}`, (p) => [
+        { key: 'abrir', label: 'Abrir', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(p) },
+        ...(ctx.current.permissoes.pesquisas ? [{ key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(p) }] : []),
+      ]),
+      {
+        id: 'divulgacao', header: 'Divulgação', accessorKey: 'divulgada_em',
+        cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{formatarData(row.original.divulgada_em)}</span>,
+        meta: { exportHeader: 'Divulgação', exportValue: (p) => formatarData(p.divulgada_em) },
+      },
+      {
+        id: 'tipo', header: 'Tipo', accessorFn: (p) => (p.tipo === 'externa' ? 'Externa' : 'Interna'),
+        cell: ({ row }) => <StatusChip variant={row.original.tipo === 'externa' ? 'info' : 'neutral'} label={row.original.tipo === 'externa' ? 'Externa' : 'Interna'} />,
+        meta: { exportHeader: 'Tipo', exportValue: (p) => (p.tipo === 'externa' ? 'Externa' : 'Interna') },
+      },
+      {
+        id: 'instituto', header: 'Instituto', accessorKey: 'instituto',
+        cell: ({ row }) => <span className="font-medium">{row.original.instituto}{row.original.registro_tse && <p className="font-mono text-xs tabular-nums text-muted-foreground">TSE {row.original.registro_tse}</p>}</span>,
+        meta: { exportHeader: 'Instituto', exportValue: (p) => p.instituto },
+      },
+      { id: 'abrangencia', header: 'Abrangência', accessorFn: alvo, meta: { exportHeader: 'Abrangência', exportValue: alvo } },
+      {
+        id: 'margem', header: 'Margem', accessorKey: 'margem_erro_decimos',
+        cell: ({ row }) => <span className="block text-right font-mono tabular-nums">±{formatarDecimos(row.original.margem_erro_decimos)}</span>,
+        meta: { exportHeader: 'Margem de erro', exportValue: (p) => `±${formatarDecimos(p.margem_erro_decimos)}` },
+      },
+      {
+        id: 'nosso', header: 'Nosso candidato', accessorFn: (p) => meu(p)?.percentual_decimos ?? -1,
+        cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarDecimos(meu(row.original)?.percentual_decimos)}</span>,
+        meta: { exportHeader: 'Nosso candidato', exportValue: (p) => formatarDecimos(meu(p)?.percentual_decimos) },
+      },
+    ];
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -72,25 +113,14 @@ export const PesquisasCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
             : !lista.dados ? <Skeleton className="h-48 w-full" />
               : lista.dados.length === 0 ? <EmptyState icon={<BarChart3 className="h-8 w-8" />} title="Nenhuma pesquisa" description="Registre as pesquisas internas e as divulgadas pelos institutos." />
                 : (
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Divulgação</TableHead><TableHead>Tipo</TableHead><TableHead>Instituto</TableHead><TableHead>Abrangência</TableHead><TableHead className="text-right">Margem</TableHead><TableHead className="text-right">Nosso candidato</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {lista.dados.map((p) => (
-                        <TableRow key={p.id}>
-                          <TableCell className="font-mono text-sm tabular-nums">{formatarData(p.divulgada_em)}</TableCell>
-                          <TableCell><StatusChip variant={p.tipo === 'externa' ? 'info' : 'neutral'} label={p.tipo === 'externa' ? 'Externa' : 'Interna'} /></TableCell>
-                          <TableCell className="font-medium">{p.instituto}{p.registro_tse && <p className="font-mono text-xs tabular-nums text-muted-foreground">TSE {p.registro_tse}</p>}</TableCell>
-                          <TableCell className="text-sm">{p.codigo_ibge ? nomeDoMunicipio(municipios.dados, p.codigo_ibge) : 'Estadual'}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums">±{formatarDecimos(p.margem_erro_decimos)}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums">{formatarDecimos(nosso(p)?.percentual_decimos)}</TableCell>
-                          <TableCell className="whitespace-nowrap text-right">
-                            <Button size="icon-sm" variant="ghost" aria-label={`Abrir pesquisa ${p.instituto}`} onClick={() => setEditando(p)}><Pencil /></Button>
-                            {permissoes.pesquisas && <Button size="icon-sm" variant="ghost" aria-label={`Excluir pesquisa ${p.instituto}`} onClick={() => setExcluir(p)}><Trash2 /></Button>}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <DataTable
+                    columns={colunas}
+                    data={lista.dados}
+                    emptyText="Nenhuma pesquisa cadastrada."
+                    exportable
+                    exportFileName="campanha-pesquisas"
+                    exportTitle="Campanha — Pesquisas"
+                  />
                 )}
         </CardContent>
       </Card>

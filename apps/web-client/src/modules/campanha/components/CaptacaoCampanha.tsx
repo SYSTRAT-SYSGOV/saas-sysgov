@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Copy, Link2, Plus, Printer, QrCode, Trash2 } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, Input, Modal, Select, Skeleton, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, DataTable, Input, Modal, Select, Skeleton, Switch } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -8,7 +9,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type CampanhaAtual, type LinkCaptacao } from '../api';
 import { formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { vazioParaNulo } from './Comuns';
+import { colunaAcoes, vazioParaNulo } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const escapar = (t: string): string => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
@@ -40,6 +41,37 @@ export const CaptacaoCampanha: React.FC<PropsAba> = ({ campanha, avisar, alterou
   const [qr, setQr] = useState<{ link: LinkCaptacao; svg: string } | null>(null);
   const [excluir, setExcluir] = useState<LinkCaptacao | null>(null);
 
+  // Colunas estáveis (o switch não remonta ao gravar); as ações atuais vêm por ref.
+  const ctx = useRef({} as { alternar: (l: LinkCaptacao, ativo: boolean) => Promise<void>; mostrarQr: (l: LinkCaptacao) => Promise<void>; copiar: (l: LinkCaptacao) => Promise<void> });
+  const colunas = useMemo<ColumnDef<LinkCaptacao, unknown>[]>(() => [
+    colunaAcoes<LinkCaptacao>((l) => `Ações do link de ${l.responsavel}`, (l) => [
+      { key: 'qr', label: 'QR Code', icon: <QrCode className="h-3.5 w-3.5" />, onSelect: () => void ctx.current.mostrarQr(l) },
+      { key: 'copiar', label: 'Copiar link', icon: <Copy className="h-3.5 w-3.5" />, onSelect: () => void ctx.current.copiar(l) },
+      ...(l.cadastros === 0 ? [{ key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(l) }] : []),
+    ]),
+    {
+      id: 'responsavel', header: 'Responsável', accessorKey: 'responsavel',
+      cell: ({ row }) => <span className="font-medium">{row.original.responsavel}<p className="text-xs text-muted-foreground">{row.original.tipo === 'cabo' ? 'Cabo eleitoral' : 'Coordenador'}</p></span>,
+      meta: { exportHeader: 'Responsável', exportValue: (l) => l.responsavel },
+    },
+    { id: 'descricao', header: 'Descrição', accessorFn: (l) => l.descricao ?? '—', meta: { exportHeader: 'Descrição', exportValue: (l) => l.descricao ?? '' } },
+    {
+      id: 'codigo', header: 'Código', accessorKey: 'codigo',
+      cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.codigo}</span>,
+      meta: { exportHeader: 'Código', exportValue: (l) => l.codigo },
+    },
+    {
+      id: 'cadastros', header: 'Cadastros', accessorKey: 'cadastros',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarNumero(row.original.cadastros)}</span>,
+      meta: { exportHeader: 'Cadastros', exportValue: (l) => l.cadastros },
+    },
+    {
+      id: 'ativo', header: 'Ativo', accessorFn: (l) => (l.ativo ? 'Sim' : 'Não'),
+      cell: ({ row }) => <Switch checked={row.original.ativo} onCheckedChange={(v) => void ctx.current.alternar(row.original, v)} label={`Link de ${row.original.responsavel} ativo`} />,
+      meta: { exportHeader: 'Ativo', exportValue: (l) => (l.ativo ? 'Sim' : 'Não') },
+    },
+  ], []);
+
   if (dados.erro) return <AlertCard priority="danger" title="Não foi possível carregar os links" description={dados.erro} actionLabel="Tentar novamente" onAction={() => void dados.recarregar()} />;
   if (!dados.dados) return <Skeleton className="h-64 w-full" />;
 
@@ -53,6 +85,8 @@ export const CaptacaoCampanha: React.FC<PropsAba> = ({ campanha, avisar, alterou
     try { await campanhaApi.atualizarLink(link.id, { ativo }); alterou(); } catch (e) { if (!tratarErro(e)) avisar({ type: 'error', title: 'Não foi possível alterar o link', message: erroApi(e).mensagem }); }
   };
 
+  ctx.current = { alternar, mostrarQr, copiar };
+
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
@@ -61,25 +95,14 @@ export const CaptacaoCampanha: React.FC<PropsAba> = ({ campanha, avisar, alterou
           <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setNovo(true)}>Novo link</Button>
         </div>
         {dados.dados.length === 0 ? <EmptyState icon={<Link2 className="h-8 w-8" />} title="Nenhum link de captação" description="Crie um link para um coordenador ou cabo eleitoral." /> : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Responsável</TableHead><TableHead>Descrição</TableHead><TableHead>Código</TableHead><TableHead className="text-right">Cadastros</TableHead><TableHead>Ativo</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {dados.dados.map((l) => (
-                <TableRow key={l.id}>
-                  <TableCell className="font-medium">{l.responsavel}<p className="text-xs text-muted-foreground">{l.tipo === 'cabo' ? 'Cabo eleitoral' : 'Coordenador'}</p></TableCell>
-                  <TableCell className="text-sm">{l.descricao ?? '—'}</TableCell>
-                  <TableCell className="font-mono text-xs tabular-nums">{l.codigo}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatarNumero(l.cadastros)}</TableCell>
-                  <TableCell><Switch checked={l.ativo} onCheckedChange={(v) => void alternar(l, v)} label={`Link de ${l.responsavel} ativo`} /></TableCell>
-                  <TableCell className="whitespace-nowrap text-right">
-                    <Button size="icon-sm" variant="ghost" aria-label={`QR Code de ${l.responsavel}`} onClick={() => void mostrarQr(l)}><QrCode /></Button>
-                    <Button size="icon-sm" variant="ghost" aria-label={`Copiar link de ${l.responsavel}`} onClick={() => void copiar(l)}><Copy /></Button>
-                    {l.cadastros === 0 && <Button size="icon-sm" variant="ghost" aria-label={`Excluir link de ${l.responsavel}`} onClick={() => setExcluir(l)}><Trash2 /></Button>}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={dados.dados}
+            emptyText="Nenhum link de captação."
+            exportable
+            exportFileName="campanha-links-captacao"
+            exportTitle="Campanha — Links de captação"
+          />
         )}
       </CardContent>
       <NovoLinkModal aberto={novo} campanhaId={campanha.id} onFechar={() => setNovo(false)} onSalvo={(l) => { setNovo(false); avisar({ type: 'success', title: 'Link criado', message: l.responsavel }); alterou(); }} />

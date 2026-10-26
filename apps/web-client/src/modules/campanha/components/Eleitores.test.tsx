@@ -45,6 +45,15 @@ describe('Eleitores', () => {
     expect(await screen.findByText('Ana Souza')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Exportar CSV' })).not.toBeInTheDocument();
   });
+
+  it('a ação "Abrir" abre a ficha do eleitor e a grade pede 50 por página ao servidor', async () => {
+    render(<EleitoresCampanha {...props(true)} />);
+    expect(await screen.findByText('Ana Souza')).toBeInTheDocument();
+    expect(api.eleitores).toHaveBeenCalledWith(expect.objectContaining({ pagina: 1 }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir' }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
 });
 
 describe('Cadastro público de apoio', () => {

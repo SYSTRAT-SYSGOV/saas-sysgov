@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Landmark, Search } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, Input, Select, Skeleton, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, DataTable, Input, Select, Skeleton, StatusChip } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { useCarga } from '../../escola/useCarga';
@@ -37,8 +38,45 @@ export const PrefeitosCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
     }
   };
 
+  // Colunas estáveis (o Select da relação não remonta ao gravar); o estado atual vem por ref.
+  type LinhaPrefeito = Awaited<ReturnType<typeof campanhaApi.prefeitos>>[number];
+  const ctx = useRef({} as { permissoes: PropsAba['permissoes']; salvando: number | null; mudar: (ibge: number, nova: RelacaoPrefeito) => Promise<void>; abrirMunicipio: PropsAba['abrirMunicipio'] });
+  const colunas = useMemo<ColumnDef<LinhaPrefeito, unknown>[]>(() => [
+    {
+      id: 'municipio', header: 'Município', accessorKey: 'municipio',
+      cell: ({ row }) => (
+        <div>
+          <Button variant="link" className="h-auto p-0 font-medium" onClick={() => ctx.current.abrirMunicipio(row.original.codigo_ibge)}>{row.original.municipio}</Button>
+          <p className="text-xs text-muted-foreground">{row.original.regiao ?? ''}</p>
+        </div>
+      ),
+      meta: { exportHeader: 'Município', exportValue: (p) => p.municipio },
+    },
+    {
+      id: 'prefeito', header: 'Prefeito', accessorFn: (p) => `${p.nome ?? '—'}${p.partido ? ` (${p.partido})` : ''}`,
+      cell: ({ row }) => <span>{row.original.nome ?? '—'}{row.original.partido ? <span className="text-muted-foreground"> ({row.original.partido})</span> : null}</span>,
+      meta: { exportHeader: 'Prefeito', exportValue: (p) => `${p.nome ?? ''}${p.partido ? ` (${p.partido})` : ''}` },
+    },
+    { id: 'vice', header: 'Vice', accessorFn: (p) => p.vice ?? '—', meta: { exportHeader: 'Vice', exportValue: (p) => p.vice ?? '' } },
+    {
+      id: 'relacao', header: 'Relação', accessorFn: (p) => ROTULO_RELACAO[p.relacao],
+      cell: ({ row }) => {
+        const p = row.original;
+        const { permissoes: perm, salvando: emGravacao, mudar: gravar } = ctx.current;
+        return perm.equipes ? (
+          <div className="w-56">
+            <Select value={p.relacao} disabled={emGravacao === p.codigo_ibge} onChange={(v) => void gravar(p.codigo_ibge, v as RelacaoPrefeito)} options={RELACOES.map((r) => ({ value: r, label: ROTULO_RELACAO[r] }))} />
+          </div>
+        ) : <StatusChip label={ROTULO_RELACAO[p.relacao]} variant={VARIANTE_RELACAO[p.relacao]} />;
+      },
+      meta: { exportHeader: 'Relação', exportValue: (p) => ROTULO_RELACAO[p.relacao] },
+    },
+  ], []);
+
   if (lista.erro) return <AlertCard priority="danger" title="Não foi possível carregar os prefeitos" description={lista.erro} actionLabel="Tentar novamente" onAction={() => void lista.recarregar()} />;
   if (!lista.dados) return <Skeleton className="h-64 w-full" />;
+
+  ctx.current = { permissoes, salvando, mudar, abrirMunicipio };
 
   return (
     <Card>
@@ -49,23 +87,14 @@ export const PrefeitosCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
         </div>
         <p className="text-xs text-muted-foreground">Prefeitos e vices eleitos segundo o TSE. A relação com a campanha pinta a camada "Apoio de Prefeito" do mapa.</p>
         {visiveis.length === 0 ? <EmptyState icon={<Landmark className="h-8 w-8" />} title="Nenhum prefeito encontrado" description="Ajuste os filtros." /> : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Município</TableHead><TableHead>Prefeito</TableHead><TableHead>Vice</TableHead><TableHead>Relação</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {visiveis.map((p) => (
-                <TableRow key={p.codigo_ibge}>
-                  <TableCell><Button variant="link" className="h-auto p-0 font-medium" onClick={() => abrirMunicipio(p.codigo_ibge)}>{p.municipio}</Button><p className="text-xs text-muted-foreground">{p.regiao ?? ''}</p></TableCell>
-                  <TableCell>{p.nome ?? '—'}{p.partido ? <span className="text-muted-foreground"> ({p.partido})</span> : null}</TableCell>
-                  <TableCell className="text-sm">{p.vice ?? '—'}</TableCell>
-                  <TableCell className="w-56">
-                    {permissoes.equipes ? (
-                      <Select value={p.relacao} disabled={salvando === p.codigo_ibge} onChange={(v) => void mudar(p.codigo_ibge, v as RelacaoPrefeito)} options={RELACOES.map((r) => ({ value: r, label: ROTULO_RELACAO[r] }))} />
-                    ) : <StatusChip label={ROTULO_RELACAO[p.relacao]} variant={VARIANTE_RELACAO[p.relacao]} />}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={visiveis}
+            emptyText="Nenhum prefeito encontrado."
+            exportable
+            exportFileName="campanha-prefeitos"
+            exportTitle="Campanha — Prefeitos"
+          />
         )}
       </CardContent>
     </Card>

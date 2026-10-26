@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Pencil, Plus, Trash2, UserCog } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, Input, Modal, Select, Skeleton, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, DataTable, Input, Modal, Select, Skeleton, StatusChip, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -8,7 +9,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type Coordenador, type TipoCoordenador } from '../api';
 import { ROTULO_TIPO_COORDENADOR, formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { SelectMunicipio, colunaAcoes, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const VAZIO = { nome: '', tipo: 'regional' as TipoCoordenador, cpf: '', codigo_ibge: null as number | null, regiao: '', meta_votos: '0', telefone: '', whatsapp: '', email: '', observacoes: '' };
@@ -21,8 +22,41 @@ export const CoordenadoresCampanha: React.FC<PropsAba> = ({ campanha, permissoes
   const { tratarErro } = useFormValidationModal();
   const [excluir, setExcluir] = useState<Coordenador | null>(null);
 
+  // Colunas estáveis; o estado atual vem por ref (atribuído logo antes do return principal).
+  const ctx = useRef({} as { permissoes: PropsAba['permissoes']; municipios: ReturnType<typeof useMunicipiosDaCampanha>['dados'] });
+  const atuacao = (c: Coordenador) => (c.codigo_ibge ? nomeDoMunicipio(ctx.current.municipios, c.codigo_ibge) : c.regiao ?? '—');
+  const colunas = useMemo<ColumnDef<Coordenador, unknown>[]>(() => [
+    colunaAcoes<Coordenador>((c) => `Ações de ${c.nome}`, (c) => (ctx.current.permissoes.equipes ? [
+      { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(c) },
+      { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(c) },
+    ] : [])),
+    {
+      id: 'nome', header: 'Nome', accessorKey: 'nome',
+      cell: ({ row }) => <span className="font-medium">{row.original.nome}{row.original.cpf_mascarado && <p className="font-mono text-xs tabular-nums text-muted-foreground">CPF {row.original.cpf_mascarado}</p>}</span>,
+      meta: { exportHeader: 'Nome', exportValue: (c) => c.nome },
+    },
+    {
+      id: 'tipo', header: 'Tipo', accessorFn: (c) => ROTULO_TIPO_COORDENADOR[c.tipo],
+      cell: ({ row }) => <StatusChip label={ROTULO_TIPO_COORDENADOR[row.original.tipo]} variant={row.original.tipo === 'estadual' ? 'primary' : row.original.tipo === 'regional' ? 'info' : 'neutral'} />,
+      meta: { exportHeader: 'Tipo', exportValue: (c) => ROTULO_TIPO_COORDENADOR[c.tipo] },
+    },
+    { id: 'atuacao', header: 'Atuação', accessorFn: (c) => atuacao(c), meta: { exportHeader: 'Atuação', exportValue: (c) => atuacao(c) } },
+    {
+      id: 'meta', header: 'Meta', accessorKey: 'meta_votos',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarNumero(row.original.meta_votos)}</span>,
+      meta: { exportHeader: 'Meta de votos', exportValue: (c) => c.meta_votos },
+    },
+    {
+      id: 'whatsapp', header: 'WhatsApp', accessorFn: (c) => c.whatsapp ?? '',
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.whatsapp ?? '—'}</span>,
+      meta: { exportHeader: 'WhatsApp', exportValue: (c) => c.whatsapp ?? '' },
+    },
+  ], []);
+
   if (lista.erro) return <AlertCard priority="danger" title="Não foi possível carregar os coordenadores" description={lista.erro} actionLabel="Tentar novamente" onAction={() => void lista.recarregar()} />;
   if (!lista.dados) return <Skeleton className="h-64 w-full" />;
+
+  ctx.current = { permissoes, municipios: municipios.dados };
 
   return (
     <Card>
@@ -32,26 +66,14 @@ export const CoordenadoresCampanha: React.FC<PropsAba> = ({ campanha, permissoes
           {permissoes.equipes && <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setEditando('novo')}>Novo coordenador</Button>}
         </div>
         {lista.dados.length === 0 ? <EmptyState icon={<UserCog className="h-8 w-8" />} title="Nenhum coordenador" description="Cadastre os coordenadores estaduais, regionais e municipais da campanha." /> : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Tipo</TableHead><TableHead>Atuação</TableHead><TableHead className="text-right">Meta</TableHead><TableHead>WhatsApp</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {lista.dados.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.nome}{c.cpf_mascarado && <p className="font-mono text-xs tabular-nums text-muted-foreground">CPF {c.cpf_mascarado}</p>}</TableCell>
-                  <TableCell><StatusChip label={ROTULO_TIPO_COORDENADOR[c.tipo]} variant={c.tipo === 'estadual' ? 'primary' : c.tipo === 'regional' ? 'info' : 'neutral'} /></TableCell>
-                  <TableCell className="text-sm">{c.codigo_ibge ? nomeDoMunicipio(municipios.dados, c.codigo_ibge) : c.regiao ?? '—'}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatarNumero(c.meta_votos)}</TableCell>
-                  <TableCell className="font-mono text-sm tabular-nums">{c.whatsapp ?? '—'}</TableCell>
-                  <TableCell className="whitespace-nowrap text-right">
-                    {permissoes.equipes && (<>
-                      <Button size="icon-sm" variant="ghost" aria-label={`Editar ${c.nome}`} onClick={() => setEditando(c)}><Pencil /></Button>
-                      <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${c.nome}`} onClick={() => setExcluir(c)}><Trash2 /></Button>
-                    </>)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={lista.dados}
+            emptyText="Nenhum coordenador cadastrado."
+            exportable
+            exportFileName="campanha-coordenadores"
+            exportTitle="Campanha — Coordenadores"
+          />
         )}
       </CardContent>
       <CoordenadorModal registro={editando} municipios={municipios.dados} onFechar={() => setEditando(null)} onSalvo={(nome) => { setEditando(null); avisar({ type: 'success', title: 'Coordenador salvo', message: nome }); alterou(); }} />

@@ -1,12 +1,31 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { CheckSquare, ChevronDown, ChevronRight, ExternalLink, School, XSquare } from 'lucide-react';
-import { Button, Card, CardContent, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { CheckSquare, ExternalLink, School, Users, XSquare } from 'lucide-react';
+import { ActionsMenu, Button, Card, CardContent, CardHeader, CardTitle, DataTable, StatusChip } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi, type Turma } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
-import { passeioApi } from '../api';
+import { passeioApi, type Inscricao } from '../api';
 import type { PropsAba } from '../ModuloPasseioMain';
+
+type LinhaTurma = { turma: Turma; alunos: number | null; vao: number; termos: number; pagos: number };
+
+const colunasInscritos: ColumnDef<Inscricao, unknown>[] = [
+  {
+    id: 'aluno',
+    header: 'Aluno',
+    accessorFn: (i) => i.aluno?.nome ?? '',
+    meta: { exportHeader: 'Aluno', exportValue: (i) => i.aluno?.nome ?? '' },
+  },
+  {
+    id: 'vai',
+    header: 'Situação',
+    accessorFn: (i) => (i.vai ? 'Vai' : 'Não vai'),
+    cell: ({ row }) => <StatusChip label={row.original.vai ? 'Vai' : 'Não vai'} variant={row.original.vai ? 'success' : 'neutral'} />,
+    meta: { exportHeader: 'Situação', exportValue: (i) => (i.vai ? 'Vai' : 'Não vai') },
+  },
+];
 
 /**
  * Turmas do Cadastro Escolar no ano letivo do passeio (sem criar/editar aqui): inscritos por turma e
@@ -18,6 +37,57 @@ export const TurmasPasseio: React.FC<PropsAba> = ({ ativo, dados, recarregar, av
   const [lote, setLote] = useState<{ turma: Turma; vai: boolean } | null>(null);
   const ano = ativo.data_passeio.slice(0, 4);
 
+  // Colunas estáveis; o estado atual (turma aberta, permissão) vem por ref.
+  const ctx = useRef({ aberta, permissoes });
+  ctx.current = { aberta, permissoes };
+
+  const linhas = useMemo<LinhaTurma[]>(() => dados.turmas.map((t) => {
+    const vao = dados.inscricoes.filter((i) => i.aluno?.turma_id === t.id && i.vai);
+    return { turma: t, alunos: t.total_alunos ?? null, vao: vao.length, termos: vao.filter((i) => i.autorizacao_entregue).length, pagos: vao.filter((i) => i.pago).length };
+  }), [dados.turmas, dados.inscricoes]);
+
+  const colunas = useMemo<ColumnDef<LinhaTurma, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const { turma, vao } = row.original;
+        const { aberta: atual, permissoes: perm } = ctx.current;
+        return (
+          <div className="flex justify-center">
+            <ActionsMenu
+              triggerLabel={`Ações da turma ${turma.nome}`}
+              items={[
+                { key: 'inscritos', label: atual === turma.id ? 'Ocultar inscritos' : 'Ver inscritos', icon: <Users className="h-3.5 w-3.5" />, onSelect: () => setAberta(atual === turma.id ? null : turma.id) },
+                ...(perm.passeios ? [
+                  { key: 'marcar', label: 'Marcar turma inteira', icon: <CheckSquare className="h-3.5 w-3.5" />, onSelect: () => setLote({ turma, vai: true }) },
+                  { key: 'desmarcar', label: 'Desmarcar turma inteira', icon: <XSquare className="h-3.5 w-3.5" />, disabled: vao === 0, onSelect: () => setLote({ turma, vai: false }) },
+                ] : []),
+              ]}
+            />
+          </div>
+        );
+      },
+    },
+    { id: 'turma', header: 'Turma', accessorFn: (l) => l.turma.nome, cell: ({ row }) => <span className="font-medium">{row.original.turma.nome}</span>, meta: { exportHeader: 'Turma', exportValue: (l) => l.turma.nome } },
+    { id: 'turno', header: 'Turno', accessorFn: (l) => l.turma.turno?.nome ?? '—', meta: { exportHeader: 'Turno', exportValue: (l) => l.turma.turno?.nome ?? '—' } },
+    {
+      id: 'alunos',
+      header: 'Alunos',
+      accessorFn: (l) => l.alunos ?? -1,
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{row.original.alunos ?? '—'}</span>,
+      meta: { exportHeader: 'Alunos', exportValue: (l) => l.alunos ?? '' },
+    },
+    { id: 'vao', header: 'Vão', accessorKey: 'vao', cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{row.original.vao}</span>, meta: { exportHeader: 'Vão', exportValue: (l) => l.vao } },
+    { id: 'termos', header: 'Termos', accessorKey: 'termos', cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{row.original.termos}</span>, meta: { exportHeader: 'Termos', exportValue: (l) => l.termos } },
+    { id: 'pagos', header: 'Pagos', accessorKey: 'pagos', cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{row.original.pagos}</span>, meta: { exportHeader: 'Pagos', exportValue: (l) => l.pagos } },
+  ], []);
+
+  const turmaAberta = dados.turmas.find((t) => t.id === aberta);
+  const inscritos = turmaAberta ? dados.inscricoes.filter((i) => i.aluno?.turma_id === turmaAberta.id) : [];
+
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
@@ -28,69 +98,29 @@ export const TurmasPasseio: React.FC<PropsAba> = ({ ativo, dados, recarregar, av
         {dados.turmas.length === 0 ? (
           <EmptyState icon={<School className="h-8 w-8" />} title={`Nenhuma turma em ${ano}`} description="Cadastre as turmas do ano letivo do passeio no Cadastro Escolar." />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Turma</TableHead><TableHead>Turno</TableHead><TableHead className="text-right">Alunos</TableHead>
-                <TableHead className="text-right">Vão</TableHead><TableHead className="text-right">Termos</TableHead><TableHead className="text-right">Pagos</TableHead>
-                {permissoes.passeios && <TableHead className="text-right">Turma inteira</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {dados.turmas.map((t) => {
-                const daTurma = dados.inscricoes.filter((i) => i.aluno?.turma_id === t.id);
-                const vao = daTurma.filter((i) => i.vai);
-                const expandida = aberta === t.id;
-                return (
-                  <React.Fragment key={t.id}>
-                    <TableRow>
-                      <TableCell className="font-medium">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          aria-expanded={expandida}
-                          aria-label={`Ver inscritos do ${t.nome}`}
-                          leftIcon={expandida ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                          onClick={() => setAberta(expandida ? null : t.id)}
-                        >
-                          {t.nome}
-                        </Button>
-                      </TableCell>
-                      <TableCell>{t.turno?.nome ?? '—'}</TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{t.total_alunos ?? '—'}</TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{vao.length}</TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{vao.filter((i) => i.autorizacao_entregue).length}</TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{vao.filter((i) => i.pago).length}</TableCell>
-                      {permissoes.passeios && (
-                        <TableCell className="whitespace-nowrap text-right">
-                          <Button size="sm" variant="outline" leftIcon={<CheckSquare className="h-4 w-4" />} onClick={() => setLote({ turma: t, vai: true })} aria-label={`Marcar toda a turma ${t.nome}`}>Marcar</Button>{' '}
-                          <Button size="sm" variant="outline" leftIcon={<XSquare className="h-4 w-4" />} onClick={() => setLote({ turma: t, vai: false })} disabled={vao.length === 0} aria-label={`Desmarcar toda a turma ${t.nome}`}>Desmarcar</Button>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                    {expandida && (
-                      <TableRow>
-                        <TableCell colSpan={permissoes.passeios ? 7 : 6} className="bg-muted/40">
-                          {daTurma.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">Nenhum aluno desta turma inscrito.</p>
-                          ) : (
-                            <ul className="grid gap-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                              {daTurma.map((i) => (
-                                <li key={i.id} className="flex items-center gap-2">
-                                  <StatusChip label={i.vai ? 'Vai' : 'Não vai'} variant={i.vai ? 'success' : 'neutral'} />
-                                  {i.aluno?.nome}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={linhas}
+            emptyText="Nenhuma turma."
+            exportable
+            exportFileName="passeio-turmas"
+            exportTitle="Passeio — Turmas"
+          />
+        )}
+        {turmaAberta && (
+          <Card>
+            <CardHeader><CardTitle>Inscritos — {turmaAberta.nome}</CardTitle></CardHeader>
+            <CardContent className="p-0">
+              <DataTable
+                columns={colunasInscritos}
+                data={inscritos}
+                emptyText="Nenhum aluno desta turma inscrito."
+                exportable
+                exportFileName={`passeio-inscritos-${turmaAberta.nome}`}
+                exportTitle={`Passeio — Inscritos ${turmaAberta.nome}`}
+              />
+            </CardContent>
+          </Card>
         )}
       </CardContent>
 

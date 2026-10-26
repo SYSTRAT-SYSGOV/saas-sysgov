@@ -25,6 +25,7 @@ final class AuditoriaController extends Controller
             'acao' => ['nullable', 'string', 'max:60'],
             'recurso' => ['nullable', 'string', 'max:60'],
             'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $pagina = AuditLog::query()
@@ -33,7 +34,7 @@ final class AuditoriaController extends Controller
             ->when($filtros['acao'] ?? null, fn ($q, $a) => $q->where('action', $a))
             ->when($filtros['recurso'] ?? null, fn ($q, $r) => $q->where('resource', $r))
             ->orderByDesc('id')
-            ->paginate(50);
+            ->paginate((int) ($filtros['per_page'] ?? 50));
 
         $nomes = User::query()->whereIn('id', collect($pagina->items())->pluck('user_id')->filter()->unique())->pluck('name', 'id');
 

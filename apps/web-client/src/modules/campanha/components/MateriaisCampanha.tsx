@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Box, Camera, CheckCircle2, ImageIcon, Package, Pencil, Plus, Trash2, Truck } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Select, Skeleton, StatusChip, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, CardHeader, CardTitle, DataTable, Input, Modal, Select, Skeleton, StatusChip, Switch, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { formatarCentavos, paraCentavos } from '@/lib/formatacao';
 import { erroApi } from '../../escola/api';
@@ -9,7 +10,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type CaboEleitoral, type Coordenador, type Material, type MunicipioLinha, type Remessa } from '../api';
 import { abrirArquivo, formatarData, formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { SelectMunicipio, colunaAcoes, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 export const TIPOS_MATERIAL: Record<string, string> = {
@@ -39,6 +40,106 @@ export const MateriaisCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
   const [excluir, setExcluir] = useState<{ tipo: 'material'; registro: Material } | { tipo: 'remessa'; registro: Remessa } | null>(null);
   const gerir = permissoes.materiais;
 
+  // Colunas estáveis; o estado atual (permissão, abrir/enviar arquivo) vem por ref, atribuído antes do return principal.
+  const ctx = useRef({} as {
+    gerir: boolean;
+    municipios: ReturnType<typeof useMunicipiosDaCampanha>['dados'];
+    abrir: (carregar: () => Promise<Blob>) => Promise<void>;
+    enviarArquivo: (enviar: (f: File) => Promise<unknown>, arquivo: File | undefined, titulo: string) => Promise<void>;
+  });
+  const colunasMateriais = useMemo<ColumnDef<Material, unknown>[]>(() => [
+    colunaAcoes<Material>((m) => `Ações de ${m.nome}`, (m) => (ctx.current.gerir ? [
+      { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setMaterial(m) },
+      { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir({ tipo: 'material', registro: m }) },
+    ] : [])),
+    {
+      id: 'material', header: 'Material', accessorKey: 'nome',
+      cell: ({ row }) => <span className="font-medium">{row.original.nome}<p className="text-xs text-muted-foreground">{TIPOS_MATERIAL[row.original.tipo] ?? row.original.tipo}{row.original.fornecedor ? ` · ${row.original.fornecedor}` : ''}</p></span>,
+      meta: { exportHeader: 'Material', exportValue: (m) => m.nome },
+    },
+    {
+      id: 'valor', header: 'Valor do lote', accessorKey: 'valor_total_centavos',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarCentavos(row.original.valor_total_centavos)}</span>,
+      meta: { exportHeader: 'Valor do lote', exportValue: (m) => formatarCentavos(m.valor_total_centavos) },
+    },
+    {
+      id: 'unitario', header: 'Unitário', accessorFn: (m) => (m.quantidade_produzida > 0 ? m.valor_total_centavos / m.quantidade_produzida : 0),
+      cell: ({ row }) => <span className="block text-right font-mono text-xs tabular-nums text-muted-foreground">{valorUnitario(row.original.valor_total_centavos, row.original.quantidade_produzida)}</span>,
+      meta: { exportHeader: 'Unitário', exportValue: (m) => valorUnitario(m.valor_total_centavos, m.quantidade_produzida) },
+    },
+    {
+      id: 'produzido', header: 'Produzido', accessorKey: 'quantidade_produzida',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarNumero(row.original.quantidade_produzida)}</span>,
+      meta: { exportHeader: 'Produzido', exportValue: (m) => m.quantidade_produzida },
+    },
+    {
+      id: 'estoque', header: 'Estoque', accessorKey: 'estoque',
+      cell: ({ row }) => {
+        const m = row.original;
+        const pct = m.quantidade_produzida > 0 ? Math.round((m.estoque / m.quantidade_produzida) * 100) : 0;
+        return (
+          <div className="flex w-56 items-center gap-2">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Estoque de ${m.nome}`}>
+              <div className={`h-full ${pct < 20 ? 'bg-destructive' : pct < 50 ? 'bg-amber-500' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="whitespace-nowrap font-mono text-sm tabular-nums">{formatarNumero(m.estoque)} {m.unidade}</span>
+          </div>
+        );
+      },
+      meta: { exportHeader: 'Estoque', exportValue: (m) => `${formatarNumero(m.estoque)} ${m.unidade}` },
+    },
+    {
+      // Ver e enviar a imagem: o envio é um <input type="file"> e não cabe num menu.
+      id: 'imagem', header: 'Imagem', enableSorting: false,
+      cell: ({ row }) => {
+        const m = row.original;
+        const { gerir, abrir, enviarArquivo } = ctx.current;
+        if (!gerir) return null;
+        return (
+          <div className="whitespace-nowrap">
+            {m.tem_imagem && <Button size="icon-sm" variant="ghost" aria-label={`Ver imagem de ${m.nome}`} onClick={() => void abrir(() => campanhaApi.imagemMaterial(m.id))}><ImageIcon /></Button>}
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 hover:bg-muted" aria-label={`Enviar imagem de ${m.nome}`} title="Enviar imagem">
+              <Camera className="h-4 w-4" />
+              <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => void enviarArquivo((f) => campanhaApi.enviarImagemMaterial(m.id, f), e.target.files?.[0], 'Imagem enviada')} />
+            </label>
+          </div>
+        );
+      },
+      meta: { exportIgnore: true },
+    },
+  ], []);
+  const colunasRemessas = useMemo<ColumnDef<Remessa, unknown>[]>(() => [
+    colunaAcoes<Remessa>((r) => `Ações da remessa para ${nomeDoMunicipio(ctx.current.municipios, r.codigo_ibge)}`, (r) => (ctx.current.gerir ? [
+      ...(r.tem_foto ? [{ key: 'foto', label: 'Ver foto da entrega', icon: <ImageIcon className="h-3.5 w-3.5" />, onSelect: () => void ctx.current.abrir(() => campanhaApi.fotoRemessa(r.id)) }] : []),
+      { key: 'editar', label: r.entregue ? 'Editar remessa' : 'Confirmar entrega', icon: r.entregue ? <Pencil className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />, onSelect: () => setRemessa(r) },
+      { key: 'excluir', label: 'Excluir remessa', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir({ tipo: 'remessa', registro: r }) },
+    ] : [])),
+    { id: 'destino', header: 'Destino', accessorFn: (r) => nomeDoMunicipio(ctx.current.municipios, r.codigo_ibge), meta: { exportHeader: 'Destino', exportValue: (r) => nomeDoMunicipio(ctx.current.municipios, r.codigo_ibge) } },
+    { id: 'material', header: 'Material', accessorFn: (r) => r.material?.nome ?? '—', meta: { exportHeader: 'Material', exportValue: (r) => r.material?.nome ?? '' } },
+    {
+      id: 'quantidade', header: 'Quantidade', accessorKey: 'quantidade',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarNumero(row.original.quantidade)}</span>,
+      meta: { exportHeader: 'Quantidade', exportValue: (r) => r.quantidade },
+    },
+    {
+      id: 'envio', header: 'Envio', accessorKey: 'enviada_em',
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{formatarData(row.original.enviada_em)}</span>,
+      meta: { exportHeader: 'Envio', exportValue: (r) => formatarData(r.enviada_em) },
+    },
+    {
+      id: 'transporte', header: 'Transporte', accessorFn: (r) => [r.transportadora, r.motorista, r.veiculo].filter(Boolean).join(' · ') || '—',
+      meta: { exportHeader: 'Transporte', exportValue: (r) => [r.transportadora, r.motorista, r.veiculo].filter(Boolean).join(' · ') },
+    },
+    {
+      id: 'situacao', header: 'Situação', accessorFn: (r) => (r.entregue ? `Entregue ${formatarData(r.entregue_em)}` : r.previsao_entrega ? `Previsto ${formatarData(r.previsao_entrega)}` : 'Em trânsito'),
+      cell: ({ row }) => {
+        const r = row.original;
+        return r.entregue ? <StatusChip variant="success" label={`Entregue ${formatarData(r.entregue_em)}`} /> : <StatusChip variant="warning" label={r.previsao_entrega ? `Previsto ${formatarData(r.previsao_entrega)}` : 'Em trânsito'} />;
+      },
+      meta: { exportHeader: 'Situação', exportValue: (r) => (r.entregue ? `Entregue ${formatarData(r.entregue_em)}` : r.previsao_entrega ? `Previsto ${formatarData(r.previsao_entrega)}` : 'Em trânsito') },
+    },
+  ], []);
+
   if (dados.erro) return <AlertCard priority="danger" title="Não foi possível carregar os materiais" description={dados.erro} actionLabel="Tentar novamente" onAction={() => void dados.recarregar()} />;
   if (!dados.dados) return <Skeleton className="h-64 w-full" />;
   const { materiais, remessas, coordenadores, cabos } = dados.dados;
@@ -51,6 +152,8 @@ export const MateriaisCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
     try { await enviar(arquivo); avisar({ type: 'success', title: titulo, message: arquivo.name }); alterou(); } catch (e) { avisar({ type: 'error', title: 'Não foi possível enviar o arquivo', message: erroApi(e).mensagem }); }
   };
 
+  ctx.current = { gerir, municipios: municipios.dados, abrir, enviarArquivo };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -60,41 +163,14 @@ export const MateriaisCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
         </CardHeader>
         <CardContent>
           {materiais.length === 0 ? <EmptyState icon={<Package className="h-8 w-8" />} title="Nenhum material" description="Cadastre o que foi produzido (santinhos, adesivos, bandeiras…)." /> : (
-            <Table>
-              <TableHeader><TableRow><TableHead>Material</TableHead><TableHead className="text-right">Valor do lote</TableHead><TableHead className="text-right">Unitário</TableHead><TableHead className="text-right">Produzido</TableHead><TableHead className="w-64">Estoque</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {materiais.map((m) => {
-                  const pct = m.quantidade_produzida > 0 ? Math.round((m.estoque / m.quantidade_produzida) * 100) : 0;
-                  return (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-medium">{m.nome}<p className="text-xs text-muted-foreground">{TIPOS_MATERIAL[m.tipo] ?? m.tipo}{m.fornecedor ? ` · ${m.fornecedor}` : ''}</p></TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{formatarCentavos(m.valor_total_centavos)}</TableCell>
-                      <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground">{valorUnitario(m.valor_total_centavos, m.quantidade_produzida)}</TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{formatarNumero(m.quantidade_produzida)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Estoque de ${m.nome}`}>
-                            <div className={`h-full ${pct < 20 ? 'bg-destructive' : pct < 50 ? 'bg-amber-500' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="whitespace-nowrap font-mono text-sm tabular-nums">{formatarNumero(m.estoque)} {m.unidade}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-right">
-                        {gerir && m.tem_imagem && <Button size="icon-sm" variant="ghost" aria-label={`Ver imagem de ${m.nome}`} onClick={() => void abrir(() => campanhaApi.imagemMaterial(m.id))}><ImageIcon /></Button>}
-                        {gerir && (<>
-                          <label className="inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 hover:bg-muted" aria-label={`Enviar imagem de ${m.nome}`} title="Enviar imagem">
-                            <Camera className="h-4 w-4" />
-                            <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => void enviarArquivo((f) => campanhaApi.enviarImagemMaterial(m.id, f), e.target.files?.[0], 'Imagem enviada')} />
-                          </label>
-                          <Button size="icon-sm" variant="ghost" aria-label={`Editar ${m.nome}`} onClick={() => setMaterial(m)}><Pencil /></Button>
-                          <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${m.nome}`} onClick={() => setExcluir({ tipo: 'material', registro: m })}><Trash2 /></Button>
-                        </>)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={colunasMateriais}
+              data={materiais}
+              emptyText="Nenhum material."
+              exportable
+              exportFileName="campanha-materiais"
+              exportTitle="Campanha — Materiais"
+            />
           )}
         </CardContent>
       </Card>
@@ -106,28 +182,14 @@ export const MateriaisCampanha: React.FC<PropsAba> = ({ campanha, permissoes, av
         </CardHeader>
         <CardContent>
           {remessas.length === 0 ? <EmptyState icon={<Truck className="h-8 w-8" />} title="Nenhuma remessa" description="Registre o envio de material para os municípios." /> : (
-            <Table>
-              <TableHeader><TableRow><TableHead>Destino</TableHead><TableHead>Material</TableHead><TableHead className="text-right">Quantidade</TableHead><TableHead>Envio</TableHead><TableHead>Transporte</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {remessas.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="text-sm">{nomeDoMunicipio(municipios.dados, r.codigo_ibge)}</TableCell>
-                    <TableCell className="text-sm">{r.material?.nome ?? '—'}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{formatarNumero(r.quantidade)}</TableCell>
-                    <TableCell className="font-mono text-sm tabular-nums">{formatarData(r.enviada_em)}</TableCell>
-                    <TableCell className="text-sm">{[r.transportadora, r.motorista, r.veiculo].filter(Boolean).join(' · ') || '—'}</TableCell>
-                    <TableCell>{r.entregue ? <StatusChip variant="success" label={`Entregue ${formatarData(r.entregue_em)}`} /> : <StatusChip variant="warning" label={r.previsao_entrega ? `Previsto ${formatarData(r.previsao_entrega)}` : 'Em trânsito'} />}</TableCell>
-                    <TableCell className="whitespace-nowrap text-right">
-                      {gerir && r.tem_foto && <Button size="icon-sm" variant="ghost" aria-label={`Ver foto da entrega em ${nomeDoMunicipio(municipios.dados, r.codigo_ibge)}`} onClick={() => void abrir(() => campanhaApi.fotoRemessa(r.id))}><ImageIcon /></Button>}
-                      {gerir && (<>
-                        <Button size="icon-sm" variant="ghost" aria-label={r.entregue ? 'Editar remessa' : 'Confirmar entrega'} onClick={() => setRemessa(r)}>{r.entregue ? <Pencil /> : <CheckCircle2 />}</Button>
-                        <Button size="icon-sm" variant="ghost" aria-label="Excluir remessa" onClick={() => setExcluir({ tipo: 'remessa', registro: r })}><Trash2 /></Button>
-                      </>)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={colunasRemessas}
+              data={remessas}
+              emptyText="Nenhuma remessa."
+              exportable
+              exportFileName="campanha-remessas"
+              exportTitle="Campanha — Remessas"
+            />
           )}
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Megaphone, Pencil, Plus, Search, Trash2 } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, Input, Modal, Select, Skeleton, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, DataTable, Input, Modal, Select, Skeleton, Switch, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { formatarCentavos, paraCentavos } from '@/lib/formatacao';
 import { erroApi } from '../../escola/api';
@@ -9,7 +10,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type CaboEleitoral, type Coordenador } from '../api';
 import { formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { SelectMunicipio, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
+import { SelectMunicipio, colunaAcoes, nomeDoMunicipio, useMunicipiosDaCampanha, vazioParaNulo } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 const VAZIO = {
@@ -32,9 +33,46 @@ export const CabosCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisar
 
   const visiveis = useMemo(() => (dados.dados?.cabos ?? []).filter((c) => (municipio === null || c.codigo_ibge === municipio) && (!busca.trim() || c.nome.toLowerCase().includes(busca.trim().toLowerCase()))), [dados.dados, municipio, busca]);
 
+  // Colunas estáveis; o estado atual vem por ref (atribuído logo antes do return principal).
+  const ctx = useRef({} as { permissoes: PropsAba['permissoes']; municipios: ReturnType<typeof useMunicipiosDaCampanha>['dados']; coordenadores: Coordenador[] | undefined });
+  const nomeDoCoordenador = (id: number | null) => ctx.current.coordenadores?.find((c) => c.id === id)?.nome ?? '—';
+  const colunas = useMemo<ColumnDef<CaboEleitoral, unknown>[]>(() => [
+    colunaAcoes<CaboEleitoral>((c) => `Ações de ${c.nome}`, (c) => (ctx.current.permissoes.equipes ? [
+      { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(c) },
+      { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(c) },
+    ] : [])),
+    {
+      id: 'nome', header: 'Nome', accessorKey: 'nome',
+      cell: ({ row }) => <span className="font-medium">{row.original.nome}{row.original.cpf_mascarado && <p className="font-mono text-xs tabular-nums text-muted-foreground">CPF {row.original.cpf_mascarado}</p>}</span>,
+      meta: { exportHeader: 'Nome', exportValue: (c) => c.nome },
+    },
+    {
+      id: 'local', header: 'Município / bairro',
+      accessorFn: (c) => `${nomeDoMunicipio(ctx.current.municipios, c.codigo_ibge)}${c.bairro ? ` — ${c.bairro}` : ''}`,
+      meta: { exportHeader: 'Município / bairro', exportValue: (c) => `${nomeDoMunicipio(ctx.current.municipios, c.codigo_ibge)}${c.bairro ? ` — ${c.bairro}` : ''}` },
+    },
+    { id: 'coordenador', header: 'Coordenador', accessorFn: (c) => nomeDoCoordenador(c.coordenador_id), meta: { exportHeader: 'Coordenador', exportValue: (c) => nomeDoCoordenador(c.coordenador_id) } },
+    {
+      id: 'votos', header: 'Votos est.', accessorKey: 'votos_estimados',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarNumero(row.original.votos_estimados)}</span>,
+      meta: { exportHeader: 'Votos estimados', exportValue: (c) => c.votos_estimados },
+    },
+    {
+      id: 'ajuda', header: 'Ajuda de custo', accessorFn: (c) => (c.ajuda_custo ? c.valor_ajuda_centavos : 0),
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{row.original.ajuda_custo ? formatarCentavos(row.original.valor_ajuda_centavos) : '—'}</span>,
+      meta: { exportHeader: 'Ajuda de custo', exportValue: (c) => (c.ajuda_custo ? formatarCentavos(c.valor_ajuda_centavos) : '') },
+    },
+    {
+      id: 'whatsapp', header: 'WhatsApp', accessorFn: (c) => c.whatsapp ?? '',
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.whatsapp ?? '—'}</span>,
+      meta: { exportHeader: 'WhatsApp', exportValue: (c) => c.whatsapp ?? '' },
+    },
+  ], []);
+
   if (dados.erro) return <AlertCard priority="danger" title="Não foi possível carregar os cabos eleitorais" description={dados.erro} actionLabel="Tentar novamente" onAction={() => void dados.recarregar()} />;
   if (!dados.dados) return <Skeleton className="h-64 w-full" />;
   const nomeCoordenador = (id: number | null) => dados.dados?.coordenadores.find((c) => c.id === id)?.nome ?? '—';
+  ctx.current = { permissoes, municipios: municipios.dados, coordenadores: dados.dados?.coordenadores };
 
   return (
     <Card>
@@ -45,27 +83,14 @@ export const CabosCampanha: React.FC<PropsAba> = ({ campanha, permissoes, avisar
           {permissoes.equipes && <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setEditando('novo')}>Novo cabo eleitoral</Button>}
         </div>
         {visiveis.length === 0 ? <EmptyState icon={<Megaphone className="h-8 w-8" />} title="Nenhum cabo eleitoral" description={dados.dados.cabos.length === 0 ? 'Cadastre os cabos eleitorais que trabalham nos municípios.' : 'Ajuste os filtros.'} /> : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Município / bairro</TableHead><TableHead>Coordenador</TableHead><TableHead className="text-right">Votos est.</TableHead><TableHead className="text-right">Ajuda de custo</TableHead><TableHead>WhatsApp</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {visiveis.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.nome}{c.cpf_mascarado && <p className="font-mono text-xs tabular-nums text-muted-foreground">CPF {c.cpf_mascarado}</p>}</TableCell>
-                  <TableCell className="text-sm">{nomeDoMunicipio(municipios.dados, c.codigo_ibge)}{c.bairro ? ` — ${c.bairro}` : ''}</TableCell>
-                  <TableCell className="text-sm">{nomeCoordenador(c.coordenador_id)}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatarNumero(c.votos_estimados)}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{c.ajuda_custo ? formatarCentavos(c.valor_ajuda_centavos) : '—'}</TableCell>
-                  <TableCell className="font-mono text-sm tabular-nums">{c.whatsapp ?? '—'}</TableCell>
-                  <TableCell className="whitespace-nowrap text-right">
-                    {permissoes.equipes && (<>
-                      <Button size="icon-sm" variant="ghost" aria-label={`Editar ${c.nome}`} onClick={() => setEditando(c)}><Pencil /></Button>
-                      <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${c.nome}`} onClick={() => setExcluir(c)}><Trash2 /></Button>
-                    </>)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={visiveis}
+            emptyText="Nenhum cabo eleitoral encontrado."
+            exportable
+            exportFileName="campanha-cabos-eleitorais"
+            exportTitle="Campanha — Cabos eleitorais"
+          />
         )}
       </CardContent>
       <CaboModal registro={editando} municipios={municipios.dados} coordenadores={dados.dados.coordenadores} onFechar={() => setEditando(null)} onSalvo={(nome) => { setEditando(null); avisar({ type: 'success', title: 'Cabo eleitoral salvo', message: nome }); alterou(); }} />

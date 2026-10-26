@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Lock, Pencil, Plus, Trash2 } from 'lucide-react';
-import { Badge, Button, Card, CardContent, Input, Modal, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { ActionsMenu, Badge, Button, Card, CardContent, DataTable, Input, Modal, Select } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
@@ -15,6 +16,13 @@ export const Relato: React.FC<{ a: Atendimento }> = ({ a }) =>
   ) : (
     <p className="text-sm italic text-muted-foreground"><Lock className="mr-1 inline h-3.5 w-3.5" />Registro sigiloso</p>
   );
+
+const colEstudantes: ColumnDef<Atendimento, unknown> = {
+  id: 'estudantes',
+  header: 'Estudantes',
+  accessorFn: (a) => a.alunos.map((x) => x.nome).join(', '),
+  meta: { exportHeader: 'Estudantes', exportValue: (a) => a.alunos.map((x) => x.nome).join(', ') },
+};
 
 /**
  * Lista de atendimentos com filtros. Com `aluno`, vira o histórico daquele estudante (usado na ficha do acompanhado).
@@ -49,6 +57,68 @@ export const Atendimentos: React.FC<{ opcoes: Opcoes; avisar: Toast; aluno?: Ref
   const pagina = carga.dados;
   const todos = { value: 0, label: 'Todos' };
 
+  // Colunas estáveis; só mudam se a grade for a do histórico de um estudante (sem a coluna "Estudantes").
+  const ctx = useRef({ setEditando, setExcluindo });
+  ctx.current = { setEditando, setExcluindo };
+  const colunas = useMemo<ColumnDef<Atendimento, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel="Ações do atendimento"
+            items={row.original.pode_editar ? [
+              { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => ctx.current.setEditando(row.original) },
+              { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => ctx.current.setExcluindo(row.original) },
+            ] : []}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'data',
+      header: 'Data',
+      accessorKey: 'data_hora',
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums">
+          {dataHora(row.original.data_hora)}
+          <span className="block text-muted-foreground">{row.original.turno_rotulo}</span>
+        </span>
+      ),
+      meta: { exportHeader: 'Data', exportValue: (a) => dataHora(a.data_hora) },
+    },
+    ...(aluno ? [] : [colEstudantes]),
+    {
+      id: 'escola',
+      header: 'Escola',
+      accessorFn: (a) => a.escola.nome,
+      cell: ({ row }) => <span>{row.original.escola.nome}{row.original.equipe && <span className="block text-xs text-muted-foreground">{row.original.equipe.nome}</span>}</span>,
+      meta: { exportHeader: 'Escola', exportValue: (a) => a.escola.nome },
+    },
+    {
+      id: 'tipos',
+      header: 'Tipos',
+      accessorFn: (a) => a.tipos.map((t) => t.nome).join(', '),
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-1">
+          {row.original.tipos.map((t) => <Badge key={t.id} variant="outline">{t.nome}</Badge>)}
+          {row.original.sigiloso && <Badge variant="secondary"><Lock className="mr-1 h-3 w-3" />Sigiloso</Badge>}
+        </div>
+      ),
+      meta: { exportHeader: 'Tipos', exportValue: (a) => a.tipos.map((t) => t.nome).join(', ') },
+    },
+    {
+      id: 'profissionais',
+      header: 'Profissionais',
+      accessorFn: (a) => a.profissionais.map((p) => p.nome).join(', '),
+      cell: ({ row }) => <span className="text-sm">{row.original.profissionais.map((p) => p.nome).join(', ')}</span>,
+      meta: { exportHeader: 'Profissionais', exportValue: (a) => a.profissionais.map((p) => p.nome).join(', ') },
+    },
+  ], [aluno?.id]);
+
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
@@ -68,49 +138,22 @@ export const Atendimentos: React.FC<{ opcoes: Opcoes; avisar: Toast; aluno?: Ref
         </div>
 
         <EstadoCarga carregando={carga.carregando && !pagina} erro={carga.erro} onTentar={() => void carga.recarregar()} />
-        {pagina && pagina.data.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum atendimento encontrado.</p>}
-        {pagina && pagina.data.length > 0 && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-36">Data</TableHead>
-                {!aluno && <TableHead>Estudantes</TableHead>}
-                <TableHead>Escola</TableHead>
-                <TableHead>Tipos</TableHead>
-                <TableHead>Profissionais</TableHead>
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pagina.data.map((a) => (
-                <TableRow key={a.id} className="cursor-pointer" onClick={() => setAberto(a)}>
-                  <TableCell className="font-mono text-xs tabular-nums">
-                    {dataHora(a.data_hora)}
-                    <span className="block text-muted-foreground">{a.turno_rotulo}</span>
-                  </TableCell>
-                  {!aluno && <TableCell>{a.alunos.map((x) => x.nome).join(', ')}</TableCell>}
-                  <TableCell>{a.escola.nome}{a.equipe && <span className="block text-xs text-muted-foreground">{a.equipe.nome}</span>}</TableCell>
-                  <TableCell><div className="flex flex-wrap gap-1">{a.tipos.map((t) => <Badge key={t.id} variant="outline">{t.nome}</Badge>)}{a.sigiloso && <Badge variant="secondary"><Lock className="mr-1 h-3 w-3" />Sigiloso</Badge>}</div></TableCell>
-                  <TableCell className="text-sm">{a.profissionais.map((p) => p.nome).join(', ')}</TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    {a.pode_editar && (
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" aria-label="Editar atendimento" onClick={() => setEditando(a)}><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="sm" aria-label="Excluir atendimento" onClick={() => setExcluindo(a)}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-        {pagina && pagina.last_page > 1 && (
-          <div className="flex items-center justify-end gap-2 text-sm">
-            <span className="font-mono tabular-nums text-muted-foreground">{pagina.current_page}/{pagina.last_page} · {pagina.total} registros</span>
-            <Button variant="outline" size="sm" disabled={pagina.current_page <= 1} onClick={() => setFiltros((f) => ({ ...f, page: (f.page ?? 1) - 1 }))}>Anterior</Button>
-            <Button variant="outline" size="sm" disabled={pagina.current_page >= pagina.last_page} onClick={() => setFiltros((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}>Próxima</Button>
-          </div>
+        {pagina && (
+          <DataTable
+            columns={colunas}
+            data={pagina.data}
+            emptyText="Nenhum atendimento encontrado."
+            onRowClick={(a) => setAberto(a)}
+            pageSizeOptions={[15, 30, 50, 100]}
+            paginationState={{
+              currentPage: pagina.current_page,
+              totalPages: pagina.last_page,
+              onPageChange: (p) => setFiltros((f) => ({ ...f, page: p })),
+              total: pagina.total,
+              perPage: filtros.per_page ?? 30,
+              onPerPageChange: (n) => setFiltros((f) => ({ ...f, per_page: n, page: 1 })),
+            }}
+          />
         )}
       </CardContent>
 

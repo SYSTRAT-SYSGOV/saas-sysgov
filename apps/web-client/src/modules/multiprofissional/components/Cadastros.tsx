@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { ListPlus, Plus, Trash2 } from 'lucide-react';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { ActionsMenu, Button, Card, CardContent, CardHeader, CardTitle, DataTable, Input, Switch } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
@@ -69,6 +70,45 @@ const ListaCadastro: React.FC<{ tipo: TipoCadastro; avisar: Toast; aoMudar: () =
     }
   };
 
+  // Colunas estáveis (o switch não remonta ao gravar); salvar/excluir atuais vêm por ref.
+  const ctx = useRef({ salvar, excluir });
+  ctx.current = { salvar, excluir };
+  const colunas = useMemo<ColumnDef<ItemCadastro, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel={`Ações de ${row.original.nome}`}
+            items={[{ key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => void ctx.current.excluir(row.original) }]}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'nome',
+      header: 'Nome',
+      accessorFn: (i) => (tipo === 'condicoes' && i.cid ? `${i.cid} ${i.nome}` : i.nome),
+      cell: ({ row }) => (
+        <span>
+          {tipo === 'condicoes' && row.original.cid && <span className="mr-2 font-mono text-xs tabular-nums">{row.original.cid}</span>}{row.original.nome}
+          {row.original.objetivos && <span className="block text-xs text-muted-foreground">{row.original.objetivos}</span>}
+        </span>
+      ),
+      meta: { exportHeader: 'Nome', exportValue: (i) => (tipo === 'condicoes' && i.cid ? `${i.cid} ${i.nome}` : i.nome) },
+    },
+    {
+      id: 'ativo',
+      header: 'Ativo',
+      accessorFn: (i) => (i.ativo ? 'Sim' : 'Não'),
+      cell: ({ row }) => <Switch checked={row.original.ativo} onCheckedChange={(v) => void ctx.current.salvar({ ...row.original, ativo: v })} aria-label={`Ativar ${row.original.nome}`} />,
+      meta: { exportHeader: 'Ativo', exportValue: (i) => (i.ativo ? 'Sim' : 'Não') },
+    },
+  ], [tipo]);
+
   return (
     <Card>
       <CardHeader><CardTitle className="text-base">{TITULOS[tipo]}</CardTitle></CardHeader>
@@ -81,21 +121,14 @@ const ListaCadastro: React.FC<{ tipo: TipoCadastro; avisar: Toast; aoMudar: () =
         {tipo === 'cargos' && <Input placeholder="Objetivos do cargo (opcional)" aria-label="Objetivos do cargo" value={extra} maxLength={300} onChange={(e) => setExtra(e.target.value)} />}
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && (
-          <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead className="w-16">Ativo</TableHead><TableHead className="w-12" /></TableRow></TableHeader>
-            <TableBody>
-              {carga.dados.map((i) => (
-                <TableRow key={i.id}>
-                  <TableCell>
-                    {tipo === 'condicoes' && i.cid && <span className="mr-2 font-mono text-xs tabular-nums">{i.cid}</span>}{i.nome}
-                    {i.objetivos && <span className="block text-xs text-muted-foreground">{i.objetivos}</span>}
-                  </TableCell>
-                  <TableCell><Switch checked={i.ativo} onCheckedChange={(v) => void salvar({ ...i, ativo: v })} aria-label={`Ativar ${i.nome}`} /></TableCell>
-                  <TableCell><Button variant="ghost" size="sm" aria-label={`Excluir ${i.nome}`} onClick={() => void excluir(i)}><Trash2 className="h-4 w-4" /></Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={carga.dados}
+            emptyText="Nenhum item cadastrado."
+            exportable
+            exportFileName={`multiprofissional-${tipo}`}
+            exportTitle={`Multiprofissional — ${TITULOS[tipo]}`}
+          />
         )}
       </CardContent>
     </Card>
