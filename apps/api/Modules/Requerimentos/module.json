@@ -14,15 +14,15 @@
     "menu": {
         "group": "GESTÃO LEGISLATIVA",
         "label": "Requerimentos",
-        "icon": "FileText",
+        "icon": "ScrollText",
         "order": 40,
         "permission": "requerimentos.view",
         "children": [
-            { "label": "Proposições",           "route": "requerimentos.proposicoes",     "permission": "requerimentos.view",     "icon": "ScrollText" },
-            { "label": "Minhas Proposições",    "route": "requerimentos.minhas",          "permission": "requerimentos.view",     "icon": "UserCheck" },
+            { "label": "Proposições",           "route": "requerimentos.proposicoes",     "permission": "requerimentos.view",     "icon": "FilePenLine" },
+            { "label": "Minhas Proposições",    "route": "requerimentos.minhas",          "permission": "requerimentos.view",     "icon": "FileUser" },
             { "label": "Tramitações",           "route": "requerimentos.tramitacoes",     "permission": "requerimentos.tramitar", "icon": "ArrowLeftRight" },
             { "label": "Relatórios",            "route": "requerimentos.relatorios",      "permission": "requerimentos.relatorios","icon": "BarChart3" },
-            { "label": "Auditoria",             "route": "requerimentos.auditoria",       "permission": "requerimentos.auditoria", "icon": "ShieldCheck" }
+            { "label": "Auditoria",             "route": "requerimentos.auditoria",       "permission": "requerimentos.auditoria", "icon": "History" }
         ]
     },
     "permissions": [

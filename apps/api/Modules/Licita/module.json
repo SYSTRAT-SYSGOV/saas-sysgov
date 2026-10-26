@@ -18,7 +18,7 @@
     },
     "menu": {
         "label": "Licita",
-        "icon": "FileText",
+        "icon": "Scale",
         "order": 25,
         "permission": "licita.view"
     }

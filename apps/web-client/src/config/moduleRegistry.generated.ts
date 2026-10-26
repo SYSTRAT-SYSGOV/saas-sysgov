@@ -60,7 +60,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'organograma',
     routes: ["organograma","org"],
     requiredPermission: 'org.view',
-    icon: 'Building2',
+    icon: 'Network',
   },
   procurement: {
     id: 'procurement',
@@ -69,7 +69,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'licitacoes',
     routes: ['licitacoes'],
     requiredPermission: 'procurement.view',
-    icon: 'FileCheck',
+    icon: 'Gavel',
   },
   contracts: {
     id: 'contracts',
@@ -87,7 +87,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'financeiro',
     routes: ['financeiro'],
     requiredPermission: 'finance.view',
-    icon: 'DollarSign',
+    icon: 'CircleDollarSign',
   },
   pedagogico: {
     id: 'pedagogico',
@@ -105,7 +105,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'rh',
     routes: ['rh'],
     requiredPermission: 'rh.view',
-    icon: 'Users',
+    icon: 'Briefcase',
   },
   cemiterios: {
     id: 'cemiterios',
@@ -114,7 +114,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'cemiterios',
     routes: ['cemiterios'],
     requiredPermission: 'cemiterios.view',
-    icon: 'Shield',
+    icon: 'Cross',
   },
   users: {
     id: 'users',
@@ -123,7 +123,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'usuarios',
     routes: ['usuarios'],
     requiredPermission: 'users.manage',
-    icon: 'ShieldCheck',
+    icon: 'UserCog',
   },
   menuManager: {
     id: 'menuManager',
@@ -133,7 +133,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['gerenciar-menus'],
     requiredPermission: '',
     isAdminOnly: true,
-    icon: 'Settings2',
+    icon: 'Menu',
   },
   moduleGranularity: {
     id: 'moduleGranularity',
@@ -143,7 +143,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ["granularidade-módulos","granularidade-modulos"],
     requiredPermission: '',
     isAdminOnly: true,
-    icon: 'Shield',
+    icon: 'SlidersHorizontal',
   },
   permissionMatrix: {
     id: 'permissionMatrix',
@@ -153,7 +153,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['matriz-permissoes'],
     requiredPermission: '',
     isAdminOnly: true,
-    icon: 'Shield',
+    icon: 'Grid3x3',
   },
   capd: {
     id: 'capd',
@@ -171,7 +171,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'pessoas',
     routes: ["pessoas","pessoas/*"],
     requiredPermission: 'cadastros.pessoas.view',
-    icon: 'Users',
+    icon: 'Contact',
   },
   ata: {
     id: 'ata',
@@ -225,7 +225,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'formatura',
     routes: ['formatura'],
     requiredPermission: 'formatura.view',
-    icon: 'GraduationCap',
+    icon: 'Award',
   },
   inservivel: {
     id: 'inservivel',
@@ -243,7 +243,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'licita',
     routes: ['licita'],
     requiredPermission: 'licita.view',
-    icon: 'FileText',
+    icon: 'Scale',
   },
   meio_ambiente: {
     id: 'meio_ambiente',
@@ -288,7 +288,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'requerimentos',
     routes: ['requerimentos'],
     requiredPermission: 'requerimentos.view',
-    icon: 'FileText',
+    icon: 'ScrollText',
   },
   vistoria: {
     id: 'vistoria',
@@ -297,7 +297,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'vistoria',
     routes: ['vistoria'],
     requiredPermission: 'vistoria.view',
-    icon: 'ClipboardCheck',
+    icon: 'ScanSearch',
   }
 };
 

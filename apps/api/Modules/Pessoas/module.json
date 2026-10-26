@@ -12,7 +12,7 @@
     ],
     "menu": {
         "label": "Cadastro de Pessoas",
-        "icon": "Users",
+        "icon": "Contact",
         "order": 50,
         "permission": "cadastros.pessoas.view"
     },

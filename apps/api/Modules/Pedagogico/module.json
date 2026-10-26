@@ -21,7 +21,7 @@
     },
     "menu": {
         "label": "Módulo Pedagógico",
-        "icon": "GraduationCap",
+        "icon": "BookOpen",
         "order": 30,
         "permission": "pedagogico.view",
         "group": "GESTÃO SETORIAL"
