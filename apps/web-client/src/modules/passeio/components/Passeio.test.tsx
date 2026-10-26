@@ -14,6 +14,7 @@ vi.mock('../api', async (original) => ({ ...(await original<typeof import('../ap
 const escola = vi.hoisted(() => ({ todosAlunos: vi.fn() }));
 vi.mock('../../escola/api', async (original) => ({ ...(await original<typeof import('../../escola/api')>()), escolaApi: escola }));
 
+import { acionarMenu } from '@/test-utils/acoesMenu';
 import { propsAba } from '../fixtures.test-utils';
 import type { MapaAssentos, Veiculo } from '../api';
 import { InscricoesTermos } from './InscricoesTermos';
@@ -47,7 +48,7 @@ describe('Turmas do passeio', () => {
     const props = propsAba();
     render(<MemoryRouter><TurmasPasseio {...props} /></MemoryRouter>);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Desmarcar toda a turma 5º A' }));
+    await acionarMenu(/Ações da turma 5º A/, 'Desmarcar turma inteira');
     const dialogo = await screen.findByRole('dialog');
     expect(within(dialogo).getByText(/perdem o assento/)).toBeInTheDocument();
     fireEvent.click(within(dialogo).getByRole('button', { name: 'Desmarcar' }));
@@ -56,10 +57,24 @@ describe('Turmas do passeio', () => {
     expect(props.recarregar).toHaveBeenCalled();
   });
 
-  it('Apoio não vê os botões de turma inteira', () => {
+  it('Apoio não vê as ações de turma inteira, só a de ver os inscritos', () => {
     render(<MemoryRouter><TurmasPasseio {...propsAba({ permissoes: { passeios: false, frota: false } })} /></MemoryRouter>);
-    expect(screen.queryByRole('button', { name: /toda a turma/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/turma inteira/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Ver inscritos' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /Abrir Cadastro Escolar/ })).toBeInTheDocument();
+  });
+
+  it('"Ver inscritos" mostra os alunos da turma numa segunda grade e "Ocultar" a fecha', async () => {
+    render(<MemoryRouter><TurmasPasseio {...propsAba()} /></MemoryRouter>);
+    await acionarMenu(/Ações da turma 5º A/, 'Ver inscritos');
+
+    expect(screen.getByText('Inscritos — 5º A')).toBeInTheDocument();
+    expect(screen.getByText('ALICIA SOUZA')).toBeInTheDocument();
+    expect(screen.getByText('BRUNO LIMA')).toBeInTheDocument();
+    expect(screen.queryByText('CARLA DIAS')).not.toBeInTheDocument(); // é da 5º B
+
+    await acionarMenu(/Ações da turma 5º A/, 'Ocultar inscritos');
+    expect(screen.queryByText('Inscritos — 5º A')).not.toBeInTheDocument();
   });
 });
 

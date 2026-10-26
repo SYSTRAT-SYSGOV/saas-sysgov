@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ClipboardCheck, Download, MessageSquare, Search, Trash2, UserPlus } from 'lucide-react';
-import { Button, Card, CardContent, Input, Modal, Select, StatusChip, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ClipboardCheck, MessageSquare, Search, Trash2, UserPlus } from 'lucide-react';
+import { ActionsMenu, Button, Card, CardContent, DataTable, Input, Modal, Select, StatusChip, Switch, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { escolaApi, erroApi, type Aluno } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
 import { passeioApi, type AlteracaoInscricao, type Inscricao } from '../api';
-import { FILTRO_INICIAL, csvInscricoes, filtrarInscricoes, listaDaTurma, naoInscrito, type FiltroInscricoes } from '../formato';
+import { FILTRO_INICIAL, filtrarInscricoes, listaDaTurma, naoInscrito, type FiltroInscricoes } from '../formato';
 import type { PropsAba } from '../ModuloPasseioMain';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
@@ -58,14 +59,105 @@ export const InscricoesTermos: React.FC<PropsAba> = ({ ativo, dados, recarregar,
     }
   };
 
-  const exportar = () => {
-    const url = URL.createObjectURL(new Blob([csvInscricoes(visiveis)], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `inscricoes-${ativo.data_passeio}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  // Colunas estáveis (os switches não remontam ao gravar); o estado atual vem por ref.
+  const ctx = useRef({ permissoes, salvando, alterar, setObservacao, setRemover });
+  ctx.current = { permissoes, salvando, alterar, setObservacao, setRemover };
+  const colunas = useMemo<ColumnDef<Inscricao, unknown>[]>(() => {
+    const nomeDe = (i: Inscricao) => i.aluno?.nome ?? 'Aluno';
+    const textoSimNao = (v: boolean) => (v ? 'Sim' : 'Não');
+    return [
+      {
+        id: 'acoes',
+        header: '',
+        size: 56,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const i = row.original;
+          const { permissoes: perm, setObservacao: abrirObservacao, setRemover: abrirRemover } = ctx.current;
+          return (
+            <div className="flex justify-center">
+              <ActionsMenu
+                triggerLabel={`Ações de ${nomeDe(i)}`}
+                items={perm.passeios && !naoInscrito(i) ? [
+                  { key: 'observacao', label: 'Observação', icon: <MessageSquare className="h-3.5 w-3.5" />, onSelect: () => abrirObservacao(i) },
+                  { key: 'remover', label: 'Remover do passeio', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => abrirRemover(i) },
+                ] : []}
+              />
+            </div>
+          );
+        },
+      },
+      {
+        id: 'numero',
+        header: 'Nº',
+        accessorFn: (i) => i.aluno?.numero ?? '',
+        cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.aluno?.numero ?? '—'}</span>,
+        meta: { exportHeader: 'Nº', exportValue: (i) => i.aluno?.numero ?? '' },
+      },
+      {
+        id: 'aluno',
+        header: 'Aluno',
+        accessorFn: (i) => nomeDe(i),
+        cell: ({ row }) => (
+          <div>
+            <span className="font-medium">{nomeDe(row.original)}</span>
+            {row.original.aluno?.situacao === 'transferido' && <StatusChip label="Transferido" variant="danger" className="ml-2" />}
+            {row.original.observacao && <p className="text-xs text-muted-foreground">{row.original.observacao}</p>}
+          </div>
+        ),
+        meta: { exportHeader: 'Aluno', exportValue: (i) => nomeDe(i) },
+      },
+      { id: 'turma', header: 'Turma', accessorFn: (i) => i.aluno?.turma?.nome ?? '—', meta: { exportHeader: 'Turma', exportValue: (i) => i.aluno?.turma?.nome ?? '—' } },
+      {
+        id: 'telefone',
+        header: 'Telefone',
+        accessorFn: (i) => i.aluno?.telefone ?? '',
+        cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.aluno?.telefone ?? '—'}</span>,
+        meta: { exportHeader: 'Telefone', exportValue: (i) => i.aluno?.telefone ?? '' },
+      },
+      {
+        id: 'vai',
+        header: 'Vai',
+        accessorFn: (i) => textoSimNao(i.vai),
+        cell: ({ row }) => {
+          const i = row.original;
+          const { permissoes: perm, salvando: emGravacao, alterar: gravar } = ctx.current;
+          const transferido = i.aluno?.situacao === 'transferido';
+          return perm.passeios
+            ? <Switch checked={i.vai} disabled={emGravacao === i.id || (transferido && !i.vai)} onCheckedChange={(v) => void gravar(i, { vai: v })} label={`${nomeDe(i)} vai ao passeio`} />
+            : sim(i.vai, 'Vai', 'Não vai');
+        },
+        meta: { exportHeader: 'Vai', exportValue: (i) => textoSimNao(i.vai) },
+      },
+      {
+        id: 'termo',
+        header: 'Termo',
+        accessorFn: (i) => textoSimNao(i.autorizacao_entregue),
+        cell: ({ row }) => {
+          const i = row.original;
+          const { permissoes: perm, salvando: emGravacao, alterar: gravar } = ctx.current;
+          // Quem não vai não recebe termo nem pagamento (só pode desmarcar o que já estava marcado).
+          return perm.passeios
+            ? <Switch checked={i.autorizacao_entregue} disabled={emGravacao === i.id || (!i.vai && !i.autorizacao_entregue)} onCheckedChange={(v) => void gravar(i, { autorizacao_entregue: v })} label={`Termo de ${nomeDe(i)} entregue`} />
+            : sim(i.autorizacao_entregue, 'Entregue', 'Pendente');
+        },
+        meta: { exportHeader: 'Termo entregue', exportValue: (i) => textoSimNao(i.autorizacao_entregue) },
+      },
+      {
+        id: 'pago',
+        header: 'Pago',
+        accessorFn: (i) => textoSimNao(i.pago),
+        cell: ({ row }) => {
+          const i = row.original;
+          const { permissoes: perm, salvando: emGravacao, alterar: gravar } = ctx.current;
+          return perm.passeios
+            ? <Switch checked={i.pago} disabled={emGravacao === i.id || (!i.vai && !i.pago)} onCheckedChange={(v) => void gravar(i, { pago: v })} label={`${nomeDe(i)} pagou`} />
+            : sim(i.pago, 'Pago', 'Pendente');
+        },
+        meta: { exportHeader: 'Pago', exportValue: (i) => textoSimNao(i.pago) },
+      },
+    ];
+  }, []);
 
   return (
     <Card>
@@ -82,66 +174,20 @@ export const InscricoesTermos: React.FC<PropsAba> = ({ ativo, dados, recarregar,
             <span className="font-mono tabular-nums">{visiveis.length}</span> de <span className="font-mono tabular-nums">{linhas.length}</span> {turmaAberta ? `alunos da turma ${turmaAberta.nome}` : 'inscrições'}
             {!turmaAberta && permissoes.passeios && ' · escolha uma turma para ver todos os alunos dela e marcar quem vai'}
           </p>
-          <div className="flex gap-2">
-            <Button variant="outline" leftIcon={<Download className="h-4 w-4" />} onClick={exportar} disabled={visiveis.length === 0}>Exportar CSV</Button>
-            {permissoes.passeios && <Button leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setInscrever(true)}>Inscrever</Button>}
-          </div>
+          {permissoes.passeios && <Button leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setInscrever(true)}>Inscrever</Button>}
         </div>
 
         {visiveis.length === 0 ? (
           <EmptyState icon={<ClipboardCheck className="h-8 w-8" />} title={linhas.length === 0 ? 'Nenhum aluno inscrito' : 'Nenhuma inscrição encontrada'} description={linhas.length === 0 ? 'Inscreva uma turma inteira ou alunos avulsos do Cadastro Escolar.' : 'Ajuste os filtros.'} />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nº</TableHead><TableHead>Aluno</TableHead><TableHead>Turma</TableHead><TableHead>Telefone</TableHead>
-                <TableHead>Vai</TableHead><TableHead>Termo</TableHead><TableHead>Pago</TableHead><TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visiveis.map((i) => {
-                const nome = i.aluno?.nome ?? 'Aluno';
-                const transferido = i.aluno?.situacao === 'transferido';
-                const ocupado = salvando === i.id;
-                // Quem não vai não recebe termo nem pagamento (só pode desmarcar o que já estava marcado).
-                const semTermo = !i.vai && !i.autorizacao_entregue;
-                const semPagamento = !i.vai && !i.pago;
-                return (
-                  <TableRow key={i.id}>
-                    <TableCell className="font-mono tabular-nums">{i.aluno?.numero ?? '—'}</TableCell>
-                    <TableCell>
-                      <span className="font-medium">{nome}</span>
-                      {transferido && <StatusChip label="Transferido" variant="danger" className="ml-2" />}
-                      {i.observacao && <p className="text-xs text-muted-foreground">{i.observacao}</p>}
-                    </TableCell>
-                    <TableCell>{i.aluno?.turma?.nome ?? '—'}</TableCell>
-                    <TableCell className="font-mono tabular-nums">{i.aluno?.telefone ?? '—'}</TableCell>
-                    {permissoes.passeios ? (
-                      <>
-                        <TableCell><Switch checked={i.vai} disabled={ocupado || (transferido && !i.vai)} onCheckedChange={(v) => void alterar(i, { vai: v })} label={`${nome} vai ao passeio`} /></TableCell>
-                        <TableCell><Switch checked={i.autorizacao_entregue} disabled={ocupado || semTermo} onCheckedChange={(v) => void alterar(i, { autorizacao_entregue: v })} label={`Termo de ${nome} entregue`} /></TableCell>
-                        <TableCell><Switch checked={i.pago} disabled={ocupado || semPagamento} onCheckedChange={(v) => void alterar(i, { pago: v })} label={`${nome} pagou`} /></TableCell>
-                      </>
-                    ) : (
-                      <>
-                        <TableCell>{sim(i.vai, 'Vai', 'Não vai')}</TableCell>
-                        <TableCell>{sim(i.autorizacao_entregue, 'Entregue', 'Pendente')}</TableCell>
-                        <TableCell>{sim(i.pago, 'Pago', 'Pendente')}</TableCell>
-                      </>
-                    )}
-                    <TableCell className="whitespace-nowrap text-right">
-                      {permissoes.passeios && !naoInscrito(i) && (
-                        <>
-                          <Button size="icon-sm" variant="ghost" aria-label={`Observação de ${nome}`} onClick={() => setObservacao(i)}><MessageSquare /></Button>
-                          <Button size="icon-sm" variant="ghost" aria-label={`Remover ${nome} do passeio`} onClick={() => setRemover(i)}><Trash2 /></Button>
-                        </>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={visiveis}
+            emptyText="Nenhuma inscrição encontrada."
+            exportable
+            exportFileName={`passeio-inscricoes-${ativo.data_passeio}`}
+            exportTitle="Passeio — Inscrições e termos"
+          />
         )}
       </CardContent>
 

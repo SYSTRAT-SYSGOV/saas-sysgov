@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Compass, Pencil, Plus, Search, Trash2 } from 'lucide-react';
-import { Button, Card, CardContent, Input, Modal, Select, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ActionsMenu, Button, Card, CardContent, DataTable, Input, Modal, Select, StatusChip, Textarea } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { formatarCentavos, formatarData } from '@/lib/formatacao';
 import { erroApi } from '../../escola/api';
@@ -32,6 +33,77 @@ export const PasseiosLista: React.FC<Props> = ({ passeios, ativoId, permissoes, 
     return t ? passeios.filter((p) => `${p.nome} ${p.destino} ${p.cidade} ${p.responsavel}`.toLowerCase().includes(t)) : passeios;
   }, [passeios, busca]);
 
+  // Colunas estáveis; o estado atual (permissão, passeio ativo, callbacks) vem por ref.
+  const ctx = useRef({ permissoes, ativoId, selecionar });
+  ctx.current = { permissoes, ativoId, selecionar };
+  const colunas = useMemo<ColumnDef<Passeio, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel={`Ações de ${row.original.nome}`}
+            items={ctx.current.permissoes.passeios ? [
+              { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(row.original) },
+              { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluir(row.original) },
+            ] : []}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'passeio',
+      header: 'Passeio',
+      accessorKey: 'nome',
+      cell: ({ row }) => (
+        <div>
+          <Button variant="link" className="h-auto p-0 font-medium" onClick={() => ctx.current.selecionar(row.original)} aria-label={`Trabalhar no passeio ${row.original.nome}`}>{row.original.nome}</Button>
+          {row.original.id === ctx.current.ativoId && <StatusChip label="Em uso" variant="info" className="ml-2" />}
+        </div>
+      ),
+      meta: { exportHeader: 'Passeio', exportValue: (p) => p.nome },
+    },
+    { id: 'responsavel', header: 'Responsável', accessorKey: 'responsavel', meta: { exportHeader: 'Responsável', exportValue: (p) => p.responsavel } },
+    {
+      id: 'data',
+      header: 'Data',
+      accessorKey: 'data_passeio',
+      cell: ({ row }) => <span className="font-mono tabular-nums">{formatarData(row.original.data_passeio)}<p className="text-xs text-muted-foreground">{periodoDoPasseio(row.original)}</p></span>,
+      meta: { exportHeader: 'Data', exportValue: (p) => `${formatarData(p.data_passeio)} ${periodoDoPasseio(p)}` },
+    },
+    {
+      id: 'destino',
+      header: 'Destino',
+      accessorKey: 'destino',
+      cell: ({ row }) => <span>{row.original.destino}<p className="text-xs text-muted-foreground">{row.original.cidade}</p></span>,
+      meta: { exportHeader: 'Destino', exportValue: (p) => `${p.destino} — ${p.cidade}` },
+    },
+    {
+      id: 'valor',
+      header: 'Valor',
+      accessorKey: 'valor_centavos',
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{formatarCentavos(row.original.valor_centavos)}</span>,
+      meta: { exportHeader: 'Valor', exportValue: (p) => formatarCentavos(p.valor_centavos) },
+    },
+    {
+      id: 'inscritos',
+      header: 'Inscritos',
+      accessorFn: (p) => p.inscricoes_count ?? 0,
+      cell: ({ row }) => <span className="block text-right font-mono tabular-nums">{row.original.inscricoes_count ?? 0}</span>,
+      meta: { exportHeader: 'Inscritos', exportValue: (p) => p.inscricoes_count ?? 0 },
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessorFn: (p) => STATUS[p.status].rotulo,
+      cell: ({ row }) => <StatusChip label={STATUS[row.original.status].rotulo} variant={STATUS[row.original.status].variante} />,
+      meta: { exportHeader: 'Status', exportValue: (p) => STATUS[p.status].rotulo },
+    },
+  ], []);
+
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
@@ -42,38 +114,14 @@ export const PasseiosLista: React.FC<Props> = ({ passeios, ativoId, permissoes, 
         {visiveis.length === 0 ? (
           <EmptyState icon={<Compass className="h-8 w-8" />} title={passeios.length === 0 ? 'Nenhum passeio cadastrado' : 'Nenhum passeio encontrado'} description={passeios.length === 0 ? 'Cadastre o primeiro passeio da escola.' : 'Ajuste a busca.'} />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Passeio</TableHead><TableHead>Data</TableHead><TableHead>Destino</TableHead>
-                <TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Inscritos</TableHead><TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visiveis.map((p) => (
-                <TableRow key={p.id} data-state={p.id === ativoId ? 'selected' : undefined}>
-                  <TableCell>
-                    <Button variant="link" className="h-auto p-0 font-medium" onClick={() => selecionar(p)} aria-label={`Trabalhar no passeio ${p.nome}`}>{p.nome}</Button>
-                    <p className="text-xs text-muted-foreground">{p.responsavel}</p>
-                  </TableCell>
-                  <TableCell className="font-mono tabular-nums">{formatarData(p.data_passeio)}<p className="text-xs text-muted-foreground">{periodoDoPasseio(p)}</p></TableCell>
-                  <TableCell>{p.destino}<p className="text-xs text-muted-foreground">{p.cidade}</p></TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatarCentavos(p.valor_centavos)}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{p.inscricoes_count ?? 0}</TableCell>
-                  <TableCell><StatusChip label={STATUS[p.status].rotulo} variant={STATUS[p.status].variante} /></TableCell>
-                  <TableCell className="whitespace-nowrap text-right">
-                    {permissoes.passeios && (
-                      <>
-                        <Button size="icon-sm" variant="ghost" aria-label={`Editar ${p.nome}`} onClick={() => setEditando(p)}><Pencil /></Button>
-                        <Button size="icon-sm" variant="ghost" aria-label={`Excluir ${p.nome}`} onClick={() => setExcluir(p)}><Trash2 /></Button>
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={visiveis}
+            emptyText="Nenhum passeio encontrado."
+            exportable
+            exportFileName="passeios"
+            exportTitle="Passeios"
+          />
         )}
       </CardContent>
 
