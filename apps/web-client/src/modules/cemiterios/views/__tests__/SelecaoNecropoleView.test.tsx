@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { SelecaoNecropoleView } from '../SelecaoNecropoleView';
@@ -18,6 +18,8 @@ const mockParques: Parque[] = [
     lng: -46.63,
     setores_count: 5,
     jazigos_count: 1200,
+    capacidade_total: 2400,
+    ocupacao_total: 600, // 25%
   },
   {
     id: 2,
@@ -31,10 +33,76 @@ const mockParques: Parque[] = [
     lng: -46.65,
     setores_count: 3,
     jazigos_count: 850,
+    capacidade_total: 1000,
+    ocupacao_total: 900, // 90%
   },
 ];
 
+// Cadastrado, mas sem jazigos: não há capacidade para calcular a taxa.
+const semDados: Parque = {
+  id: 3,
+  codigo: 'CEM-03',
+  nome: 'Cemitério Novo',
+  endereco: null,
+  tipo: 'publico',
+  situacao: 'ativo',
+  responsavel: null,
+  lat: null,
+  lng: null,
+  setores_count: 0,
+  jazigos_count: 0,
+  capacidade_total: 0,
+  ocupacao_total: 0,
+};
+
+// O Radix Select chama scrollIntoView ao abrir a lista, que o jsdom não implementa.
+beforeAll(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+});
+
+async function escolherOcupacao(rotulo: RegExp) {
+  const gatilho = screen.getByText(/Ocupação: Todas as taxas/i).closest('button') as HTMLElement;
+  fireEvent.keyDown(gatilho, { key: 'Enter' });
+  fireEvent.click(await screen.findByRole('option', { name: rotulo }));
+}
+
 describe('SelecaoNecropoleView', () => {
+  it('mostra a taxa de ocupação real de cada cemitério e traço quando não há jazigos', () => {
+    render(
+      <CemiteriosNavigationProvider cemiteriosIniciais={[...mockParques, semDados]} isGestorMunicipal={false}>
+        <SelecaoNecropoleView />
+      </CemiteriosNavigationProvider>
+    );
+
+    expect(screen.getByText('25%')).toBeInTheDocument();
+    expect(screen.getByText('90%')).toBeInTheDocument();
+    expect(screen.getByText('Cemitério Novo')).toBeInTheDocument();
+  });
+
+  it('filtra por faixa de ocupação usando a taxa real e deixa de fora quem não tem dados', async () => {
+    render(
+      <CemiteriosNavigationProvider cemiteriosIniciais={[...mockParques, semDados]} isGestorMunicipal={false}>
+        <SelecaoNecropoleView />
+      </CemiteriosNavigationProvider>
+    );
+
+    await escolherOcupacao(/Crítica/i);
+
+    expect(screen.getByText('Cemitério da Saudade')).toBeInTheDocument(); // 90%
+    expect(screen.queryByText('Cemitério Municipal Central')).not.toBeInTheDocument(); // 25%
+    expect(screen.queryByText('Cemitério Novo')).not.toBeInTheDocument();
+  });
+
+  it('oferece exportação e seletor de linhas por página (DataTable padrão)', () => {
+    render(
+      <CemiteriosNavigationProvider cemiteriosIniciais={mockParques} isGestorMunicipal={false}>
+        <SelecaoNecropoleView />
+      </CemiteriosNavigationProvider>
+    );
+
+    expect(screen.getByRole('button', { name: /exportar/i })).toBeInTheDocument();
+  });
+
   it('renderiza por padrão a visualização em DataTable', () => {
     render(
       <CemiteriosNavigationProvider cemiteriosIniciais={mockParques} isGestorMunicipal={false}>

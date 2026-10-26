@@ -1,19 +1,17 @@
 import React, { useState, useMemo } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import {
   Search,
   MapPin,
   Building2,
   ArrowRight,
   Landmark,
-  Layers,
   CheckCircle2,
   AlertTriangle,
   ShieldCheck,
   List,
   LayoutGrid,
   Filter,
-  ChevronLeft,
-  ChevronRight,
   User,
 } from 'lucide-react';
 import {
@@ -27,15 +25,11 @@ import {
   Button,
   Input,
   Select,
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
+  ActionsMenu,
 } from '@sysgov/ui';
+import { DataTable } from '@/components/ui';
 import { useCemiteriosContext } from '../CemiteriosContext';
-import type { Parque } from '../api';
+import { taxaOcupacao, type Parque } from '../api';
 
 export interface SelecaoNecropoleViewProps {
   onSelecionar?: (id: number) => void;
@@ -43,7 +37,7 @@ export interface SelecaoNecropoleViewProps {
 
 export type ModoExibicao = 'tabela' | 'cards';
 
-const ITENS_POR_PAGINA = 10;
+const formatarTaxa = (taxa: number | null) => (taxa === null ? '—' : `${taxa.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
 
 export const SelecaoNecropoleView: React.FC<SelecaoNecropoleViewProps> = ({ onSelecionar }) => {
   const {
@@ -59,7 +53,6 @@ export const SelecaoNecropoleView: React.FC<SelecaoNecropoleViewProps> = ({ onSe
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [filtroOcupacao, setFiltroOcupacao] = useState<string>('todas');
-  const [paginaAtual, setPaginaAtual] = useState(1);
 
   // Filtragem avançada multidimensional
   const cemiteriosFiltrados = useMemo(() => {
@@ -79,31 +72,125 @@ export const SelecaoNecropoleView: React.FC<SelecaoNecropoleViewProps> = ({ onSe
         if (c.situacao !== filtroStatus) return false;
       }
 
-      // 3. Filtro de faixa de ocupação
+      // 3. Filtro de faixa de ocupação (taxa real dos jazigos; sem capacidade cadastrada não entra em nenhuma faixa)
       if (filtroOcupacao !== 'todas') {
-        const ocupacaoEstimada = 75; // percentual de referência caso não detalhado
-        if (filtroOcupacao === 'baixa' && ocupacaoEstimada >= 50) return false;
-        if (filtroOcupacao === 'media' && (ocupacaoEstimada < 50 || ocupacaoEstimada > 80)) return false;
-        if (filtroOcupacao === 'alta' && ocupacaoEstimada <= 80) return false;
+        const taxa = taxaOcupacao(c);
+        if (taxa === null) return false;
+        if (filtroOcupacao === 'baixa' && taxa >= 50) return false;
+        if (filtroOcupacao === 'media' && (taxa < 50 || taxa > 80)) return false;
+        if (filtroOcupacao === 'alta' && taxa <= 80) return false;
       }
 
       return true;
     });
   }, [cemiteriosDisponiveis, busca, filtroStatus, filtroOcupacao]);
 
-  // Paginação fixa em 10 itens
-  const totalPaginas = Math.max(1, Math.ceil(cemiteriosFiltrados.length / ITENS_POR_PAGINA));
-  const paginaCorrigida = Math.min(paginaAtual, totalPaginas);
-
-  const cemiteriosPaginados = useMemo(() => {
-    const inicio = (paginaCorrigida - 1) * ITENS_POR_PAGINA;
-    return cemiteriosFiltrados.slice(inicio, inicio + ITENS_POR_PAGINA);
-  }, [cemiteriosFiltrados, paginaCorrigida]);
-
   const handleSelecionar = (id: number) => {
     selecionarCemiterio(id);
     onSelecionar?.(id);
   };
+
+  const colunas = useMemo<ColumnDef<Parque, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 150,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel="Ações do cemitério"
+            items={[
+              { key: 'acessar', label: 'Acessar Gestão', icon: <ArrowRight className="h-3.5 w-3.5" />, onSelect: () => handleSelecionar(row.original.id) },
+            ]}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'codigo',
+      header: 'Código',
+      accessorKey: 'codigo',
+      cell: ({ row }) => (
+        <Badge variant="outline" className="font-mono tabular-nums text-xs">{row.original.codigo}</Badge>
+      ),
+      meta: { exportHeader: 'Código', exportValue: (r) => r.codigo, sortValue: (r) => r.codigo },
+    },
+    {
+      id: 'nome',
+      header: 'Nome da Necrópole',
+      accessorKey: 'nome',
+      cell: ({ row }) => <span className="font-semibold text-foreground">{row.original.nome}</span>,
+      meta: { exportHeader: 'Nome da Necrópole', exportValue: (r) => r.nome, sortValue: (r) => r.nome },
+    },
+    {
+      id: 'endereco',
+      header: 'Endereço / Bairro',
+      accessorFn: (r) => r.endereco ?? '',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5 max-w-[240px] text-muted-foreground text-sm">
+          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{row.original.endereco || '—'}</span>
+        </div>
+      ),
+      meta: { exportHeader: 'Endereço', exportValue: (r) => r.endereco ?? '', sortValue: (r) => r.endereco ?? '' },
+    },
+    {
+      id: 'responsavel',
+      header: 'Responsável',
+      accessorFn: (r) => r.responsavel ?? '',
+      cell: ({ row }) =>
+        row.original.responsavel ? (
+          <span className="flex items-center gap-1 text-muted-foreground text-sm">
+            <User className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{row.original.responsavel}</span>
+          </span>
+        ) : (
+          '—'
+        ),
+      meta: { exportHeader: 'Responsável', exportValue: (r) => r.responsavel ?? '', sortValue: (r) => r.responsavel ?? '' },
+    },
+    {
+      id: 'setores',
+      header: 'Setores',
+      accessorFn: (r) => r.setores_count ?? r.setores?.length ?? 0,
+      cell: ({ row }) => (
+        <span className="font-mono tabular-nums">{row.original.setores_count ?? row.original.setores?.length ?? 0}</span>
+      ),
+      meta: { exportHeader: 'Setores', exportValue: (r) => r.setores_count ?? r.setores?.length ?? 0 },
+    },
+    {
+      id: 'jazigos',
+      header: 'Jazigos',
+      accessorFn: (r) => r.jazigos_count ?? 0,
+      cell: ({ row }) => (
+        <span className="font-mono tabular-nums font-semibold">{(row.original.jazigos_count ?? 0).toLocaleString('pt-BR')}</span>
+      ),
+      meta: { exportHeader: 'Jazigos', exportValue: (r) => r.jazigos_count ?? 0 },
+    },
+    {
+      id: 'ocupacao',
+      header: 'Ocupação',
+      accessorFn: (r) => taxaOcupacao(r) ?? -1,
+      cell: ({ row }) => (
+        <span className="font-mono tabular-nums">{formatarTaxa(taxaOcupacao(row.original))}</span>
+      ),
+      meta: { exportHeader: 'Ocupação', exportValue: (r) => formatarTaxa(taxaOcupacao(r)) },
+    },
+    {
+      id: 'situacao',
+      header: 'Status',
+      accessorKey: 'situacao',
+      cell: ({ row }) => (
+        <Badge variant={row.original.situacao === 'ativo' ? 'default' : 'secondary'} className="capitalize text-xs">
+          {row.original.situacao === 'ativo' ? 'Ativo' : row.original.situacao}
+        </Badge>
+      ),
+      meta: { exportHeader: 'Status', exportValue: (r) => r.situacao, sortValue: (r) => r.situacao },
+    },
+  // handleSelecionar só depende destes dois.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [selecionarCemiterio, onSelecionar]);
 
   return (
     <div className="space-y-6 w-full max-w-7xl mx-auto py-2 overflow-x-hidden">
@@ -190,10 +277,7 @@ export const SelecaoNecropoleView: React.FC<SelecaoNecropoleViewProps> = ({ onSe
             <Input
               placeholder="Buscar por nome, código, bairro ou responsável..."
               value={busca}
-              onChange={(e) => {
-                setBusca(e.target.value);
-                setPaginaAtual(1);
-              }}
+              onChange={(e) => setBusca(e.target.value)}
               className="pl-9"
             />
             <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -209,10 +293,7 @@ export const SelecaoNecropoleView: React.FC<SelecaoNecropoleViewProps> = ({ onSe
                 { value: 'inativo', label: 'Status: Inativo / Saturado' },
               ]}
               value={filtroStatus}
-              onChange={(val) => {
-                setFiltroStatus(val);
-                setPaginaAtual(1);
-              }}
+              onChange={setFiltroStatus}
             />
           </div>
 
@@ -226,10 +307,7 @@ export const SelecaoNecropoleView: React.FC<SelecaoNecropoleViewProps> = ({ onSe
                 { value: 'alta', label: 'Ocupação: Crítica (> 80%)' },
               ]}
               value={filtroOcupacao}
-              onChange={(val) => {
-                setFiltroOcupacao(val);
-                setPaginaAtual(1);
-              }}
+              onChange={setFiltroOcupacao}
             />
           </div>
         </div>
@@ -262,135 +340,19 @@ export const SelecaoNecropoleView: React.FC<SelecaoNecropoleViewProps> = ({ onSe
         </div>
       )}
 
-      {/* 1. VISUALIZAÇÃO EM LISTAGEM / DATATABLE (PADRÃO ATIVO) */}
+      {/* 1. VISUALIZAÇÃO EM LISTAGEM (DataTable padrão: exportação, paginação e linhas por página) */}
       {!isCarregandoCemiterios &&
         !erroCarregamento &&
         cemiteriosFiltrados.length > 0 &&
         modoExibicao === 'tabela' && (
-          <Card className="overflow-hidden border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-20">Código</TableHead>
-                  <TableHead>Nome da Necrópole</TableHead>
-                  <TableHead className="hidden md:table-cell">Endereço / Bairro</TableHead>
-                  <TableHead className="hidden xl:table-cell">Responsável</TableHead>
-                  <TableHead className="hidden sm:table-cell text-right w-20">Setores</TableHead>
-                  <TableHead className="text-right w-24">Jazigos</TableHead>
-                  <TableHead className="text-center w-24">Status</TableHead>
-                  <TableHead className="text-right w-36">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cemiteriosPaginados.map((parque) => {
-                  const totalJazigos = parque.jazigos_count ?? 0;
-                  const setores =
-                    parque.setores_count ?? (parque.setores ? parque.setores.length : 0);
-                  const isAtivo = parque.situacao === 'ativo';
-
-                  return (
-                    <TableRow
-                      key={parque.id}
-                      onClick={() => handleSelecionar(parque.id)}
-                      className="hover:bg-muted/50 cursor-pointer"
-                    >
-                      <TableCell className="font-mono tabular-nums font-semibold text-xs whitespace-nowrap">
-                        <Badge variant="outline" className="font-mono tabular-nums text-xs">
-                          {parque.codigo}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-semibold text-foreground">
-                        {parque.nome}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                        <div className="flex items-center gap-1.5 max-w-[200px] lg:max-w-xs truncate">
-                          <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate">{parque.endereco || '—'}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell text-muted-foreground text-sm">
-                        {parque.responsavel ? (
-                          <span className="flex items-center gap-1 truncate max-w-[150px]">
-                            <User className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{parque.responsavel}</span>
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-right font-mono tabular-nums">
-                        {setores}
-                      </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums font-semibold">
-                        {totalJazigos.toLocaleString('pt-BR')}
-                      </TableCell>
-                      <TableCell className="text-center whitespace-nowrap">
-                        <Badge
-                          variant={isAtivo ? 'default' : 'secondary'}
-                          className="capitalize text-xs"
-                        >
-                          {isAtivo ? 'Ativo' : parque.situacao}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelecionar(parque.id);
-                          }}
-                          className="gap-1.5 h-8 text-xs"
-                        >
-                          Acessar Gestão
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-
-            {/* Paginação da DataTable (Fixa em 10 itens) */}
-            <div className="p-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                Exibindo{' '}
-                <strong className="font-mono tabular-nums font-semibold text-foreground">
-                  {cemiteriosPaginados.length}
-                </strong>{' '}
-                de{' '}
-                <strong className="font-mono tabular-nums font-semibold text-foreground">
-                  {cemiteriosFiltrados.length}
-                </strong>{' '}
-                cemitérios (10 por página)
-              </span>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={paginaCorrigida <= 1}
-                  onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
-                  className="h-8 px-2"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="font-mono tabular-nums">
-                  Página {paginaCorrigida} de {totalPaginas}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={paginaCorrigida >= totalPaginas}
-                  onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
-                  className="h-8 px-2"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </Card>
+          <DataTable
+            columns={colunas}
+            data={cemiteriosFiltrados}
+            exportable
+            exportFileName="cemiterios-necropoles"
+            exportTitle="Cemitérios — Necrópoles"
+            emptyText="Nenhum cemitério encontrado."
+          />
         )}
 
       {/* 2. VISUALIZAÇÃO EM CARDS (OPÇÃO SECUNDÁRIA) */}
@@ -399,7 +361,7 @@ export const SelecaoNecropoleView: React.FC<SelecaoNecropoleViewProps> = ({ onSe
         cemiteriosFiltrados.length > 0 &&
         modoExibicao === 'cards' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {cemiteriosPaginados.map((parque) => {
+            {cemiteriosFiltrados.map((parque) => {
               const totalJazigos = parque.jazigos_count ?? 0;
               const setores =
                 parque.setores_count ?? (parque.setores ? parque.setores.length : 0);
