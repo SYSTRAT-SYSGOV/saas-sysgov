@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { ClipboardList, Download, MapPin, QrCode, Search, ShieldCheck, Trash2, UserRound } from 'lucide-react';
-import { AlertCard, Button, Card, CardContent, CardHeader, CardTitle, Input, KpiCard, Modal, Select, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import { ActionsMenu, AlertCard, Button, Card, CardContent, CardHeader, CardTitle, DataTable, Input, KpiCard, Modal, Select, Skeleton, Table, TableBody, TableCell, TableRow } from '@sysgov/ui';
 import { EmptyState } from '@/components/ui';
 import { erroApi } from '../../escola/api';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
@@ -8,7 +9,7 @@ import { useCarga } from '../../escola/useCarga';
 import { campanhaApi, type CategoriaDemanda, type Eleitor, type FiltrosEleitores, type IndicadoresEleitores, type Prioridade } from '../api';
 import { ROTULO_CATEGORIA, ROTULO_PRIORIDADE, formatarData, formatarDataHora, formatarNumero } from '../formato';
 import type { PropsAba } from '../ModuloCampanhaMain';
-import { SelectMunicipio, useMunicipiosDaCampanha } from './Comuns';
+import { SelectMunicipio, colunaAcoes, useMunicipiosDaCampanha } from './Comuns';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
 /**
@@ -72,7 +73,7 @@ const ListaEleitores: React.FC<PropsAba> = ({ campanha, permissoes, avisar, alte
 
   const aplicar = (ev?: React.FormEvent) => {
     ev?.preventDefault();
-    setFiltros((f) => ({ codigo_ibge: f.codigo_ibge, busca: rascunho.busca.trim() || undefined, bairro: rascunho.bairro.trim() || undefined, de: rascunho.de || undefined, ate: rascunho.ate || undefined, pagina: 1 }));
+    setFiltros((f) => ({ codigo_ibge: f.codigo_ibge, busca: rascunho.busca.trim() || undefined, bairro: rascunho.bairro.trim() || undefined, de: rascunho.de || undefined, ate: rascunho.ate || undefined, por_pagina: f.por_pagina, pagina: 1 }));
   };
 
   const exportar = async () => {
@@ -95,6 +96,30 @@ const ListaEleitores: React.FC<PropsAba> = ({ campanha, permissoes, avisar, alte
   const pagina = lista.dados?.pagina ?? 1;
   const paginas = lista.dados ? Math.max(1, Math.ceil(lista.dados.total / lista.dados.por_pagina)) : 1;
 
+  // Colunas estáveis: a única ação (abrir a ficha) usa o setter de estado.
+  const colunas = useMemo<ColumnDef<Eleitor, unknown>[]>(() => [
+    colunaAcoes<Eleitor>(() => 'Ações do eleitor', (e) => [{ key: 'abrir', label: 'Abrir', icon: <UserRound className="h-3.5 w-3.5" />, onSelect: () => setFicha(e) }]),
+    {
+      id: 'cadastro', header: 'Cadastro', accessorKey: 'created_at',
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{formatarData(row.original.created_at)}</span>,
+      meta: { exportHeader: 'Cadastro', exportValue: (e) => formatarData(e.created_at) },
+    },
+    {
+      id: 'nome', header: 'Nome', accessorFn: (e) => (e.anonimizado_em ? 'Anonimizado' : e.nome),
+      cell: ({ row }) => <span className="font-medium">{row.original.anonimizado_em ? <span className="text-muted-foreground">Anonimizado</span> : row.original.nome}</span>,
+    },
+    { id: 'local', header: 'Município / bairro', accessorFn: (e) => `${e.municipio}${e.bairro ? ` — ${e.bairro}` : ''}` },
+    {
+      id: 'whatsapp', header: 'WhatsApp', accessorFn: (e) => e.whatsapp ?? '',
+      cell: ({ row }) => <span className="font-mono text-sm tabular-nums">{row.original.whatsapp ?? '—'}</span>,
+    },
+    { id: 'indicado', header: 'Indicado por', accessorFn: (e) => e.responsavel ?? '—' },
+    {
+      id: 'local-gps', header: 'Local', enableSorting: false,
+      cell: ({ row }) => (row.original.latitude !== null ? <MapPin className="h-4 w-4 text-primary" aria-label="Com localização" /> : '—'),
+    },
+  ], []);
+
   return (
     <Card>
       {modalValidacao}
@@ -114,32 +139,20 @@ const ListaEleitores: React.FC<PropsAba> = ({ campanha, permissoes, avisar, alte
           : !lista.dados ? <Skeleton className="h-64 w-full" />
             : lista.dados.total === 0 ? <EmptyState icon={<UserRound className="h-8 w-8" />} title="Nenhum eleitor" description="Os cadastros feitos pelos links de captação aparecem aqui." />
               : (
-                <>
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Cadastro</TableHead><TableHead>Nome</TableHead><TableHead>Município / bairro</TableHead><TableHead>WhatsApp</TableHead><TableHead>Indicado por</TableHead><TableHead>Local</TableHead><TableHead className="text-right">Ficha</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {lista.dados.eleitores.map((e) => (
-                        <TableRow key={e.id}>
-                          <TableCell className="font-mono text-sm tabular-nums">{formatarData(e.created_at)}</TableCell>
-                          <TableCell className="font-medium">{e.anonimizado_em ? <span className="text-muted-foreground">Anonimizado</span> : e.nome}</TableCell>
-                          <TableCell className="text-sm">{e.municipio}{e.bairro ? ` — ${e.bairro}` : ''}</TableCell>
-                          <TableCell className="font-mono text-sm tabular-nums">{e.whatsapp ?? '—'}</TableCell>
-                          <TableCell className="text-sm">{e.responsavel ?? '—'}</TableCell>
-                          <TableCell>{e.latitude !== null ? <MapPin className="h-4 w-4 text-primary" aria-label="Com localização" /> : '—'}</TableCell>
-                          <TableCell className="text-right"><Button size="sm" variant="ghost" onClick={() => setFicha(e)}>Abrir</Button></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span className="font-mono tabular-nums">{formatarNumero(lista.dados.total)} eleitor(es)</span>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" disabled={pagina <= 1} onClick={() => setFiltros((f) => ({ ...f, pagina: pagina - 1 }))}>Anterior</Button>
-                      <span className="font-mono tabular-nums">{pagina} / {paginas}</span>
-                      <Button size="sm" variant="outline" disabled={pagina >= paginas} onClick={() => setFiltros((f) => ({ ...f, pagina: pagina + 1 }))}>Próxima</Button>
-                    </div>
-                  </div>
-                </>
+                <DataTable
+                  columns={colunas}
+                  data={lista.dados.eleitores}
+                  emptyText="Nenhum eleitor."
+                  pageSizeOptions={[25, 50, 100]}
+                  paginationState={{
+                    currentPage: pagina,
+                    totalPages: paginas,
+                    onPageChange: (p) => setFiltros((f) => ({ ...f, pagina: p })),
+                    total: lista.dados.total,
+                    perPage: lista.dados.por_pagina,
+                    onPerPageChange: (n) => setFiltros((f) => ({ ...f, por_pagina: n, pagina: 1 })),
+                  }}
+                />
               )}
       </CardContent>
       <FichaEleitor eleitor={ficha} {...{ permissoes, avisar }} onFechar={() => setFicha(null)} onAlterado={() => { setFicha(null); alterou(); }} />

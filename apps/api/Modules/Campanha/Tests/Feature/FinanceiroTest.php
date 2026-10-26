@@ -21,6 +21,19 @@ final class FinanceiroTest extends TestCase
 
     private const DESPESA = ['tipo' => 'despesa', 'categoria' => 'publicidade_grafica', 'valor_centavos' => 3245075, 'data' => '2026-09-05', 'forma_pagamento' => 'transferencia', 'contraparte_nome' => 'Gráfica Norte Ltda', 'contraparte_documento' => '11.222.333/0001-81', 'documento_fiscal_tipo' => 'nota_fiscal', 'documento_fiscal_numero' => 'NF 123', 'codigo_ibge' => 4113700];
 
+    public function test_listagem_respeita_por_pagina_entre_1_e_100(): void
+    {
+        $this->basePublica();
+        $tenant = $this->criarTenant();
+        $campanha = $this->campanha($tenant);
+        $g = fn () => $this->como($this->usuario($tenant), $tenant, $campanha);
+        $g()->postJson('/api/campanha/lancamentos', self::RECEITA)->assertCreated();
+        $g()->postJson('/api/campanha/lancamentos', self::DESPESA)->assertCreated();
+
+        $g()->getJson('/api/campanha/lancamentos?por_pagina=1')->assertOk()->assertJsonCount(1, 'lancamentos')->assertJsonPath('total', 2)->assertJsonPath('por_pagina', 1);
+        $g()->getJson('/api/campanha/lancamentos?por_pagina=500')->assertOk()->assertJsonPath('por_pagina', 100);
+    }
+
     public function test_validacoes_por_tipo_e_documento(): void
     {
         $this->basePublica();
