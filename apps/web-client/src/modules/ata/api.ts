@@ -137,7 +137,7 @@ export const ataApi = {
   secretarias: async () => (await apiClient.get<{ data: SecretariaOpcao[] }>('/ata/secretarias')).data.data,
   salvarSecretaria: async (id: number, corpo: FormData) =>
     (await apiClient.post<{ data: SecretariaOpcao }>(`/ata/secretarias/${id}`, corpo, { headers: { 'Content-Type': 'multipart/form-data' } })).data.data,
-  auditoria: async (params: { acao?: string; ata_id?: number; page?: number }) =>
+  auditoria: async (params: { acao?: string; ata_id?: number; page?: number; per_page?: number }) =>
     (await apiClient.get<{ data: RegistroAuditoria[]; current_page: number; last_page: number; total: number }>('/ata/auditoria', { params })).data,
 };
 

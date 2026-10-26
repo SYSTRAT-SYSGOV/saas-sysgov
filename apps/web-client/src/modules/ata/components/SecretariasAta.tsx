@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ImagePlus } from 'lucide-react';
-import { Button, Card, CardContent, Checkbox, Input, Modal, StatusChip, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import React, { useMemo, useState } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ImagePlus, Settings2 } from 'lucide-react';
+import { ActionsMenu, Button, Card, CardContent, Checkbox, DataTable, Input, Modal, StatusChip } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
@@ -13,25 +14,52 @@ export const SecretariasAta: React.FC<{ avisar: Toast }> = ({ avisar }) => {
   const carga = useCarga(() => ataApi.secretarias(), []);
   const [editando, setEditando] = useState<SecretariaOpcao | null>(null);
 
+  const colunas = useMemo<ColumnDef<SecretariaOpcao, unknown>[]>(() => [
+    {
+      id: 'acoes',
+      header: '',
+      size: 56,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <ActionsMenu
+            triggerLabel="Ações da secretaria"
+            items={[{ key: 'configurar', label: 'Configurar', icon: <Settings2 className="h-3.5 w-3.5" />, onSelect: () => setEditando(row.original) }]}
+          />
+        </div>
+      ),
+    },
+    { id: 'secretaria', header: 'Secretaria', accessorKey: 'nome', meta: { exportHeader: 'Secretaria', exportValue: (s) => s.nome } },
+    {
+      id: 'sigla',
+      header: 'Sigla',
+      accessorFn: (s) => s.sigla ?? '',
+      cell: ({ row }) => <span className="font-mono">{row.original.sigla ?? '—'}</span>,
+      meta: { exportHeader: 'Sigla', exportValue: (s) => s.sigla ?? '' },
+    },
+    {
+      id: 'timbrado',
+      header: 'Papel timbrado',
+      accessorFn: (s) => (s.tem_timbrado ? 'Configurado' : 'Sem timbrado'),
+      cell: ({ row }) => <StatusChip label={row.original.tem_timbrado ? 'Configurado' : 'Sem timbrado'} variant={row.original.tem_timbrado ? 'success' : 'neutral'} />,
+      meta: { exportHeader: 'Papel timbrado', exportValue: (s) => (s.tem_timbrado ? 'Configurado' : 'Sem timbrado') },
+    },
+  ], []);
+
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
         <p className="text-sm text-muted-foreground">As secretarias vêm do Organograma. Para criar ou renomear uma secretaria, use o módulo Organograma.</p>
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && (
-          <Table>
-            <TableHeader><TableRow><TableHead>Secretaria</TableHead><TableHead>Sigla</TableHead><TableHead>Papel timbrado</TableHead><TableHead className="w-28" /></TableRow></TableHeader>
-            <TableBody>
-              {carga.dados.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.nome}</TableCell>
-                  <TableCell className="font-mono">{s.sigla ?? '—'}</TableCell>
-                  <TableCell><StatusChip label={s.tem_timbrado ? 'Configurado' : 'Sem timbrado'} variant={s.tem_timbrado ? 'success' : 'neutral'} /></TableCell>
-                  <TableCell><Button variant="outline" size="sm" onClick={() => setEditando(s)}>Configurar</Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={colunas}
+            data={carga.dados}
+            emptyText="Nenhuma secretaria encontrada."
+            exportable
+            exportFileName="ata-secretarias"
+            exportTitle="Atas — Secretarias"
+          />
         )}
       </CardContent>
       {editando && (

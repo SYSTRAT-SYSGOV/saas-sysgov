@@ -98,4 +98,19 @@ final class AcessoTest extends TestCase
         ])->assertOk()->assertJsonPath('data.sigla', 'SEMED')->assertJsonPath('data.tem_timbrado', true);
         $this->como($gestor, $tenant)->getJson('/api/ata/auditoria')->assertOk()->assertJsonFragment(['acao' => 'tipo.criado']);
     }
+
+    public function test_auditoria_respeita_per_page_e_recusa_valor_acima_do_maximo(): void
+    {
+        $tenant = $this->criarTenant();
+        $gestor = $this->usuario($tenant, ['ata_gestor']);
+
+        $this->como($gestor, $tenant)->postJson('/api/ata/tipos', ['nome' => 'Assembleia'])->assertCreated();
+        $this->como($gestor, $tenant)->postJson('/api/ata/tipos', ['nome' => 'Reunião de pais'])->assertCreated();
+
+        $pagina = $this->como($gestor, $tenant)->getJson('/api/ata/auditoria?per_page=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+        $this->assertGreaterThanOrEqual(2, $pagina->json('last_page'));
+        $this->como($gestor, $tenant)->getJson('/api/ata/auditoria?per_page=500')->assertUnprocessable();
+    }
 }
