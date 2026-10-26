@@ -20,8 +20,8 @@ final class ClientMenuSeeder extends Seeder
                 'order' => 1,
                 'items' => [
                     ['label' => 'Painel Geral', 'route' => '/', 'icon' => 'LayoutDashboard', 'permission' => 'dashboard.view', 'module_alias' => 'dashboard'],
-                    ['label' => 'Contratos', 'route' => '/contratos', 'icon' => 'FileSignature', 'permission' => 'contracts.view', 'module_alias' => 'contracts'],
-                    ['label' => 'Execução Financeira', 'route' => '/financeiro', 'icon' => 'Coins', 'permission' => 'finance.view', 'module_alias' => 'finance'],
+                    ['label' => 'Contratos', 'route' => '/contratos', 'icon' => 'Handshake', 'permission' => 'contracts.view', 'module_alias' => 'contracts'],
+                    ['label' => 'Execução Financeira', 'route' => '/financeiro', 'icon' => 'CircleDollarSign', 'permission' => 'finance.view', 'module_alias' => 'finance'],
                     ['label' => 'Licita — Fase Preparatória (DFD, ETP, TR e Edital)', 'route' => '/licita', 'icon' => 'Scale', 'permission' => 'licita.view', 'module_alias' => 'licita'],
                 ],
             ],
@@ -32,7 +32,7 @@ final class ClientMenuSeeder extends Seeder
                 'order' => 2,
                 'items' => [
                     ['label' => 'Organograma Municipal', 'route' => '/organograma', 'icon' => 'Network', 'permission' => 'org.view', 'module_alias' => 'org'],
-                    ['label' => 'Módulo Pedagógico', 'route' => '/pedagogico', 'icon' => 'GraduationCap', 'permission' => 'pedagogico.view', 'module_alias' => 'pedagogico'],
+                    ['label' => 'Módulo Pedagógico', 'route' => '/pedagogico', 'icon' => 'BookOpen', 'permission' => 'pedagogico.view', 'module_alias' => 'pedagogico'],
                     ['label' => 'Avaliação de Desempenho (CAPD)', 'route' => '/capd', 'icon' => 'ClipboardCheck', 'permission' => 'capd.view', 'module_alias' => 'capd'],
                     ['label' => 'Gestão de Cemitérios', 'route' => '/cemiterios', 'icon' => 'Cross', 'permission' => 'cemiterios.view', 'module_alias' => 'cemiterios'],
                 ],
@@ -44,7 +44,7 @@ final class ClientMenuSeeder extends Seeder
                 'order' => 99,
                 'items' => [
                     ['label' => 'Gerenciar Menus', 'route' => '/gerenciar-menus', 'icon' => 'Menu', 'permission' => 'menu.manager', 'module_alias' => null],
-                    ['label' => 'Usuários e Acessos', 'route' => '/usuarios', 'icon' => 'Users', 'permission' => 'users.manage', 'module_alias' => 'users'],
+                    ['label' => 'Usuários e Acessos', 'route' => '/usuarios', 'icon' => 'UserCog', 'permission' => 'users.manage', 'module_alias' => 'users'],
                     ['label' => 'Reset de Senha', 'route' => '/reset-senha', 'icon' => 'Key', 'permission' => 'users.password.reset', 'module_alias' => 'users'],
                     ['label' => 'Hierarquias', 'route' => '/hierarquias', 'icon' => 'GitBranch', 'permission' => 'org.admin', 'module_alias' => 'org'],
                 ],

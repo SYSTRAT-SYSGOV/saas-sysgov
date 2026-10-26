@@ -5,6 +5,7 @@ import { useTenant } from '@/core/tenant/useTenant';
 import { useOrgUnit } from '@/core/orgunit';
 import { useCan } from '@/core/rbac/useCan';
 import { getIcon } from '@/config/iconMap';
+import { iconeDoItem } from '@/config/menuIcon';
 import { MenuItem, MenuGroup } from '@sysgov/sdk';
 import { X, ChevronRight, ChevronDown, LogOut, ShieldCheck, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -198,7 +199,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   <div className="pt-1 space-y-1">
                     {group.items.map((item) => {
                       const isActive = location.pathname === item.route;
-                      const ItemIcon = getIcon(item.icon);
+                      const ItemIcon = getIcon(iconeDoItem(item));
                       const children = (item as any).children || [];
                       const hasChildren = children.length > 0;
                       const isItemExpanded = expandedItems.has(item.id);

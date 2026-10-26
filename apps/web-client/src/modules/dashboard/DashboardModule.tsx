@@ -10,28 +10,22 @@ import { Card, Badge } from '@sysgov/ui';
 import { KpiCard } from '@/components/ui/KpiCard';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { ScreenState } from '@/components/ui/ScreenState';
-import { cn } from '@/lib/utils';import {
+import { cn } from '@/lib/utils';
+import { getIcon } from '@/config/iconMap';
+import {
   Sparkles,
   Building2,
   Settings2,
   Star,
   Plus,
   X,
-  Loader2,
   ArrowRight,
   LayoutDashboard,
   FileCheck,
   Handshake,
   DollarSign,
-  BookOpen,
-  Users,
   ShieldCheck,
-  Shield,
-  ChevronRight,
   MapPin,
-  Bus,
-  GraduationCap,
-  FolderOpen,
 } from 'lucide-react';
 
 const FAVORITES_KEY = 'sysgov:welcome:favorites';
@@ -46,24 +40,10 @@ interface ModuleShortcut {
 }
 
 
+/** Mesmo ícone do menu: vem do registro de módulos (module.json), nunca de um mapa próprio. */
 function getModuleIcon(id: string): React.ReactNode {
-  const icons: Record<string, React.ReactNode> = {
-    dashboard: <LayoutDashboard className="h-6 w-6" />,
-    org: <Building2 className="h-6 w-6" />,
-    procurement: <FileCheck className="h-5 w-5" />,
-    contracts: <Handshake className="h-5 w-5" />,
-    finance: <DollarSign className="h-5 w-5" />,
-    pedagogico: <BookOpen className="h-5 w-5" />,
-    rh: <Users className="h-5 w-5" />,
-    cemiterios: <Shield className="h-5 w-5" />,
-    passeio: <Bus className="h-5 w-5" />,
-    formatura: <GraduationCap className="h-5 w-5" />,
-    portfolio: <FolderOpen className="h-5 w-5" />,
-    users: <ShieldCheck className="h-5 w-5" />,
-    menuManager: <Settings2 className="h-5 w-5" />,
-    moduleGranularity: <Shield className="h-5 w-5" />,
-  };
-  return icons[id] || <LayoutDashboard className="h-5 w-5" />;
+  const Icone = getIcon(MODULE_REGISTRY[id]?.icon);
+  return <Icone className="h-5 w-5" />;
 }
 
 export const DashboardModule: React.FC = () => {

@@ -5,5 +5,5 @@
   "priority": 10,
   "providers": ["Modules\\Contracts\\Providers\\ContractsServiceProvider"],
   "requires": [],
-  "menu": {"label": "Contratos", "icon": "FileCheck2", "order": 20, "permission": "contracts.view"}
+  "menu": {"label": "Contratos", "icon": "Handshake", "order": 20, "permission": "contracts.view"}
 }

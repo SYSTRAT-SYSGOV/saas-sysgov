@@ -34,7 +34,7 @@ const CORE_MODULE_MAP = {
     routePath: 'organograma',
     routes: ['organograma', 'org'],
     requiredPermission: 'org.view',
-    icon: 'Building2',
+    icon: 'Network',
   },
   procurement: {
     id: 'procurement',
@@ -42,7 +42,7 @@ const CORE_MODULE_MAP = {
     componentPath: '@/modules/procurement/ProcurementModule',
     routePath: 'licitacoes',
     requiredPermission: 'procurement.view',
-    icon: 'FileCheck',
+    icon: 'Gavel',
   },
   contracts: {
     id: 'contracts',
@@ -58,7 +58,7 @@ const CORE_MODULE_MAP = {
     componentPath: '@/modules/finance/FinanceModule',
     routePath: 'financeiro',
     requiredPermission: 'finance.view',
-    icon: 'DollarSign',
+    icon: 'CircleDollarSign',
   },
   pedagogico: {
     id: 'pedagogico',
@@ -74,7 +74,7 @@ const CORE_MODULE_MAP = {
     componentPath: '@/modules/rh/RhModule',
     routePath: 'rh',
     requiredPermission: 'rh.view',
-    icon: 'Users',
+    icon: 'Briefcase',
   },
   cemiterios: {
     id: 'cemiterios',
@@ -82,7 +82,7 @@ const CORE_MODULE_MAP = {
     componentPath: '@/modules/cemiterios/CemiteriosModule',
     routePath: 'cemiterios',
     requiredPermission: 'cemiterios.view',
-    icon: 'Shield',
+    icon: 'Cross',
   },
   users: {
     id: 'users',
@@ -90,7 +90,7 @@ const CORE_MODULE_MAP = {
     componentPath: '@/modules/access/AccessManagement',
     routePath: 'usuarios',
     requiredPermission: 'users.manage',
-    icon: 'ShieldCheck',
+    icon: 'UserCog',
   },
   menuManager: {
     id: 'menuManager',
@@ -98,7 +98,7 @@ const CORE_MODULE_MAP = {
     componentPath: '@/modules/access/MenuManager',
     routePath: 'gerenciar-menus',
     isAdminOnly: true,
-    icon: 'Settings2',
+    icon: 'Menu',
   },
   moduleGranularity: {
     id: 'moduleGranularity',
@@ -107,7 +107,7 @@ const CORE_MODULE_MAP = {
     routePath: 'granularidade-módulos',
     routes: ['granularidade-módulos', 'granularidade-modulos'],
     isAdminOnly: true,
-    icon: 'Shield',
+    icon: 'SlidersHorizontal',
   },
   permissionMatrix: {
     id: 'permissionMatrix',
@@ -115,7 +115,7 @@ const CORE_MODULE_MAP = {
     componentPath: '@/modules/access/PermissionMatrix',
     routePath: 'matriz-permissoes',
     isAdminOnly: true,
-    icon: 'Shield',
+    icon: 'Grid3x3',
   },
   capd: {
     id: 'capd',
@@ -133,7 +133,7 @@ const CORE_MODULE_MAP = {
     routePath: 'pessoas',
     routes: ['pessoas', 'pessoas/*'],
     requiredPermission: 'cadastros.pessoas.view',
-    icon: 'Users',
+    icon: 'Contact',
   },
 };
 

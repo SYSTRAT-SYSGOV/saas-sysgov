@@ -15,7 +15,7 @@
     "menu": {
         "group": "GESTÃO & FISCALIZAÇÃO",
         "label": "Vistoria e Inspeção",
-        "icon": "ClipboardCheck",
+        "icon": "ScanSearch",
         "order": 50,
         "permission": "vistoria.view"
     },

@@ -7,7 +7,7 @@
   "requires": [],
   "menu": {
     "label": "Licitações & Editais",
-    "icon": "FileText",
+    "icon": "Gavel",
     "order": 20,
     "permission": "procurement.view"
   }

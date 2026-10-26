@@ -19,7 +19,7 @@
     },
     "menu": {
         "label": "Formatura & Eventos",
-        "icon": "GraduationCap",
+        "icon": "Award",
         "order": 32,
         "permission": "formatura.view",
         "group": "GESTÃO SETORIAL"
