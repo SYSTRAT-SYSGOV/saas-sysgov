@@ -239,8 +239,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
       </main>
 
       <footer className="p-4 text-center text-xs text-gov-text-muted border-t border-gov-border bg-gov-surface">
-        <span className="font-semibold text-gov-text-secondary">Padrão Digital de Governo • UIKIT GOVBR V3</span>
-        <span className="block text-[10px] font-mono mt-0.5">SYSGOV Admin • Console de Operações</span>
+        <span className="block text-[10px] font-mono">SYSGOV Admin • Console de Operações</span>
       </footer>
     </div>
   );

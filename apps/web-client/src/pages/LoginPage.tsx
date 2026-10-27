@@ -106,9 +106,6 @@ export const LoginPage: React.FC = () => {
             <span className="font-bold text-sm tracking-wide text-gov-text-primary uppercase block">
               SYSGOV
             </span>
-            <span className="text-[11px] text-gov-text-muted block">
-              Padrão Digital de Governo • UIKIT GOVBR V3
-            </span>
           </div>
         </div>
 
@@ -238,8 +235,7 @@ export const LoginPage: React.FC = () => {
       <footer className="p-4 text-center text-xs text-gov-text-muted border-t border-gov-border bg-gov-surface">
         {isStandardBranding && (
           <div>
-            <span className="font-semibold text-gov-text-secondary">Padrão Digital de Governo • UIKIT GOVBR V3</span>
-            <span className="block text-[10px] text-gov-text-muted font-mono mt-0.5">
+            <span className="block text-[10px] text-gov-text-muted font-mono">
               SYSGOV Web-Client Multi-Tenant
             </span>
           </div>
