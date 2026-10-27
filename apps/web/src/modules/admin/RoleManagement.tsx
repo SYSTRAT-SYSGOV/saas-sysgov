@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, ChevronDown, ChevronUp, Shield, Key, Loader2, X } from 'lucide-react';
 import { adminApi } from './api';
-import { Role, Permission } from './types';
+import { Role, Permission, permissaoVisivel } from './types';
 import { Button, useFormValidationModal } from '@sysgov/ui';
 
 export const RoleManagement: React.FC = () => {
@@ -133,7 +133,8 @@ export const RoleManagement: React.FC = () => {
             </div>
           ) : (
             filteredRoles.map(role => {
-              const groupedPerms = getPermissionsByModule(role.permissions);
+              const permissoesVisiveis = role.permissions.filter(permissaoVisivel);
+              const groupedPerms = getPermissionsByModule(permissoesVisiveis);
               const isExpanded = expandedId === role.id;
 
               return (
@@ -158,7 +159,7 @@ export const RoleManagement: React.FC = () => {
                         <h3 className="font-medium text-foreground truncate">{role.name}</h3>
                         <div className="flex items-center gap-2 mt-1 text-sm">
                           <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded font-mono text-xs">{role.slug}</span>
-                          <span className="px-2 py-0.5 bg-accent text-primary rounded text-xs">{role.permissions.length} permissões</span>
+                          <span className="px-2 py-0.5 bg-accent text-primary rounded text-xs">{permissoesVisiveis.length} permissões</span>
                         </div>
                         {role.description && (
                           <p className="text-muted-foreground text-sm mt-1 truncate">{role.description}</p>
@@ -341,9 +342,10 @@ const RoleFormModal: React.FC<{
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Permissões</label>
+            {/* Permissão de módulo desligado não aparece na grade, mas segue em permission_ids: salvar o perfil não a revoga. */}
             <div className="space-y-3 max-h-[45vh] overflow-y-auto custom-scrollbar border border-border rounded-lg p-4">
               {Object.entries(
-                permissions.reduce((acc, p) => {
+                permissions.filter(permissaoVisivel).reduce((acc, p) => {
                   if (!acc[p.module]) acc[p.module] = [];
                   acc[p.module].push(p);
                   return acc;

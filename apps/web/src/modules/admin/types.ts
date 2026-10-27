@@ -27,7 +27,11 @@ export interface Permission {
   name: string;
   slug: string;
   module: string;
+  /** false = módulo desligado no catálogo (fora da versão 1): a tela esconde a permissão, mas o perfil a mantém. */
+  module_enabled?: boolean;
 }
+
+export const permissaoVisivel = (p: Permission): boolean => p.module_enabled !== false;
 
 export interface Role {
   id: number;

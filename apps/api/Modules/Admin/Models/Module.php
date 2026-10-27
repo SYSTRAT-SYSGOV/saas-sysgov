@@ -66,4 +66,20 @@ final class Module extends Model
     {
         return $this->hasMany(TenantModuleOrgUnit::class, 'module_id');
     }
+
+    /**
+     * Aliases dos módulos desligados no catálogo (enabled = false). Uma consulta por requisição: as telas de
+     * permissões marcam cada permissão com isso, sem N consultas.
+     *
+     * @return list<string>
+     */
+    public static function aliasesDesligados(): array
+    {
+        $atributos = request()->attributes;
+        if (!$atributos->has('modules.desligados')) {
+            $atributos->set('modules.desligados', static::query()->where('enabled', false)->pluck('alias')->all());
+        }
+
+        return $atributos->get('modules.desligados');
+    }
 }

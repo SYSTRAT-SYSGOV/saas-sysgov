@@ -6,6 +6,7 @@ namespace Modules\Admin\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Modules\Admin\Models\Module;
 
 final class RoleResource extends JsonResource
 {
@@ -24,6 +25,7 @@ final class RoleResource extends JsonResource
                 'name' => $p->name,
                 'slug' => $p->slug,
                 'module' => $p->module ?? 'admin',
+                'module_enabled' => !in_array($p->module ?? 'admin', Module::aliasesDesligados(), true),
             ])),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
