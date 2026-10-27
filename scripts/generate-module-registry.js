@@ -20,7 +20,7 @@ const API_URL = process.env.SYSGOV_API_URL || 'http://localhost:8000/api/public/
 const CORE_MODULE_MAP = {
   dashboard: {
     id: 'dashboard',
-    name: 'Gabinete do Prefeito',
+    name: 'Painel Geral',
     componentPath: '@/modules/dashboard/DashboardModule',
     routePath: '',
     routes: ['', 'dashboard'],

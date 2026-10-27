@@ -136,7 +136,7 @@ final class ClientNavigationService
         $tenant = Tenant::find($tenantId);
 
         return $tenant
-            ? $tenant->modules()->wherePivot('enabled', true)->pluck('modules.alias')->all()
+            ? $tenant->modules()->wherePivot('enabled', true)->where('modules.enabled', true)->pluck('modules.alias')->all()
             : [];
     }
 

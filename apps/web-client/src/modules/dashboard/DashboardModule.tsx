@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useOrgUnit } from '@/core/orgunit';
-import { apiClient } from '@/core/api/client';
 import { MODULE_REGISTRY, getModuleRoute } from '@/config/moduleRegistry';
 import type { ModuleDefinition } from '@/config/moduleRegistry';
 import { Card, Badge } from '@sysgov/ui';
@@ -21,9 +20,6 @@ import {
   X,
   ArrowRight,
   LayoutDashboard,
-  FileCheck,
-  Handshake,
-  DollarSign,
   ShieldCheck,
   MapPin,
 } from 'lucide-react';
@@ -58,37 +54,6 @@ export const DashboardModule: React.FC = () => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]'); } catch { return []; }
   });
   const [editMode, setEditMode] = useState(false);
-  const [kpis, setKpis] = useState<{
-    unidades: number | null; licitacoes: number | null; contratos: number | null; receita: number | null;
-    loading: boolean; error: boolean;
-  }>({ unidades: null, licitacoes: null, contratos: null, receita: null, loading: true, error: false });
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      apiClient.get<{ data: any[] }>('/licitacoes?status=em_andamento').catch(() => ({ data: { data: [] } })),
-      apiClient.get<{ data: any[] }>('/contratos?status=vigente').catch(() => ({ data: { data: [] } })),
-      apiClient.get<{ data: { receita_arrecadada?: number } }>('/financeiro/resumo').catch(() => ({ data: { data: { receita_arrecadada: undefined } as { receita_arrecadada?: number } } })),
-    ]).then(([lic, cont, fin]) => {
-      if (cancelled) return;
-      setKpis((prev) => ({
-        ...prev,
-        unidades: unitList.length > 0 ? unitList.length : prev.unidades,
-        licitacoes: Array.isArray(lic.data?.data) ? lic.data.data.length : null,
-        contratos: Array.isArray(cont.data?.data) ? cont.data.data.length : null,
-        receita: fin.data?.data?.receita_arrecadada ?? null,
-        loading: false, error: false,
-      }));
-    }).catch(() => { if (!cancelled) setKpis((p) => ({ ...p, loading: false, error: true })); });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (unitList.length > 0) {
-      setKpis((prev) => ({ ...prev, unidades: unitList.length }));
-    }
-  }, [unitList]);
-
   const saveFavorites = (f: string[]) => {
     setFavorites(f);
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(f));
@@ -109,7 +74,8 @@ export const DashboardModule: React.FC = () => {
 
   const allModules = Object.values(MODULE_REGISTRY)
     .filter((def: ModuleDefinition) => {
-      if (def.id === 'menuManager' || def.id === 'moduleGranularity' || def.isAdminOnly) return false;
+      // 'dashboard' é esta própria página: não aparece como atalho para si mesma.
+      if (def.id === 'dashboard' || def.id === 'menuManager' || def.id === 'moduleGranularity' || def.isAdminOnly) return false;
       if (def.requiredPermission && !permissions.includes('*') && !permissions.includes(def.requiredPermission)) return false;
       if (!activeModules.includes(def.id)) return false;
       return true;
@@ -198,19 +164,14 @@ export const DashboardModule: React.FC = () => {
         </div>
       </Card>
 
-      {/* KPIs — indicadores reais dos módulos */}
-      {kpis.loading ? (
+      {/* KPIs — só indicadores com dado real; os demais entram junto com os módulos que os alimentam. */}
+      {loadingUnits ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[1,2,3,4].map((i) => (
-            <Card key={i} className="p-5"><div className="h-5 w-24 animate-pulse rounded bg-muted" /><div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" /></Card>
-          ))}
+          <Card className="p-5"><div className="h-5 w-24 animate-pulse rounded bg-muted" /><div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" /></Card>
         </div>
-      ) : kpis.error ? null : (
+      ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <KpiCard title="Unidades" value={kpis.unidades !== null ? String(kpis.unidades) : '—'} icon={<Building2 className="h-5 w-5" />} iconBgColor="bg-primary/10 text-primary" />
-          <KpiCard title="Licitações em Andamento" value={kpis.licitacoes !== null ? String(kpis.licitacoes) : '—'} icon={<FileCheck className="h-5 w-5" />} iconBgColor="bg-warning/15 text-warning" />
-          <KpiCard title="Contratos Vigentes" value={kpis.contratos !== null ? String(kpis.contratos) : '—'} icon={<Handshake className="h-5 w-5" />} iconBgColor="bg-success/10 text-success" />
-          <KpiCard title="Receita Arrecadada" value={kpis.receita !== null ? `R$ ${(kpis.receita / 1e6).toFixed(1)}M` : '—'} icon={<DollarSign className="h-5 w-5" />} iconBgColor="bg-status-info-bg text-status-info" />
+          <KpiCard title="Unidades" value={unitList.length > 0 ? String(unitList.length) : '—'} icon={<Building2 className="h-5 w-5" />} iconBgColor="bg-primary/10 text-primary" />
         </div>
       )}
 

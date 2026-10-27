@@ -46,7 +46,7 @@ export interface ModuleDefinition {
 export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
   dashboard: {
     id: 'dashboard',
-    name: "Gabinete do Prefeito",
+    name: "Painel Geral",
     component: DashboardComponent,
     routePath: '',
     routes: ["","dashboard"],
