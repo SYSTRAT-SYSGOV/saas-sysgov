@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2, Loader2, X, Key, Shield } from 'lucide-react';
 import { adminApi } from './api';
-import { Permission } from './types';
+import { Permission, permissaoVisivel } from './types';
 import { Button, useFormValidationModal } from '@sysgov/ui';
 
 export const PermissionManagement: React.FC = () => {
@@ -28,7 +28,7 @@ export const PermissionManagement: React.FC = () => {
     }
   };
 
-  const filteredPerms = permissions.filter(p =>
+  const filteredPerms = permissions.filter(permissaoVisivel).filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.slug.toLowerCase().includes(search.toLowerCase()) ||
     p.module.toLowerCase().includes(search.toLowerCase())
@@ -218,7 +218,7 @@ const PermissionFormModal: React.FC<{
     setSaving(false);
   };
 
-  const modules = ['admin', 'contracts', 'finance', 'procurement', 'documents'];
+  const modules = ['admin', 'procurement', 'documents'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 ">

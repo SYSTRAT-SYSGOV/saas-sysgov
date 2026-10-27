@@ -73,7 +73,7 @@ const DEFAULT_FORM: TenantForm = {
   customDomainFeeCents: 5000,
   city: '',
   uf: '',
-  modules: ['org', 'contracts'],
+  modules: ['org'],
 };
 
 const EXCLUDED_MODULE_ALIASES = ['dashboard', 'admin', 'client', 'users', 'rh', 'cemiterio', 'procurement'];
