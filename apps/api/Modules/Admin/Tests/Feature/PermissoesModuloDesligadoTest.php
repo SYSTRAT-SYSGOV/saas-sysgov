@@ -57,9 +57,8 @@ final class PermissoesModuloDesligadoTest extends TestCase
             Permission::where('slug', 'finance.view')->firstOrFail()->id,
         ]);
 
-        $permissoes = collect((new RoleResource($perfil->load('permissions')))->toArray(request())['permissions'])
-            ->mapWithKeys(fn (array $p): array => [$p['slug'] => $p['module_enabled']])
-            ->all();
+        $lista = (new RoleResource($perfil->load('permissions')))->toArray(request())['permissions'];
+        $permissoes = array_column($lista, 'module_enabled', 'slug');
 
         $this->assertSame(['contracts.view' => true, 'finance.view' => false], $permissoes);
     }
