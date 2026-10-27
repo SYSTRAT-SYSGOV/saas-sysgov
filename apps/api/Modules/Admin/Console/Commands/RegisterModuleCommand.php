@@ -245,10 +245,8 @@ final class RegisterModuleCommand extends Command
         }
 
         // Este comando roda a cada boot do container. Se o módulo já tem entrada no menu em outra rota (ex.: /contratos,
-        // a rota do web-client), criar a entrada de /{alias} duplicaria o módulo na tela; e uma entrada que alguém
-        // desativou de propósito não pode voltar sozinha.
-        $naRota = ClientMenuItem::query()->where('route', $route)->first();
-        if ($naRota === null && !$force) {
+        // a rota do web-client), criar a entrada de /{alias} duplicaria o módulo na tela.
+        if (!$force && !ClientMenuItem::query()->where('route', $route)->exists()) {
             $existentes = ClientMenuItem::query()->where('module_alias', $alias)->whereNull('parent_id')->pluck('route');
             if ($existentes->isNotEmpty()) {
                 $this->info("  Menu Cliente: '{$alias}' já tem entrada no menu ({$existentes->implode(', ')}) — não cria outra em {$route}. Use --force para criar mesmo assim.");
@@ -297,8 +295,7 @@ final class RegisterModuleCommand extends Command
                 'module_alias' => $alias,
                 'shortcut' => Str::upper(Str::substr($alias, 0, 1)),
                 'order' => $maxOrder + 1,
-                // Entrada existente mantém o estado (quem a desativou, desativou); só --force a reativa.
-                'is_active' => $naRota === null || $force ? true : $naRota->is_active,
+                'is_active' => true,
             ]
         );
 
