@@ -369,7 +369,8 @@ final class AuthController
             return [];
         }
 
-        $linked = $tenant->modules()->wherePivot('enabled', true)->pluck('modules.alias')->all();
+        // modules.enabled = false tira o módulo do ar para todos os tenants (ex.: fora da versão 1), mesmo vinculado.
+        $linked = $tenant->modules()->wherePivot('enabled', true)->where('modules.enabled', true)->pluck('modules.alias')->all();
 
         // Se não há vínculo explícito, retorna vazio (nenhum módulo liberado)
         return array_values($linked);

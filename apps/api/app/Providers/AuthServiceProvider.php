@@ -35,6 +35,11 @@ final class AuthServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         Gate::define('module', function (User $user, string $moduleAlias): bool {
+            // Módulo desligado no catálogo (modules.enabled = false) não responde para ninguém, nem para admin.
+            if (Module::query()->where('alias', $moduleAlias)->where('enabled', false)->exists()) {
+                return false;
+            }
+
             if ($user->is_platform_admin) {
                 return true;
             }
