@@ -23,10 +23,6 @@ export const Footer: React.FC = () => {
             <a href="#" className="hover:text-white hover:underline transition">
               Privacidade (LGPD)
             </a>
-            <span>•</span>
-            <span className="text-[#F6A609] font-mono font-bold tracking-wider">
-              TEMPLATE BASE GOV.BR
-            </span>
           </div>
         </div>
       </div>
