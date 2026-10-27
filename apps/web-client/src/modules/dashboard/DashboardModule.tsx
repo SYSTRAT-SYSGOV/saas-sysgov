@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
@@ -10,6 +10,8 @@ import { KpiCard } from '@/components/ui/KpiCard';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/core/api/client';
+import { tomCartao } from './tonsCartao';
 import { getIcon } from '@/config/iconMap';
 import {
   Sparkles,
@@ -26,6 +28,14 @@ import {
 
 const FAVORITES_KEY = 'sysgov:welcome:favorites';
 const CUSTOM_ORDER_KEY = 'sysgov:welcome:custom_order';
+
+interface CartaoResumo {
+  module: string;
+  label: string;
+  value: number;
+  caption: string;
+  tone: string;
+}
 
 interface ModuleShortcut {
   id: string;
@@ -54,6 +64,18 @@ export const DashboardModule: React.FC = () => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]'); } catch { return []; }
   });
   const [editMode, setEditMode] = useState(false);
+  const [resumo, setResumo] = useState<CartaoResumo[]>([]);
+  const [loadingResumo, setLoadingResumo] = useState(true);
+
+  useEffect(() => {
+    let ativo = true;
+    apiClient
+      .get<{ data: CartaoResumo[] }>('/client/dashboard-summary')
+      .then((res) => { if (ativo) setResumo(res.data.data ?? []); })
+      .catch(() => { /* sem resumo, a home continua com o card de unidades e os módulos */ })
+      .finally(() => { if (ativo) setLoadingResumo(false); });
+    return () => { ativo = false; };
+  }, []);
   const saveFavorites = (f: string[]) => {
     setFavorites(f);
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(f));
@@ -164,14 +186,32 @@ export const DashboardModule: React.FC = () => {
         </div>
       </Card>
 
-      {/* KPIs — só indicadores com dado real; os demais entram junto com os módulos que os alimentam. */}
-      {loadingUnits ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Card className="p-5"><div className="h-5 w-24 animate-pulse rounded bg-muted" /><div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" /></Card>
+      {/* Resumo da alimentação do sistema: um cartão por módulo que o usuário acessa, cada um com a sua cor. */}
+      {loadingUnits || loadingResumo ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Card key={i} className="p-5"><div className="h-5 w-24 animate-pulse rounded bg-muted" /><div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" /></Card>
+          ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <KpiCard title="Unidades" value={unitList.length > 0 ? String(unitList.length) : '—'} icon={<Building2 className="h-5 w-5" />} iconBgColor="bg-primary/10 text-primary" />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <KpiCard
+            title="Unidades"
+            value={unitList.length > 0 ? String(unitList.length) : '—'}
+            subtitle="na estrutura organizacional"
+            accentClassName={tomCartao('blue').accent}
+            valueClassName={tomCartao('blue').valor}
+          />
+          {resumo.map((c) => (
+            <KpiCard
+              key={c.module}
+              title={c.label}
+              value={c.value.toLocaleString('pt-BR')}
+              subtitle={c.caption}
+              accentClassName={tomCartao(c.tone).accent}
+              valueClassName={tomCartao(c.tone).valor}
+            />
+          ))}
         </div>
       )}
 

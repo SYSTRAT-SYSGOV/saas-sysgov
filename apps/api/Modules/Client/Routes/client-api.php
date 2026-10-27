@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Client\Http\Controllers\ClientNavigationController;
 use Modules\Client\Http\Controllers\ClientGranularityController;
+use Modules\Client\Http\Controllers\DashboardSummaryController;
 
 Route::prefix('api/client')
     ->middleware(['auth:sanctum', 'tenant', 'bindings', 'admin-tenant'])
@@ -25,3 +26,8 @@ Route::prefix('api/client')
         Route::put('/granularity/{module}/units/{orgUnit}', [ClientGranularityController::class, 'set']);
         Route::delete('/granularity/{module}/units/{orgUnit}', [ClientGranularityController::class, 'clear']);
     });
+
+// Home do Cliente: qualquer usuário do tenant (cada cartão passa pelo Gate do módulo), por isso fora do 'admin-tenant'.
+Route::prefix('api/client')
+    ->middleware(['auth:sanctum', 'tenant', 'bindings'])
+    ->get('/dashboard-summary', DashboardSummaryController::class);
