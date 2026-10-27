@@ -58,7 +58,10 @@ final class PermissoesModuloDesligadoTest extends TestCase
         ]);
 
         $lista = (new RoleResource($perfil->load('permissions')))->toArray(request())['permissions'];
-        $permissoes = array_column($lista, 'module_enabled', 'slug');
+        $permissoes = [];
+        foreach ($lista as $p) {
+            $permissoes[$p['slug']] = $p['module_enabled'];
+        }
 
         $this->assertSame(['contracts.view' => true, 'finance.view' => false], $permissoes);
     }
