@@ -67,6 +67,21 @@ final class DashboardCardsPreferenciasTest extends TestCase
         $this->assertEqualsCanonicalizing(['pessoas', 'escola'], $this->modulosDoCatalogo());
     }
 
+    public function test_unidades_e_um_card_como_os_outros_e_pode_ser_ocultado(): void
+    {
+        $org = Module::firstOrCreate(['alias' => 'org'], ['name' => 'Organograma', 'enabled' => true]);
+        $this->tenant->modules()->syncWithoutDetaching([$org->id => ['enabled' => true]]);
+        $servico = app(DashboardSummaryService::class);
+
+        $catalogo = array_column($servico->catalogo($this->user), null, 'module');
+        $this->assertSame('Unidades', $catalogo['org']['label']);
+        $this->assertSame('gestao', $catalogo['org']['group']);
+        $this->assertFalse($catalogo['org']['hidden']);
+
+        $this->assertContains('org', $servico->definirOcultos($this->user, ['org']));
+        $this->assertTrue(array_column($servico->catalogo($this->user), 'hidden', 'module')['org']);
+    }
+
     public function test_ocultar_descarta_modulo_sem_acesso(): void
     {
         $gravado = app(DashboardSummaryService::class)->definirOcultos($this->user, ['escola', 'ata', 'cursos', 'inexistente']);

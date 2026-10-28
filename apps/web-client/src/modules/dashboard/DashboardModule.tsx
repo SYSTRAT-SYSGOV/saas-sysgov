@@ -6,12 +6,10 @@ import { useOrgUnit } from '@/core/orgunit';
 import { MODULE_REGISTRY, getModuleRoute } from '@/config/moduleRegistry';
 import type { ModuleDefinition } from '@/config/moduleRegistry';
 import { Card, Badge } from '@sysgov/ui';
-import { KpiCard } from '@/components/ui/KpiCard';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/core/api/client';
-import { tomCartao } from './tonsCartao';
 import { GruposResumo } from './GruposResumo';
 import type { GrupoResumo } from './tipos';
 import { getIcon } from '@/config/iconMap';
@@ -49,7 +47,7 @@ function getModuleIcon(id: string): React.ReactNode {
 export const DashboardModule: React.FC = () => {
   const { user, modules: activeModules, permissions } = useAuth();
   const { tenant } = useTenant();
-  const { scopeInfo, unitList, activeUnit, orgTree, loading: loadingUnits, hasMultipleUnits } = useOrgUnit();
+  const { scopeInfo, activeUnit, orgTree, loading: loadingUnits, hasMultipleUnits } = useOrgUnit();
   const navigate = useNavigate();
   const [favorites, setFavorites] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { return []; }
@@ -180,26 +178,15 @@ export const DashboardModule: React.FC = () => {
         </div>
       </Card>
 
-      {/* Resumo da alimentação do sistema: Unidades no topo e, abaixo, um card por módulo, agrupados por área. */}
-      {loadingUnits || loadingResumo ? (
+      {/* Resumo da alimentação do sistema: um card por módulo, agrupados por área (o usuário escolhe quais ver em Meu Perfil). */}
+      {loadingResumo ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {[0, 1, 2, 3].map((i) => (
             <Card key={i} className="p-5"><div className="h-5 w-24 animate-pulse rounded bg-muted" /><div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" /></Card>
           ))}
         </div>
       ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            <KpiCard
-              title="Unidades"
-              value={unitList.length > 0 ? String(unitList.length) : '—'}
-              subtitle="na estrutura organizacional"
-              accentClassName={tomCartao('blue').accent}
-              valueClassName={tomCartao('blue').valor}
-            />
-          </div>
-          <GruposResumo grupos={resumo} />
-        </div>
+        <GruposResumo grupos={resumo} />
       )}
 
       {/* Seção de atalhos favoritos */}
