@@ -12,6 +12,8 @@ import { ScreenState } from '@/components/ui/ScreenState';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/core/api/client';
 import { tomCartao } from './tonsCartao';
+import { GruposResumo } from './GruposResumo';
+import type { GrupoResumo } from './tipos';
 import { getIcon } from '@/config/iconMap';
 import {
   Sparkles,
@@ -28,14 +30,6 @@ import {
 
 const FAVORITES_KEY = 'sysgov:welcome:favorites';
 const CUSTOM_ORDER_KEY = 'sysgov:welcome:custom_order';
-
-interface CartaoResumo {
-  module: string;
-  label: string;
-  value: number;
-  caption: string;
-  tone: string;
-}
 
 interface ModuleShortcut {
   id: string;
@@ -64,13 +58,13 @@ export const DashboardModule: React.FC = () => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]'); } catch { return []; }
   });
   const [editMode, setEditMode] = useState(false);
-  const [resumo, setResumo] = useState<CartaoResumo[]>([]);
+  const [resumo, setResumo] = useState<GrupoResumo[]>([]);
   const [loadingResumo, setLoadingResumo] = useState(true);
 
   useEffect(() => {
     let ativo = true;
     apiClient
-      .get<{ data: CartaoResumo[] }>('/client/dashboard-summary')
+      .get<{ data: GrupoResumo[] }>('/client/dashboard-summary')
       .then((res) => { if (ativo) setResumo(res.data.data ?? []); })
       .catch(() => { /* sem resumo, a home continua com o card de unidades e os módulos */ })
       .finally(() => { if (ativo) setLoadingResumo(false); });
@@ -186,32 +180,25 @@ export const DashboardModule: React.FC = () => {
         </div>
       </Card>
 
-      {/* Resumo da alimentação do sistema: um cartão por módulo que o usuário acessa, cada um com a sua cor. */}
+      {/* Resumo da alimentação do sistema: Unidades no topo e, abaixo, um card por módulo, agrupados por área. */}
       {loadingUnits || loadingResumo ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {[0, 1, 2, 3].map((i) => (
             <Card key={i} className="p-5"><div className="h-5 w-24 animate-pulse rounded bg-muted" /><div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" /></Card>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          <KpiCard
-            title="Unidades"
-            value={unitList.length > 0 ? String(unitList.length) : '—'}
-            subtitle="na estrutura organizacional"
-            accentClassName={tomCartao('blue').accent}
-            valueClassName={tomCartao('blue').valor}
-          />
-          {resumo.map((c) => (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             <KpiCard
-              key={c.module}
-              title={c.label}
-              value={c.value.toLocaleString('pt-BR')}
-              subtitle={c.caption}
-              accentClassName={tomCartao(c.tone).accent}
-              valueClassName={tomCartao(c.tone).valor}
+              title="Unidades"
+              value={unitList.length > 0 ? String(unitList.length) : '—'}
+              subtitle="na estrutura organizacional"
+              accentClassName={tomCartao('blue').accent}
+              valueClassName={tomCartao('blue').valor}
             />
-          ))}
+          </div>
+          <GruposResumo grupos={resumo} />
         </div>
       )}
 
