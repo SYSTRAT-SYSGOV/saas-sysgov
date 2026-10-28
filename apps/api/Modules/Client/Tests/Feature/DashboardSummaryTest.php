@@ -33,8 +33,8 @@ final class DashboardSummaryTest extends TestCase
         $this->tenant = Tenant::create(['name' => 'Prefeitura A', 'slug' => 'pref-a', 'type' => 'prefeitura', 'status' => 'active']);
         app(TenantContext::class)->set($this->tenant);
 
+        $template = Role::where('slug', 'admin_tenant')->firstOrFail();
         $role = $this->criarPerfil($this->tenant, 'admin_tenant');
-        $template = Role::whereNull('tenant_id')->where('slug', 'admin_tenant')->firstOrFail();
         $role->permissions()->sync($template->permissions()->pluck('permissions.id'));
 
         $this->user = $this->criarUsuario($this->tenant, $role, 'a1@teste.gov', 'active');
