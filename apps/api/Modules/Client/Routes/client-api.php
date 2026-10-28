@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Client\Http\Controllers\ClientNavigationController;
 use Modules\Client\Http\Controllers\ClientGranularityController;
+use Modules\Client\Http\Controllers\DashboardPreferencesController;
 use Modules\Client\Http\Controllers\DashboardSummaryController;
 
 Route::prefix('api/client')
@@ -30,4 +31,8 @@ Route::prefix('api/client')
 // Home do Cliente: qualquer usuário do tenant (cada cartão passa pelo Gate do módulo), por isso fora do 'admin-tenant'.
 Route::prefix('api/client')
     ->middleware(['auth:sanctum', 'tenant', 'bindings'])
-    ->get('/dashboard-summary', DashboardSummaryController::class);
+    ->group(function (): void {
+        Route::get('/dashboard-summary', DashboardSummaryController::class);
+        Route::get('/dashboard-preferences', [DashboardPreferencesController::class, 'show']);
+        Route::put('/dashboard-preferences', [DashboardPreferencesController::class, 'update']);
+    });
