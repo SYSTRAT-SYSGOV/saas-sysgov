@@ -1,7 +1,7 @@
 # client-home Specification
 
 ## Purpose
-TBD - created by archiving change simplificar-home-cliente. Update Purpose after archive.
+Define a página inicial do portal do cliente: logo do tenant, os quatro cards básicos de indicadores, favoritos em accordion e a lista de módulos disponíveis só no modo Personalizar.
 
 ## Requirements
 
