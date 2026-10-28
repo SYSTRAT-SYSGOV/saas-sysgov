@@ -30,6 +30,7 @@ import {
 
 const FAVORITES_KEY = 'sysgov:welcome:favorites';
 const CUSTOM_ORDER_KEY = 'sysgov:welcome:custom_order';
+const DICAS_OCULTAS_KEY = 'sysgov:welcome:dicas-ocultas';
 
 /** Um dos quatro cards básicos da home (indicadores de base do tenant, iguais para todos). */
 interface CartaoBasico {
@@ -67,6 +68,9 @@ export const DashboardModule: React.FC = () => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]'); } catch { return []; }
   });
   const [editMode, setEditMode] = useState(false);
+  const [dicasOcultas, setDicasOcultas] = useState<boolean>(() => {
+    try { return localStorage.getItem(DICAS_OCULTAS_KEY) === '1'; } catch { return false; }
+  });
   const [resumo, setResumo] = useState<CartaoBasico[]>([]);
   const [loadingResumo, setLoadingResumo] = useState(true);
   const [erroResumo, setErroResumo] = useState(false);
@@ -300,7 +304,20 @@ export const DashboardModule: React.FC = () => {
       )}
 
       {/* Seção de boas-vindas expandida */}
-      <Card className="p-6">
+      {!dicasOcultas && (
+      <Card className="relative p-6">
+        <button
+          type="button"
+          aria-label="Fechar dicas rápidas"
+          title="Fechar e não mostrar mais"
+          onClick={() => {
+            setDicasOcultas(true);
+            try { localStorage.setItem(DICAS_OCULTAS_KEY, '1'); } catch { /* sem armazenamento: some só nesta sessão */ }
+          }}
+          className="absolute right-3 top-3 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
           <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-warning/15 text-warning">
             <Sparkles className="h-8 w-8" />
@@ -325,6 +342,7 @@ export const DashboardModule: React.FC = () => {
           </div>
         </div>
       </Card>
+      )}
     </div>
   );
 };

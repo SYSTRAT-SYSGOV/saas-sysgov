@@ -122,4 +122,15 @@ describe('DashboardModule (home do Cliente)', () => {
     expect(screen.getByText('(1 atalho(s))')).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('sysgov:welcome:favorites') ?? '[]')).toHaveLength(1);
   });
+
+  it('Dicas rápidas podem ser fechadas e não voltam a aparecer', async () => {
+    const { unmount } = renderizar();
+    expect(await screen.findByText('Dicas rápidas')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Fechar dicas rápidas/ }));
+    expect(screen.queryByText('Dicas rápidas')).not.toBeInTheDocument();
+    unmount();
+    renderizar();
+    await screen.findByText('Unidades');
+    expect(screen.queryByText('Dicas rápidas')).not.toBeInTheDocument();
+  });
 });
