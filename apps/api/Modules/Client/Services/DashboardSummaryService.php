@@ -10,6 +10,8 @@ use App\Support\TenantContext;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Modules\Campanha\Models\Eleitor;
+use Modules\OrgChart\Models\OrgUnit;
+use Modules\OrgChart\Services\OrgScopeService;
 use Modules\Capd\Models\Servidor;
 use Modules\Cemiterios\Models\Jazigo;
 use Modules\Cursos\Models\Curso;
@@ -44,6 +46,7 @@ final class DashboardSummaryService
     private function definicoes(): array
     {
         return [
+            ['module' => 'org', 'group' => 'gestao', 'label' => 'Unidades', 'caption' => 'na estrutura organizacional', 'tone' => 'blue', 'model' => OrgUnit::class],
             ['module' => 'pessoas', 'group' => 'gestao', 'label' => 'Pessoas', 'caption' => 'no cadastro único', 'tone' => 'emerald', 'model' => Pessoa::class],
             ['module' => 'cemiterios', 'group' => 'fiscalizacao', 'label' => 'Jazigos', 'caption' => 'cadastrados', 'tone' => 'slate', 'model' => Jazigo::class],
             ['module' => 'escola', 'group' => 'educacao', 'label' => 'Alunos', 'caption' => 'matriculados', 'tone' => 'amber', 'model' => Aluno::class],
@@ -137,7 +140,7 @@ final class DashboardSummaryService
             }
 
             try {
-                $total = $d['model']::query()->count();
+                $total = $d['module'] === 'org' ? $this->contarUnidades($user) : $d['model']::query()->count();
             } catch (Throwable $e) {
                 // Um módulo com tabela ausente ou escopo que exige contexto não pode derrubar a home inteira.
                 Log::warning('dashboard.summary: contagem falhou', ['module' => $d['module'], 'error' => $e->getMessage()]);
@@ -161,6 +164,26 @@ final class DashboardSummaryService
         }
 
         return $grupos;
+    }
+
+    /**
+     * Unidades que o usuário enxerga, com a mesma regra da árvore de unidades da tela: com acesso irrestrito, todas as
+     * ativas; senão, a unidade principal mais as que ele gerencia.
+     */
+    private function contarUnidades(User $user): int
+    {
+        $escopo = app(OrgScopeService::class)->getUserScopeSummary($user);
+
+        if ($escopo['is_unrestricted']) {
+            return OrgUnit::query()->where('is_active', true)->count();
+        }
+
+        $ids = array_map(static fn (array $u): int => (int) $u['id'], $escopo['managed_units']);
+        if ($escopo['primary_unit'] !== null) {
+            $ids[] = (int) $escopo['primary_unit']['id'];
+        }
+
+        return count(array_unique($ids));
     }
 
     /**
