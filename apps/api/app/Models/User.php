@@ -42,7 +42,6 @@ final class User extends Authenticatable
         'is_active' => 'boolean',
         'mfa_enabled' => 'boolean',
         'mfa_confirmed_at' => 'datetime',
-        'dashboard_hidden_cards' => 'array',
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];

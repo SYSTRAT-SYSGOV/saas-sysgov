@@ -11,7 +11,6 @@ import { DataTable } from '@/components/ui/DataTable';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/utils';
-import { PreferenciasCardsHome } from '@/modules/dashboard/PreferenciasCardsHome';
 import {
   UserCircle, Building2, ShieldCheck, Loader2, KeyRound, Save, CheckCircle2,
   Monitor, Smartphone, Globe, LogOut, Shield, ListChecks, Clock
@@ -283,8 +282,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = () => {
           </div>
         )}
       </Card>
-
-      <PreferenciasCardsHome />
 
       {/* Permissões efetivas */}
       <Card className="p-6">
