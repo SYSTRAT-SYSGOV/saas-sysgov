@@ -10,8 +10,10 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import { ScreenState } from '@/components/ui/ScreenState';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/core/api/client';
-import { GruposResumo } from './GruposResumo';
-import type { GrupoResumo } from './tipos';
+import { KpiCard } from '@/components/ui/KpiCard';
+import { tomCartao } from './tonsCartao';
+import { LogoTenant } from './LogoTenant';
+import { FavoritosAccordion } from './FavoritosAccordion';
 import { getIcon } from '@/config/iconMap';
 import {
   Sparkles,
@@ -28,6 +30,15 @@ import {
 
 const FAVORITES_KEY = 'sysgov:welcome:favorites';
 const CUSTOM_ORDER_KEY = 'sysgov:welcome:custom_order';
+
+/** Um dos quatro cards básicos da home (indicadores de base do tenant, iguais para todos). */
+interface CartaoBasico {
+  key: string;
+  label: string;
+  value: number;
+  caption: string;
+  tone: string;
+}
 
 interface ModuleShortcut {
   id: string;
@@ -46,7 +57,7 @@ function getModuleIcon(id: string): React.ReactNode {
 
 export const DashboardModule: React.FC = () => {
   const { user, modules: activeModules, permissions } = useAuth();
-  const { tenant } = useTenant();
+  const { tenant, settings } = useTenant();
   const { scopeInfo, activeUnit, orgTree, loading: loadingUnits, hasMultipleUnits } = useOrgUnit();
   const navigate = useNavigate();
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -56,15 +67,16 @@ export const DashboardModule: React.FC = () => {
     try { return JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]'); } catch { return []; }
   });
   const [editMode, setEditMode] = useState(false);
-  const [resumo, setResumo] = useState<GrupoResumo[]>([]);
+  const [resumo, setResumo] = useState<CartaoBasico[]>([]);
   const [loadingResumo, setLoadingResumo] = useState(true);
+  const [erroResumo, setErroResumo] = useState(false);
 
   useEffect(() => {
     let ativo = true;
     apiClient
-      .get<{ data: GrupoResumo[] }>('/client/dashboard-summary')
+      .get<{ data: CartaoBasico[] }>('/client/dashboard-summary')
       .then((res) => { if (ativo) setResumo(res.data.data ?? []); })
-      .catch(() => { /* sem resumo, a home continua com o card de unidades e os módulos */ })
+      .catch(() => { if (ativo) setErroResumo(true); })
       .finally(() => { if (ativo) setLoadingResumo(false); });
     return () => { ativo = false; };
   }, []);
@@ -110,17 +122,13 @@ export const DashboardModule: React.FC = () => {
   const pinnedModules = orderedModules.filter((m) => favorites.includes(m.id));
   const otherModules = orderedModules.filter((m) => !favorites.includes(m.id));
 
-  const userInitial = user?.name?.charAt(0).toUpperCase() || 'U';
-
   return (
     <div className="space-y-6">
       {/* Hero - Boas-vindas */}
       <Card className="!p-6 sm:!p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary text-xl font-bold">
-              {userInitial}
-            </span>
+            <LogoTenant src={settings.customLogoUrl} nome={tenant?.name} />
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                 Olá, {user?.name?.split(' ')[0] || 'Usuário'}!
@@ -178,104 +186,118 @@ export const DashboardModule: React.FC = () => {
         </div>
       </Card>
 
-      {/* Resumo da alimentação do sistema: um card por módulo, agrupados por área (o usuário escolhe quais ver em Meu Perfil). */}
+      {/* Quatro cards básicos, iguais para todos os tenants (independem dos módulos contratados). */}
       {loadingResumo ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
             <Card key={i} className="p-5"><div className="h-5 w-24 animate-pulse rounded bg-muted" /><div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" /></Card>
           ))}
         </div>
+      ) : erroResumo ? (
+        <p role="alert" className="text-sm text-muted-foreground">Não foi possível carregar os indicadores agora.</p>
       ) : (
-        <GruposResumo grupos={resumo} />
-      )}
-
-      {/* Seção de atalhos favoritos */}
-      {pinnedModules.length > 0 && (
-        <div>
-          <div className="mb-3 flex items-center gap-2">
-            <Star className="h-5 w-5 fill-warning text-warning" />
-            <h2 className="text-base font-bold text-foreground">Favoritos</h2>
-            <span className="text-xs text-muted-foreground">({pinnedModules.length} atalho(s))</span>
-          </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {pinnedModules.map((mod) => (
-              <a
-                key={mod.id}
-                href={mod.route}
-                onClick={(e) => { e.preventDefault(); navigate(mod.route); }}
-                className={cn(
-                  'group relative flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 text-center transition-all',
-                  'hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5',
-                  editMode && 'border-dashed border-primary/60'
-                )}
-              >
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  {getModuleIcon(mod.id)}
-                </span>
-                <span className="text-sm font-semibold text-foreground">{mod.name}</span>
-                {editMode && (
-                  <button
-                    onClick={(e) => { e.preventDefault(); toggleFavorite(mod.id); }}
-                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
-                    title="Remover dos favoritos"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </a>
-            ))}
-          </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {resumo.map((c) => (
+            <KpiCard
+              key={c.key}
+              title={c.label}
+              value={c.value.toLocaleString('pt-BR')}
+              subtitle={c.caption}
+              accentClassName={tomCartao(c.tone).accent}
+              valueClassName={tomCartao(c.tone).valor}
+            />
+          ))}
         </div>
       )}
 
-      {/* Seção de todos os módulos */}
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-bold text-foreground">Módulos disponíveis</h2>
-            <span className="text-xs text-muted-foreground">({otherModules.length} módulo(s))</span>
+      {/* Favoritos: o único bloco recolhível. Sem favoritos, só aparece no modo Personalizar, com a orientação. */}
+      {(pinnedModules.length > 0 || editMode) && (
+        <FavoritosAccordion total={pinnedModules.length}>
+          {pinnedModules.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum favorito ainda. Marque módulos como favoritos na lista abaixo.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {pinnedModules.map((mod) => (
+                <a
+                  key={mod.id}
+                  href={mod.route}
+                  onClick={(e) => { e.preventDefault(); navigate(mod.route); }}
+                  className={cn(
+                    'group relative flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 text-center transition-all',
+                    'hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5',
+                    editMode && 'border-dashed border-primary/60'
+                  )}
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    {getModuleIcon(mod.id)}
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">{mod.name}</span>
+                  {editMode && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); toggleFavorite(mod.id); }}
+                      className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
+                      title="Remover dos favoritos"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </a>
+              ))}
+            </div>
+          )}
+        </FavoritosAccordion>
+      )}
+
+      {/* Módulos disponíveis: só aparecem no modo Personalizar (para escolher os favoritos). */}
+      {editMode && (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <LayoutDashboard className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-bold text-foreground">Módulos disponíveis</h2>
+              <span className="text-xs text-muted-foreground">({otherModules.length} módulo(s))</span>
+            </div>
+            {editMode && favorites.length > 0 && pinnedModules.length > 0 && (
+              <span className="text-xs text-muted-foreground">Clique no coração para adicionar/remover favoritos</span>
+            )}
           </div>
-          {editMode && favorites.length > 0 && pinnedModules.length > 0 && (
-            <span className="text-xs text-muted-foreground">Clique no coração para adicionar/remover favoritos</span>
+          {otherModules.length === 0 ? (
+            <Card className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+              <Sparkles className="h-12 w-12 text-border" />
+              <p className="text-sm text-muted-foreground">Nenhum outro módulo disponível no momento.</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {otherModules.map((mod) => (
+                <a
+                  key={mod.id}
+                  href={mod.route}
+                  onClick={(e) => { e.preventDefault(); navigate(mod.route); }}
+                  className={cn(
+                    'group relative flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 text-center transition-all',
+                    'hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5',
+                    editMode && 'border-dashed border-muted-foreground/30'
+                  )}
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
+                    {getModuleIcon(mod.id)}
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">{mod.name}</span>
+                  {editMode && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); toggleFavorite(mod.id); }}
+                      className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                      title="Adicionar aos favoritos"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  )}
+                </a>
+              ))}
+            </div>
           )}
         </div>
-        {otherModules.length === 0 ? (
-          <Card className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <Sparkles className="h-12 w-12 text-border" />
-            <p className="text-sm text-muted-foreground">Nenhum outro módulo disponível no momento.</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {otherModules.map((mod) => (
-              <a
-                key={mod.id}
-                href={mod.route}
-                onClick={(e) => { e.preventDefault(); navigate(mod.route); }}
-                className={cn(
-                  'group relative flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-5 text-center transition-all',
-                  'hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5',
-                  editMode && 'border-dashed border-muted-foreground/30'
-                )}
-              >
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
-                  {getModuleIcon(mod.id)}
-                </span>
-                <span className="text-sm font-semibold text-foreground">{mod.name}</span>
-                {editMode && (
-                  <button
-                    onClick={(e) => { e.preventDefault(); toggleFavorite(mod.id); }}
-                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground"
-                    title="Adicionar aos favoritos"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                )}
-              </a>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Seção de boas-vindas expandida */}
       <Card className="p-6">
