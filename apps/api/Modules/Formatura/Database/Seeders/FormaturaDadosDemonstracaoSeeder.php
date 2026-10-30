@@ -147,7 +147,8 @@ final class FormaturaDadosDemonstracaoSeeder extends Seeder
 
     private function informar(string $mensagem, bool $aviso = false): void
     {
-        if ($this->command) {
+        // @phpstan-ignore isset.property (o Seeder declara $command como não nulo, mas é null fora do artisan)
+        if (isset($this->command)) {
             $aviso ? $this->command->warn($mensagem) : $this->command->info($mensagem);
         }
     }

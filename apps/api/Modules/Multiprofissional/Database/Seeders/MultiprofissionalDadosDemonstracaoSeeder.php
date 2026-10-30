@@ -42,7 +42,7 @@ use Modules\Multiprofissional\Services\ProfissionalService;
  */
 final class MultiprofissionalDadosDemonstracaoSeeder extends Seeder
 {
-    /** @var list<array{string, string, string, string}> nome, cargo, registro, telefone */
+    /** @var list<array{string, string, string|null, string}> nome, cargo, registro, telefone */
     private const PROFISSIONAIS = [
         ['Camila Ferraz Antunes', 'Psicólogo(a)', 'CRP 08/21345', '(41) 99910-0101'],
         ['Rodrigo Menezes Salles', 'Psicólogo(a)', 'CRP 08/19872', '(41) 99910-0102'],
@@ -218,7 +218,8 @@ final class MultiprofissionalDadosDemonstracaoSeeder extends Seeder
 
     private function informar(string $mensagem, bool $aviso = false): void
     {
-        if ($this->command) {
+        // @phpstan-ignore isset.property (o Seeder declara $command como não nulo, mas é null fora do artisan)
+        if (isset($this->command)) {
             $aviso ? $this->command->warn($mensagem) : $this->command->info($mensagem);
         }
     }
