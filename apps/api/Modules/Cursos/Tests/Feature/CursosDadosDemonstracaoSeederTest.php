@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Modules\Admin\Models\Module;
 use Modules\Cursos\Database\Seeders\CursosDadosDemonstracaoSeeder;
@@ -30,7 +31,6 @@ use Modules\Cursos\Services\CorrecaoService;
 use Modules\Cursos\Services\LiberacaoService;
 use Modules\Cursos\Tests\Concerns\CenarioCursos;
 use Modules\Cursos\Tests\TestCase;
-use RuntimeException;
 
 /**
  * O seeder de demonstração passa pelos Services reais: se uma regra mudar,
@@ -155,14 +155,6 @@ final class CursosDadosDemonstracaoSeederTest extends TestCase
         });
     }
 
-    public function test_o_conteudo_da_fase_2_recusa_rodar_em_producao(): void
-    {
-        $this->app['env'] = 'production';
-        $this->expectException(RuntimeException::class);
-
-        (new CursosConteudoDemonstracaoSeeder())->run($this->tenant->id);
-    }
-
     public function test_nao_duplica_se_o_tenant_ja_tem_cursos(): void
     {
         (new CursosDadosDemonstracaoSeeder())->run($this->tenant->id);
@@ -171,11 +163,33 @@ final class CursosDadosDemonstracaoSeederTest extends TestCase
         $this->assertSame(4, $this->noTenant($this->tenant, fn () => Curso::count()));
     }
 
-    public function test_recusa_rodar_em_producao(): void
+    public function test_em_producao_cria_usuarios_com_senha_aleatoria_e_grava_as_credenciais(): void
     {
         $this->app['env'] = 'production';
-        $this->expectException(RuntimeException::class);
+        $arquivo = storage_path('app/' . CursosDadosDemonstracaoSeeder::ARQUIVO_CREDENCIAIS);
+        @unlink($arquivo);
 
-        (new CursosDadosDemonstracaoSeeder())->run($this->tenant->id);
+        try {
+            (new CursosDadosDemonstracaoSeeder())->run($this->tenant->id);
+
+            $this->assertFileExists($arquivo);
+            $this->assertSame('0600', substr(sprintf('%o', fileperms($arquivo)), -4));
+
+            $linhas = array_filter(explode("\n", (string) file_get_contents($arquivo)));
+            $this->assertCount(7, $linhas);
+
+            $senhas = [];
+            foreach ($linhas as $linha) {
+                [$email, $senha] = explode("\t", $linha);
+                $this->assertStringEndsWith('@demo.sysgov.local', $email);
+                $this->assertSame(16, strlen($senha));
+                $this->assertTrue(Hash::check($senha, (string) User::query()->where('email', $email)->value('password')));
+                $senhas[] = $senha;
+            }
+            $this->assertCount(7, array_unique($senhas));
+            $this->assertFalse(Hash::check('Cursos@Demo2026', (string) User::query()->where('email', 'helena.duarte@demo.sysgov.local')->value('password')));
+        } finally {
+            @unlink($arquivo);
+        }
     }
 }
