@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\TenantContext;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Modules\Admin\Models\Module;
 use Modules\Cursos\Enums\StatusCurso;
 use Modules\Cursos\Models\Aula;
@@ -37,16 +38,17 @@ use RuntimeException;
  * O conteúdo da Fase 2 (materiais e avaliações) vem do CursosConteudoDemonstracaoSeeder.
  *
  * Tudo passa pelos Services (auditoria, outbox e regras valem como no uso
- * real). Cria usuários de demonstração (@demo.sysgov.local) com a senha
- * SENHA_DEMO para dar para entrar como instrutora e participantes — por isso
- * se recusa a rodar em produção.
+ * real). Cria usuários de demonstração (@demo.sysgov.local) para entrar como
+ * instrutora e participantes, cada um com uma senha aleatória própria. As
+ * senhas nunca saem no log: vão para um arquivo de credenciais (modo 0600) em
+ * storage/app/private, que o operador recolhe e apaga.
  *
  * Uso: php artisan db:seed --class='Modules\Cursos\Database\Seeders\CursosDadosDemonstracaoSeeder'
  * Não roda se o tenant já tiver cursos (evita duplicar).
  */
 final class CursosDadosDemonstracaoSeeder extends Seeder
 {
-    public const SENHA_DEMO = 'Cursos@Demo2026';
+    public const ARQUIVO_CREDENCIAIS = 'private/cursos-demo-credenciais.txt';
 
     private User $admin;
 
@@ -58,12 +60,11 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
     /** @var list<OrgUnit> */
     private array $unidades = [];
 
+    /** @var array<string, string> e-mail => senha, só dos usuários criados nesta execução */
+    private array $credenciais = [];
+
     public function run(?int $tenantId = null): void
     {
-        if (app()->environment('production')) {
-            throw new RuntimeException('Dados de demonstração não podem ser semeados em produção (usuários com senha conhecida).');
-        }
-
         $tenant = $tenantId !== null ? Tenant::find($tenantId) : Tenant::where('slug', 'systrat')->first();
         if (!$tenant) {
             $this->informar('Tenant não encontrado — nada a semear no módulo Cursos.');
@@ -115,7 +116,8 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
 
         $this->semearConteudo($tenant->id);
 
-        $this->informar("Cursos de demonstração criados no tenant [{$tenant->id}] {$tenant->name}. Usuários @demo.sysgov.local com a senha " . self::SENHA_DEMO . '.');
+        $arquivo = $this->gravarCredenciais();
+        $this->informar("Cursos de demonstração criados no tenant [{$tenant->id}] {$tenant->name}. Usuários @demo.sysgov.local com senha aleatória; credenciais em {$arquivo}.");
     }
 
     /** Conteúdo da Fase 2, num seeder próprio e idempotente. */
@@ -330,14 +332,31 @@ final class CursosDadosDemonstracaoSeeder extends Seeder
 
     private function usuarioDemo(Tenant $tenant, string $nome, string $login, string $perfil): User
     {
-        $user = User::updateOrCreate(
-            ['email' => "{$login}@demo.sysgov.local"],
-            ['name' => $nome, 'password' => Hash::make(self::SENHA_DEMO), 'is_active' => true],
-        );
+        $email = "{$login}@demo.sysgov.local";
+        $user = User::query()->where('email', $email)->first();
+        if ($user === null) {
+            $senha = Str::password(16, symbols: false);
+            $user = User::create(['email' => $email, 'name' => $nome, 'password' => Hash::make($senha), 'is_active' => true]);
+            $this->credenciais[$email] = $senha;
+        }
         $tenant->users()->syncWithoutDetaching([$user->id => ['status' => 'active', 'is_primary' => true]]);
         $this->atribuir($tenant, $user, $perfil);
 
         return $user;
+    }
+
+    /** Grava e-mail e senha dos usuários criados; só o dono do arquivo lê. */
+    private function gravarCredenciais(): string
+    {
+        $caminho = storage_path('app/' . self::ARQUIVO_CREDENCIAIS);
+        if (!is_dir(dirname($caminho))) {
+            mkdir(dirname($caminho), 0700, true);
+        }
+        $linhas = array_map(fn (string $email, string $senha): string => "{$email}\t{$senha}", array_keys($this->credenciais), $this->credenciais);
+        file_put_contents($caminho, implode("\n", $linhas) . "\n", LOCK_EX);
+        chmod($caminho, 0600);
+
+        return $caminho;
     }
 
     private function atribuir(Tenant $tenant, User $user, string $perfil): void
