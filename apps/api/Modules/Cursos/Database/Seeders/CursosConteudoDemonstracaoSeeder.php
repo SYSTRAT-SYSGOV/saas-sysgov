@@ -50,10 +50,6 @@ final class CursosConteudoDemonstracaoSeeder extends Seeder
 
     public function run(?int $tenantId = null): void
     {
-        if (app()->environment('production')) {
-            throw new \RuntimeException('Dados de demonstração não podem ser semeados em produção.');
-        }
-
         $tenant = $tenantId !== null ? Tenant::find($tenantId) : Tenant::where('slug', 'systrat')->first();
         if (!$tenant) {
             $this->informar('Tenant não encontrado — nada a semear.');
