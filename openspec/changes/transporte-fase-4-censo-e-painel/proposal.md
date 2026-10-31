@@ -8,6 +8,7 @@ O Censo Escolar (Educacenso) exige, por aluno matriculado, a declaração de uso
 
 - **Arquivo do Educacenso para o Registro 60**, gerado conforme o **leiaute oficial vigente do Inep para o ano do Censo**, versionado por ano, com as variáveis de transporte escolar (transporte público, poder público responsável e as onze tipologias, incluindo o ferroviário) e a **anulação** da declaração quando não há atendimento curricular, a mediação não é presencial nem semipresencial, ou o país de residência não é Brasil.
 - **Pré-validação** por ano letivo, com quatro tipos de pendência (aluno que teve alocação e não tem ativa, rota sem veículo, aluno rural sem declaração, aluno com necessidade especial em veículo não acessível), o aviso `turno_divergente` da Fase 3 e a nova pendência `sem_codigo_inep` quando falta um código que o leiaute exige.
+- **Escolha dos campos pelo usuário**: um catálogo de campos do Registro 60 em que o usuário marca o que quer exportar, com **modelos de exportação** salvos por órgão. No arquivo oficial, o campo não escolhido sai vazio (a estrutura do leiaute é preservada); no CSV de conferência, ele é omitido. Campos obrigatórios do leiaute ficam marcados e travados.
 - **CSV de conferência** (leitura humana, antes de enviar o arquivo oficial), sem dado pessoal além do necessário.
 - **Painel** do módulo: indicadores (rotas ativas, veículos ativos, alunos transportados, ocupação média, rotas em superlotação), lotação por rota com faixa e os cartões de alerta da Fase 1.
 - **Auditoria** do módulo (tela e filtro); toda geração de arquivo é auditada.
@@ -22,5 +23,6 @@ O Censo Escolar (Educacenso) exige, por aluno matriculado, a declaração de uso
 
 - **Backend**: `CensoService`, `LeiauteRegistro60` por ano, `PainelService`. Lê `escola_escolas.inep`.
 - **Depende das Fases 1 a 3** mescladas e de **duas entradas externas**: o documento do leiaute oficial do ano e a decisão sobre os códigos Inep do aluno e da turma (ver `design.md`, D35 e D36).
-- **Possível alteração pequena no módulo Escola** (campos opcionais de código Inep do aluno e da turma), sujeita a aprovação.
+- **Alteração pequena no módulo Escola (aprovada pelo usuário)**: campos opcionais de código Inep do aluno e da turma, e os demais campos que o catálogo mostrar serem necessários.
+- **Tabela nova** `transporte_modelos_exportacao` (modelos de exportação por tenant).
 - **Dado pessoal de crianças**: minimização, proteção contra injeção de fórmula no CSV e auditoria de cada geração.

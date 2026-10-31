@@ -86,6 +86,54 @@ O sistema DEVE deixar vazios os campos de transporte público e zerar as tipolog
 - **WHEN** o arquivo é gerado
 - **THEN** a declaração não é anulada
 
+### Requirement: Escolha dos campos a exportar
+O sistema DEVE oferecer, por leiaute, um catálogo de campos do Registro 60 em que o usuário marca quais exportar. Campos obrigatórios do leiaute DEVEM vir marcados e NÃO PODEM ser desmarcados. No arquivo oficial, o campo não selecionado DEVE sair vazio na sua posição; no CSV de conferência, DEVE ser omitido. Campos sensíveis DEVEM exigir confirmação explícita, e a observação de necessidade especial NÃO DEVE existir no catálogo.
+
+#### Scenario: Campo opcional desmarcado
+- **GIVEN** um campo opcional do leiaute
+- **WHEN** o usuário o desmarca e gera o arquivo oficial
+- **THEN** a posição do campo continua no arquivo, vazia, e as demais não mudam de lugar
+
+#### Scenario: Campo omitido no CSV
+- **WHEN** o mesmo campo desmarcado é usado no CSV de conferência
+- **THEN** a coluna não aparece
+
+#### Scenario: Campo obrigatório
+- **WHEN** o usuário tenta desmarcar um campo obrigatório do leiaute
+- **THEN** a interface o mantém marcado e explica que o leiaute o exige
+
+#### Scenario: Campo sensível
+- **WHEN** o usuário marca um campo sensível
+- **THEN** o sistema pede confirmação e o campo consta na auditoria da geração
+
+#### Scenario: Observação de necessidade especial
+- **WHEN** o catálogo de campos é listado
+- **THEN** a observação da necessidade especial não está nele
+
+#### Scenario: Campo selecionado sem dado
+- **GIVEN** um campo selecionado que nenhum aluno tem preenchido
+- **WHEN** a pré-validação é executada
+- **THEN** aparece a pendência `campo_sem_dado` com o nome do campo
+
+### Requirement: Modelos de exportação
+O sistema DEVE permitir salvar a seleção de campos como um modelo nomeado, por leiaute e por tenant, reaplicá-lo, editá-lo e excluí-lo, e DEVE ter um modelo padrão "Registro 60 completo" que não pode ser excluído nem alterado.
+
+#### Scenario: Salvar e reaplicar
+- **WHEN** o usuário salva a seleção como "Conferência da Secretaria" e a escolhe numa outra sessão
+- **THEN** os mesmos campos vêm marcados
+
+#### Scenario: Modelo padrão
+- **WHEN** o usuário tenta excluir o modelo "Registro 60 completo"
+- **THEN** o sistema responde 409
+
+#### Scenario: Modelo de outro tenant
+- **WHEN** um usuário pede o modelo de outro tenant
+- **THEN** o sistema responde 404
+
+#### Scenario: Modelo de outro leiaute
+- **WHEN** um modelo salvo para um ano é aplicado a um ano cujo leiaute não tem alguns dos campos
+- **THEN** os campos inexistentes são ignorados e o usuário é avisado
+
 ### Requirement: CSV de conferência
 O sistema DEVE oferecer um CSV de conferência (UTF-8 com BOM, separador `;`) com aluno, escola, turno, rota, placa, tipologia e as variáveis de transporte, sem CPF, sem endereço e sem a observação de necessidade especial, neutralizando células iniciadas por `=`, `+`, `-` ou `@`.
 
@@ -99,7 +147,7 @@ O sistema DEVE oferecer um CSV de conferência (UTF-8 com BOM, separador `;`) co
 - **THEN** ele não tem CPF, endereço nem observação de necessidade especial
 
 ### Requirement: Auditoria e guarda dos arquivos do Censo
-Cada pré-validação e cada geração de arquivo DEVE ser auditada com usuário, ano, tipo de arquivo, quantidade de linhas e versão do leiaute. O arquivo gerado NÃO DEVE ser guardado no servidor.
+Cada pré-validação e cada geração de arquivo DEVE ser auditada com usuário, ano, tipo de arquivo, quantidade de linhas, versão do leiaute e a lista de campos exportados. O arquivo gerado NÃO DEVE ser guardado no servidor.
 
 #### Scenario: Geração registrada
 - **WHEN** o arquivo do Educacenso é gerado
