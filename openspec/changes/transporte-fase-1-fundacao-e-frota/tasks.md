@@ -5,7 +5,7 @@
 - [x] 1.2 Migrations: `transporte_empresas`, `transporte_motoristas`, `transporte_veiculos`, `transporte_vistorias` (todas com `tenant_id` e índices compostos; exclusão lógica; únicos do design)
 - [x] 1.3 Models `TenantAware` com casts e relações (pessoa, empresa, motorista padrão, vistorias); enums `TipoEmpresa` (prestadora, locadora), `OrigemVeiculo` (propria, locada, terceirizada), `CategoriaCnh`, `TipoRede`
 - [x] 1.4 `TransporteRbacSeeder` idempotente (permissões e perfis Coordenação, Operador e Consulta) e a linha no `docker-entrypoint.sh`
-- [ ] 1.5 Rodar `php artisan module:register Transporte` e conferir o catálogo (permissões e menu)
+- [x] 1.5 Rodar `php artisan module:register Transporte` e conferir o catálogo (permissões e menu) — feito em produção em 31/10/2026 (módulo 23, 10 permissões, 3 perfis)
 
 ## 2. Backend — regras
 - [x] 2.1 `EmpresaService`: exige pessoa jurídica, contrato e vigência de toda empresa, unicidade por pessoa
@@ -37,6 +37,6 @@
 - [x] 4.8 `npm run generate:registry`; typecheck e vitest
 
 ## 5. Entrega
-- [ ] 5.1 phpunit, phpstan e front verdes; CI do PR verde
-- [ ] 5.2 Conferência no navegador: cadastrar empresa, motorista e veículo; registrar vistoria; ver os alertas
-- [ ] 5.3 PR pelo fork; mesclar só com autorização; rebuild de `api` e `web`; rodar o `TransporteRbacSeeder` em produção
+- [x] 5.1 phpunit, phpstan e front verdes; CI do PR verde
+- [ ] 5.2 Conferência (pendente: precisa de login no navegador) no navegador: cadastrar empresa, motorista e veículo; registrar vistoria; ver os alertas
+- [x] 5.3 PR #141 mesclado; rebuild de `api` e `web`; `TransporteRbacSeeder` rodado no entrypoint; módulo habilitado no tenant `systrat`
