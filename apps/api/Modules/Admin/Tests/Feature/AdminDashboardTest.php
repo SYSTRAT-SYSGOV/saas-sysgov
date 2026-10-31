@@ -77,7 +77,7 @@ final class AdminDashboardTest extends TestCase
         $ca = $this->contract($a);
         $cb = $this->contract($b);
         $this->invoice($a, $ca, 'paid', 30000, now()->toDateString());
-        $this->invoice($a, $ca, 'paid', 20000, now()->subMonth()->toDateString());
+        $this->invoice($a, $ca, 'paid', 20000, now()->subMonthNoOverflow()->toDateString());
         $this->invoice($b, $cb, 'overdue', 7000);
         $user = User::create(['name' => 'U', 'email' => 'u@dash.test', 'password' => bin2hex(random_bytes(8)), 'is_active' => true]);
         $user->tenants()->attach($a->id, ['status' => 'active', 'is_primary' => true]);
@@ -91,7 +91,7 @@ final class AdminDashboardTest extends TestCase
 
         $byMonth = array_column($data['series']['revenue'], 'paid_cents', 'month');
         $this->assertSame(30000, $byMonth[now()->format('Y-m')]);
-        $this->assertSame(20000, $byMonth[now()->subMonth()->format('Y-m')]);
+        $this->assertSame(20000, $byMonth[now()->subMonthNoOverflow()->format('Y-m')]);
     }
 
     public function test_empty_history_returns_zeroed_series_and_null_retention(): void
