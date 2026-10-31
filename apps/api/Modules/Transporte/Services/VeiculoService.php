@@ -9,6 +9,7 @@ use DomainException;
 use Illuminate\Support\Facades\DB;
 use Modules\Transporte\Enums\OrigemVeiculo;
 use Modules\Transporte\Models\Empresa;
+use Modules\Transporte\Models\Rota;
 use Modules\Transporte\Models\Veiculo;
 use Modules\Transporte\Support\ConflitoException;
 
@@ -79,9 +80,12 @@ final class VeiculoService
         });
     }
 
-    /** Exclusão lógica; a placa fica livre para um novo cadastro. As Fases 2 e 3 bloqueiam veículo em uso por rota. */
+    /** Exclusão lógica; a placa fica livre para um novo cadastro. Veículo em uso por rota não é excluído. */
     public function excluir(Veiculo $veiculo): void
     {
+        if (Rota::query()->where('veiculo_id', $veiculo->id)->exists()) {
+            throw new ConflitoException('O veículo está em uma rota; troque o veículo da rota ou inative-o.');
+        }
         $antes = $veiculo->toArray();
         $veiculo->forceFill(['placa' => substr($veiculo->placa, 0, 12) . '#' . $veiculo->id])->save();
         $veiculo->delete();

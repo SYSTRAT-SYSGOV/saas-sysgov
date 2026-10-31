@@ -6,6 +6,9 @@ namespace Modules\Transporte\Support;
 
 use Modules\Transporte\Models\Empresa;
 use Modules\Transporte\Models\Motorista;
+use Modules\Transporte\Models\Parada;
+use Modules\Transporte\Models\Rota;
+use Modules\Transporte\Models\RotaParada;
 use Modules\Transporte\Models\Veiculo;
 use Modules\Transporte\Models\Vistoria;
 
@@ -107,5 +110,74 @@ final class Formata
             'vigente' => $v->validade->gte(today()),
             'observacoes' => $v->observacoes,
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public function parada(Parada $p): array
+    {
+        return [
+            'id' => $p->id,
+            'nome' => $p->nome,
+            'descricao' => $p->descricao,
+            'latitude' => $p->latitude !== null ? (float) $p->latitude : null,
+            'longitude' => $p->longitude !== null ? (float) $p->longitude : null,
+            'tem_coordenadas' => $p->temCoordenadas(),
+            'cep' => $p->cep,
+            'logradouro' => $p->logradouro,
+            'numero' => $p->numero,
+            'complemento' => $p->complemento,
+            'bairro' => $p->bairro,
+            'cidade' => $p->cidade,
+            'uf' => $p->uf,
+            'referencia' => $p->referencia,
+            'ativa' => $p->ativa,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function rota(Rota $r): array
+    {
+        $motivos = $r->motivosIrregularidade();
+
+        return [
+            'id' => $r->id,
+            'nome' => $r->nome,
+            'escola' => $r->escola !== null ? ['id' => $r->escola->id, 'nome' => $r->escola->nome] : null,
+            'ano_letivo' => $r->ano_letivo,
+            'turno' => $r->turno,
+            'turno_rotulo' => $r->turnoEnum()->label(),
+            'tipo_rede' => $r->tipo_rede,
+            'empresa' => $r->empresa !== null ? ['id' => $r->empresa->id, 'nome' => $r->empresa->nome()] : null,
+            'veiculo' => $r->veiculo !== null ? ['id' => $r->veiculo->id, 'placa' => $r->veiculo->placa, 'descricao' => $r->veiculo->descricao] : null,
+            'motorista' => $r->motorista !== null ? ['id' => $r->motorista->id, 'nome' => $r->motorista->nome()] : null,
+            'km_pavimentado' => (float) $r->km_pavimentado,
+            'km_nao_pavimentado' => (float) $r->km_nao_pavimentado,
+            'km_total' => $r->kmTotal(),
+            'horario_saida' => self::hora($r->horario_saida),
+            'horario_chegada' => self::hora($r->horario_chegada),
+            'horario_retorno' => self::hora($r->horario_retorno),
+            'ativa' => $r->ativa,
+            'paradas_count' => $r->getAttribute('itinerario_count'),
+            'regular' => $motivos === [],
+            'motivos_irregularidade' => $motivos,
+            'observacoes' => $r->observacoes,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function itinerario(RotaParada $i): array
+    {
+        return [
+            'ordem' => $i->ordem,
+            'embarque_previsto' => self::hora($i->embarque_previsto),
+            'desembarque_previsto' => self::hora($i->desembarque_previsto),
+            'parada' => $this->parada($i->parada),
+        ];
+    }
+
+    /** `HH:MM` (o banco devolve `HH:MM:SS`). */
+    private static function hora(?string $valor): ?string
+    {
+        return $valor === null ? null : substr($valor, 0, 5);
     }
 }

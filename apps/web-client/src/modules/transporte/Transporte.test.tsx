@@ -30,11 +30,15 @@ const opcoes = (gerenciar = true): Opcoes => ({
     { valor: 'terceirizada', rotulo: 'Terceirizada', tipo_empresa: 'prestadora' },
   ],
   tipos_rede: [{ valor: 'rural', rotulo: 'Rural' }, { valor: 'urbana', rotulo: 'Urbana' }],
+  turnos: [{ valor: 'manha', rotulo: 'Manhã' }],
+  escolas: [],
+  anos_letivos: [2026],
+  veiculos: [],
   categorias_cnh: ['D', 'E'],
   tipologias: [{ valor: 3, rotulo: 'Ônibus' }],
   empresas: [{ id: 9, nome: 'Locadora Sul', tipo: 'locadora' }],
   motoristas: [],
-  permissoes: { gerenciar_frota: gerenciar, auditar: false },
+  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, auditar: false },
 });
 
 const veiculo = (extra: Partial<Veiculo> = {}): Veiculo => ({

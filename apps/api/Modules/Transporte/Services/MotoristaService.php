@@ -11,6 +11,7 @@ use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Services\ResolucaoPessoaService;
 use Modules\Pessoas\Support\Documento;
 use Modules\Transporte\Models\Motorista;
+use Modules\Transporte\Models\Rota;
 use Modules\Transporte\Models\Veiculo;
 use Modules\Transporte\Support\ConflitoException;
 
@@ -93,6 +94,9 @@ final class MotoristaService
     {
         if (Veiculo::query()->where('motorista_padrao_id', $motorista->id)->exists()) {
             throw new ConflitoException('O motorista é o condutor padrão de um veículo; troque o condutor ou inative-o.');
+        }
+        if (Rota::query()->where('motorista_id', $motorista->id)->exists()) {
+            throw new ConflitoException('O motorista está em uma rota; troque o motorista da rota ou inative-o.');
         }
         $antes = $motorista->toArray();
         // Libera a CNH para um novo cadastro (a unicidade é do banco; a exclusão é lógica).

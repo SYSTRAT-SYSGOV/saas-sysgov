@@ -10,11 +10,15 @@ export interface Opcoes {
   tipos_empresa: OpcaoTexto[];
   origens: OpcaoOrigem[];
   tipos_rede: OpcaoTexto[];
+  turnos: OpcaoTexto[];
+  escolas: Ref[];
+  anos_letivos: number[];
+  veiculos: { id: number; placa: string; descricao: string }[];
   categorias_cnh: string[];
   tipologias: { valor: number; rotulo: string }[];
   empresas: (Ref & { tipo: string })[];
   motoristas: Ref[];
-  permissoes: { gerenciar_frota: boolean; auditar: boolean };
+  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; auditar: boolean };
 }
 
 export interface Empresa {
@@ -167,6 +171,77 @@ export interface RegistroAuditoria {
   ip: string | null;
 }
 
+export interface Parada {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  tem_coordenadas: boolean;
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  referencia: string | null;
+  ativa: boolean;
+}
+
+export type ParadaEntrada = Omit<Parada, 'id' | 'tem_coordenadas'>;
+
+export interface Rota {
+  id: number;
+  nome: string;
+  escola: Ref | null;
+  ano_letivo: number;
+  turno: string;
+  turno_rotulo: string;
+  tipo_rede: string;
+  empresa: Ref | null;
+  veiculo: { id: number; placa: string; descricao: string } | null;
+  motorista: Ref | null;
+  km_pavimentado: number;
+  km_nao_pavimentado: number;
+  km_total: number;
+  horario_saida: string | null;
+  horario_chegada: string | null;
+  horario_retorno: string | null;
+  ativa: boolean;
+  paradas_count: number | null;
+  regular: boolean;
+  motivos_irregularidade: string[];
+  observacoes: string | null;
+}
+
+export interface RotaEntrada {
+  escola_id: number;
+  ano_letivo: number;
+  empresa_id: number | null;
+  veiculo_id: number | null;
+  motorista_id: number | null;
+  nome: string;
+  turno: string;
+  tipo_rede: string;
+  km_pavimentado: number;
+  km_nao_pavimentado: number;
+  horario_saida: string | null;
+  horario_chegada: string | null;
+  horario_retorno: string | null;
+  ativa: boolean;
+  observacoes: string | null;
+}
+
+export interface FiltrosRota { ano_letivo?: number; escola_id?: number; turno?: string; tipo_rede?: string; situacao?: string; q?: string; page?: number }
+
+export interface ItemItinerario {
+  ordem: number;
+  embarque_previsto: string | null;
+  desembarque_previsto: string | null;
+  parada: Parada;
+}
+
 export interface Pagina<T> { data: T[]; current_page: number; last_page: number; total: number }
 
 /** Mensagem de erro da API ({"error"} das regras de negócio ou {"message"} da validação). */
@@ -203,6 +278,27 @@ export const transporteApi = {
   vistorias: async (veiculoId: number) => (await apiClient.get<{ data: Vistoria[] }>(`${base}/veiculos/${veiculoId}/vistorias`)).data.data,
   registrarVistoria: async (veiculoId: number, dados: VistoriaEntrada) =>
     (await apiClient.post<{ data: Vistoria }>(`${base}/veiculos/${veiculoId}/vistorias`, dados)).data.data,
+
+  paradas: async (params: { q?: string; ativa?: boolean; page?: number; per_page?: number } = {}) =>
+    (await apiClient.get<Pagina<Parada>>(`${base}/paradas`, { params: { ...params, ativa: params.ativa === undefined ? undefined : Number(params.ativa) } })).data,
+  salvarParada: async (id: number | null, dados: ParadaEntrada) =>
+    id ? (await apiClient.put<{ data: Parada }>(`${base}/paradas/${id}`, dados)).data.data : (await apiClient.post<{ data: Parada }>(`${base}/paradas`, dados)).data.data,
+  excluirParada: async (id: number) => { await apiClient.delete(`${base}/paradas/${id}`); },
+
+  rotas: async (params: FiltrosRota = {}) => (await apiClient.get<Pagina<Rota>>(`${base}/rotas`, { params })).data,
+  salvarRota: async (id: number | null, dados: RotaEntrada) =>
+    id ? (await apiClient.put<{ data: Rota }>(`${base}/rotas/${id}`, dados)).data.data : (await apiClient.post<{ data: Rota }>(`${base}/rotas`, dados)).data.data,
+  excluirRota: async (id: number) => { await apiClient.delete(`${base}/rotas/${id}`); },
+
+  itinerario: async (rotaId: number) => (await apiClient.get<{ data: ItemItinerario[] }>(`${base}/rotas/${rotaId}/itinerario`)).data.data,
+  adicionarParada: async (rotaId: number, dados: { parada_id: number; embarque_previsto?: string | null; desembarque_previsto?: string | null }) =>
+    (await apiClient.post<{ data: ItemItinerario[] }>(`${base}/rotas/${rotaId}/itinerario`, dados)).data.data,
+  horariosDaParada: async (rotaId: number, paradaId: number, dados: { embarque_previsto: string | null; desembarque_previsto: string | null }) =>
+    (await apiClient.put<{ data: ItemItinerario[] }>(`${base}/rotas/${rotaId}/itinerario/${paradaId}`, dados)).data.data,
+  removerParada: async (rotaId: number, paradaId: number) =>
+    (await apiClient.delete<{ data: ItemItinerario[] }>(`${base}/rotas/${rotaId}/itinerario/${paradaId}`)).data.data,
+  reordenarItinerario: async (rotaId: number, paradas: number[]) =>
+    (await apiClient.put<{ data: ItemItinerario[] }>(`${base}/rotas/${rotaId}/itinerario`, { paradas })).data.data,
 
   auditoria: async (params: { acao?: string; page?: number; per_page?: number }) =>
     (await apiClient.get<Pagina<RegistroAuditoria>>(`${base}/auditoria`, { params })).data,

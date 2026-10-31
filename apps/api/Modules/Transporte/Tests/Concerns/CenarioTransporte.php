@@ -11,6 +11,7 @@ use App\Services\ModuleRoleProvisioner;
 use App\Support\TenantContext;
 use Illuminate\Support\Str;
 use Modules\Admin\Models\Module;
+use Modules\Escola\Models\Escola;
 use Modules\Transporte\Database\Seeders\TransporteRbacSeeder;
 
 /**
@@ -170,5 +171,41 @@ trait CenarioTransporte
         $this->como($gestor, $tenant)->postJson("/api/transporte/veiculos/{$veiculoId}/vistorias", [
             'data_vistoria' => $data ?? now()->subMonths(5)->toDateString(), 'certificado' => 'CERT-' . Str::random(5), 'validade' => $validade,
         ])->assertCreated();
+    }
+
+    protected function criarEscola(Tenant $tenant, string $nome = 'Escola Municipal Rio Claro'): Escola
+    {
+        return Escola::create(['tenant_id' => $tenant->id, 'nome' => $nome]);
+    }
+
+    /** @param array<string, mixed> $extra */
+    protected function criarParada(Tenant $tenant, User $gestor, array $extra = []): int
+    {
+        $n = ++$this->sequencia;
+
+        return $this->como($gestor, $tenant)->postJson('/api/transporte/paradas', ['nome' => "Parada {$n}", 'latitude' => -25.43 - $n / 1000, 'longitude' => -49.27, ...$extra])
+            ->assertCreated()->json('data.id');
+    }
+
+    /**
+     * Rota com veículo próprio e vistoria vigente, pronta para receber itinerário.
+     *
+     * @param array<string, mixed> $extra
+     * @return array<string, mixed>
+     */
+    protected function dadosRota(Tenant $tenant, User $gestor, Escola $escola, array $extra = []): array
+    {
+        $n = ++$this->sequencia;
+
+        return [
+            'escola_id' => $escola->id, 'ano_letivo' => 2026, 'turno' => 'manha', 'tipo_rede' => 'rural', 'nome' => "Rota {$n}",
+            'km_pavimentado' => 12.5, 'km_nao_pavimentado' => 7.25, ...$extra,
+        ];
+    }
+
+    /** @param array<string, mixed> $extra */
+    protected function criarRota(Tenant $tenant, User $gestor, Escola $escola, array $extra = []): int
+    {
+        return $this->como($gestor, $tenant)->postJson('/api/transporte/rotas', $this->dadosRota($tenant, $gestor, $escola, $extra))->assertCreated()->json('data.id');
     }
 }
