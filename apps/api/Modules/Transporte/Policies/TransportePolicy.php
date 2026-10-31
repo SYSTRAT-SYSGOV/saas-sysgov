@@ -22,6 +22,11 @@ final class TransportePolicy
         return $this->algumaDe($user, ['transporte.frota.manage']);
     }
 
+    public function gerenciarRotas(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.rotas.manage']);
+    }
+
     public function auditar(User $user): bool
     {
         return $this->algumaDe($user, ['transporte.audit']);

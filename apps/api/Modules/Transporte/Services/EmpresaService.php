@@ -11,6 +11,7 @@ use Modules\Pessoas\Models\Pessoa;
 use Modules\Pessoas\Services\ResolucaoPessoaService;
 use Modules\Pessoas\Support\Documento;
 use Modules\Transporte\Models\Empresa;
+use Modules\Transporte\Models\Rota;
 use Modules\Transporte\Support\ConflitoException;
 
 /** Empresa nasce de uma pessoa jurídica do Cadastro de Pessoas (D4), resolvida pelo CNPJ ou escolhida pelo id. */
@@ -65,6 +66,9 @@ final class EmpresaService
     {
         if ($empresa->veiculos()->exists()) {
             throw new ConflitoException('A empresa tem veículos cadastrados; inative-a em vez de excluir.');
+        }
+        if (Rota::query()->where('empresa_id', $empresa->id)->exists()) {
+            throw new ConflitoException('A empresa está em uma rota; troque a empresa da rota ou inative-a.');
         }
         $antes = $empresa->toArray();
         $empresa->delete();

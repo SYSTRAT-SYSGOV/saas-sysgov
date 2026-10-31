@@ -30,6 +30,15 @@ export const ROTULO_IRREGULARIDADE: Record<string, string> = {
   contrato_vencido: 'Contrato da empresa vencido',
 };
 
+/** Motivos de irregularidade de uma rota: do veículo, da empresa e do motorista. */
+export const ROTULO_IRREGULARIDADE_ROTA: Record<string, string> = {
+  ...ROTULO_IRREGULARIDADE,
+  veiculo_inativo: 'Veículo inativo',
+  empresa_inativa: 'Empresa inativa',
+  motorista_inativo: 'Motorista inativo',
+  ...ROTULO_INELEGIBILIDADE,
+};
+
 export function rotuloDe(mapa: Record<string, string>, chave: string): string {
   return mapa[chave] ?? chave;
 }
@@ -53,4 +62,19 @@ export const ROTULO_ACAO: Record<string, string> = {
   'veiculo.alterado': 'Alterou veículo',
   'veiculo.excluido': 'Excluiu veículo',
   'vistoria.registrada': 'Registrou vistoria',
+  'parada.criada': 'Cadastrou parada',
+  'parada.alterada': 'Alterou parada',
+  'parada.excluida': 'Excluiu parada',
+  'rota.criada': 'Cadastrou rota',
+  'rota.alterada': 'Alterou rota',
+  'rota.excluida': 'Excluiu rota',
+  'itinerario.parada_adicionada': 'Adicionou parada ao itinerário',
+  'itinerario.parada_removida': 'Removeu parada do itinerário',
+  'itinerario.reordenado': 'Reordenou o itinerário',
+  'itinerario.horarios_alterados': 'Alterou horários da parada',
 };
+
+/** "12.5" → "12,50 km". */
+export function km(valor: number): string {
+  return `${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km`;
+}
