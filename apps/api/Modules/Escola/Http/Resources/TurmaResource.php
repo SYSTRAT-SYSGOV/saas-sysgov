@@ -17,6 +17,7 @@ final class TurmaResource extends JsonResource
         return [
             'id' => $this->id,
             'nome' => $this->nome,
+            'inep' => $this->inep,
             'ano_letivo' => $this->ano_letivo,
             'turno' => $this->whenLoaded('turno', fn () => $this->turno === null ? null : ['id' => $this->turno->id, 'nome' => $this->turno->nome]),
             'pedagoga' => $this->whenLoaded('pedagoga', fn () => $this->pedagoga === null ? null : ['id' => $this->pedagoga->id, 'nome' => $this->pedagoga->nome]),

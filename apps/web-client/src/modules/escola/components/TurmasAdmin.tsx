@@ -338,6 +338,7 @@ const TurmaFormModal: React.FC<TurmaFormModalProps> = ({ turma, turnos, onClose,
   const [nome, setNome] = useState(turma?.nome || '');
   const [turnoId, setTurnoId] = useState<number | ''>(turma?.turno?.id ?? turma?.turno_id ?? turnos[0]?.id ?? '');
   const [ano, setAno] = useState(String(turma?.ano_letivo ?? new Date().getFullYear()));
+  const [inep, setInep] = useState(turma?.inep ?? '');
   const [pedagogaId, setPedagogaId] = useState<number | ''>(turma?.pedagoga?.id ?? '');
   const [vinculos, setVinculos] = useState<Record<number, Vinculo>>(() => {
     const init: Record<number, Vinculo> = {};
@@ -372,7 +373,7 @@ const TurmaFormModal: React.FC<TurmaFormModalProps> = ({ turma, turnos, onClose,
     setSalvando(true);
     setErro('');
     try {
-      const dados = { nome: nome.trim(), turno_id: turnoId, ano_letivo: anoNum, pedagoga_id: pedagogaId === '' ? null : pedagogaId };
+      const dados = { nome: nome.trim(), turno_id: turnoId, ano_letivo: anoNum, inep: inep.trim() || null, pedagoga_id: pedagogaId === '' ? null : pedagogaId };
       const salva = turma?.id ? await escolaApi.atualizarTurma(turma.id, dados) : await escolaApi.criarTurma(dados);
       await escolaApi.vincularMaterias(salva.id, Object.values(vinculos));
       onToast({ type: 'success', title: isEdit ? 'Turma atualizada' : 'Turma cadastrada', message: `${nome.trim()} salva com sucesso.` });
@@ -412,6 +413,10 @@ const TurmaFormModal: React.FC<TurmaFormModalProps> = ({ turma, turnos, onClose,
           <div>
             <label className={labelCls} htmlFor="turma-ano">Ano letivo</label>
             <input id="turma-ano" type="number" min={2000} max={2100} className={`${inputCls} font-mono`} value={ano} onChange={e => setAno(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="turma-inep">Código Inep</label>
+            <input id="turma-inep" className={`${inputCls} font-mono`} value={inep} maxLength={20} onChange={e => setInep(e.target.value)} placeholder="Opcional (Censo)" />
           </div>
         </div>
         <div>

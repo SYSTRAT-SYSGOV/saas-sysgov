@@ -6,10 +6,13 @@ use Illuminate\Support\Facades\Route;
 use Modules\Transporte\Http\Controllers\AlertaController;
 use Modules\Transporte\Http\Controllers\AlocacaoController;
 use Modules\Transporte\Http\Controllers\AuditoriaController;
+use Modules\Transporte\Http\Controllers\CensoController;
 use Modules\Transporte\Http\Controllers\EmpresaController;
 use Modules\Transporte\Http\Controllers\ItinerarioController;
 use Modules\Transporte\Http\Controllers\MotoristaController;
+use Modules\Transporte\Http\Controllers\ModeloExportacaoController;
 use Modules\Transporte\Http\Controllers\OpcoesController;
+use Modules\Transporte\Http\Controllers\PainelController;
 use Modules\Transporte\Http\Controllers\ParadaController;
 use Modules\Transporte\Http\Controllers\RotaController;
 use Modules\Transporte\Http\Controllers\VeiculoController;
@@ -23,6 +26,7 @@ Route::pattern('veiculo', '[0-9]+');
 Route::pattern('parada', '[0-9]+');
 Route::pattern('rota', '[0-9]+');
 Route::pattern('alocacao', '[0-9]+');
+Route::pattern('modelo', '[0-9]+');
 
 Route::get('/opcoes', OpcoesController::class);
 Route::get('/alertas', AlertaController::class);
@@ -68,3 +72,15 @@ Route::post('/rotas/{rota}/alunos', [AlocacaoController::class, 'store']);
 Route::get('/rotas/{rota}/alunos/{alocacao}', [AlocacaoController::class, 'show']);
 Route::put('/rotas/{rota}/alunos/{alocacao}', [AlocacaoController::class, 'update']);
 Route::post('/rotas/{rota}/alunos/{alocacao}/encerrar', [AlocacaoController::class, 'encerrar']);
+
+Route::get('/painel', PainelController::class);
+
+Route::get('/censo/leiautes', [CensoController::class, 'leiautes']);
+Route::post('/censo/pre-validacao', [CensoController::class, 'preValidar']);
+Route::post('/censo/arquivo', [CensoController::class, 'arquivo']);
+Route::post('/censo/conferencia', [CensoController::class, 'conferencia']);
+Route::get('/censo/modelos', [ModeloExportacaoController::class, 'index']);
+Route::post('/censo/modelos', [ModeloExportacaoController::class, 'store']);
+Route::put('/censo/modelos/{modelo}', [ModeloExportacaoController::class, 'update']);
+Route::delete('/censo/modelos/{modelo}', [ModeloExportacaoController::class, 'destroy']);
+Route::get('/censo/modelos/{modelo}/aplicar', [ModeloExportacaoController::class, 'aplicar']);

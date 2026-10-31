@@ -34,7 +34,7 @@ const opcoes = (gerenciar = true): Opcoes => ({
   escolas: [{ id: 5, nome: 'Escola Rio Claro' }], anos_letivos: [2026, 2025],
   veiculos: [{ id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01' }],
   poderes_publicos: [], mediacoes: [], categorias_cnh: ['D'], tipologias: [], empresas: [], motoristas: [{ id: 2, nome: 'João da Silva' }],
-  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, auditar: false },
+  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, exportar_censo: true, auditar: false },
 });
 
 const parada = (extra: Partial<Parada> = {}): Parada => ({

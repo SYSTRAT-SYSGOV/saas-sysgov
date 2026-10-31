@@ -46,6 +46,7 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
   const isEdit = aluno !== null;
   const [nome, setNome] = useState(aluno?.nome || '');
   const [cgm, setCgm] = useState(aluno?.cgm || '');
+  const [inepId, setInepId] = useState(aluno?.inep_id || '');
   // O CPF não volta da API (só mascarado): em branco na edição mantém o atual.
   const [cpf, setCpf] = useState('');
   const [numero, setNumero] = useState(aluno?.numero?.toString() || '');
@@ -116,6 +117,7 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
     const payload = {
       nome: nome.trim(),
       cgm: cgm.trim() || null,
+      inep_id: inepId.trim() || null,
       ...(cpf.trim() ? { cpf: cpf.replace(/\D/g, '') } : {}),
       numero: remanejando || Number.isNaN(num) ? null : num,
       situacao: status,
@@ -169,6 +171,10 @@ export const AlunoFormModal: React.FC<AlunoFormModalProps> = ({ aluno, turmas, o
           <div>
             <label className={labelCls}>CGM</label>
             <input className={`${inputCls} font-mono`} value={cgm} onChange={e => setCgm(e.target.value)} placeholder="Cadastro de Matrícula" />
+          </div>
+          <div>
+            <label className={labelCls}>Código Inep</label>
+            <input className={`${inputCls} font-mono`} value={inepId} maxLength={20} onChange={e => setInepId(e.target.value)} placeholder="Opcional (Censo)" />
           </div>
         </div>
 

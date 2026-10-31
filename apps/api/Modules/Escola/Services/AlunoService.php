@@ -46,6 +46,8 @@ final class AlunoService
     {
         return DB::transaction(function () use ($dados): Aluno {
             $this->garantirCgmLivre($dados['cgm'] ?? null);
+            $dados = $this->normalizarInep($dados);
+            $this->garantirInepLivre($dados['inep_id'] ?? null);
             $this->garantirCpfLivre($dados['cpf'] ?? null);
             $contatos = $dados['contatos'] ?? [];
             [$responsavelId, $confirmarNovo] = $this->extrairOpcoesDePessoa($dados);
@@ -83,6 +85,10 @@ final class AlunoService
         return DB::transaction(function () use ($aluno, $dados): Aluno {
             if (array_key_exists('cgm', $dados)) {
                 $this->garantirCgmLivre($dados['cgm'], $aluno->id);
+            }
+            $dados = $this->normalizarInep($dados);
+            if (array_key_exists('inep_id', $dados)) {
+                $this->garantirInepLivre($dados['inep_id'], $aluno->id);
             }
             if (array_key_exists('cpf', $dados)) {
                 $this->garantirCpfLivre($dados['cpf'], $aluno->id);
@@ -451,6 +457,34 @@ final class AlunoService
             ->exists();
         if ($emUso) {
             throw ValidationException::withMessages(['cgm' => 'Já existe um aluno com este CGM.']);
+        }
+    }
+
+    /**
+     * Código vazio vira nulo: o único (tenant, inep_id) só aceita valor repetido quando é nulo.
+     *
+     * @param array<string, mixed> $dados
+     * @return array<string, mixed>
+     */
+    private function normalizarInep(array $dados): array
+    {
+        if (array_key_exists('inep_id', $dados)) {
+            $valor = $dados['inep_id'] === null ? '' : trim((string) $dados['inep_id']);
+            $dados['inep_id'] = $valor === '' ? null : $valor;
+        }
+
+        return $dados;
+    }
+
+    private function garantirInepLivre(?string $inep, ?int $ignorarId = null): void
+    {
+        if ($inep === null) {
+            return;
+        }
+        $emUso = Aluno::query()->withoutGlobalScope('escola')->where('inep_id', $inep)
+            ->when($ignorarId, fn ($q) => $q->where('id', '!=', $ignorarId))->lockForUpdate()->exists();
+        if ($emUso) {
+            throw ValidationException::withMessages(['inep_id' => 'Já existe um aluno com este código Inep.']);
         }
     }
 

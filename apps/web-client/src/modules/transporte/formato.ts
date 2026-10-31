@@ -72,6 +72,12 @@ export const ROTULO_ACAO: Record<string, string> = {
   'itinerario.parada_removida': 'Removeu parada do itinerário',
   'itinerario.reordenado': 'Reordenou o itinerário',
   'itinerario.horarios_alterados': 'Alterou horários da parada',
+  'censo.pre_validado': 'Pré-validou o Censo',
+  'censo.arquivo_gerado': 'Gerou o arquivo do Censo',
+  'censo.conferencia_gerada': 'Gerou o CSV de conferência do Censo',
+  'modelo_exportacao.criado': 'Criou modelo de exportação',
+  'modelo_exportacao.alterado': 'Alterou modelo de exportação',
+  'modelo_exportacao.excluido': 'Excluiu modelo de exportação',
   'alocacao.criada': 'Alocou aluno em rota',
   'alocacao.alterada': 'Alterou alocação de aluno',
   'alocacao.encerrada': 'Encerrou alocação de aluno',
@@ -89,6 +95,17 @@ export function textoOcupacao(o: { alocados: number; capacidade: number | null; 
   if (!o.calculavel || o.capacidade === null || o.percentual === null) return `${o.alocados} (sem veículo)`;
   return `${o.alocados} de ${o.capacidade} (${o.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)`;
 }
+
+export const ROTULO_PENDENCIA: Record<string, string> = {
+  sem_alocacao_ativa: 'Aluno que teve alocação no ano e hoje não tem nenhuma ativa',
+  rota_sem_veiculo: 'Rota sem veículo',
+  rural_sem_declaracao: 'Aluno de rota rural sem a declaração de transporte rural',
+  veiculo_nao_adaptado: 'Aluno com necessidade especial em veículo não adaptado',
+  sem_codigo_inep: 'Código Inep não cadastrado',
+  campo_sem_dado: 'Campo selecionado sem dado cadastrado',
+};
+
+export const ROTULO_GRUPO_CENSO: Record<string, string> = { identificacao: 'Identificação', matricula: 'Matrícula e turma', transporte: 'Transporte' };
 
 /** "12.5" → "12,50 km". */
 export function km(valor: number): string {

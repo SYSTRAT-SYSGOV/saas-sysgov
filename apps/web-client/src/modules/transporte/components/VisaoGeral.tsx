@@ -7,10 +7,8 @@ import { useCarga } from '../../escola/useCarga';
 import { transporteApi, type Alerta } from '../api';
 import { data, prazo, ROTULO_ALERTA, rotuloDe } from '../formato';
 
-/** Visão geral: documentos vencidos (críticos) e a vencer em 30 dias (atenção), com os críticos primeiro. */
-export const VisaoGeral: React.FC = () => {
-  const carga = useCarga(() => transporteApi.alertas(), []);
-
+/** Tabela de alertas de vencimento, com os críticos primeiro (a ordem vem do servidor). */
+export const TabelaAlertas: React.FC<{ alertas: Alerta[] }> = ({ alertas }) => {
   const colunas = useMemo<ColumnDef<Alerta, unknown>[]>(() => [
     {
       id: 'gravidade',
@@ -39,6 +37,21 @@ export const VisaoGeral: React.FC = () => {
     { id: 'dias', header: 'Prazo', accessorFn: (a) => prazo(a.dias), meta: { exportHeader: 'Prazo', exportValue: (a) => prazo(a.dias) } },
   ], []);
 
+  return (
+    <DataTable
+      columns={colunas}
+      data={alertas}
+      emptyText="Nenhum documento vencido ou a vencer em 30 dias."
+      exportable
+      exportFileName="transporte-alertas"
+      exportTitle="Transporte Escolar — Alertas de vencimento"
+    />
+  );
+};
+
+/** Visão geral: documentos vencidos (críticos) e a vencer em 30 dias (atenção), com os críticos primeiro. */
+export const VisaoGeral: React.FC = () => {
+  const carga = useCarga(() => transporteApi.alertas(), []);
   const resumo = carga.dados?.resumo;
 
   return (
@@ -53,14 +66,7 @@ export const VisaoGeral: React.FC = () => {
       {carga.dados && (
         <Card>
           <CardContent className="p-4">
-            <DataTable
-              columns={colunas}
-              data={carga.dados.data}
-              emptyText="Nenhum documento vencido ou a vencer em 30 dias."
-              exportable
-              exportFileName="transporte-alertas"
-              exportTitle="Transporte Escolar — Alertas de vencimento"
-            />
+            <TabelaAlertas alertas={carga.dados.data} />
           </CardContent>
         </Card>
       )}

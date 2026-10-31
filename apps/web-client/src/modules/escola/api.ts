@@ -31,6 +31,8 @@ export interface Turma {
   id: number;
   nome: string;
   ano_letivo: number;
+  /** Código Inep da turma (Censo Escolar), opcional. */
+  inep?: string | null;
   turno: { id: number; nome: string } | null;
   pedagoga?: { id: number; nome: string } | null;
   total_alunos?: number;
@@ -45,6 +47,8 @@ export interface Aluno {
   cpf_mascarado: string | null;
   pessoa_id: number | null;
   cgm: string | null;
+  /** Código Inep do aluno (Censo Escolar), opcional. */
+  inep_id?: string | null;
   nascimento: string | null;
   mae: string | null;
   pai: string | null;
@@ -68,6 +72,7 @@ export interface DadosAluno {
   nome?: string;
   cpf?: string | null;
   cgm?: string | null;
+  inep_id?: string | null;
   numero?: number | null;
   turma_id?: number | null;
   nascimento?: string | null;
@@ -189,8 +194,8 @@ export const escolaApi = {
   // Turmas e professores
   professores: () => get<Professor[]>('/professores'),
   turmas: (params?: { turno_id?: number; ano_letivo?: number }) => get<Turma[]>('/turmas', params),
-  criarTurma: (dados: { nome: string; turno_id: number; ano_letivo: number; pedagoga_id?: number | null }) => post<Turma>('/turmas', dados),
-  atualizarTurma: (id: number, dados: Partial<{ nome: string; turno_id: number; ano_letivo: number; pedagoga_id: number | null }>) => put<Turma>(`/turmas/${id}`, dados),
+  criarTurma: (dados: { nome: string; turno_id: number; ano_letivo: number; pedagoga_id?: number | null; inep?: string | null }) => post<Turma>('/turmas', dados),
+  atualizarTurma: (id: number, dados: Partial<{ nome: string; turno_id: number; ano_letivo: number; pedagoga_id: number | null; inep: string | null }>) => put<Turma>(`/turmas/${id}`, dados),
   excluirTurma: (id: number) => del(`/turmas/${id}`),
   duplicarTurma: (id: number) => post<Turma>(`/turmas/${id}/duplicar`),
   vincularMaterias: (id: number, vinculos: { materia_id: number; professor_user_id?: number | null }[]) =>

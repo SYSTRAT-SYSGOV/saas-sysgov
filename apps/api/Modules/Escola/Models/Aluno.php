@@ -23,6 +23,7 @@ use Modules\Escola\Enums\SituacaoAluno;
  * @property int $pessoa_id pessoa do Cadastro de Pessoas (fonte de CPF e nascimento)
  * @property string $nome
  * @property string|null $cgm
+ * @property string|null $inep_id código Inep do aluno (Censo Escolar), opcional
  * @property string|null $mae
  * @property string|null $pai
  * @property string|null $foto_path
@@ -43,7 +44,7 @@ final class Aluno extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'tenant_id', 'turma_id', 'turma_origem_id', 'numero', 'nome', 'cgm', 'mae', 'pai', 'foto_path', 'situacao',
+        'tenant_id', 'turma_id', 'turma_origem_id', 'numero', 'nome', 'cgm', 'inep_id', 'mae', 'pai', 'foto_path', 'situacao',
     ];
 
     /** @var array<string, string> */

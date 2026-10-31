@@ -37,6 +37,11 @@ final class TransportePolicy
         return $this->algumaDe($user, ['transporte.alocacoes.override_capacity']);
     }
 
+    public function exportarCenso(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.censo.export']);
+    }
+
     public function auditar(User $user): bool
     {
         return $this->algumaDe($user, ['transporte.audit']);

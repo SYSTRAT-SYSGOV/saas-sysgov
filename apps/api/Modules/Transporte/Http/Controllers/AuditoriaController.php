@@ -23,6 +23,10 @@ final class AuditoriaController extends Controller
         $filtros = $request->validate([
             'acao' => ['nullable', 'string', 'max:60'],
             'recurso' => ['nullable', 'string', 'max:60'],
+            'de' => ['nullable', 'date'],
+            'ate' => ['nullable', 'date'],
+            'usuario_id' => ['nullable', 'integer'],
+            'usuario' => ['nullable', 'string', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -32,6 +36,10 @@ final class AuditoriaController extends Controller
             ->where('module', 'transporte')
             ->when($filtros['acao'] ?? null, fn ($q, $a) => $q->where('action', $a))
             ->when($filtros['recurso'] ?? null, fn ($q, $r) => $q->where('resource', 'like', $r . '%'))
+            ->when($filtros['de'] ?? null, fn ($q, $d) => $q->where('created_at', '>=', \Illuminate\Support\Carbon::parse($d)->startOfDay()))
+            ->when($filtros['ate'] ?? null, fn ($q, $d) => $q->where('created_at', '<=', \Illuminate\Support\Carbon::parse($d)->endOfDay()))
+            ->when($filtros['usuario_id'] ?? null, fn ($q, $u) => $q->where('user_id', $u))
+            ->when($filtros['usuario'] ?? null, fn ($q, $nome) => $q->whereIn('user_id', User::query()->where('name', 'like', '%' . $nome . '%')->select('id')))
             ->orderByDesc('id')
             ->paginate((int) ($filtros['per_page'] ?? 50));
 
