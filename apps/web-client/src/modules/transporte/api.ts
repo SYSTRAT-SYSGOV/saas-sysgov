@@ -351,6 +351,25 @@ export interface Painel {
   alertas: Alertas;
 }
 
+export type TipoImportacao = 'veiculos' | 'motoristas' | 'paradas';
+
+export interface ImportacaoCsv {
+  id: number;
+  tipo: TipoImportacao;
+  arquivo: string;
+  status: 'previa' | 'na_fila' | 'processando' | 'concluida' | 'falha' | 'cancelada';
+  total: number;
+  validas: number;
+  criadas: number;
+  ignoradas: number;
+  com_erro: number;
+  divergencias: { linha: number; codigo: string; mensagem: string }[];
+  avisos: { linha: number; mensagem: string }[];
+  truncado: boolean;
+  mensagem: string | null;
+  concluida_em: string | null;
+}
+
 export interface Pagina<T> { data: T[]; current_page: number; last_page: number; total: number }
 
 /** Mensagem de erro da API ({"error"} das regras de negócio ou {"message"} da validação). */
@@ -436,6 +455,19 @@ export const transporteApi = {
     const nome = /filename="([^"]+)"/.exec(String(r.headers['content-disposition'] ?? ''))?.[1] ?? `transporte-${tipo}.csv`;
     return { blob: r.data, nome };
   },
+
+  modeloImportacao: async (tipo: TipoImportacao) => {
+    const r = await apiClient.get<Blob>(`${base}/importacoes/modelo/${tipo}`, { responseType: 'blob' });
+    return { blob: r.data, nome: `modelo-transporte-${tipo}.csv` };
+  },
+  previaImportacao: async (tipo: TipoImportacao, arquivo: File) => {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    return (await apiClient.post<{ data: ImportacaoCsv }>(`${base}/importacoes/${tipo}/previa`, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data.data;
+  },
+  confirmarImportacao: async (id: number) => (await apiClient.post<{ data: ImportacaoCsv }>(`${base}/importacoes/${id}/confirmar`)).data.data,
+  importacao: async (id: number) => (await apiClient.get<{ data: ImportacaoCsv }>(`${base}/importacoes/${id}`)).data.data,
+  cancelarImportacao: async (id: number) => (await apiClient.delete<{ data: ImportacaoCsv }>(`${base}/importacoes/${id}`)).data.data,
 
   auditoria: async (params: { acao?: string; de?: string; ate?: string; usuario?: string; page?: number; per_page?: number }) =>
     (await apiClient.get<Pagina<RegistroAuditoria>>(`${base}/auditoria`, { params })).data,

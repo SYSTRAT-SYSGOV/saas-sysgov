@@ -1,12 +1,13 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { ActionsMenu, Badge, Button, Card, CardContent, ConfirmDialog, DataTable, Input, Modal, Select, Switch, Textarea } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 import { mensagemDeErro, transporteApi, type Motorista, type Opcoes } from '../api';
+import { ImportarCsv } from './ImportarCsv';
 import { data, ROTULO_INELEGIBILIDADE, rotuloDe } from '../formato';
 
 const SEM_EMPRESA = '0';
@@ -16,6 +17,7 @@ export const Motoristas: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () =
   const carga = useCarga(() => transporteApi.motoristas(), []);
   const [editando, setEditando] = useState<Motorista | 'novo' | null>(null);
   const [excluindo, setExcluindo] = useState<Motorista | null>(null);
+  const [importando, setImportando] = useState(false);
   const gerenciar = opcoes.permissoes.gerenciar_frota;
 
   const excluir = async (motorista: Motorista) => {
@@ -104,7 +106,12 @@ export const Motoristas: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () =
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
-        {gerenciar && <div className="flex justify-end"><Button onClick={() => setEditando('novo')}><Plus className="mr-1 h-4 w-4" />Novo motorista</Button></div>}
+        {gerenciar && (
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setImportando(true)}><Upload className="mr-1 h-4 w-4" />Importar CSV</Button>
+            <Button onClick={() => setEditando('novo')}><Plus className="mr-1 h-4 w-4" />Novo motorista</Button>
+          </div>
+        )}
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && (
           <DataTable
@@ -117,6 +124,7 @@ export const Motoristas: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () =
           />
         )}
       </CardContent>
+      {importando && <ImportarCsv tipo="motoristas" aoFechar={() => setImportando(false)} aoConcluir={() => { void carga.recarregar(); aoMudar(); }} />}
       {editando && (
         <MotoristaModal opcoes={opcoes} motorista={editando === 'novo' ? null : editando} aoFechar={() => setEditando(null)}
           aoSalvar={() => { setEditando(null); avisar({ type: 'success', title: 'Motorista', message: 'Motorista salvo.' }); void carga.recarregar(); aoMudar(); }} />
