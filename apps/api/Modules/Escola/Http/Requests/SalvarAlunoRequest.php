@@ -32,6 +32,7 @@ final class SalvarAlunoRequest extends FormRequest
                 }
             }],
             'cgm' => ['nullable', 'string', 'max:50'],
+            'inep_id' => ['nullable', 'string', 'max:20'],
             'numero' => ['nullable', 'integer', 'min:1', 'max:999'],
             'turma_id' => ['nullable', 'integer', $this->existeNoTenant('escola_turmas')],
             'nascimento' => ['nullable', 'date', 'before_or_equal:today'],

@@ -20,7 +20,7 @@ export interface Opcoes {
   tipologias: { valor: number; rotulo: string }[];
   empresas: (Ref & { tipo: string })[];
   motoristas: Ref[];
-  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; gerenciar_alocacoes: boolean; exceder_capacidade: boolean; auditar: boolean };
+  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; gerenciar_alocacoes: boolean; exceder_capacidade: boolean; exportar_censo: boolean; auditar: boolean };
 }
 
 export interface Empresa {
@@ -292,6 +292,65 @@ export interface AlocacaoEntrada {
 
 export interface AlunoBusca { id: number; nome: string; cgm: string | null; escola: string | null; turma: string | null; turno: string | null }
 
+export interface CampoCenso {
+  chave: string;
+  rotulo: string;
+  grupo: 'identificacao' | 'matricula' | 'transporte';
+  origem: string;
+  obrigatorio: boolean;
+  sensivel: boolean;
+  confere: boolean;
+}
+
+export interface LeiauteCenso { chave: string; nome: string; descricao: string; campos: CampoCenso[] }
+
+export interface ModeloExportacao { id: number; nome: string; leiaute: string; campos: string[]; padrao: boolean }
+
+export type TipoPendencia = 'sem_alocacao_ativa' | 'rota_sem_veiculo' | 'rural_sem_declaracao' | 'veiculo_nao_adaptado' | 'sem_codigo_inep' | 'campo_sem_dado';
+
+export interface PendenciaCenso {
+  tipo: TipoPendencia;
+  aluno_id: number | null;
+  aluno: string | null;
+  rota: string | null;
+  campo?: string;
+  rotulo?: string;
+}
+
+export interface PreValidacao {
+  ano_letivo: number;
+  leiaute: string;
+  approved: boolean;
+  total_linhas: number;
+  resumo: Record<TipoPendencia, number>;
+  pendencias: PendenciaCenso[];
+  avisos: { tipo: string; aluno_id: number; aluno: string; rota: string | null }[];
+  campos_sem_dado: { chave: string; rotulo: string }[];
+  campos: string[];
+  campos_ignorados: string[];
+}
+
+export interface SelecaoCenso {
+  ano_letivo: number;
+  leiaute?: string;
+  campos: string[];
+  confirmar_sensiveis: string[];
+}
+
+export interface Painel {
+  ano_letivo: number | null;
+  indicadores: {
+    rotas_ativas: number;
+    veiculos_ativos: number;
+    alunos_transportados: number;
+    ocupacao_media: number | null;
+    rotas_superlotadas: number;
+    rotas_sem_veiculo: number;
+  };
+  rotas: { id: number; nome: string; escola: string | null; turno: string; placa: string | null; ocupacao: Ocupacao; pendencia: string | null }[];
+  alertas: Alertas;
+}
+
 export interface Pagina<T> { data: T[]; current_page: number; last_page: number; total: number }
 
 /** Mensagem de erro da API ({"error"} das regras de negócio ou {"message"} da validação). */
@@ -361,6 +420,23 @@ export const transporteApi = {
   encerrarAlocacao: async (rotaId: number, id: number, dados: { data_fim: string; motivo: string }) =>
     (await apiClient.post<{ data: Alocacao }>(`${base}/rotas/${rotaId}/alunos/${id}/encerrar`, dados)).data.data,
 
-  auditoria: async (params: { acao?: string; page?: number; per_page?: number }) =>
+  painel: async (ano?: number) => (await apiClient.get<{ data: Painel }>(`${base}/painel`, { params: { ano_letivo: ano } })).data.data,
+
+  leiautes: async () => (await apiClient.get<{ data: LeiauteCenso[] }>(`${base}/censo/leiautes`)).data.data,
+  modelos: async () => (await apiClient.get<{ data: ModeloExportacao[] }>(`${base}/censo/modelos`)).data.data,
+  salvarModelo: async (id: number | null, dados: { nome: string; leiaute: string; campos: string[] }) =>
+    id ? (await apiClient.put<{ data: ModeloExportacao }>(`${base}/censo/modelos/${id}`, dados)).data.data : (await apiClient.post<{ data: ModeloExportacao }>(`${base}/censo/modelos`, dados)).data.data,
+  excluirModelo: async (id: number) => { await apiClient.delete(`${base}/censo/modelos/${id}`); },
+  aplicarModelo: async (id: number, leiaute: string) =>
+    (await apiClient.get<{ data: { campos: string[]; ignorados: string[] } }>(`${base}/censo/modelos/${id}/aplicar`, { params: { leiaute } })).data.data,
+  preValidar: async (dados: SelecaoCenso) => (await apiClient.post<{ data: PreValidacao }>(`${base}/censo/pre-validacao`, dados)).data.data,
+  /** Arquivo gerado sob demanda (não fica no servidor): devolve o conteúdo e o nome sugerido. */
+  baixarCenso: async (tipo: 'arquivo' | 'conferencia', dados: SelecaoCenso) => {
+    const r = await apiClient.post<Blob>(`${base}/censo/${tipo}`, dados, { responseType: 'blob' });
+    const nome = /filename="([^"]+)"/.exec(String(r.headers['content-disposition'] ?? ''))?.[1] ?? `transporte-${tipo}.csv`;
+    return { blob: r.data, nome };
+  },
+
+  auditoria: async (params: { acao?: string; de?: string; ate?: string; usuario?: string; page?: number; per_page?: number }) =>
     (await apiClient.get<Pagina<RegistroAuditoria>>(`${base}/auditoria`, { params })).data,
 };

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Card, CardContent, DataTable, Select } from '@sysgov/ui';
+import { Card, CardContent, DataTable, Input, Select } from '@sysgov/ui';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { transporteApi, type RegistroAuditoria } from '../api';
@@ -9,6 +9,8 @@ import { ROTULO_ACAO } from '../formato';
 function resumo(r: RegistroAuditoria): string {
   const d = r.depois ?? r.antes;
   if (!d) return '';
+  if (d.justificativa) return `Justificativa: ${String(d.justificativa)}`;
+  if (d.ano_letivo && d.leiaute) return `Censo ${String(d.ano_letivo)} — ${String(d.leiaute)}${d.linhas !== undefined ? `, ${String(d.linhas)} linha(s)` : ''}`;
   if (d.placa) return String(d.placa);
   if (d.descricao) return String(d.descricao);
   if (d.cnh_numero) return `CNH ${String(d.cnh_numero)}`;
@@ -46,15 +48,23 @@ const colunas: ColumnDef<RegistroAuditoria, unknown>[] = [
 /** Trilha de auditoria do módulo (audit_logs, imutável). Paginada no servidor. */
 export const AuditoriaTransporte: React.FC = () => {
   const [acao, setAcao] = useState('todas');
+  const [de, setDe] = useState('');
+  const [ate, setAte] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [pagina, setPagina] = useState(1);
   const [porPagina, setPorPagina] = useState(50);
-  const carga = useCarga(() => transporteApi.auditoria({ acao: acao === 'todas' ? undefined : acao, page: pagina, per_page: porPagina }), [acao, pagina, porPagina]);
+  const carga = useCarga(() => transporteApi.auditoria({ acao: acao === 'todas' ? undefined : acao, de: de || undefined, ate: ate || undefined, usuario: usuario.trim() || undefined, page: pagina, per_page: porPagina }), [acao, de, ate, usuario, pagina, porPagina]);
   const opcoesAcao = useMemo(() => [{ value: 'todas', label: 'Todas' }, ...Object.entries(ROTULO_ACAO).map(([v, l]) => ({ value: v, label: l }))], []);
 
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <div className="w-72"><Select label="Ação" value={acao} onChange={(v) => { setAcao(v); setPagina(1); }} options={opcoesAcao} /></div>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <Select label="Ação" value={acao} onChange={(v) => { setAcao(v); setPagina(1); }} options={opcoesAcao} />
+          <Input label="De" type="date" value={de} className="font-mono tabular-nums" onChange={(e) => { setDe(e.target.value); setPagina(1); }} />
+          <Input label="Até" type="date" value={ate} className="font-mono tabular-nums" onChange={(e) => { setAte(e.target.value); setPagina(1); }} />
+          <Input label="Usuário" value={usuario} onChange={(e) => { setUsuario(e.target.value); setPagina(1); }} />
+        </div>
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && (
           <DataTable

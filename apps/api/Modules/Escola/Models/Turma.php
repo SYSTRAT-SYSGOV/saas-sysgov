@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $turno_id
  * @property int|null $pedagoga_id
  * @property string $nome
+ * @property string|null $inep código Inep da turma (Censo Escolar), opcional
  * @property int $ano_letivo
  * @property-read Turno|null $turno
  * @property-read MembroEquipe|null $pedagoga
@@ -32,7 +33,7 @@ final class Turma extends Model
     protected $table = 'escola_turmas';
 
     /** @var list<string> */
-    protected $fillable = ['tenant_id', 'turno_id', 'pedagoga_id', 'nome', 'ano_letivo'];
+    protected $fillable = ['tenant_id', 'turno_id', 'pedagoga_id', 'nome', 'inep', 'ano_letivo'];
 
     /** @var array<string, string> */
     protected $casts = ['tenant_id' => 'integer', 'turno_id' => 'integer', 'pedagoga_id' => 'integer', 'ano_letivo' => 'integer'];

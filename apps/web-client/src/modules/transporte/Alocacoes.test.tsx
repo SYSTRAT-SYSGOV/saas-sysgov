@@ -19,7 +19,7 @@ const opcoes = (extra: Partial<Opcoes['permissoes']> = {}): Opcoes => ({
   tipos_empresa: [], origens: [], tipos_rede: [], turnos: [], escolas: [], anos_letivos: [2026], veiculos: [],
   poderes_publicos: [{ valor: 1, rotulo: 'Estadual' }, { valor: 2, rotulo: 'Municipal' }], mediacoes: [{ valor: 'presencial', rotulo: 'Presencial' }],
   categorias_cnh: [], tipologias: [], empresas: [], motoristas: [],
-  permissoes: { gerenciar_frota: true, gerenciar_rotas: true, gerenciar_alocacoes: true, exceder_capacidade: false, auditar: false, ...extra },
+  permissoes: { gerenciar_frota: true, gerenciar_rotas: true, gerenciar_alocacoes: true, exceder_capacidade: false, exportar_censo: true, auditar: false, ...extra },
 });
 
 const ocupacao = (alocados: number, capacidade: number | null = 2): Ocupacao => {

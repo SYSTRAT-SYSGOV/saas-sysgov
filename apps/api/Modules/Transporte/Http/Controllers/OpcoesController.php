@@ -56,6 +56,7 @@ final class OpcoesController extends Controller
                 'gerenciar_rotas' => $this->policy->gerenciarRotas($user),
                 'gerenciar_alocacoes' => $this->policy->gerenciarAlocacoes($user),
                 'exceder_capacidade' => $this->policy->excederCapacidade($user),
+                'exportar_censo' => $this->policy->exportarCenso($user),
                 'auditar' => $this->policy->auditar($user),
             ],
         ]]);
