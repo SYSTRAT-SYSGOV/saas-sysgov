@@ -16,7 +16,7 @@
 - [ ] 3.1 Isolamento de tenant para paradas, rotas e itinerários
 - [ ] 3.2 Coordenadas válidas, fora da faixa e só uma delas
 - [ ] 3.3 Rota: total de km, km negativo, escola de outro tenant
-- [ ] 3.4 Regularidade: veículo sem vistoria válida, motorista inelegível, contrato vencido, frota própria, rota que ficou irregular
+- [ ] 3.4 Regularidade: veículo sem vistoria válida, motorista inelegível, contrato vencido (locadora e prestadora), veículo próprio sem empresa, rota que ficou irregular
 - [ ] 3.5 Itinerário: ordem, repetida, reordenação, parada de fora, remoção com renumeração
 - [ ] 3.6 Filtros da listagem e isolamento entre paradas de rotas
 - [ ] 3.7 Permissões e auditoria

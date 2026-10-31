@@ -25,14 +25,14 @@ O módulo DEVE declarar as permissões `transporte.view`, `transporte.frota.mana
 - **THEN** as permissões e os perfis não são duplicados
 
 ### Requirement: Cadastro de empresas de transporte
-O sistema DEVE permitir cadastrar uma empresa a partir de uma **pessoa jurídica** do Cadastro de Pessoas, com `tipo` `terceirizada` ou `frota_propria`. Empresa `terceirizada` DEVE ter número do contrato e vigência (início e fim, com fim igual ou posterior ao início). Empresa `frota_propria` NÃO exige contrato. Uma pessoa jurídica só pode ser empresa uma vez por tenant.
+O sistema DEVE permitir cadastrar uma empresa a partir de uma **pessoa jurídica** do Cadastro de Pessoas, com `tipo` `prestadora` (serviço terceirizado) ou `locadora` (aluguel de veículos). Toda empresa DEVE ter número do contrato e vigência (início e fim, com fim igual ou posterior ao início). Uma pessoa jurídica só pode ser empresa uma vez por tenant. A frota própria da prefeitura NÃO é uma empresa: é a origem `propria` do veículo.
 
-#### Scenario: Empresa terceirizada
-- **WHEN** um usuário autorizado cadastra a pessoa jurídica "Viação Rio Claro" como `terceirizada` com contrato 12/2026 de 01/02/2026 a 31/12/2026
+#### Scenario: Empresa prestadora
+- **WHEN** um usuário autorizado cadastra a pessoa jurídica "Viação Rio Claro" como `prestadora` com contrato 12/2026 de 01/02/2026 a 31/12/2026
 - **THEN** a empresa é criada ativa e aparece com o CNPJ vindo do Cadastro de Pessoas
 
-#### Scenario: Terceirizada sem contrato
-- **WHEN** o cadastro de empresa `terceirizada` não informa a vigência
+#### Scenario: Empresa sem contrato
+- **WHEN** o cadastro de empresa `locadora` não informa a vigência
 - **THEN** o sistema responde 422 e indica o campo
 
 #### Scenario: Pessoa física informada
@@ -40,7 +40,7 @@ O sistema DEVE permitir cadastrar uma empresa a partir de uma **pessoa jurídica
 - **THEN** o sistema responde 422
 
 #### Scenario: Contrato vencido
-- **GIVEN** uma empresa `terceirizada` com vigência até ontem
+- **GIVEN** uma empresa com vigência até ontem
 - **WHEN** a empresa é consultada
 - **THEN** ela é exibida como "contrato vencido" e entra nos alertas como crítica
 
@@ -71,7 +71,20 @@ O sistema DEVE permitir cadastrar um motorista a partir de uma **pessoa física*
 - **THEN** o sistema responde 409
 
 ### Requirement: Cadastro de veículos
-O sistema DEVE permitir cadastrar veículos com descrição, placa única por tenant, capacidade de passageiros maior que zero, tipologia Inep entre 1 e 11, tipo de rede (`rural`, `urbana` ou `mista`), indicadores de uso exclusivo e de acessibilidade, empresa e motorista padrão opcionais. A placa DEVE ser normalizada (maiúsculas, sem hífen nem espaços) e aceitar o formato antigo e o Mercosul. A inativação DEVE exigir motivo.
+O sistema DEVE permitir cadastrar veículos com descrição, placa única por tenant, capacidade de passageiros maior que zero, tipologia Inep entre 1 e 11, tipo de rede (`rural`, `urbana` ou `mista`), indicadores de uso exclusivo e de acessibilidade, **origem** (`propria`, `locada` ou `terceirizada`) e motorista padrão opcional. Veículo `proprio` NÃO tem empresa; `locado` exige empresa `locadora` e `terceirizado` exige empresa `prestadora`. A placa DEVE ser normalizada (maiúsculas, sem hífen nem espaços) e aceitar o formato antigo e o Mercosul. A inativação DEVE exigir motivo.
+
+#### Scenario: Veículo próprio
+- **WHEN** um veículo de origem `propria` é cadastrado sem empresa
+- **THEN** ele é criado e não depende de contrato
+
+#### Scenario: Veículo locado sem locadora
+- **WHEN** um veículo de origem `locada` é cadastrado sem empresa, ou com uma empresa `prestadora`
+- **THEN** o sistema responde 422
+
+#### Scenario: Locadora com contrato vencido
+- **GIVEN** um veículo `locado` cuja locadora tem o contrato vencido
+- **WHEN** o veículo é consultado
+- **THEN** ele é exibido como irregular pelo motivo `contrato_vencido`
 
 #### Scenario: Placa normalizada
 - **WHEN** um veículo é cadastrado com a placa "abc-1d23"

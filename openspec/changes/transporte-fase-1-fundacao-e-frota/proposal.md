@@ -15,7 +15,7 @@ Esta change inicia a incorporação **reescrevendo** a regra de negócio do Carl
 | 1 | `transporte-fase-1-fundacao-e-frota` (esta) | Módulo, permissões, empresas, motoristas, veículos, vistoria DETRAN e alertas de vencimento |
 | 2 | `transporte-fase-2-rotas-e-itinerarios` | Paradas georreferenciadas, rotas, itinerário ordenado, quilometragem e mapa |
 | 3 | `transporte-fase-3-alocacao-de-alunos` | Alocação de alunos a rota e parada, capacidade, acessibilidade e ocupação |
-| 4 | `transporte-fase-4-censo-e-painel` | Pré-validação e exportação do Registro 60, painel de lotação e alertas |
+| 4 | `transporte-fase-4-censo-e-painel` | Pré-validação e arquivo do Registro 60 no leiaute oficial do Educacenso, painel de lotação e alertas |
 | 5 | `transporte-fase-5-carga-e-demonstracao` | Importação CSV, dados de demonstração e documentação |
 
 Cada fase é uma change independente, com seu PR, e só começa depois da anterior mesclada. As decisões comuns às cinco fases estão no `design.md` desta change.
@@ -23,9 +23,9 @@ Cada fase é uma change independente, com seu PR, e só começa depois da anteri
 ## What Changes
 
 - **Novo módulo Laravel `Transporte`** (`apps/api/Modules/Transporte`, alias `transporte`, tabelas `transporte_*`), criado com `php artisan make:module`, tenant-aware, com `requires: Admin, Pessoas, Escola`.
-- **Empresas** de transporte: pessoa jurídica do Cadastro de Pessoas (CNPJ), com contrato e vigência (terceirizada) ou marcada como frota própria.
+- **Empresas** de transporte: pessoa jurídica do Cadastro de Pessoas (CNPJ), do tipo **prestadora** (serviço terceirizado) ou **locadora** (aluga veículos à prefeitura), sempre com contrato e vigência.
 - **Motoristas**: pessoa física do Cadastro de Pessoas (CPF e nascimento vêm de lá), com CNH D/E, curso especializado e exame toxicológico, e cálculo de elegibilidade pelo CTB.
-- **Veículos**: placa única por tenant, capacidade, tipologia Inep (1 a 11), tipo de rede, uso exclusivo, acessibilidade, motorista padrão e situação com motivo de inativação.
+- **Veículos** com origem **própria**, **locada** ou **terceirizada**: placa única por tenant, capacidade, tipologia Inep (1 a 11), tipo de rede, uso exclusivo, acessibilidade, motorista padrão e situação com motivo de inativação. Veículo próprio não tem empresa; locado e terceirizado exigem empresa com contrato vigente.
 - **Vistorias semestrais do DETRAN** com histórico; a regularidade do veículo é derivada da última vistoria.
 - **Alertas de vencimento** (CNH, curso, toxicológico, vistoria, contrato) a vencer em até 30 dias ou vencidos.
 - **Frontend** em `apps/web-client/src/modules/transporte` com `@sysgov/ui`: visão geral com alertas, empresas, motoristas e veículos.

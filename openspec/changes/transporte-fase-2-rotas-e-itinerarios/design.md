@@ -5,7 +5,7 @@ As decisões comuns (D1 a D10) estão em `transporte-fase-1-fundacao-e-frota/des
 ## Modelo de dados
 
 - `transporte_paradas`: `nome`, `descricao`, `latitude` e `longitude` (`decimal(10,7)`, nulos), `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `uf`, `referencia`, `ativa`. Índice `(tenant_id, nome)`.
-- `transporte_rotas`: `escola_id`, `ano_letivo` (inteiro), `empresa_id`, `veiculo_id`, `motorista_id` (todos nulos), `nome`, `turno` (`manha|tarde|noite|integral`), `tipo_rede` (`rural|urbana|mista`), `km_pavimentado`, `km_nao_pavimentado` (`decimal(8,2)`, ≥ 0), `horario_saida`, `horario_chegada`, `horario_retorno`, `terceirizada`, `ativa`, `observacoes`. O **total de km** é um atributo calculado no model (soma, 2 casas), não uma coluna gerada, para rodar igual no SQLite dos testes e no MySQL.
+- `transporte_rotas`: `escola_id`, `ano_letivo` (inteiro), `empresa_id`, `veiculo_id`, `motorista_id` (todos nulos), `nome`, `turno` (`manha|tarde|noite|integral`), `tipo_rede` (`rural|urbana|mista`), `km_pavimentado`, `km_nao_pavimentado` (`decimal(8,2)`, ≥ 0), `horario_saida`, `horario_chegada`, `horario_retorno`, `ativa`, `observacoes`. O **total de km** é um atributo calculado no model (soma, 2 casas), não uma coluna gerada, para rodar igual no SQLite dos testes e no MySQL.
 - `transporte_rota_paradas`: `rota_id`, `parada_id`, `ordem` (> 0), `embarque_previsto`, `desembarque_previsto`. Únicos `(rota_id, ordem)` e `(rota_id, parada_id)`.
 
 ## Decisões
@@ -17,7 +17,7 @@ A rota guarda `escola_id` como chave comum (escola de **destino**). O Transporte
 O ano letivo da rota é um inteiro. A lista de anos oferecidos é a dos `escola_turmas.ano_letivo` existentes no tenant, mais o ano corrente. Não existe tabela de ano letivo.
 
 ### D13. Regularidade da rota
-Ao **criar ou editar** a rota, o Service recusa com 409 e a mensagem do item irregular: empresa com contrato vencido, veículo inativo ou sem vistoria válida, motorista inativo ou inelegível. Rota **já gravada** que fica irregular depois (vistoria venceu) não é alterada: ela é exibida com o selo "irregular" e os motivos, e passa a barrar novas alocações (Fase 3).
+Ao **criar ou editar** a rota, o Service recusa com 409 e a mensagem do item irregular: empresa da rota ou do veículo (locadora ou prestadora) com contrato vencido, veículo inativo ou sem vistoria válida, motorista inativo ou inelegível. Veículo de origem `propria` não depende de contrato. Rota **já gravada** que fica irregular depois (vistoria venceu) não é alterada: ela é exibida com o selo "irregular" e os motivos, e passa a barrar novas alocações (Fase 3).
 
 ### D14. Reordenar o itinerário sem colidir os únicos
 A reordenação recebe a lista completa e ordenada de `parada_id`. Dentro de uma transação, o Service primeiro desloca as ordens para uma faixa temporária e depois grava as definitivas, evitando violar `(rota_id, ordem)` no meio da operação. Lista com parada repetida ou de outra rota retorna 422.

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Pré-validação do Registro 60
-O sistema DEVE gerar, por ano letivo, a pré-validação do transporte para o Censo, listando por aluno as pendências `sem_alocacao_ativa` (aluno que teve alocação no ano e não tem nenhuma ativa), `rota_sem_veiculo`, `rural_sem_declaracao` e `veiculo_nao_adaptado`, e o aviso `turno_divergente`. O sistema DEVE marcar `approved` somente quando não houver pendência; o aviso não impede a aprovação. Exige `transporte.censo.export`.
+O sistema DEVE gerar, por ano letivo, a pré-validação do transporte para o Censo, listando por aluno as pendências `sem_alocacao_ativa` (aluno que teve alocação no ano e não tem nenhuma ativa), `rota_sem_veiculo`, `rural_sem_declaracao`, `veiculo_nao_adaptado` e `sem_codigo_inep`, e o aviso `turno_divergente`. O sistema DEVE marcar `approved` somente quando não houver pendência; o aviso não impede a aprovação. Exige `transporte.censo.export`.
 
 #### Scenario: Rota sem veículo
 - **GIVEN** um aluno alocado em rota sem veículo
@@ -18,6 +18,11 @@ O sistema DEVE gerar, por ano letivo, a pré-validação do transporte para o Ce
 - **WHEN** a pré-validação é executada
 - **THEN** aparece a pendência `rural_sem_declaracao`
 
+#### Scenario: Aluno sem código Inep
+- **GIVEN** o leiaute do ano exige o código Inep do aluno e ele não está cadastrado
+- **WHEN** a pré-validação é executada
+- **THEN** aparece a pendência `sem_codigo_inep`
+
 #### Scenario: Sem pendências
 - **WHEN** todos os dados estão consistentes
 - **THEN** `approved` é verdadeiro e a lista vem vazia
@@ -31,58 +36,78 @@ O sistema DEVE gerar, por ano letivo, a pré-validação do transporte para o Ce
 - **WHEN** um usuário sem `transporte.censo.export` pede a pré-validação
 - **THEN** o servidor responde 403
 
-### Requirement: Exportação CSV do Registro 60
-O sistema DEVE exportar em CSV (UTF-8 com BOM, separador `;`) uma linha por alocação ativa do ano letivo, com aluno, escola e Inep da escola, turno, rota, placa, tipologia Inep, `transporte_publico`, `poder_publico_responsavel` e as onze flags de tipologia modal (1 a 11). O arquivo NÃO DEVE conter CPF, endereço nem a observação de necessidade especial.
+### Requirement: Arquivo do Registro 60 no leiaute oficial do Educacenso
+O sistema DEVE gerar o arquivo do Registro 60 conforme o leiaute oficial vigente do Inep para o ano do Censo, com uma linha por alocação ativa do ano letivo, preenchendo transporte público, poder público responsável e as onze tipologias de veículo, e escolhendo o leiaute pelo ano informado. Os campos de matrícula que o módulo não possui DEVEM sair vazios onde o leiaute permitir.
 
 #### Scenario: Aluno transportado por ônibus municipal
 - **GIVEN** um aluno com poder público 2 em rota com veículo de tipologia 3
-- **WHEN** o CSV do ano é exportado
-- **THEN** a linha tem `transporte_publico` 1, `poder_publico_responsavel` 2 e a flag `onibus` 1, com as demais 0
+- **WHEN** o arquivo do ano é gerado
+- **THEN** a linha tem transporte público 1, poder público 2 e a tipologia ônibus marcada, com as demais zeradas
 
 #### Scenario: Tipologia ferroviária
 - **GIVEN** um veículo de tipologia 11
-- **WHEN** o CSV é exportado
-- **THEN** a flag `ferroviario` é 1
+- **WHEN** o arquivo é gerado
+- **THEN** a tipologia ferroviário está marcada
 
 #### Scenario: Alocação encerrada
 - **GIVEN** um aluno com alocação encerrada
-- **WHEN** o CSV é exportado
+- **WHEN** o arquivo é gerado
 - **THEN** ele não tem linha
 
+#### Scenario: Ano sem leiaute implementado
+- **WHEN** se pede o arquivo de um ano para o qual não há leiaute implementado
+- **THEN** o sistema responde 422 informando os anos disponíveis
+
+#### Scenario: Arquivo de referência
+- **GIVEN** o exemplo do documento oficial do ano
+- **WHEN** os mesmos dados são gerados pelo sistema
+- **THEN** o arquivo é idêntico ao de referência
+
 ### Requirement: Anulação da declaração de transporte público
-O sistema DEVE deixar vazios os campos de transporte público (e zerar as flags de tipologia) na linha do aluno cuja alocação não tem atendimento curricular, tem mediação didática `distancia` ou tem país de residência diferente de `BR`.
+O sistema DEVE deixar vazios os campos de transporte público e zerar as tipologias na linha do aluno cuja alocação não tem atendimento curricular, tem mediação didática `distancia` ou tem país de residência diferente de `BR`.
 
 #### Scenario: Sem atendimento curricular
 - **GIVEN** uma alocação com `atendimento_curricular` falso
-- **WHEN** o CSV é exportado
-- **THEN** `transporte_publico` e `poder_publico_responsavel` ficam vazios
+- **WHEN** o arquivo é gerado
+- **THEN** transporte público e poder público ficam vazios
 
 #### Scenario: Ensino a distância
 - **GIVEN** uma alocação com mediação `distancia`
-- **WHEN** o CSV é exportado
+- **WHEN** o arquivo é gerado
 - **THEN** os campos de transporte público ficam vazios
 
 #### Scenario: Residência no exterior
 - **GIVEN** uma alocação com país de residência `PY`
-- **WHEN** o CSV é exportado
+- **WHEN** o arquivo é gerado
 - **THEN** os campos de transporte público ficam vazios
 
 #### Scenario: Caso comum
 - **GIVEN** atendimento curricular, mediação presencial e país `BR`
-- **WHEN** o CSV é exportado
+- **WHEN** o arquivo é gerado
 - **THEN** a declaração não é anulada
 
-### Requirement: Segurança do arquivo exportado
-O CSV DEVE neutralizar células iniciadas por `=`, `+`, `-` ou `@` e a exportação DEVE ser auditada com o usuário, o ano letivo e a quantidade de linhas.
+### Requirement: CSV de conferência
+O sistema DEVE oferecer um CSV de conferência (UTF-8 com BOM, separador `;`) com aluno, escola, turno, rota, placa, tipologia e as variáveis de transporte, sem CPF, sem endereço e sem a observação de necessidade especial, neutralizando células iniciadas por `=`, `+`, `-` ou `@`.
 
 #### Scenario: Nome iniciado por sinal
 - **GIVEN** um nome de aluno que começa com "="
-- **WHEN** o CSV é exportado
+- **WHEN** o CSV de conferência é gerado
 - **THEN** a célula é gravada com um apóstrofo à frente
 
-#### Scenario: Exportação registrada
-- **WHEN** o CSV é exportado
-- **THEN** o `audit_logs` tem o evento com o ano e o total de linhas
+#### Scenario: Sem dado sensível
+- **WHEN** o CSV de conferência é gerado
+- **THEN** ele não tem CPF, endereço nem observação de necessidade especial
+
+### Requirement: Auditoria e guarda dos arquivos do Censo
+Cada pré-validação e cada geração de arquivo DEVE ser auditada com usuário, ano, tipo de arquivo, quantidade de linhas e versão do leiaute. O arquivo gerado NÃO DEVE ser guardado no servidor.
+
+#### Scenario: Geração registrada
+- **WHEN** o arquivo do Educacenso é gerado
+- **THEN** o `audit_logs` tem o evento com o ano, o total de linhas e a versão do leiaute
+
+#### Scenario: Nada guardado
+- **WHEN** a geração termina
+- **THEN** não resta arquivo no armazenamento do servidor
 
 ### Requirement: Painel de lotação
 O módulo DEVE ter um painel com: rotas ativas, veículos ativos, alunos transportados, ocupação média (ponderada pela capacidade) e rotas em superlotação, e a lista de rotas com a faixa de ocupação (verde até 80 %, amarelo de 81 % a 100 %, vermelho acima de 100 %), mostrando também o rótulo de texto, não só a cor. Rotas sem veículo DEVEM aparecer como pendência.

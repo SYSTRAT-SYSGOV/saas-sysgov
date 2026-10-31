@@ -7,7 +7,7 @@ Com a frota cadastrada (Fase 1), o transporte escolar precisa descrever **por on
 ## What Changes
 
 - **Paradas** georreferenciadas: nome, endereço (CEP preenchido no navegador), referência e coordenadas validadas (latitude -90 a 90, longitude -180 a 180).
-- **Rotas**: nome, escola de destino (`escola_escolas`), ano letivo, turno, tipo de rede, empresa, veículo, motorista, quilometragem pavimentada e não pavimentada (total calculado), horários e marca de terceirizada.
+- **Rotas**: nome, escola de destino (`escola_escolas`), ano letivo, turno, tipo de rede, empresa, veículo, motorista, quilometragem pavimentada e não pavimentada (total calculado), horários. Se a rota é terceirizada decorre da origem do veículo.
 - **Itinerário ordenado**: paradas com ordem única na rota, sem repetir a parada, com horários previstos de embarque e desembarque, e reordenação atômica.
 - **Regularidade na rota**: a rota só aceita empresa com contrato vigente, veículo ativo com vistoria válida e motorista elegível; uma rota que ficou irregular depois é sinalizada.
 - **Consulta de rotas** com filtros por ano letivo, escola, turno, tipo de rede e situação, devolvendo a contagem de paradas.

@@ -39,7 +39,7 @@ O sistema DEVE permitir cadastrar rotas com nome, escola de destino, ano letivo,
 - **THEN** o sistema responde 422
 
 ### Requirement: Regularidade de empresa, veículo e motorista na rota
-Ao criar ou editar uma rota, o sistema DEVE recusar com 409, indicando o item, quando a empresa tiver contrato vencido, o veículo estiver inativo ou sem vistoria válida, ou o motorista estiver inativo ou inelegível. Uma rota já gravada que ficar irregular depois NÃO deve ser alterada: ela DEVE ser exibida como irregular, com os motivos.
+Ao criar ou editar uma rota, o sistema DEVE recusar com 409, indicando o item, quando a empresa da rota ou a empresa do veículo (locadora ou prestadora) tiver contrato vencido, o veículo estiver inativo ou sem vistoria válida, ou o motorista estiver inativo ou inelegível. Uma rota já gravada que ficar irregular depois NÃO deve ser alterada: ela DEVE ser exibida como irregular, com os motivos.
 
 #### Scenario: Veículo com vistoria vencida
 - **WHEN** a rota é salva com um veículo cuja vistoria venceu
@@ -54,10 +54,15 @@ Ao criar ou editar uma rota, o sistema DEVE recusar com 409, indicando o item, q
 - **WHEN** a rota é listada
 - **THEN** ela aparece com o selo "irregular" e o motivo `vistoria_vencida`, sem ter sido alterada
 
-#### Scenario: Frota própria
-- **GIVEN** uma empresa `frota_propria`
-- **WHEN** a rota é salva com ela
+#### Scenario: Veículo próprio
+- **GIVEN** um veículo de origem `propria`, ativo e com vistoria válida
+- **WHEN** a rota é salva com ele e sem empresa
 - **THEN** não há bloqueio por contrato
+
+#### Scenario: Veículo locado com contrato vencido
+- **GIVEN** um veículo `locado` cuja locadora tem o contrato vencido
+- **WHEN** a rota é salva com ele
+- **THEN** o sistema responde 409 indicando a locadora e a data
 
 ### Requirement: Itinerário ordenado
 O sistema DEVE manter, para cada rota, uma sequência de paradas com ordem única, sem repetir a parada na mesma rota, com horários previstos de embarque e desembarque opcionais. A reordenação DEVE ser atômica.
