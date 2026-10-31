@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { MapPin, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { MapPin, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { ActionsMenu, Badge, Button, Card, CardContent, ConfirmDialog, DataTable, Input, Modal, Switch, Textarea } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
@@ -8,6 +8,7 @@ import { useCarga } from '../../escola/useCarga';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 import { consultarCep } from '../../pessoas/services/cep';
 import { mensagemDeErro, transporteApi, type Opcoes, type Parada } from '../api';
+import { ImportarCsv } from './ImportarCsv';
 
 const SeletorCoordenadaLeaflet = React.lazy(() => import('./MapaLeaflet').then((m) => ({ default: m.SeletorCoordenadaLeaflet })));
 
@@ -20,6 +21,7 @@ export const Paradas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, a
   const carga = useCarga(() => transporteApi.paradas({ q: termo || undefined, per_page: 200 }), [termo]);
   const [editando, setEditando] = useState<Parada | 'nova' | null>(null);
   const [excluindo, setExcluindo] = useState<Parada | null>(null);
+  const [importando, setImportando] = useState(false);
   const gerenciar = opcoes.permissoes.gerenciar_rotas;
 
   const excluir = async (parada: Parada) => {
@@ -86,7 +88,12 @@ export const Paradas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, a
             <Input label="Buscar parada" value={busca} onChange={(e) => setBusca(e.target.value)} />
             <Button type="submit" variant="outline"><Search className="mr-1 h-4 w-4" />Buscar</Button>
           </form>
-          {gerenciar && <Button onClick={() => setEditando('nova')}><Plus className="mr-1 h-4 w-4" />Nova parada</Button>}
+          {gerenciar && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setImportando(true)}><Upload className="mr-1 h-4 w-4" />Importar CSV</Button>
+              <Button onClick={() => setEditando('nova')}><Plus className="mr-1 h-4 w-4" />Nova parada</Button>
+            </div>
+          )}
         </div>
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && (
@@ -98,6 +105,7 @@ export const Paradas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, a
           </>
         )}
       </CardContent>
+      {importando && <ImportarCsv tipo="paradas" aoFechar={() => setImportando(false)} aoConcluir={() => { void carga.recarregar(); }} />}
       {editando && (
         <ParadaModal parada={editando === 'nova' ? null : editando} aoFechar={() => setEditando(null)}
           aoSalvar={() => { setEditando(null); avisar({ type: 'success', title: 'Parada', message: 'Parada salva.' }); void carga.recarregar(); }} />

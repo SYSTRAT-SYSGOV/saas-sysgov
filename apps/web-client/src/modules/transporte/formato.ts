@@ -78,6 +78,8 @@ export const ROTULO_ACAO: Record<string, string> = {
   'modelo_exportacao.criado': 'Criou modelo de exportação',
   'modelo_exportacao.alterado': 'Alterou modelo de exportação',
   'modelo_exportacao.excluido': 'Excluiu modelo de exportação',
+  'importacao.previa': 'Enviou arquivo para importação',
+  'importacao.concluida': 'Concluiu importação por CSV',
   'alocacao.criada': 'Alocou aluno em rota',
   'alocacao.alterada': 'Alterou alocação de aluno',
   'alocacao.encerrada': 'Encerrou alocação de aluno',

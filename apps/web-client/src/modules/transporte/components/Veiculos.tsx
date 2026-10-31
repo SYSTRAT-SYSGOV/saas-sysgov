@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ClipboardCheck, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { ActionsMenu, Badge, Button, Card, CardContent, ConfirmDialog, DataTable, Input, Modal, Select, Switch, Textarea } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
@@ -8,6 +8,7 @@ import { useCarga } from '../../escola/useCarga';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 import { mensagemDeErro, transporteApi, type Opcoes, type Veiculo, type Vistoria } from '../api';
 import { data, ROTULO_IRREGULARIDADE, rotuloDe } from '../formato';
+import { ImportarCsv } from './ImportarCsv';
 
 const NENHUM = '0';
 
@@ -17,6 +18,7 @@ export const Veiculos: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () => 
   const [editando, setEditando] = useState<Veiculo | 'novo' | null>(null);
   const [vistoriando, setVistoriando] = useState<Veiculo | null>(null);
   const [excluindo, setExcluindo] = useState<Veiculo | null>(null);
+  const [importando, setImportando] = useState(false);
   const gerenciar = opcoes.permissoes.gerenciar_frota;
 
   const excluir = async (veiculo: Veiculo) => {
@@ -103,7 +105,12 @@ export const Veiculos: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () => 
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
-        {gerenciar && <div className="flex justify-end"><Button onClick={() => setEditando('novo')}><Plus className="mr-1 h-4 w-4" />Novo veículo</Button></div>}
+        {gerenciar && (
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setImportando(true)}><Upload className="mr-1 h-4 w-4" />Importar CSV</Button>
+            <Button onClick={() => setEditando('novo')}><Plus className="mr-1 h-4 w-4" />Novo veículo</Button>
+          </div>
+        )}
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && (
           <DataTable
@@ -116,6 +123,7 @@ export const Veiculos: React.FC<{ opcoes: Opcoes; avisar: Toast; aoMudar: () => 
           />
         )}
       </CardContent>
+      {importando && <ImportarCsv tipo="veiculos" aoFechar={() => setImportando(false)} aoConcluir={() => { void carga.recarregar(); aoMudar(); }} />}
       {editando && (
         <VeiculoModal opcoes={opcoes} veiculo={editando === 'novo' ? null : editando} aoFechar={() => setEditando(null)}
           aoSalvar={() => { setEditando(null); avisar({ type: 'success', title: 'Veículo', message: 'Veículo salvo.' }); void carga.recarregar(); aoMudar(); }} />

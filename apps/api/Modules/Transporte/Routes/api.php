@@ -8,6 +8,7 @@ use Modules\Transporte\Http\Controllers\AlocacaoController;
 use Modules\Transporte\Http\Controllers\AuditoriaController;
 use Modules\Transporte\Http\Controllers\CensoController;
 use Modules\Transporte\Http\Controllers\EmpresaController;
+use Modules\Transporte\Http\Controllers\ImportacaoController;
 use Modules\Transporte\Http\Controllers\ItinerarioController;
 use Modules\Transporte\Http\Controllers\MotoristaController;
 use Modules\Transporte\Http\Controllers\ModeloExportacaoController;
@@ -27,6 +28,8 @@ Route::pattern('parada', '[0-9]+');
 Route::pattern('rota', '[0-9]+');
 Route::pattern('alocacao', '[0-9]+');
 Route::pattern('modelo', '[0-9]+');
+Route::pattern('importacao', '[0-9]+');
+Route::pattern('tipo', 'veiculos|motoristas|paradas');
 
 Route::get('/opcoes', OpcoesController::class);
 Route::get('/alertas', AlertaController::class);
@@ -84,3 +87,9 @@ Route::post('/censo/modelos', [ModeloExportacaoController::class, 'store']);
 Route::put('/censo/modelos/{modelo}', [ModeloExportacaoController::class, 'update']);
 Route::delete('/censo/modelos/{modelo}', [ModeloExportacaoController::class, 'destroy']);
 Route::get('/censo/modelos/{modelo}/aplicar', [ModeloExportacaoController::class, 'aplicar']);
+
+Route::get('/importacoes/modelo/{tipo}', [ImportacaoController::class, 'modelo']);
+Route::post('/importacoes/{tipo}/previa', [ImportacaoController::class, 'previa']);
+Route::get('/importacoes/{importacao}', [ImportacaoController::class, 'show']);
+Route::post('/importacoes/{importacao}/confirmar', [ImportacaoController::class, 'confirmar']);
+Route::delete('/importacoes/{importacao}', [ImportacaoController::class, 'cancelar']);
