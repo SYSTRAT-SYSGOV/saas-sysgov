@@ -27,6 +27,16 @@ final class TransportePolicy
         return $this->algumaDe($user, ['transporte.rotas.manage']);
     }
 
+    public function gerenciarAlocacoes(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.alocacoes.manage']);
+    }
+
+    public function excederCapacidade(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.alocacoes.override_capacity']);
+    }
+
     public function auditar(User $user): bool
     {
         return $this->algumaDe($user, ['transporte.audit']);

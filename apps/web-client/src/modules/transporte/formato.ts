@@ -72,7 +72,23 @@ export const ROTULO_ACAO: Record<string, string> = {
   'itinerario.parada_removida': 'Removeu parada do itinerário',
   'itinerario.reordenado': 'Reordenou o itinerário',
   'itinerario.horarios_alterados': 'Alterou horários da parada',
+  'alocacao.criada': 'Alocou aluno em rota',
+  'alocacao.alterada': 'Alterou alocação de aluno',
+  'alocacao.encerrada': 'Encerrou alocação de aluno',
+  'alocacao.encerrada_automaticamente': 'Alocação encerrada por mudança do aluno',
+  'alocacao.excesso_autorizado': 'Autorizou alocação acima da capacidade',
+  'alocacao.observacao_lida': 'Leu a observação de necessidade especial',
 };
+
+export const ROTULO_FAIXA: Record<string, string> = { verde: 'Folgada', amarelo: 'No limite', vermelho: 'Superlotada' };
+
+export const ROTULO_AVISO: Record<string, string> = { turno_divergente: 'Turno da turma diferente do turno da rota' };
+
+/** "20 de 40 (50%)", ou "sem veículo" quando a capacidade não é conhecida. */
+export function textoOcupacao(o: { alocados: number; capacidade: number | null; percentual: number | null; calculavel: boolean }): string {
+  if (!o.calculavel || o.capacidade === null || o.percentual === null) return `${o.alocados} (sem veículo)`;
+  return `${o.alocados} de ${o.capacidade} (${o.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)`;
+}
 
 /** "12.5" → "12,50 km". */
 export function km(valor: number): string {

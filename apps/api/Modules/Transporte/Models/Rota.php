@@ -94,6 +94,12 @@ final class Rota extends Model
         return $this->hasMany(RotaParada::class, 'rota_id')->orderBy('ordem');
     }
 
+    /** @return HasMany<Alocacao, $this> */
+    public function alocacoes(): HasMany
+    {
+        return $this->hasMany(Alocacao::class, 'rota_id');
+    }
+
     public function turnoEnum(): Turno
     {
         return Turno::from($this->turno);

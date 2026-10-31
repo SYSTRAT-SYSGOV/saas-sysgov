@@ -34,11 +34,13 @@ const opcoes = (gerenciar = true): Opcoes => ({
   escolas: [],
   anos_letivos: [2026],
   veiculos: [],
+  poderes_publicos: [],
+  mediacoes: [],
   categorias_cnh: ['D', 'E'],
   tipologias: [{ valor: 3, rotulo: 'Ônibus' }],
   empresas: [{ id: 9, nome: 'Locadora Sul', tipo: 'locadora' }],
   motoristas: [],
-  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, auditar: false },
+  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, auditar: false },
 });
 
 const veiculo = (extra: Partial<Veiculo> = {}): Veiculo => ({

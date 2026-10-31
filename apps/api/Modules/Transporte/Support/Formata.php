@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Modules\Transporte\Support;
 
 use Modules\Transporte\Models\Empresa;
+use Modules\Transporte\Enums\MediacaoDidatica;
+use Modules\Transporte\Enums\PoderPublico;
+use Modules\Transporte\Models\Alocacao;
 use Modules\Transporte\Models\Motorista;
 use Modules\Transporte\Models\Parada;
 use Modules\Transporte\Models\Rota;
 use Modules\Transporte\Models\RotaParada;
 use Modules\Transporte\Models\Veiculo;
+use Modules\Transporte\Services\OcupacaoService;
 use Modules\Transporte\Models\Vistoria;
 
 /** Formato JSON do módulo. Documentos da pessoa saem sempre mascarados. */
@@ -158,6 +162,7 @@ final class Formata
             'horario_retorno' => self::hora($r->horario_retorno),
             'ativa' => $r->ativa,
             'paradas_count' => $r->getAttribute('itinerario_count'),
+            'ocupacao' => OcupacaoService::calcular((int) $r->getAttribute('alocacoes_ativas_count'), $r->veiculo?->capacidade),
             'regular' => $motivos === [],
             'motivos_irregularidade' => $motivos,
             'observacoes' => $r->observacoes,
@@ -172,6 +177,47 @@ final class Formata
             'embarque_previsto' => self::hora($i->embarque_previsto),
             'desembarque_previsto' => self::hora($i->desembarque_previsto),
             'parada' => $this->parada($i->parada),
+        ];
+    }
+
+    /**
+     * Alocação sem a observação da necessidade especial (D22: só a ficha, para quem gerencia).
+     *
+     * @param array<int, string> $escolas nomes das escolas por id
+     * @return array<string, mixed>
+     */
+    public function alocacao(Alocacao $a, array $escolas = []): array
+    {
+        $aluno = $a->aluno;
+        $poder = $a->poder_publico !== null ? PoderPublico::tryFrom($a->poder_publico) : null;
+
+        return [
+            'id' => $a->id,
+            'rota_id' => $a->rota_id,
+            'aluno' => $aluno !== null ? [
+                'id' => $aluno->id,
+                'nome' => $aluno->nome,
+                'escola' => $escolas[$aluno->escola_id] ?? null,
+                'turma' => $aluno->turma?->nome,
+                'turno_turma' => $aluno->turma?->turno?->nome,
+            ] : null,
+            'parada' => $a->parada !== null ? ['id' => $a->parada->id, 'nome' => $a->parada->nome] : null,
+            'turno' => $a->turno,
+            'usa_transporte_rural' => $a->usa_transporte_rural,
+            'poder_publico' => $a->poder_publico,
+            'poder_publico_rotulo' => $poder?->label(),
+            'necessidade_especial' => $a->necessidade_especial,
+            'atendimento_curricular' => $a->atendimento_curricular,
+            'mediacao_didatica' => $a->mediacao_didatica,
+            'mediacao_didatica_rotulo' => MediacaoDidatica::tryFrom($a->mediacao_didatica)?->label(),
+            'pais_residencia' => $a->pais_residencia,
+            'data_inicio' => $a->data_inicio->toDateString(),
+            'data_fim' => $a->data_fim?->toDateString(),
+            'motivo_fim' => $a->motivo_fim,
+            'justificativa_excesso' => $a->justificativa_excesso,
+            'observacoes' => $a->observacoes,
+            'ativa' => $a->ativa(),
+            'avisos' => $a->avisos(),
         ];
     }
 

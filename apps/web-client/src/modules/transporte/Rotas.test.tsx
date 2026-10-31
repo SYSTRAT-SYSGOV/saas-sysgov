@@ -33,8 +33,8 @@ const opcoes = (gerenciar = true): Opcoes => ({
   turnos: [{ valor: 'manha', rotulo: 'Manhã' }, { valor: 'tarde', rotulo: 'Tarde' }],
   escolas: [{ id: 5, nome: 'Escola Rio Claro' }], anos_letivos: [2026, 2025],
   veiculos: [{ id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01' }],
-  categorias_cnh: ['D'], tipologias: [], empresas: [], motoristas: [{ id: 2, nome: 'João da Silva' }],
-  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, auditar: false },
+  poderes_publicos: [], mediacoes: [], categorias_cnh: ['D'], tipologias: [], empresas: [], motoristas: [{ id: 2, nome: 'João da Silva' }],
+  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, auditar: false },
 });
 
 const parada = (extra: Partial<Parada> = {}): Parada => ({
@@ -46,7 +46,7 @@ const rota = (extra: Partial<Rota> = {}): Rota => ({
   id: 7, nome: 'Rota Norte', escola: { id: 5, nome: 'Escola Rio Claro' }, ano_letivo: 2026, turno: 'manha', turno_rotulo: 'Manhã', tipo_rede: 'rural',
   empresa: null, veiculo: { id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01' }, motorista: { id: 2, nome: 'João da Silva' },
   km_pavimentado: 12.5, km_nao_pavimentado: 7.25, km_total: 19.75, horario_saida: '06:30', horario_chegada: null, horario_retorno: null,
-  ativa: true, paradas_count: 3, regular: true, motivos_irregularidade: [], observacoes: null, ...extra,
+  ativa: true, paradas_count: 3, ocupacao: { alocados: 20, capacidade: 40, percentual: 50, faixa: 'verde', calculavel: true }, regular: true, motivos_irregularidade: [], observacoes: null, ...extra,
 });
 
 const item = (ordem: number, p: Partial<Parada> = {}): ItemItinerario => ({
@@ -196,14 +196,9 @@ describe('Itinerário', () => {
     api.itinerario.mockResolvedValue(itens);
     api.paradas.mockResolvedValue(pagina([parada({ id: 99, nome: 'Parada livre' })]));
     render(<Rotas opcoes={opcoes(podeEditar)} avisar={vi.fn()} />);
-    if (podeEditar) {
-      // O menu do Radix abre por teclado no jsdom.
-      fireEvent.keyDown(await screen.findByRole('button', { name: 'Ações da rota Rota Norte' }), { key: 'Enter' });
-      fireEvent.click(await screen.findByRole('menuitem', { name: 'Itinerário e mapa' }));
-    } else {
-      // Com uma única ação o ActionsMenu mostra o botão direto.
-      fireEvent.click(await screen.findByRole('button', { name: 'Itinerário e mapa' }));
-    }
+    // O menu do Radix abre por teclado no jsdom.
+    fireEvent.keyDown(await screen.findByRole('button', { name: 'Ações da rota Rota Norte' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Itinerário e mapa' }));
     return screen.findByRole('list', { name: 'Paradas do itinerário' });
   };
 

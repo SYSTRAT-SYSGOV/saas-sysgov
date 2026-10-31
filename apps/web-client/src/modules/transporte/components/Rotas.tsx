@@ -1,13 +1,14 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ListOrdered, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ListOrdered, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { ActionsMenu, Badge, Button, Card, CardContent, ConfirmDialog, DataTable, Input, Modal, Select, Switch, Textarea } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 import { mensagemDeErro, transporteApi, type FiltrosRota, type Opcoes, type Rota } from '../api';
-import { km, ROTULO_IRREGULARIDADE_ROTA, rotuloDe } from '../formato';
+import { km, ROTULO_IRREGULARIDADE_ROTA, rotuloDe, textoOcupacao } from '../formato';
+import { AlunosDaRota, SeloOcupacao } from './AlunosDaRota';
 import { Itinerario } from './Itinerario';
 
 const TODOS = 'todos';
@@ -29,6 +30,7 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
   const carga = useCarga(() => transporteApi.rotas(consulta), [consulta]);
   const [editando, setEditando] = useState<Rota | 'nova' | null>(null);
   const [itinerario, setItinerario] = useState<Rota | null>(null);
+  const [alunos, setAlunos] = useState<Rota | null>(null);
   const [excluindo, setExcluindo] = useState<Rota | null>(null);
   const gerenciar = opcoes.permissoes.gerenciar_rotas;
 
@@ -57,6 +59,7 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
           <ActionsMenu
             triggerLabel={`Ações da rota ${row.original.nome}`}
             items={[
+              { key: 'alunos', label: 'Alunos', icon: <Users className="h-3.5 w-3.5" />, onSelect: () => setAlunos(row.original) },
               { key: 'itinerario', label: 'Itinerário e mapa', icon: <ListOrdered className="h-3.5 w-3.5" />, onSelect: () => setItinerario(row.original) },
               ...(ctx.current.gerenciar ? [
                 { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(row.original) },
@@ -75,6 +78,18 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
     { id: 'motorista', header: 'Motorista', accessorFn: (r) => r.motorista?.nome ?? '—', meta: { exportHeader: 'Motorista', exportValue: (r) => r.motorista?.nome ?? '' } },
     { id: 'km', header: 'Extensão', accessorKey: 'km_total', cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{km(row.original.km_total)}</span>, meta: { exportHeader: 'Extensão (km)', exportValue: (r) => String(r.km_total) } },
     { id: 'paradas', header: 'Paradas', accessorFn: (r) => r.paradas_count ?? 0, cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.paradas_count ?? 0}</span>, meta: { exportHeader: 'Paradas', exportValue: (r) => String(r.paradas_count ?? 0) } },
+    {
+      id: 'ocupacao',
+      header: 'Ocupação',
+      accessorFn: (r) => r.ocupacao.alocados,
+      cell: ({ row }) => (
+        <span className="flex flex-wrap items-center gap-1">
+          <span className="font-mono text-xs tabular-nums">{textoOcupacao(row.original.ocupacao)}</span>
+          <SeloOcupacao ocupacao={row.original.ocupacao} />
+        </span>
+      ),
+      meta: { exportHeader: 'Ocupação', exportValue: (r) => textoOcupacao(r.ocupacao) },
+    },
     {
       id: 'situacao',
       header: 'Situação',
@@ -127,6 +142,9 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
       {editando && (
         <RotaModal opcoes={opcoes} rota={editando === 'nova' ? null : editando} aoFechar={() => setEditando(null)}
           aoSalvar={() => { setEditando(null); avisar({ type: 'success', title: 'Rota', message: 'Rota salva.' }); void carga.recarregar(); }} />
+      )}
+      {alunos && (
+        <AlunosDaRota rota={alunos} opcoes={opcoes} avisar={avisar} aoFechar={() => { setAlunos(null); void carga.recarregar(); }} />
       )}
       {itinerario && (
         <Itinerario rota={itinerario} podeEditar={gerenciar} avisar={avisar} aoFechar={() => { setItinerario(null); void carga.recarregar(); }} />
