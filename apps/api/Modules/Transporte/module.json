@@ -1,0 +1,31 @@
+{
+    "name": "Transporte",
+    "alias": "transporte",
+    "description": "Transporte escolar — empresas (prestadoras e locadoras), motoristas com elegibilidade pelo CTB, veículos (próprios, locados e terceirizados), vistorias do DETRAN e alertas de vencimento",
+    "priority": 45,
+    "providers": [
+        "Modules\\Transporte\\Providers\\TransporteServiceProvider",
+        "Modules\\Transporte\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Pessoas",
+        "Escola"
+    ],
+    "permissions": {
+        "transporte.view": "Consultar frota, rotas, alocações e painel do transporte escolar",
+        "transporte.frota.manage": "Gerir empresas, motoristas, veículos e vistorias",
+        "transporte.rotas.manage": "Gerir paradas, rotas e itinerários",
+        "transporte.alocacoes.manage": "Alocar e encerrar alunos em rotas",
+        "transporte.alocacoes.override_capacity": "Alocar acima da capacidade do veículo, com justificativa",
+        "transporte.censo.export": "Pré-validar e exportar o Registro 60 do Censo Escolar",
+        "transporte.audit": "Consultar a auditoria do módulo"
+    },
+    "menu": {
+        "label": "Transporte Escolar",
+        "icon": "Truck",
+        "order": 63,
+        "permission": "transporte.view",
+        "group": "GESTÃO SETORIAL"
+    }
+}
