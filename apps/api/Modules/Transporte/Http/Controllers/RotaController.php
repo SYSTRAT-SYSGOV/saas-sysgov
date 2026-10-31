@@ -44,7 +44,7 @@ final class RotaController extends Controller
 
         $pagina = Rota::query()
             ->with(['escola', 'empresa.pessoa', 'veiculo.empresa.pessoa', 'motorista.pessoa'])
-            ->withCount('itinerario')
+            ->withCount(['itinerario', 'alocacoes as alocacoes_ativas_count' => fn ($q) => $q->whereNull('data_fim')])
             ->when($filtros['ano_letivo'] ?? null, fn ($q, $v) => $q->where('ano_letivo', $v))
             ->when($filtros['escola_id'] ?? null, fn ($q, $v) => $q->where('escola_id', $v))
             ->when($filtros['turno'] ?? null, fn ($q, $v) => $q->where('turno', $v))
@@ -98,7 +98,7 @@ final class RotaController extends Controller
 
     private function carregar(Rota $rota): Rota
     {
-        return Rota::query()->with(['escola', 'empresa.pessoa', 'veiculo.empresa.pessoa', 'motorista.pessoa'])->withCount('itinerario')->findOrFail($rota->id);
+        return Rota::query()->with(['escola', 'empresa.pessoa', 'veiculo.empresa.pessoa', 'motorista.pessoa'])->withCount(['itinerario', 'alocacoes as alocacoes_ativas_count' => fn ($q) => $q->whereNull('data_fim')])->findOrFail($rota->id);
     }
 
     /** @return array<string, mixed> */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Transporte\Http\Controllers\AlertaController;
+use Modules\Transporte\Http\Controllers\AlocacaoController;
 use Modules\Transporte\Http\Controllers\AuditoriaController;
 use Modules\Transporte\Http\Controllers\EmpresaController;
 use Modules\Transporte\Http\Controllers\ItinerarioController;
@@ -21,6 +22,7 @@ Route::pattern('motorista', '[0-9]+');
 Route::pattern('veiculo', '[0-9]+');
 Route::pattern('parada', '[0-9]+');
 Route::pattern('rota', '[0-9]+');
+Route::pattern('alocacao', '[0-9]+');
 
 Route::get('/opcoes', OpcoesController::class);
 Route::get('/alertas', AlertaController::class);
@@ -59,3 +61,10 @@ Route::post('/rotas/{rota}/itinerario', [ItinerarioController::class, 'store']);
 Route::put('/rotas/{rota}/itinerario', [ItinerarioController::class, 'reordenar']);
 Route::put('/rotas/{rota}/itinerario/{parada}', [ItinerarioController::class, 'update']);
 Route::delete('/rotas/{rota}/itinerario/{parada}', [ItinerarioController::class, 'destroy']);
+
+Route::get('/rotas/{rota}/alunos', [AlocacaoController::class, 'index']);
+Route::get('/rotas/{rota}/alunos/busca', [AlocacaoController::class, 'busca']);
+Route::post('/rotas/{rota}/alunos', [AlocacaoController::class, 'store']);
+Route::get('/rotas/{rota}/alunos/{alocacao}', [AlocacaoController::class, 'show']);
+Route::put('/rotas/{rota}/alunos/{alocacao}', [AlocacaoController::class, 'update']);
+Route::post('/rotas/{rota}/alunos/{alocacao}/encerrar', [AlocacaoController::class, 'encerrar']);

@@ -7,6 +7,7 @@ namespace Modules\Transporte\Services;
 use App\Support\AuditLogger;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Modules\Transporte\Models\Alocacao;
 use Modules\Transporte\Models\Parada;
 use Modules\Transporte\Models\Rota;
 use Modules\Transporte\Models\RotaParada;
@@ -73,6 +74,10 @@ final class ItinerarioService
             $item = RotaParada::query()->where('rota_id', $rota->id)->where('parada_id', $paradaId)->first();
             if ($item === null) {
                 throw new DomainException('A parada não pertence ao itinerário desta rota.');
+            }
+            $comAlunos = Alocacao::query()->where('rota_id', $rota->id)->where('parada_id', $paradaId)->whereNull('data_fim')->count();
+            if ($comAlunos > 0) {
+                throw new ConflitoException("A parada tem {$comAlunos} aluno(s) alocado(s); mude a parada deles ou encerre as alocações antes de retirá-la.");
             }
             $item->delete();
             $restantes = RotaParada::query()->where('rota_id', $rota->id)->orderBy('ordem')->pluck('parada_id')->map(fn ($id): int => (int) $id)->all();

@@ -8,6 +8,7 @@ use App\Support\AuditLogger;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Modules\Escola\Models\Escola;
+use Modules\Transporte\Models\Alocacao;
 use Modules\Transporte\Models\Empresa;
 use Modules\Transporte\Models\Motorista;
 use Modules\Transporte\Models\Rota;
@@ -66,9 +67,20 @@ final class RotaService
         });
     }
 
-    /** Exclusão lógica. A Fase 3 passa a bloquear rota que já teve alocação. */
+    /** Confere empresa, veículo e motorista da rota gravada, por inteiro: usada na alocação de alunos (D13). */
+    public function exigirRegular(Rota $rota): void
+    {
+        $this->conferirEmpresa($rota->empresa_id);
+        $this->conferirVeiculo($rota->veiculo_id);
+        $this->conferirMotorista($rota->motorista_id);
+    }
+
+    /** Exclusão lógica; rota que já teve alocação só pode ser inativada. */
     public function excluir(Rota $rota): void
     {
+        if (Alocacao::query()->where('rota_id', $rota->id)->exists()) {
+            throw new ConflitoException('A rota já teve alunos alocados; inative-a em vez de excluir.');
+        }
         $antes = $rota->toArray();
         $rota->delete();
         $this->audit->record('transporte', 'rota.excluida', "rota:{$rota->id}", $antes, null);

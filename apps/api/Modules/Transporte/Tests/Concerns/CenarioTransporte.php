@@ -11,7 +11,12 @@ use App\Services\ModuleRoleProvisioner;
 use App\Support\TenantContext;
 use Illuminate\Support\Str;
 use Modules\Admin\Models\Module;
+use Modules\Escola\Models\Aluno;
 use Modules\Escola\Models\Escola;
+use Modules\Escola\Models\Turma;
+use Modules\Escola\Models\Turno;
+use Modules\Escola\Support\EscolaContext;
+use Modules\Escola\Tests\Support\AlunoDeTeste;
 use Modules\Transporte\Database\Seeders\TransporteRbacSeeder;
 
 /**
@@ -207,5 +212,58 @@ trait CenarioTransporte
     protected function criarRota(Tenant $tenant, User $gestor, Escola $escola, array $extra = []): int
     {
         return $this->como($gestor, $tenant)->postJson('/api/transporte/rotas', $this->dadosRota($tenant, $gestor, $escola, $extra))->assertCreated()->json('data.id');
+    }
+
+    /**
+     * Aluno da escola, com turma do ano e do turno pedidos (`$turma = false` cria o aluno sem turma).
+     *
+     * @param array<string, mixed> $extra
+     */
+    protected function criarAluno(Tenant $tenant, Escola $escola, string $nome, int $ano = 2026, string $turno = 'Manhã', bool $turma = true, array $extra = []): Aluno
+    {
+        return $this->noTenant($tenant, function () use ($escola, $nome, $ano, $turno, $turma, $extra): Aluno {
+            $escolas = app(EscolaContext::class);
+            $escolas->set($escola);
+            try {
+                $turmaId = null;
+                if ($turma) {
+                    $t = Turno::firstOrCreate(['nome' => $turno], ['ordem' => 1]);
+                    $turmaId = Turma::firstOrCreate(['nome' => "Turma {$ano} {$turno}", 'ano_letivo' => $ano], ['turno_id' => $t->id])->id;
+                }
+
+                return AlunoDeTeste::criar(['nome' => $nome, 'turma_id' => $turmaId, 'situacao' => 'ativo', ...$extra]);
+            } finally {
+                $escolas->clear();
+            }
+        });
+    }
+
+    /**
+     * Rota regular (veículo próprio com vistoria vigente e motorista elegível) com uma parada no itinerário.
+     *
+     * @param array<string, mixed> $veiculo
+     * @param array<string, mixed> $rota
+     * @return array{rota: int, parada: int, veiculo: int, escola: Escola}
+     */
+    protected function rotaPronta(Tenant $tenant, User $gestor, int $capacidade = 2, array $veiculo = [], array $rota = [], ?Escola $escola = null): array
+    {
+        $escola ??= $this->criarEscola($tenant);
+        $veiculoId = $this->criarVeiculo($tenant, $gestor, ['capacidade' => $capacidade, ...$veiculo]);
+        $this->registrarVistoria($tenant, $gestor, $veiculoId, now()->addMonths(5)->toDateString());
+        $motorista = $this->criarMotorista($tenant, $gestor);
+        $rotaId = $this->criarRota($tenant, $gestor, $escola, ['veiculo_id' => $veiculoId, 'motorista_id' => $motorista, ...$rota]);
+        $parada = $this->criarParada($tenant, $gestor);
+        $this->como($gestor, $tenant)->postJson("/api/transporte/rotas/{$rotaId}/itinerario", ['parada_id' => $parada])->assertCreated();
+
+        return ['rota' => $rotaId, 'parada' => $parada, 'veiculo' => $veiculoId, 'escola' => $escola];
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     * @return \Illuminate\Testing\TestResponse<\Symfony\Component\HttpFoundation\Response>
+     */
+    protected function alocar(Tenant $tenant, User $usuario, int $rota, int $parada, Aluno $aluno, array $extra = []): \Illuminate\Testing\TestResponse
+    {
+        return $this->como($usuario, $tenant)->postJson("/api/transporte/rotas/{$rota}/alunos", ['aluno_id' => $aluno->id, 'parada_id' => $parada, ...$extra]);
     }
 }

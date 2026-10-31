@@ -14,11 +14,13 @@ export interface Opcoes {
   escolas: Ref[];
   anos_letivos: number[];
   veiculos: { id: number; placa: string; descricao: string }[];
+  poderes_publicos: { valor: number; rotulo: string }[];
+  mediacoes: OpcaoTexto[];
   categorias_cnh: string[];
   tipologias: { valor: number; rotulo: string }[];
   empresas: (Ref & { tipo: string })[];
   motoristas: Ref[];
-  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; auditar: boolean };
+  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; gerenciar_alocacoes: boolean; exceder_capacidade: boolean; auditar: boolean };
 }
 
 export interface Empresa {
@@ -191,6 +193,14 @@ export interface Parada {
 
 export type ParadaEntrada = Omit<Parada, 'id' | 'tem_coordenadas'>;
 
+export interface Ocupacao {
+  alocados: number;
+  capacidade: number | null;
+  percentual: number | null;
+  faixa: 'verde' | 'amarelo' | 'vermelho' | null;
+  calculavel: boolean;
+}
+
 export interface Rota {
   id: number;
   nome: string;
@@ -210,6 +220,7 @@ export interface Rota {
   horario_retorno: string | null;
   ativa: boolean;
   paradas_count: number | null;
+  ocupacao: Ocupacao;
   regular: boolean;
   motivos_irregularidade: string[];
   observacoes: string | null;
@@ -241,6 +252,45 @@ export interface ItemItinerario {
   desembarque_previsto: string | null;
   parada: Parada;
 }
+
+export interface Alocacao {
+  id: number;
+  rota_id: number;
+  aluno: { id: number; nome: string; escola: string | null; turma: string | null; turno_turma: string | null } | null;
+  parada: Ref | null;
+  turno: string;
+  usa_transporte_rural: boolean;
+  poder_publico: number | null;
+  poder_publico_rotulo: string | null;
+  necessidade_especial: boolean;
+  /** Só na ficha, para quem gerencia alocações (dado sensível). */
+  necessidade_observacao?: string | null;
+  atendimento_curricular: boolean;
+  mediacao_didatica: string;
+  mediacao_didatica_rotulo: string | null;
+  pais_residencia: string;
+  data_inicio: string;
+  data_fim: string | null;
+  motivo_fim: string | null;
+  justificativa_excesso: string | null;
+  observacoes: string | null;
+  ativa: boolean;
+  avisos: string[];
+}
+
+export interface AlocacaoEntrada {
+  parada_id: number;
+  usa_transporte_rural: boolean;
+  poder_publico: number | null;
+  necessidade_especial: boolean;
+  necessidade_observacao: string | null;
+  atendimento_curricular: boolean;
+  mediacao_didatica: string;
+  pais_residencia: string;
+  observacoes: string | null;
+}
+
+export interface AlunoBusca { id: number; nome: string; cgm: string | null; escola: string | null; turma: string | null; turno: string | null }
 
 export interface Pagina<T> { data: T[]; current_page: number; last_page: number; total: number }
 
@@ -299,6 +349,17 @@ export const transporteApi = {
     (await apiClient.delete<{ data: ItemItinerario[] }>(`${base}/rotas/${rotaId}/itinerario/${paradaId}`)).data.data,
   reordenarItinerario: async (rotaId: number, paradas: number[]) =>
     (await apiClient.put<{ data: ItemItinerario[] }>(`${base}/rotas/${rotaId}/itinerario`, { paradas })).data.data,
+
+  alunosDaRota: async (rotaId: number, encerradas = false) =>
+    (await apiClient.get<{ data: Alocacao[]; ocupacao: Ocupacao }>(`${base}/rotas/${rotaId}/alunos`, { params: { encerradas: encerradas ? 1 : 0 } })).data,
+  buscarAlunos: async (rotaId: number, q: string) => (await apiClient.get<{ data: AlunoBusca[] }>(`${base}/rotas/${rotaId}/alunos/busca`, { params: { q } })).data.data,
+  alocacao: async (rotaId: number, id: number) => (await apiClient.get<{ data: Alocacao }>(`${base}/rotas/${rotaId}/alunos/${id}`)).data.data,
+  alocar: async (rotaId: number, dados: AlocacaoEntrada & { aluno_id: number; justificativa_excesso?: string | null }) =>
+    (await apiClient.post<{ data: Alocacao }>(`${base}/rotas/${rotaId}/alunos`, dados)).data.data,
+  atualizarAlocacao: async (rotaId: number, id: number, dados: AlocacaoEntrada) =>
+    (await apiClient.put<{ data: Alocacao }>(`${base}/rotas/${rotaId}/alunos/${id}`, dados)).data.data,
+  encerrarAlocacao: async (rotaId: number, id: number, dados: { data_fim: string; motivo: string }) =>
+    (await apiClient.post<{ data: Alocacao }>(`${base}/rotas/${rotaId}/alunos/${id}/encerrar`, dados)).data.data,
 
   auditoria: async (params: { acao?: string; page?: number; per_page?: number }) =>
     (await apiClient.get<Pagina<RegistroAuditoria>>(`${base}/auditoria`, { params })).data,
