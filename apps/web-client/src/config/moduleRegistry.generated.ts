@@ -30,6 +30,7 @@ const MultiprofissionalComponent = lazy(() => import('@/modules/multiprofissiona
 const PasseioComponent = lazy(() => import('@/modules/passeio/PasseioModule'));
 const PortfolioComponent = lazy(() => import('@/modules/portfolio/PortfolioModule'));
 const RequerimentosComponent = lazy(() => import('@/modules/requerimentos/RequerimentosModule'));
+const TransporteComponent = lazy(() => import('@/modules/transporte/TransporteModule'));
 const VistoriaComponent = lazy(() => import('@/modules/vistoria/VistoriaModule'));
 
 export interface ModuleDefinition {
@@ -289,6 +290,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['requerimentos'],
     requiredPermission: 'requerimentos.view',
     icon: 'ScrollText',
+  },
+  transporte: {
+    id: 'transporte',
+    name: "Transporte Escolar",
+    component: TransporteComponent,
+    routePath: 'transporte',
+    routes: ['transporte'],
+    requiredPermission: 'transporte.view',
+    icon: 'Truck',
   },
   vistoria: {
     id: 'vistoria',
