@@ -1,0 +1,57 @@
+# Design — Transporte, Fase 4: Censo e painel
+
+As decisões comuns (D1 a D10) estão em `transporte-fase-1-fundacao-e-frota/design.md`.
+
+## Decisões
+
+### D25. Fonte dos dados do Registro 60
+Uma linha por **alocação ativa** do ano letivo, juntando aluno (`escola_alunos`), escola (`escola_escolas`, com o Inep), turma, rota, veículo e a alocação. Alocações encerradas não saem.
+
+### D26. Declaração de transporte público e anulação
+- Transporte público = 1 quando há alocação ativa; 0 caso contrário.
+- Poder público responsável = valor da alocação (1 estadual, 2 municipal, 3 compartilhado).
+- **Anulação** (campos de transporte público vazios e tipologias zeradas) quando `atendimento_curricular` é falso, ou `mediacao_didatica` é `distancia`, ou `pais_residencia` ≠ `BR`. É a regra do legado (`TransporteEscolarPublico`).
+- Tipologias: van/kombi (1), microônibus (2), ônibus (3), bicicleta (4), tração animal (5), outro (6), aquaviário até 5 (7), de 5 a 15 (8), de 15 a 35 (9), acima de 35 (10) e ferroviário (11). Marca-se a tipologia do veículo da rota.
+
+### D27. Pré-validação não bloqueia a geração
+`approved` é verdadeiro só sem **pendências**, mas o arquivo pode ser gerado mesmo com pendência: o gestor decide. Pendências: `sem_alocacao_ativa`, `rota_sem_veiculo`, `rural_sem_declaracao`, `veiculo_nao_adaptado`, `sem_codigo_inep` e `campo_sem_dado` (campo selecionado sem dado cadastrado). A pré-validação só cobra os campos da seleção. O `turno_divergente` da Fase 3 é um **aviso** e não impede `approved`. O cadastro escolar não tem marca de "aluno que deveria usar transporte"; por isso `sem_alocacao_ativa` só vale para quem **já teve** alocação no ano e hoje não tem nenhuma ativa.
+
+### D28. Leiaute oficial do Educacenso (decisão do usuário)
+O arquivo segue o **leiaute oficial vigente do Inep** para o ano do Censo, e não um formato próprio. Regras:
+- O leiaute é um **documento externo** que muda de ano para ano. Ele é implementado como uma classe `LeiauteRegistro60` por ano (`Leiaute2026`, ...), com a lista de campos, posições, tamanhos, obrigatoriedade, delimitador e codificação **copiados do documento oficial**. Nada disso é presumido neste design.
+- Cada leiaute tem um teste com arquivo de referência ("golden file") montado a partir do exemplo do próprio documento do Inep.
+- O mesmo código de domínio (D26) alimenta qualquer ano; só a serialização muda.
+- Troca de ano = nova classe de leiaute e novos testes, sem tocar nas regras.
+
+### D29. O Registro 60 é de matrícula, não só de transporte
+No Educacenso, o transporte escolar é parte do registro de **matrícula do aluno**, que tem também campos de turma, etapa e outros que pertencem ao Escola/Pedagógico. O SysGov **não tem hoje nenhuma exportação do Educacenso**. Para esta fase, o Transporte gera as linhas do Registro 60 preenchendo os campos que ele possui (identificação da escola, do aluno e da turma, transporte público, poder público e tipologias) e deixa os demais **vazios, como o leiaute permitir**, de modo que o arquivo possa ser **complementado** pelo módulo que vier a ter os demais campos. Se o leiaute exigir esses campos como obrigatórios, a Fase 4 não consegue entregar um arquivo de importação completo sozinha, e isso deve ser tratado antes de começar (pergunta aberta 2).
+
+### D35. Escolha dos campos a exportar (decisão do usuário)
+O usuário decide **quais campos** entram na exportação, em vez de o sistema fixar o conjunto.
+- **Catálogo de campos** por leiaute/ano: para cada campo, `chave`, rótulo, grupo (identificação, transporte, matrícula), origem (Transporte, Escola, fixo), se é **obrigatório no leiaute**, se é **sensível** e como é formatado. O catálogo vem da classe do leiaute (D28), então muda com o ano.
+- **Seleção**: a tela lista os campos por grupo, com marcar tudo/limpar e a busca. Campos obrigatórios do leiaute vêm marcados e **não podem ser desmarcados**; se o usuário tentar, o sistema explica por quê.
+- **Efeito no arquivo oficial**: o campo não selecionado **sai vazio na sua posição**, sem remover a coluna, para o arquivo continuar válido para importação. **Efeito no CSV de conferência**: o campo não selecionado é **omitido**.
+- **Modelos de exportação**: o usuário salva a seleção com um nome (`transporte_modelos_exportacao`: nome, leiaute/ano, lista de chaves, criado por) e reaplica depois. Há um modelo padrão do sistema, "Registro 60 completo", que não pode ser apagado.
+- **Campos sensíveis**: os marcados como sensíveis (por exemplo, CPF, quando o leiaute o pedir) só aparecem para quem tem `transporte.censo.export`, pedem confirmação explícita ao serem marcados e são auditados pelo nome. A observação de necessidade especial **nunca** está no catálogo.
+- **Campos novos**: o catálogo é uma lista declarativa; acrescentar um campo é acrescentar uma entrada (e, se a origem for outra tabela, o campo correspondente). Quando um campo escolhido não tiver dado cadastrado, ele sai vazio e aparece a pendência `campo_sem_dado` na pré-validação.
+
+### D30. Códigos Inep do aluno e da turma
+O leiaute identifica aluno, turma e matrícula por códigos do Inep e do sistema próprio. O cadastro escolar tem o Inep da **escola**, mas **não** tem o código Inep do aluno nem o da turma. **Aprovado pelo usuário**: acrescentar `inep_id` (nulo) em `escola_alunos` e `inep` (nulo) em `escola_turmas`, com edição na tela do Escola e importação opcional. Sem o código, a linha ganha a pendência `sem_codigo_inep` e o campo sai vazio. O identificador interno do SysGov continua servindo como "código no sistema próprio".
+
+### D31. CSV de conferência
+Além do arquivo oficial, um CSV de conferência (UTF-8 com BOM, `;`) com aluno, escola, turno, rota, placa, tipologia e as variáveis de transporte, para o gestor revisar. **Sem** CPF, **sem** endereço e **sem** a observação de necessidade especial. Células iniciadas por `=`, `+`, `-` ou `@` recebem um apóstrofo (injeção de fórmula).
+
+### D32. Auditoria e permissão da geração
+A pré-validação, a geração (arquivo oficial e CSV) e a gestão dos modelos de exportação exigem `transporte.censo.export` e vão para o `audit_logs` (usuário, ano, tipo de arquivo, quantidade de linhas, versão do leiaute e **lista de campos exportados**). O arquivo oficial contém dados de crianças, por isso é gerado sob demanda e **não é guardado** no servidor.
+
+### D33. Painel
+Dados calculados na hora (sem tabela nova): totais por contagem, ocupação média ponderada pela capacidade, lista de rotas por faixa (vermelhas primeiro), rotas sem veículo como pendência e o `AlertaService` da Fase 1.
+
+### D34. Home do Cliente
+Não muda. A home enxuta (`client-home`) continua com os quatro cartões fixos; o painel do Transporte vive dentro do módulo.
+
+## Perguntas abertas desta fase (precisam de resposta antes de implementar)
+1. Existe como saber, no cadastro escolar, quais alunos **deveriam** usar transporte (por exemplo, zona rural)? Se sim, `sem_alocacao_ativa` cobre todos eles.
+2. O leiaute oficial do ano exige os campos de matrícula que o Transporte não possui? Se sim, quem vai fornecê-los (módulo Escola/Pedagógico) e a Fase 4 entrega o arquivo parcial, ou o escopo cresce?
+3. ~~Aprovar a adição dos campos de código Inep do aluno e da turma no Escola (D30)~~ — **aprovado**; o usuário autorizou também acrescentar os outros campos que se mostrarem necessários.
+4. Qual é o primeiro ano de Censo que o órgão precisa atender? Define qual leiaute implementar primeiro.
