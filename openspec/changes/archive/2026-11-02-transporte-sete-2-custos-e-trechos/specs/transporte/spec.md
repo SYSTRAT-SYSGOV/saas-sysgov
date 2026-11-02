@@ -7,6 +7,11 @@ O sistema DEVE manter, por tenant e ano, os parâmetros do cálculo de custo (ca
 - **WHEN** o usuário altera o preço do combustível de 2026
 - **THEN** o valor é salvo, a auditoria registra a alteração e os cálculos de 2026 passam a usá-lo
 
+#### Scenario: Sem valor de referência inventado
+- **GIVEN** um órgão que nunca informou o salário do motorista
+- **WHEN** o usuário abre os parâmetros
+- **THEN** o salário aparece vazio e só as constantes do calendário (dias letivos, meses letivos, viagens por dia) vêm preenchidas como padrão
+
 #### Scenario: Valor fora da faixa
 - **WHEN** o usuário informa encargos sociais negativos
 - **THEN** a API responde 422 indicando a faixa válida

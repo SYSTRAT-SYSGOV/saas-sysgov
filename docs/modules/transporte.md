@@ -20,9 +20,11 @@ Origem: reescrita, para o SysGov, do projeto `sys-transporte` (Rust), adaptada �
 | `transporte.censo.export` | Pré-validação, arquivos do Censo e modelos de exportação |
 | `transporte.censo.importar` | Importar o arquivo do Educacenso e testar o leiaute de importação |
 | `transporte.censo.leiaute` | Criar, alterar e excluir campos do leiaute de importação do Educacenso |
+| `transporte.custos.ver` | Custo estimado das rotas e relatório de custos |
+| `transporte.custos.parametros` | Alterar os parâmetros do cálculo de custo |
 | `transporte.audit` | Tela de auditoria do módulo |
 
-Perfis (clonados por tenant a partir do tenant `systrat` pelo `ModuleRoleProvisioner`, semeados por `TransporteRbacSeeder`): **Coordenação** (`transporte_coordenacao`, todas), **Operador** (`transporte_operador`, tudo menos exceção de capacidade, edição do leiaute de importação e auditoria) e **Consulta** (`transporte_consulta`, só `view`).
+Perfis (clonados por tenant a partir do tenant `systrat` pelo `ModuleRoleProvisioner`, semeados por `TransporteRbacSeeder`): **Coordenação** (`transporte_coordenacao`, todas), **Operador** (`transporte_operador`, tudo menos exceção de capacidade, edição do leiaute de importação, parâmetros de custo e auditoria) e **Consulta** (`transporte_consulta`, só `view`).
 
 ## Regras de negócio
 
@@ -73,6 +75,20 @@ Lê o arquivo do Censo Escolar (texto separado por `|`, registros 00 escola, 20 
 
 Crédito: o formato dos registros e as regras de leitura se baseiam no **SETE** (UFG/CECATE, https://github.com/marcosroriz/sete), licença **MIT**, Copyright (c) Marcos Roriz. Nenhum código foi copiado; a lógica foi reimplementada.
 
+## Custos (estimativa)
+
+Custo estimado de cada rota, por mês, por ano, por km e por aluno, a partir de **parâmetros que o órgão informa por ano**. **É uma estimativa: o modelo (estilo FNDE/GEIPOT, como o SETE o aplica) não foi conferido com a planilha oficial**, que o órgão não tem. Serve para comparar rotas e acompanhar contratos, não como valor oficial. As fórmulas estão em `Custo/CalculadoraCustoRota.php` (função pura, com casos conferidos à mão em `CustosTest`) e podem ser ajustadas quando houver referência.
+
+- **Modal:** vem da tipologia do veículo da rota (7 a 10 = aquaviário; os demais, rodoviário). Rota sem veículo não tem cálculo.
+- **Fixo mensal:** pessoal (salário × coeficiente de utilização × (1 + encargos)), administrativo, depreciação (soma dos dígitos dos anos, com valor residual; usa o ano de fabricação do veículo), remuneração do capital (capital médio × taxa) e seguro; no aquaviário, também manutenção. **Variável por km:** combustível, lubrificantes e, no rodoviário, rodagem e peças.
+- **Calendário:** dias letivos por mês (20), meses letivos (10), viagens por dia (2, ida e volta) e meses de custo fixo (12) são parâmetros. O **km da rota é o de um percurso**. Custo do mês = fixo + variável × km do mês; custo do ano = fixo × 12 + variável × km do ano.
+- **Parâmetros:** catálogo fixo (`Custo/Parametros.php`); o órgão edita valores por ano e pode copiar de um ano para outro. **Não há valor de referência para salário, preço ou consumo**: até serem informados, a rota aparece como **incompleta**, com a lista do que falta (nunca zero). Só as constantes do calendário vêm preenchidas.
+- **Por aluno:** divide pelos alunos com alocação ativa; rota sem alunos tem custo por aluno **indefinido**, não zero.
+- **Contratado × estimado:** rota com veículo locado ou terceirizado aceita o **custo contratado por mês**; a tela mostra a diferença e sinaliza quando passa do limite (parâmetro, padrão 10 %). Veículo próprio não tem custo contratado (422).
+- **Características do trecho:** porteira, mata-burro, colchete, atoleiro e ponte rústica, no cadastro da rota e como filtro. São informativas: **não entram na fórmula**.
+- **Simulação:** a consulta da rota aceita `simular[chave]=valor` e calcula com o valor trocado, sem salvar.
+- **Relatório:** por rota, por escola e por empresa (só rotas completas entram nos totais) e CSV com neutralização de fórmula, auditado.
+
 ## Rotas da API
 
 | Método | Rota | Permissão |
@@ -93,6 +109,10 @@ Crédito: o formato dos registros e as regras de leitura se baseiam no **SETE** 
 | GET/POST | `/censo/importacao/leiautes` (POST duplica) | censo.importar ou censo.leiaute / censo.leiaute |
 | GET/PUT/DELETE | `/censo/importacao/leiautes/{id}`; `POST .../restaurar`, `.../padrao` | idem / censo.leiaute |
 | POST | `/censo/importacao/testar`, `/censo/importacao/previa` (arquivo, `leiaute_id`) | censo.importar |
+| GET/PUT | `/custos/parametros?ano=` (PUT: `ano`, `valores`; vazio apaga) | custos.ver / custos.parametros |
+| POST | `/custos/parametros/copiar` (`de`, `para`, `sobrescrever`) | custos.parametros |
+| GET | `/custos/rotas?ano=`, `/custos/rotas/{rota}` (`simular[chave]=`) | custos.ver |
+| GET | `/custos/relatorio?ano=`, `/custos/relatorio/csv?ano=` (`escola_id`, `empresa_id`, `modal`) | custos.ver |
 | GET | `/importacoes/modelo/{tipo}` | frota.manage / rotas.manage |
 | POST | `/importacoes/{tipo}/previa`, `/importacoes/{id}/confirmar` (Censo: `casar_por_nome`) | idem (Censo: censo.importar) |
 | GET/DELETE | `/importacoes/{id}` | idem |
@@ -101,7 +121,7 @@ Erros de regra: `409` (conflito: placa/CNH repetida, capacidade, regularidade, i
 
 ## Telas (`apps/web-client/src/modules/transporte`)
 
-Painel · Rotas (itinerário e mapa Leaflet, alunos da rota com ocupação) · Paradas · Veículos (vistorias) · Motoristas · Empresas · Censo (Exportar, Importar do Educacenso e Leiaute de importação, conforme a permissão) · Auditoria. Escritas com `@sysgov/ui`. Importar CSV nas telas de Veículos, Motoristas e Paradas. A ocupação e a irregularidade aparecem sempre com **texto**, não só com cor.
+Painel · Rotas (itinerário e mapa Leaflet, alunos da rota com ocupação) · Paradas · Veículos (vistorias) · Motoristas · Empresas · Custos (custo das rotas, parâmetros e relatório) · Censo (Exportar, Importar do Educacenso e Leiaute de importação, conforme a permissão) · Auditoria. Escritas com `@sysgov/ui`. Importar CSV nas telas de Veículos, Motoristas e Paradas. A ocupação e a irregularidade aparecem sempre com **texto**, não só com cor.
 
 ## Privacidade (LGPD)
 
@@ -126,6 +146,7 @@ Depende do Cadastro Escolar (`EscolaDadosDemonstracaoSeeder`). Idempotente (não
 - A frota do módulo **Passeio** (`passeio_veiculos`) é separada; a ponte opcional com o Transporte foi descartada (decisão D33).
 - Migração automática de dados do i-Educar está fora do escopo.
 - O código Inep da turma ainda só entra pela tela do Escola; o do aluno também pode ser preenchido pela importação do Educacenso.
+- Os custos não foram conferidos com a planilha oficial (ver Custos); o cartão de custo no painel ficou para depois.
 - O mapeamento das colunas do Educacenso 2023 não foi conferido com arquivo real (ver Importação do arquivo do Educacenso).
 - Conferência no navegador das telas (tarefa 5.2 de cada fase) pendente: depende de login.
 - Concorrência de alocação: o `lockForUpdate` só é exercitado no MySQL; os testes (SQLite) cobrem a regra, não a corrida.

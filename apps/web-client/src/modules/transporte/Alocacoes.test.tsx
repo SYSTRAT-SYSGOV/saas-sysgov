@@ -19,7 +19,8 @@ const opcoes = (extra: Partial<Opcoes['permissoes']> = {}): Opcoes => ({
   tipos_empresa: [], origens: [], tipos_rede: [], turnos: [], escolas: [], anos_letivos: [2026], veiculos: [],
   poderes_publicos: [{ valor: 1, rotulo: 'Estadual' }, { valor: 2, rotulo: 'Municipal' }], mediacoes: [{ valor: 'presencial', rotulo: 'Presencial' }],
   categorias_cnh: [], tipologias: [], empresas: [], motoristas: [],
-  permissoes: { gerenciar_frota: true, gerenciar_rotas: true, gerenciar_alocacoes: true, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, auditar: false, ...extra },
+  caracteristicas_trecho: [],
+  permissoes: { gerenciar_frota: true, gerenciar_rotas: true, gerenciar_alocacoes: true, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, ver_custos: false, gerenciar_parametros_custo: false, auditar: false, ...extra },
 });
 
 const ocupacao = (alocados: number, capacidade: number | null = 2): Ocupacao => {
@@ -32,7 +33,7 @@ const rota = (extra: Partial<Rota> = {}): Rota => ({
   id: 7, nome: 'Rota Norte', escola: { id: 5, nome: 'Escola Rio Claro' }, ano_letivo: 2026, turno: 'manha', turno_rotulo: 'Manhã', tipo_rede: 'rural',
   empresa: null, veiculo: { id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01' }, motorista: null, km_pavimentado: 0, km_nao_pavimentado: 0, km_total: 0,
   horario_saida: null, horario_chegada: null, horario_retorno: null, ativa: true, paradas_count: 1, ocupacao: ocupacao(1), regular: true,
-  motivos_irregularidade: [], observacoes: null, ...extra,
+  motivos_irregularidade: [], observacoes: null, caracteristicas: [], custo_contratado_mensal: null, ...extra,
 });
 
 const alocacao = (extra: Partial<Alocacao> = {}): Alocacao => ({

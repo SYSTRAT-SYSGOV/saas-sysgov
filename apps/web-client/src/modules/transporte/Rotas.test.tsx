@@ -32,9 +32,10 @@ const opcoes = (gerenciar = true): Opcoes => ({
   tipos_empresa: [], origens: [], tipos_rede: [{ valor: 'rural', rotulo: 'Rural' }],
   turnos: [{ valor: 'manha', rotulo: 'Manhã' }, { valor: 'tarde', rotulo: 'Tarde' }],
   escolas: [{ id: 5, nome: 'Escola Rio Claro' }], anos_letivos: [2026, 2025],
-  veiculos: [{ id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01' }],
+  veiculos: [{ id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01', origem: 'propria' }, { id: 3, placa: 'LOC1A23', descricao: 'Van locada', origem: 'locada' }],
   poderes_publicos: [], mediacoes: [], categorias_cnh: ['D'], tipologias: [], empresas: [], motoristas: [{ id: 2, nome: 'João da Silva' }],
-  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, auditar: false },
+  caracteristicas_trecho: [{ valor: 'porteira', rotulo: 'Porteira' }, { valor: 'atoleiro', rotulo: 'Trecho com atoleiro' }],
+  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, ver_custos: false, gerenciar_parametros_custo: false, auditar: false },
 });
 
 const parada = (extra: Partial<Parada> = {}): Parada => ({
@@ -46,7 +47,7 @@ const rota = (extra: Partial<Rota> = {}): Rota => ({
   id: 7, nome: 'Rota Norte', escola: { id: 5, nome: 'Escola Rio Claro' }, ano_letivo: 2026, turno: 'manha', turno_rotulo: 'Manhã', tipo_rede: 'rural',
   empresa: null, veiculo: { id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01' }, motorista: { id: 2, nome: 'João da Silva' },
   km_pavimentado: 12.5, km_nao_pavimentado: 7.25, km_total: 19.75, horario_saida: '06:30', horario_chegada: null, horario_retorno: null,
-  ativa: true, paradas_count: 3, ocupacao: { alocados: 20, capacidade: 40, percentual: 50, faixa: 'verde', calculavel: true }, regular: true, motivos_irregularidade: [], observacoes: null, ...extra,
+  ativa: true, paradas_count: 3, ocupacao: { alocados: 20, capacidade: 40, percentual: 50, faixa: 'verde', calculavel: true }, regular: true, motivos_irregularidade: [], observacoes: null, caracteristicas: [], custo_contratado_mensal: null, ...extra,
 });
 
 const item = (ordem: number, p: Partial<Parada> = {}): ItemItinerario => ({
@@ -175,6 +176,48 @@ describe('Rotas', () => {
     expect(api.salvarRota).toHaveBeenCalledWith(null, expect.objectContaining({
       nome: 'Rota Sul', escola_id: 5, ano_letivo: 2026, turno: 'manha', veiculo_id: null, motorista_id: null, empresa_id: null, km_pavimentado: 12.5, km_nao_pavimentado: 0,
     }));
+  });
+
+  it('marca as características do trecho e envia a lista; sem veículo locado não há custo contratado', async () => {
+    api.rotas.mockResolvedValue(pagina([]));
+    api.salvarRota.mockResolvedValue(rota());
+    render(<Rotas opcoes={opcoes()} avisar={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Nova rota/ }));
+    fireEvent.change(await screen.findByLabelText('Nome *'), { target: { value: 'Rota Sul' } });
+    fireEvent.click(screen.getByLabelText('Porteira'));
+    fireEvent.click(screen.getByLabelText('Trecho com atoleiro'));
+    expect(screen.queryByLabelText(/Custo contratado/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(api.salvarRota).toHaveBeenCalled());
+    expect(api.salvarRota).toHaveBeenCalledWith(null, expect.objectContaining({ caracteristicas: ['porteira', 'atoleiro'], custo_contratado_mensal: null }));
+  });
+
+  it('rota com veículo locado mostra e envia o custo contratado por mês', async () => {
+    api.rotas.mockResolvedValue(pagina([rota({ veiculo: { id: 3, placa: 'LOC1A23', descricao: 'Van locada' }, custo_contratado_mensal: 16500, caracteristicas: ['porteira'] })]));
+    api.salvarRota.mockResolvedValue(rota());
+    render(<Rotas opcoes={opcoes()} avisar={vi.fn()} />);
+    fireEvent.keyDown(await screen.findByRole('button', { name: 'Ações da rota Rota Norte' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Editar' }));
+
+    const campo = await screen.findByLabelText('Custo contratado por mês (R$)');
+    expect(campo).toHaveValue('16500');
+    expect(screen.getByLabelText('Porteira')).toBeChecked();
+    fireEvent.change(campo, { target: { value: '17000,5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(api.salvarRota).toHaveBeenCalled());
+    expect(api.salvarRota).toHaveBeenCalledWith(7, expect.objectContaining({ custo_contratado_mensal: 17000.5, caracteristicas: ['porteira'] }));
+  });
+
+  it('filtra as rotas por característica do trecho', async () => {
+    api.rotas.mockResolvedValue(pagina([rota()]));
+    render(<Rotas opcoes={opcoes()} avisar={vi.fn()} />);
+    await screen.findByText('Rota Norte');
+
+    expect(screen.getByText('Característica do trecho')).toBeInTheDocument();
+    expect(api.rotas).toHaveBeenCalledWith(expect.not.objectContaining({ caracteristica: expect.anything() }));
   });
 
   it('erro de regularidade da API aparece no formulário', async () => {

@@ -25,6 +25,8 @@ final class TransporteRbacSeeder extends Seeder
         'transporte.censo.export' => 'Pré-validar e exportar o Registro 60 do Censo Escolar',
         'transporte.censo.importar' => 'Importar o arquivo do Educacenso e conferir o leiaute de importação',
         'transporte.censo.leiaute' => 'Criar, alterar e excluir campos do leiaute de importação do Educacenso',
+        'transporte.custos.ver' => 'Consultar o custo estimado das rotas e o relatório de custos',
+        'transporte.custos.parametros' => 'Alterar os parâmetros do cálculo de custo',
         'transporte.audit' => 'Consultar a auditoria do módulo',
     ];
 
@@ -35,13 +37,13 @@ final class TransporteRbacSeeder extends Seeder
             'description' => 'Acesso total: frota, rotas, alocações (inclusive acima da capacidade), Censo e auditoria',
             'permissions' => [
                 'transporte.view', 'transporte.frota.manage', 'transporte.rotas.manage', 'transporte.alocacoes.manage',
-                'transporte.alocacoes.override_capacity', 'transporte.censo.export', 'transporte.censo.importar', 'transporte.censo.leiaute', 'transporte.audit',
+                'transporte.alocacoes.override_capacity', 'transporte.censo.export', 'transporte.censo.importar', 'transporte.censo.leiaute', 'transporte.custos.ver', 'transporte.custos.parametros', 'transporte.audit',
             ],
         ],
         'transporte_operador' => [
             'name' => 'Operador de Transporte',
             'description' => 'Gere frota, rotas, alocações e o Censo, sem exceção de capacidade nem auditoria',
-            'permissions' => ['transporte.view', 'transporte.frota.manage', 'transporte.rotas.manage', 'transporte.alocacoes.manage', 'transporte.censo.export', 'transporte.censo.importar'],
+            'permissions' => ['transporte.view', 'transporte.frota.manage', 'transporte.rotas.manage', 'transporte.alocacoes.manage', 'transporte.censo.export', 'transporte.censo.importar', 'transporte.custos.ver'],
         ],
         'transporte_consulta' => [
             'name' => 'Consulta de Transporte',

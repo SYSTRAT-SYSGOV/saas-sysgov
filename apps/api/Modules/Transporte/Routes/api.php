@@ -9,6 +9,7 @@ use Modules\Transporte\Http\Controllers\AuditoriaController;
 use Modules\Transporte\Http\Controllers\CensoController;
 use Modules\Transporte\Http\Controllers\CensoImportacaoController;
 use Modules\Transporte\Http\Controllers\CensoLeiauteController;
+use Modules\Transporte\Http\Controllers\CustoController;
 use Modules\Transporte\Http\Controllers\EmpresaController;
 use Modules\Transporte\Http\Controllers\ImportacaoController;
 use Modules\Transporte\Http\Controllers\ItinerarioController;
@@ -80,6 +81,13 @@ Route::put('/rotas/{rota}/alunos/{alocacao}', [AlocacaoController::class, 'updat
 Route::post('/rotas/{rota}/alunos/{alocacao}/encerrar', [AlocacaoController::class, 'encerrar']);
 
 Route::get('/painel', PainelController::class);
+Route::get('/custos/parametros', [CustoController::class, 'parametros']);
+Route::put('/custos/parametros', [CustoController::class, 'salvarParametros']);
+Route::post('/custos/parametros/copiar', [CustoController::class, 'copiar']);
+Route::get('/custos/rotas', [CustoController::class, 'rotas']);
+Route::get('/custos/rotas/{rota}', [CustoController::class, 'rota']);
+Route::get('/custos/relatorio', [CustoController::class, 'relatorio']);
+Route::get('/custos/relatorio/csv', [CustoController::class, 'csv']);
 
 Route::get('/censo/leiautes', [CensoController::class, 'leiautes']);
 Route::post('/censo/pre-validacao', [CensoController::class, 'preValidar']);

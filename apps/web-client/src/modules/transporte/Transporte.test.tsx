@@ -40,7 +40,8 @@ const opcoes = (gerenciar = true): Opcoes => ({
   tipologias: [{ valor: 3, rotulo: 'Ônibus' }],
   empresas: [{ id: 9, nome: 'Locadora Sul', tipo: 'locadora' }],
   motoristas: [],
-  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, auditar: false },
+  caracteristicas_trecho: [],
+  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, ver_custos: false, gerenciar_parametros_custo: false, auditar: false },
 });
 
 const veiculo = (extra: Partial<Veiculo> = {}): Veiculo => ({

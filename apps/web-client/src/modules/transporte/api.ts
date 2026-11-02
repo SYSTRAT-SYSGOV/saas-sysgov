@@ -13,14 +13,15 @@ export interface Opcoes {
   turnos: OpcaoTexto[];
   escolas: Ref[];
   anos_letivos: number[];
-  veiculos: { id: number; placa: string; descricao: string }[];
+  veiculos: { id: number; placa: string; descricao: string; origem: string }[];
+  caracteristicas_trecho: OpcaoTexto[];
   poderes_publicos: { valor: number; rotulo: string }[];
   mediacoes: OpcaoTexto[];
   categorias_cnh: string[];
   tipologias: { valor: number; rotulo: string }[];
   empresas: (Ref & { tipo: string })[];
   motoristas: Ref[];
-  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; gerenciar_alocacoes: boolean; exceder_capacidade: boolean; exportar_censo: boolean; importar_censo: boolean; configurar_leiaute_censo: boolean; auditar: boolean };
+  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; gerenciar_alocacoes: boolean; exceder_capacidade: boolean; exportar_censo: boolean; importar_censo: boolean; configurar_leiaute_censo: boolean; ver_custos: boolean; gerenciar_parametros_custo: boolean; auditar: boolean };
 }
 
 export interface Empresa {
@@ -224,6 +225,8 @@ export interface Rota {
   regular: boolean;
   motivos_irregularidade: string[];
   observacoes: string | null;
+  caracteristicas: string[];
+  custo_contratado_mensal: number | null;
 }
 
 export interface RotaEntrada {
@@ -242,9 +245,11 @@ export interface RotaEntrada {
   horario_retorno: string | null;
   ativa: boolean;
   observacoes: string | null;
+  caracteristicas?: string[];
+  custo_contratado_mensal?: number | null;
 }
 
-export interface FiltrosRota { ano_letivo?: number; escola_id?: number; turno?: string; tipo_rede?: string; situacao?: string; q?: string; page?: number }
+export interface FiltrosRota { ano_letivo?: number; escola_id?: number; turno?: string; tipo_rede?: string; situacao?: string; caracteristica?: string; q?: string; page?: number }
 
 export interface ItemItinerario {
   ordem: number;
@@ -422,6 +427,35 @@ export interface TesteLeiaute {
   alertas: { registro: string; chave: string; rotulo: string; posicao: number; codigo: string; mensagem: string; ocorrencias: number }[];
 }
 
+/* Custos (design D-C1 a D-C8). */
+export interface ParametroCusto {
+  chave: string; rotulo: string; unidade: string; escopo: 'comum' | 'rod' | 'aqua'; grupo: string; min: number; max: number; obrigatorio: boolean;
+  padrao: number | null; ajuda: string; valor: number | null; origem: 'orgao' | 'padrao' | null;
+}
+
+export interface ParametrosCusto { ano: number; grupos: Record<string, string>; parametros: ParametroCusto[] }
+
+export interface CustoRota {
+  rota_id: number; rota: string; ano_letivo: number; turno: string; escola: string | null; escola_id: number; empresa: string | null; empresa_id: number | null;
+  veiculo: string | null; origem_veiculo: string | null; custo_contratado_mensal: number | null; simulado: boolean;
+  modal: 'rodoviario' | 'aquaviario' | null; completo: boolean; faltando: { chave: string; rotulo: string }[];
+  km_viagem: number; km_mes?: number; km_ano?: number; alunos: number;
+  fixo?: Record<string, number>; variavel?: Record<string, number>;
+  custo_fixo_mensal?: number | null; custo_variavel_km?: number | null; custo_mensal?: number | null; custo_anual?: number | null;
+  custo_por_km?: number | null; custo_por_dia_letivo?: number | null; custo_por_aluno_mes?: number | null; custo_por_aluno_ano?: number | null;
+  comparativo: { contratado: number; estimado: number; diferenca: number; percentual: number | null; acima_do_limite: boolean } | null;
+}
+
+export interface RelatorioCustos {
+  ano_letivo: number;
+  linhas: CustoRota[];
+  por_escola: GrupoCusto[];
+  por_empresa: GrupoCusto[];
+  totais: { rotas: number; completas: number; incompletas: number; custo_anual: number; alunos: number; custo_por_aluno_ano: number | null };
+}
+
+export interface GrupoCusto { id: number | null; nome: string; rotas: number; incompletas: number; alunos: number; custo_anual: number; custo_por_aluno_ano: number | null }
+
 export interface Pagina<T> { data: T[]; current_page: number; last_page: number; total: number }
 
 /** Mensagem de erro da API ({"error"} das regras de negócio ou {"message"} da validação). */
@@ -541,6 +575,19 @@ export const transporteApi = {
     form.append('arquivo', arquivo);
     if (leiauteId) form.append('leiaute_id', String(leiauteId));
     return (await apiClient.post<{ data: ImportacaoCsv }>(`${base}/censo/importacao/previa`, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data.data;
+  },
+
+  parametrosCusto: async (ano: number) => (await apiClient.get<{ data: ParametrosCusto }>(`${base}/custos/parametros`, { params: { ano } })).data.data,
+  salvarParametrosCusto: async (ano: number, valores: Record<string, number | string | null>) =>
+    (await apiClient.put<{ data: ParametrosCusto }>(`${base}/custos/parametros`, { ano, valores })).data.data,
+  copiarParametrosCusto: async (de: number, para: number, sobrescrever = false) =>
+    (await apiClient.post<{ copiados: number }>(`${base}/custos/parametros/copiar`, { de, para, sobrescrever })).data.copiados,
+  custosRotas: async (ano: number, escolaId?: number) => (await apiClient.get<{ data: CustoRota[] }>(`${base}/custos/rotas`, { params: { ano, escola_id: escolaId } })).data.data,
+  custoRota: async (id: number, simular?: Record<string, string>) => (await apiClient.get<{ data: CustoRota }>(`${base}/custos/rotas/${id}`, { params: simular && Object.keys(simular).length > 0 ? { simular } : undefined })).data.data,
+  relatorioCustos: async (ano: number) => (await apiClient.get<{ data: RelatorioCustos }>(`${base}/custos/relatorio`, { params: { ano } })).data.data,
+  baixarCustos: async (ano: number) => {
+    const r = await apiClient.get<Blob>(`${base}/custos/relatorio/csv`, { params: { ano }, responseType: 'blob' });
+    return { blob: r.data, nome: `transporte-custos-${ano}.csv` };
   },
 
   auditoria: async (params: { acao?: string; de?: string; ate?: string; usuario?: string; page?: number; per_page?: number }) =>

@@ -113,3 +113,23 @@ export const ROTULO_GRUPO_CENSO: Record<string, string> = { identificacao: 'Iden
 export function km(valor: number): string {
   return `${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km`;
 }
+
+/** Valor em reais (R$ 1.234,56). */
+export function reais(valor: number | null | undefined): string {
+  return valor === null || valor === undefined ? '—' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+}
+
+export const ROTULO_COMPONENTE_CUSTO: Record<string, string> = {
+  pessoal: 'Pessoal (motorista e monitor, com encargos)',
+  administrativo: 'Administrativo',
+  depreciacao: 'Depreciação do veículo',
+  remuneracao_capital: 'Remuneração do capital',
+  seguro: 'Seguro, licenciamento e IPVA',
+  manutencao: 'Manutenção',
+  combustivel: 'Combustível',
+  lubrificantes: 'Óleo e lubrificantes',
+  rodagem: 'Rodagem (pneus e recapagem)',
+  pecas: 'Peças e acessórios',
+};
+
+export const ROTULO_MODAL: Record<string, string> = { rodoviario: 'Rodoviário', aquaviario: 'Aquaviário' };

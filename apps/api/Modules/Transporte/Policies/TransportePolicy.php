@@ -52,6 +52,16 @@ final class TransportePolicy
         return $this->algumaDe($user, ['transporte.censo.leiaute']);
     }
 
+    public function verCustos(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.custos.ver']);
+    }
+
+    public function gerenciarParametrosCusto(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.custos.parametros']);
+    }
+
     public function auditar(User $user): bool
     {
         return $this->algumaDe($user, ['transporte.audit']);
