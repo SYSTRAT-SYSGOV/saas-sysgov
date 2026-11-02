@@ -57,6 +57,8 @@ final class OpcoesController extends Controller
                 'gerenciar_alocacoes' => $this->policy->gerenciarAlocacoes($user),
                 'exceder_capacidade' => $this->policy->excederCapacidade($user),
                 'exportar_censo' => $this->policy->exportarCenso($user),
+                'importar_censo' => $this->policy->importarCenso($user),
+                'configurar_leiaute_censo' => $this->policy->configurarLeiauteCenso($user),
                 'auditar' => $this->policy->auditar($user),
             ],
         ]]);

@@ -12,16 +12,24 @@ use Modules\Transporte\Http\Controllers\Concerns\RespondeErroDeNegocio;
 use Modules\Transporte\Jobs\ProcessarImportacaoJob;
 use Modules\Transporte\Models\Importacao;
 use Modules\Transporte\Policies\TransportePolicy;
+use Modules\Transporte\Services\ImportacaoCensoService;
 use Modules\Transporte\Services\ImportacaoTransporteService;
 use Modules\Transporte\Support\ConflitoException;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Importação por CSV: veículos e motoristas pedem `frota.manage`; paradas pedem `rotas.manage`. */
+/**
+ * Importações: veículos e motoristas (CSV) pedem `frota.manage`; paradas (CSV) pedem `rotas.manage`; o arquivo do
+ * Educacenso (`censo`) pede `censo.importar`. A prévia do Censo está no CensoImportacaoController.
+ */
 final class ImportacaoController extends Controller
 {
     use RespondeErroDeNegocio;
 
-    public function __construct(private readonly ImportacaoTransporteService $servico, private readonly TransportePolicy $policy) {}
+    public function __construct(
+        private readonly ImportacaoTransporteService $servico,
+        private readonly ImportacaoCensoService $censo,
+        private readonly TransportePolicy $policy,
+    ) {}
 
     public function modelo(Request $request, string $tipo): Response
     {
@@ -38,7 +46,7 @@ final class ImportacaoController extends Controller
         $this->autorizar($request, $tipo);
         $request->validate(['arquivo' => ['required', 'file', 'mimes:csv,txt', 'max:2048']]);
 
-        return $this->executar(fn () => response()->json(['data' => $this->formatar($this->servico->previa($tipo, $request->file('arquivo'), $request->user()?->id))], 201));
+        return $this->executar(fn () => response()->json(['data' => self::resumir($this->servico->previa($tipo, $request->file('arquivo'), $request->user()?->id))], 201));
     }
 
     public function confirmar(Request $request, Importacao $importacao): Response
@@ -49,11 +57,16 @@ final class ImportacaoController extends Controller
             if ($importacao->status !== 'previa') {
                 throw new ConflitoException('Esta importação já foi confirmada ou cancelada. Envie o arquivo de novo.');
             }
-            $importacao->update(['status' => 'na_fila']);
+            if ($importacao->tipo === 'censo') {
+                $opcoes = request()->validate(['casar_por_nome' => ['sometimes', 'boolean']]);
+                $importacao->update(['status' => 'na_fila', 'relatorio' => [...($importacao->relatorio ?? []), 'opcoes' => $this->censo->opcoes($opcoes)]]);
+            } else {
+                $importacao->update(['status' => 'na_fila']);
+            }
             // Só processa pela fila: com a conexão `sync` o job roda na hora, com um worker ele roda em segundo plano.
             ProcessarImportacaoJob::dispatch($importacao->id, app(TenantContext::class)->id());
 
-            return response()->json(['data' => $this->formatar($importacao->refresh())], 202);
+            return response()->json(['data' => self::resumir($importacao->refresh())], 202);
         });
     }
 
@@ -61,7 +74,7 @@ final class ImportacaoController extends Controller
     {
         $this->autorizar($request, $importacao->tipo);
 
-        return response()->json(['data' => $this->formatar($importacao)]);
+        return response()->json(['data' => self::resumir($importacao)]);
     }
 
     public function cancelar(Request $request, Importacao $importacao): Response
@@ -75,24 +88,33 @@ final class ImportacaoController extends Controller
             $this->servico->apagarArquivo($importacao);
             $importacao->update(['status' => 'cancelada']);
 
-            return response()->json(['data' => $this->formatar($importacao->refresh())]);
+            return response()->json(['data' => self::resumir($importacao->refresh())]);
         });
     }
 
     private function autorizar(Request $request, string $tipo): void
     {
-        $permitido = $tipo === 'paradas' ? $this->policy->gerenciarRotas($request->user()) : $this->policy->gerenciarFrota($request->user());
-        abort_unless(in_array($tipo, ImportacaoTransporteService::TIPOS, true) && $permitido, 403);
+        $permitido = match ($tipo) {
+            'censo' => $this->policy->importarCenso($request->user()),
+            'paradas' => $this->policy->gerenciarRotas($request->user()),
+            default => $this->policy->gerenciarFrota($request->user()),
+        };
+        abort_unless((in_array($tipo, ImportacaoTransporteService::TIPOS, true) || $tipo === 'censo') && $permitido, 403);
     }
 
     /** @return array<string, mixed> */
-    private function formatar(Importacao $i): array
+    public static function resumir(Importacao $i): array
     {
         return [
             'id' => $i->id, 'tipo' => $i->tipo, 'arquivo' => $i->arquivo_nome, 'status' => $i->status,
             'total' => $i->total, 'validas' => $i->validas, 'criadas' => $i->criadas, 'ignoradas' => $i->ignoradas, 'com_erro' => $i->com_erro,
             'divergencias' => $i->relatorio['divergencias'] ?? [], 'avisos' => $i->relatorio['avisos'] ?? [], 'truncado' => $i->relatorio['truncado'] ?? false,
             'mensagem' => $i->mensagem, 'concluida_em' => $i->concluida_em?->toIso8601String(),
+            ...($i->tipo === 'censo' ? [
+                'resumo' => $i->relatorio['resumo'] ?? [], 'escolas_pendentes' => $i->relatorio['escolas_pendentes'] ?? [],
+                'opcoes' => $i->relatorio['opcoes'] ?? [], 'leiaute' => $i->relatorio['leiaute'] ?? null,
+                'sem_alocacao' => count($i->relatorio['sem_alocacao_ids'] ?? []),
+            ] : []),
         ];
     }
 }

@@ -11,7 +11,7 @@ O leiaute do Inep **muda todo ano** (colunas entram, saem e mudam de posição).
 - **Importação do arquivo do Educacenso** (Registros 00 escola, 20 turma, 30 pessoa, 40 gestor e 60 matrícula), com envio, **pré-visualização sem gravar** e confirmação, reaproveitando o fluxo de importação da Fase 5.
 - **Leiaute configurável por órgão**: cada leiaute tem a lista de campos por registro (posição da coluna, rótulo, tipo, destino no SysGov). O sistema traz o **Educacenso 2023** como base; o órgão pode **adicionar campo**, **excluir campo**, **mudar a posição**, **restaurar o padrão** e **duplicar** o leiaute para um novo ano.
 - **Teste do leiaute**: o usuário envia o arquivo e vê, por registro, uma amostra com a coluna, o valor lido e o campo que o leiaute atribui a ela, para conferir as posições antes de importar.
-- **Conciliação com o Escola**: escolas pelo Inep; turmas pelo `inep` da turma; alunos pelo `inep_id`, depois pelo CPF (Pessoas). Só entram os alunos marcados com transporte escolar público. O que não existe é listado e só é criado se o usuário marcar.
+- **Conciliação com o Escola, sem criar cadastro**: a escola e o aluno **precisam estar cadastrados** no Escola para aparecer no Transporte (decisão do usuário). A importação só **encontra** a escola pelo Inep, a turma pelo `inep` da turma e o aluno pelo `inep_id`, depois pelo CPF (Pessoas) e, por último, por nome e data de nascimento quando o casamento é único. Preenche o código Inep que faltar e guarda os campos extras. Só entram os alunos marcados com transporte escolar público. Quem não está cadastrado é **listado como pendência**, sem ser criado.
 - **Campos personalizados** com destino num catálogo fixo de atributos do SysGov, ou o destino "extra" (guarda o valor sem alterar o cadastro, para consulta e exportação futura).
 - **Auditoria** de toda importação e de toda alteração de leiaute. O arquivo **não é guardado** no servidor.
 
@@ -24,7 +24,7 @@ O leiaute do Inep **muda todo ano** (colunas entram, saem e mudam de posição).
 ## Impact
 
 - **Backend**: `Censo/Importacao/` (leitor em fluxo, `LeiauteImportacao`, `Educacenso2023`, `LeiauteImportacaoService`, `ImportacaoCensoService`, `TesteLeiauteService`); tabelas `transporte_censo_leiautes` e `transporte_censo_extras`; coluna `leiaute_id` em `transporte_importacoes`.
-- **Escola**: usa `AlunoService` e `TurmaService`; não muda o esquema do Escola.
+- **Escola**: só **atualiza** o `inep_id` do aluno (por `AlunoService`); não cria escola, turma nem aluno e não muda o esquema.
 - **Permissões novas**: `transporte.censo.importar` e `transporte.censo.leiaute` (coordenação recebe as duas).
 - **Dado pessoal de crianças (LGPD)**: leitura em fluxo, nenhum arquivo persistido, máscara nas amostras, relatório sem CPF/nome.
 - **Produção** roda `QUEUE_CONNECTION=sync`: arquivos grandes exigem limite de tamanho e processamento em blocos (ver D-I5).

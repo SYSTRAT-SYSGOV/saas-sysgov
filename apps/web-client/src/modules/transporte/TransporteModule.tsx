@@ -7,7 +7,7 @@ import { EstadoCarga } from '../escola/components/AdminModal';
 import { useCarga } from '../escola/useCarga';
 import { transporteApi } from './api';
 import { Empresas } from './components/Empresas';
-import { Censo } from './components/Censo';
+import { CensoAbas } from './components/CensoAbas';
 import { Motoristas } from './components/Motoristas';
 import { Painel } from './components/Painel';
 import { Paradas } from './components/Paradas';
@@ -29,6 +29,7 @@ export const TransporteModule: React.FC = () => {
   const o = opcoes.dados;
   const recarregar = () => { void opcoes.recarregar(); };
 
+  const temCenso = o.permissoes.exportar_censo || o.permissoes.importar_censo || o.permissoes.configurar_leiaute_censo;
   const abas: { id: Aba; rotulo: string; icone: React.ElementType; visivel: boolean }[] = [
     { id: 'visao', rotulo: 'Painel', icone: LayoutDashboard, visivel: true },
     { id: 'rotas', rotulo: 'Rotas', icone: Route, visivel: true },
@@ -36,7 +37,7 @@ export const TransporteModule: React.FC = () => {
     { id: 'veiculos', rotulo: 'Veículos', icone: Truck, visivel: true },
     { id: 'motoristas', rotulo: 'Motoristas', icone: UserRound, visivel: true },
     { id: 'empresas', rotulo: 'Empresas', icone: Building2, visivel: true },
-    { id: 'censo', rotulo: 'Censo', icone: FileSpreadsheet, visivel: o.permissoes.exportar_censo },
+    { id: 'censo', rotulo: 'Censo', icone: FileSpreadsheet, visivel: temCenso },
     { id: 'auditoria', rotulo: 'Auditoria', icone: History, visivel: o.permissoes.auditar },
   ];
   const visiveis = abas.filter((a) => a.visivel);
@@ -59,7 +60,7 @@ export const TransporteModule: React.FC = () => {
           ))}
         </TabsList>
         <TabsContent value="visao"><Painel opcoes={o} /></TabsContent>
-        {o.permissoes.exportar_censo && <TabsContent value="censo"><Censo opcoes={o} avisar={avisar} /></TabsContent>}
+        {temCenso && <TabsContent value="censo"><CensoAbas opcoes={o} avisar={avisar} /></TabsContent>}
         <TabsContent value="rotas"><Rotas opcoes={o} avisar={avisar} /></TabsContent>
         <TabsContent value="paradas"><Paradas opcoes={o} avisar={avisar} /></TabsContent>
         <TabsContent value="veiculos"><Veiculos opcoes={o} avisar={avisar} aoMudar={recarregar} /></TabsContent>

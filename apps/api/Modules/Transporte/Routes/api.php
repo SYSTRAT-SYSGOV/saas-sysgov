@@ -7,6 +7,8 @@ use Modules\Transporte\Http\Controllers\AlertaController;
 use Modules\Transporte\Http\Controllers\AlocacaoController;
 use Modules\Transporte\Http\Controllers\AuditoriaController;
 use Modules\Transporte\Http\Controllers\CensoController;
+use Modules\Transporte\Http\Controllers\CensoImportacaoController;
+use Modules\Transporte\Http\Controllers\CensoLeiauteController;
 use Modules\Transporte\Http\Controllers\EmpresaController;
 use Modules\Transporte\Http\Controllers\ImportacaoController;
 use Modules\Transporte\Http\Controllers\ItinerarioController;
@@ -29,6 +31,7 @@ Route::pattern('rota', '[0-9]+');
 Route::pattern('alocacao', '[0-9]+');
 Route::pattern('modelo', '[0-9]+');
 Route::pattern('importacao', '[0-9]+');
+Route::pattern('leiaute', '[0-9]+');
 Route::pattern('tipo', 'veiculos|motoristas|paradas');
 
 Route::get('/opcoes', OpcoesController::class);
@@ -88,6 +91,15 @@ Route::put('/censo/modelos/{modelo}', [ModeloExportacaoController::class, 'updat
 Route::delete('/censo/modelos/{modelo}', [ModeloExportacaoController::class, 'destroy']);
 Route::get('/censo/modelos/{modelo}/aplicar', [ModeloExportacaoController::class, 'aplicar']);
 
+Route::get('/censo/importacao/leiautes', [CensoLeiauteController::class, 'index']);
+Route::post('/censo/importacao/leiautes', [CensoLeiauteController::class, 'store']);
+Route::get('/censo/importacao/leiautes/{leiaute}', [CensoLeiauteController::class, 'show']);
+Route::put('/censo/importacao/leiautes/{leiaute}', [CensoLeiauteController::class, 'update']);
+Route::delete('/censo/importacao/leiautes/{leiaute}', [CensoLeiauteController::class, 'destroy']);
+Route::post('/censo/importacao/leiautes/{leiaute}/restaurar', [CensoLeiauteController::class, 'restaurar']);
+Route::post('/censo/importacao/leiautes/{leiaute}/padrao', [CensoLeiauteController::class, 'padrao']);
+Route::post('/censo/importacao/testar', [CensoImportacaoController::class, 'testar']);
+Route::post('/censo/importacao/previa', [CensoImportacaoController::class, 'previa']);
 Route::get('/importacoes/modelo/{tipo}', [ImportacaoController::class, 'modelo']);
 Route::post('/importacoes/{tipo}/previa', [ImportacaoController::class, 'previa']);
 Route::get('/importacoes/{importacao}', [ImportacaoController::class, 'show']);
