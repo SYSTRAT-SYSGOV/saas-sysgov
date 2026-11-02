@@ -19,6 +19,8 @@
         "transporte.alocacoes.manage": "Alocar e encerrar alunos em rotas",
         "transporte.alocacoes.override_capacity": "Alocar acima da capacidade do veículo, com justificativa",
         "transporte.censo.export": "Pré-validar e exportar o Registro 60 do Censo Escolar",
+        "transporte.censo.importar": "Importar o arquivo do Educacenso e conferir o leiaute de importação",
+        "transporte.censo.leiaute": "Criar, alterar e excluir campos do leiaute de importação do Educacenso",
         "transporte.audit": "Consultar a auditoria do módulo"
     },
     "menu": {

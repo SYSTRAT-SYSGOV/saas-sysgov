@@ -55,32 +55,67 @@ O sistema DEVE permitir enviar o arquivo e devolver, por tipo de registro, a con
 - **THEN** ele aparece mascarado
 
 ### Requirement: Importação do arquivo do Educacenso
-O sistema DEVE importar o arquivo do Educacenso em duas etapas: pré-visualização sem gravar e confirmação. DEVE considerar apenas os alunos com transporte escolar público marcado. DEVE conciliar escola e turma pelo código Inep, e aluno pelo `inep_id` e depois pelo CPF. DEVE listar o que não existe e só criar quando o usuário marcar. NÃO DEVE sobrescrever dado cadastrado com valor vazio. DEVE guardar apenas o relatório, sem o arquivo. Exige `transporte.censo.importar`.
+O sistema DEVE importar o arquivo do Educacenso em duas etapas: pré-visualização sem gravar e confirmação. DEVE considerar apenas os alunos com transporte escolar público marcado. DEVE conciliar a escola pelo Inep, a turma pelo Inep da turma e o aluno pelo `inep_id`, depois pelo CPF e, por último, por nome e data de nascimento quando o casamento for único. O sistema NÃO DEVE criar escola, turma nem aluno: o que não estiver cadastrado DEVE ser listado como pendência. O sistema NÃO DEVE sobrescrever dado cadastrado com valor vazio nem alterar nome, turma ou outro dado do aluno; DEVE apenas preencher o `inep_id` vazio e guardar os campos extras. O arquivo DEVE ser apagado ao confirmar, cancelar ou falhar. Exige `transporte.censo.importar`.
 
 #### Scenario: Pré-visualização
 - **GIVEN** um arquivo com 200 matrículas, 40 com transporte
 - **WHEN** o usuário envia o arquivo
-- **THEN** a pré-visualização mostra os 40 alunos (existentes, novos e divergentes) e nada é gravado
+- **THEN** a pré-visualização mostra os 40 alunos por situação (casados, pendentes, divergentes) e nada é gravado
+
+#### Scenario: Aluno encontrado pelo Inep
+- **GIVEN** um aluno cadastrado com o mesmo `inep_id` do arquivo
+- **WHEN** a importação é confirmada
+- **THEN** o aluno é reconhecido e os campos extras são guardados
 
 #### Scenario: Aluno encontrado pelo CPF
 - **GIVEN** um aluno sem `inep_id`, mas com o mesmo CPF do arquivo
 - **WHEN** a importação é confirmada
-- **THEN** o `inep_id` é preenchido e nenhum aluno duplicado é criado
+- **THEN** o `inep_id` é preenchido e nenhum aluno é criado
 
-#### Scenario: Criar o que não existe só se marcado
-- **GIVEN** uma escola do arquivo que não está cadastrada
-- **WHEN** o usuário confirma sem marcar a criação
-- **THEN** a escola e seus alunos ficam como "não importados" no relatório
+#### Scenario: Aluno encontrado por nome e nascimento
+- **GIVEN** um aluno sem `inep_id` e sem CPF, com nome e nascimento iguais aos do arquivo, único na escola
+- **WHEN** a importação é confirmada com o casamento por nome ligado
+- **THEN** o `inep_id` é preenchido e a linha aparece como "casado por nome e nascimento"
+
+#### Scenario: Casamento ambíguo
+- **GIVEN** dois alunos da escola com o mesmo nome e nascimento do arquivo
+- **WHEN** a pré-visualização é gerada
+- **THEN** aparece a pendência `aluno_ambiguo` e nenhum aluno é alterado
+
+#### Scenario: Aluno não cadastrado
+- **GIVEN** um aluno do arquivo que não existe no Escola
+- **WHEN** a importação é confirmada
+- **THEN** ele aparece como `aluno_nao_cadastrado` e nada é criado
+
+#### Scenario: Escola não cadastrada
+- **GIVEN** uma escola do arquivo cujo Inep não está cadastrado
+- **WHEN** a pré-visualização é gerada
+- **THEN** aparece uma pendência `escola_nao_cadastrada` com a quantidade de alunos afetados, e esses alunos não são processados
+
+#### Scenario: Inep divergente
+- **GIVEN** um aluno já com `inep_id` diferente do arquivo
+- **WHEN** a importação é confirmada
+- **THEN** aparece a divergência `inep_divergente` e o código cadastrado é mantido
+
+#### Scenario: Código Inep de aluno com outro CPF
+- **GIVEN** um aluno cadastrado com o código Inep do arquivo, mas com CPF diferente do que o arquivo informa
+- **WHEN** a pré-visualização é gerada
+- **THEN** aparece a divergência `cpf_divergente` e nada é alterado
+
+#### Scenario: Aluno em outra escola
+- **GIVEN** um aluno reconhecido que está cadastrado em escola diferente da do arquivo
+- **WHEN** a importação é confirmada
+- **THEN** aparece a divergência `escola_divergente` e nada é alterado
 
 #### Scenario: Valor vazio não apaga dado
-- **GIVEN** um aluno com CEP cadastrado e o arquivo com CEP vazio
+- **GIVEN** um aluno com CEP extra guardado e o arquivo com CEP vazio
 - **WHEN** a importação é confirmada
-- **THEN** o CEP cadastrado é mantido
+- **THEN** o valor guardado é mantido
 
-#### Scenario: Divergência de nome
-- **GIVEN** o nome no arquivo difere do cadastrado
-- **WHEN** a pré-visualização é gerada
-- **THEN** a linha aparece como divergência e o nome não é alterado sem confirmação
+#### Scenario: Alunos sem alocação
+- **GIVEN** alunos que declaram transporte no Censo e não têm alocação ativa
+- **WHEN** a importação termina
+- **THEN** o resumo informa quantos são e permite localizá-los
 
 #### Scenario: Arquivo hostil
 - **WHEN** o arquivo excede o limite de tamanho, de colunas por linha ou de tamanho de campo
@@ -88,7 +123,7 @@ O sistema DEVE importar o arquivo do Educacenso em duas etapas: pré-visualizaç
 
 #### Scenario: Sem dado pessoal no relatório
 - **WHEN** a importação termina
-- **THEN** o relatório e a auditoria trazem contagens, números de linha e códigos Inep, sem CPF, nome ou filiação
+- **THEN** o relatório e a auditoria trazem contagens, números de linha e códigos Inep, sem CPF, nome ou filiação, e o arquivo é apagado
 
 #### Scenario: Isolamento de tenant
 - **GIVEN** um aluno com o mesmo Inep em outro tenant

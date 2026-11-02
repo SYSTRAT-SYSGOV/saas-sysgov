@@ -18,9 +18,11 @@ Origem: reescrita, para o SysGov, do projeto `sys-transporte` (Rust), adaptada �
 | `transporte.alocacoes.manage` | Alocar, alterar e encerrar alunos; ver a ficha com a observação sensível |
 | `transporte.alocacoes.override_capacity` | Alocar acima da capacidade do veículo (com justificativa) |
 | `transporte.censo.export` | Pré-validação, arquivos do Censo e modelos de exportação |
+| `transporte.censo.importar` | Importar o arquivo do Educacenso e testar o leiaute de importação |
+| `transporte.censo.leiaute` | Criar, alterar e excluir campos do leiaute de importação do Educacenso |
 | `transporte.audit` | Tela de auditoria do módulo |
 
-Perfis (clonados por tenant a partir do tenant `systrat` pelo `ModuleRoleProvisioner`, semeados por `TransporteRbacSeeder`): **Coordenação** (`transporte_coordenacao`, todas), **Operador** (`transporte_operador`, tudo menos exceção de capacidade e auditoria) e **Consulta** (`transporte_consulta`, só `view`).
+Perfis (clonados por tenant a partir do tenant `systrat` pelo `ModuleRoleProvisioner`, semeados por `TransporteRbacSeeder`): **Coordenação** (`transporte_coordenacao`, todas), **Operador** (`transporte_operador`, tudo menos exceção de capacidade, edição do leiaute de importação e auditoria) e **Consulta** (`transporte_consulta`, só `view`).
 
 ## Regras de negócio
 
@@ -56,6 +58,21 @@ Veículos, motoristas e paradas. Fluxo: **prévia** (nada é gravado) → **conf
 - **Segurança:** extensão `csv`/`txt`, até 2 MB e 5.000 linhas, conteúdo de texto, células lidas como texto (nunca fórmula). O arquivo só fica no servidor entre a prévia e o fim do processamento. A auditoria guarda quem importou, o arquivo e os totais.
 - **Fila:** em produção `QUEUE_CONNECTION=sync` (sem worker): o job roda dentro da requisição de confirmação. Com um worker, roda em segundo plano e a tela acompanha o andamento.
 
+## Importação do arquivo do Educacenso
+
+Lê o arquivo do Censo Escolar (texto separado por `|`, registros 00 escola, 20 turma, 30 pessoa e 60 matrícula) e **reconhece, entre os alunos já cadastrados no Escola, os que declaram transporte escolar público**. **A escola e o aluno precisam estar cadastrados: a importação não cria escola, turma nem aluno.** Quem não está cadastrado vira pendência.
+
+- **Fluxo:** (opcional) **Testar leiaute** com o arquivo → **prévia** (nada é gravado) → **confirmação** → relatório. O arquivo só fica no servidor entre a prévia e o fim (confirmação, cancelamento ou falha) e é apagado.
+- **Reconhecimento do aluno**, nesta ordem: código Inep (`escola_alunos.inep_id`); CPF (Pessoas); nome e data de nascimento, só se houver **um único** aluno igual na escola (pode ser desligado na confirmação). Vários candidatos → `aluno_ambiguo`. A escola é achada pelo `inep` e a turma pelo `inep` da turma (turma não cadastrada é só aviso).
+- **O que é gravado:** o `inep_id` do aluno, **quando está vazio**, e os campos "extras" (`transporte_censo_extras`: CEP, localização, sexo, cor etc.). Nome, turma e demais dados do aluno **nunca** são alterados. Pendências e divergências: `escola_nao_cadastrada`, `aluno_nao_cadastrado`, `aluno_ambiguo`, `inep_divergente`, `cpf_divergente` (código Inep de aluno que tem outro CPF), `escola_divergente`, `matricula_sem_identificador`.
+- **Para o Transporte:** o resumo informa quantos alunos declaram transporte no Censo e **ainda não têm alocação ativa**.
+- **Leiaute configurável:** o de fábrica é o **Educacenso 2023** (`Censo/Importacao/Educacenso2023.php`). O Inep muda as colunas todo ano, então o órgão, com `transporte.censo.leiaute`, pode **alterar a coluna** de um campo, **desativar** ("excluir") um campo nativo (reversível: "restaurar padrão"), **criar** campos próprios (guardados como extras do aluno, da escola ou da turma), **duplicar** o leiaute para o ano seguinte e definir o padrão. Campos necessários para reconhecer o aluno ficam travados (só a coluna muda). Só o que difere da fábrica fica salvo (`transporte_censo_leiautes.campos`).
+- **As posições de 2023 vieram do código do SETE, não de um arquivo real do Inep** (o órgão não tem o arquivo). Use o **Testar leiaute** com o primeiro arquivo real e ajuste as colunas. As colunas de deficiência **não** vêm ativas (dado de saúde de criança); podem ser criadas como campo sensível.
+- **LGPD:** CPF, nome, nascimento, cor, CEP e e-mail são "sensíveis": mascarados no teste, nunca em listagem. O relatório e a auditoria guardam contagens, número de linha e códigos Inep, **sem CPF, nome ou filiação**.
+- **Segurança:** leitura linha a linha; até 50 MB, 1.000.000 de linhas, 64 KB por linha, 400 colunas e 1.000 caracteres por campo; arquivo binário é recusado. Em produção `QUEUE_CONNECTION=sync`: a confirmação roda dentro da requisição, então arquivos muito grandes podem exigir um worker de fila.
+
+Crédito: o formato dos registros e as regras de leitura se baseiam no **SETE** (UFG/CECATE, https://github.com/marcosroriz/sete), licença **MIT**, Copyright (c) Marcos Roriz. Nenhum código foi copiado; a lógica foi reimplementada.
+
 ## Rotas da API
 
 | Método | Rota | Permissão |
@@ -73,15 +90,18 @@ Veículos, motoristas e paradas. Fluxo: **prévia** (nada é gravado) → **conf
 | GET | `/censo/leiautes` | censo.export |
 | POST | `/censo/pre-validacao`, `/censo/arquivo`, `/censo/conferencia` | censo.export |
 | GET/POST/PUT/DELETE | `/censo/modelos`, `GET /censo/modelos/{id}/aplicar` | censo.export |
+| GET/POST | `/censo/importacao/leiautes` (POST duplica) | censo.importar ou censo.leiaute / censo.leiaute |
+| GET/PUT/DELETE | `/censo/importacao/leiautes/{id}`; `POST .../restaurar`, `.../padrao` | idem / censo.leiaute |
+| POST | `/censo/importacao/testar`, `/censo/importacao/previa` (arquivo, `leiaute_id`) | censo.importar |
 | GET | `/importacoes/modelo/{tipo}` | frota.manage / rotas.manage |
-| POST | `/importacoes/{tipo}/previa`, `/importacoes/{id}/confirmar` | idem |
+| POST | `/importacoes/{tipo}/previa`, `/importacoes/{id}/confirmar` (Censo: `casar_por_nome`) | idem (Censo: censo.importar) |
 | GET/DELETE | `/importacoes/{id}` | idem |
 
 Erros de regra: `409` (conflito: placa/CNH repetida, capacidade, regularidade, item em uso) e `422` (dado inválido). O corpo é `{"error": "..."}`.
 
 ## Telas (`apps/web-client/src/modules/transporte`)
 
-Painel · Rotas (itinerário e mapa Leaflet, alunos da rota com ocupação) · Paradas · Veículos (vistorias) · Motoristas · Empresas · Censo · Auditoria. Escritas com `@sysgov/ui`. Importar CSV nas telas de Veículos, Motoristas e Paradas. A ocupação e a irregularidade aparecem sempre com **texto**, não só com cor.
+Painel · Rotas (itinerário e mapa Leaflet, alunos da rota com ocupação) · Paradas · Veículos (vistorias) · Motoristas · Empresas · Censo (Exportar, Importar do Educacenso e Leiaute de importação, conforme a permissão) · Auditoria. Escritas com `@sysgov/ui`. Importar CSV nas telas de Veículos, Motoristas e Paradas. A ocupação e a irregularidade aparecem sempre com **texto**, não só com cor.
 
 ## Privacidade (LGPD)
 
@@ -105,6 +125,7 @@ Depende do Cadastro Escolar (`EscolaDadosDemonstracaoSeeder`). Idempotente (não
 - O mapa usa linha reta entre as paradas e tiles do OpenStreetMap; não há roteirização viária nem geocodificação automática. A escola não tem coordenadas no cadastro, então não é marcador.
 - A frota do módulo **Passeio** (`passeio_veiculos`) é separada; a ponte opcional com o Transporte foi descartada (decisão D33).
 - Migração automática de dados do i-Educar está fora do escopo.
-- A importação dos códigos Inep do aluno e da turma por CSV não foi feita (edição pela tela do Escola).
+- O código Inep da turma ainda só entra pela tela do Escola; o do aluno também pode ser preenchido pela importação do Educacenso.
+- O mapeamento das colunas do Educacenso 2023 não foi conferido com arquivo real (ver Importação do arquivo do Educacenso).
 - Conferência no navegador das telas (tarefa 5.2 de cada fase) pendente: depende de login.
 - Concorrência de alocação: o `lockForUpdate` só é exercitado no MySQL; os testes (SQLite) cobrem a regra, não a corrida.

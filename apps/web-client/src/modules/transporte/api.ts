@@ -20,7 +20,7 @@ export interface Opcoes {
   tipologias: { valor: number; rotulo: string }[];
   empresas: (Ref & { tipo: string })[];
   motoristas: Ref[];
-  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; gerenciar_alocacoes: boolean; exceder_capacidade: boolean; exportar_censo: boolean; auditar: boolean };
+  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; gerenciar_alocacoes: boolean; exceder_capacidade: boolean; exportar_censo: boolean; importar_censo: boolean; configurar_leiaute_censo: boolean; auditar: boolean };
 }
 
 export interface Empresa {
@@ -355,7 +355,7 @@ export type TipoImportacao = 'veiculos' | 'motoristas' | 'paradas';
 
 export interface ImportacaoCsv {
   id: number;
-  tipo: TipoImportacao;
+  tipo: TipoImportacao | 'censo';
   arquivo: string;
   status: 'previa' | 'na_fila' | 'processando' | 'concluida' | 'falha' | 'cancelada';
   total: number;
@@ -368,6 +368,58 @@ export interface ImportacaoCsv {
   truncado: boolean;
   mensagem: string | null;
   concluida_em: string | null;
+  /** Só na importação do Educacenso (`tipo: 'censo'`). */
+  resumo?: Record<string, number>;
+  escolas_pendentes?: { inep: string; alunos: number }[];
+  opcoes?: { casar_por_nome: boolean };
+  leiaute?: { id: number; nome: string; ano_censo: number } | null;
+  sem_alocacao?: number;
+}
+
+/* Leiaute de importação do Educacenso (design D-I2). */
+export type TipoCampoCenso = 'texto' | 'numero' | 'data' | 'booleano' | 'codigo';
+
+export interface CampoLeiaute {
+  chave: string;
+  registro: string;
+  registro_nome: string;
+  posicao: number;
+  posicao_padrao: number | null;
+  rotulo: string;
+  tipo: TipoCampoCenso;
+  destino: string;
+  ativo: boolean;
+  ativo_padrao: boolean;
+  travado: boolean;
+  sensivel: boolean;
+  nativo: boolean;
+  mapa: Record<string, string> | null;
+  formato: string;
+  valor_verdadeiro: string;
+}
+
+export interface LeiauteImportacao {
+  id: number;
+  nome: string;
+  base: string;
+  ano_censo: number;
+  delimitador: string;
+  codificacao: string;
+  padrao: boolean;
+  campos?: CampoLeiaute[];
+  registros?: Record<string, string>;
+  formatos_data?: string[];
+  codificacoes?: string[];
+}
+
+/** O que o usuário pode mudar num campo: o servidor ignora o resto de um campo nativo. */
+export type AjusteCampo = Partial<Pick<CampoLeiaute, 'posicao' | 'rotulo' | 'ativo' | 'mapa' | 'formato' | 'valor_verdadeiro' | 'registro' | 'tipo' | 'sensivel'>> & { chave: string };
+
+export interface TesteLeiaute {
+  linhas_lidas: number;
+  desconhecidos: number;
+  registros: { registro: string; nome: string; linhas: number; amostras: { posicao: number; chave: string; rotulo: string; valor: string; alerta: string | null }[][] }[];
+  alertas: { registro: string; chave: string; rotulo: string; posicao: number; codigo: string; mensagem: string; ocorrencias: number }[];
 }
 
 export interface Pagina<T> { data: T[]; current_page: number; last_page: number; total: number }
@@ -465,9 +517,31 @@ export const transporteApi = {
     form.append('arquivo', arquivo);
     return (await apiClient.post<{ data: ImportacaoCsv }>(`${base}/importacoes/${tipo}/previa`, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data.data;
   },
-  confirmarImportacao: async (id: number) => (await apiClient.post<{ data: ImportacaoCsv }>(`${base}/importacoes/${id}/confirmar`)).data.data,
+  confirmarImportacao: async (id: number, opcoes?: { casar_por_nome: boolean }) => (await apiClient.post<{ data: ImportacaoCsv }>(`${base}/importacoes/${id}/confirmar`, opcoes)).data.data,
   importacao: async (id: number) => (await apiClient.get<{ data: ImportacaoCsv }>(`${base}/importacoes/${id}`)).data.data,
   cancelarImportacao: async (id: number) => (await apiClient.delete<{ data: ImportacaoCsv }>(`${base}/importacoes/${id}`)).data.data,
+
+  leiautesImportacao: async () => (await apiClient.get<{ data: LeiauteImportacao[] }>(`${base}/censo/importacao/leiautes`)).data.data,
+  leiauteImportacao: async (id: number) => (await apiClient.get<{ data: LeiauteImportacao }>(`${base}/censo/importacao/leiautes/${id}`)).data.data,
+  salvarLeiauteImportacao: async (id: number, dados: { nome?: string; ano_censo?: number; delimitador?: string; codificacao?: string; campos?: AjusteCampo[] }) =>
+    (await apiClient.put<{ data: LeiauteImportacao }>(`${base}/censo/importacao/leiautes/${id}`, dados)).data.data,
+  duplicarLeiauteImportacao: async (dados: { nome: string; ano_censo: number; copiar_de?: number }) =>
+    (await apiClient.post<{ data: LeiauteImportacao }>(`${base}/censo/importacao/leiautes`, dados)).data.data,
+  restaurarLeiauteImportacao: async (id: number) => (await apiClient.post<{ data: LeiauteImportacao }>(`${base}/censo/importacao/leiautes/${id}/restaurar`)).data.data,
+  padraoLeiauteImportacao: async (id: number) => (await apiClient.post<{ data: LeiauteImportacao }>(`${base}/censo/importacao/leiautes/${id}/padrao`)).data.data,
+  excluirLeiauteImportacao: async (id: number) => { await apiClient.delete(`${base}/censo/importacao/leiautes/${id}`); },
+  testarLeiaute: async (arquivo: File, leiauteId?: number) => {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    if (leiauteId) form.append('leiaute_id', String(leiauteId));
+    return (await apiClient.post<{ data: TesteLeiaute }>(`${base}/censo/importacao/testar`, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data.data;
+  },
+  previaCenso: async (arquivo: File, leiauteId?: number) => {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    if (leiauteId) form.append('leiaute_id', String(leiauteId));
+    return (await apiClient.post<{ data: ImportacaoCsv }>(`${base}/censo/importacao/previa`, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data.data;
+  },
 
   auditoria: async (params: { acao?: string; de?: string; ate?: string; usuario?: string; page?: number; per_page?: number }) =>
     (await apiClient.get<Pagina<RegistroAuditoria>>(`${base}/auditoria`, { params })).data,

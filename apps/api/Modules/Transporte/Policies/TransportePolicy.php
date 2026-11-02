@@ -14,7 +14,7 @@ final class TransportePolicy
 
     public function ver(User $user): bool
     {
-        return $this->algumaDe($user, ['transporte.view', 'transporte.frota.manage', 'transporte.rotas.manage', 'transporte.alocacoes.manage', 'transporte.censo.export']);
+        return $this->algumaDe($user, ['transporte.view', 'transporte.frota.manage', 'transporte.rotas.manage', 'transporte.alocacoes.manage', 'transporte.censo.export', 'transporte.censo.importar']);
     }
 
     public function gerenciarFrota(User $user): bool
@@ -40,6 +40,16 @@ final class TransportePolicy
     public function exportarCenso(User $user): bool
     {
         return $this->algumaDe($user, ['transporte.censo.export']);
+    }
+
+    public function importarCenso(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.censo.importar']);
+    }
+
+    public function configurarLeiauteCenso(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.censo.leiaute']);
     }
 
     public function auditar(User $user): bool

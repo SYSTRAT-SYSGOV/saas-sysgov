@@ -23,6 +23,8 @@ final class TransporteRbacSeeder extends Seeder
         'transporte.alocacoes.manage' => 'Alocar e encerrar alunos em rotas',
         'transporte.alocacoes.override_capacity' => 'Alocar acima da capacidade do veículo, com justificativa',
         'transporte.censo.export' => 'Pré-validar e exportar o Registro 60 do Censo Escolar',
+        'transporte.censo.importar' => 'Importar o arquivo do Educacenso e conferir o leiaute de importação',
+        'transporte.censo.leiaute' => 'Criar, alterar e excluir campos do leiaute de importação do Educacenso',
         'transporte.audit' => 'Consultar a auditoria do módulo',
     ];
 
@@ -33,13 +35,13 @@ final class TransporteRbacSeeder extends Seeder
             'description' => 'Acesso total: frota, rotas, alocações (inclusive acima da capacidade), Censo e auditoria',
             'permissions' => [
                 'transporte.view', 'transporte.frota.manage', 'transporte.rotas.manage', 'transporte.alocacoes.manage',
-                'transporte.alocacoes.override_capacity', 'transporte.censo.export', 'transporte.audit',
+                'transporte.alocacoes.override_capacity', 'transporte.censo.export', 'transporte.censo.importar', 'transporte.censo.leiaute', 'transporte.audit',
             ],
         ],
         'transporte_operador' => [
             'name' => 'Operador de Transporte',
             'description' => 'Gere frota, rotas, alocações e o Censo, sem exceção de capacidade nem auditoria',
-            'permissions' => ['transporte.view', 'transporte.frota.manage', 'transporte.rotas.manage', 'transporte.alocacoes.manage', 'transporte.censo.export'],
+            'permissions' => ['transporte.view', 'transporte.frota.manage', 'transporte.rotas.manage', 'transporte.alocacoes.manage', 'transporte.censo.export', 'transporte.censo.importar'],
         ],
         'transporte_consulta' => [
             'name' => 'Consulta de Transporte',
