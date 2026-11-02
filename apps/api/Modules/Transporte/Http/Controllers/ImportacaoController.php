@@ -64,7 +64,9 @@ final class ImportacaoController extends Controller
                 $importacao->update(['status' => 'na_fila']);
             }
             // Só processa pela fila: com a conexão `sync` o job roda na hora, com um worker ele roda em segundo plano.
-            ProcessarImportacaoJob::dispatch($importacao->id, app(TenantContext::class)->id());
+            ProcessarImportacaoJob::dispatch($importacao->id, app(TenantContext::class)->id())
+                ->onConnection(config('queue.transporte_importacao.conexao'))
+                ->onQueue((string) config('queue.transporte_importacao.fila'));
 
             return response()->json(['data' => self::resumir($importacao->refresh())], 202);
         });

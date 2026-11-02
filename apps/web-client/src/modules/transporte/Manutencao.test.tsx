@@ -6,7 +6,7 @@ const api = vi.hoisted(() => ({
   ordensServico: vi.fn(), salvarOrdemServico: vi.fn(), concluirOrdemServico: vi.fn(), cancelarOrdemServico: vi.fn(),
   manutencoesPrevistas: vi.fn(), criarManutencaoPrevista: vi.fn(), cancelarManutencaoPrevista: vi.fn(), converterManutencaoPrevista: vi.fn(),
   veiculos: vi.fn(), registrarQuilometragem: vi.fn(), fornecedores: vi.fn(), salvarFornecedor: vi.fn(), excluirFornecedor: vi.fn(),
-  gastosManutencao: vi.fn(), baixarManutencao: vi.fn(),
+  gastosManutencao: vi.fn(), baixarManutencao: vi.fn(), historicoManutencao: vi.fn(),
 }));
 vi.mock('./api', async (original) => ({ ...(await original<typeof import('./api')>()), transporteApi: api }));
 
@@ -165,6 +165,35 @@ describe('Quilometragem', () => {
     expect(await screen.findByText('40.000 km')).toBeInTheDocument();
     expect(screen.getByText('não informada')).toBeInTheDocument();
     expect(screen.getByText('Em manutenção')).toBeInTheDocument();
+  });
+
+  it('abre o histórico de manutenção do veículo com o total das ordens concluídas', async () => {
+    api.veiculos.mockResolvedValue([veiculo()]);
+    api.historicoManutencao.mockResolvedValue([
+      { id: 5, tipo: 'revisao', tipo_rotulo: 'Revisão', status: 'concluida', descricao: 'Revisão dos 40 mil km', fornecedor: 'Oficina Central Ltda', aberta_em: '2026-10-01', concluida_em: '2026-10-03', km: 40000, valor: 1500.5 },
+      { id: 4, tipo: 'corretiva', tipo_rotulo: 'Corretiva', status: 'aberta', descricao: 'Troca da embreagem', fornecedor: null, aberta_em: '2026-09-20', concluida_em: null, km: null, valor: 900 },
+      { id: 3, tipo: 'corretiva', tipo_rotulo: 'Corretiva', status: 'cancelada', descricao: 'Pintura', fornecedor: null, aberta_em: '2026-08-02', concluida_em: null, km: null, valor: 300 },
+    ]);
+    render(<Manutencao opcoes={opcoes(false)} avisar={vi.fn()} />);
+    abrirAba('Quilometragem');
+    fireEvent.click(await screen.findByRole('button', { name: 'Histórico de manutenção de ABC1D23' }));
+
+    const modal = await screen.findByRole('dialog');
+    expect(await within(modal).findByText('Revisão dos 40 mil km')).toBeInTheDocument();
+    expect(api.historicoManutencao).toHaveBeenCalledWith(1);
+    expect(within(modal).getByText('Troca da embreagem')).toBeInTheDocument();
+    // só a ordem concluída entra no total (a aberta e a cancelada não)
+    expect(within(modal).getByText(/Total gasto em ordens concluídas/)).toHaveTextContent('R$ 1.500,50');
+  });
+
+  it('veículo sem ordens mostra o estado vazio do histórico', async () => {
+    api.veiculos.mockResolvedValue([veiculo()]);
+    api.historicoManutencao.mockResolvedValue([]);
+    render(<Manutencao opcoes={opcoes()} avisar={vi.fn()} />);
+    abrirAba('Quilometragem');
+    fireEvent.click(await screen.findByRole('button', { name: 'Histórico de manutenção de ABC1D23' }));
+
+    expect(await screen.findByText('Este veículo ainda não tem ordens de serviço.')).toBeInTheDocument();
   });
 
   it('reduzir o hodômetro pede a confirmação da correção', async () => {

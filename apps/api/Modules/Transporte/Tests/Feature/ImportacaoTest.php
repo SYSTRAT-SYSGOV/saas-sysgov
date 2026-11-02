@@ -71,6 +71,50 @@ final class ImportacaoTest extends TestCase
         $this->assertSame(0, Veiculo::query()->count());
     }
 
+    public function test_confirmacao_usa_a_conexao_e_a_fila_proprias_das_importacoes(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        config(['queue.transporte_importacao' => ['conexao' => 'redis', 'fila' => 'importacoes']]);
+        $t = $this->criarTenant();
+        $g = $this->usuario($t, ['transporte_coordenacao']);
+        $id = $this->enviar($t, $g, 'veiculos', self::VEICULOS)->json('data.id');
+
+        $this->como($g, $t)->postJson("/api/transporte/importacoes/{$id}/confirmar")->assertStatus(202);
+
+        Queue::assertPushed(ProcessarImportacaoJob::class, fn (ProcessarImportacaoJob $j): bool => $j->connection === 'redis' && $j->queue === 'importacoes');
+    }
+
+    public function test_job_interrompido_marca_a_importacao_como_falha_e_apaga_o_arquivo(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        $t = $this->criarTenant();
+        $g = $this->usuario($t, ['transporte_coordenacao']);
+        $id = $this->enviar($t, $g, 'veiculos', self::VEICULOS)->json('data.id');
+        $this->como($g, $t)->postJson("/api/transporte/importacoes/{$id}/confirmar")->assertStatus(202);
+        $this->assertCount(1, Storage::disk('local')->allFiles());
+
+        (new ProcessarImportacaoJob($id, $t->id))->failed(new \RuntimeException('timeout'));
+
+        $this->como($g, $t)->getJson("/api/transporte/importacoes/{$id}")->assertOk()->assertJsonPath('data.status', 'falha');
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        $this->assertSame(0, Veiculo::query()->count());
+    }
+
+    public function test_job_interrompido_nao_altera_importacao_ja_concluida(): void
+    {
+        Storage::fake('local');
+        $t = $this->criarTenant();
+        $g = $this->usuario($t, ['transporte_coordenacao']);
+        $id = $this->enviar($t, $g, 'veiculos', self::VEICULOS)->json('data.id');
+        $this->como($g, $t)->postJson("/api/transporte/importacoes/{$id}/confirmar")->assertStatus(202)->assertJsonPath('data.status', 'concluida');
+
+        (new ProcessarImportacaoJob($id, $t->id))->failed(null);
+
+        $this->como($g, $t)->getJson("/api/transporte/importacoes/{$id}")->assertJsonPath('data.status', 'concluida');
+    }
+
     public function test_processamento_cria_as_validas_gera_o_relatorio_audita_e_apaga_o_arquivo(): void
     {
         Storage::fake('local');
