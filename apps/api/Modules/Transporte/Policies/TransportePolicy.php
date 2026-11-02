@@ -62,6 +62,16 @@ final class TransportePolicy
         return $this->algumaDe($user, ['transporte.custos.parametros']);
     }
 
+    public function verManutencao(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.manutencao.ver', 'transporte.manutencao.gerir']);
+    }
+
+    public function gerenciarManutencao(User $user): bool
+    {
+        return $this->algumaDe($user, ['transporte.manutencao.gerir']);
+    }
+
     public function auditar(User $user): bool
     {
         return $this->algumaDe($user, ['transporte.audit']);

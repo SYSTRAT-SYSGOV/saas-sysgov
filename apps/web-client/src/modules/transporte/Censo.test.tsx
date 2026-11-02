@@ -19,7 +19,8 @@ const opcoes: Opcoes = {
   tipos_empresa: [], origens: [], tipos_rede: [], turnos: [], escolas: [], anos_letivos: [2026, 2025], veiculos: [], poderes_publicos: [], mediacoes: [],
   categorias_cnh: [], tipologias: [], empresas: [], motoristas: [],
   caracteristicas_trecho: [],
-  permissoes: { gerenciar_frota: true, gerenciar_rotas: true, gerenciar_alocacoes: true, exceder_capacidade: true, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, ver_custos: false, gerenciar_parametros_custo: false, auditar: true },
+  ramos_fornecedor: [], tipos_servico: [],
+  permissoes: { gerenciar_frota: true, gerenciar_rotas: true, gerenciar_alocacoes: true, exceder_capacidade: true, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, ver_custos: false, gerenciar_parametros_custo: false, ver_manutencao: false, gerenciar_manutencao: false, auditar: true },
 };
 
 const leiaute: LeiauteCenso = {

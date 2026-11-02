@@ -35,7 +35,8 @@ const opcoes = (gerenciar = true): Opcoes => ({
   veiculos: [{ id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01', origem: 'propria' }, { id: 3, placa: 'LOC1A23', descricao: 'Van locada', origem: 'locada' }],
   poderes_publicos: [], mediacoes: [], categorias_cnh: ['D'], tipologias: [], empresas: [], motoristas: [{ id: 2, nome: 'João da Silva' }],
   caracteristicas_trecho: [{ valor: 'porteira', rotulo: 'Porteira' }, { valor: 'atoleiro', rotulo: 'Trecho com atoleiro' }],
-  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, ver_custos: false, gerenciar_parametros_custo: false, auditar: false },
+  ramos_fornecedor: [], tipos_servico: [],
+  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, ver_custos: false, gerenciar_parametros_custo: false, ver_manutencao: false, gerenciar_manutencao: false, auditar: false },
 });
 
 const parada = (extra: Partial<Parada> = {}): Parada => ({
@@ -209,6 +210,20 @@ describe('Rotas', () => {
 
     await waitFor(() => expect(api.salvarRota).toHaveBeenCalled());
     expect(api.salvarRota).toHaveBeenCalledWith(7, expect.objectContaining({ custo_contratado_mensal: 17000.5, caracteristicas: ['porteira'] }));
+  });
+
+  it('veículo em manutenção: o aviso do servidor aparece depois de salvar', async () => {
+    api.rotas.mockResolvedValue(pagina([]));
+    api.salvarRota.mockResolvedValue({ ...rota(), avisos: ['O veículo ABC1D23 está em manutenção (há ordem de serviço aberta).'] });
+    const avisar = vi.fn();
+    render(<Rotas opcoes={opcoes()} avisar={avisar} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Nova rota/ }));
+    fireEvent.change(await screen.findByLabelText('Nome *'), { target: { value: 'Rota Sul' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(avisar).toHaveBeenCalledWith(expect.objectContaining({ title: 'Atenção', message: expect.stringContaining('em manutenção') })));
+    expect(avisar).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', title: 'Rota' }));
   });
 
   it('filtra as rotas por característica do trecho', async () => {

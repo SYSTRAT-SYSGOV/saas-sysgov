@@ -11,6 +11,7 @@ use Modules\Escola\Models\Escola;
 use Modules\Transporte\Models\Alocacao;
 use Modules\Transporte\Models\Empresa;
 use Modules\Transporte\Models\Motorista;
+use Modules\Transporte\Models\OrdemServico;
 use Modules\Transporte\Models\Rota;
 use Modules\Transporte\Models\Veiculo;
 use Modules\Transporte\Support\ConflitoException;
@@ -68,6 +69,22 @@ final class RotaService
 
             return $rota;
         });
+    }
+
+    /**
+     * Avisos que não impedem salvar: veículo da rota com ordem de serviço aberta (design D-M3). A rota já gravada não muda.
+     *
+     * @return list<string>
+     */
+    public function avisos(Rota $rota): array
+    {
+        $avisos = [];
+        if ($rota->veiculo_id !== null && OrdemServico::query()->where('veiculo_id', $rota->veiculo_id)->where('status', 'aberta')->exists()) {
+            $placa = (string) Veiculo::query()->whereKey($rota->veiculo_id)->value('placa');
+            $avisos[] = "O veículo {$placa} está em manutenção (há ordem de serviço aberta).";
+        }
+
+        return $avisos;
     }
 
     /** Custo contratado só existe para frota locada ou terceirizada (design D-C6). */

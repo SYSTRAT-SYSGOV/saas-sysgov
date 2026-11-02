@@ -13,6 +13,7 @@ use Modules\Transporte\Enums\MediacaoDidatica;
 use Modules\Transporte\Enums\OrigemVeiculo;
 use Modules\Transporte\Custo\Caracteristicas;
 use Modules\Transporte\Enums\PoderPublico;
+use Modules\Transporte\Manutencao\Catalogo as ManutencaoCatalogo;
 use Modules\Transporte\Enums\TipoEmpresa;
 use Modules\Transporte\Enums\TipoRede;
 use Modules\Transporte\Enums\Turno;
@@ -45,6 +46,8 @@ final class OpcoesController extends Controller
             'veiculos' => Veiculo::query()->where('ativo', true)->orderBy('placa')->get(['id', 'placa', 'descricao', 'origem'])
                 ->map(fn (Veiculo $v): array => ['id' => $v->id, 'placa' => $v->placa, 'descricao' => $v->descricao, 'origem' => $v->origem])->values(),
             'caracteristicas_trecho' => Caracteristicas::opcoes(),
+            'ramos_fornecedor' => ManutencaoCatalogo::opcoes(ManutencaoCatalogo::RAMOS),
+            'tipos_servico' => ManutencaoCatalogo::opcoes(ManutencaoCatalogo::TIPOS_OS),
             'poderes_publicos' => array_map(fn (PoderPublico $p): array => ['valor' => $p->value, 'rotulo' => $p->label()], PoderPublico::cases()),
             'mediacoes' => array_map(fn (MediacaoDidatica $m): array => ['valor' => $m->value, 'rotulo' => $m->label()], MediacaoDidatica::cases()),
             'categorias_cnh' => ['D', 'E'],
@@ -63,6 +66,8 @@ final class OpcoesController extends Controller
                 'configurar_leiaute_censo' => $this->policy->configurarLeiauteCenso($user),
                 'ver_custos' => $this->policy->verCustos($user),
                 'gerenciar_parametros_custo' => $this->policy->gerenciarParametrosCusto($user),
+                'ver_manutencao' => $this->policy->verManutencao($user),
+                'gerenciar_manutencao' => $this->policy->gerenciarManutencao($user),
                 'auditar' => $this->policy->auditar($user),
             ],
         ]]);

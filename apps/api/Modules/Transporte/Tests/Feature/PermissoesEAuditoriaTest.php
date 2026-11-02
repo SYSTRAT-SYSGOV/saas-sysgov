@@ -57,7 +57,7 @@ final class PermissoesEAuditoriaTest extends TestCase
         (new TransporteRbacSeeder())->run();
         (new TransporteRbacSeeder())->run();
 
-        $this->assertSame(11, Permission::where('module', 'transporte')->count());
+        $this->assertSame(13, Permission::where('module', 'transporte')->count());
         $this->assertSame(array_keys(TransporteRbacSeeder::PERMISSOES), Permission::where('module', 'transporte')->orderBy('id')->pluck('slug')->all());
         $sistema = \App\Models\Tenant::where('slug', 'systrat')->value('id');
         $this->assertSame(array_keys(TransporteRbacSeeder::PERFIS), \App\Models\Role::where('module', 'transporte')->where('tenant_id', $sistema)->orderBy('id')->pluck('slug')->all());

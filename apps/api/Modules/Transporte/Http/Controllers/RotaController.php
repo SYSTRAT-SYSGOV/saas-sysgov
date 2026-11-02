@@ -77,7 +77,11 @@ final class RotaController extends Controller
         abort_unless($this->policy->gerenciarRotas($request->user()), 403);
         $dados = $request->validate($this->regras());
 
-        return $this->executar(fn () => response()->json(['data' => $this->formata->rota($this->carregar($this->service->salvar(null, $dados)))], 201));
+        return $this->executar(function () use ($dados): JsonResponse {
+            $rota = $this->service->salvar(null, $dados);
+
+            return response()->json(['data' => $this->formata->rota($this->carregar($rota)), 'avisos' => $this->service->avisos($rota)], 201);
+        });
     }
 
     public function update(Request $request, Rota $rota): Response
@@ -85,7 +89,11 @@ final class RotaController extends Controller
         abort_unless($this->policy->gerenciarRotas($request->user()), 403);
         $dados = $request->validate($this->regras());
 
-        return $this->executar(fn () => response()->json(['data' => $this->formata->rota($this->carregar($this->service->salvar($rota, $dados)))]));
+        return $this->executar(function () use ($rota, $dados): JsonResponse {
+            $salva = $this->service->salvar($rota, $dados);
+
+            return response()->json(['data' => $this->formata->rota($this->carregar($salva)), 'avisos' => $this->service->avisos($salva)]);
+        });
     }
 
     public function destroy(Request $request, Rota $rota): Response

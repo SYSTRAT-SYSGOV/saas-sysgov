@@ -5,9 +5,11 @@ import { Badge, Card, CardContent, DataTable, KpiCard } from '@sysgov/ui';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { transporteApi, type Alerta } from '../api';
-import { data, prazo, ROTULO_ALERTA, rotuloDe } from '../formato';
+import { data, prazo, prazoKm, ROTULO_ALERTA, rotuloDe } from '../formato';
 
 /** Tabela de alertas de vencimento, com os críticos primeiro (a ordem vem do servidor). */
+const prazoDoAlerta = (a: Alerta): string => (a.dias !== null ? prazo(a.dias) : a.km_restante !== undefined ? prazoKm(a.km_restante) : '—');
+
 export const TabelaAlertas: React.FC<{ alertas: Alerta[] }> = ({ alertas }) => {
   const colunas = useMemo<ColumnDef<Alerta, unknown>[]>(() => [
     {
@@ -31,10 +33,10 @@ export const TabelaAlertas: React.FC<{ alertas: Alerta[] }> = ({ alertas }) => {
       id: 'data',
       header: 'Vencimento',
       accessorKey: 'data',
-      cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{data(row.original.data)}</span>,
-      meta: { exportHeader: 'Vencimento', exportValue: (a) => data(a.data) },
+      cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.data ? data(row.original.data) : '—'}</span>,
+      meta: { exportHeader: 'Vencimento', exportValue: (a) => (a.data ? data(a.data) : '') },
     },
-    { id: 'dias', header: 'Prazo', accessorFn: (a) => prazo(a.dias), meta: { exportHeader: 'Prazo', exportValue: (a) => prazo(a.dias) } },
+    { id: 'dias', header: 'Prazo', accessorFn: (a) => prazoDoAlerta(a), meta: { exportHeader: 'Prazo', exportValue: (a) => prazoDoAlerta(a) } },
   ], []);
 
   return (

@@ -144,7 +144,12 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
       </CardContent>
       {editando && (
         <RotaModal opcoes={opcoes} rota={editando === 'nova' ? null : editando} aoFechar={() => setEditando(null)}
-          aoSalvar={() => { setEditando(null); avisar({ type: 'success', title: 'Rota', message: 'Rota salva.' }); void carga.recarregar(); }} />
+          aoSalvar={(avisos) => {
+            setEditando(null);
+            avisar({ type: 'success', title: 'Rota', message: 'Rota salva.' });
+            avisos.forEach((a) => avisar({ type: 'info', title: 'Atenção', message: a }));
+            void carga.recarregar();
+          }} />
       )}
       {alunos && (
         <AlunosDaRota rota={alunos} opcoes={opcoes} avisar={avisar} aoFechar={() => { setAlunos(null); void carga.recarregar(); }} />
@@ -168,7 +173,7 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
 const textoOuNulo = (valor: string): string | null => (valor.trim() === '' ? null : valor.trim());
 const decimal = (valor: string): number => (valor.trim() === '' ? 0 : Number(valor.replace(',', '.')));
 
-const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => void; aoSalvar: () => void }> = ({ opcoes, rota, aoFechar, aoSalvar }) => {
+const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => void; aoSalvar: (avisos: string[]) => void }> = ({ opcoes, rota, aoFechar, aoSalvar }) => {
   const [dados, setDados] = useState({
     nome: rota?.nome ?? '',
     escola_id: String(rota?.escola?.id ?? opcoes.escolas[0]?.id ?? NENHUM),
@@ -209,7 +214,7 @@ const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => v
     if (faltando.length > 0) return invalidar(faltando);
     setSalvando(true);
     try {
-      await transporteApi.salvarRota(rota?.id ?? null, {
+      const salva = await transporteApi.salvarRota(rota?.id ?? null, {
         escola_id: Number(dados.escola_id),
         ano_letivo: Number(dados.ano_letivo),
         empresa_id: idOuNulo(dados.empresa_id),
@@ -228,7 +233,7 @@ const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => v
         caracteristicas: dados.caracteristicas,
         custo_contratado_mensal: aceitaContrato && dados.custo_contratado.trim() !== '' ? decimal(dados.custo_contratado) : null,
       });
-      aoSalvar();
+      aoSalvar(salva.avisos ?? []);
     } catch (e) {
       if (!tratarErro(e)) setErro(mensagemDeErro(e));
     } finally {

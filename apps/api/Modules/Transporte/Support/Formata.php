@@ -10,6 +10,10 @@ use Modules\Transporte\Enums\PoderPublico;
 use Modules\Transporte\Models\Alocacao;
 use Modules\Transporte\Models\Motorista;
 use Modules\Transporte\Models\Parada;
+use Modules\Transporte\Manutencao\Catalogo;
+use Modules\Transporte\Models\Fornecedor;
+use Modules\Transporte\Models\ManutencaoPrevista;
+use Modules\Transporte\Models\OrdemServico;
 use Modules\Transporte\Models\Rota;
 use Modules\Transporte\Models\RotaParada;
 use Modules\Transporte\Models\Veiculo;
@@ -99,6 +103,9 @@ final class Formata
             'regular' => $motivos === [],
             'motivos_irregularidade' => $motivos,
             'observacoes' => $v->observacoes,
+            'km_atual' => $v->km_atual,
+            'km_atualizado_em' => $v->km_atualizado_em?->toIso8601String(),
+            'em_manutencao' => array_key_exists('em_manutencao', $v->getAttributes()) ? (bool) $v->getAttribute('em_manutencao') : $v->ordens()->where('status', 'aberta')->exists(),
         ];
     }
 
@@ -227,5 +234,45 @@ final class Formata
     private static function hora(?string $valor): ?string
     {
         return $valor === null ? null : substr($valor, 0, 5);
+    }
+
+    /** @return array<string, mixed> */
+    public function fornecedor(Fornecedor $f): array
+    {
+        $pessoa = $f->pessoa;
+
+        return [
+            'id' => $f->id, 'pessoa_id' => $f->pessoa_id, 'nome' => $f->nome(), 'nome_fantasia' => $pessoa?->nome_fantasia,
+            'cnpj_mascarado' => $pessoa?->documento_mascarado, 'ramos' => $f->ramos,
+            'ramos_rotulos' => array_map(static fn (string $r): string => Catalogo::RAMOS[$r] ?? $r, $f->ramos),
+            'contato' => $f->contato, 'ativo' => $f->ativo, 'observacoes' => $f->observacoes,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function ordemServico(OrdemServico $o): array
+    {
+        return [
+            'id' => $o->id, 'veiculo' => $o->veiculo !== null ? ['id' => $o->veiculo->id, 'placa' => $o->veiculo->placa, 'descricao' => $o->veiculo->descricao] : null,
+            'fornecedor' => $o->fornecedor !== null ? ['id' => $o->fornecedor->id, 'nome' => $o->fornecedor->nome()] : null,
+            'tipo' => $o->tipo, 'tipo_rotulo' => Catalogo::TIPOS_OS[$o->tipo] ?? $o->tipo, 'descricao' => $o->descricao,
+            'status' => $o->status, 'status_rotulo' => Catalogo::STATUS_OS[$o->status] ?? $o->status, 'aberta_em' => $o->aberta_em->toDateString(),
+            'concluida_em' => $o->concluida_em?->toDateString(), 'km' => $o->km, 'valor' => $o->valor !== null ? (float) $o->valor : null,
+            'motivo_cancelamento' => $o->motivo_cancelamento,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function manutencaoPrevista(ManutencaoPrevista $p): array
+    {
+        $km = $p->veiculo?->km_atual;
+
+        return [
+            'id' => $p->id, 'veiculo' => $p->veiculo !== null ? ['id' => $p->veiculo->id, 'placa' => $p->veiculo->placa, 'descricao' => $p->veiculo->descricao] : null,
+            'descricao' => $p->descricao, 'data_prevista' => $p->data_prevista?->toDateString(), 'km_previsto' => $p->km_previsto,
+            'km_atual' => $km, 'km_restante' => $p->km_previsto !== null && $km !== null ? $p->km_previsto - $km : null,
+            'dias_restantes' => $p->data_prevista !== null ? (int) today()->diffInDays($p->data_prevista->copy()->startOfDay(), false) : null,
+            'status' => $p->status, 'ordem_servico_id' => $p->ordem_servico_id,
+        ];
     }
 }

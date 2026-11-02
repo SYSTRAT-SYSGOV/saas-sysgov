@@ -22,9 +22,11 @@ Origem: reescrita, para o SysGov, do projeto `sys-transporte` (Rust), adaptada �
 | `transporte.censo.leiaute` | Criar, alterar e excluir campos do leiaute de importação do Educacenso |
 | `transporte.custos.ver` | Custo estimado das rotas e relatório de custos |
 | `transporte.custos.parametros` | Alterar os parâmetros do cálculo de custo |
+| `transporte.manutencao.ver` | Fornecedores, ordens de serviço, manutenções previstas e gastos |
+| `transporte.manutencao.gerir` | Gerir fornecedores, ordens, previsões e a quilometragem dos veículos |
 | `transporte.audit` | Tela de auditoria do módulo |
 
-Perfis (clonados por tenant a partir do tenant `systrat` pelo `ModuleRoleProvisioner`, semeados por `TransporteRbacSeeder`): **Coordenação** (`transporte_coordenacao`, todas), **Operador** (`transporte_operador`, tudo menos exceção de capacidade, edição do leiaute de importação, parâmetros de custo e auditoria) e **Consulta** (`transporte_consulta`, só `view`).
+Perfis (clonados por tenant a partir do tenant `systrat` pelo `ModuleRoleProvisioner`, semeados por `TransporteRbacSeeder`): **Coordenação** (`transporte_coordenacao`, todas), **Operador** (`transporte_operador`, tudo menos exceção de capacidade, edição do leiaute de importação, parâmetros de custo e auditoria; a Consulta não vê manutenção) e **Consulta** (`transporte_consulta`, só `view`).
 
 ## Regras de negócio
 
@@ -89,6 +91,16 @@ Custo estimado de cada rota, por mês, por ano, por km e por aluno, a partir de 
 - **Simulação:** a consulta da rota aceita `simular[chave]=valor` e calcula com o valor trocado, sem salvar.
 - **Relatório:** por rota, por escola e por empresa (só rotas completas entram nos totais) e CSV com neutralização de fórmula, auditado.
 
+## Manutenção e fornecedores
+
+- **Fornecedores** da frota (mecânica, combustível, seguro, peças, outros), sobre o Cadastro de Pessoas (pessoa jurídica pelo CNPJ). Não são as empresas de transporte: a mesma pessoa pode ser as duas. Fornecedor com ordem de serviço **não é excluído**, só inativado (409); fornecedor inativo não recebe ordem.
+- **Ordens de serviço** por veículo (tipo, descrição, fornecedor opcional, abertura, conclusão, km, valor). Fluxo: **aberta → concluída ou cancelada**. Concluída ou cancelada **não é mais editada** (409): para corrigir, abre-se outra ordem. Concluir exige data não anterior à abertura e não futura, e quilometragem **não menor** que a do veículo; se maior, atualiza o hodômetro.
+- **Veículo em manutenção:** enquanto há ordem aberta, o veículo aparece "em manutenção" e salvar uma rota com ele devolve `avisos` (a tela mostra um aviso). Isso **não impede** nada e **não torna a rota irregular**.
+- **Manutenção prevista** por data, por quilometragem ou por ambas (exige ao menos uma). Gera alerta de **atenção** a 30 dias ou 500 km e **crítico** quando vencida, na tabela de alertas do Painel. O alerta por km depende do hodômetro do veículo estar atualizado. **Converter** abre uma ordem preventiva e marca a previsão como convertida; cancelar tira o alerta.
+- **Quilometragem:** `km_atual` do veículo, atualizada pelas ordens ou na aba Manutenção. Reduzir exige confirmação ("correção do hodômetro") e a auditoria guarda o valor anterior e o novo.
+- **Gastos do ano** (só ordens concluídas) por veículo, fornecedor e tipo; CSV das ordens do ano com neutralização de fórmula, auditado. Histórico por veículo na API.
+- **Fora de escopo:** abastecimento, anexos (nota fiscal), garagem georreferenciada.
+
 ## Rotas da API
 
 | Método | Rota | Permissão |
@@ -113,6 +125,11 @@ Custo estimado de cada rota, por mês, por ano, por km e por aluno, a partir de 
 | POST | `/custos/parametros/copiar` (`de`, `para`, `sobrescrever`) | custos.parametros |
 | GET | `/custos/rotas?ano=`, `/custos/rotas/{rota}` (`simular[chave]=`) | custos.ver |
 | GET | `/custos/relatorio?ano=`, `/custos/relatorio/csv?ano=` (`escola_id`, `empresa_id`, `modal`) | custos.ver |
+| GET/POST/PUT/DELETE | `/fornecedores` | manutencao.ver / manutencao.gerir |
+| GET/POST/PUT | `/ordens-servico` (`veiculo_id`, `status`, `ano`), `POST .../{id}/concluir`, `.../cancelar` | idem |
+| GET/POST | `/manutencoes-previstas` (`status`), `POST .../{id}/cancelar`, `.../converter` | idem |
+| PUT | `/veiculos/{id}/quilometragem` (`km`, `confirmar_reducao`) | manutencao.gerir |
+| GET | `/veiculos/{id}/manutencao`, `/manutencao/gastos?ano=`, `/manutencao/gastos/csv?ano=` | manutencao.ver |
 | GET | `/importacoes/modelo/{tipo}` | frota.manage / rotas.manage |
 | POST | `/importacoes/{tipo}/previa`, `/importacoes/{id}/confirmar` (Censo: `casar_por_nome`) | idem (Censo: censo.importar) |
 | GET/DELETE | `/importacoes/{id}` | idem |
@@ -121,7 +138,7 @@ Erros de regra: `409` (conflito: placa/CNH repetida, capacidade, regularidade, i
 
 ## Telas (`apps/web-client/src/modules/transporte`)
 
-Painel · Rotas (itinerário e mapa Leaflet, alunos da rota com ocupação) · Paradas · Veículos (vistorias) · Motoristas · Empresas · Custos (custo das rotas, parâmetros e relatório) · Censo (Exportar, Importar do Educacenso e Leiaute de importação, conforme a permissão) · Auditoria. Escritas com `@sysgov/ui`. Importar CSV nas telas de Veículos, Motoristas e Paradas. A ocupação e a irregularidade aparecem sempre com **texto**, não só com cor.
+Painel · Rotas (itinerário e mapa Leaflet, alunos da rota com ocupação) · Paradas · Veículos (vistorias) · Motoristas · Empresas · Manutenção (ordens de serviço, manutenção prevista, quilometragem, fornecedores e gastos) · Custos (custo das rotas, parâmetros e relatório) · Censo (Exportar, Importar do Educacenso e Leiaute de importação, conforme a permissão) · Auditoria. Escritas com `@sysgov/ui`. Importar CSV nas telas de Veículos, Motoristas e Paradas. A ocupação e a irregularidade aparecem sempre com **texto**, não só com cor.
 
 ## Privacidade (LGPD)
 
@@ -147,6 +164,8 @@ Depende do Cadastro Escolar (`EscolaDadosDemonstracaoSeeder`). Idempotente (não
 - Migração automática de dados do i-Educar está fora do escopo.
 - O código Inep da turma ainda só entra pela tela do Escola; o do aluno também pode ser preenchido pela importação do Educacenso.
 - Os custos não foram conferidos com a planilha oficial (ver Custos); o cartão de custo no painel ficou para depois.
+- O histórico de manutenção por veículo está na API, mas a tela ainda não o mostra (a lista de ordens não tem filtro por veículo).
+- A manutenção não cobre abastecimento nem anexos de nota fiscal.
 - O mapeamento das colunas do Educacenso 2023 não foi conferido com arquivo real (ver Importação do arquivo do Educacenso).
 - Conferência no navegador das telas (tarefa 5.2 de cada fase) pendente: depende de login.
 - Concorrência de alocação: o `lockForUpdate` só é exercitado no MySQL; os testes (SQLite) cobrem a regra, não a corrida.
