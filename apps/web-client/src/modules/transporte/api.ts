@@ -13,14 +13,17 @@ export interface Opcoes {
   turnos: OpcaoTexto[];
   escolas: Ref[];
   anos_letivos: number[];
-  veiculos: { id: number; placa: string; descricao: string }[];
+  veiculos: { id: number; placa: string; descricao: string; origem: string }[];
+  caracteristicas_trecho: OpcaoTexto[];
+  ramos_fornecedor: OpcaoTexto[];
+  tipos_servico: OpcaoTexto[];
   poderes_publicos: { valor: number; rotulo: string }[];
   mediacoes: OpcaoTexto[];
   categorias_cnh: string[];
   tipologias: { valor: number; rotulo: string }[];
   empresas: (Ref & { tipo: string })[];
   motoristas: Ref[];
-  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; gerenciar_alocacoes: boolean; exceder_capacidade: boolean; exportar_censo: boolean; importar_censo: boolean; configurar_leiaute_censo: boolean; auditar: boolean };
+  permissoes: { gerenciar_frota: boolean; gerenciar_rotas: boolean; gerenciar_alocacoes: boolean; exceder_capacidade: boolean; exportar_censo: boolean; importar_censo: boolean; configurar_leiaute_censo: boolean; ver_custos: boolean; gerenciar_parametros_custo: boolean; ver_manutencao: boolean; gerenciar_manutencao: boolean; auditar: boolean };
 }
 
 export interface Empresa {
@@ -114,6 +117,9 @@ export interface Veiculo {
   regular: boolean;
   motivos_irregularidade: string[];
   observacoes: string | null;
+  km_atual: number | null;
+  km_atualizado_em: string | null;
+  em_manutencao: boolean;
 }
 
 export interface VeiculoEntrada {
@@ -151,13 +157,15 @@ export interface Vistoria {
 export interface VistoriaEntrada { data_vistoria: string; certificado: string; validade: string; observacoes: string | null }
 
 export interface Alerta {
-  tipo: 'cnh' | 'curso' | 'toxicologico' | 'vistoria' | 'contrato';
+  tipo: 'cnh' | 'curso' | 'toxicologico' | 'vistoria' | 'contrato' | 'manutencao';
   gravidade: 'critico' | 'atencao';
   item_tipo: 'motorista' | 'veiculo' | 'empresa';
   item_id: number;
   item: string;
-  data: string;
-  dias: number;
+  data: string | null;
+  dias: number | null;
+  /** Só no alerta de manutenção por quilometragem. */
+  km_restante?: number;
 }
 
 export interface Alertas { data: Alerta[]; resumo: { criticos: number; atencao: number } }
@@ -224,6 +232,8 @@ export interface Rota {
   regular: boolean;
   motivos_irregularidade: string[];
   observacoes: string | null;
+  caracteristicas: string[];
+  custo_contratado_mensal: number | null;
 }
 
 export interface RotaEntrada {
@@ -242,9 +252,11 @@ export interface RotaEntrada {
   horario_retorno: string | null;
   ativa: boolean;
   observacoes: string | null;
+  caracteristicas?: string[];
+  custo_contratado_mensal?: number | null;
 }
 
-export interface FiltrosRota { ano_letivo?: number; escola_id?: number; turno?: string; tipo_rede?: string; situacao?: string; q?: string; page?: number }
+export interface FiltrosRota { ano_letivo?: number; escola_id?: number; turno?: string; tipo_rede?: string; situacao?: string; caracteristica?: string; q?: string; page?: number }
 
 export interface ItemItinerario {
   ordem: number;
@@ -422,6 +434,71 @@ export interface TesteLeiaute {
   alertas: { registro: string; chave: string; rotulo: string; posicao: number; codigo: string; mensagem: string; ocorrencias: number }[];
 }
 
+/* Custos (design D-C1 a D-C8). */
+export interface ParametroCusto {
+  chave: string; rotulo: string; unidade: string; escopo: 'comum' | 'rod' | 'aqua'; grupo: string; min: number; max: number; obrigatorio: boolean;
+  padrao: number | null; ajuda: string; valor: number | null; origem: 'orgao' | 'padrao' | null;
+}
+
+export interface ParametrosCusto { ano: number; grupos: Record<string, string>; parametros: ParametroCusto[] }
+
+export interface CustoRota {
+  rota_id: number; rota: string; ano_letivo: number; turno: string; escola: string | null; escola_id: number; empresa: string | null; empresa_id: number | null;
+  veiculo: string | null; origem_veiculo: string | null; custo_contratado_mensal: number | null; simulado: boolean;
+  modal: 'rodoviario' | 'aquaviario' | null; completo: boolean; faltando: { chave: string; rotulo: string }[];
+  km_viagem: number; km_mes?: number; km_ano?: number; alunos: number;
+  fixo?: Record<string, number>; variavel?: Record<string, number>;
+  custo_fixo_mensal?: number | null; custo_variavel_km?: number | null; custo_mensal?: number | null; custo_anual?: number | null;
+  custo_por_km?: number | null; custo_por_dia_letivo?: number | null; custo_por_aluno_mes?: number | null; custo_por_aluno_ano?: number | null;
+  comparativo: { contratado: number; estimado: number; diferenca: number; percentual: number | null; acima_do_limite: boolean } | null;
+}
+
+export interface RelatorioCustos {
+  ano_letivo: number;
+  linhas: CustoRota[];
+  por_escola: GrupoCusto[];
+  por_empresa: GrupoCusto[];
+  totais: { rotas: number; completas: number; incompletas: number; custo_anual: number; alunos: number; custo_por_aluno_ano: number | null };
+}
+
+export interface GrupoCusto { id: number | null; nome: string; rotas: number; incompletas: number; alunos: number; custo_anual: number; custo_por_aluno_ano: number | null }
+
+/* Manutenção e fornecedores (design D-M1 a D-M7). */
+export interface Fornecedor {
+  id: number; pessoa_id: number; nome: string; nome_fantasia: string | null; cnpj_mascarado: string | null;
+  ramos: string[]; ramos_rotulos: string[]; contato: string | null; ativo: boolean; observacoes: string | null;
+}
+
+export interface FornecedorEntrada {
+  cnpj?: string; razao_social?: string; nome_fantasia?: string | null; ramos: string[]; contato: string | null; ativo: boolean; observacoes: string | null;
+}
+
+export interface OrdemServico {
+  id: number;
+  veiculo: { id: number; placa: string; descricao: string } | null;
+  fornecedor: Ref | null;
+  tipo: string; tipo_rotulo: string; descricao: string;
+  status: 'aberta' | 'concluida' | 'cancelada'; status_rotulo: string;
+  aberta_em: string; concluida_em: string | null; km: number | null; valor: number | null; motivo_cancelamento: string | null;
+}
+
+export interface OrdemServicoEntrada {
+  veiculo_id?: number; fornecedor_id: number | null; tipo: string; descricao: string; aberta_em: string; km: number | null; valor: number | null;
+}
+
+export interface ManutencaoPrevista {
+  id: number;
+  veiculo: { id: number; placa: string; descricao: string } | null;
+  descricao: string; data_prevista: string | null; km_previsto: number | null; km_atual: number | null; km_restante: number | null; dias_restantes: number | null;
+  status: 'pendente' | 'convertida' | 'cancelada'; ordem_servico_id: number | null;
+}
+
+export interface GrupoGasto { nome: string; ordens: number; valor: number }
+
+export interface GastosManutencao { ano: number; total: number; ordens: number; por_veiculo: GrupoGasto[]; por_fornecedor: GrupoGasto[]; por_tipo: GrupoGasto[] }
+
+export interface RotaSalva extends Rota { avisos: string[] }
+
 export interface Pagina<T> { data: T[]; current_page: number; last_page: number; total: number }
 
 /** Mensagem de erro da API ({"error"} das regras de negócio ou {"message"} da validação). */
@@ -466,8 +543,10 @@ export const transporteApi = {
   excluirParada: async (id: number) => { await apiClient.delete(`${base}/paradas/${id}`); },
 
   rotas: async (params: FiltrosRota = {}) => (await apiClient.get<Pagina<Rota>>(`${base}/rotas`, { params })).data,
-  salvarRota: async (id: number | null, dados: RotaEntrada) =>
-    id ? (await apiClient.put<{ data: Rota }>(`${base}/rotas/${id}`, dados)).data.data : (await apiClient.post<{ data: Rota }>(`${base}/rotas`, dados)).data.data,
+  salvarRota: async (id: number | null, dados: RotaEntrada): Promise<RotaSalva> => {
+    const r = id ? await apiClient.put<{ data: Rota; avisos?: string[] }>(`${base}/rotas/${id}`, dados) : await apiClient.post<{ data: Rota; avisos?: string[] }>(`${base}/rotas`, dados);
+    return { ...r.data.data, avisos: r.data.avisos ?? [] };
+  },
   excluirRota: async (id: number) => { await apiClient.delete(`${base}/rotas/${id}`); },
 
   itinerario: async (rotaId: number) => (await apiClient.get<{ data: ItemItinerario[] }>(`${base}/rotas/${rotaId}/itinerario`)).data.data,
@@ -541,6 +620,46 @@ export const transporteApi = {
     form.append('arquivo', arquivo);
     if (leiauteId) form.append('leiaute_id', String(leiauteId));
     return (await apiClient.post<{ data: ImportacaoCsv }>(`${base}/censo/importacao/previa`, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data.data;
+  },
+
+  parametrosCusto: async (ano: number) => (await apiClient.get<{ data: ParametrosCusto }>(`${base}/custos/parametros`, { params: { ano } })).data.data,
+  salvarParametrosCusto: async (ano: number, valores: Record<string, number | string | null>) =>
+    (await apiClient.put<{ data: ParametrosCusto }>(`${base}/custos/parametros`, { ano, valores })).data.data,
+  copiarParametrosCusto: async (de: number, para: number, sobrescrever = false) =>
+    (await apiClient.post<{ copiados: number }>(`${base}/custos/parametros/copiar`, { de, para, sobrescrever })).data.copiados,
+  custosRotas: async (ano: number, escolaId?: number) => (await apiClient.get<{ data: CustoRota[] }>(`${base}/custos/rotas`, { params: { ano, escola_id: escolaId } })).data.data,
+  custoRota: async (id: number, simular?: Record<string, string>) => (await apiClient.get<{ data: CustoRota }>(`${base}/custos/rotas/${id}`, { params: simular && Object.keys(simular).length > 0 ? { simular } : undefined })).data.data,
+  relatorioCustos: async (ano: number) => (await apiClient.get<{ data: RelatorioCustos }>(`${base}/custos/relatorio`, { params: { ano } })).data.data,
+  baixarCustos: async (ano: number) => {
+    const r = await apiClient.get<Blob>(`${base}/custos/relatorio/csv`, { params: { ano }, responseType: 'blob' });
+    return { blob: r.data, nome: `transporte-custos-${ano}.csv` };
+  },
+
+  fornecedores: async () => (await apiClient.get<{ data: Fornecedor[] }>(`${base}/fornecedores`)).data.data,
+  salvarFornecedor: async (id: number | null, dados: FornecedorEntrada) =>
+    id ? (await apiClient.put<{ data: Fornecedor }>(`${base}/fornecedores/${id}`, dados)).data.data : (await apiClient.post<{ data: Fornecedor }>(`${base}/fornecedores`, dados)).data.data,
+  excluirFornecedor: async (id: number) => { await apiClient.delete(`${base}/fornecedores/${id}`); },
+
+  ordensServico: async (params: { veiculo_id?: number; status?: string; ano?: number; page?: number }) =>
+    (await apiClient.get<Pagina<OrdemServico>>(`${base}/ordens-servico`, { params })).data,
+  salvarOrdemServico: async (id: number | null, dados: OrdemServicoEntrada) =>
+    id ? (await apiClient.put<{ data: OrdemServico }>(`${base}/ordens-servico/${id}`, dados)).data.data : (await apiClient.post<{ data: OrdemServico }>(`${base}/ordens-servico`, dados)).data.data,
+  concluirOrdemServico: async (id: number, dados: { concluida_em: string; km: number | null; valor: number | null }) =>
+    (await apiClient.post<{ data: OrdemServico }>(`${base}/ordens-servico/${id}/concluir`, dados)).data.data,
+  cancelarOrdemServico: async (id: number, motivo: string | null) => (await apiClient.post<{ data: OrdemServico }>(`${base}/ordens-servico/${id}/cancelar`, { motivo })).data.data,
+
+  manutencoesPrevistas: async (status = 'pendente') => (await apiClient.get<{ data: ManutencaoPrevista[] }>(`${base}/manutencoes-previstas`, { params: { status } })).data.data,
+  criarManutencaoPrevista: async (dados: { veiculo_id: number; descricao: string; data_prevista: string | null; km_previsto: number | null }) =>
+    (await apiClient.post<{ data: ManutencaoPrevista }>(`${base}/manutencoes-previstas`, dados)).data.data,
+  cancelarManutencaoPrevista: async (id: number) => (await apiClient.post<{ data: ManutencaoPrevista }>(`${base}/manutencoes-previstas/${id}/cancelar`)).data.data,
+  converterManutencaoPrevista: async (id: number, fornecedorId: number | null) =>
+    (await apiClient.post<{ data: OrdemServico }>(`${base}/manutencoes-previstas/${id}/converter`, { fornecedor_id: fornecedorId })).data.data,
+  registrarQuilometragem: async (veiculoId: number, km: number, confirmarReducao: boolean) =>
+    (await apiClient.put<{ data: { id: number; km_atual: number } }>(`${base}/veiculos/${veiculoId}/quilometragem`, { km, confirmar_reducao: confirmarReducao })).data.data,
+  gastosManutencao: async (ano: number) => (await apiClient.get<{ data: GastosManutencao }>(`${base}/manutencao/gastos`, { params: { ano } })).data.data,
+  baixarManutencao: async (ano: number) => {
+    const r = await apiClient.get<Blob>(`${base}/manutencao/gastos/csv`, { params: { ano }, responseType: 'blob' });
+    return { blob: r.data, nome: `transporte-manutencao-${ano}.csv` };
   },
 
   auditoria: async (params: { acao?: string; de?: string; ate?: string; usuario?: string; page?: number; per_page?: number }) =>

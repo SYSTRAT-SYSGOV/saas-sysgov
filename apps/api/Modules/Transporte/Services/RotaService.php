@@ -11,6 +11,7 @@ use Modules\Escola\Models\Escola;
 use Modules\Transporte\Models\Alocacao;
 use Modules\Transporte\Models\Empresa;
 use Modules\Transporte\Models\Motorista;
+use Modules\Transporte\Models\OrdemServico;
 use Modules\Transporte\Models\Rota;
 use Modules\Transporte\Models\Veiculo;
 use Modules\Transporte\Support\ConflitoException;
@@ -59,12 +60,42 @@ final class RotaService
                 'horario_retorno' => $dados['horario_retorno'] ?? null,
                 'ativa' => $dados['ativa'] ?? true,
                 'observacoes' => $dados['observacoes'] ?? null,
+                'caracteristicas' => array_key_exists('caracteristicas', $dados) ? array_values(array_unique($dados['caracteristicas'] ?? [])) : ($rota !== null ? ($rota->caracteristicas ?? []) : []),
+                'custo_contratado_mensal' => array_key_exists('custo_contratado_mensal', $dados) ? $dados['custo_contratado_mensal'] : ($rota !== null ? $rota->custo_contratado_mensal : null),
             ];
+            $this->conferirCustoContratado($campos['custo_contratado_mensal'], $veiculoId);
             $rota = $rota === null ? Rota::create($campos) : tap($rota)->update($campos);
             $this->audit->record('transporte', $antes === null ? 'rota.criada' : 'rota.alterada', "rota:{$rota->id}", $antes, $rota->toArray());
 
             return $rota;
         });
+    }
+
+    /**
+     * Avisos que não impedem salvar: veículo da rota com ordem de serviço aberta (design D-M3). A rota já gravada não muda.
+     *
+     * @return list<string>
+     */
+    public function avisos(Rota $rota): array
+    {
+        $avisos = [];
+        if ($rota->veiculo_id !== null && OrdemServico::query()->where('veiculo_id', $rota->veiculo_id)->where('status', 'aberta')->exists()) {
+            $placa = (string) Veiculo::query()->whereKey($rota->veiculo_id)->value('placa');
+            $avisos[] = "O veículo {$placa} está em manutenção (há ordem de serviço aberta).";
+        }
+
+        return $avisos;
+    }
+
+    /** Custo contratado só existe para frota locada ou terceirizada (design D-C6). */
+    private function conferirCustoContratado(mixed $valor, ?int $veiculoId): void
+    {
+        if ($valor === null || $veiculoId === null) {
+            return;
+        }
+        if (Veiculo::query()->whereKey($veiculoId)->value('origem') === 'propria') {
+            throw new DomainException('Rota com veículo próprio não tem custo contratado: deixe o campo vazio.');
+        }
     }
 
     /** Confere empresa, veículo e motorista da rota gravada, por inteiro: usada na alocação de alunos (D13). */

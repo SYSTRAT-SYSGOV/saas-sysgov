@@ -37,6 +37,8 @@ use Modules\Transporte\Enums\OrigemVeiculo;
  * @property string|null $observacoes
  * @property string|null $vistorias_max_validade preenchido por withMax('vistorias', 'validade')
  * @property-read Empresa|null $empresa
+ * @property int|null $km_atual
+ * @property \Illuminate\Support\Carbon|null $km_atualizado_em
  * @property-read Motorista|null $motoristaPadrao
  */
 final class Veiculo extends Model
@@ -50,7 +52,7 @@ final class Veiculo extends Model
     protected $fillable = [
         'tenant_id', 'origem', 'empresa_id', 'motorista_padrao_id', 'descricao', 'placa', 'renavam', 'chassi', 'marca_modelo',
         'ano_fabricacao', 'ano_modelo', 'data_licenca', 'capacidade', 'tipo_rede', 'tipologia_inep', 'uso_exclusivo',
-        'acessivel', 'ativo', 'motivo_inativacao', 'observacoes',
+        'acessivel', 'ativo', 'motivo_inativacao', 'observacoes', 'km_atual', 'km_atualizado_em',
     ];
 
     /** @var array<string, string> */
@@ -66,6 +68,8 @@ final class Veiculo extends Model
         'uso_exclusivo' => 'boolean',
         'acessivel' => 'boolean',
         'ativo' => 'boolean',
+        'km_atual' => 'integer',
+        'km_atualizado_em' => 'datetime',
     ];
 
     /** @return BelongsTo<Empresa, $this> */
@@ -78,6 +82,12 @@ final class Veiculo extends Model
     public function motoristaPadrao(): BelongsTo
     {
         return $this->belongsTo(Motorista::class, 'motorista_padrao_id');
+    }
+
+    /** @return HasMany<OrdemServico, $this> */
+    public function ordens(): HasMany
+    {
+        return $this->hasMany(OrdemServico::class, 'veiculo_id');
     }
 
     /** @return HasMany<Vistoria, $this> */

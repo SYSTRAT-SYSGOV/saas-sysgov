@@ -11,6 +11,7 @@ export const ROTULO_ALERTA: Record<string, string> = {
   toxicologico: 'Exame toxicológico',
   vistoria: 'Vistoria do DETRAN',
   contrato: 'Contrato da empresa',
+  manutencao: 'Manutenção prevista',
 };
 
 export const ROTULO_INELEGIBILIDADE: Record<string, string> = {
@@ -86,6 +87,27 @@ export const ROTULO_ACAO: Record<string, string> = {
   'alocacao.encerrada_automaticamente': 'Alocação encerrada por mudança do aluno',
   'alocacao.excesso_autorizado': 'Autorizou alocação acima da capacidade',
   'alocacao.observacao_lida': 'Leu a observação de necessidade especial',
+  'censo_leiaute.salvo': 'Alterou o leiaute de importação do Censo',
+  'censo_leiaute.duplicado': 'Duplicou o leiaute de importação do Censo',
+  'censo_leiaute.restaurado': 'Restaurou o leiaute de importação do Censo',
+  'censo_leiaute.padrao': 'Definiu o leiaute padrão de importação do Censo',
+  'censo_leiaute.excluido': 'Excluiu leiaute de importação do Censo',
+  'custos.parametros_salvos': 'Alterou parâmetros de custo',
+  'custos.parametros_copiados': 'Copiou parâmetros de custo entre anos',
+  'custos.exportado': 'Exportou o relatório de custos',
+  'fornecedor.criado': 'Cadastrou fornecedor',
+  'fornecedor.alterado': 'Alterou fornecedor',
+  'fornecedor.excluido': 'Excluiu fornecedor',
+  'ordem_servico.aberta': 'Abriu ordem de serviço',
+  'ordem_servico.alterada': 'Alterou ordem de serviço',
+  'ordem_servico.concluida': 'Concluiu ordem de serviço',
+  'ordem_servico.cancelada': 'Cancelou ordem de serviço',
+  'manutencao_prevista.criada': 'Registrou manutenção prevista',
+  'manutencao_prevista.cancelada': 'Cancelou manutenção prevista',
+  'manutencao_prevista.convertida': 'Converteu manutenção prevista em ordem de serviço',
+  'manutencao.exportada': 'Exportou o relatório de manutenção',
+  'veiculo.km_atualizado': 'Atualizou a quilometragem do veículo',
+  'veiculo.hodometro_corrigido': 'Corrigiu o hodômetro do veículo',
 };
 
 export const ROTULO_FAIXA: Record<string, string> = { verde: 'Folgada', amarelo: 'No limite', vermelho: 'Superlotada' };
@@ -113,3 +135,28 @@ export const ROTULO_GRUPO_CENSO: Record<string, string> = { identificacao: 'Iden
 export function km(valor: number): string {
   return `${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km`;
 }
+
+/** Valor em reais (R$ 1.234,56). */
+export function reais(valor: number | null | undefined): string {
+  return valor === null || valor === undefined ? '—' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+}
+
+export const ROTULO_COMPONENTE_CUSTO: Record<string, string> = {
+  pessoal: 'Pessoal (motorista e monitor, com encargos)',
+  administrativo: 'Administrativo',
+  depreciacao: 'Depreciação do veículo',
+  remuneracao_capital: 'Remuneração do capital',
+  seguro: 'Seguro, licenciamento e IPVA',
+  manutencao: 'Manutenção',
+  combustivel: 'Combustível',
+  lubrificantes: 'Óleo e lubrificantes',
+  rodagem: 'Rodagem (pneus e recapagem)',
+  pecas: 'Peças e acessórios',
+};
+
+/** "faltam 400 km", "passou 600 km". */
+export function prazoKm(restante: number): string {
+  return restante >= 0 ? `faltam ${restante.toLocaleString('pt-BR')} km` : `passou ${Math.abs(restante).toLocaleString('pt-BR')} km`;
+}
+
+export const ROTULO_MODAL: Record<string, string> = { rodoviario: 'Rodoviário', aquaviario: 'Aquaviário' };

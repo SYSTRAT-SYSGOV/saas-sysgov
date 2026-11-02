@@ -21,6 +21,9 @@
 ### D-M5. Quilometragem
 `km_atual` e `km_atualizado_em` no veículo. Editável manualmente (com auditoria) e atualizada pelas ordens. Nunca diminui sem confirmação explícita ("correção de hodômetro"), registrada na auditoria.
 
+### D-M5b. Alerta por quilometragem
+O alerta por quilometragem usa `km_restante` (quilometragem prevista − hodômetro). Não tem data nem prazo em dias (`data` e `dias` nulos); a tabela de alertas mostra "faltam N km" ou "passou N km". Sem hodômetro informado no veículo, só o critério de data alerta.
+
 ### D-M6. Relatórios
 Gasto por veículo, fornecedor e tipo, no ano; histórico por veículo. Exportação CSV com neutralização de fórmula e auditada. O gasto real alimenta, **opcionalmente**, o comparativo da mudança de custos (SETE 2), sem depender dela.
 

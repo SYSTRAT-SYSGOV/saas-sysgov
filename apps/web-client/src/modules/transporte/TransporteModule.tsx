@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Building2, FileSpreadsheet, History, LayoutDashboard, MapPin, Route, Truck, UserRound } from 'lucide-react';
+import { Building2, Calculator, FileSpreadsheet, History, LayoutDashboard, MapPin, Route, Truck, UserRound, Wrench } from 'lucide-react';
 import { Card, CardContent, Tabs, TabsContent, TabsList, TabsTrigger } from '@sysgov/ui';
 import { Avisos, useAvisos } from '../escola/components/Avisos';
 import { EstadoCarga } from '../escola/components/AdminModal';
@@ -8,6 +8,8 @@ import { useCarga } from '../escola/useCarga';
 import { transporteApi } from './api';
 import { Empresas } from './components/Empresas';
 import { CensoAbas } from './components/CensoAbas';
+import { Custos } from './components/Custos';
+import { Manutencao } from './components/Manutencao';
 import { Motoristas } from './components/Motoristas';
 import { Painel } from './components/Painel';
 import { Paradas } from './components/Paradas';
@@ -15,7 +17,7 @@ import { Rotas } from './components/Rotas';
 import { Veiculos } from './components/Veiculos';
 import { AuditoriaTransporte } from './components/Auditoria';
 
-type Aba = 'visao' | 'censo' | 'rotas' | 'paradas' | 'empresas' | 'motoristas' | 'veiculos' | 'auditoria';
+type Aba = 'visao' | 'manutencao' | 'custos' | 'censo' | 'rotas' | 'paradas' | 'empresas' | 'motoristas' | 'veiculos' | 'auditoria';
 
 /** Módulo Transporte Escolar (Fases 1 a 4): painel, rotas com itinerário, mapa e alunos, paradas, frota, Censo e auditoria. */
 export const TransporteModule: React.FC = () => {
@@ -37,6 +39,8 @@ export const TransporteModule: React.FC = () => {
     { id: 'veiculos', rotulo: 'Veículos', icone: Truck, visivel: true },
     { id: 'motoristas', rotulo: 'Motoristas', icone: UserRound, visivel: true },
     { id: 'empresas', rotulo: 'Empresas', icone: Building2, visivel: true },
+    { id: 'manutencao', rotulo: 'Manutenção', icone: Wrench, visivel: o.permissoes.ver_manutencao },
+    { id: 'custos', rotulo: 'Custos', icone: Calculator, visivel: o.permissoes.ver_custos },
     { id: 'censo', rotulo: 'Censo', icone: FileSpreadsheet, visivel: temCenso },
     { id: 'auditoria', rotulo: 'Auditoria', icone: History, visivel: o.permissoes.auditar },
   ];
@@ -60,6 +64,8 @@ export const TransporteModule: React.FC = () => {
           ))}
         </TabsList>
         <TabsContent value="visao"><Painel opcoes={o} /></TabsContent>
+        {o.permissoes.ver_manutencao && <TabsContent value="manutencao"><Manutencao opcoes={o} avisar={avisar} /></TabsContent>}
+        {o.permissoes.ver_custos && <TabsContent value="custos"><Custos opcoes={o} avisar={avisar} /></TabsContent>}
         {temCenso && <TabsContent value="censo"><CensoAbas opcoes={o} avisar={avisar} /></TabsContent>}
         <TabsContent value="rotas"><Rotas opcoes={o} avisar={avisar} /></TabsContent>
         <TabsContent value="paradas"><Paradas opcoes={o} avisar={avisar} /></TabsContent>

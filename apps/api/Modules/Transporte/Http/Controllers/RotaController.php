@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Modules\Transporte\Custo\Caracteristicas;
 use Modules\Transporte\Enums\TipoRede;
 use Modules\Transporte\Enums\Turno;
 use Modules\Transporte\Http\Controllers\Concerns\RespondeErroDeNegocio;
@@ -37,6 +38,7 @@ final class RotaController extends Controller
             'turno' => ['nullable', Rule::in(array_column(Turno::cases(), 'value'))],
             'tipo_rede' => ['nullable', Rule::in(array_column(TipoRede::cases(), 'value'))],
             'situacao' => ['nullable', Rule::in(['ativa', 'inativa'])],
+            'caracteristica' => ['nullable', Rule::in(array_keys(Caracteristicas::ROTULOS))],
             'q' => ['nullable', 'string', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
@@ -50,6 +52,7 @@ final class RotaController extends Controller
             ->when($filtros['turno'] ?? null, fn ($q, $v) => $q->where('turno', $v))
             ->when($filtros['tipo_rede'] ?? null, fn ($q, $v) => $q->where('tipo_rede', $v))
             ->when($filtros['situacao'] ?? null, fn ($q, $v) => $q->where('ativa', $v === 'ativa'))
+            ->when($filtros['caracteristica'] ?? null, fn ($q, $v) => $q->whereJsonContains('caracteristicas', $v))
             ->when($filtros['q'] ?? null, fn ($q, $v) => $q->where('nome', 'like', '%' . $v . '%'))
             ->orderByDesc('ano_letivo')->orderBy('nome')
             ->paginate((int) ($filtros['per_page'] ?? 25));
@@ -74,7 +77,11 @@ final class RotaController extends Controller
         abort_unless($this->policy->gerenciarRotas($request->user()), 403);
         $dados = $request->validate($this->regras());
 
-        return $this->executar(fn () => response()->json(['data' => $this->formata->rota($this->carregar($this->service->salvar(null, $dados)))], 201));
+        return $this->executar(function () use ($dados): JsonResponse {
+            $rota = $this->service->salvar(null, $dados);
+
+            return response()->json(['data' => $this->formata->rota($this->carregar($rota)), 'avisos' => $this->service->avisos($rota)], 201);
+        });
     }
 
     public function update(Request $request, Rota $rota): Response
@@ -82,7 +89,11 @@ final class RotaController extends Controller
         abort_unless($this->policy->gerenciarRotas($request->user()), 403);
         $dados = $request->validate($this->regras());
 
-        return $this->executar(fn () => response()->json(['data' => $this->formata->rota($this->carregar($this->service->salvar($rota, $dados)))]));
+        return $this->executar(function () use ($rota, $dados): JsonResponse {
+            $salva = $this->service->salvar($rota, $dados);
+
+            return response()->json(['data' => $this->formata->rota($this->carregar($salva)), 'avisos' => $this->service->avisos($salva)]);
+        });
     }
 
     public function destroy(Request $request, Rota $rota): Response
@@ -120,6 +131,9 @@ final class RotaController extends Controller
             'horario_retorno' => ['nullable', 'date_format:H:i'],
             'ativa' => ['sometimes', 'boolean'],
             'observacoes' => ['nullable', 'string', 'max:2000'],
+            'caracteristicas' => ['nullable', 'array', 'max:20'],
+            'caracteristicas.*' => ['string', Rule::in(array_keys(Caracteristicas::ROTULOS))],
+            'custo_contratado_mensal' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99', 'decimal:0,2'],
         ];
     }
 }

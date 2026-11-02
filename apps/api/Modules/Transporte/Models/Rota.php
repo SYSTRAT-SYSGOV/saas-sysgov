@@ -33,6 +33,8 @@ use Modules\Transporte\Enums\Turno;
  * @property string|null $horario_retorno
  * @property bool $ativa
  * @property string|null $observacoes
+ * @property list<string>|null $caracteristicas
+ * @property string|null $custo_contratado_mensal
  * @property-read Escola|null $escola
  * @property-read Empresa|null $empresa
  * @property-read Veiculo|null $veiculo
@@ -49,6 +51,7 @@ final class Rota extends Model
     protected $fillable = [
         'tenant_id', 'escola_id', 'ano_letivo', 'empresa_id', 'veiculo_id', 'motorista_id', 'nome', 'turno', 'tipo_rede',
         'km_pavimentado', 'km_nao_pavimentado', 'horario_saida', 'horario_chegada', 'horario_retorno', 'ativa', 'observacoes',
+        'caracteristicas', 'custo_contratado_mensal',
     ];
 
     /** @var array<string, string> */
@@ -62,6 +65,8 @@ final class Rota extends Model
         'km_pavimentado' => 'decimal:2',
         'km_nao_pavimentado' => 'decimal:2',
         'ativa' => 'boolean',
+        'caracteristicas' => 'array',
+        'custo_contratado_mensal' => 'decimal:2',
     ];
 
     /** @return BelongsTo<Escola, $this> */

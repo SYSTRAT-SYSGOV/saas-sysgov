@@ -274,7 +274,9 @@ describe('Abas do Censo', () => {
   const base: Opcoes = {
     tipos_empresa: [], origens: [], tipos_rede: [], turnos: [], escolas: [], anos_letivos: [2026], veiculos: [], poderes_publicos: [], mediacoes: [], categorias_cnh: [],
     tipologias: [], empresas: [], motoristas: [],
-    permissoes: { gerenciar_frota: true, gerenciar_rotas: true, gerenciar_alocacoes: true, exceder_capacidade: false, exportar_censo: false, importar_censo: false, configurar_leiaute_censo: false, auditar: false },
+    caracteristicas_trecho: [],
+    ramos_fornecedor: [], tipos_servico: [],
+    permissoes: { gerenciar_frota: true, gerenciar_rotas: true, gerenciar_alocacoes: true, exceder_capacidade: false, exportar_censo: false, importar_censo: false, configurar_leiaute_censo: false, ver_custos: false, gerenciar_parametros_custo: false, ver_manutencao: false, gerenciar_manutencao: false, auditar: false },
   };
 
   it('operador que só importa vê a importação direto, sem aba de leiaute', async () => {
@@ -287,7 +289,7 @@ describe('Abas do Censo', () => {
   it('coordenação vê as três abas', async () => {
     api.leiautes.mockResolvedValue([]);
     api.modelos.mockResolvedValue([]);
-    render(<CensoAbas opcoes={{ ...base, permissoes: { ...base.permissoes, exportar_censo: true, importar_censo: true, configurar_leiaute_censo: true } }} avisar={avisar} />);
+    render(<CensoAbas opcoes={{ ...base, permissoes: { ...base.permissoes, exportar_censo: true, importar_censo: true, configurar_leiaute_censo: true, ver_custos: false, gerenciar_parametros_custo: false, ver_manutencao: false, gerenciar_manutencao: false } }} avisar={avisar} />);
 
     expect(screen.getByRole('tab', { name: 'Exportar' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Importar do Educacenso' })).toBeInTheDocument();

@@ -18,13 +18,14 @@ const motivosTexto = (r: Rota): string => r.motivos_irregularidade.map((m) => ro
 
 /** Rotas por escola, ano letivo e turno. A irregularidade é derivada na leitura: a rota gravada não é alterada. */
 export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avisar }) => {
-  const [filtros, setFiltros] = useState({ ano: TODOS, escola: TODOS, turno: TODOS, situacao: TODOS });
+  const [filtros, setFiltros] = useState({ ano: TODOS, escola: TODOS, turno: TODOS, situacao: TODOS, trecho: TODOS });
   const [pagina, setPagina] = useState(1);
   const consulta = useMemo<FiltrosRota>(() => ({
     ano_letivo: filtros.ano === TODOS ? undefined : Number(filtros.ano),
     escola_id: filtros.escola === TODOS ? undefined : Number(filtros.escola),
     turno: filtros.turno === TODOS ? undefined : filtros.turno,
     situacao: filtros.situacao === TODOS ? undefined : filtros.situacao,
+    caracteristica: filtros.trecho === TODOS ? undefined : filtros.trecho,
     page: pagina,
   }), [filtros, pagina]);
   const carga = useCarga(() => transporteApi.rotas(consulta), [consulta]);
@@ -113,7 +114,7 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
     <Card>
       <CardContent className="space-y-4 p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="grid flex-1 gap-3 sm:grid-cols-4">
+          <div className="grid flex-1 gap-3 sm:grid-cols-5">
             <Select label="Ano letivo" value={filtros.ano} onChange={(v) => filtrar('ano', v)}
               options={[{ value: TODOS, label: 'Todos' }, ...opcoes.anos_letivos.map((a) => ({ value: String(a), label: String(a) }))]} />
             <Select label="Escola" value={filtros.escola} onChange={(v) => filtrar('escola', v)}
@@ -122,6 +123,8 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
               options={[{ value: TODOS, label: 'Todos' }, ...opcoes.turnos.map((t) => ({ value: t.valor, label: t.rotulo }))]} />
             <Select label="Situação" value={filtros.situacao} onChange={(v) => filtrar('situacao', v)}
               options={[{ value: TODOS, label: 'Todas' }, { value: 'ativa', label: 'Ativas' }, { value: 'inativa', label: 'Inativas' }]} />
+            <Select label="Característica do trecho" value={filtros.trecho} onChange={(v) => filtrar('trecho', v)}
+              options={[{ value: TODOS, label: 'Qualquer' }, ...opcoes.caracteristicas_trecho.map((c) => ({ value: c.valor, label: c.rotulo }))]} />
           </div>
           {gerenciar && <Button onClick={() => setEditando('nova')}><Plus className="mr-1 h-4 w-4" />Nova rota</Button>}
         </div>
@@ -141,7 +144,12 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
       </CardContent>
       {editando && (
         <RotaModal opcoes={opcoes} rota={editando === 'nova' ? null : editando} aoFechar={() => setEditando(null)}
-          aoSalvar={() => { setEditando(null); avisar({ type: 'success', title: 'Rota', message: 'Rota salva.' }); void carga.recarregar(); }} />
+          aoSalvar={(avisos) => {
+            setEditando(null);
+            avisar({ type: 'success', title: 'Rota', message: 'Rota salva.' });
+            avisos.forEach((a) => avisar({ type: 'info', title: 'Atenção', message: a }));
+            void carga.recarregar();
+          }} />
       )}
       {alunos && (
         <AlunosDaRota rota={alunos} opcoes={opcoes} avisar={avisar} aoFechar={() => { setAlunos(null); void carga.recarregar(); }} />
@@ -165,7 +173,7 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
 const textoOuNulo = (valor: string): string | null => (valor.trim() === '' ? null : valor.trim());
 const decimal = (valor: string): number => (valor.trim() === '' ? 0 : Number(valor.replace(',', '.')));
 
-const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => void; aoSalvar: () => void }> = ({ opcoes, rota, aoFechar, aoSalvar }) => {
+const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => void; aoSalvar: (avisos: string[]) => void }> = ({ opcoes, rota, aoFechar, aoSalvar }) => {
   const [dados, setDados] = useState({
     nome: rota?.nome ?? '',
     escola_id: String(rota?.escola?.id ?? opcoes.escolas[0]?.id ?? NENHUM),
@@ -182,6 +190,8 @@ const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => v
     horario_retorno: rota?.horario_retorno ?? '',
     ativa: rota?.ativa ?? true,
     observacoes: rota?.observacoes ?? '',
+    caracteristicas: rota?.caracteristicas ?? ([] as string[]),
+    custo_contratado: rota?.custo_contratado_mensal !== null && rota?.custo_contratado_mensal !== undefined ? String(rota.custo_contratado_mensal) : '',
   });
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -189,6 +199,9 @@ const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => v
   const campo = <K extends keyof typeof dados>(chave: K, valor: (typeof dados)[K]) => setDados((d) => ({ ...d, [chave]: valor }));
   const total = decimal(dados.km_pavimentado) + decimal(dados.km_nao_pavimentado);
   const idOuNulo = (v: string): number | null => (v === NENHUM ? null : Number(v));
+  const origemDoVeiculo = opcoes.veiculos.find((v) => String(v.id) === dados.veiculo_id)?.origem ?? null;
+  const aceitaContrato = origemDoVeiculo !== null && origemDoVeiculo !== 'propria';
+  const alternarTrecho = (valor: string) => campo('caracteristicas', dados.caracteristicas.includes(valor) ? dados.caracteristicas.filter((c) => c !== valor) : [...dados.caracteristicas, valor]);
 
   const salvar = async () => {
     setErro(null);
@@ -196,11 +209,12 @@ const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => v
     if (!dados.nome.trim()) faltando.push(['Nome', 'Informe o nome da rota.']);
     if (dados.escola_id === NENHUM) faltando.push(['Escola', 'Escolha a escola de destino.']);
     if (!/^\d{4}$/.test(dados.ano_letivo)) faltando.push(['Ano letivo', 'Informe o ano letivo com 4 dígitos.']);
+    if (aceitaContrato && dados.custo_contratado.trim() !== '' && (Number.isNaN(decimal(dados.custo_contratado)) || decimal(dados.custo_contratado) < 0)) faltando.push(['Custo contratado', 'Informe um valor mensal válido, em reais.']);
     if (decimal(dados.km_pavimentado) < 0 || decimal(dados.km_nao_pavimentado) < 0 || Number.isNaN(total)) faltando.push(['Quilometragem', 'A quilometragem não pode ser negativa.']);
     if (faltando.length > 0) return invalidar(faltando);
     setSalvando(true);
     try {
-      await transporteApi.salvarRota(rota?.id ?? null, {
+      const salva = await transporteApi.salvarRota(rota?.id ?? null, {
         escola_id: Number(dados.escola_id),
         ano_letivo: Number(dados.ano_letivo),
         empresa_id: idOuNulo(dados.empresa_id),
@@ -216,8 +230,10 @@ const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => v
         horario_retorno: textoOuNulo(dados.horario_retorno),
         ativa: dados.ativa,
         observacoes: textoOuNulo(dados.observacoes),
+        caracteristicas: dados.caracteristicas,
+        custo_contratado_mensal: aceitaContrato && dados.custo_contratado.trim() !== '' ? decimal(dados.custo_contratado) : null,
       });
-      aoSalvar();
+      aoSalvar(salva.avisos ?? []);
     } catch (e) {
       if (!tratarErro(e)) setErro(mensagemDeErro(e));
     } finally {
@@ -256,6 +272,22 @@ const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => v
           <Input label="Chegada à escola" type="time" value={dados.horario_chegada} className="font-mono tabular-nums" onChange={(e) => campo('horario_chegada', e.target.value)} />
           <Input label="Retorno" type="time" value={dados.horario_retorno} className="font-mono tabular-nums" onChange={(e) => campo('horario_retorno', e.target.value)} />
         </div>
+        <fieldset className="space-y-1">
+          <legend className="text-sm font-semibold">Características do trecho</legend>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {opcoes.caracteristicas_trecho.map((c) => (
+              <label key={c.valor} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={dados.caracteristicas.includes(c.valor)} onChange={() => alternarTrecho(c.valor)} />{c.rotulo}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {aceitaContrato && (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Input label="Custo contratado por mês (R$)" inputMode="decimal" value={dados.custo_contratado} className="font-mono tabular-nums" onChange={(e) => campo('custo_contratado', e.target.value)} />
+            <p className="self-end pb-2 text-xs text-muted-foreground sm:col-span-2">Valor pago à empresa por esta rota (frota locada ou terceirizada). Aparece na comparação com o custo estimado.</p>
+          </div>
+        )}
         <label className="block space-y-1 text-sm">
           <span className="font-semibold">Observações</span>
           <Textarea value={dados.observacoes} rows={2} maxLength={2000} onChange={(e) => campo('observacoes', e.target.value)} />

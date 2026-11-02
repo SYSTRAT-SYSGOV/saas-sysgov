@@ -40,13 +40,15 @@ const opcoes = (gerenciar = true): Opcoes => ({
   tipologias: [{ valor: 3, rotulo: 'Ônibus' }],
   empresas: [{ id: 9, nome: 'Locadora Sul', tipo: 'locadora' }],
   motoristas: [],
-  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, auditar: false },
+  caracteristicas_trecho: [],
+  ramos_fornecedor: [], tipos_servico: [],
+  permissoes: { gerenciar_frota: gerenciar, gerenciar_rotas: gerenciar, gerenciar_alocacoes: gerenciar, exceder_capacidade: false, exportar_censo: true, importar_censo: false, configurar_leiaute_censo: false, ver_custos: false, gerenciar_parametros_custo: false, ver_manutencao: false, gerenciar_manutencao: false, auditar: false },
 });
 
 const veiculo = (extra: Partial<Veiculo> = {}): Veiculo => ({
   id: 1, origem: 'propria', origem_rotulo: 'Própria', empresa: null, motorista_padrao: null, descricao: 'Ônibus escolar 01', placa: 'ABC1D23',
   renavam: null, chassi: null, marca_modelo: null, ano_fabricacao: null, ano_modelo: null, data_licenca: null, capacidade: 40, tipo_rede: 'rural',
-  tipologia_inep: 3, tipologia_rotulo: 'Ônibus', uso_exclusivo: true, acessivel: false, ativo: true, motivo_inativacao: null,
+  tipologia_inep: 3, tipologia_rotulo: 'Ônibus', uso_exclusivo: true, acessivel: false, ativo: true, motivo_inativacao: null, km_atual: null, km_atualizado_em: null, em_manutencao: false,
   vistoria_validade: '2027-03-01', regular: true, motivos_irregularidade: [], observacoes: null,
   ...extra,
 });

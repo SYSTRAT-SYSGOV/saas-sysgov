@@ -31,7 +31,7 @@ final class VeiculoController extends Controller
     public function index(Request $request): JsonResponse
     {
         abort_unless($this->policy->ver($request->user()), 403);
-        $veiculos = Veiculo::query()->with(['empresa.pessoa', 'motoristaPadrao.pessoa'])->withMax('vistorias', 'validade')->orderBy('placa')->get();
+        $veiculos = Veiculo::query()->with(['empresa.pessoa', 'motoristaPadrao.pessoa'])->withMax('vistorias', 'validade')->withExists(['ordens as em_manutencao' => fn ($q) => $q->where('status', 'aberta')])->orderBy('placa')->get();
 
         return response()->json(['data' => $veiculos->map(fn (Veiculo $v): array => $this->formata->veiculo($v))->values()]);
     }
@@ -65,7 +65,7 @@ final class VeiculoController extends Controller
 
     private function carregar(Veiculo $veiculo): Veiculo
     {
-        return Veiculo::query()->with(['empresa.pessoa', 'motoristaPadrao.pessoa'])->withMax('vistorias', 'validade')->findOrFail($veiculo->id);
+        return Veiculo::query()->with(['empresa.pessoa', 'motoristaPadrao.pessoa'])->withMax('vistorias', 'validade')->withExists(['ordens as em_manutencao' => fn ($q) => $q->where('status', 'aberta')])->findOrFail($veiculo->id);
     }
 
     /** @return array<string, mixed> */

@@ -25,6 +25,22 @@ final class VeiculoService
         return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $placa));
     }
 
+    /**
+     * Quilometragem atual do veículo (hodômetro). Reduzi-la é "correção de hodômetro" e exige confirmação explícita;
+     * o valor anterior e o novo ficam na auditoria (design D-M5).
+     */
+    public function ajustarQuilometragem(Veiculo $veiculo, int $km, bool $confirmarReducao): Veiculo
+    {
+        $atual = $veiculo->km_atual;
+        if ($atual !== null && $km < $atual && !$confirmarReducao) {
+            throw new DomainException("A quilometragem informada ({$km} km) é menor que a atual ({$atual} km). Confirme a correção do hodômetro para reduzi-la.");
+        }
+        $veiculo->update(['km_atual' => $km, 'km_atualizado_em' => now()]);
+        $this->audit->record('transporte', $atual !== null && $km < $atual ? 'veiculo.hodometro_corrigido' : 'veiculo.km_atualizado', "veiculo:{$veiculo->id}", ['km_atual' => $atual], ['km_atual' => $km]);
+
+        return $veiculo;
+    }
+
     /** @param array<string, mixed> $dados */
     public function salvar(?Veiculo $veiculo, array $dados): Veiculo
     {
