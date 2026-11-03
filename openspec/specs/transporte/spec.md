@@ -616,6 +616,18 @@ O módulo DEVE ter um painel com: rotas ativas, veículos ativos, alunos transpo
 - **WHEN** o tenant não tem rotas
 - **THEN** o painel mostra o estado vazio
 
+### Requirement: Resumo de custo no painel
+Quando o usuário tiver `transporte.custos.ver` e escolher um ano letivo, o painel DEVE mostrar o custo anual estimado e o custo por aluno no ano, somando só as rotas com cálculo completo e informando quantas rotas ficaram de fora. Quem não tem a permissão, ou não escolheu um ano, NÃO DEVE receber o resumo. O texto DEVE deixar claro que é uma estimativa.
+
+#### Scenario: Usuário com permissão
+- **GIVEN** uma rota com cálculo completo e outra incompleta no ano de 2026
+- **WHEN** o usuário com `custos.ver` abre o painel de 2026
+- **THEN** vê o custo anual estimado só da rota completa e "1 de 2 rota(s) com cálculo completo"
+
+#### Scenario: Usuário sem permissão
+- **WHEN** um usuário só com `transporte.view` abre o painel
+- **THEN** a resposta não traz o resumo de custo e o cartão não aparece
+
 ### Requirement: Alertas no painel
 O painel DEVE incluir os alertas de vencimento da frota (Fase 1), com os críticos primeiro.
 
@@ -642,6 +654,13 @@ O sistema DEVE permitir importar veículos, motoristas e paradas por arquivo CSV
 #### Scenario: Confirmação
 - **WHEN** o usuário confirma a importação
 - **THEN** o processamento vai para a fila e, ao fim, o relatório mostra criados, ignorados e com erro
+
+#### Scenario: Fila própria e processamento interrompido
+- **GIVEN** a conexão de fila das importações configurada para um worker
+- **WHEN** o usuário confirma a importação
+- **THEN** o job entra na fila das importações, sem alterar a fila dos demais módulos
+- **WHEN** o worker é interrompido ou o tempo do job se esgota
+- **THEN** a importação passa a "falha", o arquivo é apagado e nada fica eternamente "na fila"
 
 #### Scenario: Placa já cadastrada
 - **GIVEN** a placa "ABC1D23" já existe

@@ -219,6 +219,7 @@ describe('Painel', () => {
       { id: 1, nome: 'Rota Vermelha', escola: 'Escola A', turno: 'manha', placa: 'ABC1D23', ocupacao: { alocados: 3, capacidade: 2, percentual: 150, faixa: 'vermelho', calculavel: true }, pendencia: null },
       { id: 2, nome: 'Rota Sem Veículo', escola: 'Escola A', turno: 'tarde', placa: null, ocupacao: { alocados: 0, capacidade: null, percentual: null, faixa: null, calculavel: false }, pendencia: 'rota_sem_veiculo' },
     ],
+    custos: null,
     alertas: {
       resumo: { criticos: 1, atencao: 1 },
       data: [
@@ -242,6 +243,25 @@ describe('Painel', () => {
     expect(screen.getByText('Vencido')).toBeInTheDocument();
     expect(screen.getByText('1 rota(s) sem veículo')).toBeInTheDocument();
     expect(api.painel).toHaveBeenCalledWith(2026);
+  });
+
+  it('mostra o custo estimado só quando o servidor o envia', async () => {
+    api.painel.mockResolvedValue(painel({ custos: { ano_letivo: 2026, rotas: 3, completas: 2, incompletas: 1, custo_anual: 155074.91, custo_por_aluno_ano: 15507.49 } }));
+    render(<Painel opcoes={opcoes} />);
+
+    expect(await screen.findByText('Custo anual estimado (2026)')).toBeInTheDocument();
+    expect(screen.getByText('R$ 155.074,91')).toBeInTheDocument();
+    expect(screen.getByText('R$ 15.507,49')).toBeInTheDocument();
+    expect(screen.getByText('2 de 3 rota(s) com cálculo completo')).toBeInTheDocument();
+    expect(screen.getByText(/não validada com a planilha oficial/)).toBeInTheDocument();
+  });
+
+  it('sem permissão de custos o painel não mostra o cartão', async () => {
+    api.painel.mockResolvedValue(painel());
+    render(<Painel opcoes={opcoes} />);
+
+    expect(await screen.findByText('Alunos transportados')).toBeInTheDocument();
+    expect(screen.queryByText(/Custo anual estimado/)).not.toBeInTheDocument();
   });
 
   it('sem rotas mostra o estado vazio e ocupação média indisponível', async () => {

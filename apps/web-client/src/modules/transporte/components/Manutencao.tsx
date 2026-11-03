@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { CheckCircle2, Download, Gauge, Pencil, Plus, Trash2, Wrench, XCircle } from 'lucide-react';
+import { CheckCircle2, Download, Gauge, History, Pencil, Plus, Trash2, Wrench, XCircle } from 'lucide-react';
 import { ActionsMenu, Badge, Button, Card, CardContent, ConfirmDialog, DataTable, Input, Modal, Select, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
-import { mensagemDeErro, transporteApi, type Fornecedor, type GrupoGasto, type ManutencaoPrevista, type Opcoes, type OrdemServico, type Veiculo } from '../api';
+import { mensagemDeErro, transporteApi, type Fornecedor, type GrupoGasto, type ItemHistoricoManutencao, type ManutencaoPrevista, type Opcoes, type OrdemServico, type Veiculo } from '../api';
 import { data, prazo, prazoKm, reais } from '../formato';
 
 const TODOS = 'todos';
@@ -322,11 +322,17 @@ const ConverterModal: React.FC<{ prevista: ManutencaoPrevista; fornecedores: For
 const Quilometragem: React.FC<{ gerir: boolean; avisar: Toast }> = ({ gerir, avisar }) => {
   const carga = useCarga(() => transporteApi.veiculos(), []);
   const [alvo, setAlvo] = useState<Veiculo | null>(null);
+  const [historico, setHistorico] = useState<Veiculo | null>(null);
 
   const colunas = useMemo<ColumnDef<Veiculo>[]>(() => [
     {
-      id: 'acoes', header: '', size: 56, enableSorting: false,
-      cell: ({ row }) => gerir ? <Button variant="ghost" size="sm" aria-label={`Registrar quilometragem de ${row.original.placa}`} onClick={() => setAlvo(row.original)}><Gauge className="h-4 w-4" /></Button> : null,
+      id: 'acoes', header: '', size: 96, enableSorting: false,
+      cell: ({ row }) => (
+        <span className="flex gap-1">
+          <Button variant="ghost" size="sm" aria-label={`Histórico de manutenção de ${row.original.placa}`} onClick={() => setHistorico(row.original)}><History className="h-4 w-4" /></Button>
+          {gerir && <Button variant="ghost" size="sm" aria-label={`Registrar quilometragem de ${row.original.placa}`} onClick={() => setAlvo(row.original)}><Gauge className="h-4 w-4" /></Button>}
+        </span>
+      ),
     },
     { id: 'placa', header: 'Placa', accessorKey: 'placa', cell: ({ row }) => <span className="font-mono font-semibold tabular-nums">{row.original.placa}</span>, meta: { exportHeader: 'Placa', exportValue: (v: Veiculo) => v.placa } },
     { id: 'descricao', header: 'Descrição', accessorKey: 'descricao', meta: { exportHeader: 'Descrição', exportValue: (v: Veiculo) => v.descricao } },
@@ -342,8 +348,42 @@ const Quilometragem: React.FC<{ gerir: boolean; avisar: Toast }> = ({ gerir, avi
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && <DataTable columns={colunas} data={carga.dados} emptyText="Nenhum veículo cadastrado." exportable exportFileName="transporte-quilometragem" exportTitle="Transporte Escolar — Quilometragem" />}
       </CardContent>
+      {historico && <HistoricoModal veiculo={historico} aoFechar={() => setHistorico(null)} />}
       {alvo && <KmModal veiculo={alvo} aoFechar={() => setAlvo(null)} aoSalvar={() => { setAlvo(null); avisar({ type: 'success', title: 'Quilometragem', message: 'Quilometragem registrada.' }); void carga.recarregar(); }} />}
     </Card>
+  );
+};
+
+/** Todas as ordens de serviço do veículo, da mais recente para a mais antiga, com o total gasto (só ordens concluídas). */
+const HistoricoModal: React.FC<{ veiculo: Veiculo; aoFechar: () => void }> = ({ veiculo, aoFechar }) => {
+  const carga = useCarga(() => transporteApi.historicoManutencao(veiculo.id), [veiculo.id]);
+  const total = (carga.dados ?? []).filter((o) => o.status === 'concluida').reduce((soma, o) => soma + (o.valor ?? 0), 0);
+  const colunas = useMemo<ColumnDef<ItemHistoricoManutencao>[]>(() => [
+    { id: 'aberta', header: 'Abertura', accessorKey: 'aberta_em', cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{data(row.original.aberta_em)}</span>, meta: { exportHeader: 'Abertura', exportValue: (o: ItemHistoricoManutencao) => data(o.aberta_em) } },
+    { id: 'tipo', header: 'Tipo', accessorKey: 'tipo_rotulo', meta: { exportHeader: 'Tipo', exportValue: (o: ItemHistoricoManutencao) => o.tipo_rotulo } },
+    { id: 'descricao', header: 'Serviço', accessorKey: 'descricao', meta: { exportHeader: 'Serviço', exportValue: (o: ItemHistoricoManutencao) => o.descricao } },
+    { id: 'fornecedor', header: 'Fornecedor', accessorFn: (o) => o.fornecedor ?? 'Interno', meta: { exportHeader: 'Fornecedor', exportValue: (o: ItemHistoricoManutencao) => o.fornecedor ?? '' } },
+    { id: 'km', header: 'Km', accessorFn: (o) => o.km ?? -1, cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.km !== null ? row.original.km.toLocaleString('pt-BR') : '—'}</span>, meta: { exportHeader: 'Km', exportValue: (o: ItemHistoricoManutencao) => (o.km !== null ? String(o.km) : '') } },
+    { id: 'valor', header: 'Valor', accessorFn: (o) => o.valor ?? 0, cell: ({ row }) => <span className="font-mono tabular-nums">{reais(row.original.valor)}</span>, meta: { exportHeader: 'Valor', exportValue: (o: ItemHistoricoManutencao) => reais(o.valor) } },
+    {
+      id: 'status', header: 'Situação', accessorKey: 'status',
+      cell: ({ row }) => row.original.status === 'aberta' ? <Badge variant="secondary">Aberta</Badge> : row.original.status === 'concluida' ? <Badge variant="outline">Concluída em {data(row.original.concluida_em)}</Badge> : <Badge variant="destructive">Cancelada</Badge>,
+      meta: { exportHeader: 'Situação', exportValue: (o: ItemHistoricoManutencao) => (o.status === 'concluida' ? 'Concluída' : o.status === 'aberta' ? 'Aberta' : 'Cancelada') },
+    },
+  ], []);
+
+  return (
+    <Modal open onClose={aoFechar} title={`Histórico de manutenção de ${veiculo.placa}`} size="xl" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
+      <div className="space-y-3">
+        <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
+        {carga.dados && (
+          <>
+            <p className="text-sm text-muted-foreground">{veiculo.descricao}. Total gasto em ordens concluídas: <strong className="font-mono tabular-nums text-foreground">{reais(total)}</strong>.</p>
+            <DataTable columns={colunas} data={carga.dados} emptyText="Este veículo ainda não tem ordens de serviço." exportable exportFileName={`transporte-manutencao-${veiculo.placa}`} exportTitle={`Transporte Escolar — Manutenção de ${veiculo.placa}`} />
+          </>
+        )}
+      </div>
+    </Modal>
   );
 };
 

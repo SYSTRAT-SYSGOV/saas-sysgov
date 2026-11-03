@@ -60,7 +60,7 @@ Veículos, motoristas e paradas. Fluxo: **prévia** (nada é gravado) → **conf
 - **Motoristas:** ligados pelo **CPF** a pessoa já existente (a importação **não cria pessoas**); `pessoa_nao_encontrada`, `cpf_invalido`, `cpf_repetido`; categoria diferente de D/E é divergência; motorista inelegível também.
 - **Paradas:** coordenadas em par; parada repetida (nome + logradouro + número) é ignorada com aviso.
 - **Segurança:** extensão `csv`/`txt`, até 2 MB e 5.000 linhas, conteúdo de texto, células lidas como texto (nunca fórmula). O arquivo só fica no servidor entre a prévia e o fim do processamento. A auditoria guarda quem importou, o arquivo e os totais.
-- **Fila:** em produção `QUEUE_CONNECTION=sync` (sem worker): o job roda dentro da requisição de confirmação. Com um worker, roda em segundo plano e a tela acompanha o andamento.
+- **Fila:** as importações usam uma conexão própria (`TRANSPORTE_IMPORTACAO_CONEXAO`, fila `TRANSPORTE_IMPORTACAO_FILA`, padrão `importacoes`), sem mexer nos jobs dos outros módulos. Sem a variável vale a conexão padrão: com `sync` o job roda dentro da requisição de confirmação. Com a conexão `redis` e um worker (`php artisan queue:work redis --queue=importacoes --timeout=1800 --tries=1`), roda em segundo plano e a tela acompanha o andamento. O job tem limite de 30 min; o `REDIS_QUEUE_RETRY_AFTER` precisa ser maior (use 2100). Se o worker morrer ou estourar o tempo, a importação vira **falha** e o arquivo é apagado, em vez de ficar eternamente "na fila".
 
 ## Importação do arquivo do Educacenso
 
@@ -73,7 +73,7 @@ Lê o arquivo do Censo Escolar (texto separado por `|`, registros 00 escola, 20 
 - **Leiaute configurável:** o de fábrica é o **Educacenso 2023** (`Censo/Importacao/Educacenso2023.php`). O Inep muda as colunas todo ano, então o órgão, com `transporte.censo.leiaute`, pode **alterar a coluna** de um campo, **desativar** ("excluir") um campo nativo (reversível: "restaurar padrão"), **criar** campos próprios (guardados como extras do aluno, da escola ou da turma), **duplicar** o leiaute para o ano seguinte e definir o padrão. Campos necessários para reconhecer o aluno ficam travados (só a coluna muda). Só o que difere da fábrica fica salvo (`transporte_censo_leiautes.campos`).
 - **As posições de 2023 vieram do código do SETE, não de um arquivo real do Inep** (o órgão não tem o arquivo). Use o **Testar leiaute** com o primeiro arquivo real e ajuste as colunas. As colunas de deficiência **não** vêm ativas (dado de saúde de criança); podem ser criadas como campo sensível.
 - **LGPD:** CPF, nome, nascimento, cor, CEP e e-mail são "sensíveis": mascarados no teste, nunca em listagem. O relatório e a auditoria guardam contagens, número de linha e códigos Inep, **sem CPF, nome ou filiação**.
-- **Segurança:** leitura linha a linha; até 50 MB, 1.000.000 de linhas, 64 KB por linha, 400 colunas e 1.000 caracteres por campo; arquivo binário é recusado. Em produção `QUEUE_CONNECTION=sync`: a confirmação roda dentro da requisição, então arquivos muito grandes podem exigir um worker de fila.
+- **Segurança:** leitura linha a linha; até 50 MB, 1.000.000 de linhas, 64 KB por linha, 400 colunas e 1.000 caracteres por campo; arquivo binário é recusado. Sem a fila própria das importações (ver Fila, acima) a confirmação roda dentro da requisição, então arquivos muito grandes pedem o worker.
 
 Crédito: o formato dos registros e as regras de leitura se baseiam no **SETE** (UFG/CECATE, https://github.com/marcosroriz/sete), licença **MIT**, Copyright (c) Marcos Roriz. Nenhum código foi copiado; a lógica foi reimplementada.
 
@@ -98,7 +98,7 @@ Custo estimado de cada rota, por mês, por ano, por km e por aluno, a partir de 
 - **Veículo em manutenção:** enquanto há ordem aberta, o veículo aparece "em manutenção" e salvar uma rota com ele devolve `avisos` (a tela mostra um aviso). Isso **não impede** nada e **não torna a rota irregular**.
 - **Manutenção prevista** por data, por quilometragem ou por ambas (exige ao menos uma). Gera alerta de **atenção** a 30 dias ou 500 km e **crítico** quando vencida, na tabela de alertas do Painel. O alerta por km depende do hodômetro do veículo estar atualizado. **Converter** abre uma ordem preventiva e marca a previsão como convertida; cancelar tira o alerta.
 - **Quilometragem:** `km_atual` do veículo, atualizada pelas ordens ou na aba Manutenção. Reduzir exige confirmação ("correção do hodômetro") e a auditoria guarda o valor anterior e o novo.
-- **Gastos do ano** (só ordens concluídas) por veículo, fornecedor e tipo; CSV das ordens do ano com neutralização de fórmula, auditado. Histórico por veículo na API.
+- **Gastos do ano** (só ordens concluídas) por veículo, fornecedor e tipo; CSV das ordens do ano com neutralização de fórmula, auditado. O **histórico por veículo** (todas as ordens, com o total das concluídas) abre pelo ícone de histórico na aba Quilometragem e também está na API.
 - **Fora de escopo:** abastecimento, anexos (nota fiscal), garagem georreferenciada.
 
 ## Rotas da API
@@ -106,7 +106,7 @@ Custo estimado de cada rota, por mês, por ano, por km e por aluno, a partir de 
 | Método | Rota | Permissão |
 |---|---|---|
 | GET | `/opcoes` | view (listas de apoio e permissões do usuário) |
-| GET | `/alertas`, `/painel?ano_letivo=` | view |
+| GET | `/alertas`, `/painel?ano_letivo=` | view (o resumo de custo só vem com `custos.ver` e com um ano escolhido) |
 | GET | `/auditoria` (`acao`, `de`, `ate`, `usuario`, `usuario_id`) | audit |
 | GET/POST/PUT/DELETE | `/empresas`, `/motoristas`, `/veiculos` | view / frota.manage |
 | GET/POST | `/veiculos/{id}/vistorias` | view / frota.manage |
@@ -163,8 +163,7 @@ Depende do Cadastro Escolar (`EscolaDadosDemonstracaoSeeder`). Idempotente (não
 - A frota do módulo **Passeio** (`passeio_veiculos`) é separada; a ponte opcional com o Transporte foi descartada (decisão D33).
 - Migração automática de dados do i-Educar está fora do escopo.
 - O código Inep da turma ainda só entra pela tela do Escola; o do aluno também pode ser preenchido pela importação do Educacenso.
-- Os custos não foram conferidos com a planilha oficial (ver Custos); o cartão de custo no painel ficou para depois.
-- O histórico de manutenção por veículo está na API, mas a tela ainda não o mostra (a lista de ordens não tem filtro por veículo).
+- Os custos não foram conferidos com a planilha oficial (ver Custos).
 - A manutenção não cobre abastecimento nem anexos de nota fiscal.
 - O mapeamento das colunas do Educacenso 2023 não foi conferido com arquivo real (ver Importação do arquivo do Educacenso).
 - Conferência no navegador das telas (tarefa 5.2 de cada fase) pendente: depende de login.

@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { AlertTriangle, Gauge, Route, Truck, Users } from 'lucide-react';
+import { AlertTriangle, Gauge, Route, Truck, Users, Wallet } from 'lucide-react';
 import { Card, CardContent, DataTable, KpiCard, Select } from '@sysgov/ui';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
 import { transporteApi, type Opcoes, type Painel as PainelDados } from '../api';
-import { textoOcupacao } from '../formato';
+import { reais, textoOcupacao } from '../formato';
 import { SeloOcupacao } from './AlunosDaRota';
 import { TabelaAlertas } from './VisaoGeral';
 
@@ -54,6 +54,17 @@ export const Painel: React.FC<{ opcoes: Opcoes }> = ({ opcoes }) => {
             <KpiCard title="Ocupação média" value={p.indicadores.ocupacao_media === null ? '—' : `${p.indicadores.ocupacao_media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`} icon={<Gauge className="h-5 w-5" />} />
             <KpiCard title="Rotas superlotadas" value={p.indicadores.rotas_superlotadas} subtitle={p.indicadores.rotas_sem_veiculo > 0 ? `${p.indicadores.rotas_sem_veiculo} rota(s) sem veículo` : undefined} icon={<AlertTriangle className="h-5 w-5" />} />
           </div>
+          {p.custos && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <KpiCard
+                title={`Custo anual estimado (${p.custos.ano_letivo})`}
+                value={p.custos.custo_anual === null ? '—' : reais(p.custos.custo_anual)}
+                subtitle={p.custos.incompletas > 0 ? `${p.custos.completas} de ${p.custos.rotas} rota(s) com cálculo completo` : `${p.custos.completas} rota(s)`}
+                icon={<Wallet className="h-5 w-5" />}
+              />
+              <KpiCard title="Custo estimado por aluno no ano" value={p.custos.custo_por_aluno_ano === null ? '—' : reais(p.custos.custo_por_aluno_ano)} subtitle="Estimativa, não validada com a planilha oficial" icon={<Wallet className="h-5 w-5" />} />
+            </div>
+          )}
           <Card>
             <CardContent className="space-y-2 p-4">
               <h2 className="text-sm font-semibold">Lotação por rota</h2>

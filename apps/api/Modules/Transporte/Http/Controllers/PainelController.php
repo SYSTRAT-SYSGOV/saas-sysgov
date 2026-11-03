@@ -19,6 +19,6 @@ final class PainelController extends Controller
         abort_unless($this->policy->ver($request->user()), 403);
         $ano = $request->validate(['ano_letivo' => ['nullable', 'integer', 'between:2000,2100']])['ano_letivo'] ?? null;
 
-        return response()->json(['data' => $this->painel->montar($ano !== null ? (int) $ano : null)]);
+        return response()->json(['data' => $this->painel->montar($ano !== null ? (int) $ano : null, $this->policy->verCustos($request->user()))]);
     }
 }

@@ -360,6 +360,8 @@ export interface Painel {
     rotas_sem_veiculo: number;
   };
   rotas: { id: number; nome: string; escola: string | null; turno: string; placa: string | null; ocupacao: Ocupacao; pendencia: string | null }[];
+  /** Só vem para quem pode ver custos e com um ano escolhido. */
+  custos: { ano_letivo: number; rotas: number; completas: number; incompletas: number; custo_anual: number | null; custo_por_aluno_ano: number | null } | null;
   alertas: Alertas;
 }
 
@@ -491,6 +493,11 @@ export interface ManutencaoPrevista {
   veiculo: { id: number; placa: string; descricao: string } | null;
   descricao: string; data_prevista: string | null; km_previsto: number | null; km_atual: number | null; km_restante: number | null; dias_restantes: number | null;
   status: 'pendente' | 'convertida' | 'cancelada'; ordem_servico_id: number | null;
+}
+
+export interface ItemHistoricoManutencao {
+  id: number; tipo: string; tipo_rotulo: string; status: 'aberta' | 'concluida' | 'cancelada'; descricao: string; fornecedor: string | null;
+  aberta_em: string; concluida_em: string | null; km: number | null; valor: number | null;
 }
 
 export interface GrupoGasto { nome: string; ordens: number; valor: number }
@@ -656,6 +663,7 @@ export const transporteApi = {
     (await apiClient.post<{ data: OrdemServico }>(`${base}/manutencoes-previstas/${id}/converter`, { fornecedor_id: fornecedorId })).data.data,
   registrarQuilometragem: async (veiculoId: number, km: number, confirmarReducao: boolean) =>
     (await apiClient.put<{ data: { id: number; km_atual: number } }>(`${base}/veiculos/${veiculoId}/quilometragem`, { km, confirmar_reducao: confirmarReducao })).data.data,
+  historicoManutencao: async (veiculoId: number) => (await apiClient.get<{ data: ItemHistoricoManutencao[] }>(`${base}/veiculos/${veiculoId}/manutencao`)).data.data,
   gastosManutencao: async (ano: number) => (await apiClient.get<{ data: GastosManutencao }>(`${base}/manutencao/gastos`, { params: { ano } })).data.data,
   baixarManutencao: async (ano: number) => {
     const r = await apiClient.get<Blob>(`${base}/manutencao/gastos/csv`, { params: { ano }, responseType: 'blob' });

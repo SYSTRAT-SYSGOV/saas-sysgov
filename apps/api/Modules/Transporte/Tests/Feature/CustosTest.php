@@ -318,6 +318,19 @@ final class CustosTest extends TestCase
         $this->como($g, $t)->getJson('/api/transporte/custos/relatorio')->assertStatus(422);
     }
 
+    public function test_painel_resume_o_custo_so_para_quem_ve_custos_e_com_ano_escolhido(): void
+    {
+        [$t, $g] = $this->cenarioRota();
+        $this->gravarParametros($t, $g, self::ROD);
+        $consulta = $this->usuario($t, ['transporte_consulta']);
+
+        $r = $this->como($g, $t)->getJson('/api/transporte/painel?ano_letivo=2026')->assertOk();
+
+        $this->assertSame(['ano_letivo' => 2026, 'rotas' => 1, 'completas' => 1, 'incompletas' => 0, 'custo_anual' => 155074.91, 'custo_por_aluno_ano' => 15507.49], $r->json('data.custos'));
+        $this->como($g, $t)->getJson('/api/transporte/painel')->assertOk()->assertJsonPath('data.custos', null);
+        $this->como($consulta, $t)->getJson('/api/transporte/painel?ano_letivo=2026')->assertOk()->assertJsonPath('data.custos', null);
+    }
+
     public function test_csv_neutraliza_formula_e_a_exportacao_e_auditada(): void
     {
         [$t, $g] = $this->cenarioRota(['ano_fabricacao' => 2021], ['nome' => '=HYPERLINK("x")'], 2);

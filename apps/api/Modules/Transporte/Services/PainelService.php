@@ -11,10 +11,14 @@ use Modules\Transporte\Models\Veiculo;
 /** Painel do módulo (design D33): tudo calculado na hora, sem tabela própria. */
 final class PainelService
 {
-    public function __construct(private readonly AlertaService $alertas) {}
+    public function __construct(private readonly AlertaService $alertas, private readonly CustoRotaService $custos) {}
 
-    /** @return array<string, mixed> */
-    public function montar(?int $ano): array
+    /**
+     * `$comCustos` só vale com um ano escolhido e quando o usuário pode ver custos (o painel é aberto a quem só tem `transporte.ver`).
+     *
+     * @return array<string, mixed>
+     */
+    public function montar(?int $ano, bool $comCustos = false): array
     {
         $rotas = Rota::query()->with(['escola', 'veiculo'])->where('ativa', true)
             ->withCount(['alocacoes as alocados' => fn ($q) => $q->whereNull('data_fim')])
@@ -50,10 +54,22 @@ final class PainelService
                 'rotas_sem_veiculo' => $itens->filter(fn (array $i): bool => $i['pendencia'] !== null)->count(),
             ],
             'rotas' => $lista,
+            'custos' => $comCustos && $ano !== null ? $this->resumoDeCustos($ano) : null,
             'alertas' => ['data' => $a, 'resumo' => [
                 'criticos' => count(array_filter($a, fn (array $x): bool => $x['gravidade'] === 'critico')),
                 'atencao' => count(array_filter($a, fn (array $x): bool => $x['gravidade'] !== 'critico')),
             ]],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function resumoDeCustos(int $ano): array
+    {
+        $t = $this->custos->relatorio($ano)['totais'];
+
+        return [
+            'ano_letivo' => $ano, 'rotas' => $t['rotas'], 'completas' => $t['completas'], 'incompletas' => $t['incompletas'],
+            'custo_anual' => $t['completas'] > 0 ? $t['custo_anual'] : null, 'custo_por_aluno_ano' => $t['custo_por_aluno_ano'],
         ];
     }
 }
