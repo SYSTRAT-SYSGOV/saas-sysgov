@@ -61,7 +61,7 @@ export const Itinerario: React.FC<{ rota: Rota; podeEditar: boolean; avisar: Toa
   const disponiveis = (paradas.dados?.data ?? []).filter((p) => !noItinerario.has(p.id));
 
   return (
-    <Modal open onClose={aoFechar} title={`Itinerário — ${rota.nome}`} size="xl" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
+    <Modal open onClose={aoFechar} title={`Itinerário — ${rota.nome}`} size="2xl" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
       <div className="space-y-4">
         {!rota.regular && rota.ativa && <p role="status"><Badge variant="destructive">Irregular</Badge> <span className="text-sm text-muted-foreground">A rota está irregular; veja a lista de rotas.</span></p>}
         <EstadoCarga carregando={itens === null && erroCarga === null} erro={erroCarga} onTentar={() => void carregar()} />

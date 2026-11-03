@@ -67,7 +67,7 @@ export const ImportarCsv: React.FC<{ tipo: TipoImportacao; aoFechar: () => void;
   const emAndamento = i !== null && (i.status === 'na_fila' || i.status === 'processando');
 
   return (
-    <Modal open onClose={fechar} title={`Importar ${ROTULO_TIPO[tipo]} por CSV`} size="xl" footer={<Button variant="outline" onClick={fechar}>{i?.status === 'concluida' ? 'Fechar' : 'Cancelar'}</Button>}>
+    <Modal open onClose={fechar} title={`Importar ${ROTULO_TIPO[tipo]} por CSV`} size="2xl" footer={<Button variant="outline" onClick={fechar}>{i?.status === 'concluida' ? 'Fechar' : 'Cancelar'}</Button>}>
       <div className="space-y-4">
         {!i && (
           <div className="space-y-3">

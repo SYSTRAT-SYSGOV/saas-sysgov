@@ -196,7 +196,7 @@ const MotoristaModal: React.FC<{ opcoes: Opcoes; motorista: Motorista | null; ao
   };
 
   return (
-    <Modal open onClose={aoFechar} title={motorista ? `Editar ${motorista.nome}` : 'Novo motorista'} size="xl"
+    <Modal open onClose={aoFechar} title={motorista ? `Editar ${motorista.nome}` : 'Novo motorista'} size="2xl"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Salvar</Button></>}>
       {modalValidacao}
       <div className="space-y-4">

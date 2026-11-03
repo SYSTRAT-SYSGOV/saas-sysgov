@@ -189,7 +189,7 @@ const ParadaModal: React.FC<{ parada: Parada | null; aoFechar: () => void; aoSal
   };
 
   return (
-    <Modal open onClose={aoFechar} title={parada ? `Editar parada ${parada.nome}` : 'Nova parada'} size="xl"
+    <Modal open onClose={aoFechar} title={parada ? `Editar parada ${parada.nome}` : 'Nova parada'} size="2xl"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Salvar</Button></>}>
       {modalValidacao}
       <div className="space-y-4">
