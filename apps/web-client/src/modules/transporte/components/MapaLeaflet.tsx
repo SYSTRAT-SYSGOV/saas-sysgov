@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 
 /** Centro do Brasil quando nenhuma parada tem coordenada. */
 const CENTRO_PADRAO: [number, number] = [-14.235, -51.925];
+
+export type TracadoMapa = [number, number][];
 
 export interface PontoMapa { ordem: number; nome: string; latitude: number; longitude: number }
 
@@ -24,9 +26,13 @@ const Enquadrar: React.FC<{ pontos: [number, number][] }> = ({ pontos }) => {
   return null;
 };
 
-/** Itinerário: marcadores numerados na ordem e uma linha reta ligando-os (não é roteirização viária; design D15). */
-export const MapaItinerarioLeaflet: React.FC<{ pontos: PontoMapa[]; altura?: number }> = ({ pontos, altura = 360 }) => {
-  const coords = pontos.map((p): [number, number] => [p.latitude, p.longitude]);
+/**
+ * Itinerário: marcadores numerados na ordem e uma linha reta ligando-os (não é roteirização viária; design D15).
+ * `percursos` desenha por cima os traçados importados de KML (laranja), que seguem as ruas de verdade.
+ */
+export const MapaItinerarioLeaflet: React.FC<{ pontos: PontoMapa[]; percursos?: TracadoMapa[]; altura?: number }> = ({ pontos, percursos = [], altura = 360 }) => {
+  const coords = useMemo(() => pontos.map((p): [number, number] => [p.latitude, p.longitude]), [pontos]);
+  const enquadre = useMemo<[number, number][]>(() => [...coords, ...percursos.flat()], [coords, percursos]);
 
   return (
     <div className="isolate overflow-hidden rounded-lg border border-border" style={{ height: altura }} data-testid="mapa-itinerario">
@@ -34,7 +40,8 @@ export const MapaItinerarioLeaflet: React.FC<{ pontos: PontoMapa[]; altura?: num
         <TileLayer attribution="&copy; OpenStreetMap" url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {pontos.map((p) => <Marker key={p.ordem} position={[p.latitude, p.longitude]} icon={icone(p.ordem)} title={`${p.ordem}. ${p.nome}`} />)}
         {coords.length > 1 && <Polyline positions={coords} pathOptions={{ color: '#1d4ed8', weight: 3, opacity: 0.7 }} />}
-        <Enquadrar pontos={coords} />
+        {percursos.map((t, i) => <Polyline key={i} positions={t} pathOptions={{ color: '#ea580c', weight: 4, opacity: 0.9 }} />)}
+        <Enquadrar pontos={enquadre} />
       </MapContainer>
     </div>
   );

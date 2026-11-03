@@ -234,6 +234,8 @@ export interface Rota {
   observacoes: string | null;
   caracteristicas: string[];
   custo_contratado_mensal: number | null;
+  tem_percurso: boolean;
+  percurso_km: number | null;
 }
 
 export interface RotaEntrada {
@@ -500,6 +502,21 @@ export interface ItemHistoricoManutencao {
   aberta_em: string; concluida_em: string | null; km: number | null; valor: number | null;
 }
 
+export type ParLatLng = [number, number];
+
+export interface LinhaKml { indice: number; nome: string; pontos_no_arquivo: number; pontos: number; km: number; coordenadas: ParLatLng[] }
+
+export interface PreviaKml {
+  arquivo: string;
+  linhas: LinhaKml[];
+  ignorados: { pontos: number; poligonos: number; pares_invalidos: number; linhas_curtas: number };
+  avisos: string[];
+}
+
+export interface PercursoRota { coordenadas: ParLatLng[]; km: number; pontos: number; importado_em: string | null }
+
+export interface PercursoGravado { km: number; pontos: number; km_pavimentado: number; km_nao_pavimentado: number; aplicou_km: boolean }
+
 export interface GrupoGasto { nome: string; ordens: number; valor: number }
 
 export interface GastosManutencao { ano: number; total: number; ordens: number; por_veiculo: GrupoGasto[]; por_fornecedor: GrupoGasto[]; por_tipo: GrupoGasto[] }
@@ -663,6 +680,15 @@ export const transporteApi = {
     (await apiClient.post<{ data: OrdemServico }>(`${base}/manutencoes-previstas/${id}/converter`, { fornecedor_id: fornecedorId })).data.data,
   registrarQuilometragem: async (veiculoId: number, km: number, confirmarReducao: boolean) =>
     (await apiClient.put<{ data: { id: number; km_atual: number } }>(`${base}/veiculos/${veiculoId}/quilometragem`, { km, confirmar_reducao: confirmarReducao })).data.data,
+  previaPercurso: async (rotaId: number, arquivo: File) => {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    return (await apiClient.post<{ data: PreviaKml }>(`${base}/rotas/${rotaId}/percurso/previa`, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data.data;
+  },
+  percurso: async (rotaId: number) => (await apiClient.get<{ data: PercursoRota | null }>(`${base}/rotas/${rotaId}/percurso`)).data.data,
+  gravarPercurso: async (rotaId: number, corpo: { coordenadas: ParLatLng[]; aplicar_km: boolean; km_nao_pavimentado: number | null }) =>
+    (await apiClient.put<{ data: PercursoGravado }>(`${base}/rotas/${rotaId}/percurso`, corpo)).data.data,
+  removerPercurso: async (rotaId: number) => { await apiClient.delete(`${base}/rotas/${rotaId}/percurso`); },
   historicoManutencao: async (veiculoId: number) => (await apiClient.get<{ data: ItemHistoricoManutencao[] }>(`${base}/veiculos/${veiculoId}/manutencao`)).data.data,
   gastosManutencao: async (ano: number) => (await apiClient.get<{ data: GastosManutencao }>(`${base}/manutencao/gastos`, { params: { ano } })).data.data,
   baixarManutencao: async (ano: number) => {

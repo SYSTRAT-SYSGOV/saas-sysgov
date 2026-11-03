@@ -20,6 +20,7 @@ use Modules\Transporte\Http\Controllers\MotoristaController;
 use Modules\Transporte\Http\Controllers\ModeloExportacaoController;
 use Modules\Transporte\Http\Controllers\OpcoesController;
 use Modules\Transporte\Http\Controllers\PainelController;
+use Modules\Transporte\Http\Controllers\PercursoController;
 use Modules\Transporte\Http\Controllers\ParadaController;
 use Modules\Transporte\Http\Controllers\RotaController;
 use Modules\Transporte\Http\Controllers\VeiculoController;
@@ -73,6 +74,10 @@ Route::get('/rotas/{rota}', [RotaController::class, 'show']);
 Route::put('/rotas/{rota}', [RotaController::class, 'update']);
 Route::delete('/rotas/{rota}', [RotaController::class, 'destroy']);
 
+Route::post('/rotas/{rota}/percurso/previa', [PercursoController::class, 'previa']);
+Route::get('/rotas/{rota}/percurso', [PercursoController::class, 'show']);
+Route::put('/rotas/{rota}/percurso', [PercursoController::class, 'gravar']);
+Route::delete('/rotas/{rota}/percurso', [PercursoController::class, 'destroy']);
 Route::get('/rotas/{rota}/itinerario', [ItinerarioController::class, 'index']);
 Route::post('/rotas/{rota}/itinerario', [ItinerarioController::class, 'store']);
 Route::put('/rotas/{rota}/itinerario', [ItinerarioController::class, 'reordenar']);

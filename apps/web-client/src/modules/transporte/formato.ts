@@ -69,6 +69,8 @@ export const ROTULO_ACAO: Record<string, string> = {
   'rota.criada': 'Cadastrou rota',
   'rota.alterada': 'Alterou rota',
   'rota.excluida': 'Excluiu rota',
+  'rota.percurso_importado': 'Importou o percurso da rota (KML)',
+  'rota.percurso_removido': 'Removeu o percurso da rota',
   'itinerario.parada_adicionada': 'Adicionou parada ao itinerário',
   'itinerario.parada_removida': 'Removeu parada do itinerário',
   'itinerario.reordenado': 'Reordenou o itinerário',
