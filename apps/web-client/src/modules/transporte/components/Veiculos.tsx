@@ -221,7 +221,7 @@ const VeiculoModal: React.FC<{ opcoes: Opcoes; veiculo: Veiculo | null; aoFechar
   };
 
   return (
-    <Modal open onClose={aoFechar} title={veiculo ? `Editar veículo ${veiculo.placa}` : 'Novo veículo'} size="xl"
+    <Modal open onClose={aoFechar} title={veiculo ? `Editar veículo ${veiculo.placa}` : 'Novo veículo'} size="2xl"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Salvar</Button></>}>
       {modalValidacao}
       <div className="space-y-4">
@@ -302,7 +302,7 @@ const VistoriasModal: React.FC<{ veiculo: Veiculo; podeRegistrar: boolean; aoFec
   };
 
   return (
-    <Modal open onClose={aoFechar} title={`Vistorias do veículo ${veiculo.placa}`} size="lg" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
+    <Modal open onClose={aoFechar} title={`Vistorias do veículo ${veiculo.placa}`} size="2xl" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
       {modalValidacao}
       <div className="space-y-4">
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />

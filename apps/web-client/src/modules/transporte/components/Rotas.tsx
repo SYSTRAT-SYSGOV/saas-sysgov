@@ -242,7 +242,7 @@ const RotaModal: React.FC<{ opcoes: Opcoes; rota: Rota | null; aoFechar: () => v
   };
 
   return (
-    <Modal open onClose={aoFechar} title={rota ? `Editar rota ${rota.nome}` : 'Nova rota'} size="xl"
+    <Modal open onClose={aoFechar} title={rota ? `Editar rota ${rota.nome}` : 'Nova rota'} size="2xl"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Salvar</Button></>}>
       {modalValidacao}
       <div className="space-y-4">

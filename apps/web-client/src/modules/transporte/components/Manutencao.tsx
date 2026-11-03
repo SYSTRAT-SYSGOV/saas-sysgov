@@ -373,7 +373,7 @@ const HistoricoModal: React.FC<{ veiculo: Veiculo; aoFechar: () => void }> = ({ 
   ], []);
 
   return (
-    <Modal open onClose={aoFechar} title={`Histórico de manutenção de ${veiculo.placa}`} size="xl" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
+    <Modal open onClose={aoFechar} title={`Histórico de manutenção de ${veiculo.placa}`} size="2xl" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
       <div className="space-y-3">
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {carga.dados && (

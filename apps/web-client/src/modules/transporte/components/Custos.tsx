@@ -105,7 +105,7 @@ const DetalheCusto: React.FC<{ rotaId: number; ano: number; aoFechar: () => void
   };
 
   return (
-    <Modal open onClose={aoFechar} title={r ? `Custo da rota ${r.rota}` : 'Custo da rota'} size="xl" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
+    <Modal open onClose={aoFechar} title={r ? `Custo da rota ${r.rota}` : 'Custo da rota'} size="2xl" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
       <div className="space-y-4">
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {r && (

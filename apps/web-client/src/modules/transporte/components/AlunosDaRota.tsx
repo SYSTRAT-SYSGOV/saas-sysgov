@@ -75,7 +75,7 @@ export const AlunosDaRota: React.FC<{ rota: Rota; opcoes: Opcoes; avisar: Toast;
   ], [gerenciar]);
 
   return (
-    <Modal open onClose={aoFechar} title={`Alunos — ${rota.nome}`} size="xl" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
+    <Modal open onClose={aoFechar} title={`Alunos — ${rota.nome}`} size="full" footer={<Button variant="outline" onClick={aoFechar}>Fechar</Button>}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-sm" role="status">
@@ -167,7 +167,7 @@ const AlocacaoModal: React.FC<{ rota: Rota; opcoes: Opcoes; ocupacao: Ocupacao; 
   };
 
   return (
-    <Modal open onClose={aoFechar} title={alocacao ? `Alocação de ${alocacao.aluno?.nome ?? 'aluno'}` : 'Alocar aluno'} size="lg"
+    <Modal open onClose={aoFechar} title={alocacao ? `Alocação de ${alocacao.aluno?.nome ?? 'aluno'}` : 'Alocar aluno'} size="xl"
       footer={<><Button variant="outline" onClick={aoFechar}>Cancelar</Button><Button onClick={() => void salvar()} isLoading={salvando}>Salvar</Button></>}>
       {modalValidacao}
       <div className="space-y-4">
