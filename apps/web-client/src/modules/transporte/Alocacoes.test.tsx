@@ -34,7 +34,7 @@ const rota = (extra: Partial<Rota> = {}): Rota => ({
   id: 7, nome: 'Rota Norte', escola: { id: 5, nome: 'Escola Rio Claro' }, ano_letivo: 2026, turno: 'manha', turno_rotulo: 'Manhã', tipo_rede: 'rural',
   empresa: null, veiculo: { id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01' }, motorista: null, km_pavimentado: 0, km_nao_pavimentado: 0, km_total: 0,
   horario_saida: null, horario_chegada: null, horario_retorno: null, ativa: true, paradas_count: 1, ocupacao: ocupacao(1), regular: true,
-  motivos_irregularidade: [], observacoes: null, caracteristicas: [], custo_contratado_mensal: null, ...extra,
+  motivos_irregularidade: [], observacoes: null, caracteristicas: [], custo_contratado_mensal: null, tem_percurso: false, percurso_km: null, ...extra,
 });
 
 const alocacao = (extra: Partial<Alocacao> = {}): Alocacao => ({

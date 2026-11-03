@@ -175,6 +175,8 @@ final class Formata
             'observacoes' => $r->observacoes,
             'caracteristicas' => $r->caracteristicas ?? [],
             'custo_contratado_mensal' => $r->custo_contratado_mensal !== null ? (float) $r->custo_contratado_mensal : null,
+            'tem_percurso' => $r->relationLoaded('percurso') && $r->percurso !== null,
+            'percurso_km' => $r->relationLoaded('percurso') && $r->percurso !== null ? (float) $r->percurso->km : null,
         ];
     }
 

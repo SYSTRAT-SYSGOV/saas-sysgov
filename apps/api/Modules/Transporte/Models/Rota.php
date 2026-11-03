@@ -8,6 +8,7 @@ use App\Models\Concerns\TenantAware;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Escola\Models\Escola;
 use Modules\Transporte\Enums\Turno;
@@ -73,6 +74,12 @@ final class Rota extends Model
     public function escola(): BelongsTo
     {
         return $this->belongsTo(Escola::class, 'escola_id');
+    }
+
+    /** @return HasOne<RotaPercurso, $this> */
+    public function percurso(): HasOne
+    {
+        return $this->hasOne(RotaPercurso::class, 'rota_id');
     }
 
     /** @return BelongsTo<Empresa, $this> */

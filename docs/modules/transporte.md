@@ -91,6 +91,18 @@ Custo estimado de cada rota, por mês, por ano, por km e por aluno, a partir de 
 - **Simulação:** a consulta da rota aceita `simular[chave]=valor` e calcula com o valor trocado, sem salvar.
 - **Relatório:** por rota, por escola e por empresa (só rotas completas entram nos totais) e CSV com neutralização de fórmula, auditado.
 
+## Percurso da rota (KML)
+
+Importa o traçado real da rota de um arquivo **KML** ou **KMZ** (Google Earth, Google My Maps, aplicativos de GPS), no estilo da importação de GPX do SETE (UFG/CECATE, MIT). Ação **Importar percurso (KML)** no menu da rota, para quem gerencia rotas.
+
+- **Fluxo:** envio → **prévia** (nada é gravado) → escolha das linhas, sentido e km → gravação. O arquivo **não é guardado**: a gravação envia as coordenadas escolhidas e o servidor **recalcula os km** (o valor do navegador não vale).
+- **O que é lido:** `LineString` (também dentro de `MultiGeometry`) e `gx:Track`, na ordem do arquivo. Pontos de interesse e polígonos são ignorados e contados no aviso. Pares de coordenadas inválidos (fora de ±90/±180, não numéricos, 0,0) são descartados e contados. Aviso se parte do traçado cai fora do Brasil.
+- **Km:** haversine (raio 6.371,0088 km) sobre a linha **simplificada** (Douglas-Peucker, tolerância de ~11 m, no máximo 3.000 pontos por linha na prévia e 5.000 gravados). Opcionalmente atualiza `km_pavimentado` e `km_nao_pavimentado` da rota: o usuário informa a parte não pavimentada (não pode passar do total). O comprimento é de **um sentido**; o custo já multiplica pelas viagens por dia.
+- **Percurso guardado** em tabela própria (`transporte_rota_percursos`, uma linha por rota); importar de novo substitui. A lista de rotas só traz `tem_percurso` e `percurso_km`. O mapa do itinerário desenha o percurso em laranja, e a linha azul continua ligando as paradas.
+- **Segurança:** extensão `kml`/`kmz` e até 5 MB; KMZ só lê o `.kml` da raiz (preferindo `doc.kml`), até 20 MB descompactado e sem extrair nada em disco; até 300.000 pontos e 100 linhas; XML sem rede e **`DOCTYPE` recusado** (XXE e expansão de entidades).
+- **Auditoria:** `rota.percurso_importado` (km antes e depois, nº de pontos, se aplicou os km) e `rota.percurso_removido`. As coordenadas nunca vão para a auditoria.
+- **Fora do escopo:** criar paradas a partir dos pontos do arquivo, GPX e shapefile, sugestão automática de rotas.
+
 ## Manutenção e fornecedores
 
 - **Fornecedores** da frota (mecânica, combustível, seguro, peças, outros), sobre o Cadastro de Pessoas (pessoa jurídica pelo CNPJ). Não são as empresas de transporte: a mesma pessoa pode ser as duas. Fornecedor com ordem de serviço **não é excluído**, só inativado (409); fornecedor inativo não recebe ordem.
@@ -109,6 +121,8 @@ Custo estimado de cada rota, por mês, por ano, por km e por aluno, a partir de 
 | GET | `/alertas`, `/painel?ano_letivo=` | view (o resumo de custo só vem com `custos.ver` e com um ano escolhido) |
 | GET | `/auditoria` (`acao`, `de`, `ate`, `usuario`, `usuario_id`) | audit |
 | GET/POST/PUT/DELETE | `/empresas`, `/motoristas`, `/veiculos` | view / frota.manage |
+| POST | `/rotas/{id}/percurso/previa` (multipart `arquivo`) | rotas.manage |
+| GET / PUT / DELETE | `/rotas/{id}/percurso` | view / rotas.manage |
 | GET/POST | `/veiculos/{id}/vistorias` | view / frota.manage |
 | GET/POST/PUT/DELETE | `/paradas` | view / rotas.manage |
 | GET/POST/PUT/DELETE | `/rotas`, `/rotas/{id}` | view / rotas.manage |
@@ -138,7 +152,7 @@ Erros de regra: `409` (conflito: placa/CNH repetida, capacidade, regularidade, i
 
 ## Telas (`apps/web-client/src/modules/transporte`)
 
-Painel · Rotas (itinerário e mapa Leaflet, alunos da rota com ocupação) · Paradas · Veículos (vistorias) · Motoristas · Empresas · Manutenção (ordens de serviço, manutenção prevista, quilometragem, fornecedores e gastos) · Custos (custo das rotas, parâmetros e relatório) · Censo (Exportar, Importar do Educacenso e Leiaute de importação, conforme a permissão) · Auditoria. Escritas com `@sysgov/ui`. Importar CSV nas telas de Veículos, Motoristas e Paradas. A ocupação e a irregularidade aparecem sempre com **texto**, não só com cor.
+Painel · Rotas (itinerário e mapa Leaflet com o percurso importado, alunos da rota com ocupação, importar percurso por KML) · Paradas · Veículos (vistorias) · Motoristas · Empresas · Manutenção (ordens de serviço, manutenção prevista, quilometragem, fornecedores e gastos) · Custos (custo das rotas, parâmetros e relatório) · Censo (Exportar, Importar do Educacenso e Leiaute de importação, conforme a permissão) · Auditoria. Escritas com `@sysgov/ui`. Importar CSV nas telas de Veículos, Motoristas e Paradas. A ocupação e a irregularidade aparecem sempre com **texto**, não só com cor.
 
 ## Privacidade (LGPD)
 

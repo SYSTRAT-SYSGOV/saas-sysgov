@@ -4,7 +4,7 @@ import { Badge, Button, Input, Modal, Select } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
 import { useCarga } from '../../escola/useCarga';
-import { mensagemDeErro, transporteApi, type ItemItinerario, type Rota } from '../api';
+import { mensagemDeErro, transporteApi, type ItemItinerario, type ParLatLng, type Rota } from '../api';
 import { MapaItinerario } from './MapaItinerario';
 
 const NENHUMA = '0';
@@ -26,6 +26,9 @@ export const Itinerario: React.FC<{ rota: Rota; podeEditar: boolean; avisar: Toa
     }
   }, [rota.id]);
   useEffect(() => { void carregar(); }, [carregar]);
+  // O percurso é opcional: se não carregar, o mapa continua só com as paradas.
+  const [percurso, setPercurso] = useState<ParLatLng[] | null>(null);
+  useEffect(() => { void Promise.resolve().then(() => transporteApi.percurso(rota.id)).then((p) => setPercurso(p?.coordenadas ?? null)).catch(() => setPercurso(null)); }, [rota.id]);
 
   const executar = async (acao: () => Promise<ItemItinerario[]>) => {
     setOcupado(true);
@@ -102,7 +105,7 @@ export const Itinerario: React.FC<{ rota: Rota; podeEditar: boolean; avisar: Toa
                 <div className="self-end"><Button onClick={() => void adicionar()} isLoading={ocupado}><Plus className="mr-1 h-4 w-4" />Adicionar</Button></div>
               </div>
             )}
-            <MapaItinerario itens={itens} escola={rota.escola?.nome} />
+            <MapaItinerario itens={itens} escola={rota.escola?.nome} percurso={percurso} />
           </>
         )}
       </div>

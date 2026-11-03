@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ListOrdered, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { ListOrdered, Pencil, Plus, Route as RotaIcone, Trash2, Users } from 'lucide-react';
 import { ActionsMenu, Badge, Button, Card, CardContent, ConfirmDialog, DataTable, Input, Modal, Select, Switch, Textarea } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
@@ -9,6 +9,7 @@ import { useFormValidationModal } from '@/lib/useFormValidationModal';
 import { mensagemDeErro, transporteApi, type FiltrosRota, type Opcoes, type Rota } from '../api';
 import { km, ROTULO_IRREGULARIDADE_ROTA, rotuloDe, textoOcupacao } from '../formato';
 import { AlunosDaRota, SeloOcupacao } from './AlunosDaRota';
+import { ImportarPercursoKml } from './ImportarPercursoKml';
 import { Itinerario } from './Itinerario';
 
 const TODOS = 'todos';
@@ -33,6 +34,8 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
   const [itinerario, setItinerario] = useState<Rota | null>(null);
   const [alunos, setAlunos] = useState<Rota | null>(null);
   const [excluindo, setExcluindo] = useState<Rota | null>(null);
+  const [importandoKml, setImportandoKml] = useState<Rota | null>(null);
+  const [removendoPercurso, setRemovendoPercurso] = useState<Rota | null>(null);
   const gerenciar = opcoes.permissoes.gerenciar_rotas;
 
   const filtrar = (chave: keyof typeof filtros, valor: string) => { setFiltros((f) => ({ ...f, [chave]: valor })); setPagina(1); };
@@ -63,6 +66,8 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
               { key: 'alunos', label: 'Alunos', icon: <Users className="h-3.5 w-3.5" />, onSelect: () => setAlunos(row.original) },
               { key: 'itinerario', label: 'Itinerário e mapa', icon: <ListOrdered className="h-3.5 w-3.5" />, onSelect: () => setItinerario(row.original) },
               ...(ctx.current.gerenciar ? [
+                { key: 'kml', label: 'Importar percurso (KML)', icon: <RotaIcone className="h-3.5 w-3.5" />, onSelect: () => setImportandoKml(row.original) },
+                ...(row.original.tem_percurso ? [{ key: 'remover-percurso', label: 'Remover percurso', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setRemovendoPercurso(row.original) }] : []),
                 { key: 'editar', label: 'Editar', icon: <Pencil className="h-3.5 w-3.5" />, onSelect: () => setEditando(row.original) },
                 { key: 'excluir', label: 'Excluir', icon: <Trash2 className="h-3.5 w-3.5" />, onSelect: () => setExcluindo(row.original) },
               ] : []),
@@ -77,7 +82,7 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
     { id: 'turno', header: 'Turno', accessorKey: 'turno_rotulo', meta: { exportHeader: 'Turno', exportValue: (r) => r.turno_rotulo } },
     { id: 'veiculo', header: 'Veículo', accessorFn: (r) => r.veiculo?.placa ?? '—', meta: { exportHeader: 'Veículo', exportValue: (r) => r.veiculo?.placa ?? '' } },
     { id: 'motorista', header: 'Motorista', accessorFn: (r) => r.motorista?.nome ?? '—', meta: { exportHeader: 'Motorista', exportValue: (r) => r.motorista?.nome ?? '' } },
-    { id: 'km', header: 'Extensão', accessorKey: 'km_total', cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{km(row.original.km_total)}</span>, meta: { exportHeader: 'Extensão (km)', exportValue: (r) => String(r.km_total) } },
+    { id: 'km', header: 'Extensão', accessorKey: 'km_total', cell: ({ row }) => <span className="flex flex-wrap items-center gap-1"><span className="font-mono text-xs tabular-nums">{km(row.original.km_total)}</span>{row.original.tem_percurso && <Badge variant="outline">Percurso</Badge>}</span>, meta: { exportHeader: 'Extensão (km)', exportValue: (r) => String(r.km_total) } },
     { id: 'paradas', header: 'Paradas', accessorFn: (r) => r.paradas_count ?? 0, cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.paradas_count ?? 0}</span>, meta: { exportHeader: 'Paradas', exportValue: (r) => String(r.paradas_count ?? 0) } },
     {
       id: 'ocupacao',
@@ -157,6 +162,27 @@ export const Rotas: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avi
       {itinerario && (
         <Itinerario rota={itinerario} podeEditar={gerenciar} avisar={avisar} aoFechar={() => { setItinerario(null); void carga.recarregar(); }} />
       )}
+      {importandoKml && (
+        <ImportarPercursoKml rota={importandoKml} aoFechar={() => setImportandoKml(null)}
+          aoGravar={(aplicouKm) => {
+            setImportandoKml(null);
+            avisar({ type: 'success', title: 'Percurso', message: aplicouKm ? 'Percurso importado e km da rota atualizados.' : 'Percurso importado.' });
+            void carga.recarregar();
+          }} />
+      )}
+      <ConfirmDialog
+        open={removendoPercurso !== null}
+        onClose={() => setRemovendoPercurso(null)}
+        title="Remover percurso"
+        description={`Remover o percurso importado da rota ${removendoPercurso?.nome ?? ''}? Os km da rota continuam como estão.`}
+        confirmLabel="Remover"
+        requireReason={false}
+        onConfirm={() => {
+          const alvo = removendoPercurso;
+          setRemovendoPercurso(null);
+          if (alvo) void transporteApi.removerPercurso(alvo.id).then(() => { avisar({ type: 'success', title: 'Percurso', message: 'Percurso removido.' }); return carga.recarregar(); }).catch((e) => avisar({ type: 'error', title: 'Percurso', message: mensagemDeErro(e) }));
+        }}
+      />
       <ConfirmDialog
         open={excluindo !== null}
         onClose={() => setExcluindo(null)}

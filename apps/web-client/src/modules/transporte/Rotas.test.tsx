@@ -48,7 +48,7 @@ const rota = (extra: Partial<Rota> = {}): Rota => ({
   id: 7, nome: 'Rota Norte', escola: { id: 5, nome: 'Escola Rio Claro' }, ano_letivo: 2026, turno: 'manha', turno_rotulo: 'Manhã', tipo_rede: 'rural',
   empresa: null, veiculo: { id: 1, placa: 'ABC1D23', descricao: 'Ônibus 01' }, motorista: { id: 2, nome: 'João da Silva' },
   km_pavimentado: 12.5, km_nao_pavimentado: 7.25, km_total: 19.75, horario_saida: '06:30', horario_chegada: null, horario_retorno: null,
-  ativa: true, paradas_count: 3, ocupacao: { alocados: 20, capacidade: 40, percentual: 50, faixa: 'verde', calculavel: true }, regular: true, motivos_irregularidade: [], observacoes: null, caracteristicas: [], custo_contratado_mensal: null, ...extra,
+  ativa: true, paradas_count: 3, ocupacao: { alocados: 20, capacidade: 40, percentual: 50, faixa: 'verde', calculavel: true }, regular: true, motivos_irregularidade: [], observacoes: null, caracteristicas: [], custo_contratado_mensal: null, tem_percurso: false, percurso_km: null, ...extra,
 });
 
 const item = (ordem: number, p: Partial<Parada> = {}): ItemItinerario => ({
