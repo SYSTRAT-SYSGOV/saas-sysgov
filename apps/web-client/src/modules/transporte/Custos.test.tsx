@@ -217,3 +217,78 @@ describe('Relatório de custos', () => {
     await waitFor(() => expect(api.baixarCustos).toHaveBeenCalledWith(2026));
   });
 });
+
+describe('Orientação para completar o cálculo', () => {
+  it('explica como usar a tela', async () => {
+    render(<Custos opcoes={opcoes()} avisar={vi.fn()} />);
+
+    expect(await screen.findByText('Como usar')).toBeInTheDocument();
+    expect(screen.getByText(/O sistema não traz nenhum desses valores/)).toBeInTheDocument();
+  });
+
+  it('resume na lista de rotas o que falta e onde informar', async () => {
+    const irParaAba = vi.fn();
+    render(<Custos opcoes={opcoes()} avisar={vi.fn()} irParaAba={irParaAba} />);
+
+    const resumo = await screen.findByRole('status');
+    expect(within(resumo).getByText('1 de 2 rota(s) estão com o cálculo incompleto.')).toBeInTheDocument();
+    fireEvent.click(within(resumo).getByRole('button', { name: 'Abrir Veículos' }));
+    expect(irParaAba).toHaveBeenCalledWith('veiculos');
+  });
+
+  it('o detalhe separa o que se informa nos parâmetros e no veículo', async () => {
+    const irParaAba = vi.fn();
+    api.custoRota.mockResolvedValue(incompleto());
+    render(<Custos opcoes={opcoes()} avisar={vi.fn()} irParaAba={irParaAba} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Detalhar o custo de Rota Sul' }));
+
+    const modal = await screen.findByRole('dialog');
+    expect(await within(modal).findByText('Parâmetros do ano letivo (aba Parâmetros)')).toBeInTheDocument();
+    expect(within(modal).getByText('Cadastro do veículo ABC1D23 (aba Veículos)')).toBeInTheDocument();
+    fireEvent.click(within(modal).getByRole('button', { name: 'Abrir Veículos' }));
+    expect(irParaAba).toHaveBeenCalledWith('veiculos');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('“Preencher agora” abre os parâmetros e foca o primeiro campo que falta', async () => {
+    api.custoRota.mockResolvedValue(incompleto());
+    render(<Custos opcoes={opcoes()} avisar={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Detalhar o custo de Rota Sul' }));
+    const modal = await screen.findByRole('dialog');
+
+    fireEvent.click(await within(modal).findByRole('button', { name: /Preencher agora/ }));
+
+    // O primeiro faltante da rota é o salário, que não está no catálogo do teste: a aba abre mesmo assim.
+    expect(await screen.findByText(/Obrigatórios preenchidos/)).toBeInTheDocument();
+  });
+
+  it('sem permissão, orienta a pedir a quem administra', async () => {
+    api.custoRota.mockResolvedValue(incompleto());
+    render(<Custos opcoes={opcoes(false)} avisar={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Detalhar o custo de Rota Sul' }));
+
+    const modal = await screen.findByRole('dialog');
+    expect(await within(modal).findByText(/Peça a quem administra o Transporte/)).toBeInTheDocument();
+    expect(within(modal).queryByRole('button', { name: /Preencher agora/ })).not.toBeInTheDocument();
+  });
+
+  it('a aba Parâmetros mostra o progresso e destaca o obrigatório vazio', async () => {
+    render(<Custos opcoes={opcoes()} avisar={vi.fn()} />);
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Parâmetros' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Parâmetros' }));
+
+    expect(await screen.findByText(/Comuns: 1 de 2 · Rodoviário: 1 de 1/)).toBeInTheDocument();
+    const campo = screen.getByLabelText(/Preço do combustível/).closest('[data-chave]');
+    expect(campo).toHaveAttribute('data-pendente', 'true');
+  });
+
+  it('foca o campo pedido ao abrir os parâmetros pelo resumo', async () => {
+    api.custosRotas.mockResolvedValue([custo(), custo({ rota_id: 9, rota: 'Rota Leste', completo: false, faltando: [{ chave: 'preco_combustivel', rotulo: 'Preço do combustível' }] })]);
+    render(<Custos opcoes={opcoes()} avisar={vi.fn()} />);
+
+    const resumo = await screen.findByRole('status');
+    fireEvent.click(within(resumo).getByRole('button', { name: /Preencher agora/ }));
+
+    await waitFor(() => expect(screen.getByLabelText(/Preço do combustível/)).toHaveFocus());
+  });
+});

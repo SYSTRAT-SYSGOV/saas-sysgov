@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Copy, Download, Eye, Save } from 'lucide-react';
+import { Copy, Download, Eye, Save, SlidersHorizontal } from 'lucide-react';
 import { Badge, Button, Card, CardContent, ConfirmDialog, DataTable, Input, Modal, Select, Tabs, TabsContent, TabsList, TabsTrigger } from '@sysgov/ui';
 import type { Toast } from '../../escola/components/AdminModal';
 import { EstadoCarga } from '../../escola/components/AdminModal';
@@ -22,9 +22,14 @@ function entregar(blob: Blob, nome: string): void {
 }
 
 /** Custo estimado das rotas, parâmetros do cálculo e relatório (design D-C1 a D-C8). */
-export const Custos: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, avisar }) => {
+export const Custos: React.FC<{ opcoes: Opcoes; avisar: Toast; irParaAba?: (aba: string) => void }> = ({ opcoes, avisar, irParaAba }) => {
   const [ano, setAno] = useState(String(opcoes.anos_letivos[0] ?? new Date().getFullYear()));
+  const [sub, setSub] = useState('rotas');
+  const [foco, setFoco] = useState<string | null>(null);
   const p = opcoes.permissoes;
+
+  /** Leva ao formulário dos parâmetros, já no primeiro campo que falta. */
+  const preencherParametros = (chave: string | null) => { setFoco(chave); setSub('parametros'); };
 
   return (
     <div className="space-y-4">
@@ -37,23 +42,48 @@ export const Custos: React.FC<{ opcoes: Opcoes; avisar: Toast }> = ({ opcoes, av
             O custo é uma <strong>estimativa</strong> calculada a partir dos parâmetros que o órgão informa, no modelo de custos de transporte escolar usado pelo SETE (estilo FNDE/GEIPOT).
             O modelo ainda <strong>não foi conferido com a planilha oficial</strong>: use para comparar rotas e acompanhar contratos, não como valor oficial. Quando um parâmetro obrigatório não foi informado, a rota aparece como “incompleta”.
           </p>
+          <details open className="rounded-md border border-border p-3 text-sm">
+            <summary className="cursor-pointer font-semibold">Como usar</summary>
+            <ol className="ml-5 mt-2 list-decimal space-y-1">
+              <li>Na aba <strong>Parâmetros</strong>, informe os valores do órgão para o ano letivo (salário do motorista, encargos, preço do combustível, preço e vida útil do veículo, pneus). O sistema não traz nenhum desses valores: eles são do órgão.</li>
+              <li>Na aba <strong>Veículos</strong>, preencha o ano de fabricação de cada veículo. Na aba <strong>Rotas</strong>, confira o km do percurso.</li>
+              <li>Volte à aba <strong>Custo das rotas</strong> e abra o detalhe de cada rota: o cálculo fica completo quando não falta mais nada.</li>
+            </ol>
+          </details>
         </CardContent>
       </Card>
-      <Tabs defaultValue="rotas">
+      <Tabs value={sub} onValueChange={setSub}>
         <TabsList>
           <TabsTrigger value="rotas">Custo das rotas</TabsTrigger>
           <TabsTrigger value="parametros">Parâmetros</TabsTrigger>
           <TabsTrigger value="relatorio">Relatório</TabsTrigger>
         </TabsList>
-        <TabsContent value="rotas"><CustoDasRotas ano={Number(ano)} opcoes={opcoes} /></TabsContent>
-        <TabsContent value="parametros"><Parametros ano={Number(ano)} anos={opcoes.anos_letivos} podeEditar={p.gerenciar_parametros_custo} avisar={avisar} /></TabsContent>
+        <TabsContent value="rotas"><CustoDasRotas ano={Number(ano)} opcoes={opcoes} podeEditarParametros={p.gerenciar_parametros_custo} aoPreencherParametros={preencherParametros} irParaAba={irParaAba} /></TabsContent>
+        <TabsContent value="parametros"><Parametros ano={Number(ano)} anos={opcoes.anos_letivos} podeEditar={p.gerenciar_parametros_custo} avisar={avisar} foco={foco} aoFocar={() => setFoco(null)} /></TabsContent>
         <TabsContent value="relatorio"><Relatorio ano={Number(ano)} avisar={avisar} /></TabsContent>
       </Tabs>
     </div>
   );
 };
 
-const CustoDasRotas: React.FC<{ ano: number; opcoes: Opcoes }> = ({ ano, opcoes }) => {
+interface Orientacao {
+  aoPreencherParametros: (chave: string | null) => void;
+  podeEditarParametros: boolean;
+  irParaAba?: (aba: string) => void;
+}
+
+/** Separa o que falta pelo lugar onde se resolve: parâmetros do ano, cadastro do veículo ou km da rota. */
+function porOnde(faltando: { chave: string; rotulo: string }[]) {
+  return {
+    parametros: faltando.filter((f) => f.chave !== 'ano_fabricacao' && f.chave !== 'km_rota'),
+    veiculo: faltando.filter((f) => f.chave === 'ano_fabricacao'),
+    rota: faltando.filter((f) => f.chave === 'km_rota'),
+  };
+}
+
+const SemPermissao: React.FC = () => <span className="text-muted-foreground">Seu perfil não altera os parâmetros. Peça a quem administra o Transporte para informar estes valores.</span>;
+
+const CustoDasRotas: React.FC<{ ano: number; opcoes: Opcoes } & Orientacao> = ({ ano, opcoes, podeEditarParametros, aoPreencherParametros, irParaAba }) => {
   const [escola, setEscola] = useState(TODAS);
   const carga = useCarga(() => transporteApi.custosRotas(ano, escola === TODAS ? undefined : Number(escola)), [ano, escola]);
   const [detalhe, setDetalhe] = useState<number | null>(null);
@@ -81,14 +111,52 @@ const CustoDasRotas: React.FC<{ ano: number; opcoes: Opcoes }> = ({ ano, opcoes 
       <CardContent className="space-y-4 p-4">
         <div className="w-72"><Select label="Escola" value={escola} onChange={setEscola} options={[{ value: TODAS, label: 'Todas' }, ...opcoes.escolas.map((e) => ({ value: String(e.id), label: e.nome }))]} /></div>
         <EstadoCarga carregando={carga.carregando && !carga.dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
+        {carga.dados && <ResumoIncompletas rotas={carga.dados} {...{ podeEditarParametros, aoPreencherParametros, irParaAba }} />}
         {carga.dados && <DataTable columns={colunas} data={carga.dados} emptyText="Nenhuma rota neste ano letivo." exportable exportFileName={`transporte-custos-${ano}`} exportTitle="Transporte Escolar — Custo das rotas" />}
       </CardContent>
-      {detalhe !== null && <DetalheCusto rotaId={detalhe} ano={ano} aoFechar={() => setDetalhe(null)} />}
+      {detalhe !== null && <DetalheCusto rotaId={detalhe} ano={ano} aoFechar={() => setDetalhe(null)} {...{ podeEditarParametros, aoPreencherParametros, irParaAba }} />}
     </Card>
   );
 };
 
-const DetalheCusto: React.FC<{ rotaId: number; ano: number; aoFechar: () => void }> = ({ rotaId, ano, aoFechar }) => {
+const ResumoIncompletas: React.FC<{ rotas: CustoRota[] } & Orientacao> = ({ rotas, podeEditarParametros, aoPreencherParametros, irParaAba }) => {
+  const incompletas = rotas.filter((r) => !r.completo);
+  if (incompletas.length === 0) return null;
+  const grupos = incompletas.map((r) => porOnde(r.faltando));
+  const chaves = Array.from(new Set(grupos.flatMap((g) => g.parametros.map((f) => f.chave))));
+  const semAno = grupos.filter((g) => g.veiculo.length > 0).length;
+  const semKm = grupos.filter((g) => g.rota.length > 0).length;
+
+  return (
+    <div role="status" className="space-y-2 rounded border border-border bg-muted/40 p-3 text-sm">
+      <p><strong>{incompletas.length} de {rotas.length} rota(s) estão com o cálculo incompleto.</strong> Para completar:</p>
+      <ul className="ml-5 list-disc space-y-1">
+        {chaves.length > 0 && (
+          <li>
+            Informe {chaves.length} parâmetro(s) do ano na aba <strong>Parâmetros</strong>.{' '}
+            {podeEditarParametros
+              ? <Button variant="outline" size="sm" onClick={() => aoPreencherParametros(chaves[0])}><SlidersHorizontal className="mr-1 h-4 w-4" />Preencher agora</Button>
+              : <SemPermissao />}
+          </li>
+        )}
+        {semAno > 0 && (
+          <li>
+            Informe o ano de fabricação do veículo de {semAno} rota(s), na aba <strong>Veículos</strong>.{' '}
+            {irParaAba && <Button variant="outline" size="sm" onClick={() => irParaAba('veiculos')}>Abrir Veículos</Button>}
+          </li>
+        )}
+        {semKm > 0 && (
+          <li>
+            Informe o km do percurso de {semKm} rota(s), na aba <strong>Rotas</strong> (ou importe o percurso de um KML).{' '}
+            {irParaAba && <Button variant="outline" size="sm" onClick={() => irParaAba('rotas')}>Abrir Rotas</Button>}
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+};
+
+const DetalheCusto: React.FC<{ rotaId: number; ano: number; aoFechar: () => void } & Orientacao> = ({ rotaId, ano, aoFechar, podeEditarParametros, aoPreencherParametros, irParaAba }) => {
   const [simulacao, setSimulacao] = useState<Record<string, string>>({});
   const [chave, setChave] = useState('');
   const [valor, setValor] = useState('');
@@ -116,10 +184,8 @@ const DetalheCusto: React.FC<{ rotaId: number; ano: number; aoFechar: () => void
               {r.simulado && <Badge variant="secondary">Simulação — nada foi salvo</Badge>}
             </p>
             {!r.completo && (
-              <div role="alert" className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm">
-                <strong>Cálculo incompleto.</strong> Falta informar:
-                <ul className="ml-5 list-disc">{r.faltando.map((f) => <li key={f.chave}>{f.rotulo}</li>)}</ul>
-              </div>
+              <FaltaInformar faltando={r.faltando} veiculo={r.veiculo}
+                aoPreencher={(chave) => { aoFechar(); aoPreencherParametros(chave); }} aoIr={irParaAba ? (aba) => { aoFechar(); irParaAba(aba); } : undefined} podeEditarParametros={podeEditarParametros} />
             )}
             {r.completo && (
               <>
@@ -170,6 +236,43 @@ const DetalheCusto: React.FC<{ rotaId: number; ano: number; aoFechar: () => void
   );
 };
 
+const FaltaInformar: React.FC<{
+  faltando: { chave: string; rotulo: string }[]; veiculo: string | null; podeEditarParametros: boolean;
+  aoPreencher: (chave: string) => void; aoIr?: (aba: string) => void;
+}> = ({ faltando, veiculo, podeEditarParametros, aoPreencher, aoIr }) => {
+  const g = porOnde(faltando);
+  return (
+    <div role="alert" className="space-y-3 rounded border border-destructive/30 bg-destructive/10 p-3 text-sm">
+      <strong>Cálculo incompleto.</strong>
+      {g.parametros.length > 0 && (
+        <div>
+          <p className="font-medium">Parâmetros do ano letivo (aba Parâmetros)</p>
+          <ul className="ml-5 list-disc">{g.parametros.map((f) => <li key={f.chave}>{f.rotulo}</li>)}</ul>
+          <div className="mt-1">
+            {podeEditarParametros
+              ? <Button size="sm" onClick={() => aoPreencher(g.parametros[0].chave)}><SlidersHorizontal className="mr-1 h-4 w-4" />Preencher agora</Button>
+              : <SemPermissao />}
+          </div>
+        </div>
+      )}
+      {g.veiculo.length > 0 && (
+        <div>
+          <p className="font-medium">Cadastro do veículo{veiculo ? ` ${veiculo}` : ''} (aba Veículos)</p>
+          <ul className="ml-5 list-disc">{g.veiculo.map((f) => <li key={f.chave}>{f.rotulo}</li>)}</ul>
+          {aoIr && <Button size="sm" variant="outline" className="mt-1" onClick={() => aoIr('veiculos')}>Abrir Veículos</Button>}
+        </div>
+      )}
+      {g.rota.length > 0 && (
+        <div>
+          <p className="font-medium">Cadastro da rota (aba Rotas)</p>
+          <ul className="ml-5 list-disc">{g.rota.map((f) => <li key={f.chave}>{f.rotulo}</li>)}</ul>
+          {aoIr && <Button size="sm" variant="outline" className="mt-1" onClick={() => aoIr('rotas')}>Abrir Rotas</Button>}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const TabelaComponentes: React.FC<{ titulo: string; itens: Record<string, number>; total: number | null; formato: (v: number) => string }> = ({ titulo, itens, total, formato }) => (
   <table className="w-full text-sm">
     <caption className="pb-1 text-left font-semibold">{titulo}</caption>
@@ -182,7 +285,11 @@ const TabelaComponentes: React.FC<{ titulo: string; itens: Record<string, number
   </table>
 );
 
-const Parametros: React.FC<{ ano: number; anos: number[]; podeEditar: boolean; avisar: Toast }> = ({ ano, anos, podeEditar, avisar }) => {
+const ESCOPO_PROGRESSO: { escopo: string; rotulo: string }[] = [
+  { escopo: 'comum', rotulo: 'Comuns' }, { escopo: 'rod', rotulo: 'Rodoviário' }, { escopo: 'aqua', rotulo: 'Aquaviário (só para rotas com embarcação)' },
+];
+
+const Parametros: React.FC<{ ano: number; anos: number[]; podeEditar: boolean; avisar: Toast; foco?: string | null; aoFocar?: () => void }> = ({ ano, anos, podeEditar, avisar, foco = null, aoFocar }) => {
   const carga = useCarga(() => transporteApi.parametrosCusto(ano), [ano]);
   const [edicao, setEdicao] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
@@ -221,13 +328,37 @@ const Parametros: React.FC<{ ano: number; anos: number[]; podeEditar: boolean; a
   };
 
   const dados = carga.dados;
+  const recipiente = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!foco || !dados) return;
+    const alvo = recipiente.current?.querySelector<HTMLInputElement>(`[data-chave="${foco}"] input`);
+    alvo?.scrollIntoView({ block: 'center' });
+    alvo?.focus();
+    aoFocar?.();
+  }, [foco, dados]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const vazio = (x: ParametroCusto): boolean => texto(x).trim() === '';
+  const pendente = (x: ParametroCusto): boolean => x.obrigatorio && vazio(x);
+  const progresso = dados ? ESCOPO_PROGRESSO.map((e) => {
+    const obrigatorios = dados.parametros.filter((x) => x.escopo === e.escopo && x.obrigatorio);
+    return { ...e, total: obrigatorios.length, feitos: obrigatorios.filter((x) => !vazio(x)).length };
+  }).filter((e) => e.total > 0) : [];
+  const totalPendentes = dados ? dados.parametros.filter((x) => x.escopo !== 'aqua' && pendente(x)).length : 0;
 
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
         <EstadoCarga carregando={carga.carregando && !dados} erro={carga.erro} onTentar={() => void carga.recarregar()} />
         {dados && (
-          <>
+          <div ref={recipiente} className="space-y-4">
+            <div className="space-y-1 rounded border border-border bg-muted/40 p-3 text-sm">
+              <p>Informe aqui os valores do órgão para o ano letivo <strong>{ano}</strong>. O sistema não traz nenhum valor de salário, preço ou consumo: o cálculo de cada rota só fica completo depois que os campos marcados com * forem preenchidos.</p>
+              <p role="status" className="font-medium">
+                Obrigatórios preenchidos: {progresso.map((e) => `${e.rotulo}: ${e.feitos} de ${e.total}`).join(' · ')}
+              </p>
+              {!podeEditar && totalPendentes > 0 && <p><SemPermissao /></p>}
+            </div>
             {podeEditar && (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="w-40"><Select label="Copiar do ano" value={origem} onChange={setOrigem} options={Array.from(new Set([...anos, ano - 1, ano + 1])).filter((a) => a !== ano).sort().map((a) => ({ value: String(a), label: String(a) }))} /></div>
@@ -242,7 +373,8 @@ const Parametros: React.FC<{ ano: number; anos: number[]; podeEditar: boolean; a
                   <legend className="text-sm font-semibold">{rotulo}</legend>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {itens.map((x) => (
-                      <div key={x.chave} className="space-y-1">
+                      <div key={x.chave} data-chave={x.chave} data-pendente={pendente(x) ? 'true' : undefined}
+                        className={`space-y-1 ${pendente(x) ? 'rounded border-l-4 border-destructive/60 pl-2' : ''}`}>
                         <Input label={`${x.rotulo}${x.obrigatorio ? ' *' : ''} (${x.unidade})`} inputMode="decimal" value={texto(x)} disabled={!podeEditar || ocupado}
                           className="font-mono tabular-nums" onChange={(e) => setEdicao((s) => ({ ...s, [x.chave]: e.target.value }))} />
                         <p className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
@@ -263,7 +395,7 @@ const Parametros: React.FC<{ ano: number; anos: number[]; podeEditar: boolean; a
                 {alterados > 0 && <span className="text-sm text-muted-foreground">{alterados} alteração(ões) não salva(s). Campo vazio volta ao padrão.</span>}
               </div>
             ) : <p className="text-sm text-muted-foreground">Você pode consultar os parâmetros, mas não alterá-los.</p>}
-          </>
+          </div>
         )}
       </CardContent>
       <ConfirmDialog open={confirmarCopia} onClose={() => setConfirmarCopia(false)} title="Sobrescrever parâmetros"

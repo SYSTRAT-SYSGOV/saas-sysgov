@@ -65,7 +65,7 @@ export const TransporteModule: React.FC = () => {
         </TabsList>
         <TabsContent value="visao"><Painel opcoes={o} /></TabsContent>
         {o.permissoes.ver_manutencao && <TabsContent value="manutencao"><Manutencao opcoes={o} avisar={avisar} /></TabsContent>}
-        {o.permissoes.ver_custos && <TabsContent value="custos"><Custos opcoes={o} avisar={avisar} /></TabsContent>}
+        {o.permissoes.ver_custos && <TabsContent value="custos"><Custos opcoes={o} avisar={avisar} irParaAba={(a) => setParams({ aba: a })} /></TabsContent>}
         {temCenso && <TabsContent value="censo"><CensoAbas opcoes={o} avisar={avisar} /></TabsContent>}
         <TabsContent value="rotas"><Rotas opcoes={o} avisar={avisar} /></TabsContent>
         <TabsContent value="paradas"><Paradas opcoes={o} avisar={avisar} /></TabsContent>
