@@ -874,6 +874,17 @@ O sistema DEVE manter, por tenant e ano, os parâmetros do cálculo de custo (ca
 - **WHEN** o usuário copia 2026 para 2027
 - **THEN** os valores são copiados com origem do órgão e podem ser editados
 
+### Requirement: Orientação para completar o cálculo
+Quando o cálculo de uma rota estiver incompleto, o sistema DEVE indicar, para cada item que falta, onde ele é informado (parâmetros do ano, cadastro do veículo ou cadastro da rota) e oferecer o atalho até esse lugar. A aba de parâmetros DEVE mostrar quantos parâmetros obrigatórios já foram preenchidos e destacar os vazios. Quem não pode alterar parâmetros DEVE ser orientado a pedir a quem administra o módulo.
+
+#### Scenario: Preencher o que falta
+- **WHEN** o usuário com permissão abre uma rota incompleta e aciona "Preencher agora"
+- **THEN** a aba de parâmetros abre com o foco no primeiro campo obrigatório vazio
+
+#### Scenario: Usuário sem permissão
+- **WHEN** o usuário sem `transporte.custos.parametros` vê uma rota incompleta
+- **THEN** a tela explica que os valores devem ser informados por quem administra o Transporte e não oferece o botão de preencher
+
 ### Requirement: Cálculo do custo da rota
 O sistema DEVE calcular o custo da rota (mensal, anual, por km, por dia letivo e por aluno com alocação ativa), detalhando cada componente fixo e variável e os parâmetros usados. O modal DEVE ser derivado da tipologia do veículo da rota (7 a 10 aquaviário; demais rodoviário). Faltando parâmetro obrigatório, o sistema DEVE informar o resultado como incompleto e listar o que falta, sem assumir zero. Exige `transporte.custos.ver`.
 
