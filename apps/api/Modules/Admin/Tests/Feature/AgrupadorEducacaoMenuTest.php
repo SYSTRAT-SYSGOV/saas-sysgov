@@ -168,7 +168,10 @@ final class AgrupadorEducacaoMenuTest extends TestCase
         $this->assertSame(0, ClientMenuItem::query()->whereNotNull('parent_id')->count());
     }
 
-    /** @return array{tenant: Tenant, user: User} */
+    /**
+     * @param array<int, string> $ativos
+     * @return array{tenant: Tenant, user: User}
+     */
     private function tenantComModulos(array $ativos): array
     {
         $this->seed(RbacSeeder::class);
@@ -202,7 +205,10 @@ final class AgrupadorEducacaoMenuTest extends TestCase
         ClientMenuItem::create(['menu_group_id' => $grupo->id, 'parent_id' => $pai->id, 'label' => 'Financeiro', 'route' => '/educacao/finance', 'module_alias' => 'finance', 'order' => 2, 'is_active' => true]);
     }
 
-    /** @param array<int, array<string, mixed>> $nav */
+    /**
+     * @param array<int, array<string, mixed>> $nav
+     * @return array<int, array<string, mixed>>
+     */
     private function raizes(array $nav): array
     {
         return array_merge(...array_map(fn (array $g) => $g['items'], $nav));
