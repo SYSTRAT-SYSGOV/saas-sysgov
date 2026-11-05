@@ -2,13 +2,13 @@
 
 ## 1. Levantamento (antes de mexer em código)
 
-- [ ] 1.1 Conferir em produção, somente leitura e com autorização, as linhas de `client_menu_items` e `client_menu_groups` dos cinco aliases (rota, rótulo, `parent_id`, ordem, ativo) e se algum tenant personalizou o menu.
+- [ ] 1.1 Conferir em produção, somente leitura e com autorização, as linhas de `client_menu_items` e `client_menu_groups` dos seis aliases (rota, rótulo, `parent_id`, ordem, ativo) e se algum tenant personalizou o menu.
 - [ ] 1.2 Listar todos os pontos que citam as rotas antigas (`navigate('/escola')`, `TopBar`, `MenuManager`, `ClientMenuSeeder`, `AuthProvider`, cards do painel, atalhos, testes) e os nomes antigos dos módulos.
-- [ ] 1.3 Decidir as perguntas em aberto do design (Passeio, ícone e ordem).
+- [ ] 1.3 Confirmar ícone e ordem dos subitens (o Passeio já foi incluído).
 
 ## 2. Backend
 
-- [ ] 2.1 Adicionar `menu.parent` e `menu.slug` ao `module.json` dos cinco módulos e padronizar os rótulos.
+- [ ] 2.1 Adicionar `menu.parent` e `menu.slug` ao `module.json` dos seis módulos e padronizar os rótulos.
 - [ ] 2.2 `RegisterModuleCommand`: criar o agrupador "Educação" quando faltar e registrar o submódulo como filho; não recriar item solto; respeitar `--dry-run` e `--force`.
 - [ ] 2.3 `ClientNavigationService`: omitir o agrupador sem filhos visíveis.
 - [ ] 2.4 Migração idempotente que reposiciona os itens existentes sob o agrupador (D7) e invalida o cache de navegação.
@@ -19,7 +19,7 @@
 
 - [ ] 3.1 `generate-module-registry.js`: ler `menu.parent` e `menu.slug`, gerar as rotas `educacao/<slug>` e a entrada `educacao`; regerar `moduleRegistry.generated.ts`.
 - [ ] 3.2 Módulo `educacao`: página inicial com os submódulos permitidos e `EducacaoShell` com a barra de submódulos (teclado, foco visível, rolagem em tela estreita).
-- [ ] 3.3 `AppRouter`: rotas `/educacao/*` e redirecionamento das cinco rotas antigas preservando *query* e *hash*.
+- [ ] 3.3 `AppRouter`: rotas `/educacao/*` e redirecionamento das seis rotas antigas preservando *query* e *hash*.
 - [ ] 3.4 Substituir os `navigate('/escola')` e afins por constantes de rota; ajustar `TopBar`, `MenuManager`, cards do painel e `AuthProvider`.
 - [ ] 3.5 `Sidebar`: confirmar o agrupador expandido quando a rota atual é de um filho.
 - [ ] 3.6 Testes: redirecionamento com `?aba=`, página inicial por permissão, barra de submódulos, menu em dois níveis.

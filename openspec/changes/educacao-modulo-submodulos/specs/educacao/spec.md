@@ -1,18 +1,18 @@
 ## ADDED Requirements
 
 ### Requirement: Módulo Educação agrupa os submódulos da área de educação
-O sistema SHALL oferecer o módulo **Educação** como agrupador dos submódulos **Cadastro Escolar**, **Gestão Pedagógica**, **Formatura e Eventos**, **Portfólio Digital** e **Transporte Escolar**. O agrupamento SHALL ser apenas de navegação: cada submódulo mantém seu alias, suas permissões, seus perfis, sua API e seus dados. O sistema SHALL NOT criar permissão própria da Educação.
+O sistema SHALL oferecer o módulo **Educação** como agrupador dos submódulos **Cadastro Escolar**, **Gestão Pedagógica**, **Formatura e Eventos**, **Passeios**, **Portfólio Digital** e **Transporte Escolar**. O agrupamento SHALL ser apenas de navegação: cada submódulo mantém seu alias, suas permissões, seus perfis, sua API e seus dados. O sistema SHALL NOT criar permissão própria da Educação.
 
 #### Scenario: Menu com os submódulos
-- **WHEN** um usuário com acesso aos cinco submódulos abre o menu
-- **THEN** vê um item "Educação" que se expande nos cinco submódulos, com os nomes padronizados, e não vê mais os cinco itens soltos no grupo
+- **WHEN** um usuário com acesso aos seis submódulos abre o menu
+- **THEN** vê um item "Educação" que se expande nos seis submódulos, com os nomes padronizados, e não vê mais os seis itens soltos no grupo
 
 #### Scenario: Usuário com acesso a um só submódulo
 - **WHEN** um usuário tem permissão apenas em `transporte.view`
 - **THEN** o menu mostra "Educação" com apenas "Transporte Escolar" dentro
 
 #### Scenario: Usuário sem acesso a nenhum submódulo
-- **WHEN** um usuário não tem permissão em nenhum dos cinco submódulos
+- **WHEN** um usuário não tem permissão em nenhum dos seis submódulos
 - **THEN** o item "Educação" não aparece no menu
 
 #### Scenario: Módulo desativado no tenant
@@ -20,7 +20,7 @@ O sistema SHALL oferecer o módulo **Educação** como agrupador dos submódulos
 - **THEN** "Portfólio Digital" não aparece em "Educação", e os demais submódulos continuam disponíveis
 
 ### Requirement: Rotas dos submódulos e compatibilidade com as rotas antigas
-Cada submódulo SHALL abrir em `/educacao/<submódulo>` (`cadastro-escolar`, `pedagogico`, `formatura`, `portfolio`, `transporte`). As rotas antigas `/escola`, `/pedagogico`, `/formatura`, `/portfolio` e `/transporte` SHALL redirecionar para as novas, preservando o parâmetro de consulta (por exemplo `?aba=custos`) e o fragmento. As rotas de API SHALL NOTM mudar.
+Cada submódulo SHALL abrir em `/educacao/<submódulo>` (`cadastro-escolar`, `pedagogico`, `formatura`, `passeio`, `portfolio`, `transporte`). As rotas antigas `/escola`, `/pedagogico`, `/formatura`, `/passeio`, `/portfolio` e `/transporte` SHALL redirecionar para as novas, preservando o parâmetro de consulta (por exemplo `?aba=custos`) e o fragmento. As rotas de API SHALL NOTM mudar.
 
 #### Scenario: Link antigo com aba
 - **WHEN** um usuário abre `/transporte?aba=custos` a partir de um favorito
@@ -45,14 +45,14 @@ Toda tela de submódulo SHALL mostrar, no topo, a barra de submódulos da Educa�
 - **THEN** abre `/educacao/transporte` sem voltar ao menu
 
 ### Requirement: Nomes padronizados
-O sistema SHALL usar os mesmos nomes para os submódulos no menu, na barra superior, na página inicial, nos cards do painel, no gerenciador de menus e no registro de módulos: "Cadastro Escolar", "Gestão Pedagógica", "Formatura e Eventos", "Portfólio Digital" e "Transporte Escolar".
+O sistema SHALL usar os mesmos nomes para os submódulos no menu, na barra superior, na página inicial, nos cards do painel, no gerenciador de menus e no registro de módulos: "Cadastro Escolar", "Gestão Pedagógica", "Formatura e Eventos", "Passeios", "Portfólio Digital" e "Transporte Escolar".
 
 #### Scenario: Título na barra superior
 - **WHEN** o usuário abre `/educacao/pedagogico`
 - **THEN** o título da barra superior é "Gestão Pedagógica" e não "Módulo Pedagógico"
 
 ### Requirement: Migração do menu existente sem perda
-A mudança SHALL reposicionar os itens de menu já gravados dos cinco módulos sob o agrupador "Educação", mantendo permissão, ordem e situação (ativo ou não). A migração SHALL poder rodar mais de uma vez sem duplicar itens e SHALL NOT recriar item que o administrador do tenant removeu.
+A mudança SHALL reposicionar os itens de menu já gravados dos seis módulos sob o agrupador "Educação", mantendo permissão, ordem e situação (ativo ou não). A migração SHALL poder rodar mais de uma vez sem duplicar itens e SHALL NOT recriar item que o administrador do tenant removeu.
 
 #### Scenario: Reexecução
 - **WHEN** a migração roda duas vezes
