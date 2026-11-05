@@ -4,7 +4,7 @@ import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useOrgUnit } from '@/core/orgunit';
 import { MODULE_REGISTRY, getModuleRoute } from '@/config/moduleRegistry';
-import { SUBMODULOS_EDUCACAO, rotaPorAlias } from '@/modules/educacao/submodulos';
+import { EDUCACAO_BASE, SUBMODULOS_EDUCACAO } from '@/modules/educacao/submodulos';
 import type { ModuleDefinition } from '@/config/moduleRegistry';
 import { Card, Badge } from '@sysgov/ui';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -42,6 +42,13 @@ interface CartaoBasico {
   tone: string;
 }
 
+/** Atalho único da Educação: os seis submódulos não aparecem como cartões separados. */
+const ID_EDUCACAO = 'educacao';
+const ehSubmoduloDaEducacao = (id: string): boolean => SUBMODULOS_EDUCACAO.some((s) => s.alias === id);
+/** Favoritos e ordem salvos antes da Educação apontam para os ids antigos: viram o atalho único. */
+const unificaEducacao = (ids: string[]): string[] =>
+  [...new Set(ids.map((id) => (ehSubmoduloDaEducacao(id) ? ID_EDUCACAO : id)))];
+
 interface ModuleShortcut {
   id: string;
   name: string;
@@ -53,7 +60,7 @@ interface ModuleShortcut {
 
 /** Mesmo ícone do menu: vem do registro de módulos (module.json), nunca de um mapa próprio. */
 function getModuleIcon(id: string): React.ReactNode {
-  const Icone = getIcon(MODULE_REGISTRY[id]?.icon);
+  const Icone = getIcon(id === ID_EDUCACAO ? 'GraduationCap' : MODULE_REGISTRY[id]?.icon);
   return <Icone className="h-5 w-5" />;
 }
 
@@ -63,10 +70,10 @@ export const DashboardModule: React.FC = () => {
   const { scopeInfo, activeUnit, orgTree, loading: loadingUnits, hasMultipleUnits } = useOrgUnit();
   const navigate = useNavigate();
   const [favorites, setFavorites] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { return []; }
+    try { return unificaEducacao(JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]')); } catch { return []; }
   });
   const [customOrder, setCustomOrder] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]'); } catch { return []; }
+    try { return unificaEducacao(JSON.parse(localStorage.getItem(CUSTOM_ORDER_KEY) || '[]')); } catch { return []; }
   });
   const [editMode, setEditMode] = useState(false);
   const [dicasOcultas, setDicasOcultas] = useState<boolean>(() => {
@@ -111,13 +118,22 @@ export const DashboardModule: React.FC = () => {
       if (!activeModules.includes(def.id)) return false;
       return true;
     })
-    .map((def: ModuleDefinition) => ({
+    .filter((def: ModuleDefinition) => !ehSubmoduloDaEducacao(def.id))
+    .map((def: ModuleDefinition): ModuleShortcut => ({
       id: def.id,
       name: def.name,
       icon: def.id,
-      route: SUBMODULOS_EDUCACAO.some((s) => s.alias === def.id) ? rotaPorAlias(def.id) : getModuleRoute(def.id),
+      route: getModuleRoute(def.id),
       permission: def.requiredPermission,
     }));
+
+  const temEducacao = Object.values(MODULE_REGISTRY).some((def: ModuleDefinition) => {
+    if (!ehSubmoduloDaEducacao(def.id) || !activeModules.includes(def.id)) return false;
+    return !def.requiredPermission || permissions.includes('*') || permissions.includes(def.requiredPermission);
+  });
+  if (temEducacao) {
+    allModules.push({ id: ID_EDUCACAO, name: 'Educação', icon: ID_EDUCACAO, route: EDUCACAO_BASE, permission: undefined });
+  }
 
   const orderedModules = customOrder.length > 0
     ? [...customOrder.map((id) => allModules.find((m) => m.id === id)).filter(Boolean) as ModuleShortcut[],
