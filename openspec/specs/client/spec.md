@@ -13,6 +13,8 @@ O módulo não possui domínio monetário, não emite eventos e não faz integra
 
 ---
 
+## Requirements
+
 ### Requirement: Navegação é montada integralmente no backend, ignorando qualquer input do cliente
 <!-- id: ClientNavigationService.buildNavigation -->
 <!-- entities: ClientMenuGroup, ClientMenuItem, Tenant, User, Module -->
