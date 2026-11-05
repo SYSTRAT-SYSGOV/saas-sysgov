@@ -4,6 +4,8 @@
 > Source: apps/api/Modules/Client (Services/ClientNavigationService, Http/Controllers/{ClientNavigationController,ClientGranularityController}, Models/{ClientMenuGroup,ClientMenuItem}, Policies/{ClientMenuGroupPolicy,ClientMenuItemPolicy}, Providers/ClientServiceProvider, Routes/client-api.php, Database/Seeders/ClientMenuSeeder, module.json), apps/api/app/Services/ModuleOrgUnitService, apps/api/app/Http/Middleware/EnsureAdminTenant, apps/api/app/Http/Controllers/AuthController, apps/api/Modules/Admin/Console/Commands/RegisterModuleCommand, migrations create_client_menu_groups_and_items_tables / add_parent_id_to_client_menu_items_table / create_tenant_module_org_unit_table
 > Last verified: 2026-09-19 (commit 2bd3aae)
 
+## Purpose
+
 Escopo: módulo Client — catálogo de navegação (sidebar) do Painel do Cliente/Órgão Público e
 granularidade de liberação de módulos por unidade organizacional. Cobre a montagem
 server-side anti-spoofing do menu a partir de `tenant_module.enabled` + permissões do usuário,
