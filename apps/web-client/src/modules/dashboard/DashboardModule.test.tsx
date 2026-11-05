@@ -10,7 +10,7 @@ const tenantMock = vi.hoisted(() => ({ settings: { customLogoUrl: 'https://x.tes
 vi.mock('@/core/auth/useAuth', () => ({
   useAuth: () => ({
     user: { name: 'Maria Souza', is_platform_admin: false },
-    modules: ['pessoas', 'escola'],
+    modules: ['pessoas', 'escola', 'pedagogico', 'transporte'],
     permissions: ['*'],
   }),
 }));
@@ -31,7 +31,6 @@ const cartoes = [
 ];
 
 const nomePessoas = MODULE_REGISTRY.pessoas.name;
-const nomeEscola = MODULE_REGISTRY.escola.name;
 
 const renderizar = () => render(<MemoryRouter><DashboardModule /></MemoryRouter>);
 
@@ -83,7 +82,7 @@ describe('DashboardModule (home do Cliente)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Personalizar/ }));
     expect(screen.getByText('Módulos disponíveis')).toBeInTheDocument();
     expect(screen.getByText(nomePessoas)).toBeInTheDocument();
-    expect(screen.getByText(nomeEscola)).toBeInTheDocument();
+    expect(screen.getByText('Educação')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Concluir edição/ }));
     expect(screen.queryByText('Módulos disponíveis')).not.toBeInTheDocument();
@@ -132,5 +131,23 @@ describe('DashboardModule (home do Cliente)', () => {
     renderizar();
     await screen.findByText('Unidades');
     expect(screen.queryByText('Dicas rápidas')).not.toBeInTheDocument();
+  });
+
+  it('agrupa os submódulos num único cartão Educação que leva a /educacao', async () => {
+    renderizar();
+    await screen.findByText('Unidades');
+    fireEvent.click(screen.getByRole('button', { name: /Personalizar/ }));
+
+    expect(screen.getAllByText('Educação')).toHaveLength(1);
+    for (const nome of ['escola', 'pedagogico', 'transporte']) {
+      expect(screen.queryByText(MODULE_REGISTRY[nome].name)).not.toBeInTheDocument();
+    }
+  });
+
+  it('favorito salvo com o id antigo de um submódulo vira o cartão Educação', async () => {
+    localStorage.setItem('sysgov:welcome:favorites', JSON.stringify(['escola', 'transporte']));
+    renderizar();
+    await waitFor(() => expect(screen.getByRole('button', { name: /Favoritos/ })).toHaveAttribute('aria-expanded', 'true'));
+    expect(screen.getAllByText('Educação')).toHaveLength(1);
   });
 });
