@@ -10,6 +10,7 @@ import { ImagemAutenticada } from './ImagemAutenticada';
 import { TrabalhoFormModal } from './TrabalhoFormModal';
 import { useFormValidationModal } from '@/lib/useFormValidationModal';
 
+import { ROTA_CADASTRO_ESCOLAR } from '@/modules/educacao/submodulos';
 interface Props {
   alunoId: number;
   turmaId: number;
@@ -99,7 +100,7 @@ export const LinhaDoTempo: React.FC<Props> = ({ alunoId, turmaId, periodo, avisa
           title="Turma sem matérias vinculadas"
           description="Esta turma ainda não tem matérias vinculadas no Cadastro Escolar. Vincule as matérias (e os professores) em Cadastro Escolar › Turmas para lançar trabalhos."
           actionLabel="Abrir Cadastro Escolar"
-          onAction={() => navigate('/escola')}
+          onAction={() => navigate(ROTA_CADASTRO_ESCOLAR)}
         />
       ) : (
         <p className="text-sm text-muted-foreground">Você não é o professor de nenhuma matéria desta turma no Cadastro Escolar.</p>

@@ -221,7 +221,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
   },
   formatura: {
     id: 'formatura',
-    name: "Formatura & Eventos",
+    name: "Formatura e Eventos",
     component: FormaturaComponent,
     routePath: 'formatura',
     routes: ['formatura'],
@@ -266,7 +266,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
   },
   passeio: {
     id: 'passeio',
-    name: "Passeio",
+    name: "Passeios",
     component: PasseioComponent,
     routePath: 'passeio',
     routes: ['passeio'],

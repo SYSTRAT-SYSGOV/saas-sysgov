@@ -20,10 +20,12 @@
         "pedagogico.professor": "Lançar notas, fichas de pré-conselho e frequência nas turmas e matérias em que é o professor vinculado (Pedagógico)"
     },
     "menu": {
-        "label": "Módulo Pedagógico",
+        "label": "Gestão Pedagógica",
         "icon": "BookOpen",
         "order": 30,
         "permission": "pedagogico.view",
-        "group": "GESTÃO SETORIAL"
+        "group": "GESTÃO SETORIAL",
+        "parent": "educacao",
+        "slug": "pedagogico"
     }
 }

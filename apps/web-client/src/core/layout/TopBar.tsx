@@ -18,7 +18,9 @@ export const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
   const getBreadcrumbName = (pathname: string) => {
     const map: Record<string, string> = {
       '/': 'Painel Geral', '/licitacoes': 'Licitações & Editais', '/contratos': 'Contratos & Aditivos',
-      '/financeiro': 'Execução Financeira', '/pedagogico': 'Módulo Pedagógico', '/rh': 'Recursos Humanos',
+      '/financeiro': 'Execução Financeira', '/educacao': 'Educação', '/educacao/cadastro-escolar': 'Cadastro Escolar', '/educacao/pedagogico': 'Gestão Pedagógica',
+      '/educacao/formatura': 'Formatura e Eventos', '/educacao/passeio': 'Passeios', '/educacao/portfolio': 'Portfólio Digital',
+      '/educacao/transporte': 'Transporte Escolar', '/rh': 'Recursos Humanos',
       '/cemiterios': 'Gestão de Cemitérios', '/organograma': 'Organograma Municipal', '/usuarios': 'Usuários & Acessos',
       '/perfil': 'Meu Perfil',
     };

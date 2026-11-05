@@ -18,7 +18,7 @@ const MODULE_TEMPLATES: Record<string, ModuleTemplate> = {
   procurement: { label: 'Licitações', route: '/licitacoes', icon: 'FileText', permission: 'procurement.view' },
   contracts: { label: 'Contratos', route: '/contratos', icon: 'FileSignature', permission: 'contracts.view' },
   finance: { label: 'Execução Financeira', route: '/financeiro', icon: 'Coins', permission: 'finance.view' },
-  pedagogico: { label: 'Módulo Pedagógico', route: '/pedagogico', icon: 'GraduationCap', permission: 'pedagogico.view' },
+  pedagogico: { label: 'Gestão Pedagógica', route: '/educacao/pedagogico', icon: 'GraduationCap', permission: 'pedagogico.view' },
   rh: { label: 'Recursos Humanos / Folha', route: '/rh', icon: 'Users', permission: 'rh.view' },
   cemiterios: { label: 'Gestão de Cemitérios', route: '/cemiterios', icon: 'Cross', permission: 'cemiterios.view' },
   users: { label: 'Usuários e Acessos', route: '/usuarios', icon: 'Users', permission: 'users.manage' },

@@ -1,4 +1,5 @@
 import { MODULE_REGISTRY } from './moduleRegistry';
+import { SUBMODULOS_EDUCACAO, rotaPorAlias } from '@/modules/educacao/submodulos';
 
 interface ItemDeMenu {
   icon?: string | null;
@@ -13,6 +14,8 @@ interface ItemDeMenu {
  */
 export function iconeDoItem(item: ItemDeMenu): string | null | undefined {
   const def = item.module ? MODULE_REGISTRY[item.module] : undefined;
-  if (def?.icon && item.route.replace(/\/+$/, '') === `/${def.routePath}`.replace(/\/+$/, '')) return def.icon;
+  const raiz = (r: string) => r.replace(/\/+$/, '');
+  const rotaDoModulo = item.module && SUBMODULOS_EDUCACAO.some((s) => s.alias === item.module) ? rotaPorAlias(item.module) : `/${def?.routePath}`;
+  if (def?.icon && (raiz(item.route) === raiz(rotaDoModulo) || raiz(item.route) === raiz(`/${def.routePath}`))) return def.icon;
   return item.icon;
 }

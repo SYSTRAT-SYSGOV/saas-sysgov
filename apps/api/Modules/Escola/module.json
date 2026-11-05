@@ -22,6 +22,8 @@
         "icon": "School",
         "order": 29,
         "permission": "escola.view",
-        "group": "GESTÃO SETORIAL"
+        "group": "GESTÃO SETORIAL",
+        "parent": "educacao",
+        "slug": "cadastro-escolar"
     }
 }

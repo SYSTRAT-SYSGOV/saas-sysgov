@@ -17,10 +17,12 @@
         "passeio.frota.manage": "Gerenciar veículos e o mapa de assentos dos passeios"
     },
     "menu": {
-        "label": "Passeio",
+        "label": "Passeios",
         "icon": "Bus",
-        "order": 31,
+        "order": 32,
         "permission": "passeio.view",
-        "group": "GESTÃO SETORIAL"
+        "group": "GESTÃO SETORIAL",
+        "parent": "educacao",
+        "slug": "passeio"
     }
 }

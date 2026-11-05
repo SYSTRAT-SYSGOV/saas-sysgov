@@ -74,10 +74,10 @@ final class RegisterModuleMenuClienteTest extends TestCase
     {
         $this->grupo();
 
-        $this->artisan('module:register', ['module' => 'Passeio'])->assertSuccessful();
+        $this->artisan('module:register', ['module' => 'Ata'])->assertSuccessful();
 
-        $item = ClientMenuItem::query()->where('route', '/passeio')->firstOrFail();
-        $this->assertSame('passeio', $item->module_alias);
+        $item = ClientMenuItem::query()->where('route', '/ata')->firstOrFail();
+        $this->assertSame('ata', $item->module_alias);
         $this->assertTrue($item->is_active);
     }
 }
