@@ -32,7 +32,17 @@ final class ClientMenuSeeder extends Seeder
                 'order' => 2,
                 'items' => [
                     ['label' => 'Organograma Municipal', 'route' => '/organograma', 'icon' => 'Network', 'permission' => 'org.view', 'module_alias' => 'org'],
-                    ['label' => 'Módulo Pedagógico', 'route' => '/pedagogico', 'icon' => 'BookOpen', 'permission' => 'pedagogico.view', 'module_alias' => 'pedagogico'],
+                    [
+                        'label' => 'Educação', 'route' => '/educacao', 'icon' => 'GraduationCap', 'permission' => null, 'module_alias' => null,
+                        'children' => [
+                            ['label' => 'Cadastro Escolar', 'route' => '/educacao/cadastro-escolar', 'icon' => 'School', 'permission' => 'escola.view', 'module_alias' => 'escola'],
+                            ['label' => 'Gestão Pedagógica', 'route' => '/educacao/pedagogico', 'icon' => 'BookOpen', 'permission' => 'pedagogico.view', 'module_alias' => 'pedagogico'],
+                            ['label' => 'Formatura e Eventos', 'route' => '/educacao/formatura', 'icon' => 'Award', 'permission' => 'formatura.view', 'module_alias' => 'formatura'],
+                            ['label' => 'Passeios', 'route' => '/educacao/passeio', 'icon' => 'Bus', 'permission' => 'passeio.view', 'module_alias' => 'passeio'],
+                            ['label' => 'Portfólio Digital', 'route' => '/educacao/portfolio', 'icon' => 'FolderOpen', 'permission' => 'portfolio.view', 'module_alias' => 'portfolio'],
+                            ['label' => 'Transporte Escolar', 'route' => '/educacao/transporte', 'icon' => 'Truck', 'permission' => 'transporte.view', 'module_alias' => 'transporte'],
+                        ],
+                    ],
                     ['label' => 'Avaliação de Desempenho (CAPD)', 'route' => '/capd', 'icon' => 'ClipboardCheck', 'permission' => 'capd.view', 'module_alias' => 'capd'],
                     ['label' => 'Gestão de Cemitérios', 'route' => '/cemiterios', 'icon' => 'Cross', 'permission' => 'cemiterios.view', 'module_alias' => 'cemiterios'],
                 ],
@@ -63,7 +73,12 @@ final class ClientMenuSeeder extends Seeder
             $group->items()->delete();
 
             foreach ($items as $order => $item) {
-                $group->items()->create(array_merge($item, ['order' => $order, 'is_active' => true]));
+                $filhos = $item['children'] ?? [];
+                unset($item['children']);
+                $criado = $group->items()->create(array_merge($item, ['order' => $order, 'is_active' => true]));
+                foreach ($filhos as $i => $filho) {
+                    $criado->children()->create(array_merge($filho, ['menu_group_id' => $group->id, 'order' => $i, 'is_active' => true]));
+                }
             }
         }
     }

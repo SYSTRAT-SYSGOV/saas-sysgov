@@ -16,6 +16,7 @@ use Modules\Admin\Models\MenuItem;
 use Modules\Admin\Models\Module as PlatformModule;
 use Modules\Client\Models\ClientMenuGroup;
 use Modules\Client\Models\ClientMenuItem;
+use Modules\Client\Support\Agrupadores;
 
 final class RegisterModuleCommand extends Command
 {
@@ -238,9 +239,18 @@ final class RegisterModuleCommand extends Command
         $permission = $menuConfig['permission'] ?? "{$alias}.view";
         $route = '/' . ltrim($alias, '/');
         $groupName = $menuConfig['group'] ?? 'GESTÃO SETORIAL';
+        $agrupador = isset($menuConfig['parent']) && $menuConfig['parent'] !== '' ? (string) $menuConfig['parent'] : null;
+        if ($agrupador !== null) {
+            $route = Agrupadores::rotaDoSubmodulo($agrupador, (string) ($menuConfig['slug'] ?? $alias));
+        }
 
         if ($dryRun) {
             $this->info("  [DRY-RUN] Menu Cliente: {$label} ({$route}) no grupo {$groupName}");
+            return;
+        }
+
+        if ($agrupador !== null) {
+            $this->registrarSubmodulo($config, $menuConfig, $agrupador, $route, $label, $icon, $permission, $groupName);
             return;
         }
 
@@ -300,5 +310,55 @@ final class RegisterModuleCommand extends Command
         );
 
         $this->info("  ✓ Menu Cliente: {$label} ({$route}) no grupo {$clientGroup->name}");
+    }
+
+    /**
+     * Submódulo de um agrupador (ex.: Educação): o item vira filho do agrupador, que é criado se faltar. Uma entrada
+     * antiga do módulo, solta no grupo, é reaproveitada em vez de duplicada (o comando roda a cada boot).
+     *
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $menuConfig
+     */
+    private function registrarSubmodulo(array $config, array $menuConfig, string $agrupador, string $route, string $label, string $icon, string $permission, string $groupName): void
+    {
+        $alias = (string) $config['alias'];
+
+        $grupo = ClientMenuGroup::query()->whereNull('tenant_id')
+            ->where(fn ($q) => $q->where('slug', Str::slug($groupName))->orWhere('name', $groupName))->first()
+            ?? ClientMenuGroup::query()->whereNull('tenant_id')->where('slug', 'gestao-setorial')->first()
+            ?? ClientMenuGroup::create(['name' => $groupName, 'slug' => Str::slug($groupName), 'icon' => 'Building2', 'order' => 20, 'is_active' => true, 'tenant_id' => null]);
+
+        $existente = ClientMenuItem::query()->where('route', $route)->first()
+            ?? ClientMenuItem::query()->where('module_alias', $alias)->orderBy('id')->first();
+
+        // Um grupo próprio do tenant pode ter o item solto: o agrupador fica no mesmo grupo do item existente.
+        $grupoId = $existente !== null ? $existente->menu_group_id : $grupo->id;
+        $pai = $this->agrupadorNoGrupo($agrupador, (int) $grupoId);
+
+        $dados = [
+            'menu_group_id' => $grupoId, 'parent_id' => $pai->id, 'label' => $label, 'icon' => $icon, 'route' => $route,
+            'permission' => $permission, 'module_alias' => $alias, 'is_active' => true,
+            'order' => (int) ($menuConfig['order'] ?? 0),
+        ];
+
+        if ($existente !== null) {
+            // Mantém atalho e situação (ativo ou não) já gravados; um tenant pode ter desativado o item.
+            unset($dados['is_active']);
+            $existente->update($dados);
+        } else {
+            ClientMenuItem::create($dados + ['shortcut' => Str::upper(Str::substr($alias, 0, 1))]);
+        }
+
+        $this->info("  ✓ Menu Cliente: {$label} ({$route}) em {$pai->label}");
+    }
+
+    private function agrupadorNoGrupo(string $agrupador, int $grupoId): ClientMenuItem
+    {
+        $dados = Agrupadores::dados($agrupador);
+
+        return ClientMenuItem::query()->firstOrCreate(
+            ['menu_group_id' => $grupoId, 'route' => Agrupadores::rota($agrupador), 'parent_id' => null],
+            ['label' => $dados['label'], 'icon' => $dados['icon'], 'permission' => null, 'module_alias' => null, 'order' => $dados['order'], 'is_active' => true],
+        );
     }
 }

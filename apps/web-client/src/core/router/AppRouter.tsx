@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/core/auth/useAuth';
 import { useCan } from '@/core/rbac/useCan';
 import { MODULE_REGISTRY } from '@/config/moduleRegistry';
@@ -11,6 +11,9 @@ import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { ConfiguracoesPage } from '@/pages/ConfiguracoesPage';
 import { Loader2 } from 'lucide-react';
+import { EducacaoShell } from '@/modules/educacao/EducacaoShell';
+import { EducacaoHome } from '@/modules/educacao/EducacaoHome';
+import { EDUCACAO_BASE, SUBMODULOS_EDUCACAO, rotaDoSubmodulo } from '@/modules/educacao/submodulos';
 
 const CapdEmbedPage = React.lazy(() => import('@/modules/capd/CapdEmbedPage'));
 const BuscaPublicaPage = React.lazy(() => import('@/modules/cemiterios/portal/BuscaPublicaPage'));
@@ -74,6 +77,14 @@ const AdminRouteGuard: React.FC<{ children: React.ReactElement }> = ({ children 
   }
   return children;
 };
+
+/** Rota antiga de um submódulo da Educação: vai para a nova preservando a consulta (?aba=) e o fragmento. */
+export const RedirecionaParaEducacao: React.FC<{ para: string }> = ({ para }) => {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${para}${search}${hash}`} replace />;
+};
+
+const SUBMODULOS_POR_ALIAS = new Map(SUBMODULOS_EDUCACAO.map((s) => [s.alias, s]));
 
 export const AppRouter: React.FC = () => {
   return (
@@ -177,6 +188,26 @@ export const AppRouter: React.FC = () => {
         {/* Dynamic Module Routes driven by MODULE_REGISTRY */}
         {Object.values(MODULE_REGISTRY).flatMap((moduleDef) => {
           const Component = moduleDef.component;
+          const submodulo = SUBMODULOS_POR_ALIAS.get(moduleDef.id);
+          if (submodulo) {
+            // Submódulo da Educação: rota nova dentro do shell e rota antiga redirecionando.
+            return [
+              <Route
+                key={`${moduleDef.id}-educacao`}
+                path={rotaDoSubmodulo(submodulo).slice(1)}
+                element={
+                  <ModuleRouteGuard moduleId={moduleDef.id}>
+                    <EducacaoShell><Component /></EducacaoShell>
+                  </ModuleRouteGuard>
+                }
+              />,
+              <Route
+                key={`${moduleDef.id}-antiga`}
+                path={moduleDef.routePath ?? moduleDef.id}
+                element={<RedirecionaParaEducacao para={rotaDoSubmodulo(submodulo)} />}
+              />,
+            ];
+          }
           const routes = moduleDef.routes && moduleDef.routes.length > 0
             ? moduleDef.routes
             : [moduleDef.routePath !== undefined ? moduleDef.routePath : moduleDef.id];
@@ -213,6 +244,7 @@ export const AppRouter: React.FC = () => {
           });
         })}
 
+        <Route path={EDUCACAO_BASE.slice(1)} element={<EducacaoShell><EducacaoHome /></EducacaoShell>} />
         <Route path="perfil" element={<ProfilePage />} />
         <Route path="configuracoes" element={<ConfiguracoesPage />} />
         <Route path="*" element={<NotFoundPage />} />

@@ -19,8 +19,10 @@
     "menu": {
         "label": "Portfólio Digital",
         "icon": "FolderOpen",
-        "order": 32,
+        "order": 33,
         "permission": "portfolio.view",
-        "group": "GESTÃO SETORIAL"
+        "group": "GESTÃO SETORIAL",
+        "parent": "educacao",
+        "slug": "portfolio"
     }
 }

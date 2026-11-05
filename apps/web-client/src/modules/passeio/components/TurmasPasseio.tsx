@@ -9,6 +9,7 @@ import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
 import { passeioApi, type Inscricao } from '../api';
 import type { PropsAba } from '../ModuloPasseioMain';
 
+import { ROTA_CADASTRO_ESCOLAR } from '@/modules/educacao/submodulos';
 type LinhaTurma = { turma: Turma; alunos: number | null; vao: number; termos: number; pagos: number };
 
 const colunasInscritos: ColumnDef<Inscricao, unknown>[] = [
@@ -93,7 +94,7 @@ export const TurmasPasseio: React.FC<PropsAba> = ({ ativo, dados, recarregar, av
       <CardContent className="space-y-3 py-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-muted-foreground">Turmas e alunos de <span className="font-mono tabular-nums">{ano}</span> são mantidos no Cadastro Escolar. Transferidos não participam.</p>
-          <Button variant="outline" leftIcon={<ExternalLink className="h-4 w-4" />} onClick={() => navigate('/escola')}>Abrir Cadastro Escolar</Button>
+          <Button variant="outline" leftIcon={<ExternalLink className="h-4 w-4" />} onClick={() => navigate(ROTA_CADASTRO_ESCOLAR)}>Abrir Cadastro Escolar</Button>
         </div>
         {dados.turmas.length === 0 ? (
           <EmptyState icon={<School className="h-8 w-8" />} title={`Nenhuma turma em ${ano}`} description="Cadastre as turmas do ano letivo do passeio no Cadastro Escolar." />

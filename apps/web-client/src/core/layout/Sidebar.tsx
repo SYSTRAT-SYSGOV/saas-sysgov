@@ -35,10 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
     for (const group of navigation) {
       for (const item of group.items) {
-        if (item.route === location.pathname || (item.route !== '/' && location.pathname.startsWith(item.route))) {
-          activeGroupId = group.id;
-          break;
-        }
+        // Filhos primeiro: numa rota de submódulo (/educacao/x) o pai também casa, e o item precisa abrir.
         const children = (item as any).children || [];
         for (const child of children) {
           if (child.route === location.pathname || (child.route !== '/' && location.pathname.startsWith(child.route))) {
@@ -46,6 +43,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             activeItemId = item.id;
             break;
           }
+        }
+        if (activeGroupId === null && (item.route === location.pathname || (item.route !== '/' && location.pathname.startsWith(item.route)))) {
+          activeGroupId = group.id;
         }
         if (activeGroupId !== null) break;
       }

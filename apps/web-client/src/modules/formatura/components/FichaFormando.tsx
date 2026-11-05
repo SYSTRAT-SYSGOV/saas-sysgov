@@ -10,6 +10,7 @@ import type { PropsAba } from '../ModuloFormaturaMain';
 import { ConfirmarModal } from '../../escola/components/ConfirmarModal';
 import { RegistrarPagamentoModal } from './RegistrarPagamentoModal';
 
+import { ROTA_CADASTRO_ESCOLAR } from '@/modules/educacao/submodulos';
 /** Ficha do formando: convidados, observações e telefone (gravado no Cadastro Escolar, D14) e pagamentos. */
 export const FichaFormando: React.FC<{ formando: Formando; aberto: boolean; props: PropsAba; onFechar: () => void }> = ({ formando, aberto, props, onFechar }) => {
   const { ano, dados, recarregar, avisar, permissoes } = props;
@@ -76,7 +77,7 @@ export const FichaFormando: React.FC<{ formando: Formando; aberto: boolean; prop
         headerActions={<StatusChip label={situacao.rotulo} variant={situacao.variante} />}
         footer={
           <>
-            <Button variant="outline" leftIcon={<ExternalLink className="h-4 w-4" />} onClick={() => navigate('/escola')}>Editar no Cadastro Escolar</Button>
+            <Button variant="outline" leftIcon={<ExternalLink className="h-4 w-4" />} onClick={() => navigate(ROTA_CADASTRO_ESCOLAR)}>Editar no Cadastro Escolar</Button>
             {podeEditar && <Button variant="primary" onClick={salvar} isLoading={salvando}>Salvar ficha</Button>}
           </>
         }

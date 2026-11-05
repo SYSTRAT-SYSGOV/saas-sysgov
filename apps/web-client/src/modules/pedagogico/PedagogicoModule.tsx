@@ -183,7 +183,7 @@ const PedagogicoConteudo: React.FC = () => {
       <div className="print:hidden">
         <PageHeader
           icon={<GraduationCap className="h-6 w-6" />}
-          title="Módulo Pedagógico & Gestão Escolar"
+          title="Gestão Pedagógica"
           badge="Ano Letivo 2026"
           subtitle={`${tenant?.name || 'Rede Municipal'} — Conselho de classe, diagnósticos, lançamento de notas e atas`}
         />

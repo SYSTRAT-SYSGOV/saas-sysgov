@@ -4,6 +4,7 @@ import { useAuth } from '@/core/auth/useAuth';
 import { useTenant } from '@/core/tenant/useTenant';
 import { useOrgUnit } from '@/core/orgunit';
 import { MODULE_REGISTRY, getModuleRoute } from '@/config/moduleRegistry';
+import { SUBMODULOS_EDUCACAO, rotaPorAlias } from '@/modules/educacao/submodulos';
 import type { ModuleDefinition } from '@/config/moduleRegistry';
 import { Card, Badge } from '@sysgov/ui';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -114,7 +115,7 @@ export const DashboardModule: React.FC = () => {
       id: def.id,
       name: def.name,
       icon: def.id,
-      route: getModuleRoute(def.id),
+      route: SUBMODULOS_EDUCACAO.some((s) => s.alias === def.id) ? rotaPorAlias(def.id) : getModuleRoute(def.id),
       permission: def.requiredPermission,
     }));
 

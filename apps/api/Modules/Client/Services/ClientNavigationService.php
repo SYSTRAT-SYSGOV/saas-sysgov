@@ -36,7 +36,7 @@ final class ClientNavigationService
             })
             ->where('is_active', true)
             ->orderBy('order')
-            ->with(['items' => fn ($q) => $q->where('is_active', true)->whereNull('parent_id')->orderBy('order')->with(['children' => fn ($cq) => $cq->where('is_active', true)->orderBy('order')])])
+            ->with(['items' => fn ($q) => $q->where('is_active', true)->whereNull('parent_id')->withCount('children')->orderBy('order')->with(['children' => fn ($cq) => $cq->where('is_active', true)->orderBy('order')])])
             ->get();
 
         $allAliases = collect($groups->pluck('items.*.module_alias'))
@@ -96,6 +96,11 @@ final class ClientNavigationService
                         'permission' => $child->permission,
                         'active' => false,
                     ];
+                }
+
+                // Agrupador (sem módulo e sem permissão, como o item "Educação"): sem filho visível, não aparece.
+                if ($item->children_count > 0 && $item->module_alias === null && $item->permission === null && $children === []) {
+                    continue;
                 }
 
                 $items[] = [

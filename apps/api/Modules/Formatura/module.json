@@ -18,10 +18,12 @@
         "formatura.pagamentos.manage": "Registrar e estornar pagamentos da formatura"
     },
     "menu": {
-        "label": "Formatura & Eventos",
+        "label": "Formatura e Eventos",
         "icon": "Award",
-        "order": 32,
+        "order": 31,
         "permission": "formatura.view",
-        "group": "GESTÃO SETORIAL"
+        "group": "GESTÃO SETORIAL",
+        "parent": "educacao",
+        "slug": "formatura"
     }
 }

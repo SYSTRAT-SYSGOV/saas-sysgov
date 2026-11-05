@@ -32,9 +32,9 @@ A Educação é um **módulo de navegação**, não um módulo de negócio. Os s
 
 ### D3. Registro de módulos com módulo-pai
 
-O `module.json` de cada submódulo declara `"menu": { "parent": "educacao", ... }`. O gerador do registro passa a gerar `routePath: 'educacao/<slug>'` para eles e uma entrada `educacao` (agrupadora, sem componente de negócio, com o componente da página inicial). O `RegisterModuleCommand` cria o item "Educação" (agrupador) se não existir e coloca o item do submódulo como filho.
+O `module.json` de cada submódulo declara `"menu": { "parent": "educacao", "slug": "...", "label": "..." }`. O `RegisterModuleCommand` cria o item "Educação" (agrupador) se não existir e coloca o item do submódulo como filho, na rota `/educacao/<slug>`; um item solto que já existia é reaproveitado.
 
-O `slug` de cada submódulo sai de `menu.slug` do `module.json` (com *fallback* no alias), para `escola` virar `cadastro-escolar` sem renomear o alias.
+No web-client, a lista dos submódulos (alias, slug, rótulo, descrição e ordem) fica em `modules/educacao/submodulos.ts`, e o `AppRouter` monta as rotas a partir dela. Um teste confere que a lista bate com os `module.json` (pai, slug e rótulo). O gerador do registro (`generate-module-registry.js`) só passou a refletir os nomes padronizados; não precisou mudar.
 
 ### D4. Item de menu agrupador
 

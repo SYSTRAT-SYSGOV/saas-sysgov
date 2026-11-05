@@ -30,8 +30,10 @@
     "menu": {
         "label": "Transporte Escolar",
         "icon": "Truck",
-        "order": 63,
+        "order": 34,
         "permission": "transporte.view",
-        "group": "GESTÃO SETORIAL"
+        "group": "GESTÃO SETORIAL",
+        "parent": "educacao",
+        "slug": "transporte"
     }
 }

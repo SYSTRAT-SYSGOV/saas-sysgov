@@ -8,6 +8,7 @@ import type { PropsAba } from '../ModuloFormaturaMain';
 import { colNome, colNumero, colTurma } from './colunasFormando';
 import { useParticipacao } from './useParticipacao';
 
+import { ROTA_CADASTRO_ESCOLAR } from '@/modules/educacao/submodulos';
 /** Relação dos alunos das turmas formandas, com a participação marcada aqui mesmo (os dados cadastrais ficam no Escola). */
 export const AlunosConsulta: React.FC<PropsAba> = (props) => {
   const { dados } = props;
@@ -63,7 +64,7 @@ export const AlunosConsulta: React.FC<PropsAba> = (props) => {
             className="md:w-60"
           />
           <Input label="Buscar" placeholder="Nome ou CGM" value={busca} onChange={(e) => setBusca(e.target.value)} leftIcon={<Search className="h-4 w-4" />} className="md:w-72" />
-          <Button variant="outline" className="md:ml-auto" leftIcon={<ExternalLink className="h-4 w-4" />} onClick={() => navigate('/escola')}>Abrir Cadastro Escolar</Button>
+          <Button variant="outline" className="md:ml-auto" leftIcon={<ExternalLink className="h-4 w-4" />} onClick={() => navigate(ROTA_CADASTRO_ESCOLAR)}>Abrir Cadastro Escolar</Button>
         </div>
         <DataTable
           columns={colunas}

@@ -8,6 +8,7 @@ import type { Formando } from '../api';
 import type { PropsAba } from '../ModuloFormaturaMain';
 import { colMoeda, colNome, colNumero, colSituacao } from './colunasFormando';
 
+import { ROTA_CADASTRO_ESCOLAR } from '@/modules/educacao/submodulos';
 type LinhaTurma = { id: number; nome: string; turno: string; alunos: number; participantes: number; arrecadado: number };
 
 const colunasParticipantes: ColumnDef<Formando, unknown>[] = [
@@ -97,7 +98,7 @@ export const TurmasConsulta: React.FC<PropsAba> = ({ dados }) => {
       <CardContent className="space-y-3 py-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">Turmas e alunos são mantidos no Cadastro Escolar.</p>
-          <Button variant="outline" leftIcon={<ExternalLink className="h-4 w-4" />} onClick={() => navigate('/escola')}>Abrir Cadastro Escolar</Button>
+          <Button variant="outline" leftIcon={<ExternalLink className="h-4 w-4" />} onClick={() => navigate(ROTA_CADASTRO_ESCOLAR)}>Abrir Cadastro Escolar</Button>
         </div>
         <DataTable
           columns={colunas}
