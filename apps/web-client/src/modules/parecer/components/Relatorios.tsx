@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Button, Card, KpiCard, ScreenState, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
-import { SERIES, parecerApi, type LinhaConceitos, type Relatorio } from '../api';
-import { Carga, useCarga, useParecer } from './comum';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Button, Card, DataTable, KpiCard, ScreenState, Select } from '@sysgov/ui';
+import { SERIES, parecerApi, type Catalogo, type LinhaConceitos, type Relatorio } from '../api';
+import { ALTURA_CONTROLE, BarraFiltros, Carga, useCarga, useParecer } from './comum';
 
 /** Cores de status (atingiu / em processo / não atingiu), sempre com legenda e rótulo. */
 const COR = { a: '#168821', ep: '#d97706', na: '#e52207' };
@@ -33,37 +34,112 @@ const Barras: React.FC<{ linhas: (LinhaConceitos & { rotulo: string })[]; titulo
   );
 };
 
-const TabelaConceitos: React.FC<{ linhas: (LinhaConceitos & { rotulo: string })[]; primeira: string }> = ({ linhas, primeira }) => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>{primeira}</TableHead>
-        {['A', 'EP', 'NA', 'Total', '% A', '% EP', '% NA'].map((h) => (
-          <TableHead key={h} className="text-right">
-            {h}
-          </TableHead>
-        ))}
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {linhas.map((l) => (
-        <TableRow key={l.rotulo}>
-          <TableCell>{l.rotulo}</TableCell>
-          {[l.a, l.ep, l.na, l.total].map((n, i) => (
-            <TableCell key={i} className="text-right font-mono tabular-nums">
-              {n}
-            </TableCell>
-          ))}
-          {[l.a, l.ep, l.na].map((n, i) => (
-            <TableCell key={`p${i}`} className="text-right font-mono tabular-nums">
-              {fmtPct(pct(n, l.total))}
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
+type LinhaRotulo = LinhaConceitos & { rotulo: string };
+const Num: React.FC<{ children: React.ReactNode }> = ({ children }) => <span className="font-mono tabular-nums">{children}</span>;
+
+/** Colunas da tabela de conceitos (A, EP, NA, total e percentuais); `primeira` nomeia a coluna do rótulo. */
+const colunasConceitos = (primeira: string): ColumnDef<LinhaRotulo>[] => [
+  { id: 'rotulo', header: primeira, accessorFn: (l) => l.rotulo },
+  { id: 'a', header: 'A', accessorFn: (l) => l.a, cell: ({ getValue }) => <Num>{getValue<number>()}</Num> },
+  { id: 'ep', header: 'EP', accessorFn: (l) => l.ep, cell: ({ getValue }) => <Num>{getValue<number>()}</Num> },
+  { id: 'na', header: 'NA', accessorFn: (l) => l.na, cell: ({ getValue }) => <Num>{getValue<number>()}</Num> },
+  { id: 'total', header: 'Total', accessorFn: (l) => l.total, cell: ({ getValue }) => <Num>{getValue<number>()}</Num> },
+  { id: 'pa', header: '% A', accessorFn: (l) => pct(l.a, l.total), cell: ({ getValue }) => <Num>{fmtPct(getValue<number>())}</Num> },
+  { id: 'pep', header: '% EP', accessorFn: (l) => pct(l.ep, l.total), cell: ({ getValue }) => <Num>{fmtPct(getValue<number>())}</Num> },
+  { id: 'pna', header: '% NA', accessorFn: (l) => pct(l.na, l.total), cell: ({ getValue }) => <Num>{fmtPct(getValue<number>())}</Num> },
+];
+const COLUNAS_SERIE = colunasConceitos('Série');
+const COLUNAS_MATERIA = colunasConceitos('Matéria');
+
+const TabelaConceitos: React.FC<{ linhas: LinhaRotulo[]; colunas: ColumnDef<LinhaRotulo>[] }> = ({ linhas, colunas }) => (
+  <DataTable columns={colunas} data={linhas} pagination={false} emptyText="Sem avaliações para os filtros escolhidos." />
 );
+
+/** % de A por matéria: aluno × turma × série (a coluna da série só existe quando há outra turma na série). */
+interface LinhaMateria { materia: string; aluno: number; turma: number | null; serie: number | null; dif: number }
+const ComparativoMaterias: React.FC<{ comp: NonNullable<Relatorio['comparativo']>; catalogo: Catalogo }> = ({ comp, catalogo }) => {
+  const linhas = React.useMemo<LinhaMateria[]>(
+    () =>
+      comp.materias.flatMap((m) => {
+        const ra = comp.m_aluno[m];
+        if (!ra) return [];
+        const rt = comp.m_turma[m] ?? { a: 0, ep: 0, na: 0, total: 0 };
+        const rs = comp.m_serie[m] ?? { a: 0, ep: 0, na: 0, total: 0 };
+        const aluno = pct(ra.a, ra.total);
+        return [{ materia: catalogo.materias[m], aluno, turma: rt.total ? pct(rt.a, rt.total) : null, serie: rs.total ? pct(rs.a, rs.total) : null, dif: rt.total ? aluno - pct(rt.a, rt.total) : 0 }];
+      }),
+    [comp, catalogo],
+  );
+  const colunas = React.useMemo<ColumnDef<LinhaMateria>[]>(() => {
+    const pctCell = ({ getValue }: { getValue: () => unknown }) => {
+      const v = getValue() as number | null;
+      return <Num>{v === null ? '–' : fmtPct(v)}</Num>;
+    };
+    return [
+      { id: 'materia', header: 'Matéria', accessorFn: (l) => l.materia },
+      { id: 'aluno', header: 'Aluno', accessorFn: (l) => l.aluno, cell: ({ getValue }) => <span className="font-mono font-semibold tabular-nums">{fmtPct(getValue<number>())}</span> },
+      { id: 'turma', header: 'Turma', accessorFn: (l) => l.turma ?? -1, cell: ({ row }) => pctCell({ getValue: () => row.original.turma }) },
+      ...(comp.outras > 0 ? [{ id: 'serie', header: 'Série', accessorFn: (l: LinhaMateria) => l.serie ?? -1, cell: ({ row }: { row: { original: LinhaMateria } }) => pctCell({ getValue: () => row.original.serie }) }] : []),
+      {
+        id: 'situacao',
+        header: 'Situação do aluno',
+        accessorFn: (l) => l.dif,
+        cell: ({ row }) => {
+          const dif = row.original.dif;
+          return (
+            <span>
+              {dif >= 5 ? '▲ acima da turma' : dif <= -5 ? '▼ abaixo da turma' : '● na média da turma'}{' '}
+              <small className="font-mono">
+                ({dif > 0 ? '+' : ''}
+                {dif.toFixed(1).replace('.', ',')} p.p.)
+              </small>
+            </span>
+          );
+        },
+      },
+    ];
+  }, [comp.outras]);
+  return <DataTable columns={colunas} data={linhas} pagination={false} />;
+};
+
+/** Relação de alunos com A/EP/NA; o nome abre o comparativo com a turma e a série. Busca e exportação pelo padrão da grade. */
+const RelacaoAlunos: React.FC<{ alunos: Relatorio['por_aluno']; onAbrir: (alunoId: number) => void }> = ({ alunos, onAbrir }) => {
+  const colunas = React.useMemo<ColumnDef<Relatorio['por_aluno'][number]>[]>(
+    () => [
+      {
+        id: 'aluno',
+        header: 'Aluno',
+        accessorFn: (a) => a.nome,
+        cell: ({ row }) => (
+          <Button variant="link" size="xs" onClick={() => onAbrir(row.original.aluno_id)}>
+            {row.original.nome}
+          </Button>
+        ),
+      },
+      { id: 'serie', header: 'Série', accessorFn: (a) => a.serie },
+      { id: 'turma', header: 'Turma', accessorFn: (a) => a.turma },
+      { id: 'turno', header: 'Turno', accessorFn: (a) => a.turno ?? '—' },
+      { id: 'a', header: 'A', accessorFn: (a) => a.a, cell: ({ getValue }) => <Num>{getValue<number>()}</Num> },
+      { id: 'ep', header: 'EP', accessorFn: (a) => a.ep, cell: ({ getValue }) => <Num>{getValue<number>()}</Num> },
+      { id: 'na', header: 'NA', accessorFn: (a) => a.na, cell: ({ getValue }) => <Num>{getValue<number>()}</Num> },
+      { id: 'pa', header: '% A', accessorFn: (a) => pct(a.a, a.total), cell: ({ getValue }) => <Num>{fmtPct(getValue<number>())}</Num> },
+    ],
+    [onAbrir],
+  );
+  return (
+    <DataTable
+      columns={colunas}
+      data={alunos}
+      searchable
+      searchPlaceholder="Buscar aluno, turma…"
+      exportable
+      exportFileName="parecer-relatorio-alunos"
+      exportTitle="Parecer Descritivo — relação de alunos"
+      pageSize={20}
+      emptyText="Nenhum aluno com avaliações para os filtros escolhidos."
+    />
+  );
+};
 
 /** Relatórios (relatorios.php): distribuição A/EP/NA e comparativo do aluno com a turma e a série. */
 const Relatorios: React.FC = () => {
@@ -78,7 +154,7 @@ const Relatorios: React.FC = () => {
         const comp = r.comparativo;
         return (
           <div className="space-y-5">
-            <Card className="flex flex-wrap items-end gap-3 p-4">
+            <BarraFiltros>
               <Filtro rotulo="Trimestre" valor={f.tri} onChange={(v) => setF({ ...f, tri: Number(v) })} opcoes={[[0, 'Todos'], [1, '1º trimestre'], [2, '2º trimestre'], [3, '3º trimestre']]} />
               <Filtro rotulo="Série" valor={f.serie} onChange={(v) => setF({ ...f, serie: Number(v), turma: 0 })} opcoes={[[0, 'Todas'], ...Object.entries(SERIES).map(([s, rot]) => [Number(s), rot] as [number, string])]} />
               <Filtro
@@ -88,10 +164,10 @@ const Relatorios: React.FC = () => {
                 opcoes={[[0, 'Todas'], ...r.turmas.filter((t) => !f.serie || t.serie === f.serie).map((t) => [t.turma_id, `${SERIES[t.serie]} · ${t.nome} (${t.turno ?? '—'})`] as [number, string])]}
               />
               <Filtro rotulo="Matéria" valor={f.materia} onChange={(v) => setF({ ...f, materia: v })} opcoes={[['', 'Todas'], ...r.materias_visiveis.map((m) => [m, catalogo.materias[m]] as [string, string])]} />
-              <Button variant="outline" size="sm" onClick={() => setF({ tri: 0, serie: 0, turma: 0, materia: '', aluno: 0 })}>
+              <Button variant="outline" className={ALTURA_CONTROLE} onClick={() => setF({ tri: 0, serie: 0, turma: 0, materia: '', aluno: 0 })}>
                 Limpar filtros
               </Button>
-            </Card>
+            </BarraFiltros>
 
             {comp && (
               <Card className="space-y-3 p-4">
@@ -113,41 +189,7 @@ const Relatorios: React.FC = () => {
                   <>
                     <Barras titulo="Aluno × turma × série" linhas={comp.linhas} />
                     <h3 className="font-semibold">% de A (Atingiu) por matéria</h3>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Matéria</TableHead>
-                          <TableHead className="text-right">Aluno</TableHead>
-                          <TableHead className="text-right">Turma</TableHead>
-                          {comp.outras > 0 && <TableHead className="text-right">Série</TableHead>}
-                          <TableHead>Situação do aluno</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {comp.materias.map((m) => {
-                          const ra = comp.m_aluno[m];
-                          if (!ra) return null;
-                          const rt = comp.m_turma[m] ?? { a: 0, ep: 0, na: 0, total: 0 };
-                          const rs = comp.m_serie[m] ?? { a: 0, ep: 0, na: 0, total: 0 };
-                          const dif = rt.total ? pct(ra.a, ra.total) - pct(rt.a, rt.total) : 0;
-                          return (
-                            <TableRow key={m}>
-                              <TableCell>{catalogo.materias[m]}</TableCell>
-                              <TableCell className="text-right font-mono font-semibold tabular-nums">{fmtPct(pct(ra.a, ra.total))}</TableCell>
-                              <TableCell className="text-right font-mono tabular-nums">{rt.total ? fmtPct(pct(rt.a, rt.total)) : '–'}</TableCell>
-                              {comp.outras > 0 && <TableCell className="text-right font-mono tabular-nums">{rs.total ? fmtPct(pct(rs.a, rs.total)) : '–'}</TableCell>}
-                              <TableCell>
-                                {dif >= 5 ? '▲ acima da turma' : dif <= -5 ? '▼ abaixo da turma' : '● na média da turma'}{' '}
-                                <small className="font-mono">
-                                  ({dif > 0 ? '+' : ''}
-                                  {dif.toFixed(1).replace('.', ',')} p.p.)
-                                </small>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                    <ComparativoMaterias comp={comp} catalogo={catalogo} />
                   </>
                 )}
               </Card>
@@ -175,46 +217,12 @@ const Relatorios: React.FC = () => {
                   <Barras titulo="Por turma" linhas={r.por_turma} />
                 </Card>
                 <h2 className="text-lg font-semibold">Comparação entre séries (tabela)</h2>
-                <TabelaConceitos linhas={r.por_serie} primeira="Série" />
+                <TabelaConceitos linhas={r.por_serie} colunas={COLUNAS_SERIE} />
                 <h2 className="text-lg font-semibold">Por matéria (tabela)</h2>
-                <TabelaConceitos linhas={r.por_materia} primeira="Matéria" />
+                <TabelaConceitos linhas={r.por_materia} colunas={COLUNAS_MATERIA} />
                 <h2 className="text-lg font-semibold">Relação de alunos</h2>
                 <p className="text-sm text-muted-foreground">Clique no nome do aluno para ver o comparativo com a turma e com as outras turmas da série.</p>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Aluno</TableHead>
-                      <TableHead>Série</TableHead>
-                      <TableHead>Turma</TableHead>
-                      <TableHead>Turno</TableHead>
-                      {['A', 'EP', 'NA', '% A'].map((h) => (
-                        <TableHead key={h} className="text-right">
-                          {h}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {r.por_aluno.map((a) => (
-                      <TableRow key={a.aluno_id}>
-                        <TableCell>
-                          <Button variant="link" size="xs" onClick={() => setF({ ...f, aluno: a.aluno_id })}>
-                            {a.nome}
-                          </Button>
-                        </TableCell>
-                        <TableCell>{a.serie}</TableCell>
-                        <TableCell>{a.turma}</TableCell>
-                        <TableCell>{a.turno}</TableCell>
-                        {[a.a, a.ep, a.na].map((n, i) => (
-                          <TableCell key={i} className="text-right font-mono tabular-nums">
-                            {n}
-                          </TableCell>
-                        ))}
-                        <TableCell className="text-right font-mono tabular-nums">{fmtPct(pct(a.a, a.total))}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <RelacaoAlunos alunos={r.por_aluno} onAbrir={(aluno) => setF((atual) => ({ ...atual, aluno }))} />
               </>
             )}
           </div>
@@ -226,7 +234,7 @@ const Relatorios: React.FC = () => {
 
 function Filtro<T extends string | number>({ rotulo, valor, onChange, opcoes }: { rotulo: string; valor: T; onChange: (v: string) => void; opcoes: [T, string][] }): React.ReactElement {
   return (
-    <div className="w-48">
+    <div>
       <Select label={rotulo} value={valor} onChange={onChange} options={opcoes.map(([v, l]) => ({ value: v, label: l }))} />
     </div>
   );

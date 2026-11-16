@@ -28,3 +28,11 @@
 
 ## 5. Encerramento
 - [ ] 5.1 `openspec archive` das duas changes (`criar-modulo-parecer-descritivo` e esta) após o deploy
+
+## 6. Ajustes após o deploy (grades e filtros)
+- [x] 6.1 Barra de filtros padrão do Parecer (`BarraFiltros`): grade responsiva com todos os controles na mesma altura (`h-11`). O Input (36 px) e o Button (40 px) do `@sysgov/ui` ficavam menores que o Select (44 px) e saíam desalinhados
+- [x] 6.2 Auditoria: grade padrão (`DataTable`) com paginação do servidor (100 por página), sem ordenação local que enganaria entre páginas
+- [x] 6.3 Relatórios: filtros alinhados; tabelas de séries, matérias, comparativo do aluno e relação de alunos em `DataTable` (relação de alunos com busca e exportação CSV/XLSX/PDF)
+- [x] 6.4 Teste de regressão da Auditoria (grade padrão, total do servidor e altura dos controles)
+- [ ] 6.5 Converter as demais listagens (Configurações, Ocorrências, Conteúdos ×2) para `DataTable`
+- [ ] 6.6 Decidir o padrão das matrizes de lançamento com campos editáveis na linha (Avaliar, Notas, Frequência, Alunos da turma): hoje usam as peças `Table` do `@sysgov/ui`, porque ordenar, filtrar e paginar atrapalham o lançamento

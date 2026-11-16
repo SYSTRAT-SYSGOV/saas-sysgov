@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Badge, Button, Card, Field, Input, ScreenState, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Badge, Button, DataTable, Field, Input, Select } from '@sysgov/ui';
 import { parecerApi, type RegistroAuditoria } from '../api';
-import { Carga, useCarga } from './comum';
+import { ALTURA_CONTROLE, BarraFiltros, Carga, useCarga } from './comum';
 
 const RECURSOS: [string, string][] = [
   ['', 'Todos'],
@@ -32,6 +33,44 @@ function detalhes(r: RegistroAuditoria): string[] {
   return linhas;
 }
 
+/** Colunas da grade. Sem ordenação: o servidor já entrega do mais recente ao mais antigo, página a página. */
+const COLUNAS: ColumnDef<RegistroAuditoria>[] = [
+  {
+    id: 'quando',
+    header: 'Quando',
+    enableSorting: false,
+    cell: ({ row }) => <span className="whitespace-nowrap font-mono text-xs tabular-nums">{new Date(row.original.data).toLocaleString('pt-BR')}</span>,
+  },
+  { id: 'quem', header: 'Quem', enableSorting: false, cell: ({ row }) => row.original.usuario ?? '—' },
+  {
+    id: 'assunto',
+    header: 'Assunto',
+    enableSorting: false,
+    cell: ({ row }) => <Badge variant="neutral">{ROTULO[row.original.acao.split('.')[0]] ?? row.original.acao}</Badge>,
+  },
+  {
+    id: 'o-que-aconteceu',
+    header: 'O que aconteceu',
+    enableSorting: false,
+    cell: ({ row }) => {
+      const r = row.original;
+      const linhas = detalhes(r);
+      return (
+        <div className="text-left">
+          <div>{r.descricao ?? r.acao}</div>
+          {linhas.length > 0 && (
+            <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
+              {linhas.slice(0, 12).map((l, i) => (
+                <li key={i}>{l}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    },
+  },
+];
+
 /** Auditoria (auditoria.php): padrão, últimos 30 dias. */
 const Auditoria: React.FC = () => {
   const [f, setF] = useState<{ de?: string; ate?: string; quem?: number; recurso: string; texto: string; page: number }>({ recurso: '', texto: '', page: 1 });
@@ -42,85 +81,40 @@ const Auditoria: React.FC = () => {
     <Carga carga={carga}>
       {(d) => (
         <div className="space-y-4">
-          <Card className="flex flex-wrap items-end gap-3 p-4">
+          <BarraFiltros>
             <Field label="De">
-              <Input type="date" value={f.de ?? d.de} onChange={(e) => setF({ ...f, de: e.target.value, page: 1 })} className="font-mono" />
+              <Input type="date" value={f.de ?? d.de} onChange={(e) => setF({ ...f, de: e.target.value, page: 1 })} className={`${ALTURA_CONTROLE} font-mono`} />
             </Field>
             <Field label="Até">
-              <Input type="date" value={f.ate ?? d.ate} onChange={(e) => setF({ ...f, ate: e.target.value, page: 1 })} className="font-mono" />
+              <Input type="date" value={f.ate ?? d.ate} onChange={(e) => setF({ ...f, ate: e.target.value, page: 1 })} className={`${ALTURA_CONTROLE} font-mono`} />
             </Field>
-            <div className="w-52">
-              <Select label="Quem" value={f.quem ?? 0} onChange={(v) => setF({ ...f, quem: Number(v), page: 1 })} options={[{ value: 0, label: 'Todos' }, ...d.pessoas.map((p) => ({ value: p.id, label: p.name }))]} />
-            </div>
-            <div className="w-44">
-              <Select label="Assunto" value={f.recurso} onChange={(v) => setF({ ...f, recurso: v, page: 1 })} options={RECURSOS.map(([v, l]) => ({ value: v, label: l }))} />
-            </div>
+            <Select label="Quem" value={f.quem ?? 0} onChange={(v) => setF({ ...f, quem: Number(v), page: 1 })} options={[{ value: 0, label: 'Todos' }, ...d.pessoas.map((p) => ({ value: p.id, label: p.name }))]} />
+            <Select label="Assunto" value={f.recurso} onChange={(v) => setF({ ...f, recurso: v, page: 1 })} options={RECURSOS.map(([v, l]) => ({ value: v, label: l }))} />
             <form
-              className="flex items-end gap-2"
+              className="flex items-end gap-2 sm:col-span-2 lg:col-span-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 setF({ ...f, texto, page: 1 });
               }}
             >
-              <Field label="Texto">
-                <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="nome do aluno, habilidade…" />
+              <Field label="Texto" className="flex-1">
+                <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="nome do aluno, habilidade…" className={ALTURA_CONTROLE} />
               </Field>
-              <Button type="submit" variant="outline">
+              <Button type="submit" variant="outline" className={ALTURA_CONTROLE}>
                 Filtrar
               </Button>
             </form>
-          </Card>
+          </BarraFiltros>
           <p className="text-sm text-muted-foreground">
             <span className="font-mono tabular-nums">{d.total}</span> registro(s) entre <span className="font-mono">{d.de.split('-').reverse().join('/')}</span> e <span className="font-mono">{d.ate.split('-').reverse().join('/')}</span>.
           </p>
-          {d.data.length === 0 ? (
-            <ScreenState type="empty" title="Nenhum registro no período." />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Quando</TableHead>
-                  <TableHead>Quem</TableHead>
-                  <TableHead>Assunto</TableHead>
-                  <TableHead>O que aconteceu</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {d.data.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="whitespace-nowrap font-mono text-xs tabular-nums">{new Date(r.data).toLocaleString('pt-BR')}</TableCell>
-                    <TableCell>{r.usuario ?? '—'}</TableCell>
-                    <TableCell>
-                      <Badge variant="neutral">{ROTULO[r.acao.split('.')[0]] ?? r.acao}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>{r.descricao ?? r.acao}</div>
-                      {detalhes(r).length > 0 && (
-                        <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                          {detalhes(r).slice(0, 12).map((l, i) => (
-                            <li key={i}>{l}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          {d.last_page > 1 && (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={d.current_page <= 1} onClick={() => setF({ ...f, page: d.current_page - 1 })}>
-                ‹ Anterior
-              </Button>
-              <span className="font-mono text-sm tabular-nums">
-                {d.current_page} / {d.last_page}
-              </span>
-              <Button variant="outline" size="sm" disabled={d.current_page >= d.last_page} onClick={() => setF({ ...f, page: d.current_page + 1 })}>
-                Próxima ›
-              </Button>
-            </div>
-          )}
+          <DataTable
+            columns={COLUNAS}
+            data={d.data}
+            emptyText="Nenhum registro no período."
+            pageSizeSelector={false}
+            paginationState={{ currentPage: d.current_page, totalPages: d.last_page, onPageChange: (page) => setF({ ...f, page }), total: d.total, perPage: 100 }}
+          />
         </div>
       )}
     </Carga>
