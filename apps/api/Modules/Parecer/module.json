@@ -20,7 +20,7 @@
     },
     "menu": {
         "label": "Parecer Descritivo",
-        "icon": "FileText",
+        "icon": "FileCheck",
         "order": 35,
         "permission": "parecer.view",
         "group": "GESTÃO SETORIAL",

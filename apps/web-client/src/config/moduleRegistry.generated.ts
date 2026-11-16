@@ -272,7 +272,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routePath: 'parecer',
     routes: ['parecer'],
     requiredPermission: 'parecer.view',
-    icon: 'FileText',
+    icon: 'FileCheck',
   },
   passeio: {
     id: 'passeio',
