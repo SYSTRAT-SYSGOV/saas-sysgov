@@ -28,7 +28,7 @@ final class EscolaService
     use RegistraMutacao;
 
     /** Módulos cujas rotas exigem escola de trabalho. */
-    public const MODULOS = ['escola', 'pedagogico', 'formatura', 'passeio', 'portfolio'];
+    public const MODULOS = ['escola', 'pedagogico', 'parecer', 'formatura', 'passeio', 'portfolio'];
 
     public function __construct(
         private readonly AuditLogger $audit,

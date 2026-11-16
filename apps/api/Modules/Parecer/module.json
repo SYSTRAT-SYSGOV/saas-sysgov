@@ -1,0 +1,30 @@
+{
+    "name": "Parecer",
+    "alias": "parecer",
+    "description": "Parecer descritivo dos anos iniciais (1º ao 5º ano) sobre o cadastro escolar — habilidades BNCC, avaliação por conceito, observações, parecer impresso, notas, frequência e ocorrências",
+    "priority": 21,
+    "providers": [
+        "Modules\\Parecer\\Providers\\ParecerServiceProvider",
+        "Modules\\Parecer\\Providers\\RouteServiceProvider"
+    ],
+    "requires": [
+        "Admin",
+        "Escola",
+        "Pessoas"
+    ],
+    "permissions": {
+        "parecer.view": "Acessar o módulo Parecer Descritivo",
+        "parecer.professor": "Avaliar, lançar notas, frequência e ocorrências nas turmas e matérias da sua função (Parecer Descritivo)",
+        "parecer.gestor": "Acessar todas as turmas e matérias, definir séries e funções das turmas e editar os conteúdos (Parecer Descritivo)",
+        "parecer.auditoria": "Consultar a auditoria do módulo (Parecer Descritivo)"
+    },
+    "menu": {
+        "label": "Parecer Descritivo",
+        "icon": "FileText",
+        "order": 31,
+        "permission": "parecer.view",
+        "group": "GESTÃO SETORIAL",
+        "parent": "educacao",
+        "slug": "parecer"
+    }
+}
