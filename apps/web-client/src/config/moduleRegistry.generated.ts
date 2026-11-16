@@ -27,6 +27,7 @@ const InservivelComponent = lazy(() => import('@/modules/inservivel/InservivelMo
 const LicitaComponent = lazy(() => import('@/modules/licita/LicitaModule'));
 const Meio_ambienteComponent = lazy(() => import('@/modules/meio_ambiente/MeioAmbienteModule'));
 const MultiprofissionalComponent = lazy(() => import('@/modules/multiprofissional/MultiprofissionalModule'));
+const ParecerComponent = lazy(() => import('@/modules/parecer/ParecerModule'));
 const PasseioComponent = lazy(() => import('@/modules/passeio/PasseioModule'));
 const PortfolioComponent = lazy(() => import('@/modules/portfolio/PortfolioModule'));
 const RequerimentosComponent = lazy(() => import('@/modules/requerimentos/RequerimentosModule'));
@@ -263,6 +264,15 @@ export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
     routes: ['multiprofissional'],
     requiredPermission: 'multiprofissional.view',
     icon: 'HeartHandshake',
+  },
+  parecer: {
+    id: 'parecer',
+    name: "Parecer Descritivo",
+    component: ParecerComponent,
+    routePath: 'parecer',
+    routes: ['parecer'],
+    requiredPermission: 'parecer.view',
+    icon: 'FileText',
   },
   passeio: {
     id: 'passeio',
