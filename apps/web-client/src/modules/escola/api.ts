@@ -24,7 +24,7 @@ export interface Escola {
   tem_logo: boolean;
   org_unit?: { id: number; name: string; code: string } | null;
 }
-export type ModuloEducacao = 'escola' | 'pedagogico' | 'formatura' | 'passeio' | 'portfolio';
+export type ModuloEducacao = 'escola' | 'pedagogico' | 'parecer' | 'formatura' | 'passeio' | 'portfolio';
 export interface Turno { id: number; nome: string; ordem: number; turmas_count?: number }
 export interface VinculoMateria { materia_id: number; materia: string | null; professor_user_id: number | null; professor: string | null }
 export interface Turma {

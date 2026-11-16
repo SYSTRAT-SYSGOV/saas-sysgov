@@ -64,6 +64,7 @@ done
 php artisan db:seed --class='Modules\Cursos\Database\Seeders\CursosRbacSeeder' --force
 php artisan db:seed --class='Modules\Escola\Database\Seeders\EscolaRbacSeeder' --force
 php artisan db:seed --class='Modules\Pedagogico\Database\Seeders\PedagogicoRbacSeeder' --force
+php artisan db:seed --class='Modules\Parecer\Database\Seeders\ParecerRbacSeeder' --force
 php artisan db:seed --class='Modules\Formatura\Database\Seeders\FormaturaRbacSeeder' --force
 php artisan db:seed --class='Modules\Passeio\Database\Seeders\PasseioRbacSeeder' --force
 php artisan db:seed --class='Modules\Portfolio\Database\Seeders\PortfolioRbacSeeder' --force

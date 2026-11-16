@@ -1,6 +1,6 @@
 # Módulo Educação (web-client `/educacao`)
 
-A Educação **agrupa a navegação** de seis módulos que já existiam. Não é um módulo de backend: não tem alias, API,
+A Educação **agrupa a navegação** de sete módulos que já existiam. Não é um módulo de backend: não tem alias, API,
 permissão nem tabela. Cada submódulo continua sendo o módulo Laravel de mesmo alias, com as próprias permissões, perfis,
 prefixo de API (`/api/escola`, `/api/pedagogico`, …) e dados.
 
@@ -14,6 +14,7 @@ Spec: `openspec/specs/educacao/spec.md` (mudança `educacao-modulo-submodulos`).
 | Passeios | `passeio` | `/educacao/passeio` | `/passeio` | `passeio.view` |
 | Portfólio Digital | `portfolio` | `/educacao/portfolio` | `/portfolio` | `portfolio.view` |
 | Transporte Escolar | `transporte` | `/educacao/transporte` | `/transporte` | `transporte.view` |
+| Parecer Descritivo | `parecer` | `/educacao/parecer` | `/parecer` | `parecer.view` |
 
 ## Como funciona
 

@@ -26,7 +26,7 @@ apiClient.interceptors.request.use(
       config.headers['X-Tenant-ID'] = activeTenantId;
     }
 
-    // Escola de trabalho só nas rotas de Escola, Pedagógico, Formatura e Passeio.
+    // Escola de trabalho só nas rotas de Escola, Pedagógico, Parecer, Formatura, Passeio e Portfólio.
     const escolaAtiva = obterEscolaAtiva();
     if (escolaAtiva !== null && precisaEscola(config.url)) {
       config.headers['X-Escola-ID'] = String(escolaAtiva);

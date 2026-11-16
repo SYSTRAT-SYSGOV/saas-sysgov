@@ -6,7 +6,7 @@
  */
 
 /** Prefixos de rota (relativos à base da API) que exigem escola de trabalho. */
-export const ROTAS_COM_ESCOLA = ['/escola', '/pedagogico', '/formatura', '/passeio', '/portfolio'];
+export const ROTAS_COM_ESCOLA = ['/escola', '/pedagogico', '/parecer', '/formatura', '/passeio', '/portfolio'];
 
 /** Rotas do Escola que NÃO dependem da escola (é por elas que a escola é escolhida). */
 const ROTAS_SEM_ESCOLA = ['/escola/escolas'];
