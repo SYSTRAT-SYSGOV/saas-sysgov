@@ -4,6 +4,15 @@ import { Button, Card, ScreenState } from '@sysgov/ui';
 import { erroApi } from '../../escola/api';
 import { CORES_TURNO, SERIES, linkWhats, parecerApi, useImagemAutenticada, type Catalogo, type TurmaParecer } from '../api';
 
+/**
+ * Barra de filtros padrão do Parecer: grade responsiva com os controles alinhados pela base. Todos os campos da barra
+ * têm a mesma altura (`ALTURA_CONTROLE`, a do Select); o Input e o Button do @sysgov/ui nascem menores (36 e 40 px).
+ */
+export const ALTURA_CONTROLE = 'h-11';
+export const BarraFiltros: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Card className="grid items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">{children}</Card>
+);
+
 /* Navegação interna do módulo (equivale às páginas do PHP). */
 export type Aba = 'inicio' | 'notas' | 'frequencia' | 'ocorrencias' | 'conteudos' | 'relatorios' | 'configuracoes' | 'auditoria';
 export interface Rota {
