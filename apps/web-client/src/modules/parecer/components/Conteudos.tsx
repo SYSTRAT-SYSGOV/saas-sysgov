@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react';
-import { Button, Card, Checkbox, ConfirmDialog, Field, Input, Modal, ScreenState, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
+import { ArrowDown, ArrowUp } from 'lucide-react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ActionsMenu, Button, Card, Checkbox, ConfirmDialog, DataTable, Field, Input, Modal, ScreenState, Select, Textarea } from '@sysgov/ui';
 import { SERIES, parecerApi, type Habilidade, type ItemBncc, type TelaConteudos } from '../api';
 import { Aviso, Botoes, mensagemDeErro, useParecer, type Mensagem } from './comum';
 
@@ -91,76 +92,16 @@ const Conteudos: React.FC<{ serieInicial?: number; materiaInicial?: string }> = 
       </p>
       <Aviso msg={msg} onFechar={() => setMsg(null)} />
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-12 text-center">Nº</TableHead>
-            <TableHead>Habilidade</TableHead>
-            <TableHead className="w-40 text-center">Trimestres</TableHead>
-            {pode && <TableHead className="w-44 text-center">Ações</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tela.habilidades.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center text-muted-foreground">
-                Nenhuma habilidade cadastrada para esta matéria nesta série.
-              </TableCell>
-            </TableRow>
-          )}
-          {tela.habilidades.map((h, i) => (
-            <TableRow key={h.id} className={h.ativo ? undefined : 'opacity-50'}>
-              <TableCell className="text-center font-mono tabular-nums">{i + 1}</TableCell>
-              <TableCell>
-                {h.descricao} {h.codigo_bncc && <span className="ml-1 rounded bg-muted px-1 font-mono text-xs">{h.codigo_bncc}</span>}
-                {!h.ativo && <small className="ml-1 text-muted-foreground">(desativada)</small>}
-              </TableCell>
-              <TableCell>
-                <div className="flex justify-center gap-2">
-                  {TRIS.map((t) => (
-                    <Checkbox
-                      key={t}
-                      label={`${t}º`}
-                      aria-label={`${t}º trimestre`}
-                      disabled={!pode}
-                      checked={marcados[h.id]?.has(t) ?? false}
-                      onCheckedChange={(v) =>
-                        setMarcados((m) => {
-                          const s = new Set(m[h.id]);
-                          if (v === true) s.add(t);
-                          else s.delete(t);
-                          return { ...m, [h.id]: s };
-                        })
-                      }
-                    />
-                  ))}
-                </div>
-              </TableCell>
-              {pode && (
-                <TableCell>
-                  <div className="flex justify-center gap-0.5">
-                    <Button variant="ghost" size="icon-sm" title="Subir" aria-label="Subir" disabled={i === 0} onClick={() => void acao(() => parecerApi.moverHabilidade(h.id, 'subir'))}>
-                      <ArrowUp className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" title="Descer" aria-label="Descer" disabled={i === tela.habilidades.length - 1} onClick={() => void acao(() => parecerApi.moverHabilidade(h.id, 'descer'))}>
-                      <ArrowDown className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" title="Editar" aria-label="Editar" onClick={() => setEditar(h)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" title={h.ativo ? 'Desativar' : 'Ativar'} aria-label={h.ativo ? 'Desativar' : 'Ativar'} onClick={() => void acao(() => parecerApi.alternarHabilidade(h.id))}>
-                      {h.ativo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" title="Excluir" aria-label="Excluir" className="text-destructive" onClick={() => setExcluir(h)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <ListaHabilidades
+        habilidades={tela.habilidades}
+        marcados={marcados}
+        setMarcados={setMarcados}
+        pode={pode}
+        onMover={(h, sentido) => void acao(() => parecerApi.moverHabilidade(h.id, sentido))}
+        onAlternar={(h) => void acao(() => parecerApi.alternarHabilidade(h.id))}
+        onEditar={setEditar}
+        onExcluir={setExcluir}
+      />
       {pode && tela.habilidades.length > 0 && (
         <div className="flex items-center gap-3">
           <Button disabled={trisAlterados === 0} onClick={() => void salvarTris()}>
@@ -206,6 +147,115 @@ const Conteudos: React.FC<{ serieInicial?: number; materiaInicial?: string }> = 
       />
     </div>
   );
+};
+
+/**
+ * Habilidades da matéria na grade padrão. A ordem é manual (subir/descer) e vale para o parecer impresso, então as
+ * colunas não ordenam; a busca filtra a lista sem mudar a ordem. Os trimestres marcados ficam no estado da tela até
+ * "Salvar trimestres".
+ */
+const ListaHabilidades: React.FC<{
+  habilidades: Habilidade[];
+  marcados: Record<number, Set<number>>;
+  setMarcados: React.Dispatch<React.SetStateAction<Record<number, Set<number>>>>;
+  pode: boolean;
+  onMover: (h: Habilidade, sentido: 'subir' | 'descer') => void;
+  onAlternar: (h: Habilidade) => void;
+  onEditar: (h: Habilidade) => void;
+  onExcluir: (h: Habilidade) => void;
+}> = ({ habilidades, marcados, setMarcados, pode, onMover, onAlternar, onEditar, onExcluir }) => {
+  const ultimo = habilidades.length - 1;
+  const colunas = React.useMemo<ColumnDef<Habilidade>[]>(
+    () => [
+      { id: 'numero', header: 'Nº', enableSorting: false, accessorFn: (_h, i) => i + 1, cell: ({ row }) => <span className="font-mono tabular-nums">{row.index + 1}</span> },
+      {
+        id: 'habilidade',
+        header: 'Habilidade',
+        enableSorting: false,
+        accessorFn: (h) => `${h.descricao} ${h.codigo_bncc ?? ''}`,
+        cell: ({ row }) => {
+          const h = row.original;
+          return (
+            <div className={`text-left ${h.ativo ? '' : 'opacity-50'}`}>
+              {h.descricao} {h.codigo_bncc && <span className="ml-1 rounded bg-muted px-1 font-mono text-xs">{h.codigo_bncc}</span>}
+              {!h.ativo && <small className="ml-1 text-muted-foreground">(desativada)</small>}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'trimestres',
+        header: 'Trimestres',
+        enableSorting: false,
+        meta: { exportIgnore: true },
+        cell: ({ row }) => {
+          const h = row.original;
+          return (
+            <div className="flex justify-center gap-2">
+              {TRIS.map((t) => (
+                <Checkbox
+                  key={t}
+                  label={`${t}º`}
+                  aria-label={`${t}º trimestre`}
+                  disabled={!pode}
+                  checked={marcados[h.id]?.has(t) ?? false}
+                  onCheckedChange={(v) =>
+                    setMarcados((m) => {
+                      const s = new Set(m[h.id]);
+                      if (v === true) s.add(t);
+                      else s.delete(t);
+                      return { ...m, [h.id]: s };
+                    })
+                  }
+                />
+              ))}
+            </div>
+          );
+        },
+      },
+      ...(pode
+        ? ([
+            {
+              id: 'ordem',
+              header: 'Ordem',
+              enableSorting: false,
+              meta: { exportIgnore: true },
+              cell: ({ row }) => (
+                <div className="flex justify-center gap-0.5">
+                  <Button variant="ghost" size="icon-sm" title="Subir" aria-label="Subir" disabled={row.index === 0} onClick={() => onMover(row.original, 'subir')}>
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon-sm" title="Descer" aria-label="Descer" disabled={row.index === ultimo} onClick={() => onMover(row.original, 'descer')}>
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              ),
+            },
+            {
+              id: 'actions',
+              header: 'Ações',
+              enableSorting: false,
+              meta: { exportIgnore: true },
+              cell: ({ row }) => {
+                const h = row.original;
+                return (
+                  <ActionsMenu
+                    triggerLabel={`Ações da habilidade ${row.index + 1}`}
+                    items={[
+                      { key: 'editar', label: 'Editar', onSelect: () => onEditar(h) },
+                      { key: 'alternar', label: h.ativo ? 'Desativar' : 'Ativar', onSelect: () => onAlternar(h) },
+                      { key: 'excluir', label: 'Excluir', onSelect: () => onExcluir(h) },
+                    ]}
+                  />
+                );
+              },
+            },
+          ] as ColumnDef<Habilidade>[])
+        : []),
+    ],
+    [marcados, setMarcados, pode, ultimo, onMover, onAlternar, onEditar, onExcluir],
+  );
+  return <DataTable columns={colunas} data={habilidades} searchable searchPlaceholder="Buscar habilidade ou código BNCC…" pagination={false} emptyText="Nenhuma habilidade cadastrada para esta matéria nesta série." />;
 };
 
 const ChipsTrimestre: React.FC<{ valor: number[]; onChange: (v: number[]) => void }> = ({ valor, onChange }) => (
@@ -327,17 +377,56 @@ const EditarHabilidade: React.FC<{ h: Habilidade; onFechar: () => void; onSalva:
   );
 };
 
+/** Resultado da consulta à BNCC: busca e paginação pelo padrão; as já cadastradas aparecem marcadas e desabilitadas. */
+const ListaBncc: React.FC<{ itens: ItemBncc[]; ja: Set<string>; sel: Set<string>; setSel: React.Dispatch<React.SetStateAction<Set<string>>> }> = ({ itens, ja, sel, setSel }) => {
+  const colunas = React.useMemo<ColumnDef<ItemBncc>[]>(
+    () => [
+      {
+        id: 'selecionar',
+        header: '',
+        enableSorting: false,
+        meta: { exportIgnore: true },
+        cell: ({ row }) => {
+          const i = row.original;
+          return (
+            <Checkbox
+              aria-label={`Selecionar ${i.codigo}`}
+              disabled={ja.has(i.codigo)}
+              checked={ja.has(i.codigo) || sel.has(i.codigo)}
+              onCheckedChange={(v) =>
+                setSel((s) => {
+                  const n = new Set(s);
+                  if (v === true) n.add(i.codigo);
+                  else n.delete(i.codigo);
+                  return n;
+                })
+              }
+            />
+          );
+        },
+      },
+      { id: 'codigo', header: 'Código', accessorFn: (i) => i.codigo, cell: ({ getValue }) => <span className="font-mono text-xs">{getValue<string>()}</span> },
+      { id: 'habilidade', header: 'Habilidade', accessorFn: (i) => i.descricao, cell: ({ row }) => <div className={`text-left text-sm ${ja.has(row.original.codigo) ? 'opacity-50' : ''}`}>{row.original.descricao}</div> },
+      {
+        id: 'unidade',
+        header: 'Unidade temática / objeto',
+        accessorFn: (i) => [i.unidade_tematica, i.objeto_conhecimento].filter(Boolean).join(' · '),
+        cell: ({ getValue }) => <div className="text-left text-xs text-muted-foreground">{getValue<string>()}</div>,
+      },
+    ],
+    [ja, sel, setSel],
+  );
+  return <DataTable columns={colunas} data={itens} searchable searchPlaceholder="Buscar por palavra, código ou unidade temática" pageSize={10} />;
+};
+
 const PainelBncc: React.FC<{ serie: number; materia: string; titulo: string; onFechar: () => void; onAdicionadas: (n: number) => void }> = ({ serie, materia, titulo, onFechar, onAdicionadas }) => {
   const [dados, setDados] = useState<{ itens: ItemBncc[]; ja_cadastrados: string[] } | null>(null);
   const [erro, setErro] = useState<Mensagem>(null);
-  const [busca, setBusca] = useState('');
   const [sel, setSel] = useState<Set<string>>(new Set());
   useEffect(() => {
     parecerApi.bncc(serie, materia).then(setDados).catch((e: unknown) => setErro(mensagemDeErro(e)));
   }, [serie, materia]);
   const ja = new Set(dados?.ja_cadastrados ?? []);
-  const termo = busca.trim().toLowerCase();
-  const visiveis = (dados?.itens ?? []).filter((i) => termo === '' || [i.codigo, i.descricao, i.unidade_tematica ?? '', i.objeto_conhecimento ?? ''].join(' ').toLowerCase().includes(termo));
 
   return (
     <Modal
@@ -364,42 +453,8 @@ const PainelBncc: React.FC<{ serie: number; materia: string; titulo: string; onF
         {dados !== null && dados.itens.length === 0 && <ScreenState type="empty" title="A BNCC não traz habilidades desta matéria para esta série." />}
         {dados !== null && dados.itens.length > 0 && (
           <>
-            <Input placeholder="Buscar por palavra, código ou unidade temática" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar habilidades da BNCC" />
             <div className="max-h-[55vh] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10" />
-                    <TableHead>Código</TableHead>
-                    <TableHead>Habilidade</TableHead>
-                    <TableHead>Unidade temática / objeto</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visiveis.map((i) => (
-                    <TableRow key={i.codigo} className={ja.has(i.codigo) ? 'opacity-50' : undefined}>
-                      <TableCell>
-                        <Checkbox
-                          aria-label={`Selecionar ${i.codigo}`}
-                          disabled={ja.has(i.codigo)}
-                          checked={ja.has(i.codigo) || sel.has(i.codigo)}
-                          onCheckedChange={(v) =>
-                            setSel((s) => {
-                              const n = new Set(s);
-                              if (v === true) n.add(i.codigo);
-                              else n.delete(i.codigo);
-                              return n;
-                            })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{i.codigo}</TableCell>
-                      <TableCell className="text-sm">{i.descricao}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{[i.unidade_tematica, i.objeto_conhecimento].filter(Boolean).join(' · ')}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <ListaBncc itens={dados.itens} ja={ja} sel={sel} setSel={setSel} />
             </div>
           </>
         )}

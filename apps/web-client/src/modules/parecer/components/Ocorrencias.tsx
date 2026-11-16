@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Badge, Button, Card, Checkbox, ConfirmDialog, Field, Input, ScreenState, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@sysgov/ui';
-import { dataBr, hojeIso, parecerApi, type Ocorrencia } from '../api';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ActionsMenu, Badge, Button, Card, Checkbox, ConfirmDialog, DataTable, Field, Input, ScreenState, Select, Textarea } from '@sysgov/ui';
+import { dataBr, hojeIso, parecerApi, type Ocorrencia, type OcorrenciasTurma } from '../api';
 import { AbasTurma, Aviso, BotaoWhats, Carga, EscolherTurma, mensagemDeErro, useCarga, useParecer, type Mensagem } from './comum';
 
 /** Ocorrências do aluno ou da turma (ocorrencias.php), com contato do responsável pelo WhatsApp. */
@@ -177,6 +178,36 @@ const DoAluno: React.FC<{ alunoId: number }> = ({ alunoId }) => {
   );
 };
 
+/** Alunos da turma com o total de ocorrências: busca, ordenação e exportação pelo padrão; ação no menu ⋮. */
+const ListaAlunos: React.FC<{ alunos: OcorrenciasTurma['alunos']; onAbrir: (alunoId: number) => void }> = ({ alunos, onAbrir }) => {
+  const colunas = React.useMemo<ColumnDef<OcorrenciasTurma['alunos'][number]>[]>(
+    () => [
+      { id: 'aluno', header: 'Aluno', accessorFn: (a) => a.nome, cell: ({ row }) => <span className={row.original.situacao !== 'ativo' ? 'opacity-60' : undefined}>{row.original.nome}</span> },
+      {
+        id: 'ocorrencias',
+        header: 'Ocorrências',
+        accessorFn: (a) => a.total,
+        cell: ({ row }) => (row.original.total > 0 ? <Badge variant="warning">{row.original.total}</Badge> : <span className="font-mono">0</span>),
+      },
+      {
+        id: 'responsavel',
+        header: 'Responsável',
+        accessorFn: (a) => a.celular ?? '',
+        cell: ({ row }) => <BotaoWhats tel={row.original.celular} rotulo="WhatsApp" mensagem={`Olá! Aqui é da escola, sobre ${row.original.nome}.`} />,
+      },
+      {
+        id: 'actions',
+        header: 'Ações',
+        enableSorting: false,
+        meta: { exportIgnore: true },
+        cell: ({ row }) => <ActionsMenu triggerLabel={`Ações de ${row.original.nome}`} items={[{ key: 'ver', label: '+ Registrar / ver', onSelect: () => onAbrir(row.original.id) }]} />,
+      },
+    ],
+    [onAbrir],
+  );
+  return <DataTable columns={colunas} data={alunos} searchable searchPlaceholder="Buscar aluno…" pageSize={20} exportable exportFileName="parecer-ocorrencias-alunos" exportTitle="Parecer Descritivo — ocorrências por aluno" />;
+};
+
 const DaTurma: React.FC<{ turmaId: number }> = ({ turmaId }) => {
   const { ir } = useParecer();
   const carga = useCarga(() => parecerApi.ocorrenciasTurma(turmaId), [turmaId]);
@@ -190,32 +221,7 @@ const DaTurma: React.FC<{ turmaId: number }> = ({ turmaId }) => {
             <Button variant="outline" size="sm" onClick={() => void parecerApi.baixarPlanilhaOcorrencias(turmaId)}>
               ⬇ Exportar planilha (CSV)
             </Button>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Aluno</TableHead>
-                  <TableHead className="text-right">Ocorrências</TableHead>
-                  <TableHead>Responsável</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {d.alunos.map((a) => (
-                  <TableRow key={a.id} className={a.situacao !== 'ativo' ? 'opacity-60' : undefined}>
-                    <TableCell>{a.nome}</TableCell>
-                    <TableCell className="text-right">{a.total > 0 ? <Badge variant="warning">{a.total}</Badge> : <span className="font-mono">0</span>}</TableCell>
-                    <TableCell>
-                      <BotaoWhats tel={a.celular} rotulo="WhatsApp" mensagem={`Olá! Aqui é da escola, sobre ${a.nome}.`} />
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="link" size="xs" onClick={() => ir({ aba: 'ocorrencias', alunoId: a.id, turmaId })}>
-                        + Registrar / ver
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <ListaAlunos alunos={d.alunos} onAbrir={(alunoId) => ir({ aba: 'ocorrencias', alunoId, turmaId })} />
             <h3 className="font-semibold">Últimas ocorrências</h3>
             {d.ocorrencias.length === 0 ? (
               <ScreenState type="empty" title="Nenhuma ocorrência registrada nesta turma." />

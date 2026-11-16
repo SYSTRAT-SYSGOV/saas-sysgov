@@ -34,5 +34,5 @@
 - [x] 6.2 Auditoria: grade padrão (`DataTable`) com paginação do servidor (100 por página), sem ordenação local que enganaria entre páginas
 - [x] 6.3 Relatórios: filtros alinhados; tabelas de séries, matérias, comparativo do aluno e relação de alunos em `DataTable` (relação de alunos com busca e exportação CSV/XLSX/PDF)
 - [x] 6.4 Teste de regressão da Auditoria (grade padrão, total do servidor e altura dos controles)
-- [ ] 6.5 Converter as demais listagens (Configurações, Ocorrências, Conteúdos ×2) para `DataTable`
+- [x] 6.5 Demais listagens em `DataTable`: Configurações (turmas, com busca e exportação), Ocorrências (alunos da turma, com busca e exportação), Conteúdos (habilidades da matéria, sem paginação e sem ordenação porque a ordem é manual) e a consulta à BNCC (busca e paginação pelo padrão). Ações de linha no menu ⋮ (`ActionsMenu`); subir/descer ficam em coluna própria "Ordem"
 - [ ] 6.6 Decidir o padrão das matrizes de lançamento com campos editáveis na linha (Avaliar, Notas, Frequência, Alunos da turma): hoje usam as peças `Table` do `@sysgov/ui`, porque ordenar, filtrar e paginar atrapalham o lançamento

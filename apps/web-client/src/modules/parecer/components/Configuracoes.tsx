@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Badge, Button, ConfirmDialog, Field, Modal, ScreenState, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@sysgov/ui';
+import type { ColumnDef } from '@tanstack/react-table';
+import { ActionsMenu, Badge, Button, ConfirmDialog, DataTable, Field, Modal, ScreenState, Select } from '@sysgov/ui';
 import { SERIES, parecerApi, type TurmaConfig } from '../api';
 import { Aviso, Carga, mensagemDeErro, useCarga, useParecer, type Mensagem } from './comum';
 
@@ -27,41 +28,7 @@ const Configuracoes: React.FC = () => {
             {d.turmas.length === 0 ? (
               <ScreenState type="empty" title={`Nenhuma turma cadastrada em ${ano}.`} description="Cadastre as turmas no Cadastro Escolar." />
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Turma</TableHead>
-                    <TableHead>Turno</TableHead>
-                    <TableHead>Série</TableHead>
-                    <TableHead>Regente</TableHead>
-                    <TableHead>Outras funções</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {d.turmas.map((t) => (
-                    <TableRow key={t.turma_id}>
-                      <TableCell className="font-medium">{t.nome}</TableCell>
-                      <TableCell>{t.turno}</TableCell>
-                      <TableCell>{t.serie ? <Badge variant="info">{SERIES[t.serie]}</Badge> : <span className="text-xs text-muted-foreground">fora do parecer</span>}</TableCell>
-                      <TableCell>{nome.get(t.funcoes.professor_regente) ?? '—'}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{Object.keys(t.funcoes).filter((f) => f !== 'professor_regente').length} preenchida(s)</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="outline" size="xs" onClick={() => setEditar(t)}>
-                            {t.serie ? 'Editar' : 'Incluir no parecer'}
-                          </Button>
-                          {t.serie && (
-                            <Button variant="ghost" size="xs" className="text-destructive" onClick={() => setRemover(t)}>
-                              Retirar
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <ListaTurmas turmas={d.turmas} nome={nome} onEditar={setEditar} onRemover={setRemover} />
             )}
             {editar && (
               <EditarTurma
@@ -101,6 +68,50 @@ const Configuracoes: React.FC = () => {
       }}
     </Carga>
   );
+};
+
+/** Grade das turmas: busca e ordenação pelo padrão; as ações da linha ficam no menu ⋮. */
+const ListaTurmas: React.FC<{ turmas: TurmaConfig[]; nome: Map<number, string>; onEditar: (t: TurmaConfig) => void; onRemover: (t: TurmaConfig) => void }> = ({ turmas, nome, onEditar, onRemover }) => {
+  const colunas = React.useMemo<ColumnDef<TurmaConfig>[]>(
+    () => [
+      { id: 'turma', header: 'Turma', accessorFn: (t) => t.nome, cell: ({ row }) => <span className="font-medium">{row.original.nome}</span> },
+      { id: 'turno', header: 'Turno', accessorFn: (t) => t.turno ?? '—' },
+      {
+        id: 'serie',
+        header: 'Série',
+        accessorFn: (t) => (t.serie ? SERIES[t.serie] : 'fora do parecer'),
+        cell: ({ row }) => (row.original.serie ? <Badge variant="info">{SERIES[row.original.serie]}</Badge> : <span className="text-xs text-muted-foreground">fora do parecer</span>),
+      },
+      { id: 'regente', header: 'Regente', accessorFn: (t) => nome.get(t.funcoes.professor_regente) ?? '—' },
+      {
+        id: 'outras',
+        header: 'Outras funções',
+        accessorFn: (t) => Object.keys(t.funcoes).filter((f) => f !== 'professor_regente').length,
+        cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{getValue<number>()} preenchida(s)</span>,
+        meta: { exportValue: (t) => `${Object.keys(t.funcoes).filter((f) => f !== 'professor_regente').length} preenchida(s)` },
+      },
+      {
+        id: 'actions',
+        header: 'Ações',
+        enableSorting: false,
+        meta: { exportIgnore: true },
+        cell: ({ row }) => {
+          const t = row.original;
+          return (
+            <ActionsMenu
+              triggerLabel={`Ações da turma ${t.nome}`}
+              items={[
+                { key: 'editar', label: t.serie ? 'Editar' : 'Incluir no parecer', onSelect: () => onEditar(t) },
+                ...(t.serie ? [{ key: 'retirar', label: 'Retirar do parecer', onSelect: () => onRemover(t) }] : []),
+              ]}
+            />
+          );
+        },
+      },
+    ],
+    [nome, onEditar, onRemover],
+  );
+  return <DataTable columns={colunas} data={turmas} searchable searchPlaceholder="Buscar turma, turno, regente…" pageSize={20} exportable exportFileName="parecer-turmas" exportTitle="Parecer Descritivo — turmas e funções" />;
 };
 
 const EditarTurma: React.FC<{ t: TurmaConfig; equipe: { id: number; nome: string }[]; funcoes: Record<string, { rotulo: string }>; onFechar: () => void; onSalva: () => void }> = ({ t, equipe, funcoes, onFechar, onSalva }) => {
