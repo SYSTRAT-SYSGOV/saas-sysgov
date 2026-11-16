@@ -21,6 +21,7 @@ export const SUBMODULOS_EDUCACAO: SubmoduloEducacao[] = [
   { alias: 'passeio', slug: 'passeio', rotulo: 'Passeios', descricao: 'Agenda, inscrições, autorizações e frota dos passeios.' },
   { alias: 'portfolio', slug: 'portfolio', rotulo: 'Portfólio Digital', descricao: 'Trabalhos dos alunos, linha do tempo e relatório.' },
   { alias: 'transporte', slug: 'transporte', rotulo: 'Transporte Escolar', descricao: 'Frota, rotas, alunos transportados, custos e Censo.' },
+  { alias: 'parecer', slug: 'parecer', rotulo: 'Parecer Descritivo', descricao: 'Parecer, avaliação por habilidade, notas e frequência do 1º ao 5º ano.' },
 ];
 
 export const rotaDoSubmodulo = (s: SubmoduloEducacao): string => `${EDUCACAO_BASE}/${s.slug}`;

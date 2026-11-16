@@ -42,7 +42,7 @@ describe('Educação — rotas', () => {
 
   it('mapeia cada alias para /educacao/<slug>', () => {
     expect(SUBMODULOS_EDUCACAO.map((s) => rotaPorAlias(s.alias))).toEqual([
-      '/educacao/cadastro-escolar', '/educacao/pedagogico', '/educacao/formatura', '/educacao/passeio', '/educacao/portfolio', '/educacao/transporte',
+      '/educacao/cadastro-escolar', '/educacao/pedagogico', '/educacao/formatura', '/educacao/passeio', '/educacao/portfolio', '/educacao/transporte', '/educacao/parecer',
     ]);
     expect(ROTA_CADASTRO_ESCOLAR).toBe('/educacao/cadastro-escolar');
   });
@@ -61,11 +61,11 @@ describe('Educação — rotas', () => {
 });
 
 describe('Educação — página inicial', () => {
-  it('lista os seis submódulos para quem tem acesso a todos', () => {
+  it('lista os sete submódulos para quem tem acesso a todos', () => {
     render(<MemoryRouter><EducacaoHome /></MemoryRouter>);
 
     const lista = screen.getByRole('list');
-    expect(within(lista).getAllByRole('link').map((a) => a.textContent)).toHaveLength(6);
+    expect(within(lista).getAllByRole('link').map((a) => a.textContent)).toHaveLength(7);
     expect(within(lista).getByRole('link', { name: /Passeios/ })).toHaveAttribute('href', '/educacao/passeio');
   });
 

@@ -65,6 +65,25 @@ final class AgrupadorEducacaoMenuTest extends TestCase
         $this->assertSame(0, ClientMenuItem::query()->where('route', '/transporte')->count());
     }
 
+    public function test_parecer_e_registrado_como_filho_da_educacao_depois_do_transporte(): void
+    {
+        $this->grupo();
+
+        foreach (['Transporte', 'Parecer'] as $modulo) {
+            $this->artisan('module:register', ['module' => $modulo])->assertSuccessful();
+        }
+
+        $pai = ClientMenuItem::query()->where('route', '/educacao')->firstOrFail();
+        $parecer = ClientMenuItem::query()->where('route', '/educacao/parecer')->firstOrFail();
+        $transporte = ClientMenuItem::query()->where('route', '/educacao/transporte')->firstOrFail();
+        $this->assertSame($pai->id, $parecer->parent_id);
+        $this->assertSame('parecer', $parecer->module_alias);
+        $this->assertSame('parecer.view', $parecer->permission);
+        $this->assertSame('Parecer Descritivo', $parecer->label);
+        $this->assertGreaterThan($transporte->order, $parecer->order);
+        $this->assertSame(0, ClientMenuItem::query()->where('route', '/parecer')->count());
+    }
+
     public function test_registrar_de_novo_nao_duplica_o_agrupador_nem_o_item(): void
     {
         $this->grupo();

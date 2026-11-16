@@ -21,7 +21,7 @@
     "menu": {
         "label": "Parecer Descritivo",
         "icon": "FileText",
-        "order": 31,
+        "order": 35,
         "permission": "parecer.view",
         "group": "GESTÃO SETORIAL",
         "parent": "educacao",

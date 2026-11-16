@@ -41,6 +41,7 @@ final class ClientMenuSeeder extends Seeder
                             ['label' => 'Passeios', 'route' => '/educacao/passeio', 'icon' => 'Bus', 'permission' => 'passeio.view', 'module_alias' => 'passeio'],
                             ['label' => 'Portfólio Digital', 'route' => '/educacao/portfolio', 'icon' => 'FolderOpen', 'permission' => 'portfolio.view', 'module_alias' => 'portfolio'],
                             ['label' => 'Transporte Escolar', 'route' => '/educacao/transporte', 'icon' => 'Truck', 'permission' => 'transporte.view', 'module_alias' => 'transporte'],
+                            ['label' => 'Parecer Descritivo', 'route' => '/educacao/parecer', 'icon' => 'FileText', 'permission' => 'parecer.view', 'module_alias' => 'parecer'],
                         ],
                     ],
                     ['label' => 'Avaliação de Desempenho (CAPD)', 'route' => '/capd', 'icon' => 'ClipboardCheck', 'permission' => 'capd.view', 'module_alias' => 'capd'],
